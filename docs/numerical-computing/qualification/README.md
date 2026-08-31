@@ -161,3 +161,9 @@ missing platform rows, and receipt overwrite attempts.
 See [cross-platform.md](cross-platform.md) for collection and reporting, and
 [domain-integration.md](domain-integration.md) for the adapter protocol and
 registry-free domain integration.
+
+The first complete product campaign is described in
+[product-campaign.md](product-campaign.md). Its checked-in corpus and Node
+adapter exercise the integrated P0-P8 numerical surface through a built
+Sage.js artifact. The checked-in matrix files are templates, not receipts or
+claims that any platform row has been measured.

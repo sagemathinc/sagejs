@@ -1,0 +1,15 @@
+{
+  "schema": "sagejs.numerical-qualification-matrix-template/v1",
+  "id": "sagejs-numerical-product-node-four-platform",
+  "description": "The exact Node artifact must be measured independently on every supported native platform.",
+  "require_clean": true,
+  "required_program_phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
+  "required_case_layers": ["definition-identity", "independent-residual", "differential-oracle", "conditioned-stress", "failure-semantics", "fuzz", "metamorphic"],
+  "required_capabilities": ["numerics.contracts", "numerics.root.scalar", "numerics.approximation.interpolation", "numerics.integration.quadrature", "numerics.linear.solve", "numerics.optimization.scalar", "numerics.ode.explicit_ivp", "numerics.spectral.dense", "numerics.spectral.fft", "numerics.statistics.descriptive", "numerics.sweeps.bounded", "numerics.frontend.scalar_root", "numerics.teaching.root", "numerics.lifecycle.repeated"],
+  "rows": [
+    {"id": "linux-x64-node", "platform": "linux-x64", "subject": {"kind": "node", "name": "node", "engine": null}},
+    {"id": "linux-arm64-node", "platform": "linux-arm64", "subject": {"kind": "node", "name": "node", "engine": null}},
+    {"id": "macos-arm64-node", "platform": "macos-arm64", "subject": {"kind": "node", "name": "node", "engine": null}},
+    {"id": "windows-x64-node", "platform": "windows-x64", "subject": {"kind": "node", "name": "node", "engine": null}}
+  ]
+}

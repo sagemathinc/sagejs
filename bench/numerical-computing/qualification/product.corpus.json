@@ -1,0 +1,394 @@
+{
+  "schema": "sagejs.numerical-qualification-corpus/v1",
+  "id": "sagejs-numerical-product-v1",
+  "version": 1,
+  "domain": "numerical-computing-product",
+  "description": "Backend-neutral P0-P8 product cases executed through a real Sage.js artifact and checked independently by the host adapter.",
+  "program_phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
+  "source_paths": ["src/lib/sagejs/numerics"],
+  "cases": [
+    {
+      "id": "p0-result-contract",
+      "description": "The integrated root result exposes the versioned agent-first result envelope.",
+      "program_phase": "P0",
+      "layer": "definition-identity",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "result-contract"},
+      "required_capabilities": ["numerics.contracts"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "schema-version", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/schema_version", "expected": {"literal": 1}},
+        {"id": "required-fields", "evidence": "validation", "kind": "deep-equal", "actual": "/values/required_fields_present", "expected": {"literal": true}},
+        {"id": "validated-result", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p1-root-cosine",
+      "description": "Brent solves cos(x)=x and the adapter independently evaluates the residual.",
+      "program_phase": "P1",
+      "layer": "differential-oracle",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "root-cosine", "lower": 0, "upper": 1},
+      "required_capabilities": ["numerics.root.scalar"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "root-oracle", "evidence": "correctness", "kind": "approximate", "actual": "/values/result", "expected": {"literal": 0.7390851332151607}, "absolute_tolerance": 1e-13, "relative_tolerance": 1e-13},
+        {"id": "root-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_residual", "expected": {"literal": 1e-12}},
+        {"id": "root-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 3}
+    },
+    {
+      "id": "p1-root-invalid-bracket",
+      "description": "A bracket with no sign change fails with a stable domain code.",
+      "program_phase": "P1",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "root-invalid-bracket", "lower": -1, "upper": 1},
+      "required_capabilities": ["numerics.root.scalar"],
+      "expected": {"outcome": "failure", "failure_code": "root.invalid-bracket"},
+      "checks": [
+        {"id": "solver-rejected-bracket", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/solver_status", "expected": {"literal": "invalid_bracket"}},
+        {"id": "same-sign-independent", "evidence": "validation", "kind": "deep-equal", "actual": "/values/same_sign_endpoints", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p1-root-translation",
+      "description": "Translating a scalar equation translates all computed roots by the same amount.",
+      "program_phase": "P1",
+      "layer": "metamorphic",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "metamorphic", "seed": null, "trials": 4, "evidence_check_ids": ["root-transformations-ran"]},
+      "input": {"operation": "root-translation", "shifts": [-5, -1, 2, 7]},
+      "required_capabilities": ["numerics.root.scalar"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "translated-root-error", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_translation_error", "expected": {"literal": 1e-12}},
+        {"id": "translated-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 1e-12}},
+        {"id": "root-transformations-ran", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trials", "expected": {"literal": 4}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p2-interpolation-quadratic",
+      "description": "Barycentric interpolation reproduces a quadratic at an off-node point.",
+      "program_phase": "P2",
+      "layer": "definition-identity",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "interpolation-quadratic", "nodes": [0, 1, 2], "values": [1, 2, 5], "point": 1.5},
+      "required_capabilities": ["numerics.approximation.interpolation"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "interpolation-definition", "evidence": "correctness", "kind": "approximate", "actual": "/values/result", "expected": {"literal": 3.25}, "absolute_tolerance": 1e-13, "relative_tolerance": 1e-13},
+        {"id": "lagrange-oracle", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_error", "expected": {"literal": 1e-13}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p2-quadrature-sine",
+      "description": "Adaptive Gauss-Kronrod integrates sin on [0,pi] with an external exact oracle.",
+      "program_phase": "P2",
+      "layer": "independent-residual",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "quadrature-sine", "lower": 0, "upper": 3.141592653589793},
+      "required_capabilities": ["numerics.integration.quadrature"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "integral-oracle", "evidence": "correctness", "kind": "approximate", "actual": "/values/result", "expected": {"literal": 2}, "absolute_tolerance": 2e-11, "relative_tolerance": 2e-11},
+        {"id": "integral-independent-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_error", "expected": {"literal": 2e-11}},
+        {"id": "integral-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p2-linear-solve",
+      "description": "A dense solve is checked with a separately computed infinity-norm residual.",
+      "program_phase": "P2",
+      "layer": "independent-residual",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "linear-solve", "matrix": [[3, 1], [1, 2]], "rhs": [9, 8]},
+      "required_capabilities": ["numerics.linear.solve"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "linear-known-solution", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/rounded_result", "expected": {"literal": [2, 3]}},
+        {"id": "linear-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_residual", "expected": {"literal": 1e-13}},
+        {"id": "linear-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p2-linear-scale-stress",
+      "description": "QR solves the same one-dimensional system at an extreme finite scale.",
+      "program_phase": "P2",
+      "layer": "conditioned-stress",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "linear-scale-stress", "scale": 1e+300},
+      "required_capabilities": ["numerics.linear.solve"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "scaled-solution", "evidence": "correctness", "kind": "approximate", "actual": "/values/result", "expected": {"literal": 1}, "absolute_tolerance": 1e-14, "relative_tolerance": 1e-14},
+        {"id": "scaled-relative-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/relative_residual", "expected": {"literal": 1e-14}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p2-linear-singular",
+      "description": "A singular square system fails closed and the determinant is independently zero.",
+      "program_phase": "P2",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "linear-singular", "matrix": [[1, 2], [2, 4]], "rhs": [1, 2]},
+      "required_capabilities": ["numerics.linear.solve"],
+      "expected": {"outcome": "failure", "failure_code": "linear.singular"},
+      "checks": [
+        {"id": "singular-not-success", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/solver_success", "expected": {"literal": false}},
+        {"id": "zero-determinant", "evidence": "validation", "kind": "deep-equal", "actual": "/values/independent_determinant", "expected": {"literal": 0}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p3-scalar-minimum",
+      "description": "Bounded Brent minimizes a convex quadratic with independent stationarity evidence.",
+      "program_phase": "P3",
+      "layer": "independent-residual",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "scalar-minimum", "lower": -1, "upper": 5},
+      "required_capabilities": ["numerics.optimization.scalar"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "minimum-location", "evidence": "correctness", "kind": "approximate", "actual": "/values/result", "expected": {"literal": 2}, "absolute_tolerance": 1e-7, "relative_tolerance": 1e-7},
+        {"id": "minimum-gradient", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_stationarity", "expected": {"literal": 2e-7}},
+        {"id": "minimum-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p3-optimization-cancelled",
+      "description": "Optimization cancellation is a structured non-success, not an adapter exception.",
+      "program_phase": "P3",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 1, "evidence_check_ids": ["cancel-callback-called"]},
+      "input": {"operation": "optimization-cancelled"},
+      "required_capabilities": ["numerics.optimization.scalar"],
+      "expected": {"outcome": "failure", "failure_code": "optimization.cancelled"},
+      "checks": [
+        {"id": "optimization-status", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/solver_status", "expected": {"literal": "cancelled"}},
+        {"id": "cancel-callback-called", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/cancel_checks", "expected": {"literal": 1}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p4-ode-exponential",
+      "description": "Dormand-Prince solves y'=y and is compared with the exact exponential flow.",
+      "program_phase": "P4",
+      "layer": "differential-oracle",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "ode-exponential", "t0": 0, "t1": 1, "y0": 1},
+      "required_capabilities": ["numerics.ode.explicit_ivp"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "ode-exact-flow", "evidence": "correctness", "kind": "approximate", "actual": "/values/result", "expected": {"literal": 2.718281828459045}, "absolute_tolerance": 2e-6, "relative_tolerance": 2e-6},
+        {"id": "ode-flow-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_error", "expected": {"literal": 2e-6}},
+        {"id": "ode-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p4-ode-cancelled",
+      "description": "An IVP cancellation request remains bounded and structured.",
+      "program_phase": "P4",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 1, "evidence_check_ids": ["ode-cancel-called"]},
+      "input": {"operation": "ode-cancelled"},
+      "required_capabilities": ["numerics.ode.explicit_ivp"],
+      "expected": {"outcome": "failure", "failure_code": "ode.cancelled"},
+      "checks": [
+        {"id": "ode-status", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/solver_status", "expected": {"literal": "cancelled"}},
+        {"id": "ode-cancel-called", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/cancel_checks", "expected": {"literal": 1}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p5-symmetric-eigen",
+      "description": "A symmetric eigensystem is checked with independent Av-lambda-v residuals.",
+      "program_phase": "P5",
+      "layer": "independent-residual",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "symmetric-eigen", "matrix": [[2, 1], [1, 3]]},
+      "required_capabilities": ["numerics.spectral.dense"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "eigen-trace", "evidence": "correctness", "kind": "approximate", "actual": "/values/eigenvalue_sum", "expected": {"literal": 5}, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        {"id": "eigen-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_independent_residual", "expected": {"literal": 1e-10}},
+        {"id": "eigen-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p5-fft-direct-oracle",
+      "description": "The FFT is compared with an independent O(n^2) host DFT.",
+      "program_phase": "P5",
+      "layer": "differential-oracle",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "fft-direct-oracle", "samples": [1, 2, -1, 0.5, 3]},
+      "required_capabilities": ["numerics.spectral.fft"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "fft-dc", "evidence": "correctness", "kind": "approximate", "actual": "/values/dc", "expected": {"literal": 5.5}, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        {"id": "fft-direct-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_dft_error", "expected": {"literal": 1e-10}},
+        {"id": "fft-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p5-statistics-summary",
+      "description": "Two-pass descriptive statistics agree with definition-level host sums.",
+      "program_phase": "P5",
+      "layer": "definition-identity",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "statistics-summary", "samples": [1, 2, 3, 4]},
+      "required_capabilities": ["numerics.statistics.descriptive"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "statistics-mean", "evidence": "correctness", "kind": "approximate", "actual": "/values/mean", "expected": {"literal": 2.5}, "absolute_tolerance": 0, "relative_tolerance": 0},
+        {"id": "statistics-variance", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_variance_error", "expected": {"literal": 1e-15}},
+        {"id": "statistics-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p5-bounded-sweep",
+      "description": "The shared sweep scheduler preserves stable ordering, deterministic seeds, and bounded concurrency.",
+      "program_phase": "P5",
+      "layer": "definition-identity",
+      "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "bounded-sweep", "parameters": [0, 1, 2, 3, 4], "seed": 23, "concurrency": 3},
+      "required_capabilities": ["numerics.sweeps.bounded"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "sweep-values", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/results", "expected": {"literal": [0, 1, 4, 9, 16]}},
+        {"id": "sweep-order", "evidence": "validation", "kind": "deep-equal", "actual": "/values/stable_order", "expected": {"literal": true}},
+        {"id": "sweep-concurrency-bound", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/effective_concurrency", "expected": {"literal": 3}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p6-multilingual-root-roundtrip",
+      "description": "MATLAB intent lowers once and round-trips through all four supported code views.",
+      "program_phase": "P6",
+      "layer": "metamorphic",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "metamorphic", "seed": null, "trials": 4, "evidence_check_ids": ["frontend-roundtrips-ran"]},
+      "input": {"operation": "multilingual-root-roundtrip", "languages": ["sage", "python-scipy", "matlab", "wolfram"]},
+      "required_capabilities": ["numerics.frontend.scalar_root"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "frontend-digest-equality", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/digests_equal", "expected": {"literal": true}},
+        {"id": "frontend-roundtrips-ran", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trials", "expected": {"literal": 4}},
+        {"id": "frontend-result-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_residual", "expected": {"literal": 1e-12}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p7-root-teaching-artifacts",
+      "description": "A traced root computation produces bounded renderer-neutral plot and animation records.",
+      "program_phase": "P7",
+      "layer": "definition-identity",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "root-teaching-artifacts"},
+      "required_capabilities": ["numerics.teaching.root"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "plot-has-layers", "evidence": "correctness", "kind": "greater-than-or-equal", "actual": "/values/plot_layers", "expected": {"literal": 1}},
+        {"id": "animation-has-frames", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/animation_frames", "expected": {"literal": 2}},
+        {"id": "trace-bounded", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/trace_events", "expected": {"literal": 32}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p8-statistics-deterministic-fuzz",
+      "description": "Seeded descriptive-statistics trials agree with independently regenerated host means.",
+      "program_phase": "P8",
+      "layer": "fuzz",
+      "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "deterministic-fuzz", "seed": "lcg31-0x5eed1234", "trials": 32, "evidence_check_ids": ["all-statistics-fuzz-trials-ran"]},
+      "input": {"operation": "statistics-fuzz", "seed": 1592594996, "trials": 32, "width": 8},
+      "required_capabilities": ["numerics.statistics.descriptive"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "fuzz-mean-error", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_mean_error", "expected": {"literal": 1e-15}},
+        {"id": "all-statistics-fuzz-trials-ran", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trials", "expected": {"literal": 32}},
+        {"id": "fuzz-finite", "evidence": "validation", "kind": "finite", "actual": "/values/max_mean_error"}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p8-root-resource-budget",
+      "description": "A one-evaluation root budget stops predictably before unbounded callback work.",
+      "program_phase": "P8",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 1, "evidence_check_ids": ["evaluation-budget-observed"]},
+      "input": {"operation": "root-resource-budget", "max_evaluations": 1},
+      "required_capabilities": ["numerics.root.scalar"],
+      "expected": {"outcome": "failure", "failure_code": "root.maximum-evaluations"},
+      "checks": [
+        {"id": "budget-status", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/solver_status", "expected": {"literal": "maximum_evaluations"}},
+        {"id": "evaluation-budget-observed", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/evaluations", "expected": {"literal": 1}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p8-callback-exception",
+      "description": "A user callback exception is contained as a domain result rather than escaping the adapter.",
+      "program_phase": "P8",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 1, "evidence_check_ids": ["callback-was-invoked"]},
+      "input": {"operation": "callback-exception"},
+      "required_capabilities": ["numerics.root.scalar"],
+      "expected": {"outcome": "failure", "failure_code": "root.callback-error"},
+      "checks": [
+        {"id": "callback-error-status", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/solver_status", "expected": {"literal": "callback_error"}},
+        {"id": "callback-was-invoked", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/evaluations", "expected": {"literal": 1}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p8-cross-domain-repeated-stability",
+      "description": "Repeated root, solve, quadrature, FFT, and statistics work remains deterministic and independently valid.",
+      "program_phase": "P8",
+      "layer": "conditioned-stress",
+      "workload_tier": "substantial-local",
+      "campaign": {"kind": "long-duration", "seed": "fixed-product-cycle-v1", "trials": 8, "evidence_check_ids": ["all-product-repeats-ran"]},
+      "input": {"operation": "cross-domain-repeated-stability", "trials": 8},
+      "required_capabilities": ["numerics.lifecycle.repeated", "numerics.root.scalar", "numerics.integration.quadrature", "numerics.linear.solve", "numerics.spectral.fft", "numerics.statistics.descriptive"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "repeated-value-error", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_independent_error", "expected": {"literal": 2e-10}},
+        {"id": "all-product-repeats-ran", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trials", "expected": {"literal": 8}},
+        {"id": "repeated-domain-failures", "evidence": "validation", "kind": "deep-equal", "actual": "/values/failures", "expected": {"literal": 0}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    }
+  ]
+}
