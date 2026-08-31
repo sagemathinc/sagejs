@@ -18,13 +18,18 @@ domain surface:
    `finite_difference_derivative`, and `polynomial_approximation` to the
    numerical capability/surface registries using `support-matrix.json` as the
    qualified envelope.
-3. Add the portable test to the shared `test:numerics` command or migrate that
+3. In `architecture/package-graph.json`, change the existing
+   `numerical-computing` package from `"prefixes": []` to
+   `"prefixes": ["src/lib/sagejs/numerics/approximation/"]`. This is required
+   before `pnpm architecture:check` can assign the new source files exactly one
+   owner.
+4. Add the portable test to the shared `test:numerics` command or migrate that
    command to directory discovery:
    `test/numerics/approximation/approximation-laboratory.test.cjs`.
-4. Decide whether approximation-specific result dispatch belongs in the
+5. Decide whether approximation-specific result dispatch belongs in the
    shared `NumericalResult.evaluate/plot` surface. The current subclass keeps
    this lane serializable without changing the shared object.
-5. Lower `ApproximationResult.plot_data()` through the shared PlotSpec
+6. Lower `ApproximationResult.plot_data()` through the shared PlotSpec
    visualizer. The solver/model code must remain renderer-neutral.
 
 ## Requested diagnostic codes

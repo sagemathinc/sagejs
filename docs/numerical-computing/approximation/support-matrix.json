@@ -2,15 +2,15 @@
   "schema": "sagejs.numerics.approximation.support/v1",
   "numeric_type": "IEEE-754 binary64",
   "implementation": "ordinary-python",
-  "platforms": [
-    "browser",
-    "node",
-    "sea",
-    "linux-x64",
-    "linux-arm64",
-    "macos-arm64",
-    "windows-x64"
-  ],
+  "platform_support": {
+    "linux-x64": "local_cpython_and_sagejs_corpus_passed",
+    "linux-arm64": "portable_source_pending_persistent_host_receipt",
+    "macos-arm64": "portable_source_pending_persistent_host_receipt",
+    "windows-x64": "portable_source_pending_persistent_host_receipt",
+    "browser": "portable_source_pending_integration_and_browser_receipt",
+    "node": "local_sagejs_runtime_passed",
+    "sea": "portable_source_pending_integration_and_sea_receipt"
+  },
   "operations": [
     {
       "id": "polynomial_interpolation",

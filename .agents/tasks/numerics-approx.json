@@ -15,7 +15,13 @@
     "docs/numerical-computing/approximation/"
   ],
   "dependencies": [],
-  "references": [],
+  "references": [
+    "Berrut and Trefethen, Barycentric Lagrange Interpolation, SIAM Review 46 (2004)",
+    "Fornberg, Generation of Finite Difference Formulas on Arbitrarily Spaced Grids, Mathematics of Computation 51 (1988)",
+    "SciPy 1.18 BarycentricInterpolator and CubicSpline",
+    "NumPy 2.x chebinterpolate",
+    "mpmath 1.3 80-digit analytic derivatives"
+  ],
   "architecture": {
     "strategy": "dynamic-python",
     "fallback": "same-source",
@@ -31,6 +37,9 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/numerics/approximation/approximation-laboratory.test.cjs",
+    "python3 -I test/numerics/approximation/differential_oracles.py",
+    "python3 -I bench/numerics/approximation/benchmark.py --check",
     "pnpm test:baselib:strict",
     "pnpm test:numerics",
     "pnpm architecture:check"
