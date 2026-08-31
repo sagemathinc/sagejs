@@ -549,6 +549,12 @@ export function createKernelEvaluator({
     compilerFrontends.get(mode)!,
     compilerFrontends.get("python")!,
   );
+  Reflect.set(
+    globalThis,
+    "__sagejs_parse_sage__",
+    (source: string, options: Record<string, any>) =>
+      compilerFrontends.get("sage")!.parse(source, options),
+  );
   global.__sagejs_kernel_modules__ = global.ρσ_modules;
   runInThisContext('var __name__ = "__main__"; show_js = false;');
 
@@ -943,6 +949,7 @@ export function createKernelEvaluator({
       delete global.__sagejs_graph_database_bytes__;
       delete global.__sagejs_kernel_modules__;
       Reflect.deleteProperty(globalThis, "__sagejs_parse_python__");
+      Reflect.deleteProperty(globalThis, "__sagejs_parse_sage__");
     },
   };
 }

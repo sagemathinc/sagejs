@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from collections.abc import Iterable
 from typing import Any
 
 from ipywidgets.widgets import (
@@ -34,9 +33,29 @@ def _is_iterator(value: Any) -> bool:
         return False
 
 
+def _is_iterable(value: Any) -> bool:
+    """Test iteration directly when host-backed objects miss Python ABCs."""
+    try:
+        iter(value)
+        return True
+    except TypeError:
+        return False
+
+
 def _looks_like_sage_real(value: Any) -> bool:
     name = getattr(type(value), "__name__", "")
     return name in {"RealLiteral", "RealNumber", "RealNumberElement"}
+
+
+def _numeric_approximation(value: Any) -> Any:
+    """Return an ipywidgets-compatible approximation of a Sage scalar."""
+    if _looks_like_sage_real(value):
+        return float(value)
+    method = getattr(value, "numerical_approx", None)
+    approximation = method() if method is not None else value
+    return (
+        float(approximation) if _looks_like_sage_real(approximation) else approximation
+    )
 
 
 def _layout_rows(
@@ -179,8 +198,10 @@ class sage_interactive(interactive):
         if _is_iterator(abbreviation):
             return SelectionSlider(options=list(abbreviation))
         widget = super().widget_from_single_value(abbreviation, *args, **kwargs)
-        if widget is not None or isinstance(abbreviation, Iterable):
+        if widget is not None:
             return widget
+        if _is_iterable(abbreviation):
+            return cls.widget_from_iterable(abbreviation)
         return EvalText(value=str(abbreviation))
 
     @classmethod
@@ -192,20 +213,16 @@ class sage_interactive(interactive):
             untyped_widget: Any = widget
             untyped_widget.description = abbreviation[0]
             return widget
-        if len(abbreviation) == 2 and isinstance(abbreviation[1], Iterable):
+        if len(abbreviation) == 2 and _is_iterable(abbreviation[1]):
             widget = cls.widget_from_abbrev(abbreviation[1])
             if widget is None:
                 return None
             untyped_widget: Any = widget
-            untyped_widget.value = abbreviation[0]
+            untyped_widget.value = _numeric_approximation(abbreviation[0])
             return widget
 
-        def approximate(value: Any) -> Any:
-            method = getattr(value, "numerical_approx", None)
-            return method() if method is not None else value
-
         return super().widget_from_tuple(
-            tuple(approximate(value) for value in abbreviation),
+            tuple(_numeric_approximation(value) for value in abbreviation),
             *args,
             **kwargs,
         )

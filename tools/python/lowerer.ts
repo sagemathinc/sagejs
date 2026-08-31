@@ -1996,6 +1996,11 @@ export class PythonCstLowerer {
         scan(this.field(node, "value"));
         return;
       }
+      if (node.type === "sage_symbolic_function_assignment") {
+        this.addBindingTarget(this.field(node, "function"), names);
+        scan(this.field(node, "value"));
+        return;
+      }
       if ([
         "list_comprehension", "set_comprehension", "dictionary_comprehension",
         "generator_expression",

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from numbers import Integral, Real
 from typing import Any, Callable
 
@@ -41,8 +41,17 @@ def _parent(value: Any) -> Any:
 
 
 def _numeric_approximation(value: Any) -> Any:
+    if type(value).__name__ in {"RealLiteral", "RealNumber", "RealNumberElement"}:
+        return float(value)
     method = getattr(value, "numerical_approx", None)
-    return method() if method is not None else value
+    approximation = method() if method is not None else value
+    if type(approximation).__name__ in {
+        "RealLiteral",
+        "RealNumber",
+        "RealNumberElement",
+    }:
+        return float(approximation)
+    return approximation
 
 
 def _is_rational_parent(parent_value: Any) -> bool:
@@ -51,6 +60,15 @@ def _is_rational_parent(parent_value: Any) -> bool:
 
 def _is_real_value(value: Any) -> bool:
     return isinstance(value, Real) or type(value).__name__ == "RealNumber"
+
+
+def _is_iterable(value: Any) -> bool:
+    """Test iteration directly when host-backed objects miss Python ABCs."""
+    try:
+        iter(value)
+        return True
+    except TypeError:
+        return False
 
 
 def input_box(
@@ -122,7 +140,7 @@ def slider(
     if label:
         kwargs["description"] = label
 
-    if isinstance(vmin, Iterable):
+    if _is_iterable(vmin):
         if vmax is not None:
             raise TypeError("unexpected argument 'vmax' for a selection slider")
         if step_size is not None:

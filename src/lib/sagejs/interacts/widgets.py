@@ -7,6 +7,7 @@ Python so the same objects work in Jupyter clients and the browser app.
 
 from __future__ import annotations
 
+import builtins
 from typing import Any, Callable
 
 from ipywidgets.widgets import (
@@ -30,7 +31,8 @@ import __main__
 
 def evaluate_user_expression(source: str) -> Any:
     """Evaluate a control value in the live Sage user namespace."""
-    return eval(source, __main__.__dict__)
+    sage_eval: Any = builtins.__dict__["sage_eval"]
+    return sage_eval(source, locals=__main__.__dict__)
 
 
 class HTMLText(HTMLMath):

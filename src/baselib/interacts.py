@@ -61,3 +61,23 @@ def input_grid(*args: Any, **kwargs: Any) -> Any:
 
 def text_control(*args: Any, **kwargs: Any) -> Any:
     return _interacts_module().text_control(*args, **kwargs)
+
+
+class _InteractsNamespace:
+    """Lazy compatibility namespace for Sage's bundled teaching interacts."""
+
+    def __getattr__(self, name: str) -> Any:
+        module = __import__("sage.interacts.all", fromlist=[name])
+        try:
+            return getattr(module, name)
+        except AttributeError:
+            raise AttributeError("unknown bundled interact {!r}".format(name))  # noqa: B904
+
+    def __dir__(self) -> list[str]:
+        return ["calculus", "demo", "statistics"]
+
+    def __repr__(self) -> str:
+        return "<lazy module 'sage.interacts.all'>"
+
+
+interacts = _InteractsNamespace()

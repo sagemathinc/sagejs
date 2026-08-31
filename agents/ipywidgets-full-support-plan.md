@@ -12,16 +12,21 @@ Implementation is active. As of 2026-08-31:
 - The app portion of P6B is complete for core widgets and `Output`, including
   offline assets, bidirectional state updates, reset behavior, and browser
   acceptance coverage. Extracting the reusable P6A Cell remains open.
-- P7's PREP quickstart control layer is implemented and covered by an
-  executable Sage differential corpus. Sage-global `@interact`, `input_box`,
-  `slider`, `range_slider`, `checkbox`, `selector`, `color_selector`,
-  `input_grid`, and `text_control` use standard ipywidgets models. Automatic
-  boolean/string/integer/real/list/iterator/tuple inference, matrix and vector
-  grids, custom PREP layout placement, initial and manual updates, localized
-  callback errors, and text-only CLI behavior are qualified. The app's primary
-  interactive symbolic-plot preset exercises Sage `@interact` offline and
-  verifies a live frontend update. The PREP calculus/plotting chapters and a
-  representative `sage.interacts.library` subset remain open.
+- P7's kernel-side Sage compatibility layer is implemented and covered by
+  executable PREP and Sage differential corpora. Sage-global `@interact`,
+  `input_box`, `slider`, `range_slider`, `checkbox`, `selector`,
+  `color_selector`, `input_grid`, and `text_control` use standard ipywidgets
+  models. Automatic boolean/string/integer/real/list/iterator/tuple inference,
+  matrix and vector grids, custom PREP layout placement, initial and manual
+  updates, localized callback errors, and text-only CLI behavior are
+  qualified. PREP's plotting-control and tangent-line calculus examples run
+  their documented defaults, and a lazy `sage.interacts` library ships tested
+  Taylor-polynomial, derivative, quadratic-equation, coin-toss, and basic demo
+  applications. Text controls evaluate through the authoritative Sage parser
+  while Python `eval` retains Python semantics. The app's primary interactive
+  symbolic-plot preset exercises Sage `@interact` offline and verifies a live
+  frontend update. Completing the remaining full browser/Jupyter PREP matrix
+  and upstream Sage widget doctest inventory remains open.
 - P8–P10 and the remaining lifecycle, embedding, documentation, budget, and
   four-platform gates remain open. Custom widgets remain deliberately last.
 
@@ -954,6 +959,20 @@ Classify failures caused by missing mathematics separately from widget-system
 failures. An interact whose body calls an unsupported mathematical operation
 must still construct correctly and then report the body’s honest capability
 error in its output widget.
+
+Current corpus disposition (2026-08-31):
+
+- the PREP quickstart, general plotting-control example, and calculus
+  tangent-line example execute successfully in the native kernel;
+- `sage.interacts.library` is intentionally a bounded teaching subset with
+  `demo`, `taylor_polynomial`, `function_derivative`, `quadratic_equation`, and
+  `coin`, loaded lazily through the Sage-global `interacts` namespace;
+- the advanced-2D PREP spelling `slider([0..360], step_size=5)` is stale even
+  against current Sage, whose selection slider rejects `step_size`; preserve
+  that honest error rather than inventing a divergent widget contract;
+- missing operations inside an otherwise valid interact, such as presently
+  unsupported vector norms in broader examples, are tracked as mathematics
+  capability gaps rather than widget failures.
 
 Acceptance gate:
 

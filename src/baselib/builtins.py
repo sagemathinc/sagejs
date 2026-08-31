@@ -5499,15 +5499,12 @@ def _builtins_code_source(source: Any) -> _Str:
     raise TypeError("source must be a string, bytes, bytearray, or memoryview")
 
 
-def ρσ_compile(
+def _builtins_compile_code(
     source: Any,
     filename: Any,
     mode: Any,
-    flags: Any = 0,
-    dont_inherit: Any = False,
-    optimize: Any = -1,
+    sage_mode: Any,
 ) -> _Code:
-    del flags, dont_inherit, optimize
     source = _builtins_code_source(source)
     filename = str(filename)
     mode = str(mode)
@@ -5518,7 +5515,7 @@ def ρσ_compile(
         native_code = runtime.reflect.apply(
             runtime.reflect.get(helper, "compile"),
             helper,
-            [source, filename, mode],
+            [source, filename, mode, sage_mode],
         )
     except SyntaxError as error:
         if runtime.strict_equal(
@@ -5528,6 +5525,44 @@ def ρσ_compile(
             raise IndentationError(str(error))  # noqa: B904
         raise
     return _Code(source, filename, mode, native_code)
+
+
+def ρσ_compile(
+    source: Any,
+    filename: Any,
+    mode: Any,
+    flags: Any = 0,
+    dont_inherit: Any = False,
+    optimize: Any = -1,
+) -> _Code:
+    del flags, dont_inherit, optimize
+    return _builtins_compile_code(source, filename, mode, False)
+
+
+def sage_eval(
+    source: Any,
+    locals: Any = None,
+    cmds: Any = "",
+    preparse: Any = True,
+) -> Any:
+    """Evaluate source with Sage syntax and exact arithmetic semantics."""
+    if isinstance(source, (list, tuple)):
+        cmds = source[0]
+        if len(source) > 2:
+            locals = source[2].copy()
+        source = source[1]
+    source = _builtins_code_source(source)
+    if locals is None:
+        locals = dict()
+    if not isinstance(locals, dict):
+        raise TypeError("locals must be a dictionary")
+    if cmds:
+        program = str(cmds) + "\n__sagejs_sage_eval_result__ = (\n" + source + "\n)"
+        code = _builtins_compile_code(program, "<string>", "exec", preparse)
+        ρσ_exec(code, locals, locals)
+        return locals.pop("__sagejs_sage_eval_result__")
+    code = _builtins_compile_code(source, "<string>", "eval", preparse)
+    return ρσ_eval(code, locals, locals)
 
 
 def _builtins_dynamic_namespaces(
