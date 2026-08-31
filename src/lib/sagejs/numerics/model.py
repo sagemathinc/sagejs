@@ -6,7 +6,13 @@ import hashlib
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from ._json import JSONValue, canonical_json, materialize_array, materialize_object
+from ._json import (
+    JSONValue,
+    canonical_json,
+    materialize_array,
+    materialize_json,
+    materialize_object,
+)
 from .diagnostics import NumericalDiagnostic, materialize_diagnostic
 from .trace import NumericalTrace, TracePolicy
 
@@ -353,7 +359,7 @@ class NumericalResult:
         self._plan = plan
         self._success = bool(success)
         self._status = status
-        self._value = value
+        self._value = materialize_json(value, "$.result.value")
         self._validation = validation
         self._diagnostics = tuple(
             materialize_diagnostic(value) for value in diagnostics
@@ -370,7 +376,7 @@ class NumericalResult:
 
     @property
     def value(self) -> Any:
-        return self._value
+        return materialize_json(self._value, "$.result.value")
 
     @property
     def success(self) -> bool:
@@ -428,7 +434,7 @@ class NumericalResult:
             "problem_digest": self._problem.digest,
             "success": self._success,
             "status": self._status,
-            "value": self._value,
+            "value": self.value,
             "validation": self._validation.to_dict(),
             "diagnostics": [dict(value) for value in self._diagnostics],
             "method": self.method,

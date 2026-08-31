@@ -52,6 +52,7 @@ import math
 import time
 from sagejs.numerics import (
     NumericalDiagnostic,
+    NumericalResult,
     TracePolicy,
     capabilities,
     diagnostic_registry,
@@ -92,6 +93,20 @@ assert len(answer.animate().frames) >= 2
 assert "fzero" in answer.code("matlab")
 assert "FindRoot" in answer.code("wolfram")
 assert json.loads(answer.to_json())["problem_digest"] == problem.digest
+
+mutable_value = {"items": [1.0, 2.0]}
+detached = NumericalResult(
+    answer.problem,
+    answer.plan_record,
+    success=True,
+    status="converged",
+    value=mutable_value,
+    validation=answer.validation,
+)
+mutable_value["items"][0] = 99.0
+detached_view = detached.value
+detached_view["items"][1] = 88.0
+assert detached.value == {"items": [1.0, 2.0]}
 
 verified = answer.verify()
 assert verified.success and verified.method == "bisection"
