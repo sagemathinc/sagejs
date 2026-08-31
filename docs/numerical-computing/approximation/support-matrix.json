@@ -11,6 +11,23 @@
     "node": "local_sagejs_runtime_passed",
     "sea": "portable_source_pending_integration_and_sea_receipt"
   },
+  "presentation": {
+    "explanation_schema": "sagejs.numerics.approximation.explanation/v1",
+    "static_type": "canonical_PlotSpec",
+    "animation_type": "canonical_PlotAnimation",
+    "renderer_dependency": "none",
+    "maximum_static_samples": 4097,
+    "maximum_animation_samples_per_frame": 257,
+    "maximum_animation_frames": 64,
+    "maximum_animation_data_scalars": 200000,
+    "maximum_animation_payload_bytes": 8388608
+  },
+  "discovery": {
+    "facade": ["capabilities", "supports", "plan"],
+    "operation_count": 5,
+    "callback_evaluations_during_planning": 0,
+    "records": "detached"
+  },
   "operations": [
     {
       "id": "polynomial_interpolation",

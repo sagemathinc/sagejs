@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import time
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .._json import materialize_json
 from ..diagnostics import NumericalDiagnostic
@@ -18,6 +18,9 @@ from ..model import (
     ResourceBudget,
 )
 from ..trace import NumericalTrace, TracePolicy
+
+if TYPE_CHECKING:
+    from sagejs.plotting import PlotAnimation, PlotSpec
 
 MACHINE_EPSILON = 2.220446049250313e-16
 
@@ -460,26 +463,31 @@ class ApproximationResult(NumericalResult):
             ],
         }
 
+    def explanation(self) -> dict[str, Any]:
+        """Return a detached domain-owned explanation document."""
+        from .presentation import approximation_explanation
+
+        return approximation_explanation(self)
+
     def explain(self) -> str:
-        model = self._approximation_model
-        lines = [
-            self.method + " " + self.problem.operation.replace("_", " "),
-            "status: " + self.status,
-            "validation: "
-            + self.validation.truth_level
-            + ("; passed" if self.validation.passed else "; not passed"),
-        ]
-        if "boundary_condition" in model:
-            lines.append("boundary condition: " + str(model["boundary_condition"]))
-        if "condition_estimate" in model:
-            lines.append("conditioning indicator: " + str(model["condition_estimate"]))
-        if "error_estimate" in model:
-            lines.append("estimated error: " + str(model["error_estimate"]))
-        if "explanation" in model:
-            lines.append(str(model["explanation"]))
-        for diagnostic in self.diagnostics:
-            lines.append("diagnostic: " + diagnostic.code)
-        return "\n".join(lines)
+        """Return a concise rendering of the structured explanation."""
+        from .presentation import format_approximation_explanation
+
+        return format_approximation_explanation(self)
+
+    def to_plot_spec(self, samples: int = 201) -> PlotSpec:
+        """Return a bounded canonical PlotSpec for success or failure."""
+        from .presentation import approximation_plot_spec
+
+        return approximation_plot_spec(self, samples)
+
+    def to_animation(
+        self, *, samples: int = 129, max_frames: int = 32
+    ) -> PlotAnimation:
+        """Return a bounded canonical PlotAnimation of construction or failure."""
+        from .presentation import approximation_animation
+
+        return approximation_animation(self, samples=samples, max_frames=max_frames)
 
 
 def make_result(

@@ -54,6 +54,7 @@ import time
 
 from sagejs.numerics import ResourceBudget
 from sagejs.numerics.approximation import (
+    capabilities as approximation_capabilities,
     chebyshev_approximation,
     cubic_spline,
     finite_difference,
@@ -61,10 +62,15 @@ from sagejs.numerics.approximation import (
     fornberg_weights,
     interpolate,
     interpolation_problem,
+    plan as plan_approximation,
     plan_finite_difference,
     plan_interpolation,
+    polynomial_approximation_problem,
+    spline_problem,
+    supports as supports_approximation,
 )
 from sagejs.numerics.approximation.splines import _validation_metrics
+from sagejs.plotting import PlotAnimation, PlotSpec
 
 
 def close(left, right, tolerance=1e-10):
@@ -85,9 +91,56 @@ assert json.loads(polynomial.to_json())["value"]["kind"] == "barycentric_polynom
 assert polynomial.plot_data(19)["layers"][0]["role"] == "approximation"
 assert "second barycentric" in polynomial.explain()
 
+# Explanation and visualization stay semantic, detached, and explicitly
+# bounded. They instantiate canonical PlotSpec/PlotAnimation values without
+# importing a renderer.
+polynomial_explanation = polynomial.explanation()
+assert polynomial_explanation["schema"] == "sagejs.numerics.approximation.explanation/v1"
+assert polynomial_explanation["construction"]["representation"] == "second-barycentric-form"
+assert polynomial_explanation["outcome"]["validation_passed"]
+polynomial_explanation["construction"]["sample_count"] = 999
+assert polynomial.explanation()["construction"]["sample_count"] == len(nodes)
+
+polynomial_spec = polynomial.to_plot_spec(73)
+assert isinstance(polynomial_spec, PlotSpec)
+assert [layer.id for layer in polynomial_spec.layers] == [
+    "approximation-0",
+    "approximation-1",
+]
+assert len(polynomial_spec.layers[0].data["x"]) == 73
+assert polynomial_spec.layers[0].source_intent["role"] == "approximant"
+assert polynomial_spec.layers[1].source_intent["role"] == "construction-samples"
+assert polynomial_spec.validate(max_samples=1000, max_payload_bytes=1000000) == ()
+
+polynomial_animation = polynomial.to_animation(samples=33, max_frames=4)
+assert isinstance(polynomial_animation, PlotAnimation)
+assert 2 <= len(polynomial_animation.frames) <= 4
+assert polynomial_animation.frames[0].layer_ids == (
+    "approximation-0",
+    "approximation-1",
+)
+assert polynomial_animation.to_dict()["metadata"]["presentation_limits"]["hard_max_frames"] == 64
+assert len(polynomial_animation.to_json().encode("utf-8")) < 8 * 1024 * 1024
+assert len(polynomial.explanation()["semantic_trace"]["events"]) <= polynomial.explanation()["resources"]["trace_policy"]["max_events"]
+
+for invalid_presentation in (
+    lambda: polynomial.to_plot_spec(4098),
+    lambda: polynomial.to_animation(samples=258),
+    lambda: polynomial.to_animation(max_frames=65),
+):
+    try:
+        invalid_presentation()
+        raise AssertionError("an unbounded approximation presentation was accepted")
+    except ValueError:
+        pass
+
 linear = interpolate([0, 1, 3], [0, 2, 3], method="linear")
 close(linear.evaluate(2), 2.5)
 close(linear.evaluate(2, 1), 0.5)
+assert any(
+    event.kind == "phase" and event.data.get("phase") == "model_construction"
+    for event in linear.trace.events
+)
 try:
     linear.evaluate(1, 1)
     raise AssertionError("a derivative was invented at a piecewise-linear knot")
@@ -106,6 +159,53 @@ planned_interpolation = plan_interpolation(interpolation_problem(nodes, values))
 platform_support = planned_interpolation.to_dict()["capability"]["platform_support"]
 assert platform_support["node"] == "local_sagejs_runtime_passed"
 assert platform_support["browser"].startswith("pending_")
+
+# Package-local discovery and planning cover every approximation operation,
+# return detached records, and never spend a live callback evaluation.
+capability_record = approximation_capabilities()
+assert sorted(capability_record["operations"]) == [
+    "cubic_spline",
+    "finite_difference_derivative",
+    "piecewise_interpolation",
+    "polynomial_approximation",
+    "polynomial_interpolation",
+]
+assert list(approximation_capabilities("cubic_spline")["operations"]) == [
+    "cubic_spline"
+]
+assert approximation_capabilities("unknown")["operations"] == {}
+capability_record["operations"]["polynomial_interpolation"]["methods"][0] = "mutated"
+assert approximation_capabilities()["operations"]["polynomial_interpolation"]["methods"] == [
+    "barycentric"
+]
+
+planning_calls = [0]
+def planning_callback(x):
+    planning_calls[0] += 1
+    return math.exp(x)
+
+planning_problems = [
+    (interpolation_problem([0, 1], [0, 1]), "barycentric"),
+    (interpolation_problem([0, 1], [0, 1], method="linear"), "linear"),
+    (spline_problem([0, 1, 2], [0, 1, 0], boundary="natural"), "explicit"),
+    (finite_difference_problem(planning_callback, 0.0), "fornberg-central"),
+    (polynomial_approximation_problem(planning_callback, [-1, 1], 4), "chebyshev"),
+]
+for approximation_problem, expected_method in planning_problems:
+    assert supports_approximation(approximation_problem)
+    assert supports_approximation(approximation_problem, expected_method)
+    resolved_plan = plan_approximation(approximation_problem, expected_method)
+    assert resolved_plan.method == expected_method
+    detached_plan = resolved_plan.to_dict()
+    detached_plan["capability"]["numeric_types"][0] = "mutated"
+    assert plan_approximation(approximation_problem, expected_method).to_dict()["capability"]["numeric_types"][0] == "binary64"
+assert planning_calls[0] == 0
+assert not supports_approximation(planning_problems[-1][0], "barycentric")
+try:
+    plan_approximation(planning_problems[-1][0], "barycentric")
+    raise AssertionError("an incompatible approximation planner was selected")
+except ValueError:
+    pass
 
 # Runge's example records the distinction between a stable representation and
 # an intrinsically poor node choice; Chebyshev approximation is much better.
@@ -143,6 +243,13 @@ periodic = cubic_spline(
 assert periodic.success
 close(periodic.evaluate(0.0, 1), periodic.evaluate(2.0*math.pi, 1))
 close(periodic.evaluate(-math.pi/2.0), -1.0)
+assert any(
+    event.kind == "phase" and event.data.get("phase") == "second_derivative_system"
+    for event in periodic.trace.events
+)
+periodic_animation = periodic.to_animation(samples=41, max_frames=3)
+assert isinstance(periodic_animation, PlotAnimation)
+assert len(periodic_animation.frames) == 3
 
 # Periodic validation must inspect the final segment without wrapping x[-1]
 # back to x[0]. A fault in that segment is visible in both value and boundary
@@ -180,6 +287,25 @@ close(derivative.evaluate(0), math.e, 2e-10)
 assert derivative.value["roundoff_floor"] > 0.0
 assert derivative.value["error_estimate"] > 0.0
 assert derivative.plot_data()["layers"][0]["role"] == "stencil"
+assert any(
+    event.kind == "phase" and event.data.get("phase") == "Fornberg_weight_construction"
+    for event in derivative.trace.events
+)
+derivative_spec = derivative.to_plot_spec()
+assert isinstance(derivative_spec, PlotSpec)
+assert derivative_spec.layers[1].metadata["weights"] == derivative.value["weights"]
+derivative_animation = derivative.to_animation()
+assert isinstance(derivative_animation, PlotAnimation)
+assert [frame.label for frame in derivative_animation.frames] == [
+    "coarse stencil",
+    "halved stencil",
+]
+assert derivative_animation.frames[0].state.layers[1].data["x"] != derivative_animation.frames[1].state.layers[1].data["x"]
+calls_after_solve = calls[0]
+derivative.explanation()
+derivative.to_plot_spec()
+derivative.to_animation()
+assert calls[0] == calls_after_solve
 
 second = finite_difference(
     math.sin,
@@ -227,6 +353,18 @@ bad_reference = finite_difference(
 assert not bad_reference.success
 assert bad_reference.status == "validation_failed"
 assert bad_reference.validation.residual > 1e5
+failure_explanation = bad_reference.explanation()
+assert not failure_explanation["outcome"]["success"]
+assert "validated answer" in failure_explanation["guidance"][0]
+failure_spec = bad_reference.to_plot_spec()
+assert isinstance(failure_spec, PlotSpec)
+assert failure_spec.layers[0].kind == "text"
+failure_animation = bad_reference.to_animation()
+assert isinstance(failure_animation, PlotAnimation)
+assert [frame.label for frame in failure_animation.frames] == [
+    "planned fornberg-central",
+    "stopped: validation_failed",
+]
 
 # Chebyshev coefficients remain detached and differentiable through Clenshaw.
 exponential = chebyshev_approximation(math.exp, [-1, 1], 14)
@@ -235,6 +373,14 @@ for x in (-1.0, -0.3, 0.2, 1.0):
     close(exponential.evaluate(x), math.exp(x), 2e-12)
     close(exponential.evaluate(x, 1), math.exp(x), 2e-10)
 assert "not a rigorous uniform error bound" in json.loads(exponential.to_json())["validation"]["checks"][1]["note"]
+assert any(
+    event.kind == "phase" and event.data.get("phase") == "coefficient_transform"
+    for event in exponential.trace.events
+)
+exponential_animation = exponential.to_animation(samples=37, max_frames=5)
+assert isinstance(exponential_animation, PlotAnimation)
+assert len(exponential_animation.frames) == 5
+assert exponential_animation.frames[-1].label == "coefficients 15/15"
 
 exact_linear = chebyshev_approximation(lambda x: x, [-1, 1], 1)
 assert exact_linear.success
@@ -368,6 +514,9 @@ elapsed = chebyshev_approximation(
 assert not elapsed.success
 assert elapsed.status != "maximum_evaluations"
 assert elapsed.to_dict()["domain_payload"]["stop_reason"] == "maximum_elapsed_time"
+elapsed_explanation = elapsed.explanation()
+assert elapsed_explanation["outcome"]["stop_reason"] == "maximum_elapsed_time"
+assert elapsed.to_plot_spec().layers[0].kind == "text"
 
 raised = chebyshev_approximation(lambda _x: 1 / 0, [-1, 1], 2)
 assert not raised.success and raised.status == "callback_error"

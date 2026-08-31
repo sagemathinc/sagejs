@@ -437,6 +437,16 @@ def solve_interpolation_problem(
     nodes, values = validate_nodes_values(nodes_value, values_value)
     diagnostics: list[NumericalDiagnostic] = []
     try:
+        trace.append(
+            "phase",
+            data={
+                "phase": "model_construction",
+                "state": "started",
+                "method": plan.method,
+                "sample_count": len(nodes),
+            },
+            important=True,
+        )
         if plan.method == "linear":
             model = _linear_model(nodes, values, execution)
             execution.step()
@@ -486,6 +496,17 @@ def solve_interpolation_problem(
                 if not math.isfinite(right):
                     raise ArithmeticError("Newton cross-check overflowed binary64")
                 crosscheck = max(crosscheck, abs(left - right))
+        trace.append(
+            "phase",
+            data={
+                "phase": "model_construction",
+                "state": "completed",
+                "method": plan.method,
+                "condition_estimate": condition,
+                "off_node_crosscheck": crosscheck,
+            },
+            important=True,
+        )
         node_residual = 0.0
         for index in range(len(nodes)):
             execution.check()

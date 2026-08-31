@@ -12,10 +12,13 @@ builds. The current direct import is:
 
 ```python
 from sagejs.numerics.approximation import (
+    capabilities,
     chebyshev_approximation,
     cubic_spline,
     finite_difference,
     interpolate,
+    plan,
+    supports,
 )
 ```
 
@@ -39,13 +42,45 @@ print(result.evaluate(0.6))
 print(result.evaluate(0.6, derivative=1))
 print(result.validation.to_dict())
 print(result.explain())
-plot_data = result.plot_data()
+explanation = result.explanation()
+plot = result.to_plot_spec()
+animation = result.to_animation()
 ```
 
 `result.value` is detached coefficient/stencil data, not a live Python
 object. Consequently `result.to_json()` remains deterministic and the model
-can cross a worker or process boundary. `plot_data()` exposes semantic line
-and point layers that an integration visualizer can lower to `PlotSpec`.
+can cross a worker or process boundary. `explanation()` returns the detached
+domain explanation behind the concise `explain()` text. `to_plot_spec()` and
+`to_animation()` return canonical renderer-neutral plotting objects directly;
+the approximation package never imports Plotly or a browser renderer.
+
+See [`presentation.md`](presentation.md) for success and failure examples,
+semantic layer roles, construction animations, and the independent trace and
+presentation resource limits.
+
+## Package-local discovery and planning
+
+The domain exposes a callback-free facade that central integration can load
+lazily without importing a shared registry:
+
+```python
+from sagejs.numerics.approximation import capabilities, plan, supports
+
+registry = capabilities()                 # all five operation records
+only_splines = capabilities("cubic_spline")
+
+assert supports(problem)
+resolved = plan(problem)                  # returns NumericalPlan
+```
+
+`capabilities(operation=None)` always returns a detached record; an unknown
+filter returns an empty `operations` mapping. `supports(problem, method=None)`
+returns false for a foreign domain, unknown operation, incompatible override,
+or malformed operation data. `plan(problem, method=None)` dispatches to the
+existing interpolation, spline, finite-difference, or Chebyshev planner. It
+may reject inconsistent method overrides, but it never evaluates a live
+function or derivative callback. A plan's `to_dict()` result is detached in
+the same way as every other numerical record.
 
 ## Supported surface
 
@@ -172,8 +207,9 @@ though both computations themselves are stable.
 - callback exceptions and nonfinite callback values produce structured
   `callback_error` and `nonfinite_evaluation` results;
 - cancellation and evaluation/iteration/time limits produce structured stop
-  reasons and preserve the bounded trace; the integration lane maps the exact
-  `maximum_elapsed_time` reason into the shared status/diagnostic registry;
+  reasons and preserve the bounded trace; semantic phase events identify model
+  construction, spline solving, Chebyshev sampling/transform/holdout work, and
+  coarse/fine finite-difference stages;
 - a large sampled Lebesgue indicator emits `ill_conditioned`;
 - independent-form disagreement or a large cancellation index emits
   `loss_of_significance`; and

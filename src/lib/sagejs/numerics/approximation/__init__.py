@@ -1,6 +1,7 @@
 """Validated interpolation, splines, finite differences, and approximation."""
 
 from ._common import ApproximationResult
+from .capabilities import capabilities, plan, supports
 from .chebyshev import (
     chebyshev_approximation,
     evaluate_chebyshev,
@@ -32,6 +33,7 @@ from .splines import (
 
 __all__ = [
     "ApproximationResult",
+    "capabilities",
     "chebyshev_approximation",
     "cubic_spline",
     "evaluate_chebyshev",
@@ -42,6 +44,7 @@ __all__ = [
     "fornberg_weights",
     "interpolate",
     "interpolation_problem",
+    "plan",
     "plan_finite_difference",
     "plan_interpolation",
     "plan_polynomial_approximation",
@@ -52,4 +55,5 @@ __all__ = [
     "solve_polynomial_approximation_problem",
     "solve_spline_problem",
     "spline_problem",
+    "supports",
 ]
