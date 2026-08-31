@@ -75,8 +75,8 @@ contract than can honestly be inferred from the function name `eigsh`.
 | Reduced SVD | one-sided Jacobi | SciPy/NumPy SVD, mpmath SVD | avoids normal equations and exposes column-correlation convergence |
 | 1-D FFT | radix-2 plus Bluestein | NumPy/SciPy FFT, numpy-ts FFT | arbitrary lengths, no added payload, stage-level cancellation |
 | Convolution | direct/FFT crossover | NumPy/SciPy convolution | identical semantic result with independent coefficient checks |
-| Sparse solve | CG/BiCGSTAB | SciPy sparse linear algebra | explicit operator evaluations, residual trace, no hidden direct fallback |
-| Sparse eigen | one Hermitian dominant pair by power iteration | SciPy `eigsh` | narrow supportable envelope with explicit unsupported subsets |
+| Sparse solve | certified-SPD CG/BiCGSTAB | SciPy sparse linear algebra | explicit operator evaluations, residual trace, and CG only after a sufficient SPD certificate |
+| Sparse eigen | one gap-certified Hermitian dominant pair by power iteration | SciPy `eigsh` | separated Gershgorin intervals exclude equal-magnitude/uncertified spectra before iteration |
 
 The benchmark evidence shows large performance headroom. It justifies future
 qualified acceleration work; it does not justify weakening cancellation,

@@ -28,16 +28,25 @@ The complete public surface is:
   Bluestein FFTs with NumPy/SciPy normalization names;
 - `convolve`: direct or FFT convolution with `full`, `same`, and `valid`
   modes;
-- `CSRMatrix` and `sparse_solve`: canonical explicit CSR storage with CG for
-  Hermitian positive-definite systems or BiCGSTAB for general systems; and
+- `CSRMatrix` and `sparse_solve`: canonical explicit CSR storage with CG when
+  strict Hermitian diagonal dominance plus positive diagonal independently
+  certifies positive definiteness, or BiCGSTAB otherwise; and
 - `sparse_eigen` / `eigsh`: one dominant-magnitude eigenpair of an explicit
-  Hermitian CSR matrix.
+  Hermitian CSR matrix when separated Gershgorin intervals independently
+  certify a unique dominant magnitude.
 
 Complex values in `NumericalResult.value`, traces, and serialized problem data
 use a JSON representation: effectively real numbers remain JSON numbers and a
 nonreal value is `[real, imaginary]`. The algorithm works internally with
 Python complex numbers; the encoding keeps `to_json()` deterministic and
 portable.
+
+All algorithms normalize their finite inputs before forming norms, squared
+energies, residuals, Hermitian checks, or iterative thresholds. Results are
+rescaled with exponent-aware arithmetic. If a finite mathematical output
+overflows or underflows binary64, the operation returns `validation_failed`,
+no value, and a failed `finite_binary64_output` check; it never serializes an
+infinity or NaN. This is distinct from rejecting non-finite inputs.
 
 ## Evidence carried by results
 
@@ -55,15 +64,19 @@ FFT validation does not merely call the FFT in reverse. It reconstructs all
 small transforms, or a deterministic set of samples for large transforms,
 using the direct DFT formula and separately checks Parseval scaling.
 Convolution coefficients are independently recomputed by their defining sum.
-Sparse solve and eigen results reapply the original CSR operator outside the
-iteration and report residual/backward-error or Rayleigh evidence.
+Sparse solve and eigen results reapply the normalized CSR operator outside the
+iteration and report residual/backward-error or Rayleigh evidence. Automatic
+solve selection does not infer positive definiteness from symmetry: it selects
+CG only with the documented sufficient SPD certificate, otherwise BiCGSTAB.
+Power iteration similarly fails closed before iteration when its independent
+dominant-magnitude certificate is unavailable, including equal-magnitude and
+zero spectra.
 
 Every iterative public call accepts hard iteration and elapsed-time limits,
 trace event/byte limits, an explicit allocation or nonzero-count cap, and a
-`cancel` callback. Sparse calls additionally cap operator evaluations. An
-elapsed-time exhaustion currently maps to the shared
-`maximum_evaluations` status because the shared status registry has no
-`maximum_elapsed` member; this is listed as an integration request.
+`cancel` callback. Sparse calls additionally cap operator evaluations.
+Elapsed-time exhaustion uses the exact `maximum_elapsed_time` status, distinct
+from `maximum_evaluations`.
 
 ## Scope and classifications
 
@@ -91,6 +104,8 @@ python3 -I bench/numerics/spectral/benchmark.py
 
 The corpus includes clustered Hermitian eigenvalues, complex conjugate pairs,
 nonnormal and clustered triangular matrices, wide and rank-deficient SVDs,
-power-of-two and prime-length transforms, complex convolution, SPD and
-nonsymmetric sparse solves, cancellation, resource exhaustion, trace
-truncation, invalid structure, and explicitly unsupported sparse subsets.
+power-of-two and prime-length transforms, complex convolution, SPD,
+nonsymmetric, and indefinite-Hermitian sparse solves, cancellation, resource
+exhaustion, trace truncation, invalid structure, exponent-extreme scale
+equivariance, representability failures, and explicitly unsupported sparse
+subsets.

@@ -15,10 +15,16 @@ from ._common import (
     _empty_validation,
     _Execution,
     _finish_result,
+    _finite_vector,
     _json_vector,
     _norm,
     _plan,
     _problem,
+    _representation_diagnostic,
+    _representation_validation,
+    _RepresentationStop,
+    _rescale_vector,
+    _scaled_vector,
     _vector,
 )
 
@@ -194,17 +200,20 @@ def _validate_transform(
         differences.append(abs(reconstructed - original[index]))
     scale = max(_norm(original), _EPSILON)
     reconstruction = max(differences, default=0.0) / scale
-    input_energy = sum(abs(value) ** 2 for value in original)
-    output_energy = sum(abs(value) ** 2 for value in transformed)
+    input_norm = _norm(original)
+    output_norm = _norm(transformed)
     if inverse:
         base_scale = 1.0 / len(original)
     else:
         base_scale = 1.0
     actual_scale = base_scale * _normalization_factor(len(original), inverse, norm)
-    expected_output_energy = len(original) * actual_scale * actual_scale * input_energy
-    energy_error = abs(output_energy - expected_output_energy) / max(
-        input_energy, expected_output_energy, _EPSILON
-    )
+    expected_output_norm = math.sqrt(len(original)) * actual_scale * input_norm
+    larger_norm = max(output_norm, expected_output_norm)
+    if larger_norm == 0.0:
+        energy_error = 0.0
+    else:
+        norm_ratio = min(output_norm, expected_output_norm) / larger_norm
+        energy_error = (1.0 - norm_ratio) * (1.0 + norm_ratio)
     passed = reconstruction <= tolerance and energy_error <= tolerance
     checks = [
         {
@@ -279,6 +288,7 @@ def fourier_transform(
     if tolerance <= 0.0:
         raise ValueError("tolerance must be positive")
     _normalization_factor(len(values), inverse, norm)
+    scaled_values, input_scale = _scaled_vector(values)
     problem = _problem(
         "inverse_fourier_transform" if inverse else "fourier_transform",
         initial_data={"samples": _json_vector(values)},
@@ -296,6 +306,7 @@ def fourier_transform(
             "tolerance": tolerance,
             "max_points": max_points,
             "workspace_points": padded_points,
+            "input_scale": input_scale,
         },
     )
     method = "radix2_cooley_tukey" if _power_of_two(len(values)) else "bluestein_radix2"
@@ -329,24 +340,27 @@ def fourier_transform(
     )
     execution = _Execution(problem, numerical_trace, cancel)
     try:
-        transformed, actual_method = _fft_any(values, inverse, execution)
+        transformed, actual_method = _fft_any(scaled_values, inverse, execution)
         factor = _normalization_factor(len(values), inverse, norm)
         if factor != 1.0:
             transformed = [value * factor for value in transformed]
+        if not _finite_vector(transformed):
+            raise _RepresentationStop("FFT iteration produced non-finite values")
         validation = _validate_transform(
-            values,
+            scaled_values,
             transformed,
             inverse=inverse,
             norm=norm,
             tolerance=max(tolerance, 200.0 * len(values) * _EPSILON),
             execution=execution,
         )
+        output = _rescale_vector(transformed, [input_scale])
         return _finish_result(
             problem,
             plan,
             execution,
             status="converged",
-            value=_json_vector(transformed),
+            value=_json_vector(output),
             validation=validation,
             trace=numerical_trace,
             domain_payload={
@@ -354,6 +368,7 @@ def fourier_transform(
                 "normalization": norm,
                 "algorithm": actual_method,
                 "workspace_points": padded_points,
+                "input_scale": input_scale,
             },
         )
     except _BudgetStop as stop:
@@ -365,6 +380,23 @@ def fourier_transform(
             value=None,
             validation=_empty_validation(),
             trace=numerical_trace,
+        )
+    except _RepresentationStop as stop:
+        reason = str(stop)
+        return _finish_result(
+            problem,
+            plan,
+            execution,
+            status="validation_failed",
+            value=None,
+            validation=_representation_validation(reason),
+            trace=numerical_trace,
+            diagnostics=[_representation_diagnostic(reason)],
+            domain_payload={
+                "inverse": inverse,
+                "normalization": norm,
+                "input_scale": input_scale,
+            },
         )
 
 
@@ -514,6 +546,8 @@ def convolve(
     right_values = _vector(right, "right")
     if not left_values or not right_values:
         raise ValueError("convolve requires two nonempty sequences")
+    scaled_left, left_scale = _scaled_vector(left_values)
+    scaled_right, right_scale = _scaled_vector(right_values)
     start, stop = _mode_slice(len(left_values), len(right_values), mode)
     direct_operations = len(left_values) * len(right_values)
     workspace = _next_power_of_two(len(left_values) + len(right_values) - 1)
@@ -552,6 +586,8 @@ def convolve(
             "tolerance": tolerance,
             "max_points": max_points,
             "max_direct_operations": max_direct_operations,
+            "left_scale": left_scale,
+            "right_scale": right_scale,
         },
     )
     plan = _plan(
@@ -585,27 +621,32 @@ def convolve(
     execution = _Execution(problem, numerical_trace, cancel)
     try:
         if selected == "direct":
-            full = _direct_convolution(left_values, right_values, execution)
+            full = _direct_convolution(scaled_left, scaled_right, execution)
             actual_workspace = len(full)
         else:
             full, actual_workspace = _fft_convolution(
-                left_values, right_values, execution
+                scaled_left, scaled_right, execution
+            )
+        if not _finite_vector(full):
+            raise _RepresentationStop(
+                "convolution iteration produced non-finite values"
             )
         result = full[start:stop]
         validation = _validate_convolution(
-            left_values,
-            right_values,
+            scaled_left,
+            scaled_right,
             result,
             start=start,
             tolerance=max(tolerance, 500.0 * workspace * _EPSILON),
             execution=execution,
         )
+        output = _rescale_vector(result, [left_scale, right_scale])
         return _finish_result(
             problem,
             plan,
             execution,
             status="converged",
-            value=_json_vector(result),
+            value=_json_vector(output),
             validation=validation,
             trace=numerical_trace,
             domain_payload={
@@ -613,6 +654,8 @@ def convolve(
                 "full_output_length": len(full),
                 "returned_slice": [start, stop],
                 "workspace_points": actual_workspace,
+                "left_scale": left_scale,
+                "right_scale": right_scale,
             },
         )
     except _BudgetStop as stop_error:
@@ -624,4 +667,21 @@ def convolve(
             value=None,
             validation=_empty_validation(),
             trace=numerical_trace,
+        )
+    except _RepresentationStop as stop_error:
+        reason = str(stop_error)
+        return _finish_result(
+            problem,
+            plan,
+            execution,
+            status="validation_failed",
+            value=None,
+            validation=_representation_validation(reason),
+            trace=numerical_trace,
+            diagnostics=[_representation_diagnostic(reason)],
+            domain_payload={
+                "mode": mode,
+                "left_scale": left_scale,
+                "right_scale": right_scale,
+            },
         )

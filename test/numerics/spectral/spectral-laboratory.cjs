@@ -61,6 +61,8 @@ from sagejs.numerics.spectral import (
     svd,
     symmetric_eigen,
 )
+from sagejs.numerics.spectral._common import _BudgetStop, _Execution, _problem
+from sagejs.numerics.trace import NumericalTrace
 
 corpus = json.loads(${JSON.stringify(corpus)})
 
@@ -74,6 +76,14 @@ def matrix(record):
 
 def close(left, right, tolerance=1e-8):
     return abs(left - right) <= tolerance * max(1.0, abs(left), abs(right))
+
+def close_after_scale(actual, expected, scale, tolerance=1e-8):
+    return abs(actual / scale - expected) <= tolerance * max(1.0, abs(expected))
+
+def assert_json_safe(result):
+    serialized = result.to_json()
+    assert "Infinity" not in serialized and "NaN" not in serialized
+    json.loads(serialized)
 
 def match_values(actual, expected):
     remaining = list(expected)
@@ -212,6 +222,142 @@ assert sparse_base.success and sparse_scaled.success
 for actual, expected in zip(sparse_scaled.value, sparse_base.value):
     assert close(z(actual), -3.0 * z(expected), 1e-8)
 
+# Binary64 exponent extremes must follow the same normalized algorithms and
+# preserve scale through result materialization.
+base_fft = fft([1.0 + 1.0j, 2.0 - 0.5j, -3.0 + 2.0j])
+base_convolution = convolve([1.0, 2.0], [3.0, 4.0], method="direct")
+assert base_fft.success and base_convolution.success
+for scale in (1e-200, 1e200):
+    scaled_svd_extreme = svd([[scale, 0.0], [0.0, 2.0 * scale]])
+    assert scaled_svd_extreme.success
+    assert close_after_scale(scaled_svd_extreme.value["singular_values"][0], 2.0, scale)
+    assert close_after_scale(scaled_svd_extreme.value["singular_values"][1], 1.0, scale)
+
+    scaled_symmetric_extreme = symmetric_eigen(
+        [[2.0 * scale, 0.0], [0.0, -scale]]
+    )
+    assert scaled_symmetric_extreme.success
+    assert close_after_scale(
+        scaled_symmetric_extreme.value["eigenvalues"][0], -1.0, scale
+    )
+    assert close_after_scale(
+        scaled_symmetric_extreme.value["eigenvalues"][1], 2.0, scale
+    )
+
+    scaled_general_extreme = general_eigen(
+        [[3.0 * scale, 0.0], [0.0, -2.0 * scale]]
+    )
+    assert scaled_general_extreme.success
+    match_values(
+        [z(value) / scale for value in scaled_general_extreme.value["eigenvalues"]],
+        [3.0, -2.0],
+    )
+
+    scaled_fft_extreme = fft(
+        [scale * (1.0 + 1.0j), scale * (2.0 - 0.5j), scale * (-3.0 + 2.0j)]
+    )
+    assert scaled_fft_extreme.success
+    for actual, expected in zip(scaled_fft_extreme.value, base_fft.value):
+        assert close(z(actual) / scale, z(expected), 1e-8)
+    assert any(isinstance(value, list) for value in scaled_fft_extreme.value)
+
+    scaled_convolution_extreme = convolve(
+        [scale, 2.0 * scale], [3.0, 4.0], method="direct"
+    )
+    assert scaled_convolution_extreme.success
+    for actual, expected in zip(
+        scaled_convolution_extreme.value, base_convolution.value
+    ):
+        assert close_after_scale(z(actual), z(expected), scale)
+
+    scaled_sparse_operator = CSRMatrix.from_dense(
+        [[4.0 * scale, scale], [scale, 3.0 * scale]]
+    )
+    scaled_sparse_solution = sparse_solve(
+        scaled_sparse_operator, [6.0 * scale, 7.0 * scale], method="auto"
+    )
+    assert scaled_sparse_solution.success
+    assert scaled_sparse_solution.method == "cg"
+    assert close(z(scaled_sparse_solution.value[0]), 1.0, 1e-8)
+    assert close(z(scaled_sparse_solution.value[1]), 2.0, 1e-8)
+
+    scaled_sparse_eigen = sparse_eigen(
+        [[6.0 * scale, scale], [scale, 2.0 * scale]],
+        x0=[scale, 2.0 * scale],
+        tolerance=1e-9,
+    )
+    assert scaled_sparse_eigen.success
+    assert close_after_scale(
+        z(scaled_sparse_eigen.value["eigenvalue"]),
+        4.0 + 5.0 ** 0.5,
+        scale,
+        1e-7,
+    )
+
+    for result in (
+        scaled_svd_extreme,
+        scaled_symmetric_extreme,
+        scaled_general_extreme,
+        scaled_fft_extreme,
+        scaled_convolution_extreme,
+        scaled_sparse_solution,
+        scaled_sparse_eigen,
+    ):
+        assert_json_safe(result)
+
+# Finite inputs whose mathematical outputs exceed or underflow binary64 fail
+# with a structured status and never leak non-finite JSON values.
+unrepresentable = (
+    fft([1e308, 1e308, 1e308]),
+    convolve([1e200], [1e200]),
+    convolve([1e-200], [1e-200]),
+    sparse_solve([[1e-200]], [1e200]),
+    sparse_solve([[1e200]], [1e-200]),
+)
+for result in unrepresentable:
+    assert not result.success and result.status == "validation_failed"
+    assert result.value is None
+    checks = result.validation.to_dict()["checks"]
+    assert any(check["kind"] == "finite_binary64_output" for check in checks)
+    assert_json_safe(result)
+
+# Hermitian symmetry is not an SPD certificate. Auto routes an indefinite
+# operator to BiCGSTAB, and explicit CG fails closed.
+indefinite_auto = sparse_solve(
+    [[1.0, 0.0], [0.0, -1.0]], [1.0, 0.0], method="auto"
+)
+assert indefinite_auto.success
+assert indefinite_auto.method == "bicgstab"
+assert not indefinite_auto.to_dict()["domain_payload"]["spd_certified"]
+try:
+    sparse_solve([[1.0, 0.0], [0.0, -1.0]], [1.0, 0.0], method="cg")
+    raise AssertionError("CG accepted an uncertified indefinite Hermitian matrix")
+except ValueError:
+    pass
+
+for uncertified in (
+    sparse_eigen([[2.0, 0.0], [0.0, -2.0]], x0=[1.0, 0.0]),
+    sparse_eigen([[0.0, 0.0], [0.0, 0.0]], x0=[1.0, 0.0]),
+):
+    assert not uncertified.success and uncertified.status == "validation_failed"
+    assert uncertified.value is None
+    checks = uncertified.validation.to_dict()["checks"]
+    assert not checks[0]["passed"]
+    assert checks[0]["kind"] == "dominant_magnitude_uniqueness_certificate"
+    assert_json_safe(uncertified)
+
+try:
+    CSRMatrix.from_dense([[1e308]]).matvec([1e308])
+    raise AssertionError("unrepresentable sparse matvec returned a non-finite value")
+except ValueError:
+    pass
+
+try:
+    CSRMatrix.from_coo([0, 0], [0, 0], [1e308, 1e308], (1, 1))
+    raise AssertionError("unrepresentable duplicate COO sum was accepted")
+except ValueError:
+    pass
+
 # A tiny individual eigenpair residual is insufficient evidence for a usable
 # nonsymmetric eigensystem. The independent basis witness must fail closed.
 for separation in (0.0, 1e-12, 1e-10):
@@ -247,6 +393,27 @@ assert not cancelled.validation.passed
 limited = fft([1.0] * 16, max_iterations=1)
 assert not limited.success and limited.status == "maximum_iterations"
 assert not limited.validation.passed
+
+elapsed_problem = _problem(
+    "elapsed_status_witness",
+    initial_data={},
+    method="test",
+    max_iterations=1,
+    max_evaluations=1,
+    max_elapsed_ms=1,
+    trace="none",
+    max_trace_events=4,
+    max_trace_bytes=4096,
+)
+elapsed_execution = _Execution(
+    elapsed_problem, NumericalTrace(elapsed_problem.trace_policy), None
+)
+elapsed_execution.started -= 1.0
+try:
+    elapsed_execution.check()
+    raise AssertionError("expired elapsed budget was not enforced")
+except _BudgetStop as stop:
+    assert stop.status == "maximum_elapsed_time"
 
 truncated = fft(list(range(64)), trace="iterations", max_trace_events=4)
 assert truncated.success and truncated.trace.truncated

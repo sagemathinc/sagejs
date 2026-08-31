@@ -12,6 +12,7 @@ from ..model import NumericalResult, NumericalValidation
 from ..trace import NumericalTrace
 from ._common import (
     _EPSILON,
+    _bounded_metric,
     _BudgetStop,
     _columns,
     _conjugate,
@@ -20,6 +21,8 @@ from ._common import (
     _empty_validation,
     _Execution,
     _finish_result,
+    _finite_matrix,
+    _finite_vector,
     _frobenius,
     _from_columns,
     _identity,
@@ -34,6 +37,13 @@ from ._common import (
     _orthogonality_error,
     _plan,
     _problem,
+    _representation_diagnostic,
+    _representation_validation,
+    _RepresentationStop,
+    _rescale_matrix,
+    _rescale_vector,
+    _scaled_matrix,
+    _scaled_vector,
 )
 
 
@@ -71,12 +81,12 @@ def _check_size(matrix: Sequence[Sequence[complex]], max_matrix_elements: int) -
 
 def _hermitian_error(matrix: Sequence[Sequence[complex]]) -> float:
     size = len(matrix)
-    return math.sqrt(
-        sum(
-            abs(matrix[row][column] - _conjugate(matrix[column][row])) ** 2
+    return _norm(
+        [
+            matrix[row][column] - _conjugate(matrix[column][row])
             for row in range(size)
             for column in range(size)
-        )
+        ]
     )
 
 
@@ -130,7 +140,7 @@ def _jacobi_hermitian(
     while not converged:
         sweep = execution.iteration()
         maximum = 0.0
-        off_diagonal_squared = 0.0
+        off_diagonal_values: list[complex] = []
         rotations = 0
         for left in range(size - 1):
             for right in range(left + 1, size):
@@ -138,9 +148,11 @@ def _jacobi_hermitian(
                 coupling = work[left][right]
                 magnitude = abs(coupling)
                 maximum = max(maximum, magnitude)
-                off_diagonal_squared += 2.0 * magnitude * magnitude
-                local_scale = math.sqrt(
-                    max(abs(work[left][left] * work[right][right]), _EPSILON)
+                off_diagonal_values.extend((coupling, _conjugate(coupling)))
+                local_scale = max(
+                    math.sqrt(abs(work[left][left]))
+                    * math.sqrt(abs(work[right][right])),
+                    _EPSILON,
                 )
                 if magnitude <= tolerance * max(1.0, local_scale):
                     continue
@@ -157,7 +169,7 @@ def _jacobi_hermitian(
                     work, vectors, left, right, cosine, sine, phase
                 )
                 rotations += 1
-        off_diagonal = math.sqrt(off_diagonal_squared)
+        off_diagonal = _norm(off_diagonal_values)
         execution.trace.append(
             "iteration",
             iteration=sweep,
@@ -203,7 +215,9 @@ def _validate_eigen(
         denominator = matrix_norm * _norm(vector) + abs(eigenvalues[index]) * _norm(
             vector
         )
-        residuals.append(_norm(difference) / max(denominator, _EPSILON))
+        residuals.append(
+            _bounded_metric(_norm(difference) / max(denominator, _EPSILON))
+        )
     maximum_residual = max(residuals, default=0.0)
     checks: list[dict[str, Any]] = [
         {
@@ -241,7 +255,9 @@ def _validate_eigen(
             ]
             for row in range(len(matrix))
         ]
-        reconstruction = _matrix_difference_norm(matrix, reconstructed) / matrix_norm
+        reconstruction = _bounded_metric(
+            _matrix_difference_norm(matrix, reconstructed) / matrix_norm
+        )
         reconstruction_threshold = tolerance * max(1, len(columns))
         checks.append(
             {
@@ -317,7 +333,9 @@ def _validate_eigen(
             _matmul(schur_vectors, schur_form),
             _conjugate_transpose(schur_vectors),
         )
-        reconstruction = _matrix_difference_norm(matrix, reconstructed) / matrix_norm
+        reconstruction = _bounded_metric(
+            _matrix_difference_norm(matrix, reconstructed) / matrix_norm
+        )
         schur_threshold = tolerance * max(1, len(matrix))
         checks.extend(
             [
@@ -381,9 +399,9 @@ def _validated_inverse(
     inverse = [row[size:] for row in augmented]
     inverse_norm = _frobenius(inverse)
     reciprocal_condition = min(1.0, size / max(scale * inverse_norm, _EPSILON))
-    identity_residual = _matrix_difference_norm(
-        _matmul(matrix, inverse), identity
-    ) / math.sqrt(size)
+    identity_residual = _bounded_metric(
+        _matrix_difference_norm(_matmul(matrix, inverse), identity) / math.sqrt(size)
+    )
     return inverse, reciprocal_condition, identity_residual
 
 
@@ -409,9 +427,10 @@ def symmetric_eigen(
     _check_size(values, max_matrix_elements)
     if tolerance <= 0.0 or symmetry_tolerance < 0.0:
         raise ValueError("tolerances must be positive")
-    hermitian_error = _hermitian_error(values)
-    scale = max(_frobenius(values), 1.0)
-    if hermitian_error > symmetry_tolerance * scale:
+    scaled_values, input_scale = _scaled_matrix(values)
+    hermitian_error = _hermitian_error(scaled_values)
+    matrix_norm = max(_frobenius(scaled_values), 1.0)
+    if hermitian_error > symmetry_tolerance * matrix_norm:
         raise ValueError("symmetric_eigen requires a Hermitian matrix")
     options = _dense_options(
         max_iterations=max_iterations,
@@ -429,6 +448,7 @@ def symmetric_eigen(
             "tolerance": tolerance,
             "symmetry_tolerance": symmetry_tolerance,
             "max_matrix_elements": max_matrix_elements,
+            "input_scale": input_scale,
         },
         **options,
     )
@@ -458,17 +478,25 @@ def symmetric_eigen(
     execution = _Execution(problem, numerical_trace, cancel)
     try:
         eigenvalues, eigenvectors, _ = _jacobi_hermitian(
-            values, execution, tolerance=tolerance
+            scaled_values, execution, tolerance=tolerance
         )
+        if not _finite_vector(eigenvalues) or not _finite_matrix(eigenvectors):
+            raise _RepresentationStop("Hermitian iteration produced non-finite factors")
         validation = _validate_eigen(
-            values,
+            scaled_values,
             [complex(value) for value in eigenvalues],
             eigenvectors,
             include_eigenvector_orthogonality=True,
             tolerance=max(50.0 * len(values) * _EPSILON, 10.0 * tolerance),
         )
+        output_eigenvalues = [
+            value.real
+            for value in _rescale_vector(
+                [complex(value) for value in eigenvalues], [input_scale]
+            )
+        ]
         value = {
-            "eigenvalues": list(eigenvalues),
+            "eigenvalues": output_eigenvalues,
             "eigenvectors": _json_matrix(eigenvectors),
         }
         return _finish_result(
@@ -482,6 +510,7 @@ def symmetric_eigen(
             domain_payload={
                 "structure": "hermitian",
                 "hermitian_input_error": hermitian_error,
+                "input_scale": input_scale,
             },
         )
     except _BudgetStop as stop:
@@ -494,6 +523,19 @@ def symmetric_eigen(
             validation=_empty_validation(),
             trace=numerical_trace,
         )
+    except _RepresentationStop as stop:
+        reason = str(stop)
+        return _finish_result(
+            problem,
+            plan,
+            execution,
+            status="validation_failed",
+            value=None,
+            validation=_representation_validation(reason),
+            trace=numerical_trace,
+            diagnostics=[_representation_diagnostic(reason)],
+            domain_payload={"structure": "hermitian", "input_scale": input_scale},
+        )
 
 
 def _householder_qr(
@@ -505,6 +547,7 @@ def _householder_qr(
     unitary = _identity(rows)
     for column in range(min(rows, columns)):
         vector = [work[row][column] for row in range(column, rows)]
+        vector, _ = _scaled_vector(vector)
         length = _norm(vector)
         if length <= _EPSILON:
             continue
@@ -565,9 +608,7 @@ def _general_schur(
     active = size
     while active > 1:
         execution.check()
-        coupling = math.sqrt(
-            sum(abs(schur[active - 1][column]) ** 2 for column in range(active - 1))
-        )
+        coupling = _norm(schur[active - 1][: active - 1])
         if coupling <= tolerance * scale:
             for column in range(active - 1):
                 schur[active - 1][column] = 0.0 + 0.0j
@@ -610,12 +651,8 @@ def _general_schur(
         for row in range(size):
             for column in range(active):
                 vectors[row][column] = leading_vectors[row][column]
-        lower_norm = math.sqrt(
-            sum(
-                abs(schur[row][column]) ** 2
-                for row in range(1, active)
-                for column in range(row)
-            )
+        lower_norm = _norm(
+            [schur[row][column] for row in range(1, active) for column in range(row)]
         )
         execution.trace.append(
             "iteration",
@@ -694,6 +731,7 @@ def general_eigen(
     _check_size(values, max_matrix_elements)
     if tolerance <= 0.0:
         raise ValueError("tolerance must be positive")
+    scaled_values, input_scale = _scaled_matrix(values)
     options = _dense_options(
         max_iterations=max_iterations,
         max_elapsed_ms=max_elapsed_ms,
@@ -709,6 +747,7 @@ def general_eigen(
             "shape": [len(values), len(values)],
             "tolerance": tolerance,
             "max_matrix_elements": max_matrix_elements,
+            "input_scale": input_scale,
         },
         **options,
     )
@@ -741,10 +780,21 @@ def general_eigen(
     execution = _Execution(problem, numerical_trace, cancel)
     diagnostics: list[NumericalDiagnostic] = []
     try:
-        schur, schur_vectors = _general_schur(values, execution, tolerance=tolerance)
+        schur, schur_vectors = _general_schur(
+            scaled_values, execution, tolerance=tolerance
+        )
         eigenvalues, eigenvectors, ill_conditioned = _triangular_eigenvectors(
             schur, schur_vectors, tolerance
         )
+        if (
+            not _finite_matrix(schur)
+            or not _finite_matrix(schur_vectors)
+            or not _finite_vector(eigenvalues)
+            or not _finite_matrix(eigenvectors)
+        ):
+            raise _RepresentationStop(
+                "general eigen iteration produced non-finite factors"
+            )
         if ill_conditioned:
             diagnostics.append(
                 NumericalDiagnostic(
@@ -753,7 +803,7 @@ def general_eigen(
                 )
             )
         validation = _validate_eigen(
-            values,
+            scaled_values,
             eigenvalues,
             eigenvectors,
             include_eigenvector_orthogonality=False,
@@ -773,10 +823,12 @@ def general_eigen(
             )
         value = None
         if validation.passed:
+            output_eigenvalues = _rescale_vector(eigenvalues, [input_scale])
+            output_schur = _rescale_matrix(schur, [input_scale])
             value = {
-                "eigenvalues": _json_vector(eigenvalues),
+                "eigenvalues": _json_vector(output_eigenvalues),
                 "eigenvectors": _json_matrix(eigenvectors),
-                "schur_form": _json_matrix(schur),
+                "schur_form": _json_matrix(output_schur),
                 "schur_vectors": _json_matrix(schur_vectors),
             }
         return _finish_result(
@@ -791,6 +843,7 @@ def general_eigen(
             domain_payload={
                 "structure": "general",
                 "eigenvector_orthogonality_applicable": False,
+                "input_scale": input_scale,
             },
         )
     except _BudgetStop as stop:
@@ -803,6 +856,19 @@ def general_eigen(
             validation=_empty_validation(),
             trace=numerical_trace,
             diagnostics=diagnostics,
+        )
+    except _RepresentationStop as stop:
+        reason = str(stop)
+        return _finish_result(
+            problem,
+            plan,
+            execution,
+            status="validation_failed",
+            value=None,
+            validation=_representation_validation(reason),
+            trace=numerical_trace,
+            diagnostics=diagnostics + [_representation_diagnostic(reason)],
+            domain_payload={"structure": "general", "input_scale": input_scale},
         )
 
 
@@ -840,14 +906,26 @@ def _jacobi_svd_tall(
         for left in range(columns_count - 1):
             for right in range(left + 1, columns_count):
                 execution.check()
-                alpha = max(_dot(columns[left], columns[left]).real, 0.0)
-                beta = max(_dot(columns[right], columns[right]).real, 0.0)
-                coupling = _dot(columns[left], columns[right])
-                magnitude = abs(coupling)
-                denominator = math.sqrt(max(alpha * beta, _EPSILON))
-                correlation = magnitude / denominator
+                left_norm = _norm(columns[left])
+                right_norm = _norm(columns[right])
+                if left_norm == 0.0 or right_norm == 0.0:
+                    continue
+                normalized_coupling = _dot(
+                    [value / left_norm for value in columns[left]],
+                    [value / right_norm for value in columns[right]],
+                )
+                correlation = abs(normalized_coupling)
                 maximum_correlation = max(maximum_correlation, correlation)
-                if magnitude <= tolerance * denominator:
+                if correlation <= tolerance:
+                    continue
+                pair_scale = max(left_norm, right_norm)
+                scaled_left_norm = left_norm / pair_scale
+                scaled_right_norm = right_norm / pair_scale
+                alpha = scaled_left_norm * scaled_left_norm
+                beta = scaled_right_norm * scaled_right_norm
+                coupling = normalized_coupling * scaled_left_norm * scaled_right_norm
+                magnitude = abs(coupling)
+                if magnitude == 0.0:
                     continue
                 phase = coupling / magnitude
                 tau = (beta - alpha) / (2.0 * magnitude)
@@ -926,7 +1004,9 @@ def _validate_svd(
     ]
     reconstructed = _matmul(scaled_left, right_transpose)
     matrix_norm = max(_frobenius(matrix), _EPSILON)
-    reconstruction = _matrix_difference_norm(matrix, reconstructed) / matrix_norm
+    reconstruction = _bounded_metric(
+        _matrix_difference_norm(matrix, reconstructed) / matrix_norm
+    )
     left_orthogonality = _orthogonality_error(_columns(left))
     right_orthogonality = _orthogonality_error(
         _columns(_conjugate_transpose(right_transpose))
@@ -961,7 +1041,7 @@ def _validate_svd(
         largest = singular_values[0]
         smallest = singular_values[-1]
         if smallest > 0.0:
-            condition = largest / smallest
+            condition = _bounded_metric(largest / smallest)
     return NumericalValidation(
         "validated_approximate" if passed else "indeterminate",
         passed,
@@ -989,6 +1069,7 @@ def singular_value_decomposition(
     _check_size(values, max_matrix_elements)
     if tolerance <= 0.0:
         raise ValueError("tolerance must be positive")
+    scaled_values, input_scale = _scaled_matrix(values)
     rows = len(values)
     columns_count = len(values[0])
     options = _dense_options(
@@ -1007,6 +1088,7 @@ def singular_value_decomposition(
             "tolerance": tolerance,
             "max_matrix_elements": max_matrix_elements,
             "full_matrices": False,
+            "input_scale": input_scale,
         },
         **options,
     )
@@ -1037,21 +1119,31 @@ def singular_value_decomposition(
     try:
         if rows >= columns_count:
             left, singular_values, right_transpose = _jacobi_svd_tall(
-                values, execution, tolerance=tolerance
+                scaled_values, execution, tolerance=tolerance
             )
         else:
-            transposed = _conjugate_transpose(values)
+            transposed = _conjugate_transpose(scaled_values)
             transposed_left, singular_values, transposed_right = _jacobi_svd_tall(
                 transposed, execution, tolerance=tolerance
             )
             left = _conjugate_transpose(transposed_right)
             right_transpose = _conjugate_transpose(transposed_left)
+        if (
+            not _finite_matrix(left)
+            or not _finite_vector(singular_values)
+            or not _finite_matrix(right_transpose)
+        ):
+            raise _RepresentationStop("SVD iteration produced non-finite factors")
         validation_tolerance = max(
             500.0 * max(rows, columns_count) * _EPSILON,
             50.0 * tolerance,
         )
         validation = _validate_svd(
-            values, left, singular_values, right_transpose, validation_tolerance
+            scaled_values,
+            left,
+            singular_values,
+            right_transpose,
+            validation_tolerance,
         )
         diagnostics: list[NumericalDiagnostic] = []
         if singular_values and singular_values[-1] <= (
@@ -1062,9 +1154,15 @@ def singular_value_decomposition(
                     "ill_conditioned", details={"reason": "numerically_rank_deficient"}
                 )
             )
+        output_singular_values = [
+            value.real
+            for value in _rescale_vector(
+                [complex(value) for value in singular_values], [input_scale]
+            )
+        ]
         value = {
             "u": _json_matrix(left),
-            "singular_values": list(singular_values),
+            "singular_values": output_singular_values,
             "vh": _json_matrix(right_transpose),
         }
         return _finish_result(
@@ -1079,6 +1177,7 @@ def singular_value_decomposition(
             domain_payload={
                 "shape": [rows, columns_count],
                 "full_matrices": False,
+                "input_scale": input_scale,
             },
         )
     except _BudgetStop as stop:
@@ -1090,6 +1189,23 @@ def singular_value_decomposition(
             value=None,
             validation=_empty_validation(),
             trace=numerical_trace,
+        )
+    except _RepresentationStop as stop:
+        reason = str(stop)
+        return _finish_result(
+            problem,
+            plan,
+            execution,
+            status="validation_failed",
+            value=None,
+            validation=_representation_validation(reason),
+            trace=numerical_trace,
+            diagnostics=[_representation_diagnostic(reason)],
+            domain_payload={
+                "shape": [rows, columns_count],
+                "full_matrices": False,
+                "input_scale": input_scale,
+            },
         )
 
 

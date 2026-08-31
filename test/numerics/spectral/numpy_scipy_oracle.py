@@ -224,6 +224,113 @@ def main() -> None:
         ):
             raise AssertionError(("unsafe eigenbasis accepted", separation))
 
+    scale_matrix = np.asarray([[1.0, 0.25], [0.25, 2.0]], dtype=np.complex128)
+    scale_samples = np.asarray(
+        [1.0 + 1.0j, 2.0 - 0.5j, -3.0 + 2.0j], dtype=np.complex128
+    )
+    scale_left = np.asarray([1.0 + 0.5j, 2.0 - 0.25j], dtype=np.complex128)
+    scale_right = np.asarray([3.0, 4.0 + 0.5j], dtype=np.complex128)
+    sparse_dense = np.asarray([[6.0, 1.0], [1.0, 2.0]], dtype=np.complex128)
+    sparse_right = np.asarray([8.0, 5.0], dtype=np.complex128)
+    expected_sparse_solution = scipy.linalg.solve(sparse_dense, sparse_right)
+    expected_sparse_eigenvalue = scipy.linalg.eigvalsh(sparse_dense)[-1]
+    for scale in (1e-200, 1e200):
+        scaled_matrix = scale_matrix * scale
+
+        symmetric_result = symmetric_eigen(scaled_matrix.tolist())
+        symmetric_actual = np.asarray(symmetric_result.value["eigenvalues"]) / scale
+        symmetric_expected = scipy.linalg.eigvalsh(scale_matrix)
+        if not np.allclose(symmetric_actual, symmetric_expected, rtol=2e-8, atol=2e-10):
+            raise AssertionError((scale, symmetric_actual, symmetric_expected))
+        comparisons += len(symmetric_actual)
+
+        general_result = general_eigen(scaled_matrix.tolist())
+        general_actual = [
+            _complex(value) / scale for value in general_result.value["eigenvalues"]
+        ]
+        general_expected = [
+            complex(value) for value in scipy.linalg.eigvals(scale_matrix)
+        ]
+        _match(general_actual, general_expected, 2e-8)
+        comparisons += len(general_actual)
+
+        svd_result = svd(scaled_matrix.tolist())
+        svd_actual = np.asarray(svd_result.value["singular_values"]) / scale
+        svd_expected = scipy.linalg.svdvals(scale_matrix)
+        if not np.allclose(svd_actual, svd_expected, rtol=2e-8, atol=2e-10):
+            raise AssertionError((scale, svd_actual, svd_expected))
+        comparisons += len(svd_actual)
+
+        fft_result = fft((scale_samples * scale).tolist())
+        fft_actual = np.asarray([_complex(value) for value in fft_result.value]) / scale
+        fft_expected = np.fft.fft(scale_samples)
+        if not np.allclose(fft_actual, fft_expected, rtol=2e-10, atol=2e-10):
+            raise AssertionError((scale, fft_actual, fft_expected))
+        comparisons += len(fft_actual)
+
+        convolution_result = convolve(
+            (scale_left * scale).tolist(), scale_right.tolist(), method="direct"
+        )
+        convolution_actual = (
+            np.asarray([_complex(value) for value in convolution_result.value]) / scale
+        )
+        convolution_expected = np.convolve(scale_left, scale_right)
+        if not np.allclose(
+            convolution_actual, convolution_expected, rtol=2e-10, atol=2e-10
+        ):
+            raise AssertionError((scale, convolution_actual, convolution_expected))
+        comparisons += len(convolution_actual)
+
+        sparse_result = sparse_solve(
+            (sparse_dense * scale).tolist(), (sparse_right * scale).tolist()
+        )
+        sparse_actual = np.asarray([_complex(value) for value in sparse_result.value])
+        if not np.allclose(
+            sparse_actual, expected_sparse_solution, rtol=2e-8, atol=2e-10
+        ):
+            raise AssertionError((scale, sparse_actual, expected_sparse_solution))
+        comparisons += len(sparse_actual)
+
+        sparse_eigen_result = sparse_eigen((sparse_dense * scale).tolist())
+        sparse_eigen_actual = _complex(sparse_eigen_result.value["eigenvalue"]) / scale
+        if abs(sparse_eigen_actual - expected_sparse_eigenvalue) > 2e-7:
+            raise AssertionError(
+                (scale, sparse_eigen_actual, expected_sparse_eigenvalue)
+            )
+        comparisons += 1
+
+    indefinite = sparse_solve([[1.0, 0.0], [0.0, -1.0]], [1.0, 0.0], method="auto")
+    if not indefinite.success or indefinite.method != "bicgstab":
+        raise AssertionError(
+            ("indefinite Hermitian auto selection", indefinite.to_dict())
+        )
+    for matrix in (
+        [[2.0, 0.0], [0.0, -2.0]],
+        [[0.0, 0.0], [0.0, 0.0]],
+    ):
+        uncertified = sparse_eigen(matrix, x0=[1.0, 0.0])
+        if (
+            uncertified.success
+            or uncertified.status != "validation_failed"
+            or uncertified.value is not None
+        ):
+            raise AssertionError(("uncertified dominant magnitude accepted", matrix))
+
+    for result in (
+        fft([1e308, 1e308, 1e308]),
+        convolve([1e200], [1e200]),
+        convolve([1e-200], [1e-200]),
+        sparse_solve([[1e-200]], [1e200]),
+        sparse_solve([[1e200]], [1e-200]),
+    ):
+        if (
+            result.success
+            or result.status != "validation_failed"
+            or result.value is not None
+        ):
+            raise AssertionError(("unrepresentable result accepted", result.to_dict()))
+        json.loads(result.to_json())
+
     print(
         json.dumps(
             {

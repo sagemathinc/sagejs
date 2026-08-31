@@ -79,18 +79,19 @@ _OPERATIONS: dict[str, dict[str, Any]] = {
         "status": "implemented",
         "classification": "extension",
         "methods": ["cg", "bicgstab"],
-        "envelope": "explicit finite square CSR matrices; CG requires Hermitian positive definite input",
+        "envelope": "explicit finite square CSR matrices; CG requires a strict Hermitian diagonal-dominance positive-definiteness certificate",
         "validation": ["independent_linear_residual", "normwise_backward_error"],
     },
     "sparse_dominant_eigen": {
         "status": "implemented",
         "classification": "extension",
         "methods": ["power_iteration"],
-        "envelope": "one unique dominant-magnitude eigenpair of an explicit finite Hermitian CSR matrix",
+        "envelope": "one dominant-magnitude eigenpair of an explicit finite Hermitian CSR matrix with separated Gershgorin intervals certifying uniqueness",
         "validation": [
             "eigenpair_backward_residual",
             "eigenvector_orthogonality",
             "rayleigh_reconstruction",
+            "dominant_magnitude_uniqueness_certificate",
         ],
     },
 }
@@ -125,6 +126,18 @@ _UNSUPPORTED: list[dict[str, Any]] = [
         "classification": "unsupported",
         "reason": "axis, shape, and storage contracts are not yet integrated",
         "alternative": "apply the one-dimensional transform explicitly along each intended axis",
+    },
+    {
+        "operation": "sparse_cg_without_spd_certificate",
+        "classification": "unsupported",
+        "reason": "Hermitian symmetry alone does not certify positive definiteness for CG",
+        "alternative": "use auto/BiCGSTAB or provide an operator satisfying the documented strict diagonal-dominance certificate",
+    },
+    {
+        "operation": "sparse_dominant_eigen_without_gap_certificate",
+        "classification": "unsupported",
+        "reason": "power iteration cannot identify a unique dominant-magnitude eigenpair without an independent gap certificate",
+        "alternative": "use a qualified restarted Hermitian eigensolver or an operator with separated Gershgorin intervals",
     },
     {
         "operation": "sparse_multiple_or_interior_eigenpairs",

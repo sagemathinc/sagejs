@@ -21,6 +21,7 @@ from ..model import (
 from ..trace import NumericalTrace, TracePolicy
 
 _EPSILON = 2.220446049250313e-16
+_MAX_FLOAT = 1.7976931348623157e308
 _PLATFORMS = [
     "browser",
     "node",
@@ -38,6 +39,10 @@ class _BudgetStop(Exception):
     def __init__(self, status: str) -> None:
         super().__init__(status)
         self.status = status
+
+
+class _RepresentationStop(Exception):
+    """Internal stop when a finite mathematical output has no binary64 value."""
 
 
 class _Execution:
@@ -63,7 +68,7 @@ class _Execution:
         if self.cancel is not None and self.cancel():
             raise _BudgetStop("cancelled")
         if self.elapsed_ms() > self.problem.resource_budget.max_elapsed_ms:
-            raise _BudgetStop("maximum_evaluations")
+            raise _BudgetStop("maximum_elapsed_time")
 
     def iteration(self) -> int:
         self.check()
@@ -133,7 +138,11 @@ def _json_number(value: complex | float | int) -> float | list[float]:
     number = complex(value)
     real = float(number.real)
     imaginary = float(number.imag)
-    if abs(imaginary) <= 8.0 * _EPSILON * max(1.0, abs(real)):
+    if not math.isfinite(real) or not math.isfinite(imaginary):
+        raise ValueError("spectral values must remain finite when serialized")
+    if imaginary == 0.0 or (
+        real != 0.0 and abs(imaginary) / abs(real) <= 8.0 * _EPSILON
+    ):
         return real
     return [real, imaginary]
 
@@ -149,6 +158,132 @@ def _json_matrix(values: Sequence[Sequence[complex | float | int]]) -> list[list
 def _conjugate(value: complex) -> complex:
     """Return a conjugate without relying on a scalar host method."""
     return complex(value.real, -value.imag)
+
+
+def _finite_number(value: complex | float | int) -> bool:
+    number = complex(value)
+    return math.isfinite(number.real) and math.isfinite(number.imag)
+
+
+def _finite_vector(values: Sequence[complex | float | int]) -> bool:
+    return all(_finite_number(value) for value in values)
+
+
+def _finite_matrix(values: Sequence[Sequence[complex | float | int]]) -> bool:
+    return all(_finite_vector(row) for row in values)
+
+
+def _bounded_metric(value: float) -> float:
+    if math.isfinite(value):
+        return max(0.0, value)
+    return _MAX_FLOAT
+
+
+def _component_scale(values: Sequence[complex]) -> float:
+    scale = 0.0
+    for value in values:
+        scale = max(scale, abs(value.real), abs(value.imag))
+    return scale if scale != 0.0 else 1.0
+
+
+def _scaled_vector(values: Sequence[complex]) -> tuple[list[complex], float]:
+    scale = _component_scale(values)
+    return [complex(value.real / scale, value.imag / scale) for value in values], scale
+
+
+def _scaled_matrix(
+    values: Sequence[Sequence[complex]],
+) -> tuple[list[list[complex]], float]:
+    scale = _component_scale([value for row in values for value in row])
+    return (
+        [
+            [complex(value.real / scale, value.imag / scale) for value in row]
+            for row in values
+        ],
+        scale,
+    )
+
+
+def _scaled_real_product(
+    value: float,
+    numerators: Sequence[float],
+    denominators: Sequence[float] = (),
+) -> float:
+    if value == 0.0 or any(factor == 0.0 for factor in numerators):
+        return 0.0
+    if any(factor <= 0.0 or not math.isfinite(factor) for factor in numerators):
+        raise _RepresentationStop("invalid output scale")
+    if any(factor <= 0.0 or not math.isfinite(factor) for factor in denominators):
+        raise _RepresentationStop("invalid output divisor")
+    sign = -1.0 if value < 0.0 else 1.0
+    mantissa, exponent = math.frexp(abs(value))
+    for factor in numerators:
+        factor_mantissa, factor_exponent = math.frexp(factor)
+        mantissa *= factor_mantissa
+        exponent += factor_exponent
+        if mantissa < 0.5:
+            mantissa *= 2.0
+            exponent -= 1
+    for factor in denominators:
+        factor_mantissa, factor_exponent = math.frexp(factor)
+        mantissa /= factor_mantissa
+        exponent -= factor_exponent
+        if mantissa >= 1.0:
+            mantissa *= 0.5
+            exponent += 1
+    try:
+        result = math.ldexp(mantissa, exponent)
+    except OverflowError:
+        raise _RepresentationStop(
+            "finite mathematical output exceeds binary64"
+        ) from None
+    if not math.isfinite(result):
+        raise _RepresentationStop("finite mathematical output exceeds binary64")
+    if result == 0.0:
+        raise _RepresentationStop("nonzero mathematical output underflows binary64")
+    return sign * result
+
+
+def _bounded_positive_ratio(numerator: float, denominator: float) -> float:
+    if numerator == 0.0:
+        return 0.0
+    try:
+        return _scaled_real_product(numerator, (), (denominator,))
+    except _RepresentationStop:
+        return _MAX_FLOAT if numerator >= denominator else 0.0
+
+
+def _rescale_number(
+    value: complex | float,
+    numerators: Sequence[float],
+    denominators: Sequence[float] = (),
+) -> complex:
+    number = complex(value)
+    if not _finite_number(number):
+        raise _RepresentationStop("algorithm produced a non-finite output")
+    return complex(
+        _scaled_real_product(number.real, numerators, denominators),
+        _scaled_real_product(number.imag, numerators, denominators),
+    )
+
+
+def _rescale_vector(
+    values: Sequence[complex | float],
+    numerators: Sequence[float],
+    denominators: Sequence[float] = (),
+) -> list[complex]:
+    return [_rescale_number(value, numerators, denominators) for value in values]
+
+
+def _rescale_matrix(
+    values: Sequence[Sequence[complex | float]],
+    numerators: Sequence[float],
+    denominators: Sequence[float] = (),
+) -> list[list[complex]]:
+    return [
+        [_rescale_number(value, numerators, denominators) for value in row]
+        for row in values
+    ]
 
 
 def _conjugate_transpose(matrix: Sequence[Sequence[complex]]) -> list[list[complex]]:
@@ -203,23 +338,47 @@ def _dot(left: Sequence[complex], right: Sequence[complex]) -> complex:
     )
 
 
+def _scaled_sum_squares(values: Sequence[complex]) -> tuple[float, float]:
+    scale = 0.0
+    sum_squares = 1.0
+    for value in values:
+        for component in (value.real, value.imag):
+            magnitude = abs(component)
+            if magnitude == 0.0:
+                continue
+            if not math.isfinite(magnitude):
+                return math.inf, 1.0
+            if scale < magnitude:
+                ratio = scale / magnitude
+                sum_squares = 1.0 + sum_squares * ratio * ratio
+                scale = magnitude
+            else:
+                ratio = magnitude / scale
+                sum_squares += ratio * ratio
+    return scale, sum_squares
+
+
 def _norm(values: Sequence[complex]) -> float:
-    return math.sqrt(sum(abs(value) * abs(value) for value in values))
+    scale, sum_squares = _scaled_sum_squares(values)
+    if scale == 0.0:
+        return 0.0
+    result = scale * math.sqrt(sum_squares)
+    return result if math.isfinite(result) else math.inf
 
 
 def _frobenius(matrix: Sequence[Sequence[complex]]) -> float:
-    return math.sqrt(sum(abs(value) * abs(value) for row in matrix for value in row))
+    return _norm([value for row in matrix for value in row])
 
 
 def _matrix_difference_norm(
     left: Sequence[Sequence[complex]], right: Sequence[Sequence[complex]]
 ) -> float:
-    return math.sqrt(
-        sum(
-            abs(left[row][column] - right[row][column]) ** 2
+    return _norm(
+        [
+            left[row][column] - right[row][column]
             for row in range(len(left))
             for column in range(len(left[row]))
-        )
+        ]
     )
 
 
@@ -227,13 +386,12 @@ def _orthogonality_error(columns: Sequence[Sequence[complex]]) -> float:
     count = len(columns)
     if count == 0:
         return 0.0
-    return math.sqrt(
-        sum(
-            abs(_dot(columns[left], columns[right]) - (1.0 if left == right else 0.0))
-            ** 2
+    return _norm(
+        [
+            _dot(columns[left], columns[right]) - (1.0 if left == right else 0.0)
             for left in range(count)
             for right in range(count)
-        )
+        ]
     )
 
 
@@ -341,6 +499,7 @@ def _diagnostic_for_status(status: str) -> NumericalDiagnostic | None:
         "cancelled",
         "maximum_iterations",
         "maximum_evaluations",
+        "maximum_elapsed_time",
         "stagnation",
         "validation_failed",
     ):
@@ -430,4 +589,38 @@ def _finish_result(
 def _empty_validation(check: str = "result_available") -> NumericalValidation:
     return NumericalValidation(
         "indeterminate", False, checks=[{"kind": check, "passed": False}]
+    )
+
+
+def _representation_validation(
+    reason: str, previous: NumericalValidation | None = None
+) -> NumericalValidation:
+    checks: list[Any] = []
+    residual = None
+    if previous is not None:
+        record = previous.to_dict()
+        previous_checks = record.get("checks")
+        if isinstance(previous_checks, list):
+            checks.extend(previous_checks)
+        residual = previous.residual
+    checks.append(
+        {
+            "kind": "finite_binary64_output",
+            "passed": False,
+            "reason": reason,
+        }
+    )
+    return NumericalValidation(
+        "indeterminate",
+        False,
+        checks=checks,
+        residual=residual,
+        error_estimate=residual,
+    )
+
+
+def _representation_diagnostic(reason: str) -> NumericalDiagnostic:
+    return NumericalDiagnostic(
+        "loss_of_significance",
+        details={"reason": reason, "boundary": "finite_binary64_output"},
     )
