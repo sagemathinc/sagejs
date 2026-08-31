@@ -112,7 +112,7 @@ The static view is operation-specific:
 
 | Operation or method | Semantic layers |
 | --- | --- |
-| bounded scalar minimum | sampled objective, interval endpoints, retained incumbent path, returned candidate |
+| bounded scalar minimum | retained objective path, interval reference and endpoints, retained incumbents, returned candidate |
 | two-parameter BFGS / nonlinear system / least squares | parameter path, retained iterates, returned point |
 | two-parameter Nelder-Mead | parameter path plus the current retained simplex |
 | two-parameter projected BFGS | parameter path, finite box-bound lines, active returned bound |
@@ -127,13 +127,16 @@ rank-deficient or ill-conditioned. If a squared cost is outside binary64, the
 explanation says so and the convergence view uses the representable residual
 norm instead of inserting a non-finite objective.
 
-View construction has its own deterministic ceilings. Scalar objectives are
-sampled at 129 points. Static fit plots display at most 2,048 deterministically
-selected observations. Fit animation requires at most 256 retained
-observations. Every animation contains at most 128 frames, retains the first
-and last progress states when decimating, fixes representable axis ranges from
-the complete retained story across every frame, and declares hard sample,
-layer, payload, and duration limits. The cross-runtime semantic oracle is
+View construction never invokes a result's user callbacks. Scalar views show
+only objective values already present in the retained solver trace and final
+result; with `trace="none"`, the static view shows only the returned state and
+the finite interval reference. Static fit plots display at most 2,048
+deterministically selected retained observations. Fit animation requires at
+most 256 retained observations. Every animation contains at most 128 frames,
+retains the first and last progress states when decimating, fixes representable
+axis ranges from the complete retained story across every frame, and declares
+hard sample, layer, payload, and duration limits. The cross-runtime semantic
+oracle is
 [`visualization-fixtures.json`](visualization-fixtures.json); it fixes the
 accessible descriptions, layer roles, canonical lowering, constraint and
 identifiability records, failure checks, controls, and animation topology for

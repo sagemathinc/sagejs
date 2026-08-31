@@ -318,7 +318,7 @@
     },
     "scalar_minimum": {
       "active_constraint_count": 0,
-      "alt_text": "Bounded scalar objective on [-1.0, 5.0] with 129 finite samples and 6 retained incumbent states. Returned x=2.0. Outcome: validated result.",
+      "alt_text": "Bounded scalar optimization on [-1.0, 5.0] with 6 retained finite objective states; the objective callback was not replayed. Interval endpoints are shown on an objective-reference baseline. Returned x=2.0. Outcome: validated result.",
       "animation_axes_stable": true,
       "animation_controls": {
         "autoplay": false,
@@ -341,11 +341,11 @@
           },
           {
             "id": "optimization-1",
-            "kind": "point"
+            "kind": "line"
           },
           {
             "id": "optimization-2",
-            "kind": "line"
+            "kind": "point"
           },
           {
             "id": "optimization-3",
@@ -364,15 +364,15 @@
       "identifiability": "not_applicable",
       "layer_kinds": [
         "line",
-        "point",
         "line",
+        "point",
         "point",
         "point"
       ],
       "layer_roles": [
-        "objective",
+        "retained_objective_path",
+        "finite_interval_reference",
         "finite_interval_bounds",
-        "incumbent_path",
         "retained_incumbents",
         "returned_candidate"
       ],
