@@ -35,6 +35,7 @@ def _cminpack_record(method: str) -> dict[str, Any]:
         "runtimes": _CMINPACK_RUNTIMES,
     }
 
+
 def _view_contract(operation: str, constraints: str) -> dict[str, Any]:
     primary = {
         "scalar_minimum": "retained_objective_and_incumbent_path",
@@ -70,6 +71,7 @@ def _view_contract(operation: str, constraints: str) -> dict[str, Any]:
         },
         "constraints": constraints,
     }
+
 
 _METHODS: dict[str, dict[str, dict[str, Any]]] = {
     "scalar_minimum": {

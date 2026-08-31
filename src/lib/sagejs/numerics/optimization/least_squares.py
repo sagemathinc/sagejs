@@ -414,10 +414,6 @@ def _cminpack_least_squares(
         raise
     except Exception:
         raise StopExecution("backend_failure", "cminpack_backend_unavailable") from None
-    options = runtime.object.create(None)
-
-    def set_option(name: str, value: Any) -> None:
-        runtime.reflect.set(options, name, value)
 
     def residual_callback(candidate: list[float]) -> list[float]:
         return _residual(execution, candidate, residual_count)
@@ -425,30 +421,34 @@ def _cminpack_least_squares(
     def jacobian_callback(candidate: list[float]) -> list[list[float]]:
         return _jacobian(execution, candidate, residual_count)
 
-    set_option("method", method)
-    set_option("initial", point)
-    set_option("residualCount", residual_count)
-    set_option("residual", residual_callback)
-    if method == "cminpack-lmder":
-        set_option("jacobian", jacobian_callback)
-    set_option("functionTolerance", float(problem.tolerances["ftol"]))
-    set_option("stepTolerance", float(problem.tolerances["xtol"]))
-    set_option("gradientTolerance", float(problem.tolerances["gtol"]))
-    set_option(
-        "maximumEvaluations",
-        max(1, problem.resource_budget.max_evaluations - execution.evaluations),
-    )
-    set_option(
-        "maximumCallbackEvaluations",
-        max(1, problem.resource_budget.max_evaluations - execution.evaluations),
-    )
-    set_option("maximumIterations", problem.resource_budget.max_iterations)
-    set_option(
-        "maximumElapsedMs",
-        max(0.0, problem.resource_budget.max_elapsed_ms - execution.elapsed_ms()),
-    )
-
     try:
+        options = runtime.object.create(None)
+
+        def set_option(name: str, value: Any) -> None:
+            runtime.reflect.set(options, name, value)
+
+        set_option("method", method)
+        set_option("initial", point)
+        set_option("residualCount", residual_count)
+        set_option("residual", residual_callback)
+        if method == "cminpack-lmder":
+            set_option("jacobian", jacobian_callback)
+        set_option("functionTolerance", float(problem.tolerances["ftol"]))
+        set_option("stepTolerance", float(problem.tolerances["xtol"]))
+        set_option("gradientTolerance", float(problem.tolerances["gtol"]))
+        set_option(
+            "maximumEvaluations",
+            max(1, problem.resource_budget.max_evaluations - execution.evaluations),
+        )
+        set_option(
+            "maximumCallbackEvaluations",
+            max(1, problem.resource_budget.max_evaluations - execution.evaluations),
+        )
+        set_option("maximumIterations", problem.resource_budget.max_iterations)
+        set_option(
+            "maximumElapsedMs",
+            max(0.0, problem.resource_budget.max_elapsed_ms - execution.elapsed_ms()),
+        )
         result = runtime.reflect.apply(solve, backend, [options])
     except (StopExecution, CallbackFailure):
         raise
