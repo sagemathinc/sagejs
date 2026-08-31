@@ -360,17 +360,6 @@ class SageLowerer {
     "ttest",
     "ttest2",
   ]);
-  private readonly vectorArguments: Record<string, readonly number[]> = {
-    arrayfun: [1],
-    conv: [0, 1],
-    fminsearch: [1],
-    fsolve: [1],
-    lsqnonlin: [1],
-    ode45: [1, 2],
-    polyfit: [0, 1],
-    sagejs_describe: [0],
-  };
-
   program(program: MatlabProgram, captureResult = false): string {
     const lastIndex = program.body.length - 1;
     const lines = [
@@ -484,13 +473,8 @@ class SageLowerer {
     }
     const direct = this.directFunctions[name];
     if (direct) {
-      const vectorArguments = this.vectorArguments[name] ?? [];
       return `${direct}(${
-        expression.arguments.map((argument, index) => {
-          const value = this.expression(argument);
-          return vectorArguments.includes(index) ? `_np.ravel(${value})` : value;
-        })
-          .join(", ")
+        expression.arguments.map((argument) => this.expression(argument)).join(", ")
       })`;
     }
     return `_matlab.call_or_index(${name}${

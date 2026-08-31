@@ -45,7 +45,16 @@ svd: "_matlab.svd",
 The existing backslash lowering to `_matlab.mldivide` remains unchanged.
 `eig`, `fft`, `fitlm`, `griddedInterpolant`, `spline`, `ttest`, and `ttest2`
 fail closed until their defaults, orientations, complex values, and one-output
-conventions have qualified language-specific adapters.
+conventions have qualified language-specific adapters. They fail at all three
+public boundaries: direct module calls, programmatic registry aliases, and
+natural parser syntax. Canonical Sage.js operations remain available under
+their non-vendor package APIs.
+
+Do not flatten MATLAB arrays in the TypeScript lowerer. `arrayfun` preserves a
+qualified input matrix's shape through a bounded column-major canonical sweep.
+Vector-only wrappers adapt row and column vectors themselves and reject a
+matrix before numerical execution; in particular, `conv` and `fminsearch` do
+not silently flatten a matrix.
 
 Add parser/runtime tests beside the existing `fzero` frontend tests, including:
 
@@ -106,7 +115,8 @@ Reject nonnumeric bounds, free symbols, nonunary functions, multiple/infinite
 regions, minima, differential-algebraic equations, events, and unpreserved
 interpolation options with a parser diagnostic. Spectral Wolfram heads also
 fail closed until their normalization, orientation, and result forms are
-qualified. Never fall through to an unqualified Python function name: that
+qualified. The corresponding direct module calls and registry aliases fail
+closed as well. Never fall through to an unqualified Python function name: that
 turns an intentionally unsupported translation into a misleading `NameError`.
 
 For known numerical heads outside the qualified subset, the parser should
@@ -149,3 +159,9 @@ Every future adapter must prove natural result conventions, canonical intent
 equality, successful outward generation or an exact diagnostic, checked
 round-tripping for the generated subset, and source-independent execution
 through the owning domain result record.
+
+The machine-readable support ledger has separate `registry`, `natural_parser`,
+`emit`, and `unsupported_emit` fields. A parser rejection cannot be hidden by a
+broader registry claim. MATLAB eigensystem and SVD emission remains unsupported
+until generated code retains every canonical mathematical output rather than
+only MATLAB's one-output projection.

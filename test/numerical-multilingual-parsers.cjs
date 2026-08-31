@@ -42,7 +42,12 @@ test("MATLAB numerical heads lower to their owned runtime wrappers", async () =>
   const convolution = frontend.lower("conv([1 2],[3 4])", {
     captureResult: true,
   });
-  assert.match(convolution.source, /_matlab\.conv\(_np\.ravel\(/);
+  assert.match(convolution.source, /_matlab\.conv\(/);
+  assert.doesNotMatch(convolution.source, /_np\.ravel/);
+  const sweep = frontend.lower("arrayfun(@(x) x^2,[1 2;3 4])", {
+    captureResult: true,
+  });
+  assert.doesNotMatch(sweep.source, /_np\.ravel/);
 });
 
 test("MATLAB numerical syntax fails closed before unqualified runtime calls", async () => {
@@ -164,7 +169,30 @@ test("representative multilingual programs reach canonical runtime operations", 
       "conv([1 2],[3 4])",
       { language: "matlab" },
     );
-    assert.deepEqual(JSON.parse(matlabConvolution.repr), [3, 10, 8]);
+    assert.equal(
+      matlabConvolution.repr.replace(/\s+/g, ""),
+      "array([[3.,10.,8.]])",
+    );
+
+    const matlabSweep = await session.evaluate(
+      "arrayfun(@(x) x^2,[1 2;3 4])",
+      { language: "matlab" },
+    );
+    assert.equal(
+      matlabSweep.repr.replace(/\s+/g, ""),
+      "array([[1,4][9,16]])",
+    );
+
+    await assert.rejects(
+      session.evaluate("conv([1 2;3 4],[1 2])", { language: "matlab" }),
+      /must be a vector, not a matrix/,
+    );
+    await assert.rejects(
+      session.evaluate("fminsearch(@(x) x(1)^2,[1 2;3 4])", {
+        language: "matlab",
+      }),
+      /must be a vector, not a matrix/,
+    );
 
     const matlabIntegral = await session.evaluate(
       "integral(@(x) x^2,0,1)",
