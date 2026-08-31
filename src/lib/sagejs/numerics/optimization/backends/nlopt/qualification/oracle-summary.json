@@ -1,0 +1,23 @@
+{
+  "schema": "sagejs.numerical-nlopt-oracle-summary/v1",
+  "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+  "oracle_output_sha256": "034eb6e6417b77600c3286c79afab5fef27b04bf6c0bbc458048b78ef6f7b39e",
+  "runtime": {
+    "python": "3.14.4",
+    "scipy": "1.18.0",
+    "numpy": "2.5.1",
+    "cobyla_implementation": "PRIMA"
+  },
+  "cases": {
+    "nelder_mead": 5,
+    "cobyla_feasible": 7,
+    "cobyla_infeasible": 1,
+    "total": 13
+  },
+  "findings": [
+    "SciPy Nelder-Mead reaches every corpus reference envelope",
+    "SciPy PRIMA COBYLA reaches every feasible reference envelope",
+    "SciPy PRIMA rejects the deliberately infeasible case with maximum violation 0.5",
+    "NLopt and SciPy trajectories and termination statuses are not treated as identical"
+  ]
+}

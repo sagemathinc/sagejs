@@ -1,0 +1,63 @@
+{
+  "schema": "sagejs.numerical-nlopt-production-manifest/v1",
+  "source": {
+    "repository": "https://github.com/stevengj/nlopt",
+    "revision": "6e6593f131ba3a38bc9edbed0a357bc01526e54b",
+    "archive_sha256": "268470455acee4b4460c809772c51312be042cd000c7746049dfa6191e64a0f1",
+    "license_sha256": "44039a06cc56e0e29e5c8563502ba143bd12bcd9163c00ffa2e1f15a7462cd07",
+    "source_lock_sha256": "cdda281ec76d35f8e5ed9758dd600ece5a5b762ff6570236e95ed618024d72f0",
+    "source_closure_sha256": "bcf6395e6ff2a33c9635c21908eeb7b53ccefd5d4ee9492b12c9a086e6a4dd4f",
+    "luksan_enabled": false,
+    "compiled_sources": [
+      "src/algs/neldermead/nldrmd.c",
+      "src/algs/cobyla/cobyla.c",
+      "src/util/stop.c",
+      "src/util/redblack.c",
+      "src/util/rescale.c"
+    ]
+  },
+  "reviewed_sagejs_files": {
+    "adapter_sha256": "d102e72e747a0073a8c44c04482ae7e5c1b743bff64c79913d5b8929624bb3f2",
+    "build_script_sha256": "08b45a140660063d803f0f895d7dd6342a6f3158323f8bd46b509f83496f2ee9",
+    "host_module_sha256": "6f2345adcf27f0ac416ec562277799719682ed9fea5d6307632de581f1de5038",
+    "release_verifier_sha256": "93bf5017133ddc09e72ae6200e1bd1f092126c8cfcc93eeda509141827fcfe1e"
+  },
+  "toolchain": {
+    "identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
+    "target": "wasm32-wasip1",
+    "floating_point_contract": "off"
+  },
+  "artifact": {
+    "filename": "nlopt-methods.wasm",
+    "sha256": "2d248aaa49c9482ab0afabaff1a9358a106b4deae23a9c2f8df033d75fa37c0f",
+    "bytes": 101376,
+    "gzip_bytes": 39521,
+    "brotli_bytes": 33049,
+    "initial_memory_bytes": 2097152,
+    "maximum_memory_bytes": 134217728,
+    "imports": [
+      {
+        "module": "sagejs_numerical_nlopt",
+        "name": "evaluate",
+        "kind": "function"
+      }
+    ]
+  },
+  "methods": {
+    "nlopt-nelder-mead": "NLOPT_LN_NELDERMEAD",
+    "nlopt-cobyla": "NLOPT_LN_COBYLA"
+  },
+  "selection": "explicit-only",
+  "qualification": {
+    "summary": "qualification-v1.json",
+    "summary_sha256": "24102ad172579f82c597fa211c0ac35867540ce0f386134453abbddeec5ffdcb",
+    "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+    "oracle_output_sha256": "034eb6e6417b77600c3286c79afab5fef27b04bf6c0bbc458048b78ef6f7b39e",
+    "portable_receipts_sha256": {
+      "linux-x64": "e267ca38dba0e47aede2c5189acf21052dbceef955c11f4e4095a33da05527a6",
+      "linux-arm64": "4d151f1e7b11059f9271d2ac9d1513999b2280e39f2787d1491c7926ae8e2f3f",
+      "macos-arm64": "3d8160577d2f586618675b2a999521ecc520a10e05cff080c43f0546e60b2c21",
+      "windows-x64": "a571fddfab36f34d4dd7a7d2a78bf014419e7d06847dc255c9a72867b0ce2eb8"
+    }
+  }
+}
