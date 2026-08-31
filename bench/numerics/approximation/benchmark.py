@@ -30,7 +30,7 @@ def milliseconds(function):
 
 
 def barycentric_case() -> tuple[dict[str, float | int], float]:
-    count = 128
+    count = 32
     nodes = sorted(math.cos(math.pi * index / (count - 1)) for index in range(count))
     values = [math.exp(value) for value in nodes]
     result, construction_ms = milliseconds(lambda: interpolate(nodes, values))

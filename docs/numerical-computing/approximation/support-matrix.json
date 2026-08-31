@@ -16,36 +16,36 @@
       "id": "polynomial_interpolation",
       "classification": "extension",
       "methods": ["barycentric"],
-      "validation": ["node_reproduction", "newton_form_crosscheck_up_to_32_nodes"],
-      "known_limits": ["distinct_finite_real_nodes", "global_polynomial_conditioning_remains_node_dependent"]
+      "validation": ["node_reproduction", "off_node_newton_form_crosscheck"],
+      "known_limits": ["distinct_finite_real_nodes", "at_most_32_nodes", "global_polynomial_conditioning_remains_node_dependent"]
     },
     {
       "id": "piecewise_interpolation",
       "classification": "extension",
       "methods": ["linear"],
       "validation": ["node_reproduction"],
-      "known_limits": ["scalar_real_samples", "end_segment_extrapolation"]
+      "known_limits": ["scalar_real_samples", "end_segment_extrapolation", "first_derivative_undefined_at_nonsmooth_interior_knots"]
     },
     {
       "id": "cubic_spline",
       "classification": "translated",
       "methods": ["not-a-knot", "natural", "clamped", "periodic", "mixed_explicit"],
       "validation": ["node_reproduction", "C1_continuity", "C2_continuity", "boundary_equations"],
-      "known_limits": ["scalar_real_samples", "strictly_increasing_finite_nodes"]
+      "known_limits": ["scalar_real_samples", "strictly_increasing_finite_nodes", "representable_spacing_inverse_and_value_differences", "third_derivative_undefined_at_nonsmooth_knots"]
     },
     {
       "id": "finite_difference_derivative",
       "classification": "extension",
       "methods": ["fornberg-central", "fornberg-forward", "fornberg-backward"],
-      "validation": ["step_halving", "roundoff_floor", "cancellation_index", "optional_analytic_reference"],
-      "known_limits": ["real_scalar_callback", "binary64_error_estimate_is_not_an_enclosure"]
+      "validation": ["defining_polynomial_moments", "step_halving", "roundoff_floor", "cancellation_index", "optional_analytic_reference_at_requested_tolerance"],
+      "known_limits": ["real_scalar_callback", "at_most_65_stencil_points", "finite_representable_sample_points", "binary64_error_estimate_is_not_an_enclosure"]
     },
     {
       "id": "polynomial_approximation",
       "classification": "extension",
       "methods": ["chebyshev"],
       "validation": ["independent_holdout_samples", "coefficient_tail_indicator"],
-      "known_limits": ["finite_real_interval", "fixed_degree", "heuristic_uniform_error_evidence"]
+      "known_limits": ["finite_real_interval", "fixed_degree_at_most_512", "heuristic_uniform_error_evidence", "derivative_interval_scale_must_be_representable"]
     }
   ],
   "oracles": [

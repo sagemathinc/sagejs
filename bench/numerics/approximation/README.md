@@ -3,7 +3,7 @@
 `benchmark.py` is a deterministic dynamic-source workload, not a release
 performance claim. It measures:
 
-- construction of a 128-node Chebyshev-grid barycentric interpolant and 1,000
+- construction of a 32-node Chebyshev-grid barycentric interpolant and 1,000
   scalar queries;
 - construction of a 2,001-node natural cubic spline and 1,000 scalar queries;
 - 200 independently planned fourth-order first derivatives with analytic

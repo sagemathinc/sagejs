@@ -33,7 +33,7 @@ def maximum_error(left: list[float], right: list[float]) -> float:
 random_generator = random.Random(20260831)
 
 # Barycentric values on well-conditioned Chebyshev nodes.
-for count in (4, 9, 17, 33):
+for count in (4, 9, 17, 32):
     nodes = [math.cos(math.pi * index / (count - 1)) for index in range(count)]
     nodes.sort()
     values = [math.exp(value) - value for value in nodes]
@@ -122,5 +122,27 @@ for derivative_order in (1, 2, 3, 4):
     )
     assert ours.success
     assert abs(ours.evaluate(0) - reference) < 2.0e-4
+
+# Explicit one-sided stencils use the same Fornberg moments and honor the
+# analytic-reference tolerance independently of their heuristic error record.
+for stencil in ("forward", "backward"):
+    reference = float(mpmath.exp(mpmath.mpf("0.375")))
+    ours = finite_difference(
+        math.exp,
+        0.375,
+        derivative_order=1,
+        accuracy_order=6,
+        stencil=stencil,
+        derivative=lambda _x, value=reference: value,
+        rtol=2.0e-6,
+    )
+    assert ours.success, (stencil, ours.explain())
+    assert abs(ours.evaluate(0) - reference) < 2.0e-6
+
+# Overflow-safe affine scaling remains coefficient-compatible with NumPy after
+# translating a large finite interval back to [-1, 1].
+large = chebyshev_approximation(lambda x: x / 1.0e308, [1.0e308, 1.5e308], 2)
+assert large.success
+assert abs(large.evaluate(1.25e308) - 1.25) < 2.0e-14
 
 print("approximation differential oracles passed")

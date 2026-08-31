@@ -50,6 +50,7 @@ sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})
 const witness = String.raw`
 import json
 import math
+import time
 
 from sagejs.numerics import ResourceBudget
 from sagejs.numerics.approximation import (
@@ -59,8 +60,11 @@ from sagejs.numerics.approximation import (
     finite_difference_problem,
     fornberg_weights,
     interpolate,
+    interpolation_problem,
     plan_finite_difference,
+    plan_interpolation,
 )
+from sagejs.numerics.approximation.splines import _validation_metrics
 
 
 def close(left, right, tolerance=1e-10):
@@ -84,6 +88,24 @@ assert "second barycentric" in polynomial.explain()
 linear = interpolate([0, 1, 3], [0, 2, 3], method="linear")
 close(linear.evaluate(2), 2.5)
 close(linear.evaluate(2, 1), 0.5)
+try:
+    linear.evaluate(1, 1)
+    raise AssertionError("a derivative was invented at a piecewise-linear knot")
+except ValueError:
+    pass
+
+# Result access is detached: callers cannot invalidate attached validation.
+detached_value = polynomial.value
+detached_value["values"][0] = 999.0
+assert polynomial.evaluate(nodes[0]) == values[0]
+detached_record = polynomial.to_dict()
+detached_record["value"]["values"][0] = 999.0
+assert polynomial.evaluate(nodes[0]) == values[0]
+
+planned_interpolation = plan_interpolation(interpolation_problem(nodes, values))
+platform_support = planned_interpolation.to_dict()["capability"]["platform_support"]
+assert platform_support["node"] == "local_sagejs_runtime_passed"
+assert platform_support["browser"].startswith("pending_")
 
 # Runge's example records the distinction between a stable representation and
 # an intrinsically poor node choice; Chebyshev approximation is much better.
@@ -122,6 +144,22 @@ assert periodic.success
 close(periodic.evaluate(0.0, 1), periodic.evaluate(2.0*math.pi, 1))
 close(periodic.evaluate(-math.pi/2.0), -1.0)
 
+# Periodic validation must inspect the final segment without wrapping x[-1]
+# back to x[0]. A fault in that segment is visible in both value and boundary
+# residuals.
+damaged_periodic = periodic.value
+damaged_periodic["coefficients"][-1][3] += 10.0
+damaged_metrics = _validation_metrics(damaged_periodic)
+assert damaged_metrics[0] > 1.0
+assert damaged_metrics[3] > 1.0
+
+rough_spline = cubic_spline([0, 1, 2, 4], [0, 1, -0.5, 0.25], boundary="natural")
+try:
+    rough_spline.evaluate(1, 3)
+    raise AssertionError("a two-sided third derivative was invented at a spline knot")
+except ValueError:
+    pass
+
 # The plan fixes the stencil and step without spending a callback evaluation.
 calls = [0]
 def counted_exp(x):
@@ -154,6 +192,41 @@ assert second.success
 close(second.evaluate(0), -math.sin(0.4), 2e-7)
 assert fornberg_weights([-1.0, 0.0, 1.0], 1) == [-0.5, 0.0, 0.5]
 assert fornberg_weights([-1.0, 0.0, 1.0], 2) == [1.0, -2.0, 1.0]
+for direction in ("forward", "backward"):
+    one_sided = finite_difference(
+        math.exp,
+        1.0,
+        stencil=direction,
+        accuracy_order=4,
+        derivative=math.exp,
+    )
+    assert one_sided.success, one_sided.explain()
+    close(one_sided.evaluate(0), math.e, 2e-7)
+
+for malformed_offsets in ([float("nan"), 0.0, 1.0], [float("inf"), 0.0, 1.0]):
+    try:
+        fornberg_weights(malformed_offsets, 1)
+        raise AssertionError("nonfinite Fornberg offsets were accepted")
+    except ValueError:
+        pass
+
+moment_check = derivative.validation.to_dict()["checks"][0]
+assert moment_check["kind"] == "finite_difference_moments"
+assert moment_check["maximum_normalized_residual"] <= moment_check["tolerance"]
+
+# An exact derivative reference is checked against the caller's tolerance,
+# never against a self-inflating heuristic error estimate.
+bad_reference = finite_difference(
+    math.exp,
+    0.0,
+    step=10.0,
+    derivative=math.exp,
+    atol=1e-300,
+    rtol=1e-300,
+)
+assert not bad_reference.success
+assert bad_reference.status == "validation_failed"
+assert bad_reference.validation.residual > 1e5
 
 # Chebyshev coefficients remain detached and differentiable through Clenshaw.
 exponential = chebyshev_approximation(math.exp, [-1, 1], 14)
@@ -162,6 +235,74 @@ for x in (-1.0, -0.3, 0.2, 1.0):
     close(exponential.evaluate(x), math.exp(x), 2e-12)
     close(exponential.evaluate(x, 1), math.exp(x), 2e-10)
 assert "not a rigorous uniform error bound" in json.loads(exponential.to_json())["validation"]["checks"][1]["note"]
+
+exact_linear = chebyshev_approximation(lambda x: x, [-1, 1], 1)
+assert exact_linear.success
+assert exact_linear.value["error_estimate"] < 1e-12
+tail_check = exact_linear.validation.to_dict()["checks"][1]
+assert not tail_check["performed"] and tail_check["passed"] is None
+
+# Stable affine interval arithmetic supports large finite endpoints without
+# constructing an overflowing midpoint or span.
+large_interval = chebyshev_approximation(
+    lambda x: x / 1e308,
+    [1e308, 1.5e308],
+    2,
+)
+assert large_interval.success
+close(large_interval.evaluate(1.25e308), 1.25, 2e-12)
+large_interval.to_json()
+
+wide_interpolant = interpolate([-1e308, 0.0, 1e308], [-1.0, 0.0, 1.0])
+assert wide_interpolant.success
+close(wide_interpolant.evaluate(5e307), 0.5, 2e-12)
+wide_interpolant.to_json()
+
+try:
+    interpolate(
+        [float(i) for i in range(33)],
+        [math.sin(i) for i in range(33)],
+    )
+    raise AssertionError("an unvalidated large global interpolant was accepted")
+except ValueError:
+    pass
+
+try:
+    finite_difference(lambda x: 0.0, 1e308, step=1e308)
+    raise AssertionError("a nonfinite finite-difference stencil was accepted")
+except ValueError:
+    pass
+
+try:
+    finite_difference(math.sin, 0.0, derivative_order=33, accuracy_order=33)
+    raise AssertionError("an unqualified oversized finite-difference stencil was accepted")
+except ValueError:
+    pass
+
+try:
+    chebyshev_approximation(math.exp, [-1, 1], 513)
+    raise AssertionError("an unqualified direct Chebyshev degree was accepted")
+except ValueError:
+    pass
+
+try:
+    cubic_spline([-1e308, 0.0, 1e308], [-1.0, 0.0, 1.0])
+    raise AssertionError("an overflowing spline spacing system was accepted")
+except ValueError:
+    pass
+
+try:
+    cubic_spline([0.0, 5e-324], [1.0, 1.0])
+    raise AssertionError("an unrepresentable inverse spline spacing was accepted")
+except ValueError:
+    pass
+
+# DCT normalization is applied before summation, so a representable result does
+# not fail merely because an unscaled intermediate sum would overflow.
+large_constant = chebyshev_approximation(lambda _x: 1.7e308, [-1, 1], 4)
+assert large_constant.success
+assert large_constant.evaluate(0.25) > 1.6e308
+large_constant.to_json()
 
 # Failure and hard-budget behavior are structured and deterministic.
 try:
@@ -179,9 +320,58 @@ except ValueError:
 cancelled = finite_difference(math.sin, 1.0, cancel=lambda: True)
 assert not cancelled.success and cancelled.status == "cancelled"
 
+cancel_checks = [0]
+def cancel_during_construction():
+    cancel_checks[0] += 1
+    return cancel_checks[0] > 6
+
+cancelled_construction = interpolate(
+    [float(i) for i in range(16)],
+    [math.sin(i) for i in range(16)],
+    cancel=cancel_during_construction,
+)
+assert not cancelled_construction.success
+assert cancelled_construction.status == "cancelled"
+assert cancel_checks[0] > 6
+
 tiny_budget = ResourceBudget(max_iterations=10, max_evaluations=2)
 exhausted = finite_difference(math.sin, 1.0, resource_budget=tiny_budget)
 assert not exhausted.success and exhausted.status == "maximum_evaluations"
+
+iteration_budget = ResourceBudget(max_iterations=1, max_evaluations=256)
+iteration_exhausted = interpolate(
+    [0.0, 0.25, 0.5, 0.75, 1.0],
+    [0.0, 0.25, 0.5, 0.75, 1.0],
+    resource_budget=iteration_budget,
+)
+assert not iteration_exhausted.success
+assert iteration_exhausted.status == "maximum_iterations"
+
+def delayed_final_holdout(x):
+    if x == 1.0:
+        deadline = time.perf_counter() + 0.01
+        while time.perf_counter() < deadline:
+            pass
+    return x
+
+elapsed_budget = ResourceBudget(
+    max_iterations=100,
+    max_evaluations=256,
+    max_elapsed_ms=1,
+)
+elapsed = chebyshev_approximation(
+    delayed_final_holdout,
+    [0.0, 1.0],
+    0,
+    resource_budget=elapsed_budget,
+)
+assert not elapsed.success
+assert elapsed.status != "maximum_evaluations"
+assert elapsed.to_dict()["domain_payload"]["stop_reason"] == "maximum_elapsed_time"
+
+raised = chebyshev_approximation(lambda _x: 1 / 0, [-1, 1], 2)
+assert not raised.success and raised.status == "callback_error"
+assert "non_replayable_callback" in [item.code for item in raised.diagnostics]
 
 nonfinite = chebyshev_approximation(
     lambda x: float("inf") if x > 0.0 else 0.0,

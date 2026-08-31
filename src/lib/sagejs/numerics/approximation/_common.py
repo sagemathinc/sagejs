@@ -7,8 +7,10 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
+from .._json import materialize_json
 from ..diagnostics import NumericalDiagnostic
 from ..model import (
+    STATUS_CODES,
     NumericalPlan,
     NumericalProblem,
     NumericalResult,
@@ -18,6 +20,16 @@ from ..model import (
 from ..trace import NumericalTrace, TracePolicy
 
 MACHINE_EPSILON = 2.220446049250313e-16
+
+QUALIFIED_PLATFORM_SUPPORT = {
+    "linux-x64": "local_cpython_and_sagejs_corpus_passed",
+    "node": "local_sagejs_runtime_passed",
+    "linux-arm64": "pending_persistent_host_receipt",
+    "macos-arm64": "pending_persistent_host_receipt",
+    "windows-x64": "pending_persistent_host_receipt",
+    "browser": "pending_integration_and_browser_receipt",
+    "sea": "pending_integration_and_sea_receipt",
+}
 
 
 class ApproximationStopped(Exception):
@@ -49,8 +61,8 @@ class ApproximationExecution:
     def check(self) -> None:
         if self.cancel is not None and self.cancel():
             raise ApproximationStopped("cancelled")
-        if self.elapsed_ms() > self.problem.resource_budget.max_elapsed_ms:
-            raise ApproximationStopped("maximum_evaluations")
+        if self.elapsed_ms() >= self.problem.resource_budget.max_elapsed_ms:
+            raise ApproximationStopped("maximum_elapsed_time")
 
     def step(self) -> None:
         self.check()
@@ -66,6 +78,8 @@ class ApproximationExecution:
         trace_data: Mapping[str, Any] | None = None,
     ) -> float:
         self.check()
+        if not math.isfinite(x):
+            raise ApproximationStopped("invalid_problem")
         if self.evaluations >= self.problem.resource_budget.max_evaluations:
             raise ApproximationStopped("maximum_evaluations")
         function = self.problem.function
@@ -85,6 +99,7 @@ class ApproximationExecution:
                 force=True,
             )
             raise ApproximationStopped("callback_error") from None
+        self.check()
         if not math.isfinite(value):
             self.trace.append(
                 "failure",
@@ -110,6 +125,8 @@ class ApproximationExecution:
     def evaluate_derivative_reference(self, x: float) -> float:
         """Evaluate an optional analytic derivative under the same hard budget."""
         self.check()
+        if not math.isfinite(x):
+            raise ApproximationStopped("invalid_problem")
         if self.evaluations >= self.problem.resource_budget.max_evaluations:
             raise ApproximationStopped("maximum_evaluations")
         derivative = self.problem.derivative
@@ -118,11 +135,52 @@ class ApproximationExecution:
         self.evaluations += 1
         try:
             value = float(derivative(x))
-        except Exception:
+        except Exception as error:
+            self.trace.append(
+                "failure",
+                evaluation=self.evaluations,
+                data={"x": x, "error_type": type(error).__name__, "role": "derivative"},
+                diagnostics=[NumericalDiagnostic("callback_error")],
+                important=True,
+                force=True,
+            )
             raise ApproximationStopped("callback_error") from None
+        self.check()
         if not math.isfinite(value):
+            self.trace.append(
+                "failure",
+                evaluation=self.evaluations,
+                data={"x": x, "role": "derivative"},
+                diagnostics=[NumericalDiagnostic("nonfinite_evaluation")],
+                important=True,
+                force=True,
+            )
             raise ApproximationStopped("nonfinite_evaluation")
         return value
+
+
+def interval_geometry(lower: float, upper: float) -> tuple[float, float]:
+    """Return an overflow-safe midpoint and positive half-width."""
+    if not math.isfinite(lower) or not math.isfinite(upper) or lower >= upper:
+        raise ValueError("interval must contain finite lower < upper endpoints")
+    if lower < 0.0 < upper:
+        midpoint = 0.5 * lower + 0.5 * upper
+        radius = -0.5 * lower + 0.5 * upper
+    else:
+        width = upper - lower
+        radius = 0.5 * width
+        midpoint = lower + radius
+    if not math.isfinite(midpoint) or not math.isfinite(radius) or radius <= 0.0:
+        raise ValueError("interval cannot be represented safely in binary64")
+    return midpoint, radius
+
+
+def interval_coordinate(point: float, midpoint: float, radius: float) -> float:
+    """Map a finite point to an affine interval coordinate without overflow."""
+    coordinate = (point - midpoint) / radius
+    if not math.isfinite(coordinate):
+        raise ArithmeticError("query is outside the representable affine interval")
+    return coordinate
 
 
 def finite_floats(values: Sequence[Any], name: str) -> list[float]:
@@ -291,8 +349,15 @@ def stopped_diagnostic(status: str) -> NumericalDiagnostic | None:
         "nonfinite_evaluation",
         "stagnation",
         "validation_failed",
+        "maximum_elapsed_time",
     ):
-        return NumericalDiagnostic(status)
+        try:
+            return NumericalDiagnostic(status)
+        except ValueError:
+            # The shared integration lane owns new status/diagnostic registry
+            # entries. Preserve the exact stop reason in the domain payload
+            # until that registry entry is integrated.
+            return None
     return None
 
 
@@ -302,8 +367,25 @@ class ApproximationResult(NumericalResult):
     def __init__(
         self, *args: Any, model: Mapping[str, Any] | None = None, **kwargs: Any
     ):
-        self._approximation_model = {} if model is None else dict(model)
+        detached = materialize_json({} if model is None else model)
+        if not isinstance(detached, dict):
+            raise TypeError("approximation model must be a mapping")
+        self._approximation_model = detached
         super().__init__(*args, value=self._approximation_model, **kwargs)
+
+    @property
+    def value(self) -> dict[str, Any]:
+        """Return a detached copy so validation evidence cannot be mutated."""
+        detached = materialize_json(self._approximation_model)
+        if not isinstance(detached, dict):
+            raise TypeError("invalid approximation model")
+        return detached
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a detached result record, including detached model data."""
+        record = super().to_dict()
+        record["value"] = self.value
+        return record
 
     def evaluate(self, x: float, derivative: int = 0) -> float:
         """Evaluate the detached approximant or derivative at `x`."""
@@ -323,7 +405,10 @@ class ApproximationResult(NumericalResult):
         if kind == "finite_difference":
             if derivative != 0:
                 raise ValueError("a derivative estimate is a scalar result")
-            return float(self._approximation_model["estimate"])
+            estimate = self._approximation_model.get("estimate")
+            if not isinstance(estimate, (int, float)) or isinstance(estimate, bool):
+                raise TypeError("invalid finite-difference estimate")
+            return float(estimate)
         raise ValueError("result does not contain an evaluable approximation")
 
     def plot_data(self, samples: int = 201) -> dict[str, Any]:
@@ -332,6 +417,9 @@ class ApproximationResult(NumericalResult):
             raise ValueError("plot samples must be at least 2")
         kind = str(self._approximation_model.get("kind", ""))
         if kind == "finite_difference":
+            points = self._approximation_model.get("sample_points")
+            values = self._approximation_model.get("sample_values")
+            weights = self._approximation_model.get("weights")
             return {
                 "schema": "sagejs.numerics.approximation.plot-data/v1",
                 "description": "finite-difference stencil samples and weights",
@@ -339,9 +427,9 @@ class ApproximationResult(NumericalResult):
                     {
                         "kind": "point",
                         "role": "stencil",
-                        "x": list(self._approximation_model.get("sample_points", [])),
-                        "y": list(self._approximation_model.get("sample_values", [])),
-                        "weights": list(self._approximation_model.get("weights", [])),
+                        "x": list(points) if isinstance(points, list) else [],
+                        "y": list(values) if isinstance(values, list) else [],
+                        "weights": list(weights) if isinstance(weights, list) else [],
                     }
                 ],
             }
@@ -350,8 +438,10 @@ class ApproximationResult(NumericalResult):
             raise ValueError("approximation has no plotting interval")
         lower = float(interval[0])
         upper = float(interval[1])
+        midpoint, radius = interval_geometry(lower, upper)
         x_values = [
-            lower + (upper - lower) * index / (samples - 1) for index in range(samples)
+            midpoint + radius * (-1.0 + 2.0 * index / (samples - 1))
+            for index in range(samples)
         ]
         y_values = [self.evaluate(x) for x in x_values]
         nodes = self._approximation_model.get("nodes", [])
@@ -361,7 +451,12 @@ class ApproximationResult(NumericalResult):
             "description": "approximation curve and construction samples",
             "layers": [
                 {"kind": "line", "role": "approximation", "x": x_values, "y": y_values},
-                {"kind": "point", "role": "samples", "x": nodes, "y": values},
+                {
+                    "kind": "point",
+                    "role": "samples",
+                    "x": list(nodes) if isinstance(nodes, list) else [],
+                    "y": list(values) if isinstance(values, list) else [],
+                },
             ],
         }
 
@@ -398,7 +493,21 @@ def make_result(
     validation: NumericalValidation,
     diagnostics: Sequence[NumericalDiagnostic] = (),
     measurements: Mapping[str, Any] | None = None,
+    domain_payload: Mapping[str, Any] | None = None,
 ) -> ApproximationResult:
+    merged_diagnostics = list(diagnostics)
+    if (
+        problem.function is not None
+        and not problem.replayable
+        and not any(
+            diagnostic.code == "non_replayable_callback"
+            for diagnostic in merged_diagnostics
+        )
+    ):
+        merged_diagnostics.append(NumericalDiagnostic("non_replayable_callback"))
+    payload: dict[str, Any] = {"model_kind": model.get("kind", "none")}
+    if domain_payload is not None:
+        payload.update(domain_payload)
     return ApproximationResult(
         problem,
         plan,
@@ -406,7 +515,7 @@ def make_result(
         success=success,
         status=status,
         validation=validation,
-        diagnostics=diagnostics,
+        diagnostics=merged_diagnostics,
         iterations=execution.iterations,
         evaluations=execution.evaluations,
         elapsed_ms=execution.elapsed_ms(),
@@ -417,7 +526,7 @@ def make_result(
             "numeric_type": "IEEE-754 binary64",
             "source_family": "sagejs.numerics.approximation",
         },
-        domain_payload={"model_kind": model.get("kind", "none")},
+        domain_payload=payload,
     )
 
 
@@ -427,11 +536,12 @@ def failed_result(
     execution: ApproximationExecution,
     status: str,
 ) -> ApproximationResult:
+    public_status = status if status in STATUS_CODES else "backend_failure"
     diagnostic = stopped_diagnostic(status)
     diagnostics = [] if diagnostic is None else [diagnostic]
     execution.trace.append(
         "finish",
-        data={"status": status, "success": False},
+        data={"status": public_status, "stop_reason": status, "success": False},
         diagnostics=diagnostics,
         important=True,
         force=True,
@@ -442,11 +552,12 @@ def failed_result(
         execution,
         model={"kind": "none"},
         success=False,
-        status=status,
+        status=public_status,
         validation=NumericalValidation(
             "indeterminate",
             False,
             checks=[{"kind": "execution_completed", "passed": False}],
         ),
         diagnostics=diagnostics,
+        domain_payload={"stop_reason": status},
     )

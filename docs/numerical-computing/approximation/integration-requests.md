@@ -31,6 +31,12 @@ domain surface:
    this lane serializable without changing the shared object.
 6. Lower `ApproximationResult.plot_data()` through the shared PlotSpec
    visualizer. The solver/model code must remain renderer-neutral.
+7. Add `maximum_elapsed_time` to the shared result status vocabulary and
+   diagnostic registry. Approximation execution already emits that exact stop
+   reason; until integration, the local result uses the schema-valid
+   `backend_failure` envelope status and preserves
+   `domain_payload.stop_reason="maximum_elapsed_time"`. Do not map elapsed
+   exhaustion to `maximum_evaluations`.
 
 ## Requested diagnostic codes
 
@@ -44,6 +50,7 @@ make integration more precise:
 | `barycentric_weight_underflow` | error | planning | normalized general-node weights still underflow |
 | `inconsistent_periodic_boundary` | error | planning | periodic endpoint values disagree |
 | `finite_difference_step_unrepresentable` | error | execution | a nonzero stencil offset rounds back to the center |
+| `maximum_elapsed_time` | warning | execution | the hard wall-clock budget was exceeded |
 | `approximation_target_not_met` | warning | validation | a fixed-degree holdout corpus exceeds the requested tolerance |
 | `interpolation_condition_large` | warning | validation | sampled Lebesgue indicator exceeds the qualified threshold |
 
@@ -53,7 +60,7 @@ No new shared status is essential. The current status mapping is explicit:
   `invalid_problem` if integration standardizes constructor failures as
   results;
 - callback, cancellation, and budget termination use their existing shared
-  statuses;
+  statuses, with `maximum_elapsed_time` pending the shared addition above;
 - defining-equation or requested-accuracy failure uses
   `validation_failed`; and
 - a successfully constructed and independently checked model uses

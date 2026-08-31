@@ -11,6 +11,7 @@ from ..model import NumericalPlan, NumericalProblem, NumericalValidation, Resour
 from ..trace import NumericalTrace, TracePolicy
 from ._common import (
     MACHINE_EPSILON,
+    QUALIFIED_PLATFORM_SUPPORT,
     ApproximationExecution,
     ApproximationResult,
     ApproximationStopped,
@@ -18,9 +19,13 @@ from ._common import (
     data_problem,
     default_budget,
     failed_result,
+    interval_coordinate,
+    interval_geometry,
     make_result,
     validate_nodes_values,
 )
+
+MAX_VALIDATED_BARYCENTRIC_NODES = 32
 
 
 def interpolation_problem(
@@ -40,6 +45,22 @@ def interpolation_problem(
     x, y = validate_nodes_values(nodes, values)
     if method not in ("auto", "barycentric", "linear"):
         raise ValueError("interpolation method must be auto, barycentric, or linear")
+    if method != "linear" and len(x) > MAX_VALIDATED_BARYCENTRIC_NODES:
+        raise ValueError(
+            "validated barycentric interpolation supports at most "
+            + str(MAX_VALIDATED_BARYCENTRIC_NODES)
+            + " nodes; choose method='linear' or reduce the global polynomial degree"
+        )
+    if method == "linear":
+        _linear_model(x, y)
+    else:
+        midpoint, radius = interval_geometry(x[0], x[-1])
+        scaled = [interval_coordinate(value, midpoint, radius) for value in x]
+        if len(set(scaled)) != len(scaled):
+            raise ValueError(
+                "interpolation nodes collide after binary64 affine scaling; "
+                "rescale the data or use method='linear'"
+            )
     budget = (
         default_budget(work_items=len(x) + 8)
         if resource_budget is None
@@ -79,7 +100,8 @@ def plan_interpolation(problem: NumericalProblem) -> NumericalPlan:
             "evaluation_complexity": "O(n)",
             "validation": ["node_reproduction", "newton_form_crosscheck"],
             "numeric_types": ["binary64"],
-            "platforms": ["browser", "node", "sea", "native-four-platform"],
+            "maximum_validated_nodes": MAX_VALIDATED_BARYCENTRIC_NODES,
+            "platform_support": QUALIFIED_PLATFORM_SUPPORT,
         }
         rejected = [
             {
@@ -99,7 +121,7 @@ def plan_interpolation(problem: NumericalProblem) -> NumericalPlan:
             "evaluation_complexity": "O(log n)",
             "validation": ["node_reproduction"],
             "numeric_types": ["binary64"],
-            "platforms": ["browser", "node", "sea", "native-four-platform"],
+            "platform_support": QUALIFIED_PLATFORM_SUPPORT,
         }
         rejected = [
             {
@@ -125,21 +147,28 @@ def plan_interpolation(problem: NumericalProblem) -> NumericalPlan:
 
 def _scaled_barycentric_weights(
     nodes: Sequence[float], execution: ApproximationExecution
-) -> list[float]:
+) -> tuple[list[float], list[float], float, float]:
     """Compute relative Lagrange weights without product overflow."""
     count = len(nodes)
-    span = nodes[-1] - nodes[0]
+    midpoint, radius = interval_geometry(nodes[0], nodes[-1])
+    scaled_nodes = [interval_coordinate(value, midpoint, radius) for value in nodes]
+    if len(set(scaled_nodes)) != count:
+        raise ValueError(
+            "interpolation nodes collide after binary64 affine scaling; "
+            "rescale the data or use method='linear'"
+        )
     logs: list[float] = []
     signs: list[float] = []
     for i in range(count):
         execution.step()
         log_magnitude = 0.0
         sign = 1.0
-        xi = nodes[i]
         for j in range(count):
             if i == j:
                 continue
-            difference = (xi - nodes[j]) / span
+            if j % 32 == 0:
+                execution.check()
+            difference = scaled_nodes[i] - scaled_nodes[j]
             if difference < 0.0:
                 sign = -sign
             log_magnitude -= math.log(abs(difference))
@@ -158,14 +187,28 @@ def _scaled_barycentric_weights(
             "barycentric weights underflowed; use fewer or Chebyshev-clustered "
             "nodes, or choose method='linear'"
         )
-    return weights
+    return weights, scaled_nodes, midpoint, radius
 
 
-def _linear_model(nodes: list[float], values: list[float]) -> dict[str, Any]:
-    slopes = [
-        (values[index + 1] - values[index]) / (nodes[index + 1] - nodes[index])
-        for index in range(len(nodes) - 1)
-    ]
+def _linear_model(
+    nodes: list[float],
+    values: list[float],
+    execution: ApproximationExecution | None = None,
+) -> dict[str, Any]:
+    slopes: list[float] = []
+    for index in range(len(nodes) - 1):
+        if execution is not None and index % 32 == 0:
+            execution.check()
+        width = nodes[index + 1] - nodes[index]
+        difference = values[index + 1] - values[index]
+        if not math.isfinite(width) or not math.isfinite(difference):
+            raise ValueError(
+                "piecewise-linear segment arithmetic exceeds the binary64 envelope"
+            )
+        slope = difference / width
+        if not math.isfinite(slope):
+            raise ValueError("piecewise-linear slope is not representable in binary64")
+        slopes.append(slope)
     return {
         "kind": "piecewise_linear",
         "nodes": nodes,
@@ -178,12 +221,18 @@ def _linear_model(nodes: list[float], values: list[float]) -> dict[str, Any]:
 
 
 def _newton_coefficients(
-    nodes: Sequence[float], values: Sequence[float]
+    nodes: Sequence[float],
+    values: Sequence[float],
+    execution: ApproximationExecution | None = None,
 ) -> list[float]:
     coefficients = list(values)
     count = len(nodes)
     for order in range(1, count):
+        if execution is not None:
+            execution.check()
         for index in range(count - 1, order - 1, -1):
+            if execution is not None and index % 32 == 0:
+                execution.check()
             coefficients[index] = (coefficients[index] - coefficients[index - 1]) / (
                 nodes[index] - nodes[index - order]
             )
@@ -219,10 +268,12 @@ def _barycentric_value(model: Mapping[str, Any], x: float, derivative: int) -> f
     nodes = model["nodes"]
     values = model["values"]
     weights = model["weights"]
+    scaled_nodes = model.get("scaled_nodes")
     if (
         not isinstance(nodes, list)
         or not isinstance(values, list)
         or not isinstance(weights, list)
+        or not isinstance(scaled_nodes, list)
     ):
         raise TypeError("invalid barycentric model")
     for index in range(len(nodes)):
@@ -231,18 +282,31 @@ def _barycentric_value(model: Mapping[str, Any], x: float, derivative: int) -> f
                 return float(values[index])
             terms = []
             wi = float(weights[index])
-            xi = float(nodes[index])
+            ti = float(scaled_nodes[index])
             yi = float(values[index])
             for other in range(len(nodes)):
                 if other != index:
                     terms.append(
                         (float(weights[other]) / wi)
                         * (float(values[other]) - yi)
-                        / (xi - float(nodes[other]))
+                        / (ti - float(scaled_nodes[other]))
                     )
-            return math.fsum(terms)
+            radius = float(model["interval_radius"])
+            inverse_radius = 1.0 / radius
+            if not math.isfinite(inverse_radius):
+                raise ArithmeticError(
+                    "interpolant derivative scale is not representable"
+                )
+            answer = inverse_radius * math.fsum(terms)
+            if not math.isfinite(answer):
+                raise ArithmeticError("interpolant derivative overflowed binary64")
+            return answer
+    midpoint = float(model["interval_midpoint"])
+    radius = float(model["interval_radius"])
+    coordinate = interval_coordinate(x, midpoint, radius)
     terms = [
-        float(weights[index]) / (x - float(nodes[index])) for index in range(len(nodes))
+        float(weights[index]) / (coordinate - float(scaled_nodes[index]))
+        for index in range(len(nodes))
     ]
     denominator = math.fsum(terms)
     if denominator == 0.0 or not math.isfinite(denominator):
@@ -251,15 +315,27 @@ def _barycentric_value(model: Mapping[str, Any], x: float, derivative: int) -> f
         terms[index] * float(values[index]) for index in range(len(nodes))
     )
     value = numerator / denominator
+    if not math.isfinite(value):
+        raise ArithmeticError("barycentric evaluation overflowed binary64")
     if derivative == 0:
         return value
-    squared = [terms[index] / (x - float(nodes[index])) for index in range(len(nodes))]
-    return (
+    squared = [
+        terms[index] / (coordinate - float(scaled_nodes[index]))
+        for index in range(len(nodes))
+    ]
+    derivative_coordinate = (
         value * math.fsum(squared)
         - math.fsum(
             squared[index] * float(values[index]) for index in range(len(nodes))
         )
     ) / denominator
+    inverse_radius = 1.0 / radius
+    if not math.isfinite(inverse_radius):
+        raise ArithmeticError("interpolant derivative scale is not representable")
+    answer = inverse_radius * derivative_coordinate
+    if not math.isfinite(answer):
+        raise ArithmeticError("interpolant derivative overflowed binary64")
+    return answer
 
 
 def evaluate_interpolant(
@@ -269,7 +345,7 @@ def evaluate_interpolant(
     point = float(x)
     if not math.isfinite(point):
         raise ValueError("interpolation query must be finite")
-    if derivative not in (0, 1):
+    if isinstance(derivative, bool) or derivative not in (0, 1):
         raise ValueError("interpolation derivative order must be 0 or 1")
     kind = model.get("kind")
     if kind == "barycentric_polynomial":
@@ -286,30 +362,52 @@ def evaluate_interpolant(
             raise TypeError("invalid piecewise-linear model")
         index = _interval_index(nodes, point)
         if derivative == 1:
+            for knot in range(1, len(nodes) - 1):
+                if point == float(nodes[knot]):
+                    left = float(slopes[knot - 1])
+                    right = float(slopes[knot])
+                    if left != right:
+                        raise ValueError(
+                            "piecewise-linear derivative is undefined at an interior knot"
+                        )
+                    return left
             return float(slopes[index])
-        return float(values[index]) + float(slopes[index]) * (
+        answer = float(values[index]) + float(slopes[index]) * (
             point - float(nodes[index])
         )
+        if not math.isfinite(answer):
+            raise ArithmeticError("piecewise-linear evaluation overflowed binary64")
+        return answer
     raise ValueError("unknown interpolation model")
 
 
-def _lebesgue_estimate(model: Mapping[str, Any]) -> float:
+def _lebesgue_estimate(
+    model: Mapping[str, Any], execution: ApproximationExecution | None = None
+) -> float:
     nodes = model["nodes"]
     weights = model["weights"]
-    if not isinstance(nodes, list) or not isinstance(weights, list):
+    scaled_nodes = model.get("scaled_nodes")
+    if (
+        not isinstance(nodes, list)
+        or not isinstance(weights, list)
+        or not isinstance(scaled_nodes, list)
+    ):
         return 1.0
     count = min(257, max(33, 4 * len(nodes) + 1))
-    lower = float(nodes[0])
-    upper = float(nodes[-1])
     maximum = 1.0
     for sample in range(count):
-        x = lower + (upper - lower) * (sample + 0.5) / count
-        if any(x == float(node) for node in nodes):
+        if execution is not None:
+            execution.check()
+        coordinate = -1.0 + 2.0 * (sample + 0.5) / count
+        if any(coordinate == float(node) for node in scaled_nodes):
             continue
-        terms = [
-            float(weights[index]) / (x - float(nodes[index]))
-            for index in range(len(nodes))
-        ]
+        terms: list[float] = []
+        for index in range(len(scaled_nodes)):
+            if execution is not None and index % 32 == 0:
+                execution.check()
+            terms.append(
+                float(weights[index]) / (coordinate - float(scaled_nodes[index]))
+            )
         denominator = abs(math.fsum(terms))
         if denominator == 0.0:
             return 1.0e308
@@ -336,46 +434,71 @@ def solve_interpolation_problem(
     values_value = problem.initial_data.get("values")
     if not isinstance(nodes_value, list) or not isinstance(values_value, list):
         raise ValueError("interpolation problem is missing sampled data")
-    nodes = [float(value) for value in nodes_value]
-    values = [float(value) for value in values_value]
+    nodes, values = validate_nodes_values(nodes_value, values_value)
     diagnostics: list[NumericalDiagnostic] = []
     try:
         if plan.method == "linear":
-            model = _linear_model(nodes, values)
+            model = _linear_model(nodes, values, execution)
             execution.step()
+            crosscheck_kind = "direct_segment_crosscheck"
             crosscheck = 0.0
+            for index in range(len(nodes) - 1):
+                execution.check()
+                point = nodes[index] + 0.5 * (nodes[index + 1] - nodes[index])
+                direct = 0.5 * values[index] + 0.5 * values[index + 1]
+                crosscheck = max(
+                    crosscheck, abs(evaluate_interpolant(model, point) - direct)
+                )
             condition = 1.0
         else:
-            weights = _scaled_barycentric_weights(nodes, execution)
+            if len(nodes) > MAX_VALIDATED_BARYCENTRIC_NODES:
+                raise ApproximationStopped("invalid_problem")
+            weights, scaled_nodes, midpoint, radius = _scaled_barycentric_weights(
+                nodes, execution
+            )
             model: dict[str, Any] = {
                 "kind": "barycentric_polynomial",
                 "nodes": nodes,
                 "values": values,
                 "weights": weights,
+                "scaled_nodes": scaled_nodes,
+                "interval_midpoint": midpoint,
+                "interval_radius": radius,
                 "weight_normalization": "max-absolute-one",
                 "explanation": (
                     "The second barycentric formula is used directly; no "
                     "Vandermonde system or monomial expansion is formed."
                 ),
             }
-            condition = _lebesgue_estimate(model)
+            condition = _lebesgue_estimate(model, execution)
             model["condition_estimate"] = condition
+            crosscheck_kind = "newton_form_crosscheck"
             crosscheck = 0.0
-            if len(nodes) <= 32:
-                coefficients = _newton_coefficients(nodes, values)
-                for index in range(len(nodes) - 1):
-                    point = nodes[index] + 0.3819660112501051 * (
-                        nodes[index + 1] - nodes[index]
-                    )
-                    left = evaluate_interpolant(model, point)
-                    right = _newton_evaluate(nodes, coefficients, point)
-                    crosscheck = max(crosscheck, abs(left - right))
-        node_residual = max(
-            abs(evaluate_interpolant(model, nodes[index]) - values[index])
-            for index in range(len(nodes))
-        )
+            coefficients = _newton_coefficients(scaled_nodes, values, execution)
+            for index in range(len(nodes) - 1):
+                execution.check()
+                coordinate = scaled_nodes[index] + 0.3819660112501051 * (
+                    scaled_nodes[index + 1] - scaled_nodes[index]
+                )
+                point = midpoint + radius * coordinate
+                left = evaluate_interpolant(model, point)
+                right = _newton_evaluate(scaled_nodes, coefficients, coordinate)
+                if not math.isfinite(right):
+                    raise ArithmeticError("Newton cross-check overflowed binary64")
+                crosscheck = max(crosscheck, abs(left - right))
+        node_residual = 0.0
+        for index in range(len(nodes)):
+            execution.check()
+            node_residual = max(
+                node_residual,
+                abs(evaluate_interpolant(model, nodes[index]) - values[index]),
+            )
     except ApproximationStopped as stopped:
         return failed_result(problem, plan, execution, stopped.status)
+    except ValueError:
+        return failed_result(problem, plan, execution, "invalid_problem")
+    except ArithmeticError:
+        return failed_result(problem, plan, execution, "validation_failed")
     scale = max(1.0, max(abs(value) for value in values))
     tolerance = 256.0 * MACHINE_EPSILON * scale * max(1.0, min(condition, 1.0e8))
     passed = node_residual <= tolerance and crosscheck <= tolerance
@@ -404,9 +527,9 @@ def solve_interpolation_problem(
                 "passed": node_residual <= tolerance,
             },
             {
-                "kind": "newton_form_crosscheck",
+                "kind": crosscheck_kind,
                 "maximum_disagreement": crosscheck,
-                "performed": len(nodes) <= 32 and plan.method == "barycentric",
+                "performed": True,
                 "passed": crosscheck <= tolerance,
             },
         ],

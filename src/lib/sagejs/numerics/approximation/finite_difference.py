@@ -16,6 +16,7 @@ from ..model import (
 from ..trace import NumericalTrace, TracePolicy
 from ._common import (
     MACHINE_EPSILON,
+    QUALIFIED_PLATFORM_SUPPORT,
     ApproximationExecution,
     ApproximationResult,
     ApproximationStopped,
@@ -25,6 +26,8 @@ from ._common import (
     make_result,
     trace_policy,
 )
+
+MAX_STENCIL_SIZE = 65
 
 
 def _stencil_offsets(
@@ -88,10 +91,22 @@ def finite_difference_problem(
         or accuracy_order < 1
     ):
         raise ValueError("accuracy_order must be a positive integer")
+    if derivative_order + accuracy_order > MAX_STENCIL_SIZE:
+        raise ValueError(
+            "the portable binary64 finite-difference stencil supports at most "
+            + str(MAX_STENCIL_SIZE)
+            + " points"
+        )
     selected_stencil = "central" if stencil == "auto" else stencil
     offsets, truncation_order = _stencil_offsets(
         derivative_order, accuracy_order, selected_stencil
     )
+    if len(offsets) > MAX_STENCIL_SIZE:
+        raise ValueError(
+            "the portable binary64 finite-difference stencil supports at most "
+            + str(MAX_STENCIL_SIZE)
+            + " points"
+        )
     selected_step = (
         _automatic_step(point, derivative_order, truncation_order)
         if step is None
@@ -99,8 +114,27 @@ def finite_difference_problem(
     )
     if not math.isfinite(selected_step) or selected_step <= 0.0:
         raise ValueError("finite-difference step must be positive and finite")
-    if atol < 0.0 or rtol < 0.0 or (atol == 0.0 and rtol == 0.0):
+    if isinstance(atol, bool) or isinstance(rtol, bool):
+        raise ValueError("finite-difference tolerances must be real numbers")
+    atol_value = float(atol)
+    rtol_value = float(rtol)
+    if (
+        not math.isfinite(atol_value)
+        or not math.isfinite(rtol_value)
+        or atol_value < 0.0
+        or rtol_value < 0.0
+        or (atol_value == 0.0 and rtol_value == 0.0)
+    ):
         raise ValueError("at least one finite-difference tolerance must be positive")
+    for candidate_step in (selected_step, selected_step / 2.0):
+        for offset in offsets:
+            sample_point = point + offset * candidate_step
+            if not math.isfinite(sample_point):
+                raise ValueError(
+                    "finite-difference stencil leaves the finite binary64 domain"
+                )
+            if offset != 0.0 and sample_point == point:
+                raise ValueError("finite-difference step is not representable at x")
     evaluations = 2 * len(offsets) + (1 if derivative is not None else 0)
     budget = (
         default_budget(work_items=8, evaluations=evaluations)
@@ -132,7 +166,7 @@ def finite_difference_problem(
             "automatic_step": step is None,
         },
         bounds={},
-        tolerances={"atol": float(atol), "rtol": float(rtol)},
+        tolerances={"atol": atol_value, "rtol": rtol_value},
         method="fornberg-" + selected_stencil,
         derivative_record={
             "kind": "analytic_reference" if derivative is not None else "none",
@@ -174,7 +208,8 @@ def plan_finite_difference(problem: NumericalProblem) -> NumericalPlan:
                 "cancellation-index",
             ],
             "numeric_types": ["binary64"],
-            "platforms": ["browser", "node", "sea", "native-four-platform"],
+            "maximum_stencil_size": MAX_STENCIL_SIZE,
+            "platform_support": QUALIFIED_PLATFORM_SUPPORT,
         },
         expected_resources={
             "initial_step": data.get("step"),
@@ -186,17 +221,26 @@ def plan_finite_difference(problem: NumericalProblem) -> NumericalPlan:
     )
 
 
-def fornberg_weights(offsets: Sequence[float], derivative_order: int) -> list[float]:
-    """Generate derivative weights at zero on arbitrary distinct offsets.
-
-    This is the recursive algorithm from Fornberg, *Mathematics of
-    Computation* 51 (1988), 699-706. Returned weights act on a unit-spaced
-    stencil and therefore must be divided by `h**derivative_order`.
-    """
+def _fornberg_weights(
+    offsets: Sequence[float],
+    derivative_order: int,
+    checkpoint: Callable[[], None] | None,
+) -> list[float]:
+    """Single Fornberg recursion with optional resource checkpoints."""
+    if isinstance(derivative_order, bool) or not isinstance(derivative_order, int):
+        raise ValueError("derivative order must be an integer")
     points = [float(value) for value in offsets]
     count = len(points)
+    if count > MAX_STENCIL_SIZE:
+        raise ValueError(
+            "finite-difference stencils support at most "
+            + str(MAX_STENCIL_SIZE)
+            + " points"
+        )
     if derivative_order < 0 or derivative_order >= count:
         raise ValueError("derivative order must be smaller than the stencil")
+    if any(not math.isfinite(point) for point in points):
+        raise ValueError("finite-difference offsets must be finite")
     if len(set(points)) != count:
         raise ValueError("finite-difference offsets must be distinct")
     coefficients = [[0.0] * (derivative_order + 1) for _ in range(count)]
@@ -204,11 +248,15 @@ def fornberg_weights(offsets: Sequence[float], derivative_order: int) -> list[fl
     product_previous = 1.0
     distance_current = points[0]
     for i in range(1, count):
+        if checkpoint is not None:
+            checkpoint()
         maximum_order = min(i, derivative_order)
         product_current = 1.0
         distance_previous = distance_current
         distance_current = points[i]
         for j in range(i):
+            if checkpoint is not None and j % 16 == 0:
+                checkpoint()
             separation = points[i] - points[j]
             product_current *= separation
             if j == i - 1:
@@ -234,7 +282,63 @@ def fornberg_weights(offsets: Sequence[float], derivative_order: int) -> list[fl
                 ) / separation
             coefficients[j][0] = distance_current * coefficients[j][0] / separation
         product_previous = product_current
-    return [row[derivative_order] for row in coefficients]
+    weights = [row[derivative_order] for row in coefficients]
+    if any(not math.isfinite(weight) for weight in weights):
+        raise ValueError("finite-difference weights exceed the binary64 envelope")
+    return weights
+
+
+def fornberg_weights(offsets: Sequence[float], derivative_order: int) -> list[float]:
+    """Generate derivative weights at zero on arbitrary distinct offsets.
+
+    This is the recursive algorithm from Fornberg, *Mathematics of
+    Computation* 51 (1988), 699-706. Returned weights act on a unit-spaced
+    stencil and therefore must be divided by `h**derivative_order`.
+    """
+    return _fornberg_weights(offsets, derivative_order, None)
+
+
+def _fornberg_weights_with_execution(
+    offsets: Sequence[float],
+    derivative_order: int,
+    execution: ApproximationExecution,
+) -> list[float]:
+    """Run the same recursion with bounded cancellation/time checkpoints."""
+    return _fornberg_weights(offsets, derivative_order, execution.check)
+
+
+def _moment_validation(
+    offsets: Sequence[float],
+    weights: Sequence[float],
+    derivative_order: int,
+    checkpoint: Callable[[], None] | None = None,
+) -> tuple[float, float]:
+    """Check the polynomial moments that define a derivative stencil."""
+    derivative_factorial = 1.0
+    for factor in range(2, derivative_order + 1):
+        derivative_factorial *= factor
+    maximum_normalized_residual = 0.0
+    for power in range(len(offsets)):
+        if checkpoint is not None:
+            checkpoint()
+        terms: list[float] = []
+        for index in range(len(offsets)):
+            if checkpoint is not None and index % 16 == 0:
+                checkpoint()
+            term = weights[index] * offsets[index] ** power
+            if not math.isfinite(term):
+                return math.inf, 2048.0 * MACHINE_EPSILON * max(1, len(offsets))
+            terms.append(term)
+        observed = math.fsum(terms)
+        expected = derivative_factorial if power == derivative_order else 0.0
+        scale = max(1.0, abs(expected), math.fsum(abs(term) for term in terms))
+        if not math.isfinite(observed) or not math.isfinite(scale):
+            return math.inf, 2048.0 * MACHINE_EPSILON * max(1, len(offsets))
+        maximum_normalized_residual = max(
+            maximum_normalized_residual, abs(observed - expected) / scale
+        )
+    tolerance = 2048.0 * MACHINE_EPSILON * max(1, len(offsets))
+    return maximum_normalized_residual, tolerance
 
 
 def _estimate_at_step(
@@ -247,13 +351,22 @@ def _estimate_at_step(
     iteration: int,
 ) -> tuple[float, float, float, list[float], list[float], list[float]]:
     execution.step()
-    scale = step**derivative_order
+    try:
+        scale = step**derivative_order
+    except OverflowError:
+        raise ApproximationStopped("invalid_problem") from None
+    if not math.isfinite(scale) or scale == 0.0:
+        raise ApproximationStopped("invalid_problem")
     weights = [value / scale for value in unit_weights]
+    if any(not math.isfinite(weight) for weight in weights):
+        raise ApproximationStopped("invalid_problem")
     points: list[float] = []
     values: list[float] = []
     terms: list[float] = []
     for index in range(len(offsets)):
         point = x + offsets[index] * step
+        if not math.isfinite(point):
+            raise ApproximationStopped("invalid_problem")
         if point == x and offsets[index] != 0.0:
             raise ApproximationStopped("stagnation")
         value = execution.evaluate(
@@ -265,6 +378,8 @@ def _estimate_at_step(
         values.append(value)
         terms.append(weights[index] * value)
     estimate = math.fsum(terms)
+    if not math.isfinite(estimate):
+        raise ApproximationStopped("validation_failed")
     term_norm = math.fsum(abs(value) for value in terms)
     roundoff = MACHINE_EPSILON * term_norm
     cancellation = term_norm / max(abs(estimate), 2.2250738585072014e-308)
@@ -307,7 +422,12 @@ def solve_finite_difference_problem(
     x = float(data["x"])
     step = float(data["step"])
     try:
-        unit_weights = fornberg_weights(offsets, derivative_order)
+        unit_weights = _fornberg_weights_with_execution(
+            offsets, derivative_order, execution
+        )
+        moment_residual, moment_tolerance = _moment_validation(
+            offsets, unit_weights, derivative_order, execution.check
+        )
         coarse = _estimate_at_step(
             execution,
             x,
@@ -330,15 +450,22 @@ def solve_finite_difference_problem(
         correction = (fine[0] - coarse[0]) / richardson_denominator
         estimate = fine[0] + correction
         error_estimate = abs(correction) + fine[1] + coarse[1]
+        if not math.isfinite(estimate) or not math.isfinite(error_estimate):
+            raise ApproximationStopped("validation_failed")
+        execution.check()
         analytic = None
         if problem.derivative is not None:
             analytic = execution.evaluate_derivative_reference(x)
     except ApproximationStopped as stopped:
         return failed_result(problem, plan, execution, stopped.status)
-    tolerance = float(problem.tolerances["atol"]) + float(
-        problem.tolerances["rtol"]
-    ) * abs(estimate)
+    except ValueError:
+        return failed_result(problem, plan, execution, "invalid_problem")
+    except (ArithmeticError, OverflowError):
+        return failed_result(problem, plan, execution, "validation_failed")
+    atol = float(problem.tolerances["atol"])
+    rtol = float(problem.tolerances["rtol"])
     if analytic is None:
+        tolerance = atol + rtol * abs(estimate)
         residual = abs(fine[0] - coarse[0])
         passed = error_estimate <= tolerance
         truth_level = "heuristic"
@@ -348,8 +475,9 @@ def solve_finite_difference_problem(
             "passed": passed,
         }
     else:
+        tolerance = atol + rtol * abs(analytic)
         residual = abs(estimate - analytic)
-        passed = residual <= max(tolerance, 8.0 * error_estimate)
+        passed = residual <= tolerance
         truth_level = "validated_approximate"
         reference_check = {
             "kind": "analytic_derivative_crosscheck",
@@ -357,6 +485,9 @@ def solve_finite_difference_problem(
             "absolute_error": residual,
             "passed": passed,
         }
+    passed = passed and moment_residual <= moment_tolerance
+    if not math.isfinite(tolerance):
+        return failed_result(problem, plan, execution, "invalid_problem")
     diagnostics: list[NumericalDiagnostic] = [
         NumericalDiagnostic("finite_difference_derivative")
     ]
@@ -402,7 +533,9 @@ def solve_finite_difference_problem(
                 "kind": "finite_difference_moments",
                 "derivative_order": derivative_order,
                 "stencil_size": len(offsets),
-                "passed": True,
+                "maximum_normalized_residual": moment_residual,
+                "tolerance": moment_tolerance,
+                "passed": moment_residual <= moment_tolerance,
             },
             reference_check,
         ],

@@ -11,6 +11,7 @@ from ..model import NumericalPlan, NumericalProblem, NumericalValidation, Resour
 from ..trace import NumericalTrace, TracePolicy
 from ._common import (
     MACHINE_EPSILON,
+    QUALIFIED_PLATFORM_SUPPORT,
     ApproximationExecution,
     ApproximationResult,
     ApproximationStopped,
@@ -84,6 +85,37 @@ def _normalize_boundary(boundary: Any) -> dict[str, Any]:
     }
 
 
+def _validate_spline_envelope(
+    nodes: Sequence[float], values: Sequence[float]
+) -> list[float]:
+    """Validate the finite spacing and slope arithmetic used by every solver."""
+    widths = [nodes[index + 1] - nodes[index] for index in range(len(nodes) - 1)]
+    if any(not math.isfinite(width) or width <= 0.0 for width in widths):
+        raise ValueError(
+            "spline node spacing exceeds the supported binary64 envelope; rescale nodes"
+        )
+    if not math.isfinite(1.0 / min(widths)):
+        raise ValueError(
+            "spline inverse node spacing exceeds the supported binary64 envelope; "
+            "rescale nodes"
+        )
+    if any(
+        not math.isfinite(widths[index - 1] + widths[index])
+        for index in range(1, len(widths))
+    ):
+        raise ValueError(
+            "adjacent spline spacing exceeds the supported binary64 envelope; rescale nodes"
+        )
+    if any(
+        not math.isfinite(values[index + 1] - values[index])
+        for index in range(len(values) - 1)
+    ):
+        raise ValueError(
+            "adjacent spline value differences exceed the supported binary64 envelope"
+        )
+    return widths
+
+
 def spline_problem(
     nodes: Sequence[Any],
     values: Sequence[Any],
@@ -100,6 +132,7 @@ def spline_problem(
     is 1 or 2.
     """
     x, y = validate_nodes_values(nodes, values)
+    _validate_spline_envelope(x, y)
     normalized = _normalize_boundary(boundary)
     if normalized["kind"] == "periodic":
         if len(x) < 3:
@@ -161,7 +194,7 @@ def plan_spline(problem: NumericalProblem) -> NumericalPlan:
                 "boundary_residual",
             ],
             "numeric_types": ["binary64"],
-            "platforms": ["browser", "node", "sea", "native-four-platform"],
+            "platform_support": QUALIFIED_PLATFORM_SUPPORT,
         },
         expected_resources={
             "sample_count": count,
@@ -216,10 +249,7 @@ def _solve_explicit_second_derivatives(
     execution: ApproximationExecution,
 ) -> tuple[list[float], float]:
     count = len(nodes)
-    h = [nodes[index + 1] - nodes[index] for index in range(count - 1)]
-    delta = [
-        (values[index + 1] - values[index]) / h[index] for index in range(count - 1)
-    ]
+    h, delta = _spline_spacing_and_slopes(nodes, values, execution)
     lower = [0.0] * (count - 1)
     diagonal = [0.0] * count
     upper = [0.0] * (count - 1)
@@ -258,10 +288,7 @@ def _solve_not_a_knot(
     execution: ApproximationExecution,
 ) -> tuple[list[float], float]:
     count = len(nodes)
-    h = [nodes[index + 1] - nodes[index] for index in range(count - 1)]
-    delta = [
-        (values[index + 1] - values[index]) / h[index] for index in range(count - 1)
-    ]
+    h, delta = _spline_spacing_and_slopes(nodes, values, execution)
     if count == 2:
         return [0.0, 0.0], 1.0
     if count == 3:
@@ -300,10 +327,7 @@ def _solve_periodic(
     execution: ApproximationExecution,
 ) -> tuple[list[float], float]:
     count = len(nodes)
-    h = [nodes[index + 1] - nodes[index] for index in range(count - 1)]
-    delta = [
-        (values[index + 1] - values[index]) / h[index] for index in range(count - 1)
-    ]
+    h, delta = _spline_spacing_and_slopes(nodes, values, execution)
     size = count - 1
     diagonal = [0.0] * size
     lower = [0.0] * (size - 1)
@@ -348,6 +372,26 @@ def _solve_periodic(
     return answer + [answer[0]], max(condition_x, condition_z)
 
 
+def _spline_spacing_and_slopes(
+    nodes: Sequence[float],
+    values: Sequence[float],
+    execution: ApproximationExecution,
+) -> tuple[list[float], list[float]]:
+    """Materialize spline geometry with bounded cancellation/time latency."""
+    widths: list[float] = []
+    slopes: list[float] = []
+    for index in range(len(nodes) - 1):
+        if index % 32 == 0:
+            execution.check()
+        width = nodes[index + 1] - nodes[index]
+        slope = (values[index + 1] - values[index]) / width
+        if not math.isfinite(width) or width <= 0.0 or not math.isfinite(slope):
+            raise ArithmeticError("spline spacing or divided difference is not finite")
+        widths.append(width)
+        slopes.append(slope)
+    return widths, slopes
+
+
 def _spline_model(
     nodes: list[float],
     values: list[float],
@@ -362,14 +406,15 @@ def _spline_model(
         execution.step()
         width = nodes[index + 1] - nodes[index]
         slope = (values[index + 1] - values[index]) / width
-        coefficients.append(
-            [
-                values[index],
-                slope - width * (2.0 * second[index] + second[index + 1]) / 6.0,
-                second[index] / 2.0,
-                (second[index + 1] - second[index]) / (6.0 * width),
-            ]
-        )
+        row = [
+            values[index],
+            slope - width * (2.0 * second[index] + second[index + 1]) / 6.0,
+            second[index] / 2.0,
+            (second[index + 1] - second[index]) / (6.0 * width),
+        ]
+        if any(not math.isfinite(value) for value in row):
+            raise ArithmeticError("spline coefficients exceed the binary64 envelope")
+        coefficients.append(row)
         execution.trace.append(
             "iteration",
             iteration=index + 1,
@@ -428,9 +473,42 @@ def evaluate_spline(model: Mapping[str, Any], x: float, derivative: int = 0) -> 
     point = float(x)
     if not math.isfinite(point):
         raise ValueError("spline query must be finite")
-    if derivative not in (0, 1, 2, 3):
+    if isinstance(derivative, bool) or derivative not in (0, 1, 2, 3):
         raise ValueError("spline derivative order must be between 0 and 3")
     index, adjusted = _spline_interval(model, point)
+    if derivative == 3:
+        nodes_value = model.get("nodes")
+        coefficients_value = model.get("coefficients")
+        if not isinstance(nodes_value, list) or not isinstance(
+            coefficients_value, list
+        ):
+            raise TypeError("invalid spline model")
+        knot_index: int | None = None
+        for candidate in range(1, len(nodes_value) - 1):
+            if adjusted == float(nodes_value[candidate]):
+                knot_index = candidate
+                break
+        if bool(model.get("periodic")) and adjusted == float(nodes_value[0]):
+            left_third = 6.0 * float(coefficients_value[-1][3])
+            right_third = 6.0 * float(coefficients_value[0][3])
+            if left_third != right_third:
+                raise ValueError(
+                    "periodic spline third derivative is undefined at the period boundary"
+                )
+        elif knot_index is not None:
+            left_third = 6.0 * float(coefficients_value[knot_index - 1][3])
+            right_third = 6.0 * float(coefficients_value[knot_index][3])
+            if left_third != right_third:
+                raise ValueError(
+                    "spline third derivative is undefined at an interior knot"
+                )
+    return _evaluate_spline_segment(model, index, adjusted, derivative)
+
+
+def _evaluate_spline_segment(
+    model: Mapping[str, Any], index: int, point: float, derivative: int
+) -> float:
+    """Evaluate one explicitly selected segment without periodic wrapping."""
     nodes = model["nodes"]
     coefficients = model["coefficients"]
     if not isinstance(nodes, list) or not isinstance(coefficients, list):
@@ -439,17 +517,23 @@ def evaluate_spline(model: Mapping[str, Any], x: float, derivative: int = 0) -> 
     if not isinstance(row, list) or len(row) != 4:
         raise TypeError("invalid spline coefficient row")
     a, b, c, d = (float(value) for value in row)
-    dx = adjusted - float(nodes[index])
+    dx = point - float(nodes[index])
     if derivative == 0:
-        return a + dx * (b + dx * (c + dx * d))
-    if derivative == 1:
-        return b + dx * (2.0 * c + dx * 3.0 * d)
-    if derivative == 2:
-        return 2.0 * c + 6.0 * d * dx
-    return 6.0 * d
+        answer = a + dx * (b + dx * (c + dx * d))
+    elif derivative == 1:
+        answer = b + dx * (2.0 * c + dx * 3.0 * d)
+    elif derivative == 2:
+        answer = 2.0 * c + 6.0 * d * dx
+    else:
+        answer = 6.0 * d
+    if not math.isfinite(answer):
+        raise ArithmeticError("spline evaluation overflowed binary64")
+    return answer
 
 
-def _validation_metrics(model: Mapping[str, Any]) -> tuple[float, float, float, float]:
+def _validation_metrics(
+    model: Mapping[str, Any], execution: ApproximationExecution | None = None
+) -> tuple[float, float, float, float]:
     nodes = model["nodes"]
     values = model["values"]
     coefficients = model["coefficients"]
@@ -461,13 +545,23 @@ def _validation_metrics(model: Mapping[str, Any]) -> tuple[float, float, float, 
         or not isinstance(boundary, dict)
     ):
         raise TypeError("invalid spline model")
-    node_residual = max(
-        abs(evaluate_spline(model, float(nodes[index])) - float(values[index]))
-        for index in range(len(nodes))
-    )
+    node_residual = 0.0
+    for index in range(len(nodes)):
+        if execution is not None:
+            execution.check()
+        segment = min(index, len(coefficients) - 1)
+        node_residual = max(
+            node_residual,
+            abs(
+                _evaluate_spline_segment(model, segment, float(nodes[index]), 0)
+                - float(values[index])
+            ),
+        )
     c1_jump = 0.0
     c2_jump = 0.0
     for index in range(1, len(nodes) - 1):
+        if execution is not None:
+            execution.check()
         width = float(nodes[index]) - float(nodes[index - 1])
         left = coefficients[index - 1]
         right = coefficients[index]
@@ -493,12 +587,16 @@ def _validation_metrics(model: Mapping[str, Any]) -> tuple[float, float, float, 
     elif kind == "periodic":
         boundary_residual = max(
             abs(
-                evaluate_spline(model, float(nodes[0]), 1)
-                - evaluate_spline(model, float(nodes[-1]), 1)
+                _evaluate_spline_segment(model, 0, float(nodes[0]), 1)
+                - _evaluate_spline_segment(
+                    model, len(coefficients) - 1, float(nodes[-1]), 1
+                )
             ),
             abs(
-                evaluate_spline(model, float(nodes[0]), 2)
-                - evaluate_spline(model, float(nodes[-1]), 2)
+                _evaluate_spline_segment(model, 0, float(nodes[0]), 2)
+                - _evaluate_spline_segment(
+                    model, len(coefficients) - 1, float(nodes[-1]), 2
+                )
             ),
         )
     else:
@@ -518,7 +616,10 @@ def _validation_metrics(model: Mapping[str, Any]) -> tuple[float, float, float, 
                 - float(right_condition["value"])
             ),
         )
-    return node_residual, c1_jump, c2_jump, boundary_residual
+    metrics = (node_residual, c1_jump, c2_jump, boundary_residual)
+    if any(not math.isfinite(value) for value in metrics):
+        raise ArithmeticError("spline validation residual exceeds binary64")
+    return metrics
 
 
 def solve_spline_problem(
@@ -545,10 +646,15 @@ def solve_spline_problem(
         or not isinstance(boundary_value, dict)
     ):
         raise ValueError("spline problem is missing construction data")
-    nodes = [float(value) for value in nodes_value]
-    values = [float(value) for value in values_value]
     boundary = boundary_value
     try:
+        nodes, values = validate_nodes_values(nodes_value, values_value)
+        widths = _validate_spline_envelope(nodes, values)
+        if boundary.get("kind") == "periodic":
+            scale = max(1.0, max(abs(value) for value in values))
+            if abs(values[0] - values[-1]) > 32.0 * MACHINE_EPSILON * scale:
+                raise ValueError("periodic spline endpoint values must agree")
+            values[-1] = values[0]
         if boundary.get("kind") == "not-a-knot":
             second, condition = _solve_not_a_knot(nodes, values, execution)
         elif boundary.get("kind") == "periodic":
@@ -563,21 +669,28 @@ def solve_spline_problem(
             second,
             boundary,
             bool(problem.initial_data.get("extrapolate", True)),
-            condition,
+            min(condition, 1.0e308),
             execution,
         )
-        node_residual, c1_jump, c2_jump, boundary_residual = _validation_metrics(model)
+        condition = min(condition, 1.0e308)
+        node_residual, c1_jump, c2_jump, boundary_residual = _validation_metrics(
+            model, execution
+        )
     except ApproximationStopped as stopped:
         return failed_result(problem, plan, execution, stopped.status)
+    except ValueError:
+        return failed_result(problem, plan, execution, "invalid_problem")
     except ArithmeticError:
         return failed_result(problem, plan, execution, "validation_failed")
     scale = max(1.0, max(abs(value) for value in values))
-    spacing = min(nodes[index + 1] - nodes[index] for index in range(len(nodes) - 1))
+    spacing = min(widths)
     tolerance = 4096.0 * MACHINE_EPSILON * scale * max(1.0, 1.0 / spacing)
+    if not math.isfinite(tolerance):
+        return failed_result(problem, plan, execution, "validation_failed")
     maximum_residual = max(node_residual, c1_jump, c2_jump, boundary_residual)
     passed = maximum_residual <= tolerance
     diagnostics: list[NumericalDiagnostic] = []
-    if condition > 1.0e10:
+    if condition > 1.0e6:
         diagnostics.append(
             NumericalDiagnostic(
                 "ill_conditioned", details={"pivot_ratio_indicator": condition}

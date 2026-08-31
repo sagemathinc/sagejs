@@ -11,6 +11,7 @@ from ..model import NumericalPlan, NumericalProblem, NumericalValidation, Resour
 from ..trace import NumericalTrace, TracePolicy
 from ._common import (
     MACHINE_EPSILON,
+    QUALIFIED_PLATFORM_SUPPORT,
     ApproximationExecution,
     ApproximationResult,
     ApproximationStopped,
@@ -18,8 +19,12 @@ from ._common import (
     callback_problem,
     default_budget,
     failed_result,
+    interval_coordinate,
+    interval_geometry,
     make_result,
 )
+
+MAX_CHEBYSHEV_DEGREE = 512
 
 
 def polynomial_approximation_problem(
@@ -36,6 +41,11 @@ def polynomial_approximation_problem(
     """Describe fixed-degree polynomial approximation of a callback."""
     if isinstance(degree, bool) or not isinstance(degree, int) or degree < 0:
         raise ValueError("polynomial approximation degree must be nonnegative")
+    if degree > MAX_CHEBYSHEV_DEGREE:
+        raise ValueError(
+            "the direct portable Chebyshev transform supports degree at most "
+            + str(MAX_CHEBYSHEV_DEGREE)
+        )
     if method not in ("auto", "chebyshev"):
         raise ValueError("polynomial approximation method must be auto or chebyshev")
     if tolerance is not None and (
@@ -43,6 +53,10 @@ def polynomial_approximation_problem(
     ):
         raise ValueError("approximation tolerance must be positive and finite")
     count = degree + 1
+    endpoints = [float(interval[index]) for index in range(len(interval))]
+    if len(endpoints) != 2:
+        raise ValueError("interval must contain finite lower < upper endpoints")
+    interval_geometry(endpoints[0], endpoints[1])
     validation_count = max(17, 2 * count + 1)
     budget = (
         default_budget(
@@ -90,7 +104,8 @@ def plan_polynomial_approximation(problem: NumericalProblem) -> NumericalPlan:
             "evaluation_complexity": "O(n)",
             "validation": ["independent-holdout-residual", "coefficient-tail"],
             "numeric_types": ["binary64"],
-            "platforms": ["browser", "node", "sea", "native-four-platform"],
+            "maximum_degree": MAX_CHEBYSHEV_DEGREE,
+            "platform_support": QUALIFIED_PLATFORM_SUPPORT,
         },
         expected_resources={
             "degree": degree,
@@ -161,12 +176,31 @@ def evaluate_chebyshev(
         raise TypeError("invalid Chebyshev model")
     lower = float(interval[0])
     upper = float(interval[1])
+    midpoint, radius = interval_geometry(lower, upper)
     coefficients = [float(value) for value in coefficients_value]
-    scale = 2.0 / (upper - lower)
+    if derivative > len(coefficients) - 1:
+        return 0.0
     for _ in range(derivative):
         coefficients = _differentiate_coefficients(coefficients)
-    t = (2.0 * point - lower - upper) / (upper - lower)
-    return (scale**derivative) * _chebyshev_value(coefficients, t)
+    coordinate = interval_coordinate(point, midpoint, radius)
+    if derivative == 0:
+        scale_factor = 1.0
+    else:
+        inverse_radius = 1.0 / radius
+        if not math.isfinite(inverse_radius):
+            raise ArithmeticError("Chebyshev derivative scale is not representable")
+        try:
+            scale_factor = inverse_radius**derivative
+        except OverflowError:
+            raise ArithmeticError(
+                "Chebyshev derivative scale overflowed binary64"
+            ) from None
+        if not math.isfinite(scale_factor):
+            raise ArithmeticError("Chebyshev derivative scale overflowed binary64")
+    answer = scale_factor * _chebyshev_value(coefficients, coordinate)
+    if not math.isfinite(answer):
+        raise ArithmeticError("Chebyshev evaluation overflowed binary64")
+    return answer
 
 
 def solve_polynomial_approximation_problem(
@@ -191,8 +225,7 @@ def solve_polynomial_approximation_problem(
     upper = float(interval[1])
     degree = int(problem.initial_data["degree"])
     count = degree + 1
-    midpoint = 0.5 * (lower + upper)
-    radius = 0.5 * (upper - lower)
+    midpoint, radius = interval_geometry(lower, upper)
     nodes: list[float] = []
     values: list[float] = []
     try:
@@ -211,10 +244,18 @@ def solve_polynomial_approximation_problem(
         for order in range(count):
             execution.step()
             factor = 1.0 / count if order == 0 else 2.0 / count
-            coefficient = factor * math.fsum(
-                values[index] * math.cos(order * math.pi * (index + 0.5) / count)
-                for index in range(count)
-            )
+            transform_terms: list[float] = []
+            for index in range(count):
+                if index % 32 == 0:
+                    execution.check()
+                transform_terms.append(
+                    factor
+                    * values[index]
+                    * math.cos(order * math.pi * (index + 0.5) / count)
+                )
+            coefficient = math.fsum(transform_terms)
+            if not math.isfinite(coefficient):
+                raise ApproximationStopped("validation_failed")
             coefficients.append(coefficient)
             trace.append(
                 "iteration",
@@ -242,7 +283,7 @@ def solve_polynomial_approximation_problem(
         validation_count = int(problem.initial_data["validation_sample_count"])
         maximum_error = 0.0
         for index in range(validation_count):
-            point = lower + (upper - lower) * index / (validation_count - 1)
+            point = midpoint + radius * (-1.0 + 2.0 * index / (validation_count - 1))
             observed = execution.evaluate(
                 point,
                 iteration=degree + 1,
@@ -251,25 +292,47 @@ def solve_polynomial_approximation_problem(
             maximum_error = max(
                 maximum_error, abs(evaluate_chebyshev(model, point) - observed)
             )
+            execution.check()
     except ApproximationStopped as stopped:
         return failed_result(problem, plan, execution, stopped.status)
-    tail_count = min(4, len(coefficients))
-    tail = math.fsum(abs(value) for value in coefficients[-tail_count:])
-    coefficient_norm = max(1.0, math.fsum(abs(value) for value in coefficients))
-    roundoff_floor = 8.0 * MACHINE_EPSILON * coefficient_norm
-    error_estimate = max(maximum_error, tail, roundoff_floor)
+    except (ArithmeticError, OverflowError):
+        return failed_result(problem, plan, execution, "validation_failed")
+    try:
+        execution.check()
+        tail_count = min(4, max(1, degree // 4)) if degree >= 4 else 0
+        tail = (
+            math.fsum(abs(value) for value in coefficients[-tail_count:])
+            if tail_count > 0
+            else None
+        )
+        coefficient_norm = max(1.0, math.fsum(abs(value) for value in coefficients))
+        roundoff_floor = 8.0 * MACHINE_EPSILON * coefficient_norm
+        error_estimate = max(maximum_error, roundoff_floor)
+        condition_estimate = coefficient_norm / max(
+            max(abs(value) for value in values), 2.2250738585072014e-308
+        )
+        if (
+            (tail is not None and not math.isfinite(tail))
+            or not math.isfinite(coefficient_norm)
+            or not math.isfinite(roundoff_floor)
+            or not math.isfinite(error_estimate)
+            or not math.isfinite(condition_estimate)
+        ):
+            raise ApproximationStopped("validation_failed")
+    except ApproximationStopped as stopped:
+        return failed_result(problem, plan, execution, stopped.status)
+    except (ArithmeticError, OverflowError):
+        return failed_result(problem, plan, execution, "validation_failed")
     model["holdout_maximum_error"] = maximum_error
     model["coefficient_tail"] = tail
     model["roundoff_floor"] = roundoff_floor
     model["error_estimate"] = error_estimate
-    model["condition_estimate"] = coefficient_norm / max(
-        max(abs(value) for value in values), 2.2250738585072014e-308
-    )
+    model["condition_estimate"] = condition_estimate
     target_value = problem.tolerances.get("target")
     target = None if target_value is None else float(target_value)
     passed = target is None or maximum_error <= target
     diagnostics: list[NumericalDiagnostic] = []
-    if tail <= roundoff_floor and degree > 0:
+    if tail is not None and tail <= roundoff_floor:
         diagnostics.append(
             NumericalDiagnostic(
                 "loss_of_significance",
@@ -295,8 +358,9 @@ def solve_polynomial_approximation_problem(
             {
                 "kind": "coefficient_tail_indicator",
                 "tail_l1": tail,
+                "performed": tail is not None,
                 "note": "indicator, not a rigorous uniform error bound",
-                "passed": True,
+                "passed": None,
             },
         ],
         residual=maximum_error,

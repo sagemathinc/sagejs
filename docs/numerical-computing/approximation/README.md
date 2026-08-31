@@ -51,15 +51,21 @@ and point layers that an integration visualizer can lower to `PlotSpec`.
 
 | Operation | Methods and conditions | Construction | Query | Truth level |
 |---|---|---:|---:|---|
-| polynomial interpolation | scaled second-form barycentric | `O(n²)` | `O(n)` | validated approximate |
+| polynomial interpolation | scaled second-form barycentric, at most 32 nodes | `O(n²)` | `O(n)` | validated approximate |
 | piecewise interpolation | linear, end-segment extrapolation | `O(n)` | `O(log n)` | validated approximate |
 | cubic spline | not-a-knot, natural, clamped, periodic, mixed first/second derivative endpoints | `O(n)` | `O(log n)` | validated approximate |
-| finite-difference derivative | Fornberg central/forward/backward stencils, arbitrary derivative order below stencil size | `O(s²)` weights and two `s`-point callback passes | scalar | heuristic, or validated approximate with analytic reference |
-| polynomial approximation | first-kind Chebyshev samples and direct DCT-II | `O(n²)` | `O(n)` | heuristic |
+| finite-difference derivative | Fornberg central/forward/backward stencils, at most 65 points | `O(s²)` weights and two `s`-point callback passes | scalar | heuristic, or validated approximate with analytic reference |
+| polynomial approximation | first-kind Chebyshev samples and direct DCT-II, degree at most 512 | `O(n²)` | `O(n)` | heuristic |
 
 The spline stores interval coefficients in the readable power basis
 `a + b*dx + c*dx² + d*dx³`. Not-a-knot and periodic systems are still solved
 in linear time; large problems do not silently enter a dense solve.
+
+Global barycentric interpolation fails closed above 32 nodes. At or below that
+limit every result is checked at off-node points against an independently
+constructed Newton form. Larger binary64 global polynomials cannot honestly
+claim this validation; use fewer nodes, Chebyshev approximation, or
+`method="linear"` instead.
 
 ## Boundary conditions
 
@@ -90,6 +96,11 @@ values. Periodic evaluation wraps the query into the construction interval.
 Other splines extrapolate their end segment by default; use
 `extrapolate=False` to reject outside queries.
 
+Piecewise-linear first derivatives and spline third derivatives are undefined
+at knots where their one-sided values differ. Evaluation raises `ValueError`
+at such a knot instead of silently selecting the right-hand segment. Values
+and the first two spline derivatives remain well-defined by C2 continuity.
+
 ## Finite-difference planning and error evidence
 
 Planning fixes the stencil and step without calling the function:
@@ -119,7 +130,10 @@ cancellation index. The reported error is a diagnostic estimate, not an
 interval enclosure. Without an analytic derivative, validation is therefore
 `heuristic`. Supplying an analytic reference upgrades only the explicit
 cross-check to `validated_approximate`; it does not make the derivative
-rigorous.
+rigorous. The analytic residual must independently meet the caller's `atol`
+and `rtol`; a large heuristic error estimate never relaxes that requirement.
+The generated weights are also checked against all defining polynomial moments
+before the result can pass.
 
 At a domain boundary, request `stencil="forward"` or `"backward"`. Supplying a
 positive `step` overrides the automatic balance and remains visible in the
@@ -139,6 +153,13 @@ error proof. When `tolerance=` is supplied, failure to meet the observed
 holdout target returns `status="validation_failed"`; raising the degree or
 changing the model is then the appropriate response.
 
+The reported error estimate is the maximum independent holdout residual plus
+a floating-point floor. A final-coefficient tail is recorded separately only
+from degree four onward; it is an indicator and is never promoted into an error
+bound. Overflow-safe affine coordinates support large finite interval
+endpoints. A derivative whose interval scaling cannot be represented fails
+explicitly.
+
 The corpus contrasts this result with a degree-16 polynomial through
 equispaced Runge samples. A stable barycentric representation cannot repair
 an intrinsically poor global node choice: the Chebyshev error is smaller even
@@ -150,8 +171,9 @@ though both computations themselves are stable.
   boundary conditions fail before execution with `ValueError`;
 - callback exceptions and nonfinite callback values produce structured
   `callback_error` and `nonfinite_evaluation` results;
-- cancellation and evaluation/iteration/time limits produce structured
-  resource statuses and preserve the bounded trace;
+- cancellation and evaluation/iteration/time limits produce structured stop
+  reasons and preserve the bounded trace; the integration lane maps the exact
+  `maximum_elapsed_time` reason into the shared status/diagnostic registry;
 - a large sampled Lebesgue indicator emits `ill_conditioned`;
 - independent-form disagreement or a large cancellation index emits
   `loss_of_significance`; and

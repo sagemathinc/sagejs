@@ -40,7 +40,8 @@ For distinct nodes `x_i`, relative weights are
 w_i = 1 / product_{j != i}(x_i - x_j).
 ```
 
-Only their ratios matter. Sage.js accumulates the sign and logarithm of each
+Only their ratios matter. Sage.js first maps every node to an overflow-safe
+affine coordinate on `[-1,1]`, accumulates the sign and logarithm of each
 scaled product, subtracts the largest logarithm, and exponentiates once. This
 avoids overflow/underflow in the unscaled product over the supported envelope.
 If even normalized weights underflow, construction rejects the problem and
@@ -61,8 +62,10 @@ Lambda(x) = sum_i |w_i/(x-x_i)| / |sum_i w_i/(x-x_i)|
 is a conditioning indicator, not a forward-error bound. For at most 32 nodes,
 an independently constructed Newton divided-difference form is checked at
 off-node points. Larger Newton forms become a worse oracle than the
-barycentric form, so the result records that this cross-check was not
-performed.
+barycentric form, so the qualified global-polynomial envelope stops at 32
+nodes and larger requests fail before construction. This avoids attaching a
+passed validation record to a model that received no independent off-node
+check.
 
 ## Cubic splines
 
@@ -97,7 +100,9 @@ d_i = (M_(i+1)-M_i)/(6 h_i).
 ```
 
 Validation independently evaluates every node, all first/second derivative
-jumps, and the chosen endpoint equations.
+jumps, and the chosen endpoint equations. Periodic endpoint checks explicitly
+evaluate the final polynomial segment at `x[-1]`; normal periodic query
+wrapping is not used by validation.
 
 ## Finite differences
 
@@ -124,6 +129,11 @@ The result separately records the correction, weighted floating-point
 roundoff floor, and cancellation index. These quantities diagnose the usual
 truncation/roundoff tradeoff but do not certify an enclosure.
 
+All polynomial moments through degree `s-1` are recomputed from the generated
+weights. When an analytic derivative reference is supplied, its residual must
+meet the requested absolute/relative tolerance directly. The heuristic
+step-halving error cannot widen that acceptance threshold.
+
 ## Chebyshev approximation
 
 For degree `n`, set `N=n+1` and sample at first-kind roots
@@ -140,6 +150,10 @@ c_k = 2 sum_j f(t_j) cos(k*pi*(j+1/2)/N)/N, k > 0.
 ```
 
 Clenshaw recurrence evaluates the series. A coefficient recurrence produces
-derivatives before applying the interval scale. Independent holdout samples
-and the final coefficient tail are recorded as heuristic evidence. Neither is
-labeled a rigorous sup-norm bound.
+derivatives before applying an overflow-safe interval scale. Independent
+holdout samples determine the reported heuristic error together with a
+roundoff floor. From degree four onward a small final coefficient tail is
+recorded separately as a convergence indicator; it is not folded into the
+error estimate or labeled a rigorous sup-norm bound. DCT normalization is
+applied to each term before summation so a representable coefficient does not
+fail because an unscaled intermediate sum overflowed.
