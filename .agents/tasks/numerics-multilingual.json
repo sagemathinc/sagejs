@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerics-multilingual",
+  "title": "Complete numerical multilingual frontends and translation",
+  "lane": "numerical-multilingual",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement P6 canonical frontend intent, natural MATLAB and Wolfram numerical lowering, outward Sage/Python-SciPy/MATLAB/Wolfram code generation, round trips, explicit unsupported diagnostics, docs, fixtures, and benchmarks over the shared numerical semantics",
+  "base_commit": "f345b6ba80c649e010dae202d076a97b86ccccab",
+  "claims": [
+    "src/lib/sagejs/numerics/frontends/",
+    "src/lib/matlab.py",
+    "src/lib/wolfram.py",
+    "test/numerics/multilingual/",
+    "docs/numerical-computing/multilingual/",
+    "bench/numerics/multilingual/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "canonical problem/result round trips",
+      "existing MATLAB and Wolfram parser/runtime behavior"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm test:integration",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
