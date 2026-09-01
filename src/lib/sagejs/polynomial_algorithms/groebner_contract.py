@@ -146,13 +146,32 @@ def _gcd(left: int, right: int) -> int:
     return left
 
 
+def _modular_inverse(value: int, modulus: int) -> int:
+    """Return the inverse without relying on host three-argument `pow`."""
+    value %= modulus
+    old_remainder, remainder = modulus, value
+    old_coefficient, coefficient = 0, 1
+    while remainder:
+        quotient = old_remainder // remainder
+        old_remainder, remainder = remainder, old_remainder - quotient * remainder
+        old_coefficient, coefficient = (
+            coefficient,
+            old_coefficient - quotient * coefficient,
+        )
+    if old_remainder != 1:
+        raise ZeroDivisionError("coefficient is not invertible")
+    return old_coefficient % modulus
+
+
 def _coefficient(value: Coefficient, ring: GroebnerRing) -> Coefficient:
     if ring.characteristic:
         if isinstance(value, tuple):
             numerator, denominator = value
             return (
                 (numerator % ring.characteristic)
-                * pow(denominator % ring.characteristic, -1, ring.characteristic)
+                * _modular_inverse(
+                    denominator % ring.characteristic, ring.characteristic
+                )
                 % ring.characteristic
             )
         return int(value) % ring.characteristic
@@ -225,7 +244,7 @@ def _coefficient_inverse(value: Coefficient, ring: GroebnerRing) -> Coefficient:
     if value == _zero(ring):
         raise ZeroDivisionError("division by zero coefficient")
     if ring.characteristic:
-        return pow(_prime_coefficient(value), -1, ring.characteristic)
+        return _modular_inverse(_prime_coefficient(value), ring.characteristic)
     assert isinstance(value, tuple)
     return _coefficient((value[1], value[0]), ring)
 
