@@ -249,11 +249,11 @@ jobs:
           pnpm release:qualify:numerics:gate -- \
             --candidate "$SOURCE_SHA" \
             --input build/numerical-qualification \
-            --output build/rebuilt-numerical-gate
+            --output build/numerical-qualification/gate
           pnpm release:qualify:numerics:authenticate -- \
             --candidate "$SOURCE_SHA" \
             --gate build/validated-numerical-gate/release-gate.json \
-            --rebuilt-gate build/rebuilt-numerical-gate/release-gate.json
+            --rebuilt-gate build/numerical-qualification/gate/release-gate.json
 
       - name: Verify the receipt and stage the credential-free application
         run: |

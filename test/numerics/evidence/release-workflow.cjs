@@ -2,6 +2,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
@@ -18,9 +19,12 @@ const {
   authenticateRebuiltGate,
 } = require("../../../scripts/numerical-computing/qualification/authenticate-release-gate.cjs");
 const {
+  CANONICAL_INPUT,
+  CANONICAL_OUTPUT,
   exactInputInventory,
   expectedEvidence,
   expectedRows,
+  requireCanonicalLayout,
 } = require("../../../scripts/numerical-computing/qualification/assemble-release-gate.cjs");
 const {
   parseArguments: parsePlatformArguments,
@@ -34,6 +38,11 @@ const {
 const {
   browserArtifactSpecifications,
 } = require("../../../scripts/numerical-computing/qualification/prepare-browser.cjs");
+const {
+  PUBLISHER,
+  REQUIRED_PRODUCERS,
+  selectRecoveryPublisher,
+} = require("../../../scripts/release/select-recovery-publisher.cjs");
 
 const root = path.resolve(__dirname, "..", "..", "..");
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
@@ -384,6 +393,29 @@ test("aggregation accepts only the exact producer layout", () => {
   }
 });
 
+test("real gate assembler is pinned to the exact reconstructible workflow layout", () => {
+  assert.deepEqual(requireCanonicalLayout(CANONICAL_INPUT, CANONICAL_OUTPUT), {
+    input: CANONICAL_INPUT,
+    output: CANONICAL_OUTPUT,
+  });
+  assert.throws(
+    () => requireCanonicalLayout(CANONICAL_INPUT, "build/rebuilt-numerical-gate"),
+    /canonical workflow layout/,
+  );
+  assert.throws(
+    () => requireCanonicalLayout("build/foreign-evidence", CANONICAL_OUTPUT),
+    /canonical workflow layout/,
+  );
+  const realAssembler = spawnSync(process.execPath, [
+    "scripts/numerical-computing/qualification/assemble-release-gate.cjs",
+    "--candidate", "1".repeat(40),
+    "--input", CANONICAL_INPUT,
+    "--output", "build/rebuilt-numerical-gate",
+  ], { cwd: root, encoding: "utf8" });
+  assert.notEqual(realAssembler.status, 0);
+  assert.match(realAssembler.stderr, /requires canonical workflow layout/);
+});
+
 test("platform collection cannot relabel subjects or omit their release artifacts", () => {
   assert.throws(
     () => parsePlatformArguments([
@@ -543,6 +575,19 @@ test("tag CI collects 12 platform and four browser rows before publication", () 
     ci.indexOf("retention-days: 90", ci.indexOf("name: numerical-release-evidence")),
   );
   assert.doesNotMatch(rawUpload, /numerical-qualification\/gate/);
+  const gateJob = ci.slice(
+    ci.indexOf("numerical-release-gate:"),
+    ci.indexOf("publish-release:"),
+  );
+  assert.equal(
+    [...gateJob.matchAll(/release:qualify:numerics:gate --/g)].length,
+    2,
+    "the tag gate must execute a real canonical second reconstruction",
+  );
+  assert.match(
+    gateJob,
+    /cp build\/numerical-qualification\/gate\/release-gate\.json[\s\S]+rm -rf build\/numerical-qualification\/gate[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json/,
+  );
 });
 
 test("one trusted workflow publishes and recovery reruns its authenticated job", () => {
@@ -552,12 +597,14 @@ test("one trusted workflow publishes and recovery reruns its authenticated job",
   assert.doesNotMatch(ci, /secrets\.NPM_TOKEN|pnpm publish "\$archive"/);
   assert.match(
     ci,
-    /release:qualify:numerics:gate[\s\S]+--input build\/numerical-qualification[\s\S]+release:qualify:numerics:authenticate[\s\S]+--rebuilt-gate build\/rebuilt-numerical-gate\/release-gate\.json[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
+    /release:qualify:numerics:gate[\s\S]+--input build\/numerical-qualification[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+release:qualify:numerics:authenticate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
   );
   assert.match(ci, /recover-publish:[\s\S]+actions:\s*write/);
+  assert.match(ci, /jobs\?filter=all&per_page=100/);
+  assert.match(ci, /gh api --paginate --slurp/);
+  assert.match(ci, /select-recovery-publisher\.cjs/);
   assert.match(ci, /actions\/jobs\/\$\{publisher_id\}\/rerun/);
   assert.match(ci, /Numerical release qualification gate/);
-  assert.match(ci, /Required source job '\$required' conclusions are/);
   assert.match(ci, /npm view "\$\{name\}@\$\{version\}" dist\.integrity --json/);
   assert.match(ci, /createHash\("sha512"\)/);
   assert.match(ci, /\[\[ "\$version" == "\$package_version" \]\]/);
@@ -572,6 +619,44 @@ test("one trusted workflow publishes and recovery reruns its authenticated job",
   for (const upload of uploads) assert.match(upload[1], /overwrite:\s*true/);
 });
 
+test("recovery selects the latest exact job occurrence across rerun attempts", () => {
+  let id = 100;
+  const job = (name, runAttempt, conclusion) => ({
+    id: id++, name, run_attempt: runAttempt, conclusion,
+  });
+  const firstPage = {
+    jobs: [
+      ...REQUIRED_PRODUCERS.map((name) => job(name, 1, "success")),
+      job(PUBLISHER, 1, "failure"),
+    ],
+  };
+  const secondPage = { jobs: [job(PUBLISHER, 2, "failure")] };
+  const thirdPublisher = job(PUBLISHER, 3, "cancelled");
+  assert.deepEqual(selectRecoveryPublisher([firstPage, secondPage, { jobs: [thirdPublisher] }]), {
+    id: thirdPublisher.id,
+    run_attempt: 3,
+    conclusion: "cancelled",
+  });
+
+  const staleProducerSuccess = structuredClone([firstPage, secondPage]);
+  staleProducerSuccess[1].jobs.push(job(REQUIRED_PRODUCERS[0], 2, "failure"));
+  assert.throws(
+    () => selectRecoveryPublisher(staleProducerSuccess),
+    /latest source job.*attempt 2 concluded failure/,
+  );
+
+  const duplicateLatest = structuredClone([firstPage, secondPage]);
+  duplicateLatest[1].jobs.push(job(PUBLISHER, 2, "cancelled"));
+  assert.throws(
+    () => selectRecoveryPublisher(duplicateLatest),
+    /2 jobs.*latest attempt 2/,
+  );
+
+  const alreadyPublished = structuredClone([firstPage, secondPage]);
+  alreadyPublished[1].jobs[0].conclusion = "success";
+  assert.throws(() => selectRecoveryPublisher(alreadyPublished), /already succeeded/);
+});
+
 test("Cloudflare activation requires the same qualified source SHA", () => {
   assert.match(deploy, /qualification_run_id:/);
   assert.match(deploy, /\.github\/workflows\/ci\.yml/);
@@ -580,7 +665,7 @@ test("Cloudflare activation requires the same qualified source SHA", () => {
   assert.match(deploy, /--candidate "\$SOURCE_SHA"/);
   assert.match(
     deploy,
-    /--name numerical-release-evidence[\s\S]+release:qualify:numerics:gate[\s\S]+--rebuilt-gate build\/rebuilt-numerical-gate\/release-gate\.json/,
+    /--name numerical-release-evidence[\s\S]+release:qualify:numerics:gate[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json/,
   );
   assert.doesNotMatch(deploy, /Required legacy release job|if \[\[ "\$release_gate" == "missing" \]\]/);
 });

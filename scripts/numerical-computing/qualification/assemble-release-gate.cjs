@@ -19,6 +19,8 @@ const root = path.resolve(__dirname, "..", "..", "..");
 const TEMPLATE = "bench/numerical-computing/qualification/matrix/full-runtime.template.json";
 const CORPUS = "bench/numerical-computing/qualification/product.corpus.json";
 const PLATFORMS = ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"];
+const CANONICAL_INPUT = "build/numerical-qualification";
+const CANONICAL_OUTPUT = `${CANONICAL_INPUT}/gate`;
 
 function usage() {
   return `Usage: node scripts/numerical-computing/qualification/assemble-release-gate.cjs \\
@@ -112,6 +114,18 @@ function cleanOutput(relative) {
   const ignored = spawnSync("git", ["-C", root, "check-ignore", "--quiet", output.relative]);
   if (ignored.status !== 0) throw new Error("--output must be ignored");
   return output.relative;
+}
+
+function requireCanonicalLayout(input, output) {
+  const inputPath = repositoryPath(root, input, "qualification input").relative;
+  const outputPath = repositoryPath(root, output, "release gate output").relative;
+  if (inputPath !== CANONICAL_INPUT || outputPath !== CANONICAL_OUTPUT) {
+    throw new Error(
+      `release-gate assembly requires canonical workflow layout ` +
+        `--input ${CANONICAL_INPUT} --output ${CANONICAL_OUTPUT}`,
+    );
+  }
+  return { input: inputPath, output: outputPath };
 }
 
 function expectedRows(input) {
@@ -263,6 +277,7 @@ function exactInputInventory(input, rows, evidence) {
 }
 
 function run(options) {
+  const layout = requireCanonicalLayout(options.input, options.output);
   const before = repositoryIdentity(root);
   if (!before.clean || before.commit !== options.candidate) {
     throw new Error(
@@ -270,11 +285,11 @@ function run(options) {
         `got ${before.commit}${before.clean ? "" : " (dirty)"}`,
     );
   }
-  const input = rejectSymlinks(options.input);
+  const input = rejectSymlinks(layout.input);
   const rows = expectedRows(input);
   const evidence = expectedEvidence(input);
   exactInputInventory(input, rows, evidence);
-  const output = cleanOutput(options.output);
+  const output = cleanOutput(layout.output);
   const policy = `${output}/full-runtime.policy.json`;
   const matrix = `${output}/full-runtime.report.json`;
   const matrixMarkdown = `${output}/full-runtime.report.md`;
@@ -338,11 +353,14 @@ if (require.main === module) {
 }
 
 module.exports = {
+  CANONICAL_INPUT,
+  CANONICAL_OUTPUT,
   expectedEvidence,
   expectedRows,
   exactInputInventory,
   main,
   parseArguments,
+  requireCanonicalLayout,
   rejectSymlinks,
   run,
   usage,

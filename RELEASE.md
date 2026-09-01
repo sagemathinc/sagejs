@@ -160,15 +160,19 @@ Then aggregate, reproduce, and authenticate the final gate:
 pnpm release:qualify:numerics:gate -- \
   --candidate "$candidate" \
   --input build/numerical-qualification \
-  --output build/validated-numerical-gate
+  --output build/numerical-qualification/gate
+mkdir -p build/validated-numerical-gate
+cp build/numerical-qualification/gate/release-gate.json \
+  build/validated-numerical-gate/release-gate.json
+rm -rf build/numerical-qualification/gate
 pnpm release:qualify:numerics:gate -- \
   --candidate "$candidate" \
   --input build/numerical-qualification \
-  --output build/rebuilt-numerical-gate
+  --output build/numerical-qualification/gate
 pnpm release:qualify:numerics:authenticate -- \
   --candidate "$candidate" \
   --gate build/validated-numerical-gate/release-gate.json \
-  --rebuilt-gate build/rebuilt-numerical-gate/release-gate.json \
+  --rebuilt-gate build/numerical-qualification/gate/release-gate.json \
   --public-npm-root build/release/npm/sagejs.tgz
 ```
 
@@ -192,9 +196,12 @@ Clean tag CI preserves the small publisher-facing gate as
 supplemental inventory as `numerical-release-evidence`, both for 90 days. The
 larger artifact deliberately excludes the derived gate outputs. Before
 publishing, the candidate checkout restores that raw inventory, reruns the
-checked-in fail-closed assembler into a fresh directory, and requires exact
-byte equality with the small publisher-facing gate. Cloudflare deployment does
-the same. Thus valid-looking nested SHA/content-ID substitutions cannot be
+checked-in fail-closed assembler at its canonical
+`build/numerical-qualification/gate` path, and requires exact byte equality
+with the small publisher-facing gate. The aggregation job itself also performs
+this same real second reconstruction before preserving either artifact, and
+the assembler rejects noncanonical input/output layouts. Cloudflare deployment
+does the same. Thus valid-looking nested SHA/content-ID substitutions cannot be
 authorized by merely recomputing the compact outer ID; the successful producer
 run's immutable raw evidence is the trust boundary.
 
@@ -266,8 +273,9 @@ npm Trusted Publishing authorizes the calling workflow filename. Consequently
 If its publication job fails after every producer and the numerical gate pass,
 dispatch **Request validated release publication recovery** with the original
 tagged CI run ID and immutable tag. That small bridge dispatches `ci.yml` at
-the tag; its recovery job verifies the exact source SHA and each required job,
-then reruns the original publisher job by job ID. It deliberately does not
+the tag; its recovery job retrieves every paginated job attempt, verifies the
+exact source SHA and the unique latest occurrence of each required producer,
+then reruns the latest failed/cancelled publisher job by job ID. It deliberately does not
 require the overall source run to have succeeded (the publisher failure is the
 reason recovery exists), but it does require that run to have been triggered by
 the exact requested tag rather than merely another tag at the same commit. It

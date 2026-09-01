@@ -122,7 +122,7 @@ assert.match(
 );
 assert.match(
   releaseWorkflow,
-  /name: numerical-release-evidence[\s\S]+path: build\/numerical-qualification[\s\S]+release:qualify:numerics:gate[\s\S]+--input build\/numerical-qualification[\s\S]+release:qualify:numerics:authenticate[\s\S]+--rebuilt-gate build\/rebuilt-numerical-gate\/release-gate\.json[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
+  /name: numerical-release-evidence[\s\S]+path: build\/numerical-qualification[\s\S]+release:qualify:numerics:gate[\s\S]+--input build\/numerical-qualification[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+release:qualify:numerics:authenticate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
   "automatic publication must rebuild the gate from raw evidence before authenticating the selected public npm root",
 );
 assert.ok(
@@ -187,8 +187,28 @@ assert.match(
 );
 assert.match(
   releaseWorkflow,
+  /gh api --paginate --slurp[\s\S]+jobs\?filter=all&per_page=100[\s\S]+select-recovery-publisher\.cjs/,
+  "recovery must authenticate the latest exact producer and publisher occurrences across all attempts",
+);
+assert.match(
+  releaseWorkflow,
   /\.head_branch \/\/ ""[\s\S]+== "\$RECOVERY_TAG"/,
   "recovery must bind the source run to the exact immutable tag, not only its commit",
+);
+
+const numericalGateJob = releaseWorkflow.slice(
+  releaseWorkflow.indexOf("numerical-release-gate:"),
+  releaseWorkflow.indexOf("publish-release:"),
+);
+assert.equal(
+  [...numericalGateJob.matchAll(/release:qualify:numerics:gate --/g)].length,
+  2,
+  "the release gate job must execute a real canonical second reconstruction",
+);
+assert.match(
+  numericalGateJob,
+  /rm -rf build\/numerical-qualification\/gate[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json/,
+  "the second release-gate reconstruction must use the exact canonical workflow layout",
 );
 
 for (const required of [
@@ -219,7 +239,7 @@ assert.match(numericalGateAuthenticator, /authenticatePublicNpmRoot/);
 assert.match(numericalGateAuthenticator, /authenticateRebuiltGate/);
 assert.match(
   browserDeployWorkflow,
-  /--input build\/numerical-qualification[\s\S]+--rebuilt-gate build\/rebuilt-numerical-gate\/release-gate\.json/,
+  /--input build\/numerical-qualification[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json/,
   "browser deployment must reconstruct the compact gate from the raw evidence artifact",
 );
 

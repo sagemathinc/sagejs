@@ -1213,6 +1213,18 @@ jobs:
             --candidate "$(git rev-parse HEAD)" \
             --input build/numerical-qualification \
             --output build/numerical-qualification/gate
+          mkdir -p build/validated-numerical-gate
+          cp build/numerical-qualification/gate/release-gate.json \
+            build/validated-numerical-gate/release-gate.json
+          rm -rf build/numerical-qualification/gate
+          pnpm release:qualify:numerics:gate -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --input build/numerical-qualification \
+            --output build/numerical-qualification/gate
+          pnpm release:qualify:numerics:authenticate -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --gate build/validated-numerical-gate/release-gate.json \
+            --rebuilt-gate build/numerical-qualification/gate/release-gate.json
 
       - name: Preserve the final numerical release evidence
         uses: actions/upload-artifact@v7
@@ -1295,11 +1307,11 @@ jobs:
           pnpm release:qualify:numerics:gate -- \
             --candidate "$(git rev-parse HEAD)" \
             --input build/numerical-qualification \
-            --output build/rebuilt-numerical-gate
+            --output build/numerical-qualification/gate
           pnpm release:qualify:numerics:authenticate -- \
             --candidate "$(git rev-parse HEAD)" \
             --gate build/validated-numerical-gate/release-gate.json \
-            --rebuilt-gate build/rebuilt-numerical-gate/release-gate.json \
+            --rebuilt-gate build/numerical-qualification/gate/release-gate.json \
             --public-npm-root release/npm/sagejs.tgz
 
       - name: Create or update the draft GitHub release
@@ -1477,34 +1489,9 @@ jobs:
             echo "Recovery source/tag/checkout SHA mismatch" >&2
             exit 1
           }
-          jobs="$(gh api "repos/${GH_REPO}/actions/runs/${RECOVERY_RUN_ID}/jobs?per_page=100")"
-          for required in \
-            "Linux x64 native, tests, and SEA" \
-            "Linux arm64 native, tests, and SEA" \
-            "macOS arm64 native, tests, and SEA" \
-            "Windows x64 native, tests, and SEA" \
-            "Sign and notarize macOS arm64 release" \
-            "Numerical browser and supplemental qualification" \
-            "Numerical release qualification gate"
-          do
-            conclusions="$(jq -r --arg name "$required" \
-              '[.jobs[] | select(.name == $name) | .conclusion] | @json' <<<"$jobs")"
-            [[ "$conclusions" == '["success"]' ]] || {
-              echo "Required source job '$required' conclusions are $conclusions" >&2
-              exit 1
-            }
-          done
-          publisher="$(jq -c \
-            '[.jobs[] | select(.name == "Publish tagged GitHub and npm release") | {id,conclusion}]' \
-            <<<"$jobs")"
-          [[ "$(jq length <<<"$publisher")" -eq 1 ]] || {
-            echo "Source run does not have exactly one original publisher job" >&2
-            exit 1
-          }
-          conclusion="$(jq -r '.[0].conclusion' <<<"$publisher")"
-          [[ "$conclusion" != "success" ]] || {
-            echo "The original publisher already succeeded; refusing a redundant rerun" >&2
-            exit 1
-          }
-          publisher_id="$(jq -r '.[0].id' <<<"$publisher")"
+          jobs_file="$(mktemp)"
+          gh api --paginate --slurp \
+            "repos/${GH_REPO}/actions/runs/${RECOVERY_RUN_ID}/jobs?filter=all&per_page=100" \
+            > "$jobs_file"
+          publisher_id="$(node scripts/release/select-recovery-publisher.cjs < "$jobs_file")"
           gh api --method POST "repos/${GH_REPO}/actions/jobs/${publisher_id}/rerun"
