@@ -45,7 +45,38 @@
     "pnpm test:numerics",
     "pnpm architecture:check"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:numerics",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 599.188,
+      "started_at": "2026-09-01T03:46:45.364Z",
+      "commit": "f296ab7867e5613c586e9c0ba1a0831861396a19",
+      "workspace_fingerprint": "3b878f933be1f66f09f69a571f8e79e327860480d657f8ac2c6af681fb8d2c21",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.46,
+      "started_at": "2026-09-01T03:57:00.034Z",
+      "commit": "f296ab7867e5613c586e9c0ba1a0831861396a19",
+      "workspace_fingerprint": "3b878f933be1f66f09f69a571f8e79e327860480d657f8ac2c6af681fb8d2c21",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.628,
+      "started_at": "2026-09-01T03:57:57.938Z",
+      "commit": "f296ab7867e5613c586e9c0ba1a0831861396a19",
+      "workspace_fingerprint": "3b878f933be1f66f09f69a571f8e79e327860480d657f8ac2c6af681fb8d2c21",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],
