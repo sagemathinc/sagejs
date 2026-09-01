@@ -46,8 +46,10 @@ for bounded sweeps.
 
 Method records deliberately separate `implementation_targets` from
 `receipt_qualification`. A target says where an implementation is intended to
-run. Empty receipt arrays mean that this public registry is not bound to exact
-P8 receipts; a platform name in the former never proves the latter.
+run. The public capability registry rejects caller-owned receipt claims and
+always emits empty qualification arrays; only a verified P8 report may overlay
+qualification. Any such verified envelope must be a subset of the declared
+implementation targets. A platform name in the former never proves the latter.
 
 Canonical domain results are mathematical evidence records and do not invent a
 source language. Code generation is owned by `FrontendExecutionResult`, which

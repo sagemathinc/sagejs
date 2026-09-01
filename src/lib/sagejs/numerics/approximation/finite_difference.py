@@ -170,7 +170,7 @@ def finite_difference_problem(
         method="fornberg-" + selected_stencil,
         derivative_record={
             "kind": "analytic_reference" if derivative is not None else "none",
-            "replayable": False,
+            "replayable": derivative is None,
         },
         resource_budget=budget,
         trace_policy=trace_policy(budget, trace),

@@ -311,7 +311,7 @@ class OdeProblem(NumericalProblem):
             "invariants": [item.descriptor() for item in invariants],
             "reference_solution": {
                 "kind": "opaque_callback" if reference is not None else "none",
-                "replayable": False,
+                "replayable": reference is None,
                 "atol": self._reference_atol,
                 "rtol": self._reference_rtol,
             },

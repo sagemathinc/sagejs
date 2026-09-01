@@ -221,6 +221,7 @@
         "src/lib/sagejs/numerics/model.py",
         "src/lib/sagejs/numerics/optimization/_core.py",
         "src/lib/sagejs/numerics/approximation/_common.py",
+        "src/lib/sagejs/numerics/approximation/finite_difference.py",
         "src/lib/sagejs/numerics/roots.py",
         "src/lib/sagejs/numerics/ode/capabilities.py",
         "src/lib/sagejs/numerics/ode/model.py",

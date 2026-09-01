@@ -96,6 +96,20 @@ problem = ode_problem(
     reference_rtol=1e-6,
     function_record={"kind": "expression", "replayable": True, "expression": "[y[0]]"},
 )
+assert problem.to_dict()["metadata"]["reference_solution"] == {
+    "kind": "opaque_callback",
+    "replayable": False,
+    "atol": 1e-6,
+    "rtol": 1e-6,
+}
+problem_without_reference = ode_problem(
+    counted,
+    (0.0, 1.0),
+    [1.0],
+    function_record={"kind": "expression", "replayable": True, "expression": "[y[0]]"},
+)
+assert problem_without_reference.to_dict()["metadata"]["reference_solution"]["kind"] == "none"
+assert problem_without_reference.to_dict()["metadata"]["reference_solution"]["replayable"] is True
 selected = plan_ode(problem)
 assert selected.method == "rk45" and calls[0] == 0
 answer = solve_ode_problem(problem)

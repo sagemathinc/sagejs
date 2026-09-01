@@ -104,9 +104,10 @@ and validated success remain deliberately distinct: a solver may report
 never claim success for a failure status or failed validation. Domain execution
 accounting checks resource ceilings before incrementing so failure records do
 not serialize impossible `max + 1` counters. Capability normalization rejects
-malformed target arrays and arbitrary receipt claims, names CPython explicitly
-for the same-source root methods, and accepts receipt-qualified evidence only
-with valid target envelopes and retained SHA-256 digests. Matrix rendering now
+malformed target arrays and every caller-owned receipt claim, and names CPython
+explicitly for the same-source root methods. Only a verified P8 report may
+overlay receipt qualification, and its platform/runtime envelope must remain a
+subset of the method's declared implementation targets. Matrix rendering now
 derives and emits the required memory scope for every subject kind, and the
 published matrix-report schema constrains the exact receipt summary, bindings,
 case metrics, payload, and authenticated-memory wire format instead of using

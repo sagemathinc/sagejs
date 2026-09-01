@@ -699,7 +699,7 @@ def problem_record(
         method=method,
         derivative_record={
             "kind": "explicit_callback" if derivative is not None else "none",
-            "replayable": False,
+            "replayable": derivative is None,
         },
         constraints=constraints,
         resource_budget=budget,

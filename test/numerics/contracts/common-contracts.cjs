@@ -274,6 +274,27 @@ invalid_capability_records = (
             "receipt_sha256": [],
         }
     },
+    {
+        "platforms": ["node", "linux-x64"],
+        "receipt_qualification": {
+            "status": "receipt_qualified",
+            "platforms": ["linux-x64"],
+            "runtimes": ["node"],
+            "receipt_sha256": ["a" * 64],
+        },
+    },
+    {
+        "implementation_targets": {
+            "platforms": ["linux-x64"],
+            "runtimes": ["node"],
+        },
+        "receipt_qualification": {
+            "status": "receipt_qualified",
+            "platforms": ["macos-arm64"],
+            "runtimes": ["browser"],
+            "receipt_sha256": ["b" * 64],
+        },
+    },
 )
 for invalid_record in invalid_capability_records:
     try:
@@ -282,24 +303,23 @@ for invalid_record in invalid_capability_records:
     except (TypeError, ValueError):
         pass
 
-qualified_method = _normalize_method_record({
+unqualified_method = _normalize_method_record({
     "platforms": ["node", "linux-x64"],
     "implementation_targets": {
         "platforms": ["macos-arm64"],
         "runtimes": ["cpython"],
     },
-    "receipt_qualification": {
-        "status": "receipt_qualified",
-        "platforms": ["linux-x64"],
-        "runtimes": ["node"],
-        "receipt_sha256": ["a" * 64],
-    },
 })
-assert qualified_method["implementation_targets"] == {
+assert unqualified_method["implementation_targets"] == {
     "platforms": ["linux-x64", "macos-arm64"],
     "runtimes": ["cpython", "node"],
 }
-assert qualified_method["receipt_qualification"]["receipt_sha256"] == ["a" * 64]
+assert unqualified_method["receipt_qualification"] == {
+    "status": "unqualified_in_public_registry",
+    "platforms": [],
+    "runtimes": [],
+    "receipt_sha256": [],
+}
 
 frontend = create_frontend_registry()
 metadata = frontend.metadata()
@@ -429,6 +449,51 @@ derivative_not_replayable = NumericalProblem(
     derivative_record={"kind": "opaque_callback", "replayable": False},
 )
 assert derivative_not_replayable.replayable is False
+
+absent_callbacks = NumericalProblem("test", "absent_callbacks")
+assert absent_callbacks.function_record == {"kind": "none", "replayable": True}
+assert absent_callbacks.to_dict()["derivative"] == {
+    "kind": "none", "replayable": True,
+}
+assert absent_callbacks.replayable is True
+
+live_expression_callbacks = NumericalProblem(
+    "test",
+    "live_expression_callbacks",
+    function=lambda value: value,
+    derivative=lambda value: 1.0,
+    function_record={
+        "kind": "expression", "replayable": True, "expression": "x",
+    },
+    derivative_record={
+        "kind": "source", "replayable": True, "source": "lambda x: 1.0",
+    },
+)
+assert live_expression_callbacks.replayable is True
+
+for callback_bypass in (
+    lambda: NumericalProblem(
+        "test", "function_none_bypass", function=lambda value: value,
+        function_record={"kind": "none", "replayable": True},
+    ),
+    lambda: NumericalProblem(
+        "test", "derivative_none_bypass", derivative=lambda value: 1.0,
+        derivative_record={"kind": "none", "replayable": True},
+    ),
+    lambda: NumericalProblem(
+        "test", "opaque_replayable_bypass", function=lambda value: value,
+        function_record={"kind": "opaque_callback", "replayable": True},
+    ),
+    lambda: NumericalProblem(
+        "test", "explicit_replayable_bypass", derivative=lambda value: 1.0,
+        derivative_record={"kind": "explicit_callback", "replayable": True},
+    ),
+):
+    try:
+        callback_bypass()
+        raise AssertionError("an inconsistent live callback record was accepted")
+    except ValueError:
+        pass
 
 constraint = NumericalConstraint("inequality", lambda value: value[0], tolerance=1e-8)
 constrained = NumericalProblem(

@@ -90,6 +90,13 @@ def _function_record(
         )
     if not isinstance(record.get("replayable"), bool):
         raise TypeError(path + ".replayable must be a boolean")
+    if kind == "none":
+        if live_callback:
+            raise ValueError(path + ".kind none cannot describe a live callback")
+        if record["replayable"] is not True:
+            raise ValueError(path + ".kind none must be replayable")
+    if kind in ("opaque_callback", "explicit_callback") and record["replayable"]:
+        raise ValueError(path + ".kind " + kind + " cannot be replayable")
     return record
 
 

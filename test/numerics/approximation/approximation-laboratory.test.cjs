@@ -192,6 +192,9 @@ planning_problems = [
     (finite_difference_problem(planning_callback, 0.0), "fornberg-central"),
     (polynomial_approximation_problem(planning_callback, [-1, 1], 4), "chebyshev"),
 ]
+assert planning_problems[3][0].to_dict()["derivative"] == {
+    "kind": "none", "replayable": True,
+}
 for approximation_problem, expected_method in planning_problems:
     assert supports_approximation(approximation_problem)
     assert supports_approximation(approximation_problem, expected_method)
@@ -277,6 +280,9 @@ def counted_exp(x):
 derivative_problem = finite_difference_problem(
     counted_exp, 1.0, derivative=math.exp, accuracy_order=4
 )
+assert derivative_problem.to_dict()["derivative"] == {
+    "kind": "analytic_reference", "replayable": False,
+}
 derivative_plan = plan_finite_difference(derivative_problem)
 assert calls[0] == 0
 assert derivative_plan.method == "fornberg-central"

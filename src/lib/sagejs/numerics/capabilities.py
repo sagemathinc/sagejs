@@ -304,7 +304,12 @@ def _receipt_digest(value: Any) -> str:
     return value
 
 
-def _normalize_receipt_qualification(value: Any) -> dict[str, JSONValue]:
+def _normalize_receipt_qualification(
+    value: Any,
+    *,
+    implementation_platforms: set[str],
+    implementation_runtimes: set[str],
+) -> dict[str, JSONValue]:
     record = _detached_object(value, "numerical receipt qualification")
     required = {"status", "platforms", "runtimes", "receipt_sha256"}
     if set(record) != required:
@@ -345,10 +350,22 @@ def _normalize_receipt_qualification(value: Any) -> dict[str, JSONValue]:
                 "an unqualified receipt record cannot claim platforms, runtimes, "
                 "or receipt digests"
             )
-    elif not receipts or (not platforms and not runtimes):
+    else:
+        if not receipts or (not platforms and not runtimes):
+            raise ValueError(
+                "a receipt-qualified method requires retained receipt digests and "
+                "a platform or runtime envelope"
+            )
+        if not set(platforms).issubset(implementation_platforms) or not set(
+            runtimes
+        ).issubset(implementation_runtimes):
+            raise ValueError(
+                "a receipt qualification envelope must be a subset of its "
+                "implementation targets"
+            )
         raise ValueError(
-            "a receipt-qualified method requires retained receipt digests and "
-            "a platform or runtime envelope"
+            "the public capability registry cannot accept caller-owned receipt "
+            "qualification; use a verified P8 report overlay"
         )
     return _detached_object(
         {
@@ -396,10 +413,12 @@ def _normalize_method_record(value: Mapping[str, Any]) -> dict[str, JSONValue]:
                 raw_targets["runtimes"], "implementation target runtimes"
             )
         )
+    normalized_platforms = sorted(set(platforms))
+    normalized_runtimes = sorted(set(runtimes))
     record["implementation_targets"] = materialize_json(
         {
-            "platforms": sorted(set(platforms)),
-            "runtimes": sorted(set(runtimes)),
+            "platforms": normalized_platforms,
+            "runtimes": normalized_runtimes,
         }
     )
     qualification = record.get(
@@ -411,7 +430,11 @@ def _normalize_method_record(value: Mapping[str, Any]) -> dict[str, JSONValue]:
             "receipt_sha256": [],
         },
     )
-    record["receipt_qualification"] = _normalize_receipt_qualification(qualification)
+    record["receipt_qualification"] = _normalize_receipt_qualification(
+        qualification,
+        implementation_platforms=set(normalized_platforms),
+        implementation_runtimes=set(normalized_runtimes),
+    )
     return record
 
 
@@ -637,7 +660,8 @@ def capabilities(domain: str | None = None) -> dict[str, JSONValue]:
         "resource_budget_contract": _resource_budget_contract(),
         "portability_contract": {
             "implementation_targets": "declared build/runtime targets",
-            "receipt_qualification": "empty unless exact retained receipt digests are bound",
+            "receipt_qualification": "unqualified; verified P8 reports own qualification overlays",
+            "qualification_envelope": "must be a subset of implementation targets",
         },
     }
 
