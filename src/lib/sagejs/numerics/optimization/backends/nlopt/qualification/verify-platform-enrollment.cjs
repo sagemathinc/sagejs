@@ -26,9 +26,12 @@ function expectedPrivateKeyPath() {
 
 function verifyWindowsPrivateAcl(filename) {
   const command = "$acl = Get-Acl -LiteralPath $env:SAGEJS_OPERATOR_SIGNING_KEY; " +
-    "$acl.Access | ForEach-Object { [PSCustomObject]@{ " +
+    "$access = @($acl.Access | ForEach-Object { [PSCustomObject]@{ " +
     "Identity = $_.IdentityReference.Value; Rights = $_.FileSystemRights.ToString(); " +
-    "Type = $_.AccessControlType.ToString() } } | ConvertTo-Json -Compress";
+    "Type = $_.AccessControlType.ToString() } }); " +
+    "[PSCustomObject]@{ CurrentIdentity = " +
+    "[System.Security.Principal.WindowsIdentity]::GetCurrent().Name; Access = $access } | " +
+    "ConvertTo-Json -Compress -Depth 4";
   const result = spawnSync("powershell.exe", [
     "-NoProfile", "-NonInteractive", "-Command", command,
   ], {
@@ -43,14 +46,12 @@ function verifyWindowsPrivateAcl(filename) {
       }`,
     );
   }
-  let access;
-  try { access = JSON.parse(result.stdout); } catch {
+  let acl;
+  try { acl = JSON.parse(result.stdout); } catch {
     throw new Error("Windows operator-signing private-key ACL was not structured JSON");
   }
-  if (!Array.isArray(access)) access = [access];
-  const localUser = `${process.env.USERDOMAIN ?? process.env.COMPUTERNAME}\\${
-    process.env.USERNAME
-  }`.toLowerCase();
+  const access = Array.isArray(acl.Access) ? acl.Access : [acl.Access];
+  const localUser = String(acl.CurrentIdentity ?? "").toLowerCase();
   const required = new Set([
     "nt authority\\system", "builtin\\administrators", localUser,
   ]);
