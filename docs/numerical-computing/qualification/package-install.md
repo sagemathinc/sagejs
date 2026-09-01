@@ -74,18 +74,26 @@ cases here. Call each context's `cleanup()` after collecting its receipt.
 ## Isolation boundary
 
 Before installation, qualification parses the gzip/tar stream itself and
-accepts only canonical regular files and directories below `package/`. It
-rejects absolute and parent paths, links, special entries, duplicate portable
-paths, and ambiguous archive extensions. After installation it resolves the
-pnpm-managed package root once, then walks the root and platform closures
-without following links or Windows junction/reparse entries; every real path
-must remain inside both its closure and the temporary consumer.
+accepts only printable-ASCII canonical regular files and directories below
+`package/` in the exact `ustar`/`00` dialect. It rejects absolute and parent
+paths, links, special entries, duplicate portable paths, premature end markers,
+and ambiguous archive extensions. The complete root and platform manifests are
+pinned to the source release contract, including every dependency reference.
+Qualification hashes read-only private archive copies before validation,
+rechecks them after validation and installation, and does not inspect or run
+installed code after any byte change. It then resolves the pnpm-managed package
+root once and walks the root and platform closures without following links or
+Windows junction/reparse entries; every real path must remain inside both its
+closure and the temporary consumer.
 
-Process timeouts terminate the complete native Windows process tree or the
-POSIX process group. A normally completed POSIX process also has its remaining
-group drained before a result is accepted. This is lifecycle containment, not
-an untrusted-code sandbox: a program can deliberately create a new detached
-POSIX session, and Node does not expose a Windows kill-on-close Job Object for
-normal completion. Qualification therefore executes only fixed, reviewed
-programs; parser inspection of untrusted input must continue to use the
-non-executing `inspect-foreign` boundary.
+Process timeouts and bounded-output overflow terminate the complete native
+Windows process tree or the POSIX process group. A normally completed POSIX
+process also has its remaining group drained before a result is accepted. This
+is lifecycle containment, not an untrusted-code sandbox: a program can
+deliberately create a new detached POSIX session, Node does not expose a
+Windows kill-on-close Job Object for normal completion, and another process
+running as the same OS user could transiently replace and restore a read-only
+archive between digest checkpoints. Qualification therefore accepts only
+release artifacts controlled by the current account and executes only fixed,
+reviewed programs; parser inspection of untrusted input must continue to use
+the non-executing `inspect-foreign` boundary.

@@ -51,6 +51,12 @@ function verifyChecksum(header) {
 }
 
 function normalizedMemberPath(rawPath, type) {
+  if (/[^\x20-\x7e]/.test(rawPath)) {
+    // JavaScript lowercasing is not a faithful model of either APFS/HFS+
+    // filesystem folding or NTFS case folding (for example Σ/ς and ß/SS).
+    // Published Sage.js paths are ASCII, so reject the ambiguous surface.
+    throw new Error(`tar member path is not portable ASCII: ${rawPath}`);
+  }
   if (rawPath.includes("\\")) {
     throw new Error(`tar member uses a backslash path separator: ${rawPath}`);
   }
@@ -105,6 +111,7 @@ async function validateArchive(filename) {
   const members = [];
   const collisionKeys = new Set();
   const memberTypes = new Map();
+  const ancestorKeys = new Set();
   let buffered = Buffer.alloc(0);
   let skip = 0;
   let uncompressedBytes = 0;
@@ -118,9 +125,22 @@ async function validateArchive(filename) {
       if (zeroBlocks >= 2) ended = true;
       return;
     }
+    if (zeroBlocks > 0) {
+      throw new Error("tar archive contains a nonzero block after its end marker");
+    }
     if (ended) throw new Error("tar archive contains data after its end marker");
     zeroBlocks = 0;
     verifyChecksum(header);
+
+    if (
+      !header.subarray(257, 263).equals(Buffer.from("ustar\0", "ascii")) ||
+      !header.subarray(263, 265).equals(Buffer.from("00", "ascii"))
+    ) {
+      // In particular, a V7 header does not define the ustar prefix field.
+      // Interpreting it here while the downstream extractor ignores it would
+      // let validation and extraction disagree about a member's path.
+      throw new Error("tar member does not use the supported ustar/00 dialect");
+    }
 
     const typeFlag = header[156];
     const type = typeFlag === 0 || typeFlag === 48
@@ -146,16 +166,15 @@ async function validateArchive(filename) {
     if (collisionKeys.has(collisionKey)) {
       throw new Error(`tar archive has a duplicate normalized path: ${path}`);
     }
-    for (let index = 1; index < path.split("/").length; index += 1) {
-      const ancestor = path.split("/").slice(0, index).join("/").toLowerCase();
+    const parts = path.split("/");
+    for (let index = 1; index < parts.length; index += 1) {
+      const ancestor = parts.slice(0, index).join("/").toLowerCase();
       if (memberTypes.get(ancestor) === "file") {
         throw new Error(`tar member descends from a regular file: ${path}`);
       }
+      ancestorKeys.add(ancestor);
     }
-    if (
-      type === "file" &&
-      [...memberTypes.keys()].some((seen) => seen.startsWith(`${collisionKey}/`))
-    ) {
+    if (type === "file" && ancestorKeys.has(collisionKey)) {
       throw new Error(`tar regular member replaces an existing directory: ${path}`);
     }
 
