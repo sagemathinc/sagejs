@@ -19,11 +19,9 @@
     "packages/flint-wasm/evaluator.mjs": "9e992dd85fac8a53681a41a772e8759970154492203f4fe0a5193b5ea67e46e0",
     "packages/flint-wasm/numerical/nlopt-index.mjs": "21d752734022de158af44bc8f8cf9c164a5cd0ab95358c532632573447cbebb3",
     "packages/flint-wasm/numerical/scripts/build-all.cjs": "6aefdb71fa589b773be46926e24c5a8e0c84a1a953ac72a1a99138a419fe014f",
-    "src/baselib/sagejs/runtime.py": "b48880325472073feb9d9d7b3a747deb5cbf66a0a0fde5538444c7f02e21e9fb",
+    "src/baselib/sagejs/runtime.py": "3e5005e5cc5d3c2d2aaf1a170023fce4716e5400f7c071bd5a69a7acbba7823c",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/index.mjs": "e5e4e697cb5b68dd8020a465073c760abcc6668b6f536fbd915b6b5bde0e4315",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs": "411e823864e75e8b2f4cee2bc9c7e2fa680518820ad800cf1ecd8b3a82cc6777",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/build.cjs": "eda4ebc1033c94d2aad994ceb97e5247e4f49b7b6925806cd3ac860f1c0091dc",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs": "b53f9a068e97d041642636090f8296b940fac0dea4b2b059e44b4cf9f2242f41",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c": "0c876a9606177a26d0c8c8baf09a2f567516de201708397be508e9e46103ba03",
     "src/lib/sagejs/numerics/optimization/multivariate.py": "3381fe66260101d5bc2c8aba1196437d74b5002cfe05a789b0b2800184c7b0f1",
     "src/lib/sagejs/numerics/optimization/planning.py": "e899df4949507ec45c95a13ac4c742c0d28c4f0759803646eb62c5983d5b32fd",
@@ -31,16 +29,33 @@
     "test/numerical-p3-backends/browser-resource.test.mjs": "fb2b4a1eb0431cf18ebed85e2cbdd4e3eae65e8d0e9d324055f0d8e479885d34",
     "test/numerical-p3-nlopt/abi-fuzz.test.mjs": "91bb9edb5561cf0d2483b644620f6266ed3b052ad2257d88f2d2d538e71db875",
     "test/numerical-p3-nlopt/backend.test.mjs": "f5ea7032ff48f0ce56ad8b299b1a289a19ffd83eedb0318310155c5fd6543024",
-    "test/numerical-p3-nlopt/browser.mjs": "9e5f527635a372f3641b8e3203b9d3d2d37997b1dd8754049f882bd1704f77c7",
+    "test/numerical-p3-nlopt/browser.mjs": "bc30d8355c73117b620fcfc7929b2aea926cbabe8855c541a27980bb3c04aff3",
     "test/numerical-p3-nlopt/portable-smoke.mjs": "9dee55740dbd4bfad62e911af8dec1945963587c4635a4905489cff7bc8d8813",
     "test/numerical-p3-nlopt/public-browser.mjs": "fe7fdef04edc4e414380499162e4503a468d802770372cca0e98a418b3361746",
     "test/numerical-p3-nlopt/public-integration.cjs": "8432367e427c59fe5149685bf77eac14772320ead8fae050427fc28a9135ee1d",
+    "test/numerical-p3-nlopt/public-relocation.cjs": "8d8fbbc6284940d1c8b8dd0cc846e1916d1c559f64684e40abc4da7b7a4e2d23",
     "test/numerical-p3-nlopt/public-sea.cjs": "7d580d850ef8cafe16be8b9952d5645c15b1d62d829dec18d19d71b8382429ce",
     "tools/resources.ts": "b18f39c2f247b65152dc92be1945493d39c35dd010cadee84d5d98c4ee4edaa8"
   },
   "public_semantics_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "2dadd273c6cf3e60019299b0479d7aa0d4677ed56769f15c96ddf306972324f0"
+    "sha256": "943f4b8f83453a0f9efe90887654f6d652188bc060180681d8a8e3ad6c6c948b"
+  },
+  "qualification_tooling_files": {
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs": "bdc4596a21ce504bb6a99e3b826c88ee9b614bfe46ec3274c95845b4fa6dcbbd",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs": "ce0ffab716b77c2b6c272a9883af016b39a767291c0965cd42669f95cb252ed2",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle-summary.json": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle.py": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs": "f9a5187deb30b076567249e84d42bb06b993563c7c00ad53444d9b5a6e6df3f9",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/selection-v1.json": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/verify-platform-enrollment.cjs": "f05f8cf0c0cd0ce920037706d38e9c9968721952b244beb2e04ecbd4073c8229",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/promote-qualification.cjs": "425dda513c10e8cca8bcc05c35c3ad4d9674d889ea0adeb97139e35056d3d4bb",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs": "e420621056652b10fc83fda617621efb27df5a599b7217483472716cf3e8bcdc",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs": "6686368311d3d18b67055475fda49528fb83185f6290a04873f69851fbc105ac"
+  },
+  "qualification_tooling_bundle": {
+    "encoding": "sorted-repository-path-nul-sha256-nul/v1",
+    "sha256": "7a2572502ecd17b1b0209172e6b2cce5ce5261fab32e6304bc4616ff41aadff0"
   },
   "toolchain": {
     "identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
@@ -70,7 +85,10 @@
   "qualification": {
     "status": "pending_source_current_requalification",
     "reason": "COBYLA was removed after source-bound UBSAN exposed unresolved upstream f2c pointer-provenance undefined behavior; source-current Nelder-Mead receipts must be regenerated after independent audit",
-    "public_semantics_bundle_sha256": "2dadd273c6cf3e60019299b0479d7aa0d4677ed56769f15c96ddf306972324f0",
+    "public_semantics_bundle_sha256": "943f4b8f83453a0f9efe90887654f6d652188bc060180681d8a8e3ad6c6c948b",
+    "qualification_tooling_bundle_sha256": "7a2572502ecd17b1b0209172e6b2cce5ce5261fab32e6304bc4616ff41aadff0",
+    "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+    "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
     "invalidated_summary": "qualification-v1.json"
   }
 }

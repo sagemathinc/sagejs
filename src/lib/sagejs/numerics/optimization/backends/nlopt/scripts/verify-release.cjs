@@ -1,156 +1,93 @@
+#!/usr/bin/env node
 "use strict";
 
-const assert = require("node:assert/strict");
-const { createHash } = require("node:crypto");
-const { readFileSync } = require("node:fs");
-const { resolve } = require("node:path");
+const { spawnSync } = require("node:child_process");
+const path = require("node:path");
 
-const packageRoot = resolve(__dirname, "..");
-const repositoryRoot = resolve(packageRoot, "../../../../../../../");
-const manifest = json("release/production-manifest.json");
-const report = json("build/build-report.json");
+const {
+  loadCurrentContext,
+  readJson,
+  validateManifestQualificationState,
+  validateQualificationSummary,
+} = require("../qualification/contracts.cjs");
 
-function bytes(relative) {
-  return readFileSync(resolve(packageRoot, relative));
+const packageRoot = path.resolve(__dirname, "..");
+const root = path.resolve(packageRoot, "../../../../../../..");
+const manifestPath = path.join(packageRoot, "release/production-manifest.json");
+
+function usage() {
+  return `Usage: node ${path.relative(root, __filename)} [--require-qualified]\n\n` +
+    "Without the flag, a source-current pending manifest is valid for ordinary\n" +
+    "development builds. Release qualification must use --require-qualified.\n";
 }
 
-function json(relative) {
-  return JSON.parse(bytes(relative));
+function gitHead() {
+  const result = spawnSync("git", ["-C", root, "rev-parse", "HEAD"], { encoding: "utf8" });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(result.stderr || "git rev-parse failed");
+  return result.stdout.trim();
 }
 
-function sha256(value) {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-function verifyHash(actualPath, expected, root = packageRoot) {
-  assert.equal(
-    sha256(readFileSync(resolve(root, actualPath))),
-    expected,
-    `${actualPath} no longer matches the reviewed production manifest`,
-  );
-}
-
-function reviewedBundleHash(files) {
-  const records = Object.entries(files).sort(([left], [right]) =>
-    left < right ? -1 : left > right ? 1 : 0);
-  for (const [path, expected] of records) {
-    assert.equal(typeof path, "string");
-    assert.match(expected, /^[0-9a-f]{64}$/);
-    verifyHash(path, expected, repositoryRoot);
+function main(argv = process.argv.slice(2)) {
+  if (argv.includes("--help") || argv.includes("-h")) {
+    process.stdout.write(usage());
+    return 0;
   }
-  return sha256(Buffer.from(
-    records.map(([path, digest]) => `${path}\0${digest}\0`).join(""),
-  ));
+  if (argv.some((argument) => argument !== "--require-qualified") ||
+      argv.filter((argument) => argument === "--require-qualified").length > 1) {
+    throw new Error("only --require-qualified is accepted");
+  }
+  const requireQualified = argv.includes("--require-qualified");
+  const manifestRecord = readJson(manifestPath, "production manifest");
+  const manifestState = validateManifestQualificationState(manifestRecord.value);
+  const pending = manifestState === "pending";
+  if (pending && requireQualified) {
+    throw new Error("the narrowed NLopt artifact is pending source-current qualification");
+  }
+  const candidate = pending ? gitHead() : manifestRecord.value.qualification.candidate_commit;
+  const context = loadCurrentContext({
+    root,
+    candidate,
+    manifestPath,
+    artifactPath: path.join(packageRoot, "build/nlopt-methods.wasm"),
+    buildReportPath: path.join(packageRoot, "build/build-report.json"),
+    corpusPath: path.join(root, "bench/numerical-p3-nlopt/corpus.json"),
+    oraclePath: path.join(packageRoot, "qualification/oracle-summary.json"),
+    oracleSourcePath: path.join(packageRoot, "qualification/oracle.py"),
+    selectionPath: path.join(packageRoot, "qualification/selection-v1.json"),
+  });
+  if (!pending) {
+    const summaryRecord = readJson(
+      path.join(packageRoot, "release/qualification-v1.json"),
+      "qualification summary",
+    );
+    validateQualificationSummary(summaryRecord, context, manifestRecord.value);
+  }
+
+  process.stdout.write(`${JSON.stringify({
+    schema: "sagejs.numerical-nlopt-release-verification/v2",
+    status: pending ? "pending-source-current-qualification" : "qualified",
+    candidate_commit: candidate,
+    source_revision: context.source.revision,
+    source_closure_sha256: context.source.source_closure_sha256,
+    artifact: context.artifact,
+    public_semantics_bundle_sha256: context.publicSemantics.sha256,
+    qualification_tooling_bundle_sha256: context.tooling.sha256,
+    selection_sha256: context.selectionBinding.sha256,
+    corpus_sha256: context.corpusBinding.sha256,
+    oracle_sha256: context.oracleBinding.sha256,
+    methods: ["nlopt-nelder-mead"],
+    selection: "explicit-only",
+    historical_cobyla_status: "excluded-not-qualified",
+  }, null, 2)}\n`);
+  return 0;
 }
 
-assert.equal(manifest.selection, "explicit-only");
-assert.deepEqual(manifest.methods, {
-  "nlopt-nelder-mead": "NLOPT_LN_NELDERMEAD",
-});
-assert.equal(manifest.source.luksan_enabled, false);
-verifyHash("source-lock.json", manifest.source.source_lock_sha256);
-verifyHash("licenses/COPYING", manifest.source.license_sha256);
-assert.equal(
-  manifest.public_semantics_bundle.encoding,
-  "sorted-repository-path-nul-sha256-nul/v1",
-);
-assert.equal(
-  reviewedBundleHash(manifest.reviewed_sagejs_files),
-  manifest.public_semantics_bundle.sha256,
-  "the public NLopt semantic/loader/test source bundle changed",
-);
-assert.equal(
-  manifest.qualification.public_semantics_bundle_sha256,
-  manifest.public_semantics_bundle.sha256,
-  "qualification metadata is not bound to the reviewed public semantic bundle",
-);
-assert.equal(
-  manifest.qualification.status,
-  "qualified",
-  "the narrowed NLopt artifact is pending source-current qualification",
-);
-const qualification = json("release/qualification-v1.json");
-verifyHash(
-  "release/qualification-v1.json",
-  manifest.qualification.summary_sha256,
-);
-assert.equal(
-  qualification.public_semantics_bundle_sha256,
-  manifest.public_semantics_bundle.sha256,
-  "qualification summary is not bound to the reviewed public semantic bundle",
-);
-verifyHash(
-  "bench/numerical-p3-nlopt/corpus.json",
-  manifest.qualification.corpus_sha256,
-  repositoryRoot,
-);
-
-const receiptPaths = {
-  "linux-x64": "bench/numerical-p3-nlopt/portable-receipts/linux-x64.json",
-  "linux-arm64": "bench/numerical-p3-nlopt/portable-receipts/linux-arm64.json",
-  "macos-arm64": "bench/numerical-p3-nlopt/portable-receipts/macos-arm64.json",
-  "windows-x64": "bench/numerical-p3-nlopt/portable-receipts/windows-x64.json",
-};
-for (const [platform, path] of Object.entries(receiptPaths)) {
-  verifyHash(
-    path,
-    manifest.qualification.portable_receipts_sha256[platform],
-    repositoryRoot,
-  );
-  const receipt = JSON.parse(readFileSync(resolve(repositoryRoot, path)));
-  assert.equal(receipt.artifact_sha256, manifest.artifact.sha256);
-  assert.equal(
-    receipt.public_semantics_bundle_sha256,
-    manifest.public_semantics_bundle.sha256,
-  );
-  assert.equal(receipt.lifecycle_after.liveAllocations, 0);
-  assert.equal(receipt.lifecycle_after.liveBytes, 0);
+if (require.main === module) {
+  try { process.exitCode = main(); } catch (error) {
+    process.stderr.write(`${error?.stack ?? error}\n`);
+    process.exitCode = 1;
+  }
 }
 
-assert.equal(report.source.revision, manifest.source.revision);
-assert.equal(report.source.archive_sha256, manifest.source.archive_sha256);
-assert.equal(report.source.license_sha256, manifest.source.license_sha256);
-assert.equal(
-  report.source_closure.sha256,
-  manifest.source.source_closure_sha256,
-);
-assert.deepEqual(
-  report.source_closure.compiled_sources,
-  manifest.source.compiled_sources,
-);
-assert.equal(report.toolchain.identity, manifest.toolchain.identity);
-assert.equal(report.toolchain.target, manifest.toolchain.target);
-assert.equal(
-  report.toolchain.floating_point_contract,
-  manifest.toolchain.floating_point_contract,
-);
-assert.deepEqual(report.artifact.imports, manifest.artifact.imports);
-for (const field of [
-  "sha256",
-  "bytes",
-  "gzip_bytes",
-  "brotli_bytes",
-  "initial_memory_bytes",
-  "maximum_memory_bytes",
-]) {
-  assert.equal(report.artifact[field], manifest.artifact[field], field);
-}
-const artifact = bytes("build/nlopt-methods.wasm");
-assert.equal(artifact.length, manifest.artifact.bytes);
-assert.equal(sha256(artifact), manifest.artifact.sha256);
-assert.deepEqual(
-  WebAssembly.Module.imports(new WebAssembly.Module(artifact)),
-  manifest.artifact.imports,
-);
-
-process.stdout.write(`${JSON.stringify({
-  schema: "sagejs.numerical-nlopt-release-verification/v1",
-  source_revision: manifest.source.revision,
-  source_closure_sha256: manifest.source.source_closure_sha256,
-  artifact_sha256: manifest.artifact.sha256,
-  public_semantics_bundle_sha256: manifest.public_semantics_bundle.sha256,
-  qualification_sha256: manifest.qualification.summary_sha256,
-  methods: Object.keys(manifest.methods),
-  selection: manifest.selection,
-  portable_receipts: Object.keys(receiptPaths),
-}, null, 2)}\n`);
+module.exports = { main, usage };

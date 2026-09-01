@@ -1,23 +1,81 @@
 {
-  "schema": "sagejs.numerical-nlopt-oracle-summary/v1",
+  "schema": "sagejs.numerical-nlopt-nelder-mead-oracle-summary/v2",
+  "method": "nlopt-nelder-mead",
+  "oracle": "scipy.optimize.Nelder-Mead",
   "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
-  "oracle_output_sha256": "034eb6e6417b77600c3286c79afab5fef27b04bf6c0bbc458048b78ef6f7b39e",
+  "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+  "selected_results_encoding": "canonical-json-sorted-object-keys/v1",
+  "selected_results_sha256": "97ed532b80ec63b3ab23ce9146fc52f8563c870fdd450cf533a092a43ac30a80",
   "runtime": {
     "python": "3.14.4",
     "scipy": "1.18.0",
-    "numpy": "2.5.1",
-    "cobyla_implementation": "PRIMA"
+    "numpy": "2.5.1"
   },
-  "cases": {
-    "nelder_mead": 5,
-    "cobyla_feasible": 7,
-    "cobyla_infeasible": 1,
-    "total": 13
-  },
-  "findings": [
-    "SciPy Nelder-Mead reaches every corpus reference envelope",
-    "SciPy PRIMA COBYLA reaches every feasible reference envelope",
-    "SciPy PRIMA rejects the deliberately infeasible case with maximum violation 0.5",
-    "NLopt and SciPy trajectories and termination statuses are not treated as identical"
-  ]
+  "case_ids": [
+    "nelder-rosenbrock-2",
+    "nelder-beale-2",
+    "nelder-nonsmooth-absolute",
+    "nelder-bounded-boundary",
+    "nelder-ill-scaled"
+  ],
+  "accepted_cases": 5,
+  "cases": [
+    {
+      "evaluations": 245,
+      "id": "nelder-rosenbrock-2",
+      "maximum_violation": 0,
+      "message": "Optimization terminated successfully.",
+      "objective": 4.912658189392871e-22,
+      "oracle": "scipy.optimize.Nelder-Mead",
+      "status": 0,
+      "success": true,
+      "value": [1.0000000000185723, 1.0000000000383542]
+    },
+    {
+      "evaluations": 170,
+      "id": "nelder-beale-2",
+      "maximum_violation": 0,
+      "message": "Optimization terminated successfully.",
+      "objective": 1.4377597372786898e-22,
+      "oracle": "scipy.optimize.Nelder-Mead",
+      "status": 0,
+      "success": true,
+      "value": [2.99999999998816, 0.49999999999935785]
+    },
+    {
+      "evaluations": 188,
+      "id": "nelder-nonsmooth-absolute",
+      "maximum_violation": 0,
+      "message": "Optimization terminated successfully.",
+      "objective": 1.8967888867172806e-12,
+      "oracle": "scipy.optimize.Nelder-Mead",
+      "status": 0,
+      "success": true,
+      "value": [-1.8700350559320078e-12, 1.337691539263649e-14]
+    },
+    {
+      "evaluations": 10,
+      "id": "nelder-bounded-boundary",
+      "maximum_violation": 0,
+      "message": "Optimization terminated successfully.",
+      "objective": 5,
+      "oracle": "scipy.optimize.Nelder-Mead",
+      "status": 0,
+      "success": true,
+      "value": [1, -1]
+    },
+    {
+      "evaluations": 242,
+      "id": "nelder-ill-scaled",
+      "maximum_violation": 0,
+      "message": "Optimization terminated successfully.",
+      "objective": 4.4841550858394146e-32,
+      "oracle": "scipy.optimize.Nelder-Mead",
+      "status": 0,
+      "success": true,
+      "value": [1000000, 9.999999999999997e-7]
+    }
+  ],
+  "scope": "Nelder-Mead only; no COBYLA result or status contributes to this summary",
+  "historical_cobyla_evidence": "excluded"
 }
