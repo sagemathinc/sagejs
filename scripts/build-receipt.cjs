@@ -11,6 +11,10 @@ const {
 } = require("node:fs");
 const { execFileSync } = require("node:child_process");
 const { join, relative, resolve } = require("node:path");
+const { inspectToolchain } = require(
+  "../packages/wasm-toolchain/scripts/toolchain.cjs"
+);
+const { inspectNumericalProduct } = require("./numerical-product.cjs");
 
 const repositoryRoot = resolve(__dirname, "..");
 const receiptRelativePath = "dist/build-receipt.json";
@@ -142,10 +146,35 @@ function nativeInputIdentity(root = repositoryRoot) {
   return inputs;
 }
 
+function numericalRuntimeProviderIdentity(
+  root = repositoryRoot,
+  environment = process.env,
+) {
+  const productRoot = environment.SAGEJS_NUMERICAL_PRODUCT_ROOT;
+  if (productRoot) {
+    const product = inspectNumericalProduct({ root, inputDirectory: productRoot });
+    return product.valid
+      ? { available: true, source: "authenticated-product", identity: product.identity }
+      : { available: false, source: "invalid-product" };
+  }
+  try {
+    const toolchain = inspectToolchain({ root, environment });
+    return {
+      available: toolchain.ready,
+      source: toolchain.source,
+      identity: toolchain.lockDigest,
+      platform: toolchain.platform,
+    };
+  } catch {
+    return { available: false, source: "unavailable" };
+  }
+}
+
 function currentBuildIdentity(root = repositoryRoot) {
   return {
     workspaceSha256: workspaceFingerprint(root),
     nativeInputs: nativeInputIdentity(root),
+    numericalRuntimeProvider: numericalRuntimeProviderIdentity(root),
     node: process.versions.node,
     v8: process.versions.v8,
     platform: process.platform,
@@ -153,17 +182,21 @@ function currentBuildIdentity(root = repositoryRoot) {
   };
 }
 
-function outputWitnesses(root = repositoryRoot) {
+function outputWitnesses(root = repositoryRoot, identity = currentBuildIdentity(root)) {
   const witnesses = [
     "dist/compiler/compiler.js",
     "dist/tools/kernel.js",
     "dist/module-cache",
     "dist/runtime-cache/manifest.json",
-    "dist/numerical/backend.cjs",
-    "dist/numerical/cminpack.wasm",
-    "dist/numerical/nlopt-backend.cjs",
-    "dist/numerical/nlopt-methods.wasm",
   ];
+  if (identity.numericalRuntimeProvider?.available) {
+    witnesses.push(
+      "dist/numerical/backend.cjs",
+      "dist/numerical/cminpack.wasm",
+      "dist/numerical/nlopt-backend.cjs",
+      "dist/numerical/nlopt-methods.wasm",
+    );
+  }
   if (existsSync(join(root, "packages/flint/build/generated-ffi/sagejs_flint_ffi.node"))) {
     witnesses.push("dist/native-kernels/index.json");
   }
@@ -253,7 +286,7 @@ function writeBuildReceipt({
     completedAt: new Date().toISOString(),
     durationMilliseconds,
     identity,
-    outputs: outputWitnesses(root),
+    outputs: outputWitnesses(root, identity),
   };
   writeFileSync(
     join(root, receiptRelativePath),
@@ -282,6 +315,7 @@ module.exports = {
   inspectBuildReceipt,
   inspectSourceBuildReceipt,
   nativeInputIdentity,
+  numericalRuntimeProviderIdentity,
   outputWitnesses,
   refreshBuildReceiptAfterNative,
   receiptRelativePath,

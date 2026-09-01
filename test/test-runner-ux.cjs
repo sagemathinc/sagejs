@@ -41,6 +41,9 @@ const {
   runBufferedCommand,
 } = require("../scripts/build-parallelism.cjs");
 const packageScripts = require("../package.json").scripts;
+const {
+  buildLazyNumericalReactors,
+} = require("../scripts/build.cjs");
 
 test("test durations are rendered for humans", () => {
   assert.equal(formatDuration(0), "0s");
@@ -237,6 +240,32 @@ test("build receipts require identical inputs and every output witness", () => {
       .reason,
     /output is missing/,
   );
+});
+
+test("routine builds skip optional numerical reactors without a prepared toolchain", async () => {
+  let ran = false;
+  const summary = await buildLazyNumericalReactors({
+    environment: {},
+    inspect: () => ({ ready: false }),
+    runCommand: async () => { ran = true; },
+  });
+  assert.equal(ran, false);
+  assert.match(summary, /Skipped optional numerical reactors/);
+});
+
+test("prepared builds execute and validate the numerical reactor builder", async () => {
+  let validated = false;
+  const summary = await buildLazyNumericalReactors({
+    environment: {},
+    inspect: () => ({ ready: true }),
+    runCommand: async (_command, arguments_) => {
+      assert.match(arguments_[0], /numerical[\\/]scripts[\\/]build-all\.cjs$/);
+      return "built exact numerical runtime\n";
+    },
+    validate: () => { validated = true; },
+  });
+  assert.equal(validated, true);
+  assert.equal(summary, "built exact numerical runtime");
 });
 
 test("native bootstrap refreshes a proven source-build receipt", (context) => {

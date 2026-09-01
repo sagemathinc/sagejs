@@ -18,6 +18,12 @@ const lock = JSON.parse(readFileSync(join(packageRoot, "source-lock.json"), "utf
 const { inspectToolchain, resolveToolchain } = require(
   join(repositoryRoot, "packages/wasm-toolchain/scripts/toolchain.cjs"),
 );
+const { productionToolchainIdentity } = require(
+  join(
+    repositoryRoot,
+    "packages/flint-wasm/numerical/scripts/production-toolchain-identity.cjs",
+  ),
+);
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -291,7 +297,7 @@ async function main() {
       rejected_source_patterns: ["src/algs/luksan/", "src/algs/esch/", "src/algs/ags/"],
     },
     toolchain: {
-      identity: toolchain.lockDigest,
+      ...productionToolchainIdentity(toolchain),
       target: toolchain.lock.build.target,
       floating_point_contract: "off",
     },

@@ -79,6 +79,58 @@ jobs:
       - name: Verify minimum-runtime SQLite compatibility
         run: node --test test/sqlite-minimum-node.cjs
 
+  numerical-product:
+    name: Canonical authenticated numerical runtime
+    needs: routine
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out the exact source candidate
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - id: toolchain
+        run: |
+          path="$(node packages/wasm-toolchain/scripts/toolchain.cjs cache-path)"
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          echo "identity=${path##*/}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.toolchain.outputs.path }}
+          key: sagejs-wasm-toolchain-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.identity }}
+
+      - name: Build and bind the canonical numerical runtime
+        run: |
+          node packages/wasm-toolchain/scripts/toolchain.cjs prepare
+          node packages/wasm-toolchain/scripts/probe.cjs
+          node packages/flint-wasm/numerical/scripts/build-all.cjs
+          node scripts/numerical-product.cjs publish \
+            --output build/authenticated-numerical-product
+
+      - name: Preserve the exact source-bound numerical runtime
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-numerical-product
+          overwrite: true
+          path: build/authenticated-numerical-product
+          if-no-files-found: error
+          retention-days: 14
+
   platform-smoke:
     name: Platform smoke (${{ matrix.target }})
     needs: routine
@@ -138,12 +190,13 @@ jobs:
 
   linux-x64:
     name: Linux x64 native, tests, and SEA
-    needs: routine
+    needs: [routine, numerical-product]
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'linux-x64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 150
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
+      SAGEJS_NUMERICAL_PRODUCT_ROOT: ${{ github.workspace }}/build/authenticated-numerical-product
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -195,6 +248,12 @@ jobs:
             packages/fflas/.native/prefix
           key: linux-x64-fflas-${{ hashFiles('packages/fflas/scripts/build-deps.cjs', 'packages/fflas/scripts/native-prefix.cjs', 'packages/fflas/package.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/flint/binding.gyp') }}
           restore-keys: linux-x64-fflas-
+
+      - name: Restore the canonical authenticated numerical runtime
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-numerical-product
+          path: build/authenticated-numerical-product
 
       - name: Bootstrap the complete native system
         env:
@@ -360,12 +419,13 @@ jobs:
 
   linux-arm64:
     name: Linux arm64 native, tests, and SEA
-    needs: routine
+    needs: [routine, numerical-product]
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'linux-arm64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     timeout-minutes: 150
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
+      SAGEJS_NUMERICAL_PRODUCT_ROOT: ${{ github.workspace }}/build/authenticated-numerical-product
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -417,6 +477,12 @@ jobs:
             packages/fflas/.native/prefix
           key: linux-arm64-fflas-${{ hashFiles('packages/fflas/scripts/build-deps.cjs', 'packages/fflas/scripts/native-prefix.cjs', 'packages/fflas/package.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/flint/binding.gyp') }}
           restore-keys: linux-arm64-fflas-
+
+      - name: Restore the canonical authenticated numerical runtime
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-numerical-product
+          path: build/authenticated-numerical-product
 
       - name: Bootstrap the complete native system
         env:
@@ -514,12 +580,13 @@ jobs:
 
   windows-x64:
     name: Windows x64 native, tests, and SEA
-    needs: routine
+    needs: [routine, numerical-product]
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'windows-x64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-windows-2025
     timeout-minutes: 240
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
+      SAGEJS_NUMERICAL_PRODUCT_ROOT: ${{ github.workspace }}/build/authenticated-numerical-product
     permissions:
       contents: read
       id-token: write
@@ -607,6 +674,12 @@ jobs:
             packages/graph/.native/prefix
           key: windows-x64-graph-${{ hashFiles('packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json') }}
           restore-keys: windows-x64-graph-
+
+      - name: Restore the canonical authenticated numerical runtime
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-numerical-product
+          path: build/authenticated-numerical-product
 
       - name: Bootstrap the compiler and native mathematics stack
         env:
@@ -762,12 +835,13 @@ jobs:
 
   macos-arm64:
     name: macOS arm64 native, tests, and SEA
-    needs: routine
+    needs: [routine, numerical-product]
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'macos-arm64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-6vcpu-macos-15
     timeout-minutes: 180
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
+      SAGEJS_NUMERICAL_PRODUCT_ROOT: ${{ github.workspace }}/build/authenticated-numerical-product
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -836,6 +910,12 @@ jobs:
             packages/m4ri/.native/prefix
           key: macos-arm64-m4ri-${{ hashFiles('packages/m4ri/scripts/build-deps.cjs', 'packages/m4ri/scripts/native-prefix.cjs', 'packages/m4ri/package.json') }}
           restore-keys: macos-arm64-m4ri-
+
+      - name: Restore the canonical authenticated numerical runtime
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-numerical-product
+          path: build/authenticated-numerical-product
 
       - name: Bootstrap the compiler and native mathematics stack
         env:

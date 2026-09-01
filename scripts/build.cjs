@@ -11,6 +11,13 @@ const {
   writeBuildReceipt,
 } = require("./build-receipt.cjs");
 const { formatDuration } = require("./run-test-tier.cjs");
+const {
+  installNumericalProduct,
+  validateInstalledNumericalProduct,
+} = require("./numerical-product.cjs");
+const { inspectToolchain } = require(
+  "../packages/wasm-toolchain/scripts/toolchain.cjs"
+);
 
 const root = join(__dirname, "..");
 const dist = join(root, "dist");
@@ -175,6 +182,29 @@ async function publishProductionNative() {
   return "Skipped production kernels: the optional generated FLINT adapter is absent.";
 }
 
+async function buildLazyNumericalReactors({
+  environment = process.env,
+  inspect = () => inspectToolchain({ root }),
+  install = installNumericalProduct,
+  runCommand = run,
+  validate = validateInstalledNumericalProduct,
+} = {}) {
+  const productRoot = environment.SAGEJS_NUMERICAL_PRODUCT_ROOT;
+  if (productRoot) {
+    const product = install({ root, inputDirectory: productRoot });
+    return `Installed source-bound numerical product ${product.identity}.`;
+  }
+  const inspection = inspect();
+  if (!inspection.ready) {
+    return "Skipped optional numerical reactors: the reproducible Wasm toolchain is not prepared.";
+  }
+  const output = await runCommand(process.execPath, [
+    join(root, "packages", "flint-wasm", "numerical", "scripts", "build-all.cjs"),
+  ]);
+  validate(root);
+  return nonemptyLines(output).at(-1) ?? "Lazy numerical reactors built.";
+}
+
 async function runStage(index, action) {
   const [label, expectedSeconds] = stages[index];
   const started = Date.now();
@@ -307,10 +337,7 @@ async function main() {
   });
 
   await runStage(7, async () => {
-    const output = await run(process.execPath, [
-      join(root, "packages", "flint-wasm", "numerical", "scripts", "build-all.cjs"),
-    ]);
-    return nonemptyLines(output).at(-1) ?? "Lazy numerical reactors built.";
+    return buildLazyNumericalReactors();
   });
 
   writeBuildReceipt({ root, durationMilliseconds: Date.now() - started });
@@ -335,6 +362,7 @@ if (require.main === module) {
 
 module.exports = {
   adapterSummary,
+  buildLazyNumericalReactors,
   compilerSummary,
   ffiSummary,
   kernelSummary,

@@ -22,6 +22,9 @@ const {
   BUILTINS_STANDALONE_MODULES,
   MATRIX_STANDALONE_MODULES,
 } = require("../tools/standalone-library.cjs");
+const {
+  validateInstalledNumericalProduct,
+} = require("./numerical-product.cjs");
 
 const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
@@ -583,17 +586,14 @@ function buildExecutable(name, withFlint, seaNode) {
   );
 }
 
-execFileSync(process.execPath, [
-  join(root, "packages", "flint-wasm", "numerical", "scripts", "build-all.cjs"),
-], {
-  cwd: root,
-  stdio: "inherit",
-});
-if (!existsSync(numericalBackendArtifact)) {
-  throw new Error("cminpack numerical backend build did not publish its SEA asset");
-}
-if (!existsSync(nloptBackendArtifact)) {
-  throw new Error("NLopt numerical backend build did not publish its SEA asset");
+try {
+  validateInstalledNumericalProduct(root);
+} catch (error) {
+  throw new Error(
+    "SEA requires the authenticated numerical runtime published by `pnpm build`; " +
+      "prepare the Wasm toolchain or set SAGEJS_NUMERICAL_PRODUCT_ROOT before building. " +
+      `(${error.message})`,
+  );
 }
 
 rmSync(outputDirectory, { recursive: true, force: true });

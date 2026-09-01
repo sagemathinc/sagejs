@@ -20,6 +20,9 @@ const lock = JSON.parse(readFileSync(join(packageRoot, "sources/cminpack-lock.js
 const { inspectToolchain, resolveToolchain } = require(
   join(repositoryRoot, "packages/wasm-toolchain/scripts/toolchain.cjs"),
 );
+const { productionToolchainIdentity } = require(
+  "./production-toolchain-identity.cjs"
+);
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -231,6 +234,7 @@ async function main() {
   const compileFlags = args.slice(0, -2).map(normalizePath);
   const sourceInputs = [
     join(packageRoot, "scripts/build.cjs"),
+    join(packageRoot, "scripts/production-toolchain-identity.cjs"),
     join(packageRoot, "index.mjs"),
     join(packageRoot, "src/cminpack-adapter.c"),
     join(packageRoot, "sources/cminpack-lock.json"),
@@ -254,7 +258,7 @@ async function main() {
       license_verified: true,
     },
     toolchain: {
-      identity: toolchain.lockDigest,
+      ...productionToolchainIdentity(toolchain),
       target: toolchain.lock.build.target,
       floating_point_contract: "off",
       compile_flags: compileFlags,
