@@ -23,6 +23,9 @@ const {
 const { verifyReceipt } = require("../receipt.cjs");
 const { buildReport } = require("../report.cjs");
 const { renderMatrix } = require("./render-matrix.cjs");
+const { validateBinding: validateBrowserExecutableBinding } = require(
+  "./browser-executable.cjs"
+);
 
 const TEMPLATE_SCHEMA = "sagejs.numerical-qualification-supplemental-template/v1";
 const REPORT_SCHEMA_SUPPLEMENTAL = "sagejs.numerical-qualification-supplemental-report/v1";
@@ -831,7 +834,9 @@ function addUniqueReceiptId(receiptIds, receiptId) {
   receiptIds.add(receiptId);
 }
 
-function verifyMatrixBrowserSubjectCoherence(matrix, supplementalEvidenceRecords) {
+function verifyMatrixBrowserSubjectCoherence(
+  matrix, supplementalEvidenceRecords, matrixReceiptRecords,
+) {
   const expectedKeys = new Set([
     "browser:chromium", "browser:firefox", "browser:webkit", "worker:chromium",
   ]);
@@ -846,7 +851,10 @@ function verifyMatrixBrowserSubjectCoherence(matrix, supplementalEvidenceRecords
     if (memorySubjects.has(key)) {
       throw new Error(`supplemental browser memory duplicates subject ${key}`);
     }
-    memorySubjects.set(key, subject);
+    memorySubjects.set(key, {
+      subject,
+      executable: record.value.browser_executable,
+    });
   }
   if (memorySubjects.size !== expectedKeys.size) {
     const missing = [...expectedKeys].filter((key) => !memorySubjects.has(key));
@@ -868,9 +876,51 @@ function verifyMatrixBrowserSubjectCoherence(matrix, supplementalEvidenceRecords
     throw new Error(`full-runtime matrix lacks exact browser subjects: ${missing.join(", ")}`);
   }
   for (const key of expectedKeys) {
-    if (canonicalJson(matrixSubjects.get(key)) !== canonicalJson(memorySubjects.get(key))) {
+    if (canonicalJson(matrixSubjects.get(key)) !==
+        canonicalJson(memorySubjects.get(key).subject)) {
       throw new Error(
         `supplemental browser memory subject ${key} differs from its full-runtime receipt`,
+      );
+    }
+  }
+
+  const receiptBindings = new Map();
+  for (const record of matrixReceiptRecords) {
+    const receipt = record.value;
+    const subject = receipt.runtime?.subject;
+    if (!["browser", "worker"].includes(subject?.kind)) continue;
+    const key = `${subject.kind}:${subject.engine}`;
+    if (!expectedKeys.has(key) || receiptBindings.has(key)) {
+      throw new Error(`matrix receipt substitutes browser executable subject ${key}`);
+    }
+    const artifacts = receipt.artifacts?.filter(
+      (artifact) => artifact.name === "browser-executable-binding",
+    );
+    if (artifacts?.length !== 1) {
+      throw new Error(`matrix receipt ${key} lacks one browser executable binding`);
+    }
+    const artifact = artifacts[0];
+    authenticateRepositoryBinding(artifact, `${key} browser executable binding`, {
+      expectedPath: artifact.path,
+    });
+    const bindingPath = repositoryPath(
+      repositoryRoot, artifact.path, `${key} browser executable binding`,
+    ).absolute;
+    const binding = validateBrowserExecutableBinding(
+      parseJsonText(fs.readFileSync(bindingPath, "utf8"), `${key} browser executable binding`),
+      subject,
+    );
+    receiptBindings.set(key, binding.executable);
+  }
+  if (receiptBindings.size !== expectedKeys.size) {
+    const missing = [...expectedKeys].filter((key) => !receiptBindings.has(key));
+    throw new Error(`matrix receipts lack exact browser executable bindings: ${missing.join(", ")}`);
+  }
+  for (const key of expectedKeys) {
+    if (canonicalJson(receiptBindings.get(key)) !==
+        canonicalJson(memorySubjects.get(key).executable)) {
+      throw new Error(
+        `supplemental browser executable ${key} differs from its full-runtime receipt binding`,
       );
     }
   }
@@ -941,7 +991,9 @@ function buildReleaseGate({
     matrixReportRecord.value, candidate, policy, matrixTemplateRecord.value,
     matrixReceiptRecords,
   );
-  verifyMatrixBrowserSubjectCoherence(matrix, supplementalEvidenceRecords);
+  verifyMatrixBrowserSubjectCoherence(
+    matrix, supplementalEvidenceRecords, matrixReceiptRecords,
+  );
   verifyContentId(supplementalReport, "supplemental report");
   if (supplementalReport.schema !== REPORT_SCHEMA_SUPPLEMENTAL ||
       supplementalReport.mode !== "release" || supplementalReport.candidate !== candidate ||

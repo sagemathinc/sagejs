@@ -20,6 +20,10 @@ const {
   stageBrowserArtifact,
   subjectFor,
 } = require("../../../scripts/numerical-computing/qualification/prepare-browser.cjs");
+const {
+  createBinding: createBrowserExecutableBinding,
+  executableIdentity: browserExecutableIdentity,
+} = require("../../../scripts/numerical-computing/qualification/browser-executable.cjs");
 const browserAdapter = require(
   "../../../bench/numerical-computing/qualification/browser-adapter.cjs",
 );
@@ -484,6 +488,14 @@ test("SEA embedded numerical resources require exact bound identities", () => {
   );
 });
 
+test("relocated SEA advertises executable foreign parser guards", () => {
+  const available = packageAdapter._testing.foreignFrontendsAvailable;
+  assert.equal(available("fresh-npm-install", () => {}), true);
+  assert.equal(available("relocated-sea", () => {}), true);
+  assert.equal(available("relocated-sea", null), false);
+  assert.equal(available("unknown-runtime", () => {}), false);
+});
+
 test("package Worker path exposes supervised child RSS to the collector", {
   skip: process.platform !== "linux" || process.arch !== "x64"
     ? "the mandatory supplemental process-tree memory gate is collected on linux-x64"
@@ -633,21 +645,74 @@ test("supplemental release report fails closed on omission, stale input, and tam
   assert.throws(() => verifyEvidence(tampered, candidate), /content ID mismatch/);
 });
 
-test("browser memory subjects exactly match full-runtime browser receipts", () => {
+test("browser memory subjects and executable bytes match full-runtime receipts", (context) => {
   const matrix = matrixReport();
+  const temporary = fs.mkdtempSync(path.join(repositoryRoot, "build", "browser-identity-test-"));
+  context.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
   const records = evidenceRecords().filter((record) =>
     record.value.schema === "sagejs.numerical-browser-memory-evidence/v1");
-  assert.equal(verifyMatrixBrowserSubjectCoherence(matrix, records), true);
+  const executable = browserExecutableIdentity(process.execPath, "1");
+  const matrixReceipts = records.map((record, index) => {
+    record.value.browser_executable = executable;
+    const { id: _oldId, ...core } = record.value;
+    record.value.id = contentId(core);
+    const binding = createBrowserExecutableBinding(record.value.subject, executable);
+    const filename = path.join(temporary, `browser-${index}.json`);
+    fs.writeFileSync(filename, `${JSON.stringify(binding, null, 2)}\n`);
+    const artifact = {
+      name: "browser-executable-binding",
+      ...digestPath(repositoryRoot, path.relative(repositoryRoot, filename), "browser binding"),
+    };
+    return {
+      path: `receipt-${index}.json`,
+      value: { runtime: { subject: record.value.subject }, artifacts: [artifact] },
+    };
+  });
+  assert.equal(
+    verifyMatrixBrowserSubjectCoherence(matrix, records, matrixReceipts),
+    true,
+  );
 
   const substituted = structuredClone(records);
   const chromium = substituted.find((record) =>
     record.value.subject.kind === "browser" && record.value.subject.engine === "chromium");
   chromium.value.subject.version = "2";
+  chromium.value.browser_executable.version = "2";
   const { id: _oldId, ...core } = chromium.value;
   chromium.value.id = contentId(core);
   assert.throws(
-    () => verifyMatrixBrowserSubjectCoherence(matrix, substituted),
+    () => verifyMatrixBrowserSubjectCoherence(matrix, substituted, matrixReceipts),
     /differs from its full-runtime receipt/,
+  );
+
+  const differentBytes = structuredClone(records);
+  const differentChromium = differentBytes.find((record) =>
+    record.value.subject.kind === "browser" && record.value.subject.engine === "chromium");
+  const differentExecutable = path.join(temporary, "different-browser");
+  fs.writeFileSync(differentExecutable, "different browser executable bytes");
+  differentChromium.value.browser_executable = browserExecutableIdentity(
+    differentExecutable,
+    "1",
+  );
+  const { id: _oldExecutableId, ...differentCore } = differentChromium.value;
+  differentChromium.value.id = contentId(differentCore);
+  assert.throws(
+    () => verifyMatrixBrowserSubjectCoherence(matrix, differentBytes, matrixReceipts),
+    /browser executable.*differs from its full-runtime receipt binding/,
+  );
+});
+
+test("browser matrix adapter rejects executable mutation after launch", (context) => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-browser-mutation-test-"));
+  context.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const filename = path.join(temporary, "browser");
+  fs.writeFileSync(filename, "original browser bytes");
+  const identity = browserExecutableIdentity(filename, "1");
+  assert.deepEqual(browserAdapter._testing.authenticateBrowserExecutable(identity), identity);
+  fs.appendFileSync(filename, " changed");
+  assert.throws(
+    () => browserAdapter._testing.authenticateBrowserExecutable(identity),
+    /changed while matrix qualification executed/,
   );
 });
 

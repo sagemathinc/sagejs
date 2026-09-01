@@ -176,6 +176,7 @@ async function run(options) {
     `browser-dist=${prepared.browserDistPath}`,
     `cminpack-wasm=${options.cminpackArtifactPath}`,
     `nlopt-wasm=${options.nloptArtifactPath}`,
+    `browser-executable-binding=${prepared.browserExecutableBindingPath}`,
   ];
   const receipt = await collectReceipt({
     root,

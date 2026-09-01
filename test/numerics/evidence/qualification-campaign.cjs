@@ -17,6 +17,9 @@ const {
 const {
   renderMatrix,
 } = require("../../../scripts/numerical-computing/qualification/render-matrix.cjs");
+const {
+  createBinding: createBrowserExecutableBinding,
+} = require("../../../scripts/numerical-computing/qualification/browser-executable.cjs");
 const { ADAPTER_PROTOCOL } = require("../../../scripts/numerical-computing/contracts.cjs");
 const {
   bindCapabilityDraft,
@@ -169,22 +172,34 @@ test("browser-worker adapter interrupts, replaces, and reuses the real worker", 
 }, async () => {
   delete require.cache[require.resolve(browserAdapterPath)];
   const adapter = require(browserAdapterPath);
+  const probe = await adapter._testing.launchBrowser("chromium");
+  await probe.browser.close();
+  const bindingDirectory = fs.mkdtempSync(path.join(root, "build", "browser-binding-test-"));
+  const bindingPath = path.join(bindingDirectory, "browser-executable.json");
+  const testSubject = {
+    kind: "worker", name: "sagejs-browser-worker", version: probe.version, engine: "chromium",
+  };
+  fs.writeFileSync(
+    bindingPath,
+    `${JSON.stringify(createBrowserExecutableBinding(testSubject, probe.executable), null, 2)}\n`,
+  );
   const draft = capabilityDraft(spec, corpus, {
-    kind: "worker", name: "sagejs-browser-worker", version: "probe", engine: "chromium",
-  });
-  const initialized = await adapter.initialize({
-    root,
-    backend: draft.backend,
-    subject: draft.subject,
-    artifacts: [
-      { name: "sagejs-browser", path: browserArtifact, sha256: "test-only", bytes: 0 },
-      { name: "browser-dist", path: path.join(browserArtifact, "dist"), sha256: "test-only", bytes: 0 },
-      { name: "cminpack-wasm", path: browserCminpack, sha256: "test-only", bytes: 0 },
-      { name: "nlopt-wasm", path: browserNlopt, sha256: "test-only", bytes: 0 },
-    ],
-    capabilities: draft.capabilities,
+    ...testSubject,
   });
   try {
+    const initialized = await adapter.initialize({
+      root,
+      backend: draft.backend,
+      subject: draft.subject,
+      artifacts: [
+        { name: "sagejs-browser", path: browserArtifact, sha256: "test-only", bytes: 0 },
+        { name: "browser-dist", path: path.join(browserArtifact, "dist"), sha256: "test-only", bytes: 0 },
+        { name: "cminpack-wasm", path: browserCminpack, sha256: "test-only", bytes: 0 },
+        { name: "nlopt-wasm", path: browserNlopt, sha256: "test-only", bytes: 0 },
+        { name: "browser-executable-binding", path: bindingPath, sha256: "test-only", bytes: 0 },
+      ],
+      capabilities: draft.capabilities,
+    });
     assert.equal(initialized.subject.kind, "worker");
     assert.equal(initialized.subject.engine, "chromium");
     assert(initialized.capability_ids.includes("numerics.lifecycle.recovery"));
@@ -197,6 +212,7 @@ test("browser-worker adapter interrupts, replaces, and reuses the real worker", 
     assert(observed.values.independent_residual <= 1e-12);
   } finally {
     await adapter.close();
+    fs.rmSync(bindingDirectory, { recursive: true, force: true });
   }
 });
 

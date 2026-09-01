@@ -242,7 +242,7 @@ function requirementSatisfied(id, present, host) {
   const requirement = internals.capabilityModuleRequirements[id];
   if (requirement === "external:scipy-python") return host.scipy;
   if (requirement === "external:foreign-frontends") {
-    return runtimeContext.kind === "fresh-npm-install";
+    return foreignFrontendsAvailable(runtimeContext?.kind, runLanguage);
   }
   if (requirement === "external:cminpack-wasm" || requirement === "external:nlopt-wasm") {
     return present.has("sagejs.numerics.optimization");
@@ -255,6 +255,11 @@ function requirementSatisfied(id, present, host) {
     ].every((name) => present.has(name));
   }
   return present.has(requirement);
+}
+
+function foreignFrontendsAvailable(kind, languageRunner) {
+  return ["fresh-npm-install", "relocated-sea"].includes(kind) &&
+    typeof languageRunner === "function";
 }
 
 function parseShape(result, name) {
@@ -478,6 +483,7 @@ module.exports = {
   },
 
   _testing: {
+    foreignFrontendsAvailable,
     runQualificationWorker,
     validateSeaResourceDigests,
   },

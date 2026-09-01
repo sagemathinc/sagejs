@@ -7,6 +7,7 @@ const path = require("node:path");
 const { pretty, readJson, repositoryPath, sha256 } = require("../common.cjs");
 const { validateCorpus } = require("../contracts.cjs");
 const { bindCapabilityDraft, writeImmutableJson } = require("../receipt.cjs");
+const { createBinding } = require("./browser-executable.cjs");
 const { capabilityDraft } = require("./prepare-node.cjs");
 
 const defaultRoot = path.resolve(__dirname, "..", "..", "..");
@@ -127,6 +128,11 @@ async function prepare({
   const draft = capabilityDraft(spec, corpus, subject);
   const output = repositoryPath(root, outputDirectory, "output directory");
   fs.mkdirSync(output.absolute, { recursive: true });
+  const browserExecutableBindingPath = `${output.relative}/browser-executable.json`;
+  writeImmutableJson(
+    path.join(root, browserExecutableBindingPath),
+    createBinding(subject, browserExecutable),
+  );
   const stagedArtifactPath = stageBrowserArtifact(
     root, artifactPath, `${output.relative}/browser-artifact`,
   );
@@ -141,6 +147,7 @@ async function prepare({
       `browser-dist=${stagedArtifactPath}/dist`,
       `cminpack-wasm=${cminpackArtifactPath}`,
       `nlopt-wasm=${nloptArtifactPath}`,
+      `browser-executable-binding=${browserExecutableBindingPath}`,
     ],
     draftPath,
   });
@@ -154,6 +161,7 @@ async function prepare({
     artifactPath: stagedArtifactPath,
     browserDistPath: `${stagedArtifactPath}/dist`,
     browserExecutable,
+    browserExecutableBindingPath,
   };
 }
 
@@ -215,6 +223,7 @@ async function main(argv = process.argv.slice(2)) {
       `--artifact browser-dist=${prepared.browserDistPath}`,
       `--artifact cminpack-wasm=${cminpackArtifactPath}`,
       `--artifact nlopt-wasm=${nloptArtifactPath}`,
+      `--artifact browser-executable-binding=${prepared.browserExecutableBindingPath}`,
       `--output ${outputDirectory}/${kind}-${engine}.receipt.json`,
     ].join(" "),
   }));

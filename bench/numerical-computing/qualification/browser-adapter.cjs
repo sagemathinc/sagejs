@@ -5,9 +5,13 @@ const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
 const { performance } = require("node:perf_hooks");
-const { createHash } = require("node:crypto");
 
 const { ADAPTER_PROTOCOL } = require("../../../scripts/numerical-computing/contracts.cjs");
+const { canonicalJson } = require("../../../scripts/numerical-computing/common.cjs");
+const {
+  executableIdentity,
+  readBinding,
+} = require("../../../scripts/numerical-computing/qualification/browser-executable.cjs");
 const nodeAdapter = require("./node-adapter.cjs");
 
 const internals = nodeAdapter.qualificationInternals;
@@ -27,14 +31,19 @@ let subject = null;
 let initializedCapabilities = [];
 let browserDiagnostics = [];
 let lastBrowserExecutable = null;
-
-function sha256(bytes) {
-  return createHash("sha256").update(bytes).digest("hex");
-}
+let activeBrowserExecutableBinding = null;
 
 function diagnostic(message) {
   browserDiagnostics.push(String(message));
   if (browserDiagnostics.length > 32) browserDiagnostics.shift();
+}
+
+function authenticateBrowserExecutable(expected) {
+  const current = executableIdentity(expected.path, expected.version);
+  if (canonicalJson(current) !== canonicalJson(expected)) {
+    throw new Error("browser executable changed while matrix qualification executed");
+  }
+  return current;
 }
 
 function browserEngine(contextSubject) {
@@ -67,32 +76,32 @@ function browserExecutable(type, engine) {
   return candidates.filter(Boolean).find((candidate) => fs.existsSync(candidate)) ?? null;
 }
 
-async function launchBrowser(engine) {
+async function launchBrowser(engine, expectedExecutable = null) {
   const playwright = require("playwright-core");
   const type = playwright[engine];
   if (type === undefined) throw new Error(`unsupported Playwright engine ${engine}`);
-  const executablePath = browserExecutable(type, engine);
+  const executablePath = expectedExecutable?.path ?? browserExecutable(type, engine);
   if (executablePath === null) {
     throw new Error(`Playwright ${engine} is not installed; install it or set SAGEJS_${engine.toUpperCase()}_EXECUTABLE`);
   }
   const exactExecutablePath = fs.realpathSync(executablePath);
-  const executableBytes = fs.readFileSync(exactExecutablePath);
   const launched = await type.launch({
     executablePath: exactExecutablePath,
     headless: true,
     args: engine === "chromium" ? ["--no-sandbox", "--disable-dev-shm-usage"] : [],
   });
   const version = launched.version();
+  const executable = executableIdentity(exactExecutablePath, version);
+  if (expectedExecutable !== null &&
+      canonicalJson(executable) !== canonicalJson(expectedExecutable)) {
+    await launched.close();
+    throw new Error("launched browser executable differs from its capability binding");
+  }
   return {
     browser: launched,
     version,
     executablePath: exactExecutablePath,
-    executable: {
-      path: exactExecutablePath,
-      sha256: sha256(executableBytes),
-      bytes: executableBytes.length,
-      version,
-    },
+    executable,
   };
 }
 
@@ -340,6 +349,7 @@ async function evaluateSample(sample) {
 }
 
 async function close() {
+  let failure = null;
   try {
     if (page !== null) {
       await page.evaluate(async () => {
@@ -349,8 +359,24 @@ async function close() {
       }).catch(() => {});
     }
     await browser?.close();
+  } catch (error) {
+    failure = error;
   } finally {
-    if (server !== null) await new Promise((resolve) => server.close(resolve));
+    if (server !== null) {
+      try {
+        await new Promise((resolve, reject) =>
+          server.close((error) => error ? reject(error) : resolve()));
+      } catch (error) {
+        failure ??= error;
+      }
+    }
+    if (activeBrowserExecutableBinding !== null) {
+      try {
+        authenticateBrowserExecutable(activeBrowserExecutableBinding);
+      } catch (error) {
+        failure ??= error;
+      }
+    }
     internals.closeHostOracles();
     artifactRoot = null;
     server = null;
@@ -359,7 +385,9 @@ async function close() {
     subject = null;
     initializedCapabilities = [];
     browserDiagnostics = [];
+    activeBrowserExecutableBinding = null;
   }
+  if (failure !== null) throw failure;
 }
 
 module.exports = {
@@ -376,6 +404,13 @@ module.exports = {
         fs.realpathSync(browserDist.path) !== fs.realpathSync(path.join(artifact.path, "dist"))) {
       throw new Error("browser-dist must bind the exact staged browser dist directory");
     }
+    const executableArtifact = context.artifacts.find(
+      (item) => item.name === "browser-executable-binding",
+    );
+    if (executableArtifact === undefined || !fs.statSync(executableArtifact.path).isFile()) {
+      throw new Error("browser-executable-binding must be bound separately");
+    }
+    const executableBinding = readBinding(executableArtifact.path, context.subject);
     for (const filename of [
       "kernel.mjs",
       "dist/cminpack.wasm",
@@ -405,8 +440,9 @@ module.exports = {
     const engine = browserEngine(context.subject);
     try {
       server = await listen(artifactRoot);
-      const launched = await launchBrowser(engine);
+      const launched = await launchBrowser(engine, executableBinding.executable);
       lastBrowserExecutable = launched.executable;
+      activeBrowserExecutableBinding = executableBinding.executable;
       browser = launched.browser;
       page = await browser.newPage();
       page.on("console", (message) => diagnostic(`console ${message.type()}: ${message.text()}`));
@@ -499,6 +535,7 @@ module.exports = {
   _testing: Object.freeze({
     browserEngine,
     browserExecutable,
+    authenticateBrowserExecutable,
     launchBrowser,
     lastBrowserExecutable: () => lastBrowserExecutable,
   }),
