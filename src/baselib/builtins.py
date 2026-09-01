@@ -1033,6 +1033,14 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
 def _builtins_operator_add_slow(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
+    if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
+        right
+    ):
+        # Two exact integers have one addition, the one that recovers the sum
+        # in BigInt when it leaves the range a double holds.  Reaching the
+        # general path instead returns the rounded double, which stops being
+        # an integer at all.
+        return ρσ_operator_add_exact(left, right)
     if runtime.strict_equal(left_type, right_type) and (
         runtime.strict_equal(left_type, "number")
         or runtime.strict_equal(left_type, "bigint")
@@ -1091,6 +1099,15 @@ def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
     # overflowing safe integers still promote to BigInt below.
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
+    # A boolean is an integer in Python, so give it the storage kind of one
+    # before the branches divide.  Left as a boolean it reaches the fallback
+    # below, which adds without recovering the sum in BigInt.
+    if runtime.strict_equal(left_type, "boolean"):
+        left = _builtins_integral_bool(left)
+        left_type = "number"
+    if runtime.strict_equal(right_type, "boolean"):
+        right = _builtins_integral_bool(right)
+        right_type = "number"
     if runtime.strict_equal(left_type, right_type) and (
         runtime.strict_equal(left_type, "number")
         or runtime.strict_equal(left_type, "bigint")
