@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "package-qualification",
+  "title": "Cross-platform package qualification",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide target-parameterized fresh-install npm and relocated SEA numerical smoke qualification across all supported platforms without workspace leakage",
+  "base_commit": "9ab9c9c7d5fda5b8c0dffb0a2dd38e758833b9bd",
+  "claims": [
+    "scripts/test-npm-package.cjs",
+    "scripts/package-qualification/",
+    "test/package-qualification/",
+    "docs/numerical-computing/qualification/package-install.md",
+    "package.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "fresh temporary install executes representative public numerical operations",
+      "focused command-construction and artifact-selection tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:package-qualification:unit",
+    "pnpm release:qualify:package -- --target <matching-target>"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:package-qualification:unit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.672,
+      "started_at": "2026-08-31T23:07:39.878Z",
+      "commit": "9ab9c9c7d5fda5b8c0dffb0a2dd38e758833b9bd",
+      "workspace_fingerprint": "0f5827869c2e9cb103d72ae1e6b46ce9f0b8c93df39e6a1eb8d891dac5e00262",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:package-qualification:unit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.129,
+      "started_at": "2026-08-31T23:29:41.881Z",
+      "commit": "a3e59d38cce4913c43d2944b1c6d353533ce5a09",
+      "workspace_fingerprint": "7b6ed68ba31dec1e8bdd807acfbaf82f4d3b990570610b87537f47000a2630f7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added isolated production-archive installation, target-parameterized public API and numerical smoke qualification, arbitrary-source npm/SEA runners for P8 adapters, and adversarial cross-platform command/layout/lifecycle tests. The root-only consumer now proves platform selection through the root archive's exact optional dependency. Linux x64 passed against freshly built root and platform archives, including lazy cminpack/NLopt and a separately relocated SEA.",
+    "risks": [
+      "The committed runner is platform-neutral, but production archives still need to be executed on the persistent Linux ARM64, macOS ARM64, and Windows x64 hosts after integration provides their current artifacts."
+    ],
+    "next_steps": [
+      "Bind the runner APIs into P8's authoritative corpus adapters without duplicating corpus or receipt files.",
+      "Run `pnpm release:qualify:package -- --target <matching-target>` on each persistent release host and attach those receipts to P8 qualification."
+    ]
+  }
+}
