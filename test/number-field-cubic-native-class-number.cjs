@@ -186,6 +186,10 @@ cases = (
     # presentation has nontrivial analytic index, and obtains PARI's 17-row
     # presentation of C10 without searching the whole factor base.
     ("3.1.104072.1", (434, 2, -1, 1), 10, (10,), 0),
+    # PARI's norm-sorted sub-factor-base permutation is [2,4,5,1,3,6],
+    # traversed backward as [6,3,1,5,...]. After both compact prefixes fail,
+    # the full checked ellipsoids on those first four ideals certify C9.
+    ("3.1.26412.1", (-159, 9, -1, 1), 9, (9,), 0),
     # The defining order has index 4 and a prime discriminant component above
     # one million.  The proof binder must use its deterministic word-prime
     # certificate rather than an arbitrary trial-division cutoff.
@@ -216,6 +220,10 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
         assert receipt.generator_bound == 18, label
         assert receipt.factor_base_size == 11, label
         assert receipt.relation_count == 17, label
+    if label == "3.1.26412.1":
+        assert receipt.generator_bound == 15, label
+        assert receipt.factor_base_size == 6, label
+        assert receipt.relation_count == 13, label
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label

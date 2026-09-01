@@ -50,7 +50,7 @@ _CUBIC_MAX_POWERS = 12
 _CUBIC_MAX_RELATIONS = 1024
 _CUBIC_MAX_COMPOUND_PAIRS = 128
 _CUBIC_COMPOUND_MULTIPLIERS = 4
-_CUBIC_MAX_RELATION_EFFORT = 6
+_CUBIC_MAX_RELATION_EFFORT = 7
 _CUBIC_INITIAL_ADJACENT_IDEALS = 3
 _CUBIC_SECOND_ADJACENT_IDEALS = 4
 _CUBIC_NARROW_ADJACENT_MAX_FACTORS = 11
@@ -4722,6 +4722,49 @@ def _cubic_complementary_prime_basis(
 
 
 @native
+def _cubic_factor_norm(
+    workspace: NativeIntegerVector,
+    factor_index: uint64,
+) -> int:
+    """Return the exact norm stored for one factor-base ideal."""
+    factor_base: uint64 = _FACTOR_OFFSET + _FACTOR_STRIDE * factor_index
+    factor_norm = 1
+    factor_degree: uint64 = 0
+    while factor_degree < workspace[factor_base + 2]:
+        factor_norm *= workspace[factor_base]
+        factor_degree += 1
+    return factor_norm
+
+
+@native
+def _cubic_next_factor_by_norm(
+    workspace: NativeIntegerVector,
+    factor_count: uint64,
+    previous_norm: int,
+    previous_index: uint64,
+    have_previous: uint64,
+) -> uint64:
+    """Return the next canonical factor in stable increasing-norm order."""
+    next_index: uint64 = factor_count
+    next_norm: int = 0
+    factor_index: uint64 = 0
+    while factor_index < factor_count:
+        factor_norm = _cubic_factor_norm(workspace, factor_index)
+        follows_previous = have_previous == 0 or factor_norm > previous_norm
+        if factor_norm == previous_norm and factor_index > previous_index:
+            follows_previous = True
+        if follows_previous and (
+            next_index == factor_count
+            or factor_norm < next_norm
+            or (factor_norm == next_norm and factor_index < next_index)
+        ):
+            next_index = factor_index
+            next_norm = factor_norm
+        factor_index += 1
+    return next_index
+
+
+@native
 def certified_complex_cubic_class_group_v1(
     output: IntegerBuffer,
     coefficients: IntegerBuffer,
@@ -4762,18 +4805,19 @@ def certified_complex_cubic_class_group_v1(
         or temporary_limit < 1048576
     ):
         return False
-    # Relation effort is monotone. The first call uses PARI's narrow
-    # three-adjacent-ideal prefix. The second adds one adjacent ideal and every
-    # residue-degree-two complement already certified by the factor-base
-    # construction. The third restores the complete adjacent set, and only
-    # later calls authorize one, two, then four compound multipliers. Every
-    # retry recomputes and authenticates its own exact state.
+    # Relation effort is monotone. The cheap first call uses three canonical
+    # adjacent ideals. The second adds one ideal and every certified
+    # residue-degree-two complement. The third uses PARI's source-derived
+    # factor-base permutation and full reduced ellipsoids, and the fourth
+    # restores the complete adjacent set. Only later calls authorize one, two,
+    # then four compound multipliers. Every retry recomputes and authenticates
+    # its own exact state.
     scheduled_compound_multiplier_limit: uint64 = 0
-    if relation_effort == 4:
+    if relation_effort == 5:
         scheduled_compound_multiplier_limit = 1
-    elif relation_effort == 5:
-        scheduled_compound_multiplier_limit = 2
     elif relation_effort == 6:
+        scheduled_compound_multiplier_limit = 2
+    elif relation_effort == 7:
         scheduled_compound_multiplier_limit = _CUBIC_COMPOUND_MULTIPLIERS
     with NativeExactArena(memory_limit, temporary_limit) as arena:
         workspace = arena.integer_vector(_CUBIC_WORKSPACE_LENGTH, 0)
@@ -5412,42 +5456,173 @@ def certified_complex_cubic_class_group_v1(
         # relation discovery conditional on failure of the unit search.  They
         # are logically independent: `3.1.1292.1` already has its fundamental
         # unit in the tiny order shell, but still needs the norm-11 generator
-        # found in the reduced ideal above 11.  PARI's factor-base permutation
-        # places a small independent sub-factor-base first and the remaining
-        # ideals later; `small_norm` traverses that permutation backward.  The
-        # bounded source-transparent analogue first visits the three final
-        # factor-base ideals, which have the largest norms in the canonical
-        # ordering. The next stage adds one final ideal and every
-        # residue-degree-two complement in a
-        # `(1,2)` split.  The latter is essential in `3.1.108115.1`, where
-        # PARI's second successful reduced lattice is precisely the ideal of
-        # norm 9. The complete retry then prevents a middle generator (the ideal
-        # over 29 in `3.1.12763.1`) from receiving no reduced search at all.
-        # Exact rank, unit, and analytic-index failures are the only signals
-        # that authorize broader relation effort.
+        # found in the reduced ideal above 11. Reproduce PARI's factor-base
+        # permutation rather than approximating it by a norm suffix. It stably
+        # sorts ideals by norm, selects at least three eligible small ideals
+        # whose norm product exceeds the generator bound, places locally
+        # redundant final factors next, then appends the remaining sorted
+        # ideals. `small_norm` traverses this permutation backward. For
+        # `3.1.26412.1` this is [2,4,5,1,3,6], hence the observed search order
+        # [6,3,1,5,...]. The third effort uses its first four positions and
+        # every residue-degree-two complement. Exact rank, unit, and
+        # analytic-index failures are the only signals that authorize broader
+        # relation effort.
         adjacent_ideal_count: uint64 = 0
         adjacent_candidate_count: uint64 = 0
         adjacent_prefix_start: uint64 = 0
         adjacent_factor_cursor: uint64 = 0
-        if relation_effort <= 2 and factor_count <= _CUBIC_NARROW_ADJACENT_MAX_FACTORS:
-            adjacent_prefix: uint64 = _CUBIC_INITIAL_ADJACENT_IDEALS
-            if relation_effort == 2:
-                adjacent_prefix = _CUBIC_SECOND_ADJACENT_IDEALS
-            if factor_count > adjacent_prefix:
-                adjacent_prefix_start = factor_count - adjacent_prefix
+        adjacent_prefix: uint64 = _CUBIC_INITIAL_ADJACENT_IDEALS
+        if relation_effort == 2 or relation_effort == 3:
+            adjacent_prefix = _CUBIC_SECOND_ADJACENT_IDEALS
+        use_canonical_prefix = (
+            relation_effort <= 2
+            and factor_count <= _CUBIC_NARROW_ADJACENT_MAX_FACTORS
+            and factor_count > adjacent_prefix
+        )
+        use_pari_permutation = (
+            relation_effort == 3
+            and factor_count <= _CUBIC_NARROW_ADJACENT_MAX_FACTORS
+            and factor_count > adjacent_prefix
+        )
+        if use_canonical_prefix or use_pari_permutation:
+            adjacent_prefix_start = factor_count - adjacent_prefix
+        if use_pari_permutation:
+            # During planning slot +9 holds a one-based permutation position.
+            # Values above `factor_count` temporarily encode locally redundant
+            # ideals encountered while constructing PARI's sub-factor-base.
+            subbase_count: uint64 = 0
+            subbase_redundant_count: uint64 = 0
+            subbase_product: int = 1
+            sorted_count: uint64 = 0
+            previous_norm: int = 0
+            previous_index: uint64 = 0
+            have_previous: uint64 = 0
+            while sorted_count < factor_count and (
+                subbase_count < 3 or subbase_product <= generator_bound
+            ):
+                sorted_factor_index: uint64 = _cubic_next_factor_by_norm(
+                    workspace,
+                    factor_count,
+                    previous_norm,
+                    previous_index,
+                    have_previous,
+                )
+                if sorted_factor_index >= factor_count:
+                    return False
+                sorted_factor_base: uint64 = (
+                    _FACTOR_OFFSET + _FACTOR_STRIDE * sorted_factor_index
+                )
+                sorted_factor_norm = _cubic_factor_norm(
+                    workspace,
+                    sorted_factor_index,
+                )
+                sorted_prime = workspace[sorted_factor_base]
+                sorted_same_previous = False
+                if sorted_factor_index > 0:
+                    previous_factor_base: uint64 = _FACTOR_OFFSET + _FACTOR_STRIDE * (
+                        sorted_factor_index - 1
+                    )
+                    sorted_same_previous = (
+                        workspace[previous_factor_base] == sorted_prime
+                    )
+                sorted_same_next = False
+                if sorted_factor_index + 1 < factor_count:
+                    next_factor_base: uint64 = _FACTOR_OFFSET + _FACTOR_STRIDE * (
+                        sorted_factor_index + 1
+                    )
+                    sorted_same_next = workspace[next_factor_base] == sorted_prime
+                sorted_group_is_complete = (
+                    sorted_same_previous
+                    or sorted_same_next
+                    or workspace[sorted_factor_base + 1]
+                    * workspace[sorted_factor_base + 2]
+                    == 3
+                )
+                sorted_factor_is_redundant = (
+                    sorted_group_is_complete and not sorted_same_next
+                )
+                if sorted_factor_is_redundant:
+                    subbase_redundant_count += 1
+                    workspace[sorted_factor_base + 9] = (
+                        factor_count + subbase_redundant_count
+                    )
+                else:
+                    subbase_count += 1
+                    workspace[sorted_factor_base + 9] = subbase_count
+                    subbase_product *= sorted_factor_norm
+                previous_norm = sorted_factor_norm
+                previous_index = sorted_factor_index
+                have_previous = 1
+                sorted_count += 1
+
+            permutation_count: uint64 = subbase_count + subbase_redundant_count
+            permutation_factor_index: uint64 = 0
+            while permutation_factor_index < factor_count:
+                permutation_factor_base: uint64 = (
+                    _FACTOR_OFFSET + _FACTOR_STRIDE * permutation_factor_index
+                )
+                permutation_marker = workspace[permutation_factor_base + 9]
+                if permutation_marker > factor_count:
+                    workspace[permutation_factor_base + 9] = (
+                        subbase_count + permutation_marker - factor_count
+                    )
+                permutation_factor_index += 1
+
+            sorted_count = 0
+            previous_norm = 0
+            previous_index = 0
+            have_previous = 0
+            while sorted_count < factor_count:
+                sorted_factor_index = _cubic_next_factor_by_norm(
+                    workspace,
+                    factor_count,
+                    previous_norm,
+                    previous_index,
+                    have_previous,
+                )
+                if sorted_factor_index >= factor_count:
+                    return False
+                sorted_factor_base = (
+                    _FACTOR_OFFSET + _FACTOR_STRIDE * sorted_factor_index
+                )
+                sorted_factor_norm = _cubic_factor_norm(
+                    workspace,
+                    sorted_factor_index,
+                )
+                if workspace[sorted_factor_base + 9] == 0:
+                    permutation_count += 1
+                    workspace[sorted_factor_base + 9] = permutation_count
+                previous_norm = sorted_factor_norm
+                previous_index = sorted_factor_index
+                have_previous = 1
+                sorted_count += 1
+            if permutation_count != factor_count:
+                return False
         while adjacent_factor_cursor < factor_count:
             adjacent_factor_index: uint64 = adjacent_factor_cursor
             adjacent_factor_base: uint64 = (
                 _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
             )
-            schedule_adjacent = adjacent_factor_index >= adjacent_prefix_start
-            if relation_effort == 2 and workspace[adjacent_factor_base + 8] == 1:
+            schedule_adjacent = True
+            if use_canonical_prefix:
+                schedule_adjacent = adjacent_factor_index >= adjacent_prefix_start
+            elif use_pari_permutation:
+                schedule_adjacent = (
+                    workspace[adjacent_factor_base + 9] > adjacent_prefix_start
+                )
+            if (
+                relation_effort >= 2
+                and relation_effort <= 3
+                and workspace[adjacent_factor_base + 8] == 1
+            ):
                 schedule_adjacent = True
             if schedule_adjacent:
                 workspace[adjacent_factor_base + 9] = 1
                 adjacent_ideal_count += 1
                 if workspace[adjacent_factor_base + 8] == 0:
                     adjacent_candidate_count += 4
+            else:
+                workspace[adjacent_factor_base + 9] = 0
             adjacent_factor_cursor += 1
         compound_pair_count: uint64 = 0
         compound_multiplier_index: uint64 = 0
@@ -5569,12 +5744,12 @@ def certified_complex_cubic_class_group_v1(
                 planning_one += 1
             planning_zero += 1
 
-        # Build one T2/LLL basis for each selected ideal.  Degree-one factors
-        # retain the compact four-direction shell.  A residue-degree-two
-        # complement instead receives PARI's bounded reduced-ideal ellipsoid:
-        # its exact Gram/cofactor box is planned once and replayed unchanged at
-        # admission.  The otherwise private factor slot `+9` is the schedule
-        # marker (and the winning pair code for the compact shell).
+        # Build one T2/LLL basis for each selected ideal. The first effort keeps
+        # the compact four-direction shell for degree-one factors. An exact
+        # failure authorizes PARI's bounded reduced-ideal ellipsoid for every
+        # selected ideal; complements use it from the start. Its exact
+        # Gram/cofactor box is planned once and replayed unchanged at admission.
+        # Factor slot `+9` holds pair codes 1..3 or ellipsoid code 4.
         adjacent_factor_index = 0
         while adjacent_factor_index < factor_count:
             factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
@@ -5621,7 +5796,10 @@ def certified_complex_cubic_class_group_v1(
                             return False
                         transform_column += 1
                     transform_row += 1
-                if workspace[factor_base + 8] == 1:
+                use_adjacent_ellipsoid = (
+                    workspace[factor_base + 8] == 1 or relation_effort >= 3
+                )
+                if use_adjacent_ellipsoid:
                     if not _cubic_prepare_reduced_ideal_ellipsoid(
                         workspace,
                         adjacent_basis,
@@ -5655,10 +5833,8 @@ def certified_complex_cubic_class_group_v1(
                     ):
                         return False
                     adjacent_candidate_count += adjacent_ellipsoid_count
-                    # Keep this exact ideal live for the admission traversal;
-                    # the value is merely a nonzero schedule marker here.
-                    workspace[factor_base + 9] = 1
-                else:
+                    workspace[factor_base + 9] = 4
+                if workspace[factor_base + 8] == 0:
                     adjacent_best_score = -1
                     adjacent_best_pair: uint64 = 0
                     adjacent_pair: uint64 = 0
@@ -5731,7 +5907,10 @@ def certified_complex_cubic_class_group_v1(
                             adjacent_best_score = adjacent_score
                             adjacent_best_pair = adjacent_pair
                         adjacent_pair += 1
-                    workspace[factor_base + 9] = adjacent_best_pair + 1
+                    if use_adjacent_ellipsoid:
+                        workspace[factor_base + 9] = adjacent_best_pair + 5
+                    else:
+                        workspace[factor_base + 9] = adjacent_best_pair + 1
             adjacent_factor_index += 1
 
         # Retain PARI's compound norm target, but do not construct any product
@@ -5943,7 +6122,7 @@ def certified_complex_cubic_class_group_v1(
                 )
                 adjacent_basis = power_base
                 adjacent_transform_row = 3 * adjacent_factor_index
-                if workspace[factor_base + 8] == 1:
+                if workspace[factor_base + 8] == 1 or adjacent_pair_code >= 5:
                     (
                         next_relation_count,
                         admitted_ellipsoid_count,
@@ -5972,8 +6151,12 @@ def certified_complex_cubic_class_group_v1(
                     ):
                         return False
                     relation_count = next_relation_count
-                else:
+                if workspace[factor_base + 8] == 0:
                     admission_pair = adjacent_pair_code - 1
+                    if adjacent_pair_code >= 5:
+                        admission_pair = adjacent_pair_code - 5
+                    if admission_pair < 0 or admission_pair > 2:
+                        return False
                     adjacent_first = 0
                     adjacent_second = 1
                     if admission_pair == 1:

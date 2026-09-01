@@ -161,6 +161,16 @@ when every prime ideal above $p$ is represented; in particular, a retained
 degree-one factor of splitting type $(1,2)$ does not create the false relation
 $(p)=P_1$ when its norm-$p^2$ companion lies outside the selected factor base.
 
+The broader individual-ideal stage reproduces PARI 2.15.4's factor-base
+permutation. It stably sorts prime ideals by norm and builds a sub-factor-base
+of at least three eligible ideals whose norm product exceeds the certified
+generator bound. When all local factors above a rational prime are represented,
+the last such factor is omitted from this sub-factor-base because the other
+factors and $(p)$ already determine its class. The permutation places the
+sub-factor-base first, these locally redundant factors second, and all remaining
+ideals last; relation search traverses it backward. This permutation affects
+only proposal order. It cannot authorize a relation or a result.
+
 For an unramified prime of splitting type $(1,2)$, the native program also
 constructs the complementary norm-$p^2$ ideal explicitly. If $P$ is the
 degree-one prime, it solves for the normalized residue idempotent $e$ with
@@ -203,6 +213,9 @@ too narrow to justify a duplicate exact setup. Only an exact relation-rank,
 unit-rank, or analytic-index failure authorizes a second attempt. That attempt
 visits the four largest canonical ideals and every certified residue-degree-two
 complement of a retained degree-one ideal. A further exact failure authorizes
+the first four ideals in the source-derived PARI permutation, every certified
+residue-degree-two complement, and the union of the compact shell with the full
+checked reduced-ideal ellipsoid. The next failure authorizes those searches for
 every factor-base ideal. Remaining failures then authorize prefixes of one,
 two, and four compound multipliers. Each retry owns a fresh exact arena and
 independently repeats every mathematical check; no partially trusted relation
