@@ -601,7 +601,7 @@ test("one trusted workflow publishes and recovery reruns its authenticated job",
   );
   assert.match(ci, /recover-publish:[\s\S]+actions:\s*write/);
   assert.match(ci, /jobs\?filter=all&per_page=100/);
-  assert.match(ci, /gh api --paginate --slurp/);
+  assert.match(ci, /gh api --paginate[\s\S]+\| jq -s '\.' > "\$jobs_file"/);
   assert.match(ci, /select-recovery-publisher\.cjs/);
   assert.match(ci, /actions\/jobs\/\$\{publisher_id\}\/rerun/);
   assert.match(ci, /Numerical release qualification gate/);

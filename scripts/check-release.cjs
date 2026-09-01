@@ -187,7 +187,7 @@ assert.match(
 );
 assert.match(
   releaseWorkflow,
-  /gh api --paginate --slurp[\s\S]+jobs\?filter=all&per_page=100[\s\S]+select-recovery-publisher\.cjs/,
+  /gh api --paginate[\s\S]+jobs\?filter=all&per_page=100[\s\S]+\| jq -s '\.' > "\$jobs_file"[\s\S]+select-recovery-publisher\.cjs/,
   "recovery must authenticate the latest exact producer and publisher occurrences across all attempts",
 );
 assert.match(

@@ -1462,6 +1462,7 @@ jobs:
           RECOVERY_RUN_ID: ${{ inputs.recovery_run_id }}
           RECOVERY_TAG: ${{ inputs.recovery_tag }}
         run: |
+          set -euo pipefail
           [[ "$RECOVERY_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
             echo "recovery_run_id must be a positive Actions run ID" >&2
             exit 1
@@ -1490,8 +1491,8 @@ jobs:
             exit 1
           }
           jobs_file="$(mktemp)"
-          gh api --paginate --slurp \
+          gh api --paginate \
             "repos/${GH_REPO}/actions/runs/${RECOVERY_RUN_ID}/jobs?filter=all&per_page=100" \
-            > "$jobs_file"
+            | jq -s '.' > "$jobs_file"
           publisher_id="$(node scripts/release/select-recovery-publisher.cjs < "$jobs_file")"
           gh api --method POST "repos/${GH_REPO}/actions/jobs/${publisher_id}/rerun"
