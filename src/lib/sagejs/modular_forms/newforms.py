@@ -135,6 +135,10 @@ class NormalizedNewform(sage.Element):
     def level(self) -> int:
         return self._parent.level()
 
+    def conductor(self) -> int:
+        """Return the conductor of this primitive newform."""
+        return self.level()
+
     def weight(self) -> int:
         return self._parent.weight()
 
@@ -258,9 +262,14 @@ class ModularFormLSeriesInput(sage.Parent):
         return self._form
 
     def conductor(self) -> int:
-        return self._form.level()
+        if not hasattr(self._form, "conductor"):
+            raise NotImplementedError(
+                "the primitive conductor is not certified for this modular form"
+            )
+        return self._form.conductor()
 
-    level = conductor
+    def level(self) -> int:
+        return self._form.level()
 
     def weight(self) -> int:
         return self._form.weight()
@@ -315,8 +324,8 @@ class ModularFormLSeriesInput(sage.Parent):
             + str(self._coefficient_bound)
             + " coefficients for a weight "
             + str(self.weight())
-            + " modular form of conductor "
-            + str(self.conductor())
+            + " modular form of level "
+            + str(self.level())
         )
 
     __str__ = __repr__

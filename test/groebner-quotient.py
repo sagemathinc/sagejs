@@ -25,6 +25,11 @@ assert positive.dimension() == 1
 assert not positive.is_zero_dimensional()
 assert repr(positive.vector_space_dimension()) == "+Infinity"
 try:
+    positive.vector_space_dimension(algorithm="not-an-algorithm")
+    raise AssertionError("an invalid algorithm was masked as infinite dimension")
+except ValueError as error:
+    assert "unknown" in str(error)
+try:
     positive.normal_basis()
     raise AssertionError("positive-dimensional ideal acquired a finite normal basis")
 except ValueError as error:

@@ -17,6 +17,7 @@ test("Integer reads its digits in the base it is given", async (t) => {
     [
       "print(Integer('012', 8), Integer('ff', 16), Integer('-0012345', 16))",
       "print(Integer('101', 2), Integer('zz', 36), Integer('  -7  ', 10))",
+      "print(Integer('0xff', 0), Integer('-0b101', 0), Integer('+0o10', 0))",
       // A base is no help if it is dropped once the digits get long.
       "print(Integer('7' * 40, 8) == sum(7 * 8**k for k in range(40)))",
       // Without a base the reading is decimal, leading zero or not.
@@ -34,6 +35,7 @@ test("Integer reads its digits in the base it is given", async (t) => {
     [
       "10 255 -74565",
       "5 1295 -7",
+      "255 -5 8",
       "True",
       "12 17 1000",
       "unable to convert '19' to an integer",

@@ -165,9 +165,10 @@ when proof is required, until the backend exports enough transformation
 provenance for a complete ideal-equality certificate. Explicit
 `algorithm="flint"` remains available regardless of the global preference.
 The exact rational FLINT Gröbner entry point is currently native-only. In a
-browser, a proof-required rational call fails closed; use
-`proof.polynomial(False)` or an explicit `proof=False` to select the portable
-modular msolve path.
+browser, a proof-required rational `algorithm="auto"` call uses the portable,
+certificate-verified Buchberger implementation. Use `proof.polynomial(False)`
+or an explicit `proof=False` to select the faster modular msolve path when its
+probabilistic stopping test is acceptable.
 
 FLINT can be faster on very small inputs. F4's batched sparse linear algebra
 becomes important as critical pairs and intermediate polynomials grow, as the

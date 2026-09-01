@@ -1046,7 +1046,8 @@ def _is_base_ring(value: object) -> bool:
 
 def _cyclotomic_order(value: Any) -> Any:
     """Return the `n` naming the field, which its presentation is keyed by."""
-    return getattr(value, "_order", value.zeta_order())
+    order = getattr(value, "_order", None)
+    return value.zeta_order() if order is None else order
 
 
 def _canonical_base(base: sage.Parent) -> sage.Parent:

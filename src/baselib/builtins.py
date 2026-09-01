@@ -1036,10 +1036,7 @@ def _builtins_operator_add_slow(left: Any, right: Any) -> Any:
     if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
         right
     ):
-        # Two exact integers have one addition, the one that recovers the sum
-        # in BigInt when it leaves the range a double holds.  Reaching the
-        # general path instead returns the rounded double, which stops being
-        # an integer at all.
+        # Preserve the exact BigInt sum when a double would round it.
         return ρσ_operator_add_exact(left, right)
     if runtime.strict_equal(left_type, right_type) and (
         runtime.strict_equal(left_type, "number")
@@ -1099,9 +1096,7 @@ def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
     # overflowing safe integers still promote to BigInt below.
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
-    # A boolean is an integer in Python, so give it the storage kind of one
-    # before the branches divide.  Left as a boolean it reaches the fallback
-    # below, which adds without recovering the sum in BigInt.
+    # Python booleans use integer arithmetic here.
     if runtime.strict_equal(left_type, "boolean"):
         left = _builtins_integral_bool(left)
         left_type = "number"
@@ -2944,14 +2939,26 @@ _BUILTINS_BASE_DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz"
 
 
 def _builtins_integer_in_base(text: _Str, base: _Int) -> Any:
-    """Read an integer from the digits of the base it is written in."""
-    if base < 2 or base > 36:
-        raise ValueError("base must be between 2 and 36")
+    if base != 0 and (base < 2 or base > 36):
+        raise ValueError("base must be 0 or between 2 and 36")
     body = text.strip()
     negative = False
     if body[0:1] == "-" or body[0:1] == "+":
         negative = body[0:1] == "-"
         body = body[1:]
+    if base == 0:
+        prefix = body[0:2].lower()
+        if prefix == "0x":
+            base = 16
+            body = body[2:]
+        elif prefix == "0o":
+            base = 8
+            body = body[2:]
+        elif prefix == "0b":
+            base = 2
+            body = body[2:]
+        else:
+            base = 10
     if len(body) == 0:
         raise TypeError("unable to convert " + repr(text) + " to an integer")
     value = runtime.bigint(0)
@@ -8596,18 +8603,13 @@ def ρσ_open(
     return _BuiltinFile(filename, mode, buffering, encoding, errors, newline)
 
 
-def dumps(value: Any, compress: _Bool = True, **keywords: Any) -> bytes:
-    r"""Return `value` as safe binary SagePack data.
+def _builtins_serialization_method(name: _Str) -> Any:
+    module = __import__("sagejs_serialization", fromlist=[name])
+    return getattr(module, name)
 
-    This is Sage.js's data-only counterpart to Sage's global `dumps`.  The
-    `compress` argument is accepted for source compatibility; SagePack v1
-    stores compact native binary blocks without an additional compression
-    layer.  Pickle-specific keyword arguments are intentionally unsupported.
-    """
-    if len(keywords) != 0:
-        name = next(iter(keywords))
-        raise TypeError("dumps() got an unexpected keyword argument '" + name + "'")
-    return bytes(_builtins_host_call("serializationPack", value))
+
+def dumps(value: Any, compress: _Bool = True, **keywords: Any) -> bytes:
+    return _builtins_serialization_method("sage_dumps")(value, compress, **keywords)
 
 
 def loads(
@@ -8615,28 +8617,7 @@ def loads(
     compress: _Bool = True,
     **keywords: Any,
 ) -> Any:
-    r"""Restore one value from binary SagePack or legacy v1 JSON data.
-
-    Loading never imports a constructor selected by the input and never
-    executes serialized code.
-    """
-    if len(keywords) != 0:
-        name = next(iter(keywords))
-        raise TypeError("loads() got an unexpected keyword argument '" + name + "'")
-    if isinstance(source, bytes) or isinstance(source, bytearray):
-        raw = bytes(source)
-        magic = bytes([83, 65, 71, 69, 80, 75, 49, 0])
-        if raw[:8] == magic:
-            return _builtins_host_call("serializationUnpack", raw)
-        source = raw.decode("utf-8")
-    if isinstance(source, str):
-        return _builtins_host_call("serializationLoads", source)
-    raise TypeError("loads() requires bytes, bytearray, or str")
-
-
-def _builtins_sobj_filename(filename: Any) -> _Str:
-    path = _builtins_file_path(filename)
-    return path if path.endswith(".sobj") else path + ".sobj"
+    return _builtins_serialization_method("sage_loads")(source, compress, **keywords)
 
 
 def save(
@@ -8645,54 +8626,16 @@ def save(
     compress: _Bool = True,
     **keywords: Any,
 ) -> None:
-    r"""Save `value` to a Sage object file.
-
-    Generic mathematical objects are written as safe binary SagePack data and
-    `.sobj` is appended when needed, matching Sage's common filename
-    convention.  Objects with their own `save` method still handle explicit
-    non-`.sobj` extensions such as `.png`.
-    """
-    path = _builtins_file_path(filename)
-    separator = max(path.rfind("/"), path.rfind("\\"))
-    dot = path.rfind(".")
-    extension = "" if dot <= separator else path[dot:]
-    method = getattr(value, "save", None)
-    if extension != "" and extension != ".sobj" and method is not None:
-        method(path, **keywords)
-        return None
-    if len(keywords) != 0:
-        name = next(iter(keywords))
-        raise TypeError("save() got an unexpected keyword argument '" + name + "'")
-    target = _builtins_sobj_filename(path)
-    with ρσ_open(target, "wb") as output:
-        output.write(dumps(value, compress=compress))
-    return None
+    return _builtins_serialization_method("sage_save")(
+        value, filename, compress, **keywords
+    )
 
 
 def load(
     *filenames: Any,
     **keywords: Any,
 ) -> Any:
-    r"""Load one or more safe Sage object files.
-
-    `.sobj` is appended to each filename when absent.  Multiple filenames
-    return a list, as in Sage.  Loading source files and remote URLs is outside
-    this data-only persistence API.
-    """
-    if len(filenames) == 0:
-        raise TypeError("load() needs at least one filename")
-    compress = _builtins_pop_keyword(keywords, "compress", True)
-    # Accepted for Sage source compatibility. Local SagePack reads are quiet.
-    _builtins_pop_keyword(keywords, "verbose", True)
-    if len(keywords) != 0:
-        name = next(iter(keywords))
-        raise TypeError("load() got an unexpected keyword argument '" + name + "'")
-    answers = []
-    for filename in filenames:
-        target = _builtins_sobj_filename(filename)
-        with ρσ_open(target, "rb") as input_file:
-            answers.append(loads(input_file.read(), compress=compress))
-    return answers[0] if len(answers) == 1 else answers
+    return _builtins_serialization_method("sage_load")(*filenames, **keywords)
 
 
 round = ρσ_round

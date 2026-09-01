@@ -220,10 +220,23 @@ export function createTaskEvaluator({
         const registry = Reflect.get(globalThis, "ρσ_modules") as
           | Record<string, Record<string, unknown>>
           | undefined;
-        const moduleValue = registry?.[callable.module]?.[callable.name];
+        const baselib = Reflect.get(
+          globalThis,
+          "__sagejs_baselib_modules__",
+        ) as Record<string, Record<string, unknown>> | undefined;
+        const moduleValue =
+          registry?.[callable.module]?.[callable.name] ??
+          baselib?.[callable.module]?.[callable.name];
+        // The full and lightweight baselib bundles may emit different source
+        // text for the same builtin. The parent marks publishInModule only
+        // after proving that the submitted callable is its live module member,
+        // so resolve that fixed runtime identity by name. User modules retain
+        // the source-equality check because their globals may be redefined.
         if (
           typeof moduleValue === "function" &&
-          Function.prototype.toString.call(moduleValue) === callable.source
+          (Function.prototype.toString.call(moduleValue) === callable.source ||
+            (callable.module.startsWith("sagejs._baselib.") &&
+              callable.publishInModule === true))
         ) value = moduleValue;
       }
       if (value === undefined) {

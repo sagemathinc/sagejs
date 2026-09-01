@@ -738,11 +738,13 @@ def vector_space_dimension(
     algorithm: str = "auto",
     proof: Any = None,
 ) -> Any:
-    try:
-        return len(standard_monomial_exponents(ideal, algorithm, proof))
-    except ValueError:
+    ideal_dimension = dimension(ideal, algorithm=algorithm, proof=proof)
+    if ideal_dimension == -1:
+        return 0
+    if ideal_dimension != 0:
         symbolic = __import__("sagejs._baselib.symbolic", fromlist=["oo"])
         return symbolic.oo
+    return len(standard_monomial_exponents(ideal, algorithm, proof))
 
 
 def degree(ideal: Any, algorithm: str = "auto", proof: Any = None) -> int:

@@ -68,13 +68,19 @@ test(
           " [(V.dimension(),V.is_simple()) for V in B],",
           " [(f.coefficient_field().degree(),str(f.defining_polynomial()),",
           "   f.certificate().verify(), f.lseries_input(6).verify(),",
-          "   f.lseries_input(6).coefficient_bound()) for f in E]]",
+          "   f.lseries_input(6).coefficient_bound(),",
+          "   f.lseries_input(6).level()) for f in E]]",
         ].join("\n"),
       );
       assert.equal(
         result.repr,
-        "[2, True, x^2 + 2*x + 1, x^2 + 2*x + 2, [(2, False)], [(2, True)], [(2, 'x^2 + 2*x + 2', True, True, 6)]]",
+        "[2, True, x^2 + 2*x + 1, x^2 + 2*x + 2, [(2, False)], [(2, True)], [(2, 'x^2 + 2*x + 2', True, True, 6, 22)]]",
       );
+      const uncertifiedConductor = await session.evaluate(
+        "try:\n E[0].lseries_input(6).conductor()\n" +
+          "except NotImplementedError as e:\n str(e)",
+      );
+      assert.match(uncertifiedConductor.repr, /not certified/u);
     } finally {
       await session.close();
     }
