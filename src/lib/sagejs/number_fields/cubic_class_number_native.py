@@ -62,6 +62,7 @@ _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES = 500
 _CUBIC_REDUCED_ENUMERATION_MAX_COORDINATE = 32
 _CUBIC_MAX_FACTOR_SEARCH_BOUND = 257
 _CUBIC_MAX_GRH_BOUND_SEARCH = 4096
+_CUBIC_DIRECT_MINKOWSKI_MAX_BOUND = 8
 _CUBIC_ANALYSIS_PROOF_CAPACITY = 512
 _CUBIC_MAX_ORDER_WITNESSES = 16
 _CUBIC_ROUND2_WORKSPACE_LENGTH = 109
@@ -363,7 +364,6 @@ def _cubic_analysis_fixed_points_are_valid(
     )
 
 
-@native
 def _cubic_workspace_hnf3(
     workspace: NativeIntegerVector,
     base: uint64,
@@ -455,7 +455,6 @@ def _cubic_workspace_hnf3(
     return pivot == 3
 
 
-@native
 def _cubic_multiply_coordinates(
     workspace: NativeIntegerVector,
     left_zero: int,
@@ -532,7 +531,6 @@ def _cubic_multiply_coordinates(
     return True
 
 
-@native
 def _cubic_matrix_multiply_coordinates(
     workspace: NativeIntegerVector,
     left: FmpzMatrix,
@@ -616,7 +614,6 @@ def _cubic_matrix_multiply_coordinates(
     )
 
 
-@native
 def _cubic_matrix_power_coordinates(
     workspace: NativeIntegerVector,
     source: FmpzMatrix,
@@ -674,7 +671,6 @@ def _cubic_matrix_power_coordinates(
     return True
 
 
-@native
 def _cubic_matrix_exact_quotient_coordinates(
     workspace: NativeIntegerVector,
     values: FmpzMatrix,
@@ -793,7 +789,6 @@ def _cubic_matrix_exact_quotient_coordinates(
     )
 
 
-@native
 def _cubic_coordinate_norm(
     workspace: NativeIntegerVector,
     zero: int,
@@ -817,7 +812,6 @@ def _cubic_coordinate_norm(
     )
 
 
-@native
 def _cubic_norm_form_value(
     workspace: NativeIntegerVector,
     zero: int,
@@ -842,7 +836,6 @@ def _cubic_norm_form_value(
     )
 
 
-@native
 def _cubic_ideal_product(
     workspace: NativeIntegerVector,
     left_offset: uint64,
@@ -878,7 +871,6 @@ def _cubic_ideal_product(
     return True
 
 
-@native
 def _cubic_compound_prime_ideal_basis(
     workspace: NativeIntegerVector,
     multiplier_factor_index: uint64,
@@ -915,7 +907,6 @@ def _cubic_compound_prime_ideal_basis(
     )
 
 
-@native
 def _cubic_lattice_contains(
     workspace: NativeIntegerVector,
     basis_offset: uint64,
@@ -945,7 +936,6 @@ def _cubic_lattice_contains(
     return coefficient_two * diagonal_two == remaining_two
 
 
-@native
 def _cubic_append_smooth_principal_relation(
     workspace: NativeIntegerVector,
     relation_matrix: FmpzMatrix,
@@ -1118,7 +1108,6 @@ def _cubic_append_smooth_principal_relation(
     return relation_count + 1
 
 
-@native
 def _cubic_plan_smooth_norm(
     workspace: NativeIntegerVector,
     group_count: uint64,
@@ -1434,7 +1423,6 @@ def _cubic_log_two_pi_bounds(scale: int) -> tuple[int, int]:
     )
 
 
-@native
 def _cubic_degree_one_prime_count(
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
@@ -1631,7 +1619,6 @@ def _cubic_grh_prime_degree_contribution(
     return (sa_lower, sb_upper)
 
 
-@native
 def _cubic_grh_generator_bound_is_certified(
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
@@ -1821,7 +1808,6 @@ def _cubic_grh_generator_bound_is_certified(
     return c_d_upper + quotient_upper - 2 * sa_lower < 0
 
 
-@native
 def _cubic_grh_generator_bound(
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
@@ -2043,7 +2029,6 @@ def _cubic_regulator_bounds(
     return (1, 0)
 
 
-@native
 def _cubic_small_unit_probe(
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
@@ -2298,7 +2283,6 @@ def _cubic_complex_root_approximations(
     return (1, real_root, complex_real_root, complex_imaginary_root)
 
 
-@native
 def _cubic_fill_ideal_t2_embedding(
     source: FmpzMatrix,
     workspace: NativeIntegerVector,
@@ -2364,7 +2348,6 @@ def _cubic_fill_ideal_t2_embedding(
     return True
 
 
-@native
 def _cubic_transformed_ideal_coordinates(
     workspace: NativeIntegerVector,
     basis_offset: uint64,
@@ -2399,7 +2382,6 @@ def _cubic_transformed_ideal_coordinates(
     return (coordinate_zero, coordinate_one, coordinate_two)
 
 
-@native
 def _cubic_coordinates_are_scalar(
     workspace: NativeIntegerVector,
     coordinate_zero: int,
@@ -2428,7 +2410,6 @@ def _cubic_coordinates_are_scalar(
     )
 
 
-@native
 def _cubic_prepare_reduced_ideal_ellipsoid(
     workspace: NativeIntegerVector,
     basis_offset: uint64,
@@ -2536,7 +2517,6 @@ def _cubic_prepare_reduced_ideal_ellipsoid(
     )
 
 
-@native
 def _cubic_reduced_ellipsoid_candidate(
     workspace: NativeIntegerVector,
     basis_offset: uint64,
@@ -2610,7 +2590,6 @@ def _cubic_reduced_ellipsoid_candidate(
     return (1, coordinate_zero, coordinate_one, coordinate_two)
 
 
-@native
 def _cubic_plan_reduced_ideal_ellipsoid(
     workspace: NativeIntegerVector,
     basis_offset: uint64,
@@ -2665,7 +2644,6 @@ def _cubic_plan_reduced_ideal_ellipsoid(
     return candidate_count
 
 
-@native
 def _cubic_append_reduced_ideal_ellipsoid(
     workspace: NativeIntegerVector,
     basis_offset: uint64,
@@ -2784,7 +2762,6 @@ def _cubic_copy_relation_support_tail(
     return target_row
 
 
-@native
 def _cubic_relation_prefix_has_archimedean_unit(
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
@@ -3211,7 +3188,6 @@ def _cubic_relation_prefix_has_archimedean_unit(
     return 1
 
 
-@native
 def _cubic_plan_reduced_ideal_shell(
     workspace: NativeIntegerVector,
     embedding_source: FmpzMatrix,
@@ -3339,7 +3315,6 @@ def _cubic_plan_reduced_ideal_shell(
     return best_pair + 1
 
 
-@native
 def _cubic_reconstruct_archimedean_unit(
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
@@ -3691,7 +3666,6 @@ def _cubic_reconstruct_archimedean_unit(
     return (1, unit_zero, unit_one, unit_two)
 
 
-@native
 def _cubic_coordinate_trace(
     workspace: NativeIntegerVector,
     coordinate_zero: int,
@@ -3750,7 +3724,6 @@ def _cubic_floor_fifth_root(value: int) -> int:
     return lower
 
 
-@native
 def _cubic_exact_unit_fifth_root(
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
@@ -4003,7 +3976,6 @@ def _cubic_exact_unit_fifth_root(
     return (0, 0, 0, 0)
 
 
-@native
 def _cubic_exact_unit_square_root(
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
@@ -4338,7 +4310,6 @@ def _cubic_bf_tail_bounds(
     )
 
 
-@native
 def _cubic_bf_finite_bounds(
     workspace: NativeIntegerVector,
     values: FmpzMatrix,
@@ -4487,7 +4458,6 @@ def _cubic_bf_finite_bounds(
     )
 
 
-@native
 def _cubic_map_is_multiplicative(
     workspace: NativeIntegerVector,
     map_zero: int,
@@ -4522,7 +4492,6 @@ def _cubic_map_is_multiplicative(
     return True
 
 
-@native
 def _cubic_prime_kernel_basis(
     workspace: NativeIntegerVector,
     prime: int,
@@ -4567,7 +4536,6 @@ def _cubic_prime_kernel_basis(
     return _cubic_workspace_hnf3(workspace, output_offset, 3)
 
 
-@native
 def _cubic_complementary_prime_basis(
     workspace: NativeIntegerVector,
     prime: int,
@@ -4726,7 +4694,6 @@ def _cubic_complementary_prime_basis(
     return True
 
 
-@native
 def _cubic_factor_norm(
     workspace: NativeIntegerVector,
     factor_index: uint64,
@@ -4741,7 +4708,6 @@ def _cubic_factor_norm(
     return factor_norm
 
 
-@native
 def _cubic_next_factor_by_norm(
     workspace: NativeIntegerVector,
     factor_count: uint64,
@@ -5141,20 +5107,21 @@ def certified_complex_cubic_class_group_v1(
             return False
         generator_bound = minkowski_generator_bound
         use_grh_generator_base = False
-        grh_generator_bound = _cubic_grh_generator_bound(
-            workspace,
-            coefficients,
-            equation_order_index,
-            identity_zero,
-            identity_one,
-            identity_two,
-            absolute_discriminant,
-            minkowski_generator_bound,
-            analytic_scale,
-        )
-        if grh_generator_bound < minkowski_generator_bound:
-            generator_bound = grh_generator_bound
-            use_grh_generator_base = True
+        if minkowski_generator_bound > _CUBIC_DIRECT_MINKOWSKI_MAX_BOUND:
+            grh_generator_bound = _cubic_grh_generator_bound(
+                workspace,
+                coefficients,
+                equation_order_index,
+                identity_zero,
+                identity_one,
+                identity_two,
+                absolute_discriminant,
+                minkowski_generator_bound,
+                analytic_scale,
+            )
+            if grh_generator_bound < minkowski_generator_bound:
+                generator_bound = grh_generator_bound
+                use_grh_generator_base = True
         if (
             generator_bound < 2
             or generator_bound > minkowski_generator_bound

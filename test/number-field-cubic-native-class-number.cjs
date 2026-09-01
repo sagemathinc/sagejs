@@ -106,7 +106,10 @@ test("closed native cubic receipts survive declines and authenticate targets", {
   assert.equal(determinantalPresentation[35], 2);
   const output = runPython(String.raw`
 from sagejs.number_fields.cubic_class_number_native import certified_complex_cubic_class_group_v1
+from sagejs.number_fields.cubic_class_number_native import _CUBIC_DIRECT_MINKOWSKI_MAX_BOUND
 from sagejs.number_fields.cubic_class_number_native_runtime import certified_complex_cubic_class_number
+
+assert _CUBIC_DIRECT_MINKOWSKI_MAX_BOUND == 8
 from sagejs.native import is_compiled
 
 assert is_compiled(certified_complex_cubic_class_group_v1)
@@ -199,6 +202,13 @@ cases = (
     ("3.1.59.1", (-1, 2, 0, 1), 1, (), 0),
     ("3.1.76.1", (-2, -2, 0, 1), 1, (), 0),
     ("3.1.431.1", (-8, -1, 0, 1), 1, (), 0),
+    # Bound 8 is retained unconditionally without paying for a redundant GRH
+    # generator calculation. The nontrivial class number still receives the
+    # independent conditional analytic index-one proof below.
+    ("3.1.588.1", (1, 5, -1, 1), 3, (3,), 0),
+    # Bound 9 is outside the direct-Minkowski cutoff. Here the rigorous GRH
+    # calculation genuinely improves it to 8, so this guards the boundary.
+    ("3.1.808.1", (-6, 2, -1, 1), 1, (), 0),
     ("3.1.1083.1", (-12, -6, -1, 1), 3, (3,), 0),
     ("3.1.1371.1", (6, 3, -1, 1), 4, (4,), 0),
     ("3.1.1563.1", (-6, 7, -1, 1), 5, (5,), 0),
@@ -301,6 +311,16 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
         assert receipt.factor_base_size == 2, label
         assert receipt.relation_count == 4, label
         assert receipt.proof_status == "exact-trivial-presentation-unconditional", label
+    if label == "3.1.588.1":
+        assert receipt.generator_bound == 8, label
+        assert receipt.factor_base_size == 5, label
+        assert receipt.relation_count == 13, label
+        assert receipt.proof_status == "exact-relations-conditional-grh", label
+    if label == "3.1.808.1":
+        assert receipt.generator_bound == 8, label
+        assert receipt.factor_base_size == 4, label
+        assert receipt.relation_count == 59, label
+        assert receipt.proof_status == "exact-trivial-presentation-conditional-grh", label
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label

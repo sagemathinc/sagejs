@@ -2,10 +2,10 @@
 
 The clock starts after constructing a fresh field and includes everything from
 the defining polynomial through maximal-order construction, relation search,
-class-group presentation, unit/regulator certification, and the rigorous
-GRH-conditional analytic index-one proof.  The median is the campaign contract;
-every sample uses a new field, so no class-number or maximal-order result is
-cached.
+class-group presentation, and whichever exact proof completes the result: an
+unconditional trivial presentation or the rigorous GRH-conditional analytic
+index-one proof. The median is the campaign contract; every sample uses a new
+field, so no class-number or maximal-order result is cached.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ from sagejs.native import is_compiled
 
 
 CASES = (
+    ("x^3-2*x-2", (-2, -2, 0, 1), 1, ()),
     ("x^3+9*x-55", (-55, 9, 0, 1), 5, (5,)),
     ("x^3-x^2+3*x-4", (-4, 3, -1, 1), 2, (2,)),
 )

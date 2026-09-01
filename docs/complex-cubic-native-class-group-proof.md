@@ -77,7 +77,10 @@ $$
 
 The program first computes this unconditional fallback using the elementary
 strict bound $\pi > 28/9$, hence $8/(9\pi) < 2/7$, and an integer upper bound
-for $\sqrt{|D_K|}$. It then searches for a smaller field-specific cutoff $C$
+for $\sqrt{|D_K|}$. When this integer bound is at most $8$, it retains the
+unconditional bound directly: traversing such a tiny factor base is cheaper
+than proving a second conditional bound, and no assumption is needed. For a
+larger Minkowski bound it searches for a smaller field-specific cutoff $C$
 using the explicit GRH criterion of Belabas--Diaz y Diaz--Friedman. In
 signature $(1,1)$ it accepts $C$ only after outward-rounded interval arithmetic
 proves
