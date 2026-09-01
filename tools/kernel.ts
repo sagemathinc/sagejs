@@ -37,6 +37,11 @@ export interface SageEvaluationResult {
   stdout: string;
   durationMs: number;
   display?: SageDisplayData;
+  /** Standard Python/Jupyter MIME bundle for the final expression. */
+  mimeBundle?: {
+    data: Record<string, unknown>;
+    metadata: Record<string, unknown>;
+  };
   /** Ordered stream/display events published while evaluating the cell. */
   events: SageOutputEvent[];
   /** Ordered comm events published while evaluating the cell. */

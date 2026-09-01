@@ -6,10 +6,12 @@ import {
 } from "./codemirror-editor.mjs";
 import { executionSource } from "./execution-source.mjs";
 import { EXAMPLES } from "./examples.mjs";
-import { createOutputRenderer } from "./output-renderer.mjs";
+import {
+  createOutputRenderer,
+  evaluationResultBundle,
+} from "./output-renderer.mjs";
 import { capabilityFamilies, filterCapabilities, validateCapabilityReport } from "./capability-report.mjs";
 import {
-  assertDisplayWithinLimit,
   boundedTimeout,
   DEFAULT_LIMITS,
   OutputCollector,
@@ -336,19 +338,19 @@ async function run(mode) {
       },
     });
     await eventRenderer.settled();
-    const typesetLatex = result.display?.mime === "text/latex" && elements.typesetMath.checked;
-    if (result.repr && !typesetLatex) {
+    const finalBundle = evaluationResultBundle(result, {
+      typesetMath: elements.typesetMath.checked,
+    });
+    if (result.repr && !finalBundle.rich) {
       collector.append((collector.text && !collector.text.endsWith("\n") ? "\n" : "") + result.repr);
     }
     pre.textContent = collector.text || (eventRenderer.count
       ? ""
       : "Completed without textual output.");
     if (!pre.textContent) pre.remove();
-    if (result.display && (result.display.mime !== "text/latex" || typesetLatex)) {
-      const plotBytes = assertDisplayWithinLimit(result.display);
-      await renderSageDisplay(plot, result.display);
-      plot.dataset.bytes = String(plotBytes);
-      if (typesetLatex && !collector.text) pre.remove();
+    if (finalBundle.rich) {
+      await renderMimeBundle(plot, finalBundle.data, finalBundle.metadata);
+      if (!collector.text) pre.remove();
     } else {
       plot.remove();
     }

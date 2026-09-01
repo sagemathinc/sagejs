@@ -3,7 +3,10 @@ import {
   sageCellSessionStats,
 } from "../../cell-session-pool.mjs";
 import { createSourceEditor } from "../../codemirror-editor.mjs";
-import { createOutputRenderer } from "../../output-renderer.mjs";
+import {
+  createOutputRenderer,
+  evaluationResultBundle,
+} from "../../output-renderer.mjs";
 import {
   boundedTimeout,
   DEFAULT_LIMITS,
@@ -482,24 +485,21 @@ export class SageJsCell extends HTMLElement {
         onEvent: (event) => events.event(event),
       });
       await events.settled();
-      const typesetLatex =
-        result.display?.mime === "text/latex" && this.configuration.typesetMath;
-      const richResult = Boolean(
-        result.display &&
-        (result.display.mime !== "text/latex" || typesetLatex),
-      );
-      if (result.repr && !richResult) {
+      const finalBundle = evaluationResultBundle(result, {
+        typesetMath: this.configuration.typesetMath,
+      });
+      if (result.repr && !finalBundle.rich) {
         collector.append(
           `${collector.text && !collector.text.endsWith("\n") ? "\n" : ""}${result.repr}`,
         );
       }
       pre.textContent = collector.text;
       if (!pre.textContent) pre.remove();
-      if (result.display && (result.display.mime !== "text/latex" || typesetLatex)) {
+      if (finalBundle.rich) {
         await this.outputRenderer.renderMimeBundle(
           rich,
-          { [result.display.mime]: result.display.data },
-          result.display.metadata,
+          finalBundle.data,
+          finalBundle.metadata,
         );
       } else {
         rich.remove();

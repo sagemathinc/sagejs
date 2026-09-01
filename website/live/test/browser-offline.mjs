@@ -417,6 +417,13 @@ try {
     )})`,
     30_000,
   );
+  await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    "import ipywidgets as widgets\nwidgets.IntSlider(min=0, max=100)",
+    "document.querySelector('#output [role=slider]') !== null && " +
+      "!document.querySelector('#output')?.textContent.includes('IntSlider(value=')",
+    30_000,
+  );
   await evaluate("document.querySelector('#reset').click()");
   await waitFor(
     "document.querySelector('#output .widget-stale-notice')?.textContent.includes('Run its input again') && " +

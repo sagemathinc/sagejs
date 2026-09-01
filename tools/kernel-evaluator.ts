@@ -91,6 +91,10 @@ export interface KernelEvaluation {
   repr: string;
   durationMs: number;
   display?: SageDisplayData;
+  mimeBundle?: {
+    data: Record<string, unknown>;
+    metadata: Record<string, unknown>;
+  };
   events: SageOutputEvent[];
   commEvents: SageCommEvent[];
   optimization: SageOptimizationReport;
@@ -797,6 +801,13 @@ export function createKernelEvaluator({
           ? ""
           : String(global.ρσ_repr(value));
       const display = publishResult ? richDisplay(value) : undefined;
+      const mimeBundle =
+        publishResult &&
+        (typeof value === "object" || typeof value === "function") &&
+        value !== null &&
+        typeof Reflect.get(value, "_repr_mimebundle_") === "function"
+          ? displayBundle(value)
+          : undefined;
       if (publishResult) global._ = value;
       const durationMs = execution.timing.wallMs;
       if (timing) {
@@ -815,6 +826,7 @@ export function createKernelEvaluator({
         repr,
         durationMs,
         display,
+        mimeBundle,
         events: events ?? [],
         commEvents: commEvents ?? [],
         optimization: optimizationReport!,

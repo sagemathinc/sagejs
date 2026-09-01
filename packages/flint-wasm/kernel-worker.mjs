@@ -150,7 +150,7 @@ function richDisplay(value) {
   };
 }
 
-function displayBundle(value) {
+function richMimeBundle(value) {
   const data = {};
   const metadata = {};
   if (value !== null && (typeof value === "object" || typeof value === "function")) {
@@ -165,9 +165,16 @@ function displayBundle(value) {
       }
     }
   }
+  return Object.keys(data).length ? { data, metadata } : undefined;
+}
+
+function displayBundle(value) {
+  const rich = richMimeBundle(value);
+  const data = { ...(rich?.data ?? {}) };
+  const metadata = { ...(rich?.metadata ?? {}) };
   if (!("text/plain" in data)) data["text/plain"] = String(globalThis.ρσ_repr(value));
-  const rich = richDisplay(value);
-  if (rich) data[rich.mime] = rich.data;
+  const legacy = richDisplay(value);
+  if (legacy) data[legacy.mime] = legacy.data;
   return { data, metadata };
 }
 
@@ -458,6 +465,7 @@ async function evaluate(message) {
     result: {
       repr: result.repr,
       display: result.display,
+      mimeBundle: richMimeBundle(result.value),
       saveRequests: result.saveRequests,
       instrumentation: result.instrumentation,
       optimization: compilerOptimizationReport,

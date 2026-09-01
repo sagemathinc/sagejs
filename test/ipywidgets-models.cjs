@@ -48,6 +48,11 @@ test("upstream ipywidgets publishes and synchronizes an IntSlider model", async 
     created.events[0].data["application/vnd.jupyter.widget-view+json"],
     { version_major: 2, version_minor: 0, model_id: model.commId },
   );
+  const finalExpression = await session.evaluate("slider");
+  assert.deepEqual(
+    finalExpression.mimeBundle.data["application/vnd.jupyter.widget-view+json"],
+    { version_major: 2, version_minor: 0, model_id: model.commId },
+  );
 
   published.length = 0;
   await session.comm(

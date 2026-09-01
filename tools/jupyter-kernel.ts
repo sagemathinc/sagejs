@@ -525,16 +525,22 @@ export class SageJupyterKernel {
         },
       };
       await outputTail;
-      if (!silent && (result.repr || result.display)) {
-        const data: Record<string, unknown> = {};
-        if (result.repr) data["text/plain"] = result.repr;
+      if (!silent && (result.repr || result.display || result.mimeBundle)) {
+        const data: Record<string, unknown> = {
+          ...(result.mimeBundle?.data ?? {}),
+        };
+        if (result.repr && !("text/plain" in data)) data["text/plain"] = result.repr;
         if (result.display) {
           data[result.display.mime] = result.display.data;
         }
+        const resultMetadata = {
+          ...(result.mimeBundle?.metadata ?? {}),
+          ...optimizerMetadata,
+        };
         await this.publish("execute_result", request, {
           execution_count: executionCount,
           data: this.displayBundleWithFallback(data),
-          metadata: optimizerMetadata,
+          metadata: resultMetadata,
         }, optimizerMetadata);
       }
       await this.sendRouterReply(

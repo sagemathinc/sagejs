@@ -1,5 +1,22 @@
 import { assertDisplayWithinLimit } from "./resource-policy.mjs";
 
+const WIDGET_VIEW_MIME = "application/vnd.jupyter.widget-view+json";
+
+/** Normalize a final evaluation result into the same bundle used by display(). */
+export function evaluationResultBundle(result, { typesetMath = true } = {}) {
+  const data = { ...(result?.mimeBundle?.data ?? {}) };
+  const metadata = { ...(result?.mimeBundle?.metadata ?? {}) };
+  if (result?.display) data[result.display.mime] = result.display.data;
+  const rich = Object.keys(data).some((mime) =>
+    mime === WIDGET_VIEW_MIME ||
+    mime === "application/vnd.plotly.v1+json" ||
+    mime === "image/png" ||
+    mime === "image/jpeg" ||
+    mime === "image/webp" ||
+    (mime === "text/latex" && typesetMath));
+  return Object.freeze({ data, metadata, rich });
+}
+
 /** Create the rich-output pipeline shared by the app and embedded cells. */
 export function createOutputRenderer({
   getWidgetHost = () => undefined,
