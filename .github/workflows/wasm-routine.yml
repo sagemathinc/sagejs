@@ -106,6 +106,7 @@ jobs:
           node packages/flint-wasm/test/browser-wasm-parity.mjs \
             --tier routine --engines chromium --require-engines chromium \
             --receipt build/wasm-routine-parity.json
+          pnpm --dir packages/flint-wasm test:browser:numerics
           node packages/flint-wasm/test/browser-wasm-serialization.mjs
           node packages/flint-wasm/test/browser-wasm-security.mjs
 

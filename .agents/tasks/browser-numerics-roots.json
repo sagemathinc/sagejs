@@ -15,8 +15,11 @@
     "package.json",
     "test/numerics/browser-packaging/",
     "packages/flint-wasm/test/numerical-domains-browser.mjs",
+    "packages/flint-wasm/package.json",
     "packages/flint-wasm/release/production-layout.json",
-    "bench/browser-wasm-budget.json"
+    "bench/browser-wasm-budget.json",
+    ".github/workflows/wasm-routine.yml",
+    "test/browser-wasm-release-gates.cjs"
   ],
   "dependencies": [],
   "references": [],
@@ -44,6 +47,8 @@
     "pnpm architecture:packages",
     "node scripts/check-numerical-browser-closure.cjs --bundle packages/flint-wasm/dist/lazy-modules.json",
     "node packages/flint-wasm/test/numerical-domains-browser.mjs",
+    "pnpm --dir packages/flint-wasm test:browser:numerics",
+    "node --test test/browser-wasm-release-gates.cjs",
     "node packages/flint-wasm/scripts/production-receipt.cjs validate",
     "node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs --budget bench/browser-wasm-budget.json --require-baseline"
   ],
@@ -77,10 +82,90 @@
       "commit": "9ab9c9c7d5fda5b8c0dffb0a2dd38e758833b9bd",
       "workspace_fingerprint": "b6309e5e9481757de57b8eca5c20df840133a0bc991d5d04ab177e67ce41f97c",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.327,
+      "started_at": "2026-09-01T00:39:48.021Z",
+      "commit": "e26ce8bc533b965920574d05dc59a7d87b5479d5",
+      "workspace_fingerprint": "b5fdc3460b25363398ab97b1581d57e157cadb2c344e842ff7d6b078f1a121a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/browser-packaging/closure.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.164,
+      "started_at": "2026-09-01T00:40:50.458Z",
+      "commit": "e26ce8bc533b965920574d05dc59a7d87b5479d5",
+      "workspace_fingerprint": "b5fdc3460b25363398ab97b1581d57e157cadb2c344e842ff7d6b078f1a121a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.584,
+      "started_at": "2026-09-01T00:40:51.330Z",
+      "commit": "e26ce8bc533b965920574d05dc59a7d87b5479d5",
+      "workspace_fingerprint": "b5fdc3460b25363398ab97b1581d57e157cadb2c344e842ff7d6b078f1a121a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:packages",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.79,
+      "started_at": "2026-09-01T00:40:52.642Z",
+      "commit": "e26ce8bc533b965920574d05dc59a7d87b5479d5",
+      "workspace_fingerprint": "b5fdc3460b25363398ab97b1581d57e157cadb2c344e842ff7d6b078f1a121a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-numerical-browser-closure.cjs --bundle packages/flint-wasm/dist/lazy-modules.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.461,
+      "started_at": "2026-09-01T00:40:54.144Z",
+      "commit": "e26ce8bc533b965920574d05dc59a7d87b5479d5",
+      "workspace_fingerprint": "b5fdc3460b25363398ab97b1581d57e157cadb2c344e842ff7d6b078f1a121a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint-wasm test:browser:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.73,
+      "started_at": "2026-09-01T00:40:55.334Z",
+      "commit": "e26ce8bc533b965920574d05dc59a7d87b5479d5",
+      "workspace_fingerprint": "b5fdc3460b25363398ab97b1581d57e157cadb2c344e842ff7d6b078f1a121a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/browser-wasm-release-gates.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.105,
+      "started_at": "2026-09-01T00:41:02.762Z",
+      "commit": "e26ce8bc533b965920574d05dc59a7d87b5479d5",
+      "workspace_fingerprint": "b5fdc3460b25363398ab97b1581d57e157cadb2c344e842ff7d6b078f1a121a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/scripts/production-receipt.cjs validate",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.351,
+      "started_at": "2026-09-01T00:41:05.589Z",
+      "commit": "e26ce8bc533b965920574d05dc59a7d87b5479d5",
+      "workspace_fingerprint": "b5fdc3460b25363398ab97b1581d57e157cadb2c344e842ff7d6b078f1a121a9",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Explicitly roots all 23 numerical domain and dynamic presentation entry points, proves that the generated browser bundle contains all 67 public numerical modules, and exercises representative operations and PlotSpec witnesses in real Chromium. The final browser artifact remains within the unchanged 5% compressed-growth gate and reviewed eager-core topology ceilings.",
+    "summary": "Explicitly roots all 23 numerical domain and dynamic presentation entry points, proves that the generated browser bundle contains all 67 public numerical modules, and exercises representative operations and PlotSpec witnesses in real Chromium. The built-artifact Chromium witness is a named package command required by routine Wasm CI and protected by the release-gate contract test. The final browser artifact remains within the unchanged 5% compressed-growth gate and reviewed eager-core topology ceilings.",
     "risks": [
       "Browser Python modules are execution-lazy but lazy-modules.json is still fetched as one eager-core artifact; true network-lazy per-domain chunks require a separate packaging redesign.",
       "Repository-wide test:changed and portable runs reached this lane's checks but stopped on stale optimizer-dashboard and parallel-lane fixtures inherited from the shared numerical branch; focused strict, architecture, closure, browser, and production-receipt checks pass."
