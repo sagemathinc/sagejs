@@ -15,6 +15,7 @@ const RELEASE_PATTERN = /^[a-f0-9]{64}$/;
 const IMMUTABLE_ASSET_PATTERN = /^assets\/sha256-[a-f0-9]{64}\//;
 const EMBED_SUPPORT_MODULES = new Set([
   "cell-controller.mjs",
+  "cell-session-pool.mjs",
   "codemirror-editor.mjs",
   "output-renderer.mjs",
   "resource-policy.mjs",

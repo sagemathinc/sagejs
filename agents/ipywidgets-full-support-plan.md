@@ -34,9 +34,13 @@ Implementation is active. As of 2026-08-31:
   is also qualified cross-origin with exact parent source/origin checks,
   bounded request ids/messages/results, deferred initialization, and a narrow
   lifecycle protocol; only that document relaxes the global anti-framing
-  headers. Shared-session pooling, the complete capability comparison, and the
-  broader browser matrix remain open before the `/embed/v1/` interfaces are
-  declared stable.
+  headers. Named shared-session pooling now serializes execution, enforces
+  language compatibility and hard live/shared-session limits, routes graphics
+  to the active cell, and reference-counts worker ownership; independent
+  workers remain the default. Unit and Chromium acceptance tests verify shared
+  state and deterministic final cleanup. The complete capability comparison
+  and broader browser matrix remain open before the `/embed/v1/` interfaces
+  are declared stable.
 - P7's kernel-side Sage compatibility layer is implemented and covered by
   executable PREP and Sage differential corpora. Sage-global `@interact`,
   `input_box`, `slider`, `range_slider`, `checkbox`, `selector`,

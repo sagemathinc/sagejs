@@ -35,6 +35,10 @@
   Access-Control-Allow-Origin: *
   Cross-Origin-Resource-Policy: cross-origin
 
+/cell-session-pool.mjs
+  Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
+
 /codemirror-editor.mjs
   Access-Control-Allow-Origin: *
   Cross-Origin-Resource-Policy: cross-origin

@@ -99,16 +99,30 @@ const cell = await createSageCell(document.querySelector("#calculus"), {
 });
 ```
 
-Each cell currently owns an independent worker and exposes `source`, `ready`,
-`run`, `interrupt`, `reset`, `clear`, `snapshot`, and `dispose`. Configuration
-supports Sage or Python language mode, editor visibility, button text,
-auto-evaluation, bounded timeout, System/Light/Dark themes, and math
-typesetting. Controller events are re-emitted as bubbling, composed custom
-events from the element. Removing a cell disposes its worker and widget views.
+Cells own independent workers by default and expose `source`, `ready`, `run`,
+`interrupt`, `reset`, `clear`, `snapshot`, and `dispose`. To deliberately share
+variables and widget state, give cells the same `session` name:
 
-`browser-embed.mjs` qualifies both declarative and factory-created cells,
-including Shadow DOM CodeMirror/output, independent lifecycle, KaTeX, and a
-live Sage `@interact` slider. It also loads the module and immutable runtime
+```html
+<sagejs-cell session="calculus"><script type="text/x-sage">a = 10</script></sagejs-cell>
+<sagejs-cell session="calculus"><script type="text/x-sage">a^2</script></sagejs-cell>
+```
+
+Shared cells must use the same Sage or Python language mode. Their executions
+are serialized, and the worker remains alive until its final owning cell is
+disposed. The default pool permits at most 16 live workers, including at most
+8 named shared sessions; these bounds prevent an embedded page from creating
+workers without limit. `sageCellSessionStats()` exposes counts for diagnostics.
+
+Configuration also supports editor visibility, button text, auto-evaluation,
+bounded timeout, System/Light/Dark themes, and math typesetting. Controller
+events are re-emitted as bubbling, composed custom events from the element.
+Removing a cell releases its session lease and its own widget views.
+
+`browser-embed.mjs` qualifies declarative, factory-created, and named shared
+cells, including Shadow DOM CodeMirror/output, reference-counted lifecycle,
+serialized shared state, KaTeX, and a live Sage `@interact` slider. It also
+loads the module and immutable runtime
 from a second origin into a deliberately non-isolated course page. A Blob
 module bootstrap handles both the kernel worker and its nested compiler worker;
 the public runtime responses permit credential-free CORS and cross-origin

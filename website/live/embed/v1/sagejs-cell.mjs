@@ -1,4 +1,7 @@
-import { createSageCellController } from "../../cell-controller.mjs";
+import {
+  acquireSageCellSession,
+  sageCellSessionStats,
+} from "../../cell-session-pool.mjs";
 import { createSourceEditor } from "../../codemirror-editor.mjs";
 import { createOutputRenderer } from "../../output-renderer.mjs";
 import {
@@ -8,15 +11,12 @@ import {
 } from "../../resource-policy.mjs";
 
 const FORWARDED_EVENTS = [
-  "capability",
-  "ready",
   "busy",
   "idle",
   "output",
   "result",
   "error",
   "reset",
-  "dispose",
 ];
 
 const DEFAULT_CONFIGURATION = Object.freeze({
@@ -24,10 +24,13 @@ const DEFAULT_CONFIGURATION = Object.freeze({
   editor: true,
   language: "sage",
   runButtonText: "Run",
+  session: undefined,
   theme: "system",
   timeout: DEFAULT_LIMITS.timeoutMs,
   typesetMath: true,
 });
+
+const WIDGET_DESTINATION_OWNERS = new WeakMap();
 
 const STYLE = `
   :host {
@@ -165,6 +168,28 @@ function userErrorText(error) {
   return `${name}: ${error?.message || String(error)}`;
 }
 
+async function renderPooledWidgetOutput(activeOwner, outputItem, destination) {
+  let node = destination;
+  let owner;
+  while (node && !owner) {
+    owner = WIDGET_DESTINATION_OWNERS.get(node);
+    node = node.parentNode ?? node.host;
+  }
+  owner ??= activeOwner;
+  if (!(owner instanceof SageJsCell) || !owner.outputRenderer) {
+    throw new Error("widget output is not attached to a live Sage.js Cell");
+  }
+  return owner.outputRenderer.renderWidgetOutput(outputItem, destination);
+}
+
+async function downloadPooledGraphics(owner, request) {
+  await owner.controller.runtime.downloadSageDisplay(
+    request.display,
+    request.filename,
+    request.options,
+  );
+}
+
 /** One independently executable, local, worker-backed Sage.js cell. */
 export class SageJsCell extends HTMLElement {
   static observedAttributes = [
@@ -173,6 +198,7 @@ export class SageJsCell extends HTMLElement {
     "language",
     "no-typeset-math",
     "run-button-text",
+    "session",
     "theme",
     "timeout",
   ];
@@ -185,6 +211,7 @@ export class SageJsCell extends HTMLElement {
     this.disposed = false;
     this.running = false;
     this.autoEvaluated = false;
+    this.readyEventSent = false;
     this.media = matchMedia("(prefers-color-scheme: dark)");
     this.onMediaChange = () => this.applyTheme();
   }
@@ -208,6 +235,7 @@ export class SageJsCell extends HTMLElement {
     else if (name === "no-typeset-math") this.configure({ typesetMath: value === null });
     else if (name === "language") this.configure({ language: value ?? DEFAULT_CONFIGURATION.language });
     else if (name === "run-button-text") this.configure({ runButtonText: value ?? DEFAULT_CONFIGURATION.runButtonText });
+    else if (name === "session") this.configure({ session: value || undefined });
     else if (name === "theme") this.configure({ theme: value ?? DEFAULT_CONFIGURATION.theme });
     else if (name === "timeout") this.configure({ timeout: value ?? DEFAULT_CONFIGURATION.timeout });
   }
@@ -220,6 +248,7 @@ export class SageJsCell extends HTMLElement {
     for (const [attribute, option] of [
       ["language", "language"],
       ["run-button-text", "runButtonText"],
+      ["session", "session"],
       ["theme", "theme"],
       ["timeout", "timeout"],
     ]) {
@@ -287,32 +316,41 @@ export class SageJsCell extends HTMLElement {
     this.applyConfiguration();
 
     this.outputRenderer = createOutputRenderer({
-      getWidgetHost: () => this.controller?.widgetHost,
+      getWidgetHost: () => {
+        const host = this.controller?.widgetHost;
+        if (!host) return undefined;
+        return {
+          captureOutput: (event) => host.captureOutput(event),
+          isWidgetDisplay: (data) => host.isWidgetDisplay(data),
+          render: (data, destination) => {
+            WIDGET_DESTINATION_OWNERS.set(destination, this);
+            return this.sessionLease.renderWidget(data, destination);
+          },
+        };
+      },
       getRenderSageDisplay: () => this.controller?.runtime?.renderSageDisplay,
       typesetMath: () => this.configuration.typesetMath,
     });
-    this.controller = createSageCellController({
-      sessionOptions: this.configuration.language === "python"
-        ? { mode: "python" }
-        : {},
-      renderWidgetOutput: this.outputRenderer.renderWidgetOutput,
-      onGraphicsSave: async (request) => {
-        await this.controller.runtime.downloadSageDisplay(
-          request.display,
-          request.filename,
-          request.options,
-        );
-      },
+    this.sessionLease = acquireSageCellSession({
+      downloadGraphics: downloadPooledGraphics,
+      language: this.configuration.language,
+      name: this.configuration.session,
+      owner: this,
+      renderWidgetOutput: renderPooledWidgetOutput,
     });
+    this.controller = this.sessionLease.controller;
+    this.controllerListeners = [];
     for (const name of FORWARDED_EVENTS) {
-      this.controller.addEventListener(name, ({ detail }) => {
+      const listener = ({ detail }) => {
         const { controller: _controller, ...publicDetail } = detail;
         this.dispatchEvent(new CustomEvent(name, {
           bubbles: true,
           composed: true,
           detail: Object.freeze({ cell: this, ...publicDetail }),
         }));
-      });
+      };
+      this.controller.addEventListener(name, listener);
+      this.controllerListeners.push([name, listener]);
     }
   }
 
@@ -322,8 +360,22 @@ export class SageJsCell extends HTMLElement {
     }
     const next = { ...this.configuration };
     if ("language" in options) next.language = normalizedLanguage(options.language);
-    if (this.controller && next.language !== this.configuration.language) {
-      throw new Error("resetting a Sage.js cell cannot change its language; create a new cell");
+    if ("session" in options) {
+      if (
+        options.session !== undefined &&
+        options.session !== null &&
+        typeof options.session !== "string"
+      ) {
+        throw new TypeError("Sage.js cell session must be a string or undefined");
+      }
+      next.session = options.session || undefined;
+    }
+    if (
+      this.controller &&
+      (next.language !== this.configuration.language ||
+        next.session !== this.configuration.session)
+    ) {
+      throw new Error("an initialized Sage.js cell cannot change its language or session");
     }
     if ("editor" in options) next.editor = Boolean(options.editor);
     if ("autoEvaluate" in options) next.autoEvaluate = Boolean(options.autoEvaluate);
@@ -367,6 +419,26 @@ export class SageJsCell extends HTMLElement {
       this.setStatus("ready", "Ready — local WebAssembly");
       this.resetButton.disabled = false;
       this.runButton.disabled = false;
+      if (!this.readyEventSent) {
+        this.readyEventSent = true;
+        this.dispatchEvent(new CustomEvent("capability", {
+          bubbles: true,
+          composed: true,
+          detail: Object.freeze({
+            cell: this,
+            capabilities: Object.freeze({
+              crossOriginIsolated: Boolean(globalThis.crossOriginIsolated),
+              interruption: "worker-replacement",
+              localExecution: true,
+            }),
+          }),
+        }));
+        this.dispatchEvent(new CustomEvent("ready", {
+          bubbles: true,
+          composed: true,
+          detail: Object.freeze({ cell: this }),
+        }));
+      }
       return this;
     } catch (error) {
       this.setStatus("error", `Could not load Sage.js: ${error.message}`);
@@ -396,7 +468,7 @@ export class SageJsCell extends HTMLElement {
     const events = this.outputRenderer.createEventRenderer(article, pre);
     let outputLimitRestarted = false;
     try {
-      const result = await this.controller.run(source, {
+      const result = await this.sessionLease.run(source, {
         filename: `<sagejs-cell:${this.configuration.language}>`,
         timeout: this.configuration.timeout,
         onOutput: (text) => {
@@ -452,7 +524,7 @@ export class SageJsCell extends HTMLElement {
   }
 
   clear() {
-    this.controller?.widgetHost?.clearViews();
+    this.controller?.widgetHost?.clearViews(this.outputElement);
     this.outputElement?.replaceChildren();
   }
 
@@ -491,11 +563,21 @@ export class SageJsCell extends HTMLElement {
     this.media.removeEventListener("change", this.onMediaChange);
     this.editor?.destroy();
     this.editor = undefined;
-    await this.controller?.dispose();
+    this.clear();
+    for (const [name, listener] of this.controllerListeners ?? []) {
+      this.controller.removeEventListener(name, listener);
+    }
+    this.controllerListeners = [];
+    await this.sessionLease?.release();
     this.runButton && (this.runButton.disabled = true);
     this.interruptButton && (this.interruptButton.disabled = true);
     this.resetButton && (this.resetButton.disabled = true);
     this.setStatus("disposed", "Disposed");
+    this.dispatchEvent(new CustomEvent("dispose", {
+      bubbles: true,
+      composed: true,
+      detail: Object.freeze({ cell: this }),
+    }));
   }
 }
 
@@ -520,3 +602,5 @@ export async function createSageCell(target, options = {}) {
   }
   return cell;
 }
+
+export { sageCellSessionStats };

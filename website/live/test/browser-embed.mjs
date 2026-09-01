@@ -193,6 +193,46 @@ try {
     await evaluate(`document.querySelector('sagejs-cell').shadowRoot.querySelector('.output').textContent`),
     "",
   );
+  await evaluate(`document.querySelector('sagejs-cell').dispose()`);
+  const shared = await evaluate(`(async () => {
+    const module = await import('/embed/v1/sagejs-cell.mjs');
+    const first = document.createElement('sagejs-cell');
+    const second = document.createElement('sagejs-cell');
+    first.configure({ editor: false, session: 'browser-shared', typesetMath: false });
+    second.configure({ editor: false, session: 'browser-shared', typesetMath: false });
+    let readyEvents = 0;
+    first.addEventListener('ready', () => readyEvents += 1);
+    second.addEventListener('ready', () => readyEvents += 1);
+    document.body.append(first, second);
+    await Promise.all([first.ready(), second.ready()]);
+    first.source = "var('shared_browser_value')";
+    await first.run();
+    second.source = 'shared_browser_value^2';
+    const result = await second.run();
+    const sameController = first.controller === second.controller;
+    await first.dispose();
+    const afterFirst = module.sageCellSessionStats();
+    second.source = 'shared_browser_value + 2';
+    const retained = await second.run();
+    await second.dispose();
+    const afterSecond = module.sageCellSessionStats();
+    return {
+      afterFirstReferences: afterFirst.sessions[0]?.references,
+      finalLiveSessions: afterSecond.liveSessions,
+      readyEvents,
+      repr: result.repr,
+      retained: retained.repr,
+      sameController,
+    };
+  })()`);
+  assert.deepEqual(shared, {
+    afterFirstReferences: 1,
+    finalLiveSessions: 0,
+    readyEvents: 2,
+    repr: "shared_browser_value^2",
+    retained: "shared_browser_value + 2",
+    sameController: true,
+  });
 
   await command("Page.navigate", {
     url: `http://127.0.0.1:${port}/embed/v1/factory.html`,

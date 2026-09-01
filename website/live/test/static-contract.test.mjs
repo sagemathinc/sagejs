@@ -83,12 +83,18 @@ test("embeddable cell has a transport-neutral, instance-scoped contract", async 
   const component = await read("embed/v1/sagejs-cell.mjs");
   assert.match(component, /class SageJsCell extends HTMLElement/);
   assert.match(component, /attachShadow\(\{ mode: "open" \}\)/);
-  assert.match(component, /createSageCellController/);
+  assert.match(component, /acquireSageCellSession/);
+  assert.match(component, /"session"/);
   assert.match(component, /export async function createSageCell/);
   for (const operation of ["ready", "run", "interrupt", "reset", "snapshot", "dispose"]) {
     assert.match(component, new RegExp(`async ${operation}\\(|${operation}\\(\\) \\{`));
   }
   assert.doesNotMatch(component, /https?:\/\//);
+  const pool = await read("cell-session-pool.mjs");
+  assert.match(pool, /createSageCellController/);
+  assert.match(pool, /liveSessions: 16/);
+  assert.match(pool, /sharedSessions: 8/);
+  assert.match(pool, /record\.tail/);
   const runtime = await read("runtime-api.mjs");
   assert.match(runtime, /workerBootstrap/);
   assert.match(runtime, /pendingMessages/);

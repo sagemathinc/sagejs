@@ -530,8 +530,8 @@ export function createWidgetHost({
         if (!before.has(element)) views.add({ modelId, element });
       }
     },
-    clearViews() {
-      destroyViews();
+    clearViews(container) {
+      destroyViews((view) => !container || container.contains?.(view.element));
     },
     stats() {
       pruneDetachedViews();

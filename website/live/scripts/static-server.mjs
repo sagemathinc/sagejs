@@ -28,6 +28,7 @@ const securityHeaders = {
 
 const EMBED_SUPPORT_MODULES = new Set([
   "cell-controller.mjs",
+  "cell-session-pool.mjs",
   "codemirror-editor.mjs",
   "output-renderer.mjs",
   "resource-policy.mjs",
