@@ -317,6 +317,19 @@ function canonicalTemplateRecord(template = fullRuntimeTemplate()) {
   };
 }
 
+function canonicalSupplementalTemplateRecord(template = supplementalTemplate()) {
+  const filename = path.join(
+    __dirname,
+    "../../../bench/numerical-computing/qualification/matrix/supplemental-evidence.template.json",
+  );
+  return {
+    path: path.relative(repositoryRoot, fs.realpathSync(filename)).split(path.sep).join("/"),
+    sha256: sha256(fs.readFileSync(filename)),
+    bytes: fs.statSync(filename).size,
+    value: template,
+  };
+}
+
 function peak(bytes, overrides = {}) {
   return {
     bytes,
@@ -636,6 +649,8 @@ test("recomputed supplemental evidence forgeries and incomplete release inputs f
     matrixTemplateRecord: canonicalTemplateRecord(),
     matrixManifestRecords: new Map(),
     matrixReceiptRecords: [],
+    supplementalTemplateRecord: canonicalSupplementalTemplateRecord(),
+    supplementalEvidenceRecords: [],
     supplementalReport: releaseMissing,
   }), /exactly 16 capability manifests/);
 
@@ -649,6 +664,8 @@ test("recomputed supplemental evidence forgeries and incomplete release inputs f
       matrixTemplateRecord: canonicalTemplateRecord(),
       matrixManifestRecords: new Map(),
       matrixReceiptRecords: [],
+      supplementalTemplateRecord: canonicalSupplementalTemplateRecord(),
+      supplementalEvidenceRecords: [],
       supplementalReport: releaseMissing,
     }),
     /canonical full-runtime policy|compiled policy omits/,
@@ -668,6 +685,8 @@ test("recomputed supplemental evidence forgeries and incomplete release inputs f
       matrixTemplateRecord: canonicalTemplateRecord(),
       matrixManifestRecords: new Map(),
       matrixReceiptRecords: [],
+      supplementalTemplateRecord: canonicalSupplementalTemplateRecord(),
+      supplementalEvidenceRecords: [],
       supplementalReport: releaseMissing,
     }),
     /content ID mismatch|exact compiled full-runtime policy|exactly 16 capability manifests/,
@@ -687,6 +706,8 @@ test("recomputed supplemental evidence forgeries and incomplete release inputs f
       matrixTemplateRecord: canonicalTemplateRecord(),
       matrixManifestRecords: new Map(),
       matrixReceiptRecords: [],
+      supplementalTemplateRecord: canonicalSupplementalTemplateRecord(),
+      supplementalEvidenceRecords: [],
       supplementalReport: releaseMissing,
     }),
     /exact compiled full-runtime policy|foreign row|exactly 16 capability manifests/,
@@ -703,6 +724,8 @@ test("recomputed supplemental evidence forgeries and incomplete release inputs f
       matrixTemplateRecord: canonicalTemplateRecord(forgedTemplate),
       matrixManifestRecords: new Map(),
       matrixReceiptRecords: [],
+      supplementalTemplateRecord: canonicalSupplementalTemplateRecord(),
+      supplementalEvidenceRecords: [],
       supplementalReport: releaseMissing,
     }),
     /checked-in canonical template|source-current canonical|exactly 16 capability manifests/,

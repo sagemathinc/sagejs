@@ -459,6 +459,10 @@ function structuralPerformanceClaims(evidence) {
       bindings: [
         "test/wasm-production-resource-closure.cjs", "architecture/native-kernels.json",
         "packages/wasm-toolchain/lock.json",
+        "tools/sea-entry.ts",
+        "bench/numerical-computing/qualification/package-adapter.cjs",
+        "test/numerics/evidence/qualification-campaign.cjs",
+        "test/numerics/evidence/qualification-supplemental.cjs",
       ],
       artifacts: [],
     }],
@@ -858,8 +862,22 @@ function verifyMatrixArtifactCoherence(matrix, supplemental) {
 
 function buildReleaseGate({
   candidate, matrixReportRecord, matrixPolicyRecord, matrixTemplateRecord, matrixReceiptRecords,
-  matrixManifestRecords, supplementalReport,
+  matrixManifestRecords, supplementalTemplateRecord, supplementalEvidenceRecords,
+  supplementalReport,
 }) {
+  requireCanonicalRecord(
+    supplementalTemplateRecord, SUPPLEMENTAL_TEMPLATE_PATH, "supplemental template",
+  );
+  const rebuiltSupplemental = buildSupplementalReport(
+    supplementalTemplateRecord.value,
+    supplementalEvidenceRecords,
+    { candidate, release: true },
+  );
+  if (canonicalJson(rebuiltSupplemental) !== canonicalJson(supplementalReport)) {
+    throw new Error(
+      "supplemental report does not reproduce from its authenticated evidence files",
+    );
+  }
   requireCanonicalRecord(
     matrixTemplateRecord, FULL_RUNTIME_TEMPLATE_PATH, "full-runtime matrix template",
   );
@@ -916,6 +934,11 @@ function buildReleaseGate({
       template_sha256: supplementalReport.template.sha256,
       rows: supplementalReport.rows.length,
     },
+    supplemental_evidence: supplementalEvidenceRecords.map((record) => ({
+      path: record.path,
+      sha256: record.sha256,
+      id: record.value.id,
+    })).sort((left, right) => left.path.localeCompare(right.path)),
     artifact_coherence: {
       cminpack_content_sha256:
         supplementalReport.artifact_coherence.component_content_sha256.cminpack,

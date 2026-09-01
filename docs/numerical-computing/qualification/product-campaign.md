@@ -67,19 +67,17 @@ seven-domain teaching-artifact surfaces. It contains:
   automatic least squares remains on the validated ordinary-Python method,
   while explicit cminpack requests fail with stable structured diagnostics and
   do not leak private resource details;
-- exact explicit-only `nlopt-nelder-mead` and `nlopt-cobyla` public routes,
-  including Rosenbrock and active-circle oracles, the one-dimensional equal
-  simplex-value regression, convergence at a zero-scale optimum, a legitimate
-  active-bound optimum, planning rejection at the first dimension above the
-  validated 32-variable envelope, and a legitimate nonlinear-equality
-  constrained optimum, independent rejection of mixed-curvature saddles at
-  ordinary and large-offset scales, narrow-slack feasible descent, and a
-  feasible constrained non-minimum, planning rejection above COBYLA's
-  32-variable and 64-constraint validation envelopes, independent rejection
-  of a positive backend status on incompatible constraints, truthful
-  external-Wasm provenance after callback failure and cancellation,
-  backend-specific lazy cache reuse/isolation, and missing/corrupt
-  optional-resource behavior;
+- the exact explicit-only `nlopt-nelder-mead` public route, including
+  Rosenbrock and active-bound oracles, the one-dimensional equal simplex-value
+  regression, zero-scale convergence, planning rejection above the validated
+  32-variable envelope, independent rejection of mixed-curvature saddles and
+  offset-sensitive false optima, truthful external-Wasm provenance after
+  callback failure and cancellation, backend-specific lazy cache
+  reuse/isolation, and missing/corrupt optional-resource behavior;
+- explicit planning rejection for `nlopt-cobyla` and every nonlinear-
+  constraint request, with no native entry and the source-bound UBSAN/issue-611
+  disposition retained until a sanitizer-clean replacement such as PRIMA is
+  qualified;
 - execution of four artifact-emitted Python/SciPy programs in an isolated
   CPython process, followed by independent Node-side residual/oracle checks;
 - failed-result projection, replayable-expression, callback-consistency, and
@@ -285,17 +283,31 @@ harnesses and the collector's authenticated process-tree measurement support;
 ordinary adapter counters and browser JavaScript heap values are supplemental.
 In particular, the bounded Wasm ABI fuzz and lifecycle tests above do not
 substitute for ASAN, UBSAN, or LSAN over the native cminpack and NLopt source
-and adapter boundary. Those sanitizer rows remain pending until a dedicated
-source-bound native harness exists and is run on the final candidate. The
-destructive Wasm and browser-memory rows likewise remain pending until their
+and adapter boundary. The dedicated immutable runners are executable now, but
+their rows remain pending until they run on and authenticate the final
+candidate. The destructive Wasm and browser-memory rows likewise remain pending until their
 final artifact authentication/recovery and per-engine process-tree runs are
 collected; an earlier development pass is not carried forward.
+
+Release mode is fail-closed. `run-release-gate.cjs` consumes the exact
+source-current full-runtime template and supplemental template, all 16 bound
+capability manifests and runtime receipts, the rebuilt ordinary matrix report,
+and every supplemental evidence file. It dereferences and verifies those files,
+rebuilds both reports, authenticates their commands and inputs, and cross-checks
+the raw cminpack, NLopt, Linux SEA, and browser-distribution digests before it
+can emit a passing document. The SEA adapter additionally asks the actual SEA
+for its hidden `--qualification-resource-digests` record and compares the two
+embedded numerical resources to the separately bound artifacts. Source-mode
+CLI execution cannot impersonate that SEA-only boundary.
 
 ## Extending the corpus
 
 Polynomial roots, Rosenbrock4, bounded ODE sweeps, cminpack's `lmdif` and
-`lmder`, and NLopt's exact explicit-only Nelder–Mead and COBYLA methods are now
-executable required capabilities. Future slices such
+`lmder`, and NLopt's exact explicit-only Nelder–Mead method are now executable
+required capabilities. NLopt COBYLA and nonlinear constraints are explicitly
+unsupported: source-bound UBSAN exposed unresolved pointer-provenance undefined
+behavior in the upstream f2c implementation, so the future constrained path is
+planned around PRIMA rather than making a false safety claim. Future slices such
 as a public least-squares frontend, sparse stiff methods, additional native or
 Wasm backends, and new product domains follow the same procedure:
 

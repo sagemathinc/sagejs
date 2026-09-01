@@ -62,6 +62,7 @@ function validateSupplementalTemplate(template) {
     "nlopt-native-sanitizers",
     "numerical-wasm-destructive-faults",
     "browser-process-tree-memory",
+    "startup-package-payload-closure",
   ]);
   for (const item of template.requirements) {
     if (!required.delete(item.id)) throw new Error(`unexpected supplemental requirement ${item.id}`);

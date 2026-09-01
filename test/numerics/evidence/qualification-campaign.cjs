@@ -51,7 +51,7 @@ test("product corpus covers every P0-P8 phase, evidence layer, and integrated do
     "numerics.optimization.scalar", "numerics.optimization.cminpack",
     "numerics.optimization.cminpack_optional_resource",
     "numerics.optimization.nlopt_nelder_mead",
-    "numerics.optimization.nlopt_cobyla",
+    "numerics.optimization.nlopt_unsupported",
     "numerics.optimization.nlopt_optional_resource",
     "numerics.ode.explicit_ivp", "numerics.ode.stiff_ivp", "numerics.ode.sweeps",
     "numerics.spectral.dense", "numerics.spectral.fft",
@@ -136,16 +136,15 @@ test("runtime adapters are executable and cminpack evidence uses portable Sage.j
     "p3-nlopt-nelder-mead-active-bound",
     "p3-nlopt-nelder-mead-bound-offset-invariance",
     "p3-nlopt-nelder-mead-dimension-33",
-    "p3-nlopt-cobyla-nonlinear-equality",
-    "p3-nlopt-cobyla-offset-saddle-rejected",
-    "p3-nlopt-cobyla-narrow-slack-rejected",
-    "p3-nlopt-cobyla-mixed-scale-tangent-rejected",
-    "p3-nlopt-cobyla-dimension-34",
-    "p3-nlopt-cobyla-constraint-65",
+    "p3-nlopt-cobyla-explicitly-unsupported",
+    "p3-nlopt-nonlinear-constraints-explicitly-unsupported",
   ]) {
     const item = corpus.cases.find((entry) => entry.id === id);
     const source = nodeAdapter.qualificationInternals.sourceFor(id, item.input);
-    assert.match(source, /method="nlopt-(?:nelder-mead|cobyla)"/);
+    assert.match(
+      source,
+      /method="nlopt-nelder-mead"|nlopt-cobyla|nonlinear constraint|sanitizer-clean/,
+    );
     assert.match(source, /__SAGEJS_NUMERICAL_QUALIFICATION__/);
   }
   assert.equal(typeof browserAdapter._testing.launchBrowser, "function");
@@ -179,6 +178,7 @@ test("browser-worker adapter interrupts, replaces, and reuses the real worker", 
     subject: draft.subject,
     artifacts: [
       { name: "sagejs-browser", path: browserArtifact, sha256: "test-only", bytes: 0 },
+      { name: "browser-dist", path: path.join(browserArtifact, "dist"), sha256: "test-only", bytes: 0 },
       { name: "cminpack-wasm", path: browserCminpack, sha256: "test-only", bytes: 0 },
       { name: "nlopt-wasm", path: browserNlopt, sha256: "test-only", bytes: 0 },
     ],
@@ -400,9 +400,8 @@ test("first-party adapter executes Sage.js and independently checks representati
       "p3-nlopt-nelder-mead-one-dimensional",
       "p3-nlopt-nelder-mead-zero-scale",
       "p3-nlopt-nelder-mead-saddle-rejected",
-      "p3-nlopt-cobyla-circle",
-      "p3-nlopt-cobyla-infeasible-rejected",
-      "p3-nlopt-cobyla-nonminimum-rejected",
+      "p3-nlopt-cobyla-explicitly-unsupported",
+      "p3-nlopt-nonlinear-constraints-explicitly-unsupported",
       "p3-nlopt-failure-provenance",
       "p3-nlopt-optional-resource-fail-closed",
       "p4-ode-stiff-decay", "p4-ode-decay-sweep",
@@ -431,7 +430,10 @@ test("first-party adapter executes Sage.js and independently checks representati
         sample_kind: "test",
         sample_index: 0,
       });
-      assert.equal(observed.outcome.kind, "success", id);
+      const expectedFailure =
+        id === "p3-nlopt-cobyla-explicitly-unsupported" ||
+        id === "p3-nlopt-nonlinear-constraints-explicitly-unsupported";
+      assert.equal(observed.outcome.kind, expectedFailure ? "failure" : "success", id);
       assert.equal(Object.hasOwn(observed, "passed"), false, id);
       assert(Object.values(observed.values).every((value) => value !== undefined), id);
       if (id === "p3-cminpack-optional-resource-fail-closed") {
@@ -451,18 +453,18 @@ test("first-party adapter executes Sage.js and independently checks representati
         assert.equal(observed.values.cache_reused, true);
         assert.equal(observed.values.automatic_backend, "ordinary-python");
       }
-      if (id === "p3-nlopt-cobyla-infeasible-rejected") {
-        assert.equal(observed.values.public_success, false);
-        assert.equal(observed.values.validation_passed, false);
-        assert.equal(observed.values.backend_status_positive, true);
+      if (id === "p3-nlopt-cobyla-explicitly-unsupported" ||
+          id === "p3-nlopt-nonlinear-constraints-explicitly-unsupported") {
+        assert.equal(observed.outcome.kind, "failure");
+        assert.equal(observed.values.rejected, true);
+        assert.equal(observed.values.backend_entered, false);
       }
       if (id === "p3-nlopt-nelder-mead-zero-scale") {
         assert.equal(observed.values.public_success, true);
         assert(Math.abs(observed.values.result) <= 1e-8);
         assert(observed.values.evaluations < 1000);
       }
-      if (id === "p3-nlopt-nelder-mead-saddle-rejected" ||
-          id === "p3-nlopt-cobyla-nonminimum-rejected") {
+      if (id === "p3-nlopt-nelder-mead-saddle-rejected") {
         assert.equal(observed.values.public_success, false);
         assert.equal(observed.values.validation_passed, false);
         assert.equal(observed.values.validation_kind, "indeterminate");
@@ -476,7 +478,7 @@ test("first-party adapter executes Sage.js and independently checks representati
       }
       if (id === "p3-nlopt-optional-resource-fail-closed") {
         assert.equal(observed.values.automatic_successes, 2);
-        assert.equal(observed.values.explicit_failures, 4);
+        assert.equal(observed.values.explicit_failures, 2);
         assert.equal(observed.values.private_details_leaked, 0);
       }
     }

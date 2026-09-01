@@ -69,6 +69,10 @@ const GATES = Object.freeze([
       "test/wasm-production-resource-closure.cjs",
       "architecture/native-kernels.json",
       "packages/wasm-toolchain/lock.json",
+      "tools/sea-entry.ts",
+      "bench/numerical-computing/qualification/package-adapter.cjs",
+      "test/numerics/evidence/qualification-campaign.cjs",
+      "test/numerics/evidence/qualification-supplemental.cjs",
     ],
   },
 ]);

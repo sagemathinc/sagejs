@@ -97,11 +97,11 @@ function run(options) {
         `got ${repository.commit}${repository.clean ? "" : " (dirty)"}`,
     );
   }
-  const template = readBoundJson(
+  const supplementalTemplate = readBoundJson(
     SUPPLEMENTAL_TEMPLATE_PATH, "canonical supplemental template",
-  ).value;
+  );
   const evidence = options.evidence.map((filename) => readBoundJson(filename, `evidence ${filename}`));
-  const supplemental = buildSupplementalReport(template, evidence, {
+  const supplemental = buildSupplementalReport(supplementalTemplate.value, evidence, {
     candidate: options.candidate,
     release: !options.development,
   });
@@ -137,6 +137,8 @@ function run(options) {
     matrixTemplateRecord: matrixTemplate,
     matrixReceiptRecords: receipts,
     matrixManifestRecords: manifests,
+    supplementalTemplateRecord: supplementalTemplate,
+    supplementalEvidenceRecords: evidence,
     supplementalReport: supplemental,
   });
   writeImmutableJson(options.output, gate);

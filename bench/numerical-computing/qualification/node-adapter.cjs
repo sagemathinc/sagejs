@@ -23,7 +23,7 @@ const CAPABILITY_MODULE_REQUIREMENTS = Object.freeze({
   "numerics.optimization.cminpack": "external:cminpack-wasm",
   "numerics.optimization.cminpack_optional_resource": "sagejs.numerics.optimization",
   "numerics.optimization.nlopt_nelder_mead": "external:nlopt-wasm",
-  "numerics.optimization.nlopt_cobyla": "external:nlopt-wasm",
+  "numerics.optimization.nlopt_unsupported": "sagejs.numerics.optimization",
   "numerics.optimization.nlopt_optional_resource": "external:nlopt-wasm",
   "numerics.ode.explicit_ivp": "sagejs.numerics.ode",
   "numerics.ode.stiff_ivp": "sagejs.numerics.ode",
@@ -595,157 +595,7 @@ except Exception as error:
 finally:
     output_record["backend_entered"] = witness.entered
     backend_state["backend"] = original_backend`,
-    "p3-nlopt-cobyla-circle": String.raw`
-from sagejs.numerics.optimization import minimize
-answer = minimize(
-    lambda point: (point[0]-1.0)**2 + (point[1]-1.0)**2,
-    [0.25, 0.25],
-    constraints=[{
-        "type": "ineq",
-        "fun": lambda point: 1.0-point[0]*point[0]-point[1]*point[1],
-        "tolerance": 2.0e-7,
-    }],
-    method="nlopt-cobyla",
-    initial_step=[0.4, 0.4],
-    maxiter=2000,
-    max_evaluations=2000,
-)
-output_record = {
-    "value": answer.value,
-    "objective": answer.domain_payload["objective"],
-    "success": answer.success,
-    "status": answer.status,
-    "validation_passed": answer.validation.passed,
-    "method": answer.method,
-    "backend": answer.backend,
-    "derivative_callbacks": answer.domain_payload["backend_derivative_callbacks"],
-}`,
-    "p3-nlopt-cobyla-infeasible-rejected": String.raw`
-from sagejs.numerics.optimization import minimize
-answer = minimize(
-    lambda point: point[0]*point[0],
-    [0.5],
-    constraints=[
-        {"type": "ineq", "fun": lambda point: point[0]-1.0},
-        {"type": "ineq", "fun": lambda point: -point[0]},
-    ],
-    method="nlopt-cobyla",
-    initial_step=0.2,
-    maxiter=2000,
-    max_evaluations=2000,
-)
-output_record = {
-    "value": answer.value,
-    "public_success": answer.success,
-    "status": answer.status,
-    "validation_passed": answer.validation.passed,
-    "validation_residual": answer.validation.residual,
-    "backend_status": answer.domain_payload["backend_status"],
-    "backend_status_code": answer.domain_payload["backend_status_code"],
-}`,
-    "p3-nlopt-cobyla-nonlinear-equality": String.raw`
-from sagejs.numerics.optimization import minimize
-answer = minimize(
-    lambda point: (point[0]-0.8)**2 + (point[1]-0.6)**2,
-    [0.7, 0.7],
-    constraints=[{
-        "type": "eq",
-        "fun": lambda point: point[0]*point[0]+point[1]*point[1]-1.0,
-        "tolerance": 2.0e-7,
-    }],
-    method="nlopt-cobyla",
-    initial_step=[0.2, 0.2],
-    maxiter=2000,
-    max_evaluations=2000,
-)
-output_record = {
-    "value": answer.value,
-    "success": answer.success,
-    "status": answer.status,
-    "validation_passed": answer.validation.passed,
-    "method": answer.method,
-    "backend": answer.backend,
-}`,
-    "p3-nlopt-cobyla-offset-saddle-rejected": String.raw`
-from sagejs.numerics.optimization import minimize
-
-def rotated_saddle(point):
-    x = point[0]-1.0
-    y = point[1]-1.0
-    radius_squared = x*x+y*y
-    return x*x+y*y-3.0*x*y+radius_squared*radius_squared
-
-answer = minimize(
-    lambda point: input_record["offset"] + input_record["scale"]*rotated_saddle(point),
-    input_record["initial"],
-    constraints=[{"type": "ineq", "fun": lambda _point: 1.0}],
-    method="nlopt-cobyla",
-)
-record = answer.to_dict()
-output_record = {
-    "value": answer.value,
-    "success": answer.success,
-    "status": answer.status,
-    "validation_passed": answer.validation.passed,
-    "validation_kind": answer.validation.truth_level,
-    "method": answer.method,
-    "backend": answer.backend,
-    "implementation_kind": record["provenance"]["implementation_kind"],
-    "source_transparent": record["provenance"]["source_transparent"],
-}`,
-    "p3-nlopt-cobyla-narrow-slack-rejected": String.raw`
-from sagejs.numerics.optimization import minimize
-
-records = []
-for slack in input_record["slacks"]:
-    answer = minimize(
-        lambda point: point[0],
-        [input_record["initial"]],
-        constraints=[{
-            "type": "ineq",
-            "fun": lambda point: slack+point[0],
-        }],
-        method="nlopt-cobyla",
-    )
-    record = answer.to_dict()
-    records.append({
-        "slack": slack,
-        "value": answer.value,
-        "success": answer.success,
-        "status": answer.status,
-        "validation_passed": answer.validation.passed,
-        "validation_kind": answer.validation.truth_level,
-        "method": answer.method,
-        "backend": answer.backend,
-        "implementation_kind": record["provenance"]["implementation_kind"],
-        "source_transparent": record["provenance"]["source_transparent"],
-    })
-output_record = {"records": records}`,
-    "p3-nlopt-cobyla-mixed-scale-tangent-rejected": String.raw`
-from sagejs.numerics.optimization import minimize
-
-def objective(point):
-    z = point[0]*point[0]
-    return z*(z-1.0)/(z+1.0)
-
-records = []
-for fixed in input_record["fixed_coordinates"]:
-    answer = minimize(
-        objective,
-        [0.0, fixed],
-        constraints=[{"type": "eq", "fun": lambda point: point[1]-fixed}],
-        method="nlopt-cobyla",
-        maxiter=2,
-    )
-    answer._value = [0.0, fixed]
-    verification = answer.verify()
-    records.append({
-        "fixed": fixed,
-        "validation_passed": verification.passed,
-        "validation_kind": verification.truth_level,
-    })
-output_record = {"records": records}`,
-    "p3-nlopt-cobyla-dimension-34": String.raw`
+    "p3-nlopt-cobyla-explicitly-unsupported": String.raw`
 import sagejs.runtime as runtime
 from sagejs.numerics.optimization import minimize
 
@@ -754,37 +604,25 @@ class EntryWitness:
         self.entered = False
     def solve(self, options):
         self.entered = True
-        raise RuntimeError("out-of-envelope call entered NLopt backend")
+        raise RuntimeError("unsupported COBYLA entered NLopt backend")
 
-dimension = input_record["dimension"]
 backend_state = runtime._nlopt_backend_state
 original_backend = backend_state["backend"]
 witness = EntryWitness()
 backend_state["backend"] = witness
 try:
-    answer = minimize(
-        lambda point: sum(value*value for value in point),
-        [0.0]*dimension,
-        constraints=[{"type": "eq", "fun": lambda point: sum(point)}],
-        method="nlopt-cobyla",
-    )
-    output_record = {"rejected": False, "value": answer.value}
-except ValueError as error:
-    output_record = {
-        "rejected": True,
-        "error_name": error.__class__.__name__,
-        "error_message": str(error),
-    }
+    minimize(lambda point: point[0]*point[0], [1.0], method="nlopt-cobyla")
+    output_record = {"rejected": False, "error_name": None, "error_message": ""}
 except Exception as error:
     output_record = {
-        "rejected": False,
+        "rejected": True,
         "error_name": error.__class__.__name__,
         "error_message": str(error),
     }
 finally:
     output_record["backend_entered"] = witness.entered
     backend_state["backend"] = original_backend`,
-    "p3-nlopt-cobyla-constraint-65": String.raw`
+    "p3-nlopt-nonlinear-constraints-explicitly-unsupported": String.raw`
 import sagejs.runtime as runtime
 from sagejs.numerics.optimization import minimize
 
@@ -793,72 +631,28 @@ class EntryWitness:
         self.entered = False
     def solve(self, options):
         self.entered = True
-        raise RuntimeError("out-of-envelope call entered NLopt backend")
+        raise RuntimeError("unsupported nonlinear constraint entered NLopt backend")
 
-constraints = []
-for _index in range(input_record["constraints"]):
-    constraints.append({"type": "ineq", "fun": lambda _point: 1.0})
 backend_state = runtime._nlopt_backend_state
 original_backend = backend_state["backend"]
 witness = EntryWitness()
 backend_state["backend"] = witness
 try:
-    answer = minimize(
+    minimize(
         lambda point: point[0]*point[0],
-        [0.0],
-        constraints=constraints,
-        method="nlopt-cobyla",
+        [1.0],
+        constraints=[{"type": "ineq", "fun": lambda point: point[0]}],
     )
-    output_record = {"rejected": False, "value": answer.value}
-except ValueError as error:
-    output_record = {
-        "rejected": True,
-        "error_name": error.__class__.__name__,
-        "error_message": str(error),
-    }
+    output_record = {"rejected": False, "error_name": None, "error_message": ""}
 except Exception as error:
     output_record = {
-        "rejected": False,
+        "rejected": True,
         "error_name": error.__class__.__name__,
         "error_message": str(error),
     }
 finally:
     output_record["backend_entered"] = witness.entered
     backend_state["backend"] = original_backend`,
-    "p3-nlopt-cobyla-nonminimum-rejected": String.raw`
-from sagejs.numerics.optimization import minimize
-
-def objective(point):
-    return -point[0]-point[1]+point[2]*point[2]
-
-answer = minimize(
-    objective,
-    [0.0, 0.0, 0.0],
-    constraints=[
-        {"type": "ineq", "fun": lambda point: point[1]-0.9*point[0]},
-        {"type": "ineq", "fun": lambda point: point[0]-0.9*point[1]},
-    ],
-    method="nlopt-cobyla",
-    maxiter=2,
-)
-# The feasible wedge is unbounded, so the backend is not required to return
-# the origin.  Revalidate that exact adversarial candidate through the public
-# result verifier: an earlier validator incorrectly certified it from only
-# coordinate probes.
-answer._value = [0.0, 0.0, 0.0]
-verification = answer.verify()
-record = answer.to_dict()
-output_record = {
-    "value": answer.value,
-    "solver_status": answer.status,
-    "crafted_validation_passed": verification.passed,
-    "crafted_validation_kind": verification.truth_level,
-    "backend_executed": record["provenance"]["implementation_kind"] == "external_library_wasm",
-    "method": answer.method,
-    "backend": answer.backend,
-    "implementation_kind": record["provenance"]["implementation_kind"],
-    "source_transparent": record["provenance"]["source_transparent"],
-}`,
     "p3-nlopt-failure-provenance": String.raw`
 import sagejs.runtime as runtime
 from sagejs.numerics.optimization import minimize
@@ -922,7 +716,7 @@ try:
         backend_state["backend"] = UnavailableNloptBackend(kind)
         automatic = minimize(lambda point: (point[0]-2.0)**2, [20.0])
         explicit = []
-        for method in ("nlopt-nelder-mead", "nlopt-cobyla"):
+        for method in ("nlopt-nelder-mead",):
             result = minimize(lambda point: (point[0]-2.0)**2, [20.0], method=method)
             explicit.append({
                 "method": method,
@@ -2265,184 +2059,30 @@ async function normalizeEvaluated(sample, evaluated) {
         success(values, kernelMs, { rejected_dimension: sample.input.dimension });
       break;
     }
-    case "p3-nlopt-cobyla-circle": {
-      const [x, y] = raw.value;
-      const expected = Math.SQRT1_2;
-      const objective = (x - 1) ** 2 + (y - 1) ** 2;
-      observation = success({
-        maximum_parameter_error: Math.max(Math.abs(x - expected), Math.abs(y - expected)),
-        independent_objective: objective,
-        reported_objective_error: Math.abs(raw.objective - objective),
-        independent_constraint_violation: Math.max(0, x * x + y * y - 1),
-        public_success: raw.success,
-        public_status: raw.status,
-        validation_passed: raw.validation_passed,
-        method: raw.method,
-        backend: raw.backend,
-        derivative_callbacks: raw.derivative_callbacks,
-      }, kernelMs);
-      break;
-    }
-    case "p3-nlopt-cobyla-infeasible-rejected": {
-      const value = raw.value[0];
-      const violation = Math.max(Math.max(0, 1 - value), Math.max(0, value));
-      observation = success({
-        public_success: raw.public_success,
-        public_status: raw.status,
-        validation_passed: raw.validation_passed,
-        reported_validation_residual: raw.validation_residual,
-        independent_constraint_violation: violation,
-        backend_status: raw.backend_status,
-        backend_status_positive: raw.backend_status_code > 0,
-      }, kernelMs);
-      break;
-    }
-    case "p3-nlopt-cobyla-nonlinear-equality": {
-      const point = Array.isArray(raw.value) ? raw.value : [];
-      const [x, y] = point.length === 2 ? point : [null, null];
-      const maxParameterError = x === null || y === null ? Number.MAX_VALUE :
-        Math.max(
-          Math.abs(x - sample.input.expected[0]),
-          Math.abs(y - sample.input.expected[1]),
-        );
-      const equalityResidual = x === null || y === null ? Number.MAX_VALUE :
-        Math.abs(x * x + y * y - 1);
-      observation = success({
-        max_parameter_error: maxParameterError,
-        equality_residual: equalityResidual,
-        public_success: raw.success,
-        public_status: raw.status,
-        validation_passed: raw.validation_passed,
-        method: raw.method,
-        backend: raw.backend,
-      }, kernelMs);
-      break;
-    }
-    case "p3-nlopt-cobyla-offset-saddle-rejected": {
-      const point = Array.isArray(raw.value) ? raw.value : [];
-      const pointAvailable = point.length === 2 && point.every(Number.isFinite);
-      const [x, y] = pointAvailable ? point : [0, 0];
-      const shifted = (left, right) => {
-        const dx = left - 1;
-        const dy = right - 1;
-        const radiusSquared = dx * dx + dy * dy;
-        return dx * dx + dy * dy - 3 * dx * dy + radiusSquared * radiusSquared;
-      };
-      const objective = (left, right) => sample.input.offset +
-        sample.input.scale * shifted(left, right);
-      const candidateObjective = objective(x, y);
-      const normalizedStep = sample.input.witness_step / Math.sqrt(2);
-      const witnesses = [1, -1].map((sign) => [
-        x + sign * normalizedStep,
-        y + sign * normalizedStep,
-      ]);
-      const witnessObjective = Math.min(...witnesses.map(([left, right]) =>
-        objective(left, right)));
-      observation = success({
-        public_success: raw.success,
-        public_status: raw.status,
-        validation_passed: raw.validation_passed,
-        validation_kind: raw.validation_kind,
-        method: raw.method,
-        backend: raw.backend,
-        implementation_kind: raw.implementation_kind,
-        source_transparent: raw.source_transparent,
-        independent_candidate_objective: pointAvailable ? candidateObjective : null,
-        independent_feasible_descent: pointAvailable ?
-          candidateObjective - witnessObjective : -Number.MAX_VALUE,
-        independent_witness_violation: pointAvailable ? 0 : Number.MAX_VALUE,
-      }, kernelMs);
-      break;
-    }
-    case "p3-nlopt-cobyla-narrow-slack-rejected": {
-      const records = raw.records.map((item) => {
-        const value = Array.isArray(item.value) && Number.isFinite(item.value[0]) ?
-          item.value[0] : null;
-        const witness = -item.slack / 2;
-        return {
-          ...item,
-          independent_descent: value === null ? -Number.MAX_VALUE : value - witness,
-          independent_violation: Math.max(0, -(item.slack + witness)),
-        };
-      });
-      observation = success({
-        slacks: records.map((item) => item.slack),
-        public_successes: records.filter((item) => item.success).length,
-        statuses: records.map((item) => item.status),
-        validation_passes: records.filter((item) => item.validation_passed).length,
-        validation_kinds: records.map((item) => item.validation_kind),
-        minimum_independent_feasible_descent: Math.min(...records.map((item) =>
-          item.independent_descent)),
-        independent_witness_violation: Math.max(...records.map((item) =>
-          item.independent_violation)),
-      }, kernelMs, { transformations: records.length });
-      break;
-    }
-    case "p3-nlopt-cobyla-mixed-scale-tangent-rejected": {
-      const witnessX = sample.input.witness_x;
-      const z = witnessX * witnessX;
-      const witnessObjective = z * (z - 1) / (z + 1);
-      observation = success({
-        fixed_coordinates: raw.records.map((item) => item.fixed),
-        minimum_independent_feasible_descent: -witnessObjective,
-        maximum_equality_residual: Math.max(...raw.records.map((item) =>
-          Math.abs(item.fixed - item.fixed))),
-        validation_passes: raw.records.filter((item) => item.validation_passed).length,
-        validation_kinds: raw.records.map((item) => item.validation_kind),
-      }, kernelMs, { transformations: raw.records.length });
-      break;
-    }
-    case "p3-nlopt-cobyla-dimension-34":
-    case "p3-nlopt-cobyla-constraint-65": {
-      const isDimension = sample.id === "p3-nlopt-cobyla-dimension-34";
-      const code = isDimension ?
-        "optimization.dimension-envelope" : "optimization.constraint-envelope";
-      const counters = isDimension ? {
-        rejected_dimension: sample.input.dimension,
-        validated_maximum: sample.input.validated_maximum,
-      } : {
-        rejected_constraints: sample.input.constraints,
-        validated_maximum: sample.input.validated_maximum,
-      };
+    case "p3-nlopt-cobyla-explicitly-unsupported": {
       const values = {
         rejected: raw.rejected,
         error_name: raw.error_name ?? null,
         message_matches: typeof raw.error_message === "string" &&
-          raw.error_message.includes(sample.input.expected_message),
+          raw.error_message.includes("unsupported"),
         backend_entered: raw.backend_entered,
       };
       observation = raw.rejected ?
-        failure(code, values, kernelMs, counters) : success(values, kernelMs, counters);
+        failure("optimization.unsupported-cobyla", values, kernelMs) :
+        success(values, kernelMs);
       break;
     }
-    case "p3-nlopt-cobyla-nonminimum-rejected": {
-      const point = Array.isArray(raw.value) ? raw.value : [];
-      const pointAvailable = point.length === 3 && point.every(Number.isFinite);
-      const [x, y, z] = pointAvailable ? point : [0, 0, 0];
-      const candidateObjective = -x - y + z * z;
-      const epsilon = 1e-4;
-      const witness = [x + epsilon, y + epsilon, z];
-      const witnessObjective = -witness[0] - witness[1] + witness[2] ** 2;
-      const witnessViolation = pointAvailable ? Math.max(
-        0,
-        0.9 * witness[0] - witness[1],
-        0.9 * witness[1] - witness[0],
-      ) : Number.MAX_VALUE;
-      observation = success({
-        solver_status: raw.solver_status,
-        crafted_validation_passed: raw.crafted_validation_passed,
-        crafted_validation_kind: raw.crafted_validation_kind,
-        backend_executed: raw.backend_executed,
-        method: raw.method,
-        backend: raw.backend,
-        implementation_kind: raw.implementation_kind,
-        source_transparent: raw.source_transparent,
-        independent_candidate_objective: pointAvailable ? candidateObjective : null,
-        independent_feasible_descent: pointAvailable ?
-          candidateObjective - witnessObjective : -Number.MAX_VALUE,
-        independent_witness_violation: witnessViolation,
-        point_available: pointAvailable,
-      }, kernelMs);
+    case "p3-nlopt-nonlinear-constraints-explicitly-unsupported": {
+      const values = {
+        rejected: raw.rejected,
+        error_name: raw.error_name ?? null,
+        message_matches: typeof raw.error_message === "string" &&
+          raw.error_message.includes("sanitizer-clean"),
+        backend_entered: raw.backend_entered,
+      };
+      observation = raw.rejected ?
+        failure("optimization.unsupported-nonlinear-constraints", values, kernelMs) :
+        success(values, kernelMs);
       break;
     }
     case "p3-nlopt-failure-provenance": {
