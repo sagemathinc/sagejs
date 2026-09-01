@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.numerical-qualification-corpus/v1",
-  "id": "sagejs-numerical-product-v9",
-  "version": 9,
+  "id": "sagejs-numerical-product-v10",
+  "version": 10,
   "domain": "numerical-computing-product",
   "description": "Backend-neutral P0-P8 product cases executed through a real Sage.js artifact and checked independently by the host adapter.",
   "program_phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
@@ -572,6 +572,82 @@
         {"id": "nlopt-nonlinear-equality-feasibility", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/equality_residual", "expected": {"literal": 2e-6}},
         {"id": "nlopt-nonlinear-equality-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
         {"id": "nlopt-nonlinear-equality-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-cobyla-offset-saddle-rejected",
+      "description": "The public constrained-result verifier rejects a saddle even when a large constant offset makes the representable strict feasible decrease tiny relative to the objective magnitude.",
+      "program_phase": "P3",
+      "layer": "conditioned-stress",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": ["nlopt-offset-saddle-independent-descent"]},
+      "input": {"operation": "nlopt-cobyla-offset-saddle-rejected", "offset": 1000, "scale": 0.0001, "candidate": [1, 1], "witness_step": 0.01},
+      "required_capabilities": ["numerics.optimization.nlopt_cobyla"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-offset-saddle-independent-descent", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/independent_feasible_descent", "expected": {"literal": 9e-9}},
+        {"id": "nlopt-offset-saddle-witness-feasible", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_witness_violation", "expected": {"literal": 0}},
+        {"id": "nlopt-offset-saddle-public-rejection", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": false}},
+        {"id": "nlopt-offset-saddle-validation-rejection", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": false}},
+        {"id": "nlopt-offset-saddle-indeterminate", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_kind", "expected": {"literal": "indeterminate"}},
+        {"id": "nlopt-offset-saddle-provenance", "evidence": "validation", "kind": "deep-equal", "actual": "/values/implementation_kind", "expected": {"literal": "external_library_wasm"}},
+        {"id": "nlopt-offset-saddle-not-source-transparent", "evidence": "validation", "kind": "deep-equal", "actual": "/values/source_transparent", "expected": {"literal": false}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-cobyla-narrow-slack-rejected",
+      "description": "The public constrained-result verifier rejects a candidate with a strict feasible descent direction inside a 1e-11 inequality slack instead of rounding that narrow interior to an active optimum.",
+      "program_phase": "P3",
+      "layer": "conditioned-stress",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": ["nlopt-narrow-slack-independent-descent"]},
+      "input": {"operation": "nlopt-cobyla-narrow-slack-rejected", "slack": 1e-11, "candidate": 0, "witness": -5e-12},
+      "required_capabilities": ["numerics.optimization.nlopt_cobyla"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-narrow-slack-independent-descent", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/independent_feasible_descent", "expected": {"literal": 4e-12}},
+        {"id": "nlopt-narrow-slack-witness-feasible", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_witness_violation", "expected": {"literal": 0}},
+        {"id": "nlopt-narrow-slack-public-rejection", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": false}},
+        {"id": "nlopt-narrow-slack-validation-rejection", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": false}},
+        {"id": "nlopt-narrow-slack-indeterminate", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_kind", "expected": {"literal": "indeterminate"}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-cobyla-dimension-34",
+      "description": "A 34-dimensional equality-constrained request is rejected during planning because it lies outside the independently validated 32-variable COBYLA envelope.",
+      "program_phase": "P3",
+      "layer": "failure-semantics",
+      "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "nlopt-cobyla-dimension-34", "dimension": 34, "validated_maximum": 32, "expected_message": "nlopt-cobyla exceeds its validated dimension envelope"},
+      "required_capabilities": ["numerics.optimization.nlopt_cobyla"],
+      "expected": {"outcome": "failure", "failure_code": "optimization.dimension-envelope"},
+      "checks": [
+        {"id": "nlopt-cobyla-dimension-rejected", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/rejected", "expected": {"literal": true}},
+        {"id": "nlopt-cobyla-dimension-error-type", "evidence": "validation", "kind": "deep-equal", "actual": "/values/error_name", "expected": {"literal": "ValueError"}},
+        {"id": "nlopt-cobyla-dimension-error-message", "evidence": "validation", "kind": "deep-equal", "actual": "/values/message_matches", "expected": {"literal": true}},
+        {"id": "nlopt-cobyla-dimension-no-native-entry", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend_entered", "expected": {"literal": false}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-cobyla-constraint-65",
+      "description": "A request with 65 scalar constraints is rejected during planning because it lies outside the independently validated 64-constraint COBYLA envelope.",
+      "program_phase": "P3",
+      "layer": "failure-semantics",
+      "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "nlopt-cobyla-constraint-65", "constraints": 65, "validated_maximum": 64, "expected_message": "nlopt-cobyla exceeds its validated constraint envelope"},
+      "required_capabilities": ["numerics.optimization.nlopt_cobyla"],
+      "expected": {"outcome": "failure", "failure_code": "optimization.constraint-envelope"},
+      "checks": [
+        {"id": "nlopt-cobyla-constraint-rejected", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/rejected", "expected": {"literal": true}},
+        {"id": "nlopt-cobyla-constraint-error-type", "evidence": "validation", "kind": "deep-equal", "actual": "/values/error_name", "expected": {"literal": "ValueError"}},
+        {"id": "nlopt-cobyla-constraint-error-message", "evidence": "validation", "kind": "deep-equal", "actual": "/values/message_matches", "expected": {"literal": true}},
+        {"id": "nlopt-cobyla-constraint-no-native-entry", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend_entered", "expected": {"literal": false}}
       ],
       "measurement": {"warmup": 0, "samples": 1}
     },

@@ -4,7 +4,7 @@ The product campaign turns the P0-P8 plan into executable, source-bound and
 artifact-bound evidence without making a release claim before the release
 hosts run it. Its inputs are:
 
-- `bench/numerical-computing/qualification/product.corpus.json` — 66
+- `bench/numerical-computing/qualification/product.corpus.json` — 70
   backend-neutral cases spanning P0 through P8 and all seven evidence layers;
 - `bench/numerical-computing/qualification/node-adapter.cjs` — a first-party
   adapter which loads `dist/tools/kernel.js`, creates a real Python-mode
@@ -72,11 +72,14 @@ seven-domain teaching-artifact surfaces. It contains:
   simplex-value regression, convergence at a zero-scale optimum, a legitimate
   active-bound optimum, planning rejection at the first dimension above the
   validated 32-variable envelope, and a legitimate nonlinear-equality
-  constrained optimum, independent rejection of a mixed-curvature saddle and
-  a feasible constrained non-minimum, independent rejection of a positive
-  backend status on incompatible constraints, truthful external-Wasm
-  provenance after callback failure and cancellation, backend-specific lazy
-  cache reuse/isolation, and missing/corrupt optional-resource behavior;
+  constrained optimum, independent rejection of mixed-curvature saddles at
+  ordinary and large-offset scales, narrow-slack feasible descent, and a
+  feasible constrained non-minimum, planning rejection above COBYLA's
+  32-variable and 64-constraint validation envelopes, independent rejection
+  of a positive backend status on incompatible constraints, truthful
+  external-Wasm provenance after callback failure and cancellation,
+  backend-specific lazy cache reuse/isolation, and missing/corrupt
+  optional-resource behavior;
 - execution of four artifact-emitted Python/SciPy programs in an isolated
   CPython process, followed by independent Node-side residual/oracle checks;
 - failed-result projection, replayable-expression, callback-consistency, and

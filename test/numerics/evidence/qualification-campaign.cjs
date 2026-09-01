@@ -131,6 +131,10 @@ test("runtime adapters are executable and cminpack evidence uses portable Sage.j
     "p3-nlopt-nelder-mead-active-bound",
     "p3-nlopt-nelder-mead-dimension-33",
     "p3-nlopt-cobyla-nonlinear-equality",
+    "p3-nlopt-cobyla-offset-saddle-rejected",
+    "p3-nlopt-cobyla-narrow-slack-rejected",
+    "p3-nlopt-cobyla-dimension-34",
+    "p3-nlopt-cobyla-constraint-65",
   ]) {
     const item = corpus.cases.find((entry) => entry.id === id);
     const source = nodeAdapter.qualificationInternals.sourceFor(id, item.input);
