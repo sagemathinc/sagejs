@@ -1,41 +1,43 @@
-# Sage.js 0.6.0
+# Sage.js 0.7.0
 
-Sage.js 0.6.0 is an **early alpha release** for developers and researchers who
+Sage.js 0.7.0 is an **early alpha release** for developers and researchers who
 want to experiment with portable research mathematics in native executables,
 Node.js, Jupyter, and the browser. Missing functionality, incompatible API
 changes, and rough edges remain expected; installation reports and mathematical
 bug reports are especially valuable.
 
-This release extends four substantial mathematical systems:
+This release adds five substantial systems:
 
-- Brandt modules now include integral ideal-class and component-group
-  arithmetic, exact rank-four lattices, batched Hecke operators, sparse Mestre
-  graphs, and replayable certificates checked against independent data.
-- Modular-symbol spaces reconstruct exact cusp-form q-expansions over rational
-  and cyclotomic coefficient fields. Composite levels, bad-prime operators,
-  all signs, saturated integral modules, old/new decompositions, character
-  Eisenstein series, and replayable Sturm certificates are supported.
-- Cubic class-group computations gain a resident exact relation/HNF engine,
-  authenticated presentation replay, reusable relation workspaces, and
-  conservative dynamic fallbacks. Automatic native HNF selection is restricted
-  to the exact matrix-shape and coefficient-bit envelope covered by release
-  evidence; every out-of-envelope matrix fails closed to the ordinary exact
-  backend.
-- Undergraduate mathematics and browser worksheets add broader calculus and
-  symbolic compatibility, piecewise functions, discrete mathematics, linear
-  codes, improved matrix operations, numeric-data 3D plots, and richer live
-  examples.
+- Exact multivariate Gröbner bases over finite prime fields and the rationals
+  use portable msolve backends in native builds and WebAssembly. Public results
+  are checked against a storage-neutral exact contract with ideal-containment,
+  reducedness, monicity, and reconstruction certificates. Malformed and
+  out-of-envelope workloads fail closed instead of entering native code.
+- Modular forms gain certified q-expansion algebra, computational formula
+  subspaces, exact eta products, Kohnen plus spaces, and Shimura lifts. Exact
+  weight, level, character, cusp-order, Sturm, and provenance metadata remain
+  inspectable, with SageMath and Magma oracle corpora for representative cases.
+- The Python compatibility layer now supports pinned upstream Traitlets,
+  transport-neutral IPython display and comm infrastructure, `ast.literal_eval`,
+  richer callable metadata, `unittest.mock`, warning behavior, and logging
+  configuration needed by ordinary Python packages and widgets.
+- Browser WebAssembly coverage expands across polynomial factorization,
+  multivariate arithmetic, matrices, numeric functions, and the new Gröbner
+  backend. Public operations retain exact JavaScript fallbacks when a compiled
+  capability is unavailable, and real-Chromium release gates exercise the
+  combined production closure.
+- Sage/Python mathematics compatibility grows across calculus, symbolic and
+  piecewise expressions, discrete mathematics, linear codes, sparse matrix
+  construction, plots, and browser worksheets.
 
-The sparse modular-form kernels use the same source-transparent native and Wasm
-compiler path with ordinary-Python fallbacks. Their outputs were checked against
-Sage semantics, Magma transcripts, modular-symbol Sturm certificates, historical
-psage data, and pinned LMFDB records. Browser release gates compile all 284
-production Wasm kernels and exercise exact public computations in Chromium.
+The mathematical fast paths keep ordinary-Python or exact dynamic fallbacks,
+bounded resource envelopes, and replayable evidence. Generated architecture
+inventories classify 1,277 native boundaries and 1,046 reviewed WebAssembly
+capabilities. The compressed browser payload has an explicit, narrowly
+ratcheted topology budget, while startup and whole-artifact growth gates remain
+independent.
 
-Packaging and runtime improvements include a lazy boundary for specialized
-extension-field root splitting, bounded fail-fast coefficient-prefix tests, and
-updated startup and browser payload guardrails. The supported release platforms
-remain:
+The supported release platforms remain:
 
 - macOS arm64, signed with Apple Developer ID and notarized by Apple;
 - Linux x86_64 and arm64;
@@ -49,7 +51,7 @@ SmartScreen may show an unrecognized-app warning for unsigned artifacts.
 Install the command line globally:
 
 ```sh
-npm install -g @sagemath/sagejs@0.6.0
+npm install -g @sagemath/sagejs@0.7.0
 ```
 
 Or embed Sage.js in a Node application:

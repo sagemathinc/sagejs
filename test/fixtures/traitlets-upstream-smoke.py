@@ -14,3 +14,15 @@ demo.observe(lambda change: changes.append((change.old, change.new)), names="cou
 demo.count = 7
 assert demo.count == 7
 assert changes == [(2, 7)]
+
+
+class Listener:
+    def callback(self, change):
+        return change
+
+
+listener = Listener()
+callbacks = [listener.callback]
+assert listener.callback == callbacks[0]
+callbacks.remove(listener.callback)
+assert callbacks == []

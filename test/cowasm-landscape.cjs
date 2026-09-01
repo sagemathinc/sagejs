@@ -31,7 +31,9 @@ test("cross-language landscape validates the unchanged Sage.js source", () => {
   assert.match(result.stdout, /Sage.js/);
 });
 
-test("packed-buffer landscape validates the C translation", () => {
+test("packed-buffer landscape validates the C translation", {
+  skip: process.platform === "win32" && "requires a POSIX-compatible C compiler",
+}, () => {
   const result = spawnSync(
     process.execPath,
     [

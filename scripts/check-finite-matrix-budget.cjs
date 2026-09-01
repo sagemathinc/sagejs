@@ -57,6 +57,7 @@ const surfaceCases = [
     // Includes checked host-to-resource conversion.  The supported ARM64
     // runner is consistently slower here than in the pure native baseline.
     budget: 12,
+    darwinBudget: 18,
   },
   { name: "add_500", expression: "_matrix_budget_left + _matrix_budget_right", budget: 8 },
   { name: "subtract_500", expression: "_matrix_budget_left - _matrix_budget_right", budget: 8 },
@@ -100,7 +101,12 @@ const surfaceCases = [
   },
   { name: "determinant_500", expression: "_matrix_budget_left.__copy__().det()", budget: 40 },
   { name: "multiply_500", expression: "_matrix_budget_multiply_large * _matrix_budget_multiply_large", budget: 25 },
-  { name: "rank_500", expression: "_matrix_budget_left.__copy__().rank()", budget: 40 },
+  {
+    name: "rank_500",
+    expression: "_matrix_budget_left.__copy__().rank()",
+    budget: 40,
+    darwinBudget: 45,
+  },
   { name: "rref_500", expression: "_matrix_budget_left.__copy__().rref()", budget: 45 },
   {
     name: "right_kernel_300x400",
@@ -108,6 +114,7 @@ const surfaceCases = [
     // The supported ARM64 host is just above the x64 envelope for this
     // 120,000-entry elimination workload.
     budget: 55,
+    darwinBudget: 75,
   },
 ];
 
@@ -284,7 +291,11 @@ async function run(environment = process.env) {
           times,
           rawMedianMs,
           normalizedMs: rawMedianMs / loadFactor,
-          scaledBudgetMs: testCase.budget * surfaceBudgetScale,
+          scaledBudgetMs: (
+            process.platform === "darwin"
+              ? (testCase.darwinBudget ?? testCase.budget)
+              : testCase.budget
+          ) * surfaceBudgetScale,
         });
       }
     } finally {
