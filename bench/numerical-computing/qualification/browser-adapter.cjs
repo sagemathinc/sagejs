@@ -411,6 +411,12 @@ module.exports = {
       throw new Error("browser-executable-binding must be bound separately");
     }
     const executableBinding = readBinding(executableArtifact.path, context.subject);
+    const scipyOracleArtifact = context.artifacts.find(
+      (item) => item.name === "scipy-oracle-binding",
+    );
+    if (scipyOracleArtifact === undefined || !fs.statSync(scipyOracleArtifact.path).isFile()) {
+      throw new Error("scipy-oracle-binding must be bound separately");
+    }
     for (const filename of [
       "kernel.mjs",
       "dist/cminpack.wasm",
@@ -452,7 +458,7 @@ module.exports = {
         const { createSage } = await import("/kernel.mjs");
         globalThis.__sagejsQualificationSession = await createSage({ timeout: 180_000 });
       });
-      const host = internals.initializeHostOracles();
+      const host = internals.initializeHostOracles(scipyOracleArtifact.path);
       const requirements = internals.capabilityModuleRequirements;
       const moduleNames = [...new Set(Object.values(requirements)
         .filter((name) => !name.startsWith("external:")))].sort();

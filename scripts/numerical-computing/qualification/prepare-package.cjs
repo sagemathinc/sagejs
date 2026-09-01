@@ -8,6 +8,7 @@ const { pretty, readJson, repositoryPath } = require("../common.cjs");
 const { validateCorpus } = require("../contracts.cjs");
 const { bindCapabilityDraft, writeImmutableJson } = require("../receipt.cjs");
 const { capabilityDraft } = require("./prepare-node.cjs");
+const { createBinding: createScipyOracleBinding } = require("./scipy-oracle.cjs");
 
 const defaultRoot = path.resolve(__dirname, "..", "..", "..");
 const DEFAULT_CORPUS = "bench/numerical-computing/qualification/product.corpus.json";
@@ -76,6 +77,12 @@ function prepare(argv) {
   const draft = capabilityDraft(spec, corpus, subject);
   const output = repositoryPath(root, outputDirectory, "output directory");
   fs.mkdirSync(output.absolute, { recursive: true });
+  const scipyOracleBindingPath = `${output.relative}/scipy-oracle.json`;
+  writeImmutableJson(
+    path.join(root, scipyOracleBindingPath),
+    createScipyOracleBinding(),
+  );
+  artifacts.push(`scipy-oracle-binding=${scipyOracleBindingPath}`);
   const draftPath = `${output.relative}/capability-draft.json`;
   fs.writeFileSync(path.join(root, draftPath), pretty(draft));
   const manifest = bindCapabilityDraft({
@@ -83,7 +90,10 @@ function prepare(argv) {
   });
   const manifestPath = `${output.relative}/capabilities.json`;
   writeImmutableJson(path.join(root, manifestPath), manifest);
-  return { kind, corpusPath, adapterPath, artifacts, manifest, manifestPath, outputDirectory };
+  return {
+    kind, corpusPath, adapterPath, artifacts, manifest, manifestPath, outputDirectory,
+    scipyOracleBindingPath,
+  };
 }
 
 function main(argv = process.argv.slice(2)) {

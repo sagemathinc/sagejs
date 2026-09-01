@@ -5,6 +5,10 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { pathToFileURL } = require("node:url");
 
+const {
+  readBinding: readScipyOracleBinding,
+} = require("../../../scripts/numerical-computing/qualification/scipy-oracle.cjs");
+
 const PROTOCOL = "sagejs.numerical-qualification-adapter/v1";
 const MARKER = "__SAGEJS_NUMERICAL_QUALIFICATION__";
 
@@ -58,6 +62,7 @@ let cminpackBackend = null;
 let nloptArtifactPath = null;
 let initializedCapabilities = [];
 let scipyPython = null;
+let scipyOracleBindingPath = null;
 
 function milliseconds(started) {
   return Number(process.hrtime.bigint() - started) / 1e6;
@@ -67,27 +72,41 @@ function pythonInput(input) {
   return `input_record = json.loads(${JSON.stringify(JSON.stringify(input))})`;
 }
 
-function findScipyPython() {
-  const candidates = [];
-  if (process.env.PYTHON) candidates.push({ executable: process.env.PYTHON, prefix: [] });
-  candidates.push({ executable: "python3", prefix: [] });
-  candidates.push({ executable: "python", prefix: [] });
-  if (process.platform === "win32") candidates.push({ executable: "py", prefix: ["-3"] });
-  for (const candidate of candidates) {
-    const probe = spawnSync(candidate.executable, [
-      ...candidate.prefix, "-I", "-c",
-      "import numpy, scipy; print(scipy.__version__)",
-    ], { encoding: "utf8", timeout: 30_000 });
-    if (probe.status === 0) return candidate;
+function initializeScipyOracle(bindingPath) {
+  const binding = readScipyOracleBinding(bindingPath);
+  scipyOracleBindingPath = bindingPath;
+  scipyPython = {
+    executable: binding.identity.python.executable.path,
+    importRoots: binding.identity.python.import_roots,
+  };
+  return { scipy: true, identity: binding.identity };
+}
+
+function closeScipyOracle() {
+  let failure = null;
+  if (scipyOracleBindingPath !== null) {
+    try {
+      readScipyOracleBinding(scipyOracleBindingPath);
+    } catch (error) {
+      failure = error;
+    }
   }
-  return null;
+  scipyPython = null;
+  scipyOracleBindingPath = null;
+  if (failure !== null) throw failure;
 }
 
 function runScipySource(source, projection) {
   if (scipyPython === null) throw new Error("CPython with NumPy/SciPy is unavailable");
-  const program = `${source}\nimport json\nprint(${JSON.stringify(MARKER)} + json.dumps(${projection}))`;
+  const program = [
+    "import sys",
+    `sys.path[:0] = ${JSON.stringify(scipyPython.importRoots)}`,
+    source,
+    "import json",
+    `print(${JSON.stringify(MARKER)} + json.dumps(${projection}))`,
+  ].join("\n");
   const result = spawnSync(scipyPython.executable, [
-    ...scipyPython.prefix, "-I", "-c", program,
+    "-I", "-S", "-c", program,
   ], { encoding: "utf8", timeout: 120_000, maxBuffer: 4 * 1024 * 1024 });
   if (result.error) throw result.error;
   if (result.status !== 0) {
@@ -2576,12 +2595,11 @@ module.exports = {
     sourceFor,
     parseEvaluation,
     normalizeEvaluated,
-    initializeHostOracles() {
-      scipyPython = findScipyPython();
-      return { scipy: scipyPython !== null };
+    initializeHostOracles(bindingPath) {
+      return initializeScipyOracle(bindingPath);
     },
     closeHostOracles() {
-      scipyPython = null;
+      closeScipyOracle();
     },
     capabilityModuleRequirements: CAPABILITY_MODULE_REQUIREMENTS,
   }),
@@ -2625,7 +2643,13 @@ module.exports = {
       throw new Error("the bound nlopt-wasm artifact differs from the Sage.js runtime resource");
     }
     nloptArtifactPath = nloptArtifact.path;
-    scipyPython = findScipyPython();
+    const scipyOracleArtifact = context.artifacts.find(
+      (item) => item.name === "scipy-oracle-binding",
+    );
+    if (scipyOracleArtifact === undefined || !fs.statSync(scipyOracleArtifact.path).isFile()) {
+      throw new Error("the scipy-oracle-binding artifact must be bound separately");
+    }
+    initializeScipyOracle(scipyOracleArtifact.path);
     try {
       const { createSage } = require(kernelPath);
       session = await createSage({ mode: "python" });
@@ -2675,7 +2699,9 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
       artifactRoot = null;
       cminpackBackend = null;
       nloptArtifactPath = null;
-      scipyPython = null;
+      try {
+        closeScipyOracle();
+      } catch {}
       initializedCapabilities = [];
       throw error;
     }
@@ -2691,7 +2717,7 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
     artifactRoot = null;
     cminpackBackend = null;
     nloptArtifactPath = null;
-    scipyPython = null;
+    closeScipyOracle();
     initializedCapabilities = [];
   },
 

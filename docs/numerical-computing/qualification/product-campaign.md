@@ -99,10 +99,18 @@ structured outcomes. The generic collector evaluates the corpus checks.
 Solver-reported validation is retained as an additional observation for some
 cases, never as the only mathematical evidence.
 
-The `numerics.frontend.scipy_execution` capability is observed only when the
-host adapter can launch isolated CPython with both NumPy and SciPy. A host
-without that independent runtime cannot satisfy this campaign row: generated
-source text alone is deliberately not counted as executable-language evidence.
+The `numerics.frontend.scipy_execution` capability uses one pinned oracle
+policy: CPython 3.14.4, NumPy 2.5.1, and SciPy 1.18.0. Preparation records the
+exact Python launcher and target bytes, verifies every declared wheel `RECORD`
+hash and size without following links, and hashes the complete NumPy and SciPy
+package and distribution-metadata closures (including locally generated,
+unhashed bytecode and unlisted files). Probe and emitted programs both run with
+`-I -S` and the same explicit bound import roots, so user site packages and
+`.pth` startup code cannot silently alter the oracle. The adapter authenticates
+the environment at initialization and again after the last case and always
+executes the exact bound launcher. A host without that hash-locked independent
+runtime cannot prepare or satisfy a full campaign row: generated source text or
+version equality alone is deliberately not executable-language evidence.
 
 Every adapter probes the mathematical modules available in its exact artifact
 before returning capability IDs. Missing lazy browser modules therefore make

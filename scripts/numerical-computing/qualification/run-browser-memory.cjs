@@ -177,6 +177,7 @@ async function run(options) {
     `cminpack-wasm=${options.cminpackArtifactPath}`,
     `nlopt-wasm=${options.nloptArtifactPath}`,
     `browser-executable-binding=${prepared.browserExecutableBindingPath}`,
+    `scipy-oracle-binding=${prepared.scipyOracleBindingPath}`,
   ];
   const receipt = await collectReceipt({
     root,

@@ -391,6 +391,12 @@ module.exports = {
 
   async initialize(context) {
     if (runtimeContext !== null) throw new Error("package qualification adapter is already initialized");
+    const scipyOracleArtifact = context.artifacts.find(
+      (item) => item.name === "scipy-oracle-binding",
+    );
+    if (scipyOracleArtifact === undefined || !fs.statSync(scipyOracleArtifact.path).isFile()) {
+      throw new Error("scipy-oracle-binding must be bound separately");
+    }
     if (context.subject.kind === "npm") {
       runtimeContext = packageRuntime.prepareFreshInstall({
         target: packageRuntime.targetForHost(),
@@ -452,7 +458,7 @@ module.exports = {
       throw new Error(`package adapter refuses subject kind ${context.subject.kind}`);
     }
     try {
-      const host = internals.initializeHostOracles();
+      const host = internals.initializeHostOracles(scipyOracleArtifact.path);
       const probe = checkProcess(runPython(runtimeContext, moduleProbeSource()), "package module probe");
       const present = new Set(internals.parseEvaluation(probe).available);
       initializedCapabilities = context.capabilities

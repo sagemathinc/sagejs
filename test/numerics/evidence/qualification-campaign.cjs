@@ -20,6 +20,9 @@ const {
 const {
   createBinding: createBrowserExecutableBinding,
 } = require("../../../scripts/numerical-computing/qualification/browser-executable.cjs");
+const {
+  createBinding: createScipyOracleBinding,
+} = require("../../../scripts/numerical-computing/qualification/scipy-oracle.cjs");
 const { ADAPTER_PROTOCOL } = require("../../../scripts/numerical-computing/contracts.cjs");
 const {
   bindCapabilityDraft,
@@ -31,6 +34,14 @@ const root = path.resolve(__dirname, "..", "..", "..");
 const campaign = path.join(root, "bench", "numerical-computing", "qualification");
 const corpus = validateCorpus(readJson(path.join(campaign, "product.corpus.json")));
 const spec = readJson(path.join(campaign, "capabilities", "node-capability-spec.json"));
+let cachedScipyOracleBinding = null;
+
+function writeScipyOracleBinding(directory) {
+  cachedScipyOracleBinding ??= createScipyOracleBinding();
+  const filename = path.join(directory, "scipy-oracle.json");
+  fs.writeFileSync(filename, `${JSON.stringify(cachedScipyOracleBinding, null, 2)}\n`);
+  return filename;
+}
 
 test("product corpus covers every P0-P8 phase, evidence layer, and integrated domain", () => {
   assert.deepEqual(
@@ -176,6 +187,7 @@ test("browser-worker adapter interrupts, replaces, and reuses the real worker", 
   await probe.browser.close();
   const bindingDirectory = fs.mkdtempSync(path.join(root, "build", "browser-binding-test-"));
   const bindingPath = path.join(bindingDirectory, "browser-executable.json");
+  const scipyBindingPath = writeScipyOracleBinding(bindingDirectory);
   const testSubject = {
     kind: "worker", name: "sagejs-browser-worker", version: probe.version, engine: "chromium",
   };
@@ -197,6 +209,7 @@ test("browser-worker adapter interrupts, replaces, and reuses the real worker", 
         { name: "cminpack-wasm", path: browserCminpack, sha256: "test-only", bytes: 0 },
         { name: "nlopt-wasm", path: browserNlopt, sha256: "test-only", bytes: 0 },
         { name: "browser-executable-binding", path: bindingPath, sha256: "test-only", bytes: 0 },
+        { name: "scipy-oracle-binding", path: scipyBindingPath, sha256: "test-only", bytes: 0 },
       ],
       capabilities: draft.capabilities,
     });
@@ -219,7 +232,8 @@ test("browser-worker adapter interrupts, replaces, and reuses the real worker", 
 const npmRootArchive = process.env.SAGEJS_QUALIFICATION_NPM_ROOT_TGZ;
 const npmPlatformArchive = process.env.SAGEJS_QUALIFICATION_NPM_PLATFORM_TGZ;
 const npmArtifactsPresent = Boolean(npmRootArchive && npmPlatformArchive &&
-  fs.existsSync(npmRootArchive) && fs.existsSync(npmPlatformArchive));
+  fs.existsSync(npmRootArchive) && fs.existsSync(npmPlatformArchive) &&
+  fs.existsSync(browserCminpack) && fs.existsSync(browserNlopt));
 
 function linkQualificationArtifact(source, destination) {
   try {
@@ -240,6 +254,10 @@ async function collectPackageMemoryReceipt({ kind, artifacts, version }) {
       linkQualificationArtifact(source, destination);
       artifactSpecifications.push(`${name}=${path.relative(root, destination)}`);
     }
+    const scipyBindingPath = writeScipyOracleBinding(directory);
+    artifactSpecifications.push(
+      `scipy-oracle-binding=${path.relative(root, scipyBindingPath)}`,
+    );
     const memoryCase = corpus.cases.find((item) => item.id === "p8-memory-pressure-statistics");
     const memoryCorpus = {
       ...corpus,
@@ -297,6 +315,8 @@ test("fresh npm adapter executes installed source and lazy cminpack bytes", {
   const adapterPath = path.join(campaign, "package-adapter.cjs");
   delete require.cache[require.resolve(adapterPath)];
   const adapter = require(adapterPath);
+  const bindingDirectory = fs.mkdtempSync(path.join(root, "build", "npm-scipy-binding-"));
+  const scipyBindingPath = writeScipyOracleBinding(bindingDirectory);
   const draft = capabilityDraft(spec, corpus, {
     kind: "npm", name: "@sagemath/sagejs", version: "probe", engine: null,
   });
@@ -307,6 +327,9 @@ test("fresh npm adapter executes installed source and lazy cminpack bytes", {
     artifacts: [
       { name: "npm-root-tarball", path: npmRootArchive, sha256: "test-only", bytes: 0 },
       { name: "npm-platform-tarball", path: npmPlatformArchive, sha256: "test-only", bytes: 0 },
+      { name: "cminpack-wasm", path: browserCminpack, sha256: "test-only", bytes: 0 },
+      { name: "nlopt-wasm", path: browserNlopt, sha256: "test-only", bytes: 0 },
+      { name: "scipy-oracle-binding", path: scipyBindingPath, sha256: "test-only", bytes: 0 },
     ],
     capabilities: draft.capabilities,
   });
@@ -320,6 +343,7 @@ test("fresh npm adapter executes installed source and lazy cminpack bytes", {
     }
   } finally {
     await adapter.close();
+    fs.rmSync(bindingDirectory, { recursive: true, force: true });
   }
 });
 
@@ -336,6 +360,8 @@ test("fresh npm receipt measures the live installed Sage.js process tree", {
     artifacts: [
       ["npm-root-tarball", npmRootArchive],
       ["npm-platform-tarball", npmPlatformArchive],
+      ["cminpack-wasm", browserCminpack],
+      ["nlopt-wasm", browserNlopt],
     ],
   });
   assert.equal(receipt.status, "passed");
@@ -349,7 +375,8 @@ test("fresh npm receipt measures the live installed Sage.js process tree", {
 });
 
 const seaExecutable = process.env.SAGEJS_QUALIFICATION_SEA_EXECUTABLE;
-const seaArtifactPresent = Boolean(seaExecutable && fs.existsSync(seaExecutable));
+const seaArtifactPresent = Boolean(seaExecutable && fs.existsSync(seaExecutable) &&
+  fs.existsSync(browserCminpack) && fs.existsSync(browserNlopt));
 
 test("relocated SEA receipt measures the live Sage.js process tree", {
   skip: seaArtifactPresent ? false : "set SAGEJS_QUALIFICATION_SEA_EXECUTABLE",
@@ -363,7 +390,11 @@ test("relocated SEA receipt measures the live Sage.js process tree", {
   const receipt = await collectPackageMemoryReceipt({
     kind: "sea",
     version,
-    artifacts: [["sea-executable", seaExecutable]],
+    artifacts: [
+      ["sea-executable", seaExecutable],
+      ["cminpack-wasm", browserCminpack],
+      ["nlopt-wasm", browserNlopt],
+    ],
   });
   assert.equal(receipt.status, "passed");
   const memory = receipt.cases[0].metrics.peak_memory;
@@ -390,6 +421,8 @@ test("first-party adapter executes Sage.js and independently checks representati
   const adapterPath = path.join(campaign, "node-adapter.cjs");
   delete require.cache[require.resolve(adapterPath)];
   const adapter = require(adapterPath);
+  const bindingDirectory = fs.mkdtempSync(path.join(root, "build", "scipy-binding-test-"));
+  const scipyBindingPath = writeScipyOracleBinding(bindingDirectory);
   const draft = capabilityDraft(spec, corpus);
   const initialized = await adapter.initialize({
     root,
@@ -399,6 +432,7 @@ test("first-party adapter executes Sage.js and independently checks representati
       { name: "sagejs-dist", path: dist, sha256: "test-only", bytes: 0 },
       { name: "cminpack-wasm", path: cminpackWasm, sha256: "test-only", bytes: 0 },
       { name: "nlopt-wasm", path: nloptWasm, sha256: "test-only", bytes: 0 },
+      { name: "scipy-oracle-binding", path: scipyBindingPath, sha256: "test-only", bytes: 0 },
     ],
     capabilities: draft.capabilities,
   });
@@ -500,6 +534,7 @@ test("first-party adapter executes Sage.js and independently checks representati
     }
   } finally {
     await adapter.close();
+    fs.rmSync(bindingDirectory, { recursive: true, force: true });
   }
   assert.equal(adapter.qualificationState().initialized, false);
 });
@@ -508,6 +543,7 @@ test("Node adapter authenticates separately bound numerical resources", {
   skip: built ? false : "run pnpm build to exercise numerical resource authentication",
 }, async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-numerical-auth-"));
+  const scipyBindingPath = writeScipyOracleBinding(directory);
   const draft = capabilityDraft(spec, corpus);
   async function rejectsMutation(name, source, expected) {
     const mutated = path.join(directory, `${name}.wasm`);
@@ -523,6 +559,7 @@ test("Node adapter authenticates separately bound numerical resources", {
         sha256: "test-only", bytes: 0 },
       { name: "nlopt-wasm", path: name === "nlopt" ? mutated : nloptWasm,
         sha256: "test-only", bytes: 0 },
+      { name: "scipy-oracle-binding", path: scipyBindingPath, sha256: "test-only", bytes: 0 },
     ];
     try {
       await assert.rejects(

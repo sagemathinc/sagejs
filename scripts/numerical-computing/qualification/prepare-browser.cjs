@@ -8,6 +8,7 @@ const { pretty, readJson, repositoryPath, sha256 } = require("../common.cjs");
 const { validateCorpus } = require("../contracts.cjs");
 const { bindCapabilityDraft, writeImmutableJson } = require("../receipt.cjs");
 const { createBinding } = require("./browser-executable.cjs");
+const { createBinding: createScipyOracleBinding } = require("./scipy-oracle.cjs");
 const { capabilityDraft } = require("./prepare-node.cjs");
 
 const defaultRoot = path.resolve(__dirname, "..", "..", "..");
@@ -133,6 +134,11 @@ async function prepare({
     path.join(root, browserExecutableBindingPath),
     createBinding(subject, browserExecutable),
   );
+  const scipyOracleBindingPath = `${output.relative}/scipy-oracle.json`;
+  writeImmutableJson(
+    path.join(root, scipyOracleBindingPath),
+    createScipyOracleBinding(),
+  );
   const stagedArtifactPath = stageBrowserArtifact(
     root, artifactPath, `${output.relative}/browser-artifact`,
   );
@@ -148,6 +154,7 @@ async function prepare({
       `cminpack-wasm=${cminpackArtifactPath}`,
       `nlopt-wasm=${nloptArtifactPath}`,
       `browser-executable-binding=${browserExecutableBindingPath}`,
+      `scipy-oracle-binding=${scipyOracleBindingPath}`,
     ],
     draftPath,
   });
@@ -162,6 +169,7 @@ async function prepare({
     browserDistPath: `${stagedArtifactPath}/dist`,
     browserExecutable,
     browserExecutableBindingPath,
+    scipyOracleBindingPath,
   };
 }
 
@@ -224,6 +232,7 @@ async function main(argv = process.argv.slice(2)) {
       `--artifact cminpack-wasm=${cminpackArtifactPath}`,
       `--artifact nlopt-wasm=${nloptArtifactPath}`,
       `--artifact browser-executable-binding=${prepared.browserExecutableBindingPath}`,
+      `--artifact scipy-oracle-binding=${prepared.scipyOracleBindingPath}`,
       `--output ${outputDirectory}/${kind}-${engine}.receipt.json`,
     ].join(" "),
   }));
