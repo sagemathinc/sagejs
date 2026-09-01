@@ -4,7 +4,7 @@
   "id": "p0-contract-hardening",
   "title": "Harden numerical capability and result contracts",
   "lane": "numerical-contracts",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Derive the public surface from runtime capabilities, expose honest qualification/provenance/budget/outward-code contracts, and validate them exhaustively",
   "base_commit": "5614ddc5cb2dee328debf4648189b6c93f0ca70f",
@@ -64,10 +64,49 @@
     "pnpm test:numerics",
     "pnpm architecture:check"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.145,
+      "started_at": "2026-09-01T00:16:27.476Z",
+      "commit": "7168be8abc5520fc0eb4895e23942e8007e3a133",
+      "workspace_fingerprint": "0891f0e3145cdf12e3afb0bec2ef01826d856c5afa2fa58d61e42dd9c71049a2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.931,
+      "started_at": "2026-09-01T00:16:42.139Z",
+      "commit": "7168be8abc5520fc0eb4895e23942e8007e3a133",
+      "workspace_fingerprint": "0891f0e3145cdf12e3afb0bec2ef01826d856c5afa2fa58d61e42dd9c71049a2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 670.286,
+      "started_at": "2026-09-01T00:17:38.696Z",
+      "commit": "7168be8abc5520fc0eb4895e23942e8007e3a133",
+      "workspace_fingerprint": "0891f0e3145cdf12e3afb0bec2ef01826d856c5afa2fa58d61e42dd9c71049a2",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "The numerical surface is derived exhaustively from the live public registry and actual frontend registrations: 49 capabilities, 22 frontend operations, and 17 diagnostics are classified without a second hardcoded ledger. The shared plan/result contracts now expose honest execution provenance, binding state, limitations, budget support, and language-neutral versus frontend-owned outward code. npm is a first-class qualification subject. Run receipts and matrix policies carry collector-authenticated, scope-specific peak-memory evidence; external subjects must present a live collector descendant during every sample, with a touched 64 MiB child proving real process-tree inclusion and synchronous execution failing closed. Strict Python, the full numerical suite, and every architecture gate pass at 7168be8ab.",
+    "risks": [
+      "Process-tree RSS is an explicitly sampled measurement, not an instantaneous operating-system high-water mark; its stable method ID and sample interval preserve that limitation.",
+      "npm and SEA qualification must execute the existing synchronous package runtime inside an awaited Worker or equivalent asynchronous supervisor so the collector event loop can observe the real descendants. P8 owns that adapter integration; no old receipt may be backfilled.",
+      "The shared contracts and adversarial tests are green on Linux x64 here. Persistent Linux ARM64, macOS ARM64, and Windows x64 receipts remain P8 release qualification evidence rather than claims made by this lane."
+    ],
+    "next_steps": [
+      "Integrate the P8 runtime-matrix branch after it consumes 7168be8ab and proves real npm/SEA high-memory children through the asynchronous Worker wrapper while preserving audited timeout and tree-kill behavior.",
+      "Collect new four-platform receipts at the exact integrated candidate and require each matrix row's declared memory scope; retain missing evidence as missing.",
+      "Keep aliases, parser mappings, emitters, implementation targets, and receipt-qualified runtimes independently classified as their public registries evolve."
+    ]
   }
 }
