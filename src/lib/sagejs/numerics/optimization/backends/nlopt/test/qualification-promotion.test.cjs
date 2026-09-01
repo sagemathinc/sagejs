@@ -30,6 +30,9 @@ const {
   validateRawDestructive,
   validateRawSanitizer,
 } = require("../qualification/collect-evidence.cjs");
+const {
+  verifyPlatformEnrollment,
+} = require("../qualification/verify-platform-enrollment.cjs");
 
 const digest = (character) => character.repeat(64);
 const candidate = "1".repeat(40);
@@ -58,14 +61,18 @@ const platforms = Object.fromEntries(Object.entries(platformFacts).map(
   ([id, [osName, architecture, hostAlias]]) => {
     const pair = crypto.generateKeyPairSync("rsa", { modulusLength: 3072 });
     const privateKeyPath = path.join(keyRoot, `${id}.pem`);
-    fs.writeFileSync(privateKeyPath, pair.privateKey.export({ type: "pkcs8", format: "pem" }));
+    fs.writeFileSync(
+      privateKeyPath,
+      pair.privateKey.export({ type: "pkcs8", format: "pem" }),
+      { mode: 0o600 },
+    );
     platformPrivateKeys[id] = privateKeyPath;
     const der = pair.publicKey.export({ type: "spki", format: "der" });
     return [id, {
       os: osName,
       architecture,
       host_alias: hostAlias,
-      attestation: {
+      operator_signing: {
         algorithm: "rsa-pkcs1-sha256",
         public_key_spki_sha256: sha256(der),
         public_key_pem: pair.publicKey.export({ type: "spki", format: "pem" }),
@@ -119,7 +126,7 @@ function context() {
       encoding: "sorted-repository-path-nul-sha256-nul/v1", sha256: digest("d"),
     },
     selection: {
-      schema: "sagejs.numerical-nlopt-qualification-selection/v1",
+      schema: "sagejs.numerical-nlopt-qualification-selection/v2",
       method: "nlopt-nelder-mead",
       upstream_identity: "NLOPT_LN_NELDERMEAD",
       case_ids: caseIds,
@@ -376,6 +383,65 @@ test("selection rejects COBYLA contamination", () => {
   assert.throws(() => validateSelection(contaminated), /COBYLA|exactly/);
 });
 
+test("platform enrollment derives the selected identity from the installed private key", () => {
+  const current = context();
+  const privateKeyPath = platformPrivateKeys["linux-x64"];
+  fs.writeFileSync(`${privateKeyPath}.pub.pem`, crypto.generateKeyPairSync(
+    "rsa", { modulusLength: 3072 },
+  ).publicKey.export({ type: "spki", format: "pem" }));
+  const result = verifyPlatformEnrollment({
+    selection: current.selection,
+    selectionSha256: current.selectionBinding.sha256,
+    platformId: "linux-x64",
+    privateKeyPath,
+    requiredPrivateKeyPath: privateKeyPath,
+    enforcePrivatePermissions: process.platform !== "win32",
+  });
+  assert.equal(result.status, "verified");
+  assert.equal(
+    result.operator_signing.public_key_spki_sha256,
+    platforms["linux-x64"].operator_signing.public_key_spki_sha256,
+  );
+  assert.equal(result.operator_signing.model,
+    "operator-controlled-persistent-host-software-key");
+});
+
+test("platform enrollment rejects wrong key, wrong path, and permissive mode", () => {
+  const current = context();
+  const privateKeyPath = platformPrivateKeys["linux-x64"];
+  assert.throws(() => verifyPlatformEnrollment({
+    selection: current.selection,
+    selectionSha256: current.selectionBinding.sha256,
+    platformId: "windows-x64",
+    privateKeyPath,
+    requiredPrivateKeyPath: privateKeyPath,
+    enforcePrivatePermissions: false,
+  }), /does not derive/);
+  assert.throws(() => verifyPlatformEnrollment({
+    selection: current.selection,
+    selectionSha256: current.selectionBinding.sha256,
+    platformId: "linux-x64",
+    privateKeyPath,
+    requiredPrivateKeyPath: `${privateKeyPath}.different`,
+    enforcePrivatePermissions: false,
+  }), /must use the enrolled path/);
+  if (process.platform !== "win32") {
+    fs.chmodSync(privateKeyPath, 0o644);
+    try {
+      assert.throws(() => verifyPlatformEnrollment({
+        selection: current.selection,
+        selectionSha256: current.selectionBinding.sha256,
+        platformId: "linux-x64",
+        privateKeyPath,
+        requiredPrivateKeyPath: privateKeyPath,
+        enforcePrivatePermissions: true,
+      }), /exclude group\/other access/);
+    } finally {
+      fs.chmodSync(privateKeyPath, 0o600);
+    }
+  }
+});
+
 test("raw sanitizer evidence is exact-artifact, exact-source, and NM-only", () => {
   const current = context();
   const raw = rawSanitizer(current);
@@ -542,7 +608,7 @@ test("one signed Linux receipt cannot be cloned into four platform identities", 
     forged.runtime.architecture = platform.architecture;
     forged.origin.platform_id = platformId;
     forged.origin.host_alias = platform.host_alias;
-    forged.origin.public_key_spki_sha256 = platform.attestation.public_key_spki_sha256;
+    forged.origin.public_key_spki_sha256 = platform.operator_signing.public_key_spki_sha256;
     return record(forged);
   });
   assert.throws(() => buildQualification(input), /signed payload is stale|signature is invalid/);

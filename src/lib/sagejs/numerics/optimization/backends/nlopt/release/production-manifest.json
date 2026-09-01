@@ -42,19 +42,20 @@
     "sha256": "9bb49278bdc296af0fc40320187d0e5345a7d695325a5100a6da68861aca2239"
   },
   "qualification_tooling_files": {
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs": "cf476a6bd4ce8212943112dd238a79ed62f56d5f45bb4b0a31e3fdba47bc391f",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs": "5de8816137394dd55a8e35e015e871cdacceb1219d580d7d0ede68c930a41fab",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs": "bdc4596a21ce504bb6a99e3b826c88ee9b614bfe46ec3274c95845b4fa6dcbbd",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs": "ce0ffab716b77c2b6c272a9883af016b39a767291c0965cd42669f95cb252ed2",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle-summary.json": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle.py": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs": "f998db91accc2f9571a36b93b3a48539ddc4ca1e95c0f26967f32acb57ad1620",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/selection-v1.json": "11fd091cf2e4e11a1d04bccc98ebba59a39e732501b44b33793fd7c6ff3beb9a",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs": "f9a5187deb30b076567249e84d42bb06b993563c7c00ad53444d9b5a6e6df3f9",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/selection-v1.json": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/verify-platform-enrollment.cjs": "2a31783678e3737838460340f2c6588d9004eb3192d7c675bb384ee819f92c49",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/promote-qualification.cjs": "425dda513c10e8cca8bcc05c35c3ad4d9674d889ea0adeb97139e35056d3d4bb",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs": "e420621056652b10fc83fda617621efb27df5a599b7217483472716cf3e8bcdc",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs": "0a9069de9323eed8753ef45455376dd75eb34a247bbe64c9da59bb78bc5b818a"
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs": "6686368311d3d18b67055475fda49528fb83185f6290a04873f69851fbc105ac"
   },
   "qualification_tooling_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "5559feb68076a954eabc1a6ccd963c709c1a7a6c91db17460008360fc2693101"
+    "sha256": "a2c2e6436bef639f0f4d65ece60c282713359e730cf6effa527fd5055d448571"
   },
   "toolchain": {
     "identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
@@ -85,8 +86,8 @@
     "status": "pending_source_current_requalification",
     "reason": "COBYLA was removed after source-bound UBSAN exposed unresolved upstream f2c pointer-provenance undefined behavior; source-current Nelder-Mead receipts must be regenerated after independent audit",
     "public_semantics_bundle_sha256": "9bb49278bdc296af0fc40320187d0e5345a7d695325a5100a6da68861aca2239",
-    "qualification_tooling_bundle_sha256": "5559feb68076a954eabc1a6ccd963c709c1a7a6c91db17460008360fc2693101",
-    "selection_sha256": "11fd091cf2e4e11a1d04bccc98ebba59a39e732501b44b33793fd7c6ff3beb9a",
+    "qualification_tooling_bundle_sha256": "a2c2e6436bef639f0f4d65ece60c282713359e730cf6effa527fd5055d448571",
+    "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
     "invalidated_summary": "qualification-v1.json"
   }

@@ -182,7 +182,7 @@ function validateSelection(selection) {
     "schema", "method", "upstream_identity", "case_ids", "evidence_kinds",
     "portable_platforms", "browser_evidence", "historical_exclusions",
   ], "qualification selection");
-  if (selection.schema !== "sagejs.numerical-nlopt-qualification-selection/v1" ||
+  if (selection.schema !== "sagejs.numerical-nlopt-qualification-selection/v2" ||
       selection.method !== "nlopt-nelder-mead" ||
       selection.upstream_identity !== "NLOPT_LN_NELDERMEAD") {
     fail("qualification selection has the wrong method identity");
@@ -209,29 +209,29 @@ function validateSelection(selection) {
   };
   for (const [id, [os, architecture, hostAlias]] of Object.entries(expected)) {
     exactKeys(selection.portable_platforms[id], [
-      "os", "architecture", "host_alias", "attestation",
+      "os", "architecture", "host_alias", "operator_signing",
     ], `portable platform ${id}`);
     if (selection.portable_platforms[id].os !== os ||
         selection.portable_platforms[id].architecture !== architecture ||
         selection.portable_platforms[id].host_alias !== hostAlias) {
       fail(`portable platform ${id} has the wrong runtime identity`);
     }
-    const attestation = selection.portable_platforms[id].attestation;
-    exactKeys(attestation, [
+    const operatorSigning = selection.portable_platforms[id].operator_signing;
+    exactKeys(operatorSigning, [
       "algorithm", "public_key_spki_sha256", "public_key_pem",
-    ], `portable platform ${id} attestation`);
-    if (attestation.algorithm !== "rsa-pkcs1-sha256") {
-      fail(`portable platform ${id} has an unsupported attestation algorithm`);
+    ], `portable platform ${id} operator signing`);
+    if (operatorSigning.algorithm !== "rsa-pkcs1-sha256") {
+      fail(`portable platform ${id} has an unsupported operator-signing algorithm`);
     }
-    assertSha(attestation.public_key_spki_sha256,
+    assertSha(operatorSigning.public_key_spki_sha256,
       `portable platform ${id} public-key digest`);
     let key;
-    try { key = crypto.createPublicKey(attestation.public_key_pem); } catch {
+    try { key = crypto.createPublicKey(operatorSigning.public_key_pem); } catch {
       fail(`portable platform ${id} has an invalid public key`);
     }
     if (key.asymmetricKeyType !== "rsa" || key.asymmetricKeyDetails?.modulusLength < 3072 ||
         sha256(key.export({ type: "spki", format: "der" })) !==
-          attestation.public_key_spki_sha256) {
+          operatorSigning.public_key_spki_sha256) {
       fail(`portable platform ${id} public-key identity mismatch`);
     }
   }
@@ -273,15 +273,15 @@ function attachReceiptOrigin(receipt, {
 }) {
   assertChallenge(campaignChallenge);
   const platform = context.selection.portable_platforms[platformId];
-  if (platform === undefined) fail(`unknown attested platform ${platformId}`);
+  if (platform === undefined) fail(`unknown operator-signed platform ${platformId}`);
   const privateKey = crypto.createPrivateKey(regularBytes(
-    privateKeyPath, `${platformId} attestation private key`,
+    privateKeyPath, `${platformId} operator-signing private key`,
   ));
   const publicKey = crypto.createPublicKey(privateKey);
   const publicDigest = sha256(publicKey.export({ type: "spki", format: "der" }));
   if (publicKey.asymmetricKeyType !== "rsa" || publicDigest !==
-      platform.attestation.public_key_spki_sha256) {
-    fail(`${platformId} attestation key is not the candidate-bound persistent-host key`);
+      platform.operator_signing.public_key_spki_sha256) {
+    fail(`${platformId} operator-signing key is not the selected persistent-host key`);
   }
   const payload = Buffer.from(formattedJson(receiptBody(receipt)));
   const signature = crypto.sign("sha256", payload, {
@@ -291,11 +291,11 @@ function attachReceiptOrigin(receipt, {
   return {
     ...receipt,
     origin: {
-      schema: "sagejs.numerical-nlopt-persistent-host-attestation/v1",
+      schema: "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
       platform_id: platformId,
       host_alias: platform.host_alias,
       campaign_challenge: campaignChallenge,
-      algorithm: platform.attestation.algorithm,
+      algorithm: platform.operator_signing.algorithm,
       public_key_spki_sha256: publicDigest,
       payload_sha256: sha256(payload),
       payload_bytes: payload.length,
@@ -313,14 +313,14 @@ function validateReceiptOrigin(receipt, context, platformId, campaignChallenge, 
     "schema", "platform_id", "host_alias", "campaign_challenge", "algorithm",
     "public_key_spki_sha256", "payload_sha256", "payload_bytes", "signature",
   ], `${label} origin`);
-  if (origin.schema !== "sagejs.numerical-nlopt-persistent-host-attestation/v1" ||
+  if (origin.schema !== "sagejs.numerical-nlopt-persistent-host-operator-signature/v1" ||
       origin.platform_id !== platformId || origin.host_alias !== platform.host_alias ||
       origin.campaign_challenge !== campaignChallenge ||
-      origin.algorithm !== platform.attestation.algorithm ||
-      origin.public_key_spki_sha256 !== platform.attestation.public_key_spki_sha256) {
+      origin.algorithm !== platform.operator_signing.algorithm ||
+      origin.public_key_spki_sha256 !== platform.operator_signing.public_key_spki_sha256) {
     fail(`${label} does not have the exact candidate-bound platform origin`);
   }
-  assertSha(origin.payload_sha256, `${label} attested-payload digest`);
+  assertSha(origin.payload_sha256, `${label} operator-signed-payload digest`);
   if (!Number.isSafeInteger(origin.payload_bytes) || origin.payload_bytes <= 0 ||
       typeof origin.signature !== "string" || !BASE64.test(origin.signature) ||
       Buffer.from(origin.signature, "base64").toString("base64") !== origin.signature) {
@@ -331,7 +331,7 @@ function validateReceiptOrigin(receipt, context, platformId, campaignChallenge, 
     fail(`${label} persistent-host signed payload is stale`);
   }
   const valid = crypto.verify("sha256", payload, {
-    key: platform.attestation.public_key_pem,
+    key: platform.operator_signing.public_key_pem,
     padding: crypto.constants.RSA_PKCS1_PADDING,
   }, Buffer.from(origin.signature, "base64"));
   if (!valid) fail(`${label} persistent-host signature is invalid`);

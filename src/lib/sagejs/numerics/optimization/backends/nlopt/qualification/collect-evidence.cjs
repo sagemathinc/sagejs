@@ -32,7 +32,7 @@ const COMMANDS = EVIDENCE_PROGRAMS;
 
 function usage() {
   return `Usage: node ${COLLECTOR} --candidate COMMIT --kind KIND --output FILE \\
-  --campaign-challenge SHA256 --attestation-key FILE
+  --campaign-challenge SHA256 --operator-signing-key FILE
 
 KIND is one of: ${Object.keys(REQUIRED_CHECKS).join(", ")}.
 The collector runs the canonical source-current command(s), rejects skips, and
@@ -45,24 +45,24 @@ evidence before wrapping it. Release collection requires clean linux-x64.
 function parseArguments(argv) {
   const options = {
     candidate: null, kind: null, output: null, campaignChallenge: null,
-    attestationKey: null, help: false,
+    operatorSigningKey: null, help: false,
   };
   for (let index = 0; index < argv.length; ++index) {
     const argument = argv[index];
     if (["--help", "-h"].includes(argument)) options.help = true;
     else if ([
-      "--candidate", "--kind", "--output", "--campaign-challenge", "--attestation-key",
+      "--candidate", "--kind", "--output", "--campaign-challenge", "--operator-signing-key",
     ].includes(argument)) {
       const value = argv[++index];
       if (!value || value.startsWith("--")) throw new Error(`${argument} requires a value`);
       const field = argument === "--campaign-challenge" ? "campaignChallenge"
-        : argument === "--attestation-key" ? "attestationKey" : argument.slice(2);
+        : argument === "--operator-signing-key" ? "operatorSigningKey" : argument.slice(2);
       if (options[field] !== null) throw new Error(`${argument} may appear only once`);
       options[field] = value;
     } else throw new Error(`unknown argument ${argument}`);
   }
   if (!options.help && Object.values(options).some((value) => value === null)) {
-    throw new Error("candidate, kind, output, campaign challenge, and attestation key are required");
+    throw new Error("candidate, kind, output, campaign challenge, and operator-signing key are required");
   }
   if (!options.help && !Object.hasOwn(REQUIRED_CHECKS, options.kind)) {
     throw new Error(`unsupported evidence kind ${options.kind}`);
@@ -268,7 +268,7 @@ function collect(options) {
       context: current,
       platformId: "linux-x64",
       campaignChallenge: options.campaignChallenge,
-      privateKeyPath: path.resolve(options.attestationKey),
+      privateKeyPath: path.resolve(options.operatorSigningKey),
     });
     validateEvidenceReceipt(receipt, current, options.kind, options.campaignChallenge);
     return receipt;

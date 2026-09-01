@@ -15,6 +15,7 @@
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle.py",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/selection-v1.json",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/verify-platform-enrollment.cjs",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/release/qualification-v1.json",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/promote-qualification.cjs",
@@ -139,7 +140,7 @@
     }
   ],
   "handoff": {
-    "summary": "Implemented deterministic fail-closed Nelder-Mead-only case, evidence, portable, durable-verification, and atomic-promotion tooling, then closed the independent review's receipt-forgery findings. Every case and supplemental receipt is now campaign-bound and signed by a candidate-reviewed persistent-host key; exact structured program evidence, strict duplicate-free JSON, exact summary bytes, browser identity/results, full lifecycle cleanup, and the 4000-evaluation bound are enforced. The exact five-case runner passes against artifact 8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb. The production manifest remains in the one documented pending state and no final platform receipts were minted.",
+    "summary": "Implemented deterministic fail-closed Nelder-Mead-only case, evidence, portable, durable-verification, and atomic-promotion tooling, then closed the independent review's receipt-forgery findings. Every case and supplemental receipt is now campaign-bound and signed by a candidate-reviewed operator-controlled persistent-host software key; this authenticates host/operator origin and does not claim hardware or remote attestation. Exact structured program evidence, strict duplicate-free JSON, exact summary bytes, browser identity/results, full lifecycle cleanup, and the 4000-evaluation bound are enforced. Source-current enrollment verification derives each public identity directly from its installed private key and enforces the canonical key path and private permissions. The exact five-case runner passes against artifact 8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb. The production manifest remains in the one documented pending state and no final platform receipts were minted.",
     "risks": [
       "Final sanitizer and destructive-Wasm collection deliberately requires the reviewed P8 collector scripts, which are not present at this lane's frozen base commit.",
       "The exact Chromium identity is intentionally candidate-bound; the persistent Linux evidence host must have that reviewed browser build available before final collection.",

@@ -29,7 +29,7 @@ const repositoryRoot = resolve(packageRoot, "../../../../../../..");
 
 function usage() {
   return `Usage: node ${fileURLToPath(import.meta.url)} --candidate COMMIT --output FILE \\
-  --platform-id ID --campaign-challenge SHA256 --attestation-key FILE
+  --platform-id ID --campaign-challenge SHA256 --operator-signing-key FILE
 
 Executes exactly the source-current selected NLopt Nelder-Mead corpus cases.
 The checkout must be clean and at COMMIT. The output is a source-, oracle-,
@@ -40,20 +40,20 @@ artifact-, semantics-, and qualification-tooling-bound portable receipt.
 function parseArguments(argv) {
   const options = {
     candidate: null, output: null, platformId: null, campaignChallenge: null,
-    attestationKey: null, help: false,
+    operatorSigningKey: null, help: false,
   };
   for (let index = 0; index < argv.length; ++index) {
     const argument = argv[index];
     if (argument === "--help" || argument === "-h") options.help = true;
     else if ([
       "--candidate", "--output", "--platform-id", "--campaign-challenge",
-      "--attestation-key",
+      "--operator-signing-key",
     ].includes(argument)) {
       const value = argv[++index];
       if (!value || value.startsWith("--")) throw new Error(`${argument} requires a value`);
       const field = argument === "--platform-id" ? "platformId"
         : argument === "--campaign-challenge" ? "campaignChallenge"
-          : argument === "--attestation-key" ? "attestationKey" : argument.slice(2);
+          : argument === "--operator-signing-key" ? "operatorSigningKey" : argument.slice(2);
       if (options[field] !== null) throw new Error(`${argument} may appear only once`);
       options[field] = value;
     } else throw new Error(`unknown argument ${argument}`);
@@ -61,7 +61,7 @@ function parseArguments(argv) {
   if (!options.help && Object.entries(options).some(
     ([name, value]) => name !== "help" && value === null,
   )) {
-    throw new Error("candidate, output, platform, campaign challenge, and attestation key are required");
+    throw new Error("candidate, output, platform, campaign challenge, and operator-signing key are required");
   }
   return options;
 }
@@ -96,7 +96,7 @@ function currentContext(candidate) {
 }
 
 async function execute(context, {
-  platformId, campaignChallenge, attestationKey,
+  platformId, campaignChallenge, operatorSigningKey,
 }) {
   const artifact = await readFile(resolve(packageRoot, "build/nlopt-methods.wasm"));
   const solver = await createNloptBackend(artifact);
@@ -164,7 +164,7 @@ async function execute(context, {
     context,
     platformId,
     campaignChallenge,
-    privateKeyPath: resolve(attestationKey),
+    privateKeyPath: resolve(operatorSigningKey),
   });
 }
 
