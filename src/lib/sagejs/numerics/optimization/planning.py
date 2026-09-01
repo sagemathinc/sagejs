@@ -40,59 +40,34 @@ def _cminpack_record(method: str, operation: str) -> dict[str, Any]:
 
 
 def _nlopt_record(method: str) -> dict[str, Any]:
-    constraints = (
-        ["box_bounds"]
-        if method == "nlopt-nelder-mead"
-        else ["box_bounds", "scalar_inequality", "scalar_equality"]
-    )
-    validation = (
-        [
-            "independent_objective",
-            "independent_feasibility",
-            "independent_projected_gradient_kkt",
-            "independent_feasible_direction_local_minimum",
-            "independent_minimum_curvature",
-        ]
-        if method == "nlopt-nelder-mead"
-        else [
-            "independent_objective",
-            "independent_feasibility",
-            "independent_active_constraint_kkt",
-            "independent_feasible_direction_local_minimum",
-            "independent_tangent_space_second_order",
-        ]
-    )
+    if method != "nlopt-nelder-mead":
+        raise ValueError("only the qualified NLopt Nelder-Mead identity is available")
     return {
         "classification": "extension",
         "backend": "nlopt-mit-wasm",
         "selection": "explicit-only",
-        "constraints": constraints,
+        "constraints": ["box_bounds"],
         "derivatives": ["none"],
-        "validation": validation,
+        "validation": [
+            "independent_objective_finiteness",
+            "independent_box_feasibility",
+            "empirical_projected_stationarity_consistency",
+            "bounded_feasible_objective_probes",
+        ],
+        "truth_level": "heuristic",
+        "optimality": "local_and_global_not_certified",
         "max_dimension": 32,
-        "max_constraints": 64,
         "validation_envelope": {
             "active_bounds": "strict_complementarity_or_indeterminate",
-            "active_nonlinear_constraints": (
-                "strict_complementarity_or_indeterminate"
-                if method == "nlopt-cobyla"
-                else "unsupported"
+            "active_nonlinear_constraints": "unsupported",
+            "nonlinear_equalities": "unsupported",
+            "sampled_feasible_decrease": (
+                "any_representably_lower_sample_vetoes_heuristic_success"
             ),
-            "nonlinear_equalities": (
-                "independent_full_rank_local_retraction"
-                if method == "nlopt-cobyla"
-                else "unsupported"
-            ),
-            "reliably_resolved_feasible_decrease": (
-                "constant_shift_invariant_rejection"
-            ),
+            "probe_geometry": "bounded_deterministic_coordinate_scaled",
+            "black_box_limitation": "finite_probes_do_not_certify_local_optimality",
         },
-        "views": _view_contract(
-            "minimize",
-            "box_bounds"
-            if method == "nlopt-nelder-mead"
-            else "box_and_nonlinear_constraints",
-        ),
+        "views": _view_contract("minimize", "box_bounds"),
         "platforms": _NLOPT_PLATFORMS,
         "runtimes": _NLOPT_RUNTIMES,
     }
@@ -148,7 +123,6 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
         }
     },
     "minimize": {
-        "nlopt-cobyla": _nlopt_record("nlopt-cobyla"),
         "nlopt-nelder-mead": _nlopt_record("nlopt-nelder-mead"),
         "nelder-mead": {
             "classification": "translated",
@@ -276,12 +250,12 @@ def capabilities(operation: str | None = None) -> dict[str, JSONValue]:
         "operations": operations,
         "explicitly_unsupported": {
             "nonlinear_constraints": {
-                "methods": ["cobyla"],
-                "reason": "the generic COBYLA identity is not qualified; request the exact nlopt-cobyla method",
+                "methods": ["cobyla", "nlopt-cobyla"],
+                "reason": "COBYLA is deferred because the selected upstream f2c implementation has unresolved formal pointer-provenance undefined behavior; a modern PRIMA integration is planned",
             },
             "automatic_nonlinear_constraints": {
                 "methods": ["auto"],
-                "reason": "nonlinear constraints require the exact explicit nlopt-cobyla identity",
+                "reason": "no sanitizer-clean portable nonlinear-constraint backend is qualified",
             },
             "sage_bounded_methods": {
                 "methods": ["tnc", "l-bfgs-b"],
@@ -344,7 +318,7 @@ def _method_envelope_error(problem: NumericalProblem, selected: str) -> str | No
             return "projected-bfgs requires at least one finite box bound"
         if selected == "nlopt-nelder-mead" and constrained:
             return "nlopt-nelder-mead does not support nonlinear constraints"
-        if selected not in ("nlopt-cobyla",) and constrained:
+        if constrained:
             return selected + " does not support nonlinear constraints"
     if selected == "cminpack-lmder" and problem.derivative is None:
         return "cminpack-lmder requires an explicit Jacobian callback"
@@ -357,7 +331,7 @@ def _automatic_method(problem: NumericalProblem) -> tuple[str, str]:
     if problem.operation == "minimize":
         if len(problem.constraints) != 0:
             raise ValueError(
-                "automatic nonlinear-constraint selection is disabled; request nlopt-cobyla"
+                "nonlinear constraints are unsupported until a sanitizer-clean portable backend is qualified"
             )
         bound_values = problem.bounds.get("variables")
         if isinstance(bound_values, list) and any(

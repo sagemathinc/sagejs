@@ -14,8 +14,7 @@
       "NLOPT_LUKSAN": false,
       "NLOPT_CXX": false,
       "selected_algorithms": [
-        "NLOPT_LN_NELDERMEAD",
-        "NLOPT_LN_COBYLA"
+        "NLOPT_LN_NELDERMEAD"
       ]
     }
   }

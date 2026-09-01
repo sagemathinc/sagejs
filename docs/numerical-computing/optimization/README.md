@@ -184,7 +184,11 @@ mathematical oracles rather than interchangeable methods.
 This slice is not yet the complete P3 backend portfolio. It does **not** claim:
 
 - Sage `find_fit` compatibility or automatic cminpack selection;
-- NLopt/PRIMA Nelder-Mead or feasibility-aware COBYLA;
+- automatic NLopt Nelder-Mead selection or any certified local/global optimum
+  claim for its opaque derivative-free objective;
+- feasibility-aware nonlinear constraints (the sanitizer-clean future path is
+  a modern PRIMA-family implementation rather than NLopt's legacy COBYLA C
+  translation);
 - Powell, CG, Newton-CG, TNC, or L-BFGS-B;
 - nonlinear constraints, global optimization, or arbitrary precision;
 - general nonlinear-optimization qualification outside the exact envelopes

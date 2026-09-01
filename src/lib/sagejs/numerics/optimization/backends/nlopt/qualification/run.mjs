@@ -37,7 +37,9 @@ if (sha256(corpusBytes) !== oracle.corpus_sha256) {
 
 const solver = await createNloptBackend(artifactBytes);
 const results = [];
-for (const record of corpus.cases) {
+for (const record of corpus.cases.filter(
+  ({ method }) => method === "nlopt-nelder-mead",
+)) {
   const result = solver.solve(optionsFromCase(record));
   const validation = validateCase(record, result);
   if (!validation.accepted) {
@@ -81,11 +83,6 @@ const receipt = {
     "nlopt-nelder-mead": {
       cases: results.filter(({ method }) => method === "nlopt-nelder-mead").length,
       accepted: 5,
-    },
-    "nlopt-cobyla": {
-      cases: results.filter(({ method }) => method === "nlopt-cobyla").length,
-      accepted_feasible: 7,
-      rejected_infeasible: 1,
     },
   },
   results_sha256: sha256(resultBytes),

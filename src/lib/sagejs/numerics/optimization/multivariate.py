@@ -61,10 +61,11 @@ def minimize_problem(
     """Construct an inspectable local-minimization problem.
 
     Nonlinear constraints use SciPy-shaped scalar mappings with `type` equal
-    to `ineq` (meaning `fun(x) >= 0`) or `eq` (meaning `fun(x) == 0`). They
-    are available only through the explicitly requested `nlopt-cobyla`
-    identity. Box bounds use the explicitly named `projected-bfgs` extension
-    for the ordinary-Python automatic route.
+    to `ineq` (meaning `fun(x) >= 0`) or `eq` (meaning `fun(x) == 0`). No
+    sanitizer-clean portable nonlinear-constraint backend is currently
+    qualified, so nonempty constraints fail explicitly. Box bounds use the
+    explicitly named `projected-bfgs` extension for the ordinary-Python
+    automatic route or explicit `nlopt-nelder-mead` for the NLopt route.
     """
     if not callable(function):
         raise TypeError("objective must be callable")
@@ -96,9 +97,10 @@ def minimize_problem(
         raise ValueError("initial_step entries must be finite and positive")
     bound_record = [[lower[index], upper[index]] for index in range(len(point))]
     requested = method.lower()
-    if len(constraint_specs) != 0 and requested != "nlopt-cobyla":
-        raise ValueError(
-            "nonlinear constraints require the explicit nlopt-cobyla method"
+    if len(constraint_specs) != 0:
+        raise NotImplementedError(
+            "nonlinear constraints are unsupported until a sanitizer-clean "
+            "portable backend is qualified"
         )
     if requested in ("nelder-mead", "bfgs") and any(
         item != [None, None] for item in bound_record
@@ -727,7 +729,7 @@ def solve_minimize_problem(
     reason: str | None = None
     payload: dict[str, Any] = {}
     try:
-        if selected_plan.method in ("nlopt-nelder-mead", "nlopt-cobyla"):
+        if selected_plan.method == "nlopt-nelder-mead":
             value, objective, iterations, status, result_payload = _nlopt_minimize(
                 execution, selected_plan.method, payload
             )
@@ -777,6 +779,11 @@ def solve_minimize_problem(
         force=True,
     )
     payload["objective"] = objective
+    if selected_plan.method == "nlopt-nelder-mead":
+        payload["optimality_claim"] = "heuristic_only"
+        payload["local_optimum_certified"] = False
+        payload["global_optimum_certified"] = False
+        payload["independent_contradiction_checks_passed"] = validation.passed
     if reason is not None:
         payload["stop_reason"] = reason
     return OptimizationResult(

@@ -1,5 +1,7 @@
 {
   "schema": "sagejs.numerical-nlopt-qualification-summary/v1",
+  "status": "invalidated_by_cobyla_source_ub_and_nelder_mead_semantics_revision",
+  "replacement": "pending source-current Nelder-Mead-only qualification after independent audit",
   "artifact_sha256": "2d248aaa49c9482ab0afabaff1a9358a106b4deae23a9c2f8df033d75fa37c0f",
   "artifact_bytes": 101376,
   "artifact_gzip_bytes": 39521,

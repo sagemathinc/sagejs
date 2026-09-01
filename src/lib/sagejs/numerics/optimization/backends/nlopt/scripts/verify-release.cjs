@@ -33,8 +33,12 @@ function verifyHash(actualPath, expected, root = packageRoot) {
 assert.equal(manifest.selection, "explicit-only");
 assert.deepEqual(manifest.methods, {
   "nlopt-nelder-mead": "NLOPT_LN_NELDERMEAD",
-  "nlopt-cobyla": "NLOPT_LN_COBYLA",
 });
+assert.equal(
+  manifest.qualification.status,
+  "qualified",
+  "the narrowed NLopt artifact is pending source-current qualification",
+);
 assert.equal(manifest.source.luksan_enabled, false);
 verifyHash("source-lock.json", manifest.source.source_lock_sha256);
 verifyHash("licenses/COPYING", manifest.source.license_sha256);

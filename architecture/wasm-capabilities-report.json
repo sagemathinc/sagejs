@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "f1f550a3c7122656c50c9614dcbdb2b2f0d5dabc7c95fdc7708bd961e213cade",
+  "source_sha256": "2b769ebc31d824569194a53d39c4edefc8194827677b2b8b1654d0cbed0d64b3",
   "counts": {
     "total": 1048,
     "by_kind": {
@@ -12875,10 +12875,10 @@
       "public_consumers": [
         "sagejs.numerics.optimization.minimize"
       ],
-      "explanation": "Explicit derivative-free minimization can use authenticated NLopt Nelder-Mead or COBYLA in Node, browsers, and SEA. Automatic planning remains on ordinary Python and an unavailable or invalid NLopt result fails closed.",
+      "explanation": "Explicit derivative-free minimization can use authenticated NLopt Nelder-Mead in Node, browsers, and SEA. Automatic planning remains on ordinary Python, nonlinear constraints are unsupported pending a sanitizer-clean backend, and an unavailable or contradictory NLopt result fails closed.",
       "resource_limits": {
         "maximum_parameters": 128,
-        "maximum_constraints": 512,
+        "maximum_constraints": 0,
         "maximum_workspace_bytes": 67108864,
         "maximum_memory_bytes": 134217728
       }

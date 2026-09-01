@@ -35,7 +35,7 @@ self.onmessage = async ({ data }) => {
     return;
   }
   const result = solver.solve({
-    method: "nlopt-cobyla",
+    method: "nlopt-nelder-mead",
     initial: [0],
     initialStep: [0.5],
     objective: ([x]) => (x - 0.25) ** 2,

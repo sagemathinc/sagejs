@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cobyla.h"
 #include "neldermead.h"
 #include "nlopt-util.h"
 
@@ -14,7 +13,6 @@
 
 enum {
     SAGEJS_NLOPT_NELDER_MEAD = 1,
-    SAGEJS_NLOPT_COBYLA = 2,
     SAGEJS_NLOPT_OBJECTIVE = 1,
     SAGEJS_NLOPT_INEQUALITY = 2,
     SAGEJS_NLOPT_EQUALITY = 3,
@@ -208,28 +206,12 @@ static int regions_are_pairwise_disjoint(const uint32_t *offsets,
     return 1;
 }
 
-static int workspace_size_ok(int32_t method, size_t n, size_t inequalities,
-                             size_t equalities) {
-    size_t bound_constraints;
-    size_t constraints;
+static int workspace_size_ok(size_t n) {
     size_t doubles;
     size_t bytes;
-    if (!checked_product(n, 2, &bound_constraints)) return 0;
-    if (!checked_product(equalities, 2, &constraints)) return 0;
-    if (!checked_sum(constraints, inequalities, &constraints) ||
-        !checked_sum(constraints, bound_constraints, &constraints)) return 0;
-    if (method == SAGEJS_NLOPT_NELDER_MEAD) {
-        if (!checked_sum(n, 1, &doubles) ||
-            !checked_product(doubles, doubles, &doubles) ||
-            !checked_sum(doubles, 2 * n, &doubles)) return 0;
-    } else {
-        size_t inner;
-        if (!checked_product(3, n, &inner) ||
-            !checked_sum(inner, 2 * constraints + 11, &inner) ||
-            !checked_product(n, inner, &doubles) ||
-            !checked_sum(doubles, 4 * constraints + 6, &doubles)) return 0;
-        if (!checked_sum(doubles, 6 * n + constraints, &doubles)) return 0;
-    }
+    if (!checked_sum(n, 1, &doubles) ||
+        !checked_product(doubles, doubles, &doubles) ||
+        !checked_sum(doubles, 2 * n, &doubles)) return 0;
     if (!checked_product(doubles, sizeof(double), &bytes)) return 0;
     return bytes <= SAGEJS_NLOPT_MAX_WORKSPACE_BYTES;
 }
@@ -248,11 +230,6 @@ typedef struct {
     int32_t jacobian_callbacks;
 } callback_context;
 
-typedef struct {
-    callback_context *base;
-    uint32_t kind;
-} constraint_context;
-
 static double objective_callback(unsigned n, const double *x, double *gradient,
                                  void *opaque) {
     callback_context *context = (callback_context *)opaque;
@@ -269,26 +246,6 @@ static double objective_callback(unsigned n, const double *x, double *gradient,
         return HUGE_VAL;
     }
     return value;
-}
-
-static void constraint_callback(unsigned m, double *result, unsigned n,
-                                const double *x, double *gradient,
-                                void *opaque) {
-    constraint_context *constraint = (constraint_context *)opaque;
-    callback_context *context = constraint->base;
-    int32_t status = sagejs_nlopt_evaluate(
-        context->handle, constraint->kind, m, n,
-        (uint32_t)(uintptr_t)x, (uint32_t)(uintptr_t)result,
-        (uint32_t)(uintptr_t)gradient, gradient == NULL ? 0 : m);
-    if (constraint->kind == SAGEJS_NLOPT_INEQUALITY)
-        context->inequality_callbacks += 1;
-    else
-        context->equality_callbacks += 1;
-    if (gradient != NULL) context->jacobian_callbacks += 1;
-    if (status != 0) {
-        context->failure = status;
-        *context->force_stop = status;
-    }
 }
 
 __attribute__((export_name("sagejs_nlopt_alloc")))
@@ -397,29 +354,22 @@ int32_t sagejs_nlopt_solve(
     char *stop_message = NULL;
     nlopt_result result = NLOPT_INVALID_ARGS;
     callback_context context;
-    constraint_context inequality_context;
-    constraint_context equality_context;
-    nlopt_constraint inequalities;
-    nlopt_constraint equalities;
     nlopt_stopping stop;
 
-    if (handle == 0 ||
-        (method != SAGEJS_NLOPT_NELDER_MEAD && method != SAGEJS_NLOPT_COBYLA))
+    if (handle == 0 || method != SAGEJS_NLOPT_NELDER_MEAD)
         return SAGEJS_NLOPT_INVALID_ARGUMENT;
     if (n <= 0 || n > SAGEJS_NLOPT_MAX_VARIABLES || inequality_count < 0 ||
         equality_count < 0 ||
         inequality_count + equality_count > SAGEJS_NLOPT_MAX_CONSTRAINTS ||
         maximum_evaluations <= 0)
         return SAGEJS_NLOPT_DIMENSION_LIMIT;
-    if (method == SAGEJS_NLOPT_NELDER_MEAD &&
-        (inequality_count != 0 || equality_count != 0))
+    if (inequality_count != 0 || equality_count != 0)
         return SAGEJS_NLOPT_INVALID_ARGUMENT;
     if (!isfinite(ftol_relative) || ftol_relative < 0.0 ||
         !isfinite(ftol_absolute) || ftol_absolute < 0.0 ||
         !isfinite(xtol_relative) || xtol_relative < 0.0)
         return SAGEJS_NLOPT_INVALID_ARGUMENT;
-    if (!workspace_size_ok(method, (size_t)n, (size_t)inequality_count,
-                           (size_t)equality_count))
+    if (!workspace_size_ok((size_t)n))
         return SAGEJS_NLOPT_DIMENSION_LIMIT;
     if (!checked_product((size_t)n, sizeof(double), &vector_bytes) ||
         !checked_product((size_t)inequality_count, sizeof(double),
@@ -491,36 +441,14 @@ int32_t sagejs_nlopt_solve(
         handle, (uint32_t)n, (uint32_t)inequality_count,
         (uint32_t)equality_count, &force_stop, 0, 0, 0, 0, 0, 0
     };
-    inequality_context = (constraint_context){&context, SAGEJS_NLOPT_INEQUALITY};
-    equality_context = (constraint_context){&context, SAGEJS_NLOPT_EQUALITY};
-    inequalities = (nlopt_constraint){
-        (unsigned)inequality_count, NULL,
-        inequality_count > 0 ? constraint_callback : NULL, NULL,
-        &inequality_context,
-        (double *)(uintptr_t)inequality_tolerance_offset
-    };
-    equalities = (nlopt_constraint){
-        (unsigned)equality_count, NULL,
-        equality_count > 0 ? constraint_callback : NULL, NULL,
-        &equality_context,
-        (double *)(uintptr_t)equality_tolerance_offset
-    };
     stop = (nlopt_stopping){
         (unsigned)n, -HUGE_VAL, ftol_relative, ftol_absolute, xtol_relative,
         xtol_absolute, NULL, &nevals, maximum_evaluations, 0.0, 0.0,
         &force_stop, &stop_message
     };
 
-    if (method == SAGEJS_NLOPT_NELDER_MEAD) {
-        result = nldrmd_minimize(n, objective_callback, &context, lower, upper,
-                                 x, minimum, step, &stop);
-    } else {
-        result = cobyla_minimize(
-            (unsigned)n, objective_callback, &context,
-            inequality_count > 0 ? 1u : 0u, &inequalities,
-            equality_count > 0 ? 1u : 0u, &equalities,
-            lower, upper, x, minimum, &stop, step);
-    }
+    result = nldrmd_minimize(n, objective_callback, &context, lower, upper,
+                             x, minimum, step, &stop);
 
     stats[0] = (int32_t)result;
     stats[1] = (int32_t)nevals;

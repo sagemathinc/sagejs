@@ -70,13 +70,13 @@ from sagejs.numerics.optimization import minimize
 answer = minimize(
     lambda point: (point[0] - 2.0)**2,
     [0.0],
-    constraints=[{"type": "ineq", "fun": lambda point: 1.0 - point[0]}],
-    method="nlopt-cobyla",
+    method="nlopt-nelder-mead",
 )
 print(answer.method)
 print(answer.backend)
 print(answer.success and answer.validation.passed)
-print(abs(answer.value[0] - 1.0) < 1.0e-6)
+print(answer.validation.truth_level)
+print(abs(answer.value[0] - 2.0) < 1.0e-6)
 `, { timeout: 120_000 });
         return { ordinary, explicit };
       } finally {
@@ -96,7 +96,7 @@ print(abs(answer.value[0] - 1.0) < 1.0e-6)
     assert.equal(results.explicit.stderr, "");
     assert.equal(
       results.explicit.stdout,
-      "nlopt-cobyla\nnlopt-mit-wasm\nTrue\nTrue\n",
+      "nlopt-nelder-mead\nnlopt-mit-wasm\nTrue\nheuristic\nTrue\n",
     );
     assert.deepEqual(
       results.explicit.instrumentation.routes.filter(
