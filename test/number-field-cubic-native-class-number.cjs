@@ -168,13 +168,14 @@ cases = (
     # This field needs PARI's next small_norm regime: a reduced shell in
     # compound prime ideals exposes the rank-one unit dependency.
     ("3.1.49096.1", (-126, -6, -1, 1), 9, (9,), 1),
-    # The base relation lattice finds a non-fundamental unit.  One multiplier
-    # pass shrinks its certified regulator and proves unit index one.
-    ("3.1.108115.1", (-383, -68, 0, 1), 10, (10,), 1),
+    # The sharper elementary Euler-constant enclosure proves PARI's GRH
+    # generator cutoff 16.  The exact reduced ellipsoid in the complementary
+    # norm-9 ideal then supplies the decisive relation without a restart.
+    ("3.1.108115.1", (-383, -68, 0, 1), 10, (10,), 0),
     # The defining order has index 4 and a prime discriminant component above
     # one million.  The proof binder must use its deterministic word-prime
     # certificate rather than an arbitrary trial-division cutoff.
-    ("3.1.1181183.1", (-796, 92, -1, 1), 8, (2, 2, 2), 1),
+    ("3.1.1181183.1", (-796, 92, -1, 1), 8, (2, 2, 2), 0),
     # PARI's narrower first small_norm batch needs one multiplier pass here;
     # the source-transparent all-ideal adjacent batch already certifies it.
     # This also exercises a 17-ideal resident factor base.
@@ -190,6 +191,9 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     assert receipt.class_number == expected_order, label
     assert receipt.invariants == expected_invariants, label
     assert receipt.compound_multiplier_passes == expected_passes, label
+    if label == "3.1.108115.1":
+        assert receipt.generator_bound == 16, label
+        assert receipt.factor_base_size == 9, label
     assert receipt.matches(K), label
 print("cubic-native-lmfdb-corpus-ok")
 `);

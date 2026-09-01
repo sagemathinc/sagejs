@@ -50,6 +50,8 @@ _CUBIC_MAX_POWERS = 12
 _CUBIC_MAX_RELATIONS = 1024
 _CUBIC_MAX_COMPOUND_PAIRS = 128
 _CUBIC_COMPOUND_MULTIPLIERS = 4
+_CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES = 500
+_CUBIC_REDUCED_ENUMERATION_MAX_COORDINATE = 32
 _CUBIC_MAX_FACTOR_SEARCH_BOUND = 257
 _CUBIC_MAX_GRH_BOUND_SEARCH = 4096
 _CUBIC_ANALYSIS_PROOF_CAPACITY = 512
@@ -1673,10 +1675,16 @@ def _cubic_grh_generator_bound_is_certified(
     # alternating Catalan series is bounded above by every even partial sum;
     # seven terms already give `G < 0.9185`.  Also
     #
-    #   H_n - log(n+1) < gamma
+    #   H_n - log(n) - 1/(2*n) < gamma.
     #
-    # by the integral comparison for `1/x`; `n=32` gives a useful certified
-    # lower endpoint without importing a floating-point constant table.
+    # Indeed, if `a_n = H_n-log(n)`, then
+    #
+    #   a_n-gamma = sum_{k>=n}(log(1+1/k)-1/(k+1)) < 1/(2*n),
+    #
+    # because `log(1+x)-x/(1+x) < x^2/(2*(1+x))` for `x>0` and the
+    # resulting rational series telescopes.  At `n=32` this is dramatically
+    # sharper than the one-sided integral bound `H_n-log(n+1) < gamma`, while
+    # retaining a tiny exact proof authority and the same bounded loop.
     catalan_upper = 0
     catalan_index: uint64 = 0
     while catalan_index <= 6:
@@ -1695,17 +1703,19 @@ def _cubic_grh_generator_bound_is_certified(
     while harmonic_index <= 32:
         harmonic_lower += scale // harmonic_index
         harmonic_index += 1
-    log_thirty_three_lower, log_thirty_three_upper = (
-        _cubic_log_positive_rational_bounds(
-            33,
-            1,
-            scale,
-        )
+    log_thirty_two_lower, log_thirty_two_upper = _cubic_log_positive_rational_bounds(
+        32,
+        1,
+        scale,
     )
-    gamma_lower = harmonic_lower - log_thirty_three_upper
+    gamma_lower = (
+        harmonic_lower
+        - log_thirty_two_upper
+        - _cubic_dyadic_ceiling_quotient(scale, 64)
+    )
     if (
         catalan_upper <= 0
-        or log_thirty_three_upper < log_thirty_three_lower
+        or log_thirty_two_upper < log_thirty_two_lower
         or gamma_lower <= 0
     ):
         return False
@@ -2371,6 +2381,337 @@ def _cubic_transformed_ideal_coordinates(
         )
         source_row += 1
     return (coordinate_zero, coordinate_one, coordinate_two)
+
+
+@native
+def _cubic_coordinates_are_scalar(
+    workspace: NativeIntegerVector,
+    coordinate_zero: int,
+    coordinate_one: int,
+    coordinate_two: int,
+) -> bool:
+    """Return whether one order coordinate row is a rational integer."""
+    pivot: uint64 = 0
+    while pivot < 3 and workspace[_IDENTITY_OFFSET + pivot] == 0:
+        pivot += 1
+    if pivot == 3:
+        return False
+    pivot_coordinate = coordinate_zero
+    if pivot == 1:
+        pivot_coordinate = coordinate_one
+    elif pivot == 2:
+        pivot_coordinate = coordinate_two
+    pivot_identity = workspace[_IDENTITY_OFFSET + pivot]
+    if pivot_coordinate % pivot_identity != 0:
+        return False
+    multiple = pivot_coordinate // pivot_identity
+    return (
+        coordinate_zero == multiple * workspace[_IDENTITY_OFFSET]
+        and coordinate_one == multiple * workspace[_IDENTITY_OFFSET + 1]
+        and coordinate_two == multiple * workspace[_IDENTITY_OFFSET + 2]
+    )
+
+
+@native
+def _cubic_prepare_reduced_ideal_ellipsoid(
+    workspace: NativeIntegerVector,
+    basis_offset: uint64,
+    embedding_reduced: FmpzMatrix,
+    transforms: FmpzMatrix,
+    transform_row_offset: uint64,
+    parameters: FmpzMatrix,
+    parameter_row: uint64,
+) -> bool:
+    """Store an exact coefficient box containing PARI's reduced ellipsoid."""
+    g00 = 0
+    g01 = 0
+    g02 = 0
+    g11 = 0
+    g12 = 0
+    g22 = 0
+    embedding_column: uint64 = 0
+    while embedding_column < 3:
+        row_zero = fmpz_matrix_entry(embedding_reduced, 0, embedding_column)
+        row_one = fmpz_matrix_entry(embedding_reduced, 1, embedding_column)
+        row_two = fmpz_matrix_entry(embedding_reduced, 2, embedding_column)
+        g00 += row_zero * row_zero
+        g01 += row_zero * row_one
+        g02 += row_zero * row_two
+        g11 += row_one * row_one
+        g12 += row_one * row_two
+        g22 += row_two * row_two
+        embedding_column += 1
+    determinant = (
+        g00 * (g11 * g22 - g12 * g12)
+        - g01 * (g01 * g22 - g12 * g02)
+        + g02 * (g01 * g12 - g11 * g02)
+    )
+    cofactor_zero = g11 * g22 - g12 * g12
+    cofactor_one = g00 * g22 - g02 * g02
+    cofactor_two = g00 * g11 - g01 * g01
+    if (
+        g00 <= 0
+        or g11 <= 0
+        or g22 <= 0
+        or determinant <= 0
+        or cofactor_zero <= 0
+        or cofactor_one <= 0
+        or cofactor_two <= 0
+    ):
+        return False
+
+    first_zero, first_one, first_two = _cubic_transformed_ideal_coordinates(
+        workspace,
+        basis_offset,
+        transforms,
+        transform_row_offset,
+        1,
+        0,
+        0,
+    )
+    bound_eight = 8 * g00
+    bound_two = 2 * g11
+    bound = bound_eight
+    if _cubic_coordinates_are_scalar(
+        workspace,
+        first_zero,
+        first_one,
+        first_two,
+    ):
+        if bound_two > bound:
+            bound = bound_two
+    elif bound_two < bound:
+        bound = bound_two
+    limit_zero_square = _cubic_dyadic_ceiling_quotient(
+        bound * cofactor_zero,
+        determinant,
+    )
+    limit_one_square = _cubic_dyadic_ceiling_quotient(
+        bound * cofactor_one,
+        determinant,
+    )
+    limit_two_square = _cubic_dyadic_ceiling_quotient(
+        bound * cofactor_two,
+        determinant,
+    )
+    limit_zero = _cubic_ceil_sqrt(limit_zero_square)
+    limit_one = _cubic_ceil_sqrt(limit_one_square)
+    limit_two = _cubic_ceil_sqrt(limit_two_square)
+    if (
+        limit_zero < 0
+        or limit_one < 0
+        or limit_two < 0
+        or limit_zero > _CUBIC_REDUCED_ENUMERATION_MAX_COORDINATE
+        or limit_one > _CUBIC_REDUCED_ENUMERATION_MAX_COORDINATE
+        or limit_two > _CUBIC_REDUCED_ENUMERATION_MAX_COORDINATE
+    ):
+        return False
+    return (
+        fmpz_matrix_set_entry(parameters, parameter_row, 0, g00)
+        and fmpz_matrix_set_entry(parameters, parameter_row, 1, g01)
+        and fmpz_matrix_set_entry(parameters, parameter_row, 2, g02)
+        and fmpz_matrix_set_entry(parameters, parameter_row, 3, g11)
+        and fmpz_matrix_set_entry(parameters, parameter_row, 4, g12)
+        and fmpz_matrix_set_entry(parameters, parameter_row, 5, g22)
+        and fmpz_matrix_set_entry(parameters, parameter_row, 6, bound)
+        and fmpz_matrix_set_entry(parameters, parameter_row, 7, limit_zero)
+        and fmpz_matrix_set_entry(parameters, parameter_row, 8, limit_one)
+        and fmpz_matrix_set_entry(parameters, parameter_row, 9, limit_two)
+    )
+
+
+@native
+def _cubic_reduced_ellipsoid_candidate(
+    workspace: NativeIntegerVector,
+    basis_offset: uint64,
+    transforms: FmpzMatrix,
+    transform_row_offset: uint64,
+    parameters: FmpzMatrix,
+    parameter_row: uint64,
+    coefficient_zero: int,
+    coefficient_one: int,
+    coefficient_two: int,
+) -> tuple[int, int, int, int]:
+    """Authenticate one primitive nonscalar point in a reduced ellipsoid."""
+    canonical_sign = coefficient_two
+    if canonical_sign == 0:
+        canonical_sign = coefficient_one
+    if canonical_sign == 0:
+        canonical_sign = coefficient_zero
+    if canonical_sign <= 0:
+        return (0, 0, 0, 0)
+    absolute_zero = coefficient_zero
+    absolute_one = coefficient_one
+    absolute_two = coefficient_two
+    if absolute_zero < 0:
+        absolute_zero = -absolute_zero
+    if absolute_one < 0:
+        absolute_one = -absolute_one
+    if absolute_two < 0:
+        absolute_two = -absolute_two
+    content, ignored_left, ignored_right = _cubic_extended_gcd(
+        absolute_zero,
+        absolute_one,
+    )
+    content, ignored_left, ignored_right = _cubic_extended_gcd(content, absolute_two)
+    if content != 1:
+        return (0, 0, 0, 0)
+    g00 = fmpz_matrix_entry(parameters, parameter_row, 0)
+    g01 = fmpz_matrix_entry(parameters, parameter_row, 1)
+    g02 = fmpz_matrix_entry(parameters, parameter_row, 2)
+    g11 = fmpz_matrix_entry(parameters, parameter_row, 3)
+    g12 = fmpz_matrix_entry(parameters, parameter_row, 4)
+    g22 = fmpz_matrix_entry(parameters, parameter_row, 5)
+    bound = fmpz_matrix_entry(parameters, parameter_row, 6)
+    t2 = (
+        g00 * coefficient_zero * coefficient_zero
+        + 2 * g01 * coefficient_zero * coefficient_one
+        + 2 * g02 * coefficient_zero * coefficient_two
+        + g11 * coefficient_one * coefficient_one
+        + 2 * g12 * coefficient_one * coefficient_two
+        + g22 * coefficient_two * coefficient_two
+    )
+    if t2 <= 0 or t2 > bound:
+        return (0, 0, 0, 0)
+    coordinate_zero, coordinate_one, coordinate_two = (
+        _cubic_transformed_ideal_coordinates(
+            workspace,
+            basis_offset,
+            transforms,
+            transform_row_offset,
+            coefficient_zero,
+            coefficient_one,
+            coefficient_two,
+        )
+    )
+    if _cubic_coordinates_are_scalar(
+        workspace,
+        coordinate_zero,
+        coordinate_one,
+        coordinate_two,
+    ):
+        return (0, 0, 0, 0)
+    return (1, coordinate_zero, coordinate_one, coordinate_two)
+
+
+@native
+def _cubic_plan_reduced_ideal_ellipsoid(
+    workspace: NativeIntegerVector,
+    basis_offset: uint64,
+    transforms: FmpzMatrix,
+    transform_row_offset: uint64,
+    parameters: FmpzMatrix,
+    parameter_row: uint64,
+    group_count: uint64,
+) -> uint64:
+    """Account exact prime powers for every bounded ellipsoid candidate."""
+    limit_zero = fmpz_matrix_entry(parameters, parameter_row, 7)
+    limit_one = fmpz_matrix_entry(parameters, parameter_row, 8)
+    limit_two = fmpz_matrix_entry(parameters, parameter_row, 9)
+    candidate_count: uint64 = 0
+    coefficient_two = -limit_two
+    while coefficient_two <= limit_two:
+        coefficient_one = -limit_one
+        while coefficient_one <= limit_one:
+            coefficient_zero = -limit_zero
+            while coefficient_zero <= limit_zero:
+                status, coordinate_zero, coordinate_one, coordinate_two = (
+                    _cubic_reduced_ellipsoid_candidate(
+                        workspace,
+                        basis_offset,
+                        transforms,
+                        transform_row_offset,
+                        parameters,
+                        parameter_row,
+                        coefficient_zero,
+                        coefficient_one,
+                        coefficient_two,
+                    )
+                )
+                if status == 1:
+                    candidate_count += 1
+                    if candidate_count > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES:
+                        return candidate_count
+                    norm = _cubic_norm_form_value(
+                        workspace,
+                        coordinate_zero,
+                        coordinate_one,
+                        coordinate_two,
+                    )
+                    ignored_smooth = _cubic_plan_smooth_norm(
+                        workspace,
+                        group_count,
+                        norm,
+                    )
+                coefficient_zero += 1
+            coefficient_one += 1
+        coefficient_two += 1
+    return candidate_count
+
+
+@native
+def _cubic_append_reduced_ideal_ellipsoid(
+    workspace: NativeIntegerVector,
+    basis_offset: uint64,
+    transforms: FmpzMatrix,
+    transform_row_offset: uint64,
+    parameters: FmpzMatrix,
+    parameter_row: uint64,
+    relation_matrix: FmpzMatrix,
+    relation_elements: FmpzMatrix,
+    relation_count: uint64,
+    relation_capacity: uint64,
+    factor_count: uint64,
+    group_count: uint64,
+) -> tuple[uint64, uint64]:
+    """Admit every bounded ellipsoid candidate through exact valuations."""
+    limit_zero = fmpz_matrix_entry(parameters, parameter_row, 7)
+    limit_one = fmpz_matrix_entry(parameters, parameter_row, 8)
+    limit_two = fmpz_matrix_entry(parameters, parameter_row, 9)
+    candidate_count: uint64 = 0
+    coefficient_two = -limit_two
+    while coefficient_two <= limit_two:
+        coefficient_one = -limit_one
+        while coefficient_one <= limit_one:
+            coefficient_zero = -limit_zero
+            while coefficient_zero <= limit_zero:
+                status, coordinate_zero, coordinate_one, coordinate_two = (
+                    _cubic_reduced_ellipsoid_candidate(
+                        workspace,
+                        basis_offset,
+                        transforms,
+                        transform_row_offset,
+                        parameters,
+                        parameter_row,
+                        coefficient_zero,
+                        coefficient_one,
+                        coefficient_two,
+                    )
+                )
+                if status == 1:
+                    candidate_count += 1
+                    if candidate_count > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES:
+                        overflow_relation_count: uint64 = relation_capacity
+                        overflow_relation_count += 1
+                        return (overflow_relation_count, candidate_count)
+                    relation_count = _cubic_append_smooth_principal_relation(
+                        workspace,
+                        relation_matrix,
+                        relation_elements,
+                        relation_count,
+                        relation_capacity,
+                        factor_count,
+                        group_count,
+                        coordinate_zero,
+                        coordinate_one,
+                        coordinate_two,
+                    )
+                    if relation_count > relation_capacity:
+                        return (relation_count, candidate_count)
+                coefficient_zero += 1
+            coefficient_one += 1
+        coefficient_two += 1
+    return (relation_count, candidate_count)
 
 
 @native
@@ -3730,6 +4071,165 @@ def _cubic_prime_kernel_basis(
 
 
 @native
+def _cubic_complementary_prime_basis(
+    workspace: NativeIntegerVector,
+    prime: int,
+    map_zero: int,
+    map_one: int,
+    map_two: int,
+    prime_kernel_offset: uint64,
+    output_offset: uint64,
+) -> bool:
+    """Construct the residue-degree-two prime complementary to `ker(map)`.
+
+    At an unramified `(1,2)` prime, `O/pO` is `F_p x F_{p^2}`.  If `P` is
+    the kernel of the projection `map`, its annihilator is the one-dimensional
+    complementary factor.  Find its normalized idempotent `e` from
+    `map(e)=1` and `e*P=0 (mod p)`, lift `span(e)` together with `pO`, and
+    authenticate the resulting lattice `Q` by the exact identity `P*Q=pO`.
+    Only primes with `p^2` in the retained factor base need this path, so the
+    bounded two-coordinate search is tiny in the qualified cubic regime.
+    """
+    if (
+        prime < 2
+        or prime_kernel_offset + 9 > len(workspace)
+        or output_offset + 9 > len(workspace)
+    ):
+        return False
+    pivot: uint64 = 0
+    pivot_value = _cubic_positive_mod(map_zero, prime)
+    if pivot_value == 0:
+        pivot = 1
+        pivot_value = _cubic_positive_mod(map_one, prime)
+    if pivot_value == 0:
+        pivot = 2
+        pivot_value = _cubic_positive_mod(map_two, prime)
+    inverse = _cubic_inverse_mod(pivot_value, prime)
+    if inverse == 0:
+        return False
+    first_free: uint64 = 0
+    while first_free == pivot:
+        first_free += 1
+    second_free: uint64 = first_free + 1
+    while second_free == pivot:
+        second_free += 1
+    idempotent_zero = 0
+    idempotent_one = 0
+    idempotent_two = 0
+    found = False
+    first_value = 0
+    while first_value < prime and not found:
+        second_value = 0
+        while second_value < prime and not found:
+            candidate_zero = 0
+            candidate_one = 0
+            candidate_two = 0
+            if first_free == 0:
+                candidate_zero = first_value
+            elif first_free == 1:
+                candidate_one = first_value
+            else:
+                candidate_two = first_value
+            if second_free == 0:
+                candidate_zero = second_value
+            elif second_free == 1:
+                candidate_one = second_value
+            else:
+                candidate_two = second_value
+            free_image = (
+                candidate_zero * map_zero
+                + candidate_one * map_one
+                + candidate_two * map_two
+            )
+            pivot_coordinate = _cubic_positive_mod(
+                (1 - free_image) * inverse,
+                prime,
+            )
+            if pivot == 0:
+                candidate_zero = pivot_coordinate
+            elif pivot == 1:
+                candidate_one = pivot_coordinate
+            else:
+                candidate_two = pivot_coordinate
+            annihilates_kernel = True
+            kernel_row: uint64 = 0
+            while kernel_row < 3 and annihilates_kernel:
+                if not _cubic_multiply_coordinates(
+                    workspace,
+                    candidate_zero,
+                    candidate_one,
+                    candidate_two,
+                    workspace[prime_kernel_offset + 3 * kernel_row],
+                    workspace[prime_kernel_offset + 3 * kernel_row + 1],
+                    workspace[prime_kernel_offset + 3 * kernel_row + 2],
+                    _MAP_SCRATCH_OFFSET,
+                ):
+                    return False
+                coordinate: uint64 = 0
+                while coordinate < 3:
+                    if (
+                        _cubic_positive_mod(
+                            workspace[_MAP_SCRATCH_OFFSET + coordinate],
+                            prime,
+                        )
+                        != 0
+                    ):
+                        annihilates_kernel = False
+                    coordinate += 1
+                kernel_row += 1
+            if annihilates_kernel:
+                idempotent_zero = candidate_zero
+                idempotent_one = candidate_one
+                idempotent_two = candidate_two
+                found = True
+            second_value += 1
+        first_value += 1
+    if not found:
+        return False
+
+    entry: uint64 = 0
+    while entry < 12:
+        workspace[_HNF_SCRATCH_OFFSET + entry] = 0
+        entry += 1
+    workspace[_HNF_SCRATCH_OFFSET] = prime
+    workspace[_HNF_SCRATCH_OFFSET + 4] = prime
+    workspace[_HNF_SCRATCH_OFFSET + 8] = prime
+    workspace[_HNF_SCRATCH_OFFSET + 9] = idempotent_zero
+    workspace[_HNF_SCRATCH_OFFSET + 10] = idempotent_one
+    workspace[_HNF_SCRATCH_OFFSET + 11] = idempotent_two
+    if not _cubic_workspace_hnf3(workspace, _HNF_SCRATCH_OFFSET, 4):
+        return False
+    if (
+        workspace[_HNF_SCRATCH_OFFSET]
+        * workspace[_HNF_SCRATCH_OFFSET + 4]
+        * workspace[_HNF_SCRATCH_OFFSET + 8]
+        != prime * prime
+    ):
+        return False
+    entry = 0
+    while entry < 9:
+        workspace[output_offset + entry] = workspace[_HNF_SCRATCH_OFFSET + entry]
+        entry += 1
+
+    if not _cubic_ideal_product(
+        workspace,
+        prime_kernel_offset,
+        output_offset,
+        _MAP_SCRATCH_OFFSET,
+    ):
+        return False
+    entry = 0
+    while entry < 9:
+        expected = 0
+        if entry == 0 or entry == 4 or entry == 8:
+            expected = prime
+        if workspace[_MAP_SCRATCH_OFFSET + entry] != expected:
+            return False
+        entry += 1
+    return True
+
+
+@native
 def certified_complex_cubic_class_group_v1(
     output: IntegerBuffer,
     coefficients: IntegerBuffer,
@@ -4295,6 +4795,24 @@ def certified_complex_cubic_class_group_v1(
                         workspace[factor_base + 7] = group_count
                         workspace[factor_base + 8] = 1
                         workspace[factor_base + 9] = 0
+                        power_base: uint64 = (
+                            _POWER_OFFSET + factor_count * _CUBIC_MAX_POWERS * 9
+                        )
+                        degree_one_power_base: uint64 = (
+                            _POWER_OFFSET + group_factor_start * _CUBIC_MAX_POWERS * 9
+                        )
+                        map_base: uint64 = _MAP_SCRATCH_OFFSET
+                        if not _cubic_complementary_prime_basis(
+                            workspace,
+                            prime,
+                            workspace[map_base],
+                            workspace[map_base + 1],
+                            workspace[map_base + 2],
+                            degree_one_power_base,
+                            power_base,
+                        ):
+                            return False
+                        workspace[factor_base + 6] = 1
                         factor_count += 1
                     group_factor_count = factor_count - group_factor_start
                     workspace[group_base] = prime
@@ -4391,22 +4909,27 @@ def certified_complex_cubic_class_group_v1(
         # found in the reduced ideal above 11.  PARI's factor-base permutation
         # places a small independent sub-factor-base first and the remaining
         # ideals later; `small_norm` traverses that permutation backward.  The
-        # bounded source-transparent analogue presently visits every genuine
-        # degree-one ideal in the unconditional Minkowski base.  This is a
-        # slightly broader schedule than PARI's early stop, but prevents a
-        # middle generator (the ideal over 29 in `3.1.12763.1`) from receiving
-        # no reduced search at all.  A later staged rank test can recover
-        # PARI's early-stop optimization without weakening this regime.
+        # bounded source-transparent analogue presently visits every retained
+        # noninert ideal, including the residue-degree-two complement in a
+        # `(1,2)` split.  The latter is essential in `3.1.108115.1`, where
+        # PARI's second successful reduced lattice is precisely the ideal of
+        # norm 9.  This is a slightly broader schedule than PARI's early stop,
+        # but prevents a middle generator (the ideal over 29 in
+        # `3.1.12763.1`) from receiving no reduced search at all.  A later
+        # staged rank test can recover PARI's early-stop optimization without
+        # weakening this regime.
         adjacent_ideal_count: uint64 = 0
+        adjacent_candidate_count: uint64 = 0
         adjacent_factor_cursor: uint64 = 0
         while adjacent_factor_cursor < factor_count:
             adjacent_factor_index: uint64 = adjacent_factor_cursor
             adjacent_factor_base: uint64 = (
                 _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
             )
+            workspace[adjacent_factor_base + 9] = 1
+            adjacent_ideal_count += 1
             if workspace[adjacent_factor_base + 8] == 0:
-                workspace[adjacent_factor_base + 9] = 1
-                adjacent_ideal_count += 1
+                adjacent_candidate_count += 4
             adjacent_factor_cursor += 1
         compound_pair_count: uint64 = 0
         compound_multiplier_index: uint64 = 0
@@ -4442,6 +4965,14 @@ def certified_complex_cubic_class_group_v1(
             fmpz_matrix,
             adjacent_transform_rows,
             3,
+        )
+        adjacent_parameter_rows: uint64 = factor_count
+        if adjacent_parameter_rows == 0:
+            adjacent_parameter_rows = 1
+        adjacent_ellipsoid_parameters = arena.foreign_resource(
+            fmpz_matrix,
+            adjacent_parameter_rows,
+            11,
         )
         compound_plan_rows: uint64 = compound_pair_count
         if compound_plan_rows == 0:
@@ -4520,12 +5051,12 @@ def certified_complex_cubic_class_group_v1(
                 planning_one += 1
             planning_zero += 1
 
-        # Build one T2/LLL basis for each selected ideal.  For each basis,
-        # score the same three unordered row pairs and four primitive
-        # directions used by the readable reduced-shell oracle.  The winning
-        # pair is retained in the otherwise private factor slot `+9`; all
-        # twelve planning norms contribute to exact prime-power accounting,
-        # while only four candidates reach admission.
+        # Build one T2/LLL basis for each selected ideal.  Degree-one factors
+        # retain the compact four-direction shell.  A residue-degree-two
+        # complement instead receives PARI's bounded reduced-ideal ellipsoid:
+        # its exact Gram/cofactor box is planned once and replayed unchanged at
+        # admission.  The otherwise private factor slot `+9` is the schedule
+        # marker (and the winning pair code for the compact shell).
         adjacent_factor_index = 0
         while adjacent_factor_index < factor_count:
             factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
@@ -4572,79 +5103,117 @@ def certified_complex_cubic_class_group_v1(
                             return False
                         transform_column += 1
                     transform_row += 1
-                adjacent_best_score = -1
-                adjacent_best_pair: uint64 = 0
-                adjacent_pair: uint64 = 0
-                while adjacent_pair < 3:
-                    adjacent_first: uint64 = 0
-                    adjacent_second: uint64 = 1
-                    if adjacent_pair == 1:
-                        adjacent_second = 2
-                    elif adjacent_pair == 2:
-                        adjacent_first = 1
-                        adjacent_second = 2
-                    adjacent_score = 0
-                    adjacent_direction: uint64 = 0
-                    while adjacent_direction < 4:
-                        adjacent_left = 1
-                        adjacent_right = 0
-                        if adjacent_direction == 1:
-                            adjacent_left = 0
-                            adjacent_right = 1
-                        elif adjacent_direction == 2:
-                            adjacent_right = 1
-                        elif adjacent_direction == 3:
-                            adjacent_left = -1
-                            adjacent_right = 1
-                        adjacent_zero = 0
-                        adjacent_one = 0
-                        adjacent_two = 0
-                        if adjacent_first == 0:
-                            adjacent_zero = adjacent_left
-                        elif adjacent_first == 1:
-                            adjacent_one = adjacent_left
-                        else:
-                            adjacent_two = adjacent_left
-                        if adjacent_second == 0:
-                            adjacent_zero = adjacent_right
-                        elif adjacent_second == 1:
-                            adjacent_one = adjacent_right
-                        else:
-                            adjacent_two = adjacent_right
-                        (
-                            planning_coordinate_zero,
-                            planning_coordinate_one,
-                            planning_coordinate_two,
-                        ) = _cubic_transformed_ideal_coordinates(
+                if workspace[factor_base + 8] == 1:
+                    if not _cubic_prepare_reduced_ideal_ellipsoid(
+                        workspace,
+                        adjacent_basis,
+                        adjacent_embedding_reduced,
+                        adjacent_transforms,
+                        adjacent_transform_row,
+                        adjacent_ellipsoid_parameters,
+                        adjacent_factor_index,
+                    ):
+                        return False
+                    adjacent_ellipsoid_count: uint64 = (
+                        _cubic_plan_reduced_ideal_ellipsoid(
                             workspace,
                             adjacent_basis,
                             adjacent_transforms,
                             adjacent_transform_row,
-                            adjacent_zero,
-                            adjacent_one,
-                            adjacent_two,
-                        )
-                        planning_adjacent_norm = _cubic_norm_form_value(
-                            workspace,
-                            planning_coordinate_zero,
-                            planning_coordinate_one,
-                            planning_coordinate_two,
-                        )
-                        if planning_adjacent_norm < 0:
-                            planning_adjacent_norm = -planning_adjacent_norm
-                        planning_candidate_is_smooth = _cubic_plan_smooth_norm(
-                            workspace,
+                            adjacent_ellipsoid_parameters,
+                            adjacent_factor_index,
                             group_count,
-                            planning_adjacent_norm,
                         )
-                        if planning_candidate_is_smooth:
-                            adjacent_score += 1
-                        adjacent_direction += 1
-                    if adjacent_score > adjacent_best_score:
-                        adjacent_best_score = adjacent_score
-                        adjacent_best_pair = adjacent_pair
-                    adjacent_pair += 1
-                workspace[factor_base + 9] = adjacent_best_pair + 1
+                    )
+                    if (
+                        adjacent_ellipsoid_count
+                        > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES
+                        or not fmpz_matrix_set_entry(
+                            adjacent_ellipsoid_parameters,
+                            adjacent_factor_index,
+                            10,
+                            adjacent_ellipsoid_count,
+                        )
+                    ):
+                        return False
+                    adjacent_candidate_count += adjacent_ellipsoid_count
+                    # Keep this exact ideal live for the admission traversal;
+                    # the value is merely a nonzero schedule marker here.
+                    workspace[factor_base + 9] = 1
+                else:
+                    adjacent_best_score = -1
+                    adjacent_best_pair: uint64 = 0
+                    adjacent_pair: uint64 = 0
+                    while adjacent_pair < 3:
+                        adjacent_first: uint64 = 0
+                        adjacent_second: uint64 = 1
+                        if adjacent_pair == 1:
+                            adjacent_second = 2
+                        elif adjacent_pair == 2:
+                            adjacent_first = 1
+                            adjacent_second = 2
+                        adjacent_score = 0
+                        adjacent_direction: uint64 = 0
+                        while adjacent_direction < 4:
+                            adjacent_left = 1
+                            adjacent_right = 0
+                            if adjacent_direction == 1:
+                                adjacent_left = 0
+                                adjacent_right = 1
+                            elif adjacent_direction == 2:
+                                adjacent_right = 1
+                            elif adjacent_direction == 3:
+                                adjacent_left = -1
+                                adjacent_right = 1
+                            adjacent_zero = 0
+                            adjacent_one = 0
+                            adjacent_two = 0
+                            if adjacent_first == 0:
+                                adjacent_zero = adjacent_left
+                            elif adjacent_first == 1:
+                                adjacent_one = adjacent_left
+                            else:
+                                adjacent_two = adjacent_left
+                            if adjacent_second == 0:
+                                adjacent_zero = adjacent_right
+                            elif adjacent_second == 1:
+                                adjacent_one = adjacent_right
+                            else:
+                                adjacent_two = adjacent_right
+                            (
+                                planning_coordinate_zero,
+                                planning_coordinate_one,
+                                planning_coordinate_two,
+                            ) = _cubic_transformed_ideal_coordinates(
+                                workspace,
+                                adjacent_basis,
+                                adjacent_transforms,
+                                adjacent_transform_row,
+                                adjacent_zero,
+                                adjacent_one,
+                                adjacent_two,
+                            )
+                            planning_adjacent_norm = _cubic_norm_form_value(
+                                workspace,
+                                planning_coordinate_zero,
+                                planning_coordinate_one,
+                                planning_coordinate_two,
+                            )
+                            if planning_adjacent_norm < 0:
+                                planning_adjacent_norm = -planning_adjacent_norm
+                            planning_candidate_is_smooth = _cubic_plan_smooth_norm(
+                                workspace,
+                                group_count,
+                                planning_adjacent_norm,
+                            )
+                            if planning_candidate_is_smooth:
+                                adjacent_score += 1
+                            adjacent_direction += 1
+                        if adjacent_score > adjacent_best_score:
+                            adjacent_best_score = adjacent_score
+                            adjacent_best_pair = adjacent_pair
+                        adjacent_pair += 1
+                    workspace[factor_base + 9] = adjacent_best_pair + 1
             adjacent_factor_index += 1
 
         # If the tiny order shell did not already expose a unit, follow
@@ -4796,11 +5365,11 @@ def certified_complex_cubic_class_group_v1(
         # and transform resources; unused capacity must not tax every FLINT
         # reduction or perturb the kernel basis with artificial zero rows.
         relation_capacity: uint64 = (
-            group_count + 62 + 4 * adjacent_ideal_count + 4 * compound_pair_count
+            group_count + 62 + adjacent_candidate_count + 4 * compound_pair_count
         )
         if not unit_found:
             relation_capacity = (
-                group_count + 171 + 4 * adjacent_ideal_count + 4 * compound_pair_count
+                group_count + 171 + adjacent_candidate_count + 4 * compound_pair_count
             )
         if relation_capacity > _CUBIC_MAX_RELATIONS:
             return False
@@ -4947,70 +5516,100 @@ def certified_complex_cubic_class_group_v1(
                 )
                 adjacent_basis = power_base
                 adjacent_transform_row = 3 * adjacent_factor_index
-                admission_pair = adjacent_pair_code - 1
-                adjacent_first = 0
-                adjacent_second = 1
-                if admission_pair == 1:
-                    adjacent_second = 2
-                elif admission_pair == 2:
-                    adjacent_first = 1
-                    adjacent_second = 2
-                adjacent_direction = 0
-                while adjacent_direction < 4:
-                    adjacent_left = 1
-                    adjacent_right = 0
-                    if adjacent_direction == 1:
-                        adjacent_left = 0
-                        adjacent_right = 1
-                    elif adjacent_direction == 2:
-                        adjacent_right = 1
-                    elif adjacent_direction == 3:
-                        adjacent_left = -1
-                        adjacent_right = 1
-                    adjacent_zero = 0
-                    adjacent_one = 0
-                    adjacent_two = 0
-                    if adjacent_first == 0:
-                        adjacent_zero = adjacent_left
-                    elif adjacent_first == 1:
-                        adjacent_one = adjacent_left
-                    else:
-                        adjacent_two = adjacent_left
-                    if adjacent_second == 0:
-                        adjacent_zero = adjacent_right
-                    elif adjacent_second == 1:
-                        adjacent_one = adjacent_right
-                    else:
-                        adjacent_two = adjacent_right
+                if workspace[factor_base + 8] == 1:
                     (
-                        coordinate_zero,
-                        coordinate_one,
-                        coordinate_two,
-                    ) = _cubic_transformed_ideal_coordinates(
+                        next_relation_count,
+                        admitted_ellipsoid_count,
+                    ) = _cubic_append_reduced_ideal_ellipsoid(
                         workspace,
                         adjacent_basis,
                         adjacent_transforms,
                         adjacent_transform_row,
-                        adjacent_zero,
-                        adjacent_one,
-                        adjacent_two,
-                    )
-                    next_relation_count = _cubic_append_smooth_principal_relation(
-                        workspace,
+                        adjacent_ellipsoid_parameters,
+                        adjacent_factor_index,
                         relation_candidates,
                         relation_elements,
                         relation_count,
                         relation_capacity,
                         factor_count,
                         group_count,
-                        coordinate_zero,
-                        coordinate_one,
-                        coordinate_two,
                     )
-                    if next_relation_count > relation_capacity:
+                    if (
+                        next_relation_count > relation_capacity
+                        or admitted_ellipsoid_count
+                        != fmpz_matrix_entry(
+                            adjacent_ellipsoid_parameters,
+                            adjacent_factor_index,
+                            10,
+                        )
+                    ):
                         return False
                     relation_count = next_relation_count
-                    adjacent_direction += 1
+                else:
+                    admission_pair = adjacent_pair_code - 1
+                    adjacent_first = 0
+                    adjacent_second = 1
+                    if admission_pair == 1:
+                        adjacent_second = 2
+                    elif admission_pair == 2:
+                        adjacent_first = 1
+                        adjacent_second = 2
+                    adjacent_direction: uint64 = 0
+                    while adjacent_direction < 4:
+                        adjacent_left = 1
+                        adjacent_right = 0
+                        if adjacent_direction == 1:
+                            adjacent_left = 0
+                            adjacent_right = 1
+                        elif adjacent_direction == 2:
+                            adjacent_right = 1
+                        elif adjacent_direction == 3:
+                            adjacent_left = -1
+                            adjacent_right = 1
+                        adjacent_zero = 0
+                        adjacent_one = 0
+                        adjacent_two = 0
+                        if adjacent_first == 0:
+                            adjacent_zero = adjacent_left
+                        elif adjacent_first == 1:
+                            adjacent_one = adjacent_left
+                        else:
+                            adjacent_two = adjacent_left
+                        if adjacent_second == 0:
+                            adjacent_zero = adjacent_right
+                        elif adjacent_second == 1:
+                            adjacent_one = adjacent_right
+                        else:
+                            adjacent_two = adjacent_right
+                        (
+                            coordinate_zero,
+                            coordinate_one,
+                            coordinate_two,
+                        ) = _cubic_transformed_ideal_coordinates(
+                            workspace,
+                            adjacent_basis,
+                            adjacent_transforms,
+                            adjacent_transform_row,
+                            adjacent_zero,
+                            adjacent_one,
+                            adjacent_two,
+                        )
+                        next_relation_count = _cubic_append_smooth_principal_relation(
+                            workspace,
+                            relation_candidates,
+                            relation_elements,
+                            relation_count,
+                            relation_capacity,
+                            factor_count,
+                            group_count,
+                            coordinate_zero,
+                            coordinate_one,
+                            coordinate_two,
+                        )
+                        if next_relation_count > relation_capacity:
+                            return False
+                        relation_count = next_relation_count
+                        adjacent_direction += 1
             adjacent_factor_index += 1
 
         compound_plan_index = 0

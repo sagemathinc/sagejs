@@ -99,6 +99,23 @@ $G$, $\gamma$, $\pi$, and every logarithm are rational or dyadic and rounded in
 the direction that makes the inequality harder to satisfy. If no smaller $C$
 is proved, the program retains the unconditional Minkowski cutoff.
 
+The lower bound for Euler's constant is itself elementary. If
+$a_n=H_n-\log n$, then
+
+$$
+a_n-\gamma
+=\sum_{k\ge n}\left(\log(1+1/k)-\frac1{k+1}\right)
+<\sum_{k\ge n}\frac1{2k(k+1)}
+=\frac1{2n}.
+$$
+
+The strict termwise inequality follows by differentiating both sides of
+$\log(1+x)-x/(1+x)<x^2/(2(1+x))$ for $x>0$. Thus the native program uses the
+fully rational/dyadic enclosure
+$\gamma>H_{32}-\log 32-1/64$. This is tight enough to retain genuinely
+field-specific cutoffs near the theorem boundary without importing a decimal
+table or trusting binary floating-point comparisons.
+
 The factor base contains every degree-one prime ideal needed up to the selected
 proved bound.
 This suffices in degree three. An inert degree-three prime ideal is $(p)$ and
@@ -143,6 +160,32 @@ norm and containment checks above. A rational-prime row $(p)$ is recorded only
 when every prime ideal above $p$ is represented; in particular, a retained
 degree-one factor of splitting type $(1,2)$ does not create the false relation
 $(p)=P_1$ when its norm-$p^2$ companion lies outside the selected factor base.
+
+For an unramified prime of splitting type $(1,2)$, the native program also
+constructs the complementary norm-$p^2$ ideal explicitly. If $P$ is the
+degree-one prime, it solves for the normalized residue idempotent $e$ with
+$e=1$ in the complementary factor and $eP=0$ modulo $p$, and sets
+$Q=p\mathcal O+\mathbf Z e$. It accepts this lattice only after exact HNF,
+$\det Q=p^2$, and the lattice identity $PQ=p\mathcal O$ have all been checked.
+
+The candidate schedule in $Q$ is a finite exact version of PARI's reduced-ideal
+ellipsoid. Let $B$ be the integer embedding approximation after LLL and let
+$G=BB^{\mathsf T}$. Depending on whether the first reduced row is scalar, the
+program uses the same $\max(8G_{00},2G_{11})$ or
+$\min(8G_{00},2G_{11})$ bound as PARI. From
+
+$$
+x^{\mathsf T}Gx\le M
+\quad\Longrightarrow\quad
+x_i^2\le M(G^{-1})_{ii}
+=M\frac{\operatorname{cof}_{ii}(G)}{\det G},
+$$
+
+it derives a checked finite coordinate box, then retains exactly the primitive,
+nonscalar vectors inside the ellipsoid, modulo sign. The approximate embedding
+therefore influences only which candidates are proposed. Exact norm evaluation,
+smoothness, ideal containment, and the independent proof replay remain the
+correctness authority for every admitted relation.
 
 Multiplier batches are adaptive. The host invokes the same closed native
 program first with no compound multiplier, then with prefixes of one, two, and
