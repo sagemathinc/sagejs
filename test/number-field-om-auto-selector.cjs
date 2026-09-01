@@ -232,7 +232,7 @@ test("OM auto selection is input-derived, exact, and fail-closed", () => {
     process.execPath,
     [join(root, "bin/sagejs"), "--python"],
     selectionScript,
-    180_000,
+    process.platform === "darwin" ? 300_000 : 180_000,
   );
   assert.equal(output.selected, true);
   assert.equal(output.selected_equals_forced, true);

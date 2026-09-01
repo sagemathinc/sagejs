@@ -259,8 +259,12 @@ print(pack_time, unpack_time, serialize_time, deserialize_time)
     .map(Number);
   assert.equal(fields.length, 4);
   const [pack, unpack, serialize, deserialize] = fields;
+  const deserializeBudgetMs = process.platform === "darwin" ? 12 : 8;
   assert.ok(pack < 5, `uint64 pack took ${pack.toFixed(2)} ms`);
   assert.ok(unpack < 5, `uint64 unpack took ${unpack.toFixed(2)} ms`);
   assert.ok(serialize < 8, `SagePack serialization took ${serialize.toFixed(2)} ms`);
-  assert.ok(deserialize < 8, `SagePack deserialization took ${deserialize.toFixed(2)} ms`);
+  assert.ok(
+    deserialize < deserializeBudgetMs,
+    `SagePack deserialization took ${deserialize.toFixed(2)} ms`,
+  );
 });

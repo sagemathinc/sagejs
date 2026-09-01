@@ -60,8 +60,9 @@ from sagejs.numerics import (
     plan,
     root_problem,
 )
+from sagejs.numerics.frontends import create_frontend_registry, matlab_fzero_intent
 
-assert capabilities()["schema_version"] == 2
+assert capabilities()["schema_version"] == 3
 assert capabilities("roots")["schema_version"] == 1
 assert {item["code"] for item in diagnostic_registry()} >= {
     "invalid_bracket", "validation_failed", "trace_truncated"
@@ -95,11 +96,21 @@ assert len(answer.animate().frames) >= 2
 assert calls[0] == presentation_calls
 assert answer.plot().provenance["metadata"]["callback_reevaluated"] is False
 assert answer.animate().to_dict()["metadata"]["computed_evidence_only"] is True
-assert "fzero" in answer.code("matlab")
-assert "FindRoot" in answer.code("wolfram")
+wrapped = create_frontend_registry().execute(matlab_fzero_intent(
+    lambda x: math.cos(x) - x,
+    [0, 1],
+    {"Method": "brent"},
+    expression="cos(x) - x",
+))
+assert "fzero" in wrapped.to_code("matlab")
+assert "FindRoot" in wrapped.to_code("wolfram")
+try:
+    answer.to_code("matlab")
+    raise AssertionError("canonical result unexpectedly retained frontend intent")
+except NotImplementedError:
+    pass
 assert answer.to_plot_spec().to_dict() == answer.plot().to_dict()
 assert answer.to_animation().to_dict() == answer.animate().to_dict()
-assert answer.to_code("matlab") == answer.code("matlab")
 assert "### brent scalar root" in answer.to_markdown()
 assert "validated_approximate" in answer.to_markdown()
 assert "(passed)" in answer.to_markdown()
@@ -243,7 +254,10 @@ test("documented schemas and exhaustive surface remain versioned", () => {
       "utf8",
     ),
   );
-  assert.equal(surface.operations.find(({ id }) => id === "scalar_root").status, "implemented");
+  assert.equal(
+    surface.capability_operations.find(({ id }) => id === "roots.scalar_root").status,
+    "implemented",
+  );
   run(process.execPath, [join(root, "scripts/check-numerical-surface.cjs")]);
 });
 

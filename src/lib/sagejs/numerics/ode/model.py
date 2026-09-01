@@ -243,6 +243,20 @@ class OdeResourceBudget(ResourceBudget):
         record.update(self._ode_values)
         return record
 
+    @classmethod
+    def domain_capability_record(cls) -> dict[str, JSONValue]:
+        """Register ODE-only hard budgets in the common capability document."""
+        return {
+            "ode.initial_value_problem": {
+                "max_steps": "hard_attempt_limit_alias_of_max_iterations",
+                "max_output_points": "hard_retained_output_limit",
+                "max_event_iterations": "hard_per_event_localization_limit",
+                "max_validation_evaluations": "hard_reference_callback_limit",
+                "max_linear_solve_failures": "hard_stiff_solver_failure_limit",
+                "max_workspace_bytes": "hard_logical_workspace_limit",
+            }
+        }
+
 
 class OdeProblem(NumericalProblem):
     """An immutable binary64 initial-value problem with live callbacks."""
@@ -297,7 +311,7 @@ class OdeProblem(NumericalProblem):
             "invariants": [item.descriptor() for item in invariants],
             "reference_solution": {
                 "kind": "opaque_callback" if reference is not None else "none",
-                "replayable": False,
+                "replayable": reference is None,
                 "atol": self._reference_atol,
                 "rtol": self._reference_rtol,
             },

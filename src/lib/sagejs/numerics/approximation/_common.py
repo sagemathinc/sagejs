@@ -69,9 +69,9 @@ class ApproximationExecution:
 
     def step(self) -> None:
         self.check()
-        self.iterations += 1
-        if self.iterations > self.problem.resource_budget.max_iterations:
+        if self.iterations >= self.problem.resource_budget.max_iterations:
             raise ApproximationStopped("maximum_iterations")
+        self.iterations += 1
 
     def evaluate(
         self,

@@ -90,32 +90,77 @@ function corpusFixture() {
   };
 }
 
-function adapterSource() {
+function adapterSource(subject, externalExecution = "async", mutateInput = false) {
   return `"use strict";
+const { spawn, spawnSync } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
+let subjectProcess = null;
+let repositoryRoot = null;
+const external = ${JSON.stringify(subject.kind !== "node")};
+const externalExecution = ${JSON.stringify(externalExecution)};
+const mutateInput = ${JSON.stringify(mutateInput)};
+const childSource =
+  "const held = Buffer.alloc(64 * 1024 * 1024, 1); " +
+  "setTimeout(() => process.exit(0), 1500)";
+
+async function exerciseExternalSubject() {
+  if (!external) return;
+  if (externalExecution === "sync") {
+    const result = spawnSync(process.execPath, ["-e", childSource], {
+      stdio: "ignore", windowsHide: true,
+    });
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw new Error("synchronous subject fixture failed");
+    return;
+  }
+  await new Promise((resolve, reject) => {
+    subjectProcess = spawn(process.execPath, ["-e", childSource], {
+      stdio: "ignore", windowsHide: true,
+    });
+    subjectProcess.once("error", reject);
+    subjectProcess.once("close", (status) => {
+      subjectProcess = null;
+      if (status === 0) resolve();
+      else reject(new Error("asynchronous subject fixture failed"));
+    });
+  });
+}
+
 module.exports = {
   protocol: "sagejs.numerical-qualification-adapter/v1",
   async initialize(context) {
+    repositoryRoot = context.root;
     return {
-      subject: { kind: "node", name: "node", version: process.version, engine: null },
+      subject: ${JSON.stringify(subject)},
       capability_ids: ["fixture.answer"],
     };
   },
   async runCase(sample) {
+    if (mutateInput) {
+      fs.appendFileSync(path.join(repositoryRoot, "source.txt"), "adapter mutation\\n");
+    }
+    await exerciseExternalSubject();
     return {
       outcome: { kind: "success", code: null },
       values: { result: sample.input.value, oracle: 42 },
       metrics: { phases_ms: { kernel: 0.25 }, counters: { evaluations: 1 } },
     };
   },
+  async close() {
+    if (subjectProcess !== null) subjectProcess.kill();
+  },
 };
 `;
 }
 
-function capabilityDraft(status = "available") {
+function capabilityDraft(status = "available", subject = {
+  kind: "node", name: "node", version: process.version, engine: null,
+}) {
   return {
     schema: CAPABILITY_SCHEMA,
     backend: { id: "fixture-backend", version: "1" },
-    subject: { kind: "node", name: "node", version: process.version, engine: null },
+    subject,
     capabilities: [{
       id: "fixture.answer",
       status,
@@ -137,14 +182,25 @@ function commitAll(root, message) {
   git(root, "commit", "-q", "-m", message);
 }
 
-function makeWorkspace({ capabilityStatus = "available" } = {}) {
+function makeWorkspace({
+  capabilityStatus = "available",
+  subject = { kind: "node", name: "node", version: process.version, engine: null },
+  externalExecution = "async",
+  mutateInput = false,
+} = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-numerical-evidence-"));
   initializeGit(root);
   fs.writeFileSync(path.join(root, "source.txt"), "exact fixture source\n");
   fs.writeFileSync(path.join(root, "artifact.bin"), Buffer.from([0, 1, 2, 3, 255]));
-  fs.writeFileSync(path.join(root, "adapter.cjs"), adapterSource());
+  fs.writeFileSync(
+    path.join(root, "adapter.cjs"),
+    adapterSource(subject, externalExecution, mutateInput),
+  );
   writeJson(path.join(root, "fixture.corpus.json"), corpusFixture());
-  writeJson(path.join(root, "capability-draft.json"), capabilityDraft(capabilityStatus));
+  writeJson(
+    path.join(root, "capability-draft.json"),
+    capabilityDraft(capabilityStatus, subject),
+  );
   commitAll(root, "fixture inputs");
   const manifest = bindCapabilityDraft({
     root,
@@ -238,6 +294,8 @@ function policyFor(receipt, rows = [{ id: "measured", platform: receipt.platform
       required_program_phases: ["P1"],
       required_case_layers: ["differential-oracle"],
       required_capabilities: ["fixture.answer"],
+      required_memory_scope: row.required_memory_scope ??
+        (receipt.runtime.subject.kind === "node" ? "collector_process" : "process_tree"),
       required_artifacts: [{
         name: "core",
         sha256: receipt.artifacts.find((item) => item.name === "core").sha256,
@@ -280,6 +338,25 @@ test("published wire schemas are strict duplicate-free JSON with matching identi
     assert.equal(schema.properties.schema.const, identity);
     assert.equal(schema.additionalProperties, false);
   }
+  const report = parseJsonText(
+    fs.readFileSync(path.join(directory, "matrix-report.schema.json"), "utf8"),
+    "matrix-report.schema.json",
+  );
+  for (const definition of ["receiptSummary", "bindings", "caseMetrics", "metrics"]) {
+    assert.equal(report.$defs[definition].additionalProperties, false, definition);
+    assert.ok(report.$defs[definition].required.length > 0, definition);
+  }
+  const row = report.properties.rows.items.properties;
+  assert.equal(row.receipt.oneOf[0].$ref, "#/$defs/receiptSummary");
+  assert.equal(row.bindings.oneOf[0].$ref, "#/$defs/bindings");
+  assert.equal(row.metrics.oneOf[0].$ref, "#/$defs/metrics");
+  assert.deepEqual(
+    report.$defs.metrics.required,
+    [
+      "startup", "total_wall_ms", "rss_peak_sampled_bytes",
+      "process_max_rss_bytes", "peak_memory", "payload", "cases",
+    ],
+  );
 });
 
 test("portable harness self-test executes failure, deterministic fuzz, and metamorphic cases", async (t) => {
@@ -307,6 +384,17 @@ test("portable harness self-test executes failure, deterministic fuzz, and metam
     "startup must stop at adapter readiness rather than include the case campaign",
   );
   assert(receipt.metrics.payload.artifact_installed_bytes > 0);
+  assert.deepEqual(
+    receipt.cases[0].samples[0].metrics.peak_memory,
+    {
+      bytes: receipt.cases[0].samples[0].metrics.peak_memory.bytes,
+      measurement_method: "node-process-rss-boundary-v1",
+      measurement_scope: "collector_process",
+      authenticated_by: "qualification-collector",
+      sample_interval_ms: 5,
+    },
+  );
+  assert.equal(receipt.cases[0].metrics.peak_memory.measurement_scope, "collector_process");
   assert.equal(verifyReceipt(receipt, {
     root: workspace.root,
     requireClean: true,
@@ -399,6 +487,25 @@ test("stale source, artifact, adapter, and capability bindings prevent collectio
   }
 });
 
+test("collection rejects an adapter that changes a bound input while executing", async (t) => {
+  const workspace = makeWorkspace({ mutateInput: true });
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  await assert.rejects(
+    () => collectFixture(workspace),
+    /capability manifest\.bindings|changed during collection/,
+  );
+});
+
+test("collection requires a clean checkout before adapter code runs", async (t) => {
+  const workspace = makeWorkspace();
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(workspace.root, "untracked.txt"), "not a release candidate\n");
+  await assert.rejects(
+    () => collectFixture(workspace),
+    /requires a clean candidate checkout/,
+  );
+});
+
 test("unavailable or unobserved capabilities produce failed receipts without samples", async (t) => {
   const workspace = makeWorkspace({ capabilityStatus: "unavailable" });
   t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
@@ -422,6 +529,20 @@ test("matrix reports preserve missing evidence as missing and never infer metric
     program_phases: ["P1"],
     case_layers: ["differential-oracle"],
   });
+  assert.equal(passing.rows[0].required_memory_scope, "collector_process");
+  assert.equal(
+    passing.rows[0].metrics.peak_memory.authenticated_by,
+    "qualification-collector",
+  );
+
+  const wrongScopePolicy = policyFor(receipt);
+  wrongScopePolicy.rows[0].required_memory_scope = "process_tree";
+  const wrongScope = buildReport(
+    wrongScopePolicy,
+    [{ path: "measured.receipt.json", value: receipt }],
+  );
+  assert.equal(wrongScope.status, "failed");
+  assert.match(wrongScope.rows[0].reasons.join("\n"), /required process_tree memory evidence/);
 
   const missingPlatform = receipt.platform.id === "windows-x64" ? "linux-x64" : "windows-x64";
   const incomplete = buildReport(policyFor(receipt, [
@@ -442,6 +563,64 @@ test("matrix reports preserve missing evidence as missing and never infer metric
   ]);
   assert.equal(duplicate.status, "failed");
   assert.match(duplicate.rows[0].reasons[0], /must be unambiguous/);
+});
+
+test("memory evidence is authenticated by the collector, never by adapters", async (t) => {
+  const workspace = makeWorkspace();
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  const receipt = await collectFixture(workspace);
+  const forged = structuredClone(receipt);
+  forged.cases[0].samples[0].metrics.peak_memory.authenticated_by = "adapter";
+  forged.id = contentId(receiptCore(forged));
+  assert.throws(
+    () => verifyReceipt(forged, { historical: true }),
+    /authenticated_by.*qualification-collector/,
+  );
+
+  const impossible = structuredClone(receipt);
+  impossible.cases[0].samples[0].metrics.peak_memory.measurement_scope =
+    "browser_heap";
+  impossible.id = contentId(receiptCore(impossible));
+  assert.throws(
+    () => verifyReceipt(impossible, { historical: true }),
+    /measurement_scope.*must be collector_process/,
+  );
+});
+
+test("external subjects receive live authenticated process-tree memory evidence", async (t) => {
+  const subject = { kind: "sea", name: "fixture-sea", version: "1", engine: null };
+  const workspace = makeWorkspace({ subject });
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  const collectorRss = process.memoryUsage().rss;
+  const receipt = await collectFixture(workspace);
+  const memory = receipt.cases[0].metrics.peak_memory;
+  const methods = {
+    linux: "linux-procfs-process-tree-sampled-v1",
+    darwin: "macos-ps-process-tree-sampled-v1",
+    win32: "windows-cim-process-tree-sampled-v1",
+  };
+  assert.equal(memory.measurement_scope, "process_tree");
+  assert.equal(memory.measurement_method, methods[process.platform]);
+  assert.equal(memory.authenticated_by, "qualification-collector");
+  assert(
+    memory.bytes > collectorRss + 32 * 1024 * 1024,
+    "the authenticated peak must include the touched 64 MiB child allocation",
+  );
+  const report = buildReport(
+    policyFor(receipt),
+    [{ path: "sea.receipt.json", value: receipt }],
+  );
+  assert.equal(report.status, "passed");
+});
+
+test("synchronous external execution cannot fabricate process-tree evidence", async (t) => {
+  const subject = { kind: "npm", name: "fixture-npm", version: "1", engine: null };
+  const workspace = makeWorkspace({ subject, externalExecution: "sync" });
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  await assert.rejects(
+    () => collectFixture(workspace),
+    /synchronous or remote execution cannot qualify process-tree memory/,
+  );
 });
 
 test("phase and campaign contracts reject unauditable fuzz and matrix coverage", async (t) => {

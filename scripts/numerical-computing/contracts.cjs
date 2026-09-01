@@ -50,7 +50,34 @@ const WORKLOAD_TIERS = Object.freeze([
   "substantial-local",
   "out-of-scope",
 ]);
-const SUBJECT_KINDS = Object.freeze(["node", "sea", "browser", "worker", "other"]);
+const SUBJECT_KINDS = Object.freeze([
+  "node",
+  "npm",
+  "sea",
+  "browser",
+  "worker",
+  "other",
+]);
+const MEMORY_SCOPES = Object.freeze([
+  "collector_process",
+  "process_tree",
+  "browser_heap",
+]);
+const MEMORY_METHODS = Object.freeze([
+  "node-process-rss-boundary-v1",
+  "linux-procfs-process-tree-sampled-v1",
+  "macos-ps-process-tree-sampled-v1",
+  "windows-cim-process-tree-sampled-v1",
+  "browser-performance-memory-v1",
+]);
+const MEMORY_METHOD_SCOPES = Object.freeze({
+  "node-process-rss-boundary-v1": "collector_process",
+  "linux-procfs-process-tree-sampled-v1": "process_tree",
+  "macos-ps-process-tree-sampled-v1": "process_tree",
+  "windows-cim-process-tree-sampled-v1": "process_tree",
+  "browser-performance-memory-v1": "browser_heap",
+});
+const MEMORY_AUTHORITY = "qualification-collector";
 const CHECK_KINDS = Object.freeze([
   "deep-equal",
   "approximate",
@@ -443,7 +470,7 @@ function validateMatrixPolicy(value) {
   const rows = array("matrix policy.rows", value.rows, (label, row) => {
     exactKeys(label, row, [
       "id", "match", "required_program_phases", "required_case_layers",
-      "required_capabilities", "required_artifacts",
+      "required_capabilities", "required_artifacts", "required_memory_scope",
     ]);
     return {
       id: nonemptyString(`${label}.id`, row.id),
@@ -466,6 +493,9 @@ function validateMatrixPolicy(value) {
       required_artifacts: array(`${label}.required_artifacts`, row.required_artifacts,
         validateArtifactBinding, { minimum: 1, uniqueBy: (item) => item.name })
         .sort((left, right) => left.name.localeCompare(right.name)),
+      required_memory_scope: enumeration(
+        `${label}.required_memory_scope`, row.required_memory_scope, MEMORY_SCOPES,
+      ),
     };
   }, { minimum: 1, uniqueBy: (item) => item.id });
   const matches = new Set();
@@ -490,6 +520,10 @@ module.exports = {
   CASE_LAYERS,
   CHECK_KINDS,
   CORPUS_SCHEMA,
+  MEMORY_AUTHORITY,
+  MEMORY_METHODS,
+  MEMORY_METHOD_SCOPES,
+  MEMORY_SCOPES,
   POLICY_SCHEMA,
   PROGRAM_PHASES,
   RECEIPT_SCHEMA,

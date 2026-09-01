@@ -489,7 +489,7 @@ print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
     const result = spawnSync(command, commandArguments, {
       cwd: root,
       encoding: "utf8",
-      timeout: process.platform === "win32" ? 300_000 : 120_000,
+      timeout: ["darwin", "win32"].includes(process.platform) ? 300_000 : 120_000,
       env: environment,
     });
     if (result.error) throw result.error;

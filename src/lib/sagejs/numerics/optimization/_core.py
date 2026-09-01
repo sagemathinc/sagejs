@@ -699,7 +699,7 @@ def problem_record(
         method=method,
         derivative_record={
             "kind": "explicit_callback" if derivative is not None else "none",
-            "replayable": False,
+            "replayable": derivative is None,
         },
         constraints=constraints,
         resource_budget=budget,
@@ -734,6 +734,24 @@ class OptimizationResult(NumericalResult):
         self._optimization_payload = dict(domain_payload)
         executed_backend = self._optimization_payload.get("backend_identity")
         external_execution = isinstance(executed_backend, str)
+        planned_kind = plan.execution_target["implementation_kind"]
+        provenance: dict[str, Any] = {
+            "implementation": (
+                executed_backend
+                if external_execution
+                else (
+                    "sagejs.numerics.optimization"
+                    if planned_kind == "ordinary_python"
+                    else plan.backend
+                )
+            ),
+            "source_transparent": planned_kind == "ordinary_python",
+            "solver_status": status,
+        }
+        if external_execution:
+            provenance["implementation_kind"] = "external_library_wasm"
+        elif planned_kind == "ordinary_python":
+            provenance["implementation_kind"] = "ordinary_python"
         super().__init__(
             problem,
             plan,
@@ -747,18 +765,7 @@ class OptimizationResult(NumericalResult):
             elapsed_ms=elapsed_ms,
             trace=trace,
             measurements=measurements,
-            provenance={
-                "implementation": (
-                    executed_backend
-                    if external_execution
-                    else "sagejs.numerics.optimization"
-                ),
-                "implementation_kind": (
-                    "external_library_wasm" if external_execution else "ordinary_python"
-                ),
-                "source_transparent": not external_execution,
-                "solver_status": status,
-            },
+            provenance=provenance,
             domain_payload=domain_payload,
         )
 

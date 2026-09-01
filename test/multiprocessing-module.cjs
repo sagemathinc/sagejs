@@ -134,6 +134,11 @@ test("warm Pool.map tasks execute concurrently", async (t) => {
 test("async pool results support callbacks, errors, and timeouts", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());
+  // Worker startup and shutdown are substantially slower on native Windows,
+  // especially when the integration runner has another file active. The
+  // 10 ms probe below remains the timeout-semantics assertion; these longer
+  // deadlines only bound operations that are expected to complete.
+  const completionTimeout = process.platform === "win32" ? 10 : 2;
 
   const result = await session.evaluate(
     [
@@ -151,6 +156,7 @@ test("async pool results support callbacks, errors, and timeouts", async (t) => 
       "    callbacks.append(value)",
       "def record_error(error):",
       "    errors.append(type(error).__name__)",
+      `completion_timeout = ${completionTimeout}`,
       "p = Pool(2)",
       "started = time()",
       "one = p.apply_async(sleep, (0.15,), callback=record)",
@@ -163,18 +169,18 @@ test("async pool results support callbacks, errors, and timeouts", async (t) => 
       "    one.get(0.01)",
       "except TimeoutError:",
       "    print('timeout')",
-      "print(one.get(2), one.ready(), one.successful(), callbacks)",
+      "print(one.get(completion_timeout), one.ready(), one.successful(), callbacks)",
       "mapped = p.map_async(square, [2, 3, 4], callback=record)",
       "starred = p.starmap_async(pow, [(2, 5), (3, 3)])",
       "bad = p.apply_async(quotient, (0,), error_callback=record_error)",
       "missing_result = p.apply_async(missing, ('x',))",
-      "print(mapped.get(2), starred.get(2))",
+      "print(mapped.get(completion_timeout), starred.get(completion_timeout))",
       "try:",
-      "    bad.get(2)",
+      "    bad.get(completion_timeout)",
       "except ZeroDivisionError as error:",
       "    print(type(error).__name__, errors)",
       "try:",
-      "    missing_result.get(2)",
+      "    missing_result.get(completion_timeout)",
       "except KeyError as error:",
       "    print(type(error).__name__)",
       "p.close()",

@@ -195,10 +195,12 @@ sharding, malformed executors, and a real bounded threaded adapter.
 
 This lane does **not** claim Windows x64, Linux ARM64, macOS ARM64, browser
 worker, SEA, or npm qualification. Those require receipts bound to the final
-integrated candidate. Integration must also add the module to the numerical
-package graph, strict-Python inventory, central exports/capabilities, and the
-release evidence runner; those shared files are intentionally outside this
-lane's ownership.
+integrated candidate. The generic scheduler is now discoverable as
+`sweeps.parameter_sweep`; its capability record distinguishes hard serialized
+input/result/evaluation/trace/concurrency limits from cooperative memory and
+cancellation accounting. It explicitly reports callback-depth and raw
+allocation-byte limits as unsupported rather than implying process-wide memory
+enforcement.
 
 Run the focused overhead benchmark with:
 

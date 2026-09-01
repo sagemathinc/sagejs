@@ -1,6 +1,7 @@
 "use strict";
 
 const { randomUUID } = require("node:crypto");
+const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -31,6 +32,10 @@ const {
 } = require("./common.cjs");
 const {
   ADAPTER_PROTOCOL,
+  MEMORY_AUTHORITY,
+  MEMORY_METHODS,
+  MEMORY_METHOD_SCOPES,
+  MEMORY_SCOPES,
   RECEIPT_SCHEMA,
   createCapabilityManifest,
   validateAdapterInitialization,
@@ -40,6 +45,7 @@ const {
 } = require("./contracts.cjs");
 
 const MAX_OBSERVATION_BYTES = 16 * 1024 * 1024;
+const PROCESS_TREE_SUBJECTS = new Set(["npm", "sea", "browser", "worker"]);
 
 function elapsedMilliseconds(start) {
   return Number(process.hrtime.bigint() - start) / 1e6;
@@ -72,6 +78,55 @@ function inputBindings({ root, corpusPath, adapterPath, artifactSpecifications }
   const adapter = digestPath(root, adapterPath, "adapter path");
   const artifacts = parseArtifactSpecifications(root, artifactSpecifications);
   return { corpusBinding, corpus, sourceBundle, adapter, artifacts };
+}
+
+function collectionBindings({
+  root,
+  corpusPath,
+  adapterPath,
+  capabilityPath,
+  artifactSpecifications,
+}) {
+  const inputs = inputBindings({ root, corpusPath, adapterPath, artifactSpecifications });
+  const capabilityBinding = digestPath(root, capabilityPath, "capability manifest path");
+  const manifest = validateCapabilityManifest(
+    readJson(path.join(root, capabilityBinding.path)), inputs.corpus,
+  );
+  assertManifestBindings(manifest, inputs);
+  return {
+    inputs,
+    capabilityBinding,
+    manifest,
+    repository: repositoryIdentity(root),
+  };
+}
+
+function assertCleanCollectionCandidate(binding) {
+  if (!binding.repository.clean) {
+    fail("repository", "qualification collection requires a clean candidate checkout");
+  }
+}
+
+function assertStableCollectionBindings(before, after) {
+  if (canonicalJson(after.inputs) !== canonicalJson(before.inputs)) {
+    fail(
+      "qualification inputs",
+      "corpus, source, adapter, or artifact bytes changed during collection",
+    );
+  }
+  if (canonicalJson(after.capabilityBinding) !== canonicalJson(before.capabilityBinding) ||
+      canonicalJson(after.manifest) !== canonicalJson(before.manifest)) {
+    fail("capability manifest", "bytes or validated identity changed during collection");
+  }
+  if (!after.repository.clean ||
+      after.repository.commit !== before.repository.commit ||
+      after.repository.tree !== before.repository.tree ||
+      after.repository.status_sha256 !== before.repository.status_sha256) {
+    fail(
+      "repository",
+      "must remain clean at the exact candidate commit and tree throughout collection",
+    );
+  }
 }
 
 function bindCapabilityDraft({
@@ -235,7 +290,145 @@ function maxRssBytes() {
   return Number.isFinite(value) && value > 0 ? value * 1024 : null;
 }
 
-async function measuredSample(adapter, caseContract, kind, index) {
+function processTreeSnapshot(rows, rootPid = process.pid) {
+  const descendants = new Set([rootPid]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const row of rows) {
+      if (!descendants.has(row.pid) && descendants.has(row.ppid)) {
+        descendants.add(row.pid);
+        changed = true;
+      }
+    }
+  }
+  let bytes = 0;
+  let found = false;
+  for (const row of rows) {
+    if (descendants.has(row.pid)) {
+      bytes += row.bytes;
+      found = true;
+    }
+  }
+  return found ? { bytes, descendants: descendants.size - 1 } : null;
+}
+
+function linuxProcessRows() {
+  const rows = [];
+  for (const entry of fs.readdirSync("/proc")) {
+    if (!/^[1-9][0-9]*$/.test(entry)) continue;
+    try {
+      const stat = fs.readFileSync(`/proc/${entry}/stat`, "utf8");
+      const fields = stat.slice(stat.lastIndexOf(")") + 2).trim().split(/\s+/);
+      const status = fs.readFileSync(`/proc/${entry}/status`, "utf8");
+      const match = /^VmRSS:\s+([0-9]+)\s+kB$/m.exec(status);
+      if (fields.length >= 2 && match !== null) {
+        rows.push({ pid: Number(entry), ppid: Number(fields[1]), bytes: Number(match[1]) * 1024 });
+      }
+    } catch {
+      // Processes may exit between directory enumeration and measurement.
+    }
+  }
+  return rows;
+}
+
+function unixPsRows() {
+  const result = spawnSync("ps", ["-axo", "pid=,ppid=,rss="], {
+    encoding: "utf8",
+    timeout: 10_000,
+  });
+  if (result.status !== 0) return [];
+  return result.stdout.trim().split(/\r?\n/).map((line) => line.trim().split(/\s+/))
+    .filter((fields) => fields.length === 3)
+    .map(([pid, ppid, rss]) => ({
+      pid: Number(pid), ppid: Number(ppid), bytes: Number(rss) * 1024,
+    }))
+    .filter((row) => row.pid !== result.pid &&
+      [row.pid, row.ppid, row.bytes].every(Number.isSafeInteger));
+}
+
+function windowsCimRows() {
+  const command = "Get-CimInstance Win32_Process | ForEach-Object { " +
+    "\"$($_.ProcessId),$($_.ParentProcessId),$($_.WorkingSetSize)\" }";
+  const result = spawnSync("powershell.exe", [
+    "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command,
+  ], { encoding: "utf8", timeout: 15_000, windowsHide: true });
+  if (result.status !== 0) return [];
+  return result.stdout.trim().split(/\r?\n/).map((line) => line.trim().split(","))
+    .filter((fields) => fields.length === 3)
+    .map(([pid, ppid, bytes]) => ({ pid: Number(pid), ppid: Number(ppid), bytes: Number(bytes) }))
+    .filter((row) => row.pid !== result.pid &&
+      [row.pid, row.ppid, row.bytes].every(Number.isSafeInteger));
+}
+
+function processTreeRssSnapshot() {
+  if (process.platform === "linux") return processTreeSnapshot(linuxProcessRows());
+  if (process.platform === "darwin") return processTreeSnapshot(unixPsRows());
+  if (process.platform === "win32") return processTreeSnapshot(windowsCimRows());
+  return null;
+}
+
+function memoryMeasurement(subject) {
+  const processTree = PROCESS_TREE_SUBJECTS.has(subject.kind);
+  const measurement_scope = processTree ? "process_tree" : "collector_process";
+  const measurement_method = processTree
+    ? {
+      linux: "linux-procfs-process-tree-sampled-v1",
+      darwin: "macos-ps-process-tree-sampled-v1",
+      win32: "windows-cim-process-tree-sampled-v1",
+    }[process.platform]
+    : "node-process-rss-boundary-v1";
+  if (!MEMORY_SCOPES.includes(measurement_scope) ||
+      !MEMORY_METHODS.includes(measurement_method)) {
+    fail("memory measurement", `unsupported ${measurement_scope} method on ${process.platform}`);
+  }
+  const sample_interval_ms = processTree && process.platform !== "linux" ? 50 : 5;
+  const read = processTree ? processTreeRssSnapshot : () => process.memoryUsage().rss;
+  let peak = 0;
+  let error = null;
+  let descendantObserved = false;
+  const sample = () => {
+    try {
+      const observation = read();
+      if (processTree && observation?.descendants >= 1) descendantObserved = true;
+      const value = processTree ? observation?.bytes : observation;
+      if (!Number.isSafeInteger(value) || value < 0) {
+        throw new Error("memory sampler returned no authenticated measurement");
+      }
+      peak = Math.max(peak, value);
+    } catch (caught) {
+      error = caught;
+    }
+  };
+  sample();
+  if (error !== null) fail("memory measurement", error.message);
+  const timer = setInterval(sample, sample_interval_ms);
+  timer.unref();
+  return {
+    finish() {
+      clearInterval(timer);
+      sample();
+      if (error !== null) fail("memory measurement", error.message);
+      if (processTree && !descendantObserved) {
+        fail(
+          "memory measurement",
+          "external subject had no collector-descendant process during the sample; " +
+            "synchronous or remote execution cannot qualify process-tree memory",
+        );
+      }
+      return {
+        bytes: peak,
+        measurement_method,
+        measurement_scope,
+        authenticated_by: MEMORY_AUTHORITY,
+        sample_interval_ms,
+      };
+    },
+  };
+}
+
+async function measuredSample(adapter, caseContract, kind, index, subject) {
+  const authenticatedMemory = memoryMeasurement(subject);
   const rssBefore = process.memoryUsage().rss;
   let sampledPeak = rssBefore;
   const sampler = setInterval(() => {
@@ -263,6 +456,7 @@ async function measuredSample(adapter, caseContract, kind, index) {
   const wall = elapsedMilliseconds(started);
   const rssAfter = process.memoryUsage().rss;
   sampledPeak = Math.max(sampledPeak, rssAfter);
+  const peakMemory = authenticatedMemory.finish();
   let evaluated;
   try {
     evaluated = evaluateObservation(caseContract, observation);
@@ -278,6 +472,7 @@ async function measuredSample(adapter, caseContract, kind, index) {
       rss_peak_sampled_bytes: sampledPeak,
       process_max_rss_bytes: maxRssBytes(),
       memory_method: "process.memoryUsage.rss sampled at boundaries and 5ms async intervals",
+      peak_memory: peakMemory,
     },
   };
 }
@@ -303,6 +498,25 @@ function capabilityEvidence(caseContract, manifest, initialization) {
   });
 }
 
+function aggregatePeakMemory(samples) {
+  if (samples.length === 0) return null;
+  const records = samples.map((item) => item.metrics.peak_memory);
+  const contract = {
+    measurement_method: records[0].measurement_method,
+    measurement_scope: records[0].measurement_scope,
+    authenticated_by: records[0].authenticated_by,
+    sample_interval_ms: records[0].sample_interval_ms,
+  };
+  for (const record of records) {
+    const candidate = { ...record };
+    delete candidate.bytes;
+    if (canonicalJson(candidate) !== canonicalJson(contract)) {
+      fail("case metrics.peak_memory", "sample measurement contracts disagree");
+    }
+  }
+  return { bytes: Math.max(...records.map((item) => item.bytes)), ...contract };
+}
+
 function caseMetrics(samples) {
   const phases = new Map();
   for (const sample of samples) {
@@ -319,6 +533,7 @@ function caseMetrics(samples) {
     process_max_rss_bytes: samples.length === 0
       ? null
       : Math.max(...samples.map((item) => item.metrics.process_max_rss_bytes ?? 0)) || null,
+    peak_memory: aggregatePeakMemory(samples),
     adapter_phases_ms: Object.fromEntries([...phases.entries()].sort().map(
       ([name, values]) => [name, summary(values)],
     )),
@@ -345,11 +560,15 @@ async function collectCase(adapter, caseContract, manifest, initialization) {
   }
   const warmup = [];
   for (let index = 0; index < caseContract.measurement.warmup; index += 1) {
-    warmup.push(await measuredSample(adapter, caseContract, "warmup", index));
+    warmup.push(await measuredSample(
+      adapter, caseContract, "warmup", index, initialization.subject,
+    ));
   }
   const samples = [];
   for (let index = 0; index < caseContract.measurement.samples; index += 1) {
-    samples.push(await measuredSample(adapter, caseContract, "measurement", index));
+    samples.push(await measuredSample(
+      adapter, caseContract, "measurement", index, initialization.subject,
+    ));
   }
   const comparable = [...warmup, ...samples].map((item) => canonicalJson({
     outcome: item.observation.outcome,
@@ -414,54 +633,80 @@ async function collectReceipt({
   processEntryTime = process.hrtime.bigint(),
 }) {
   const collectionStarted = process.hrtime.bigint();
-  const inputs = inputBindings({ root, corpusPath, adapterPath, artifactSpecifications });
-  const capabilityBinding = digestPath(root, capabilityPath, "capability manifest path");
-  const manifest = validateCapabilityManifest(
-    readJson(path.join(root, capabilityBinding.path)), inputs.corpus,
-  );
-  assertManifestBindings(manifest, inputs);
-
-  const loadStarted = process.hrtime.bigint();
-  const adapter = loadAdapter(root, inputs.adapter.path);
-  const adapterLoadMs = elapsedMilliseconds(loadStarted);
-  const initializeStarted = process.hrtime.bigint();
-  const initialization = validateAdapterInitialization(await adapter.initialize({
+  const candidate = collectionBindings({
     root,
-    backend: manifest.backend,
-    subject: manifest.subject,
-    artifacts: inputs.artifacts.map((item) => ({
-      name: item.name,
-      path: path.join(root, item.path),
-      sha256: item.sha256,
-      bytes: item.bytes,
-    })),
-    capabilities: manifest.capabilities,
-  }));
-  const initializeMs = elapsedMilliseconds(initializeStarted);
-  if (canonicalJson(initialization.subject) !== canonicalJson(manifest.subject)) {
-    fail("adapter initialization.subject", "does not match the capability manifest");
-  }
-  const knownCapabilities = new Set(manifest.capabilities.map((item) => item.id));
-  for (const id of initialization.capability_ids) {
-    if (!knownCapabilities.has(id)) fail("adapter initialization.capability_ids", `unknown ${id}`);
-  }
-  const readyMs = elapsedMilliseconds(processEntryTime);
+    corpusPath,
+    adapterPath,
+    capabilityPath,
+    artifactSpecifications,
+  });
+  assertCleanCollectionCandidate(candidate);
+  const { inputs, capabilityBinding, manifest } = candidate;
 
+  let adapter = null;
+  let adapterLoadMs = null;
+  let initialization = null;
+  let initializeMs = null;
+  let readyMs = null;
   const cases = [];
+  let executionError = null;
+  let closeError = null;
   try {
+    const loadStarted = process.hrtime.bigint();
+    adapter = loadAdapter(root, inputs.adapter.path);
+    adapterLoadMs = elapsedMilliseconds(loadStarted);
+    const initializeStarted = process.hrtime.bigint();
+    initialization = validateAdapterInitialization(await adapter.initialize({
+      root,
+      backend: manifest.backend,
+      subject: manifest.subject,
+      artifacts: inputs.artifacts.map((item) => ({
+        name: item.name,
+        path: path.join(root, item.path),
+        sha256: item.sha256,
+        bytes: item.bytes,
+      })),
+      capabilities: manifest.capabilities,
+    }));
+    initializeMs = elapsedMilliseconds(initializeStarted);
+    if (canonicalJson(initialization.subject) !== canonicalJson(manifest.subject)) {
+      fail("adapter initialization.subject", "does not match the capability manifest");
+    }
+    const knownCapabilities = new Set(manifest.capabilities.map((item) => item.id));
+    for (const id of initialization.capability_ids) {
+      if (!knownCapabilities.has(id)) {
+        fail("adapter initialization.capability_ids", `unknown ${id}`);
+      }
+    }
+    readyMs = elapsedMilliseconds(processEntryTime);
     for (const caseContract of inputs.corpus.cases) {
       cases.push(await collectCase(adapter, caseContract, manifest, initialization));
     }
-  } finally {
-    if (typeof adapter.close === "function") await adapter.close();
+  } catch (error) {
+    executionError = error;
   }
+  try {
+    if (adapter !== null && typeof adapter.close === "function") await adapter.close();
+  } catch (error) {
+    closeError = error;
+  }
+  const completed = collectionBindings({
+    root,
+    corpusPath,
+    adapterPath,
+    capabilityPath,
+    artifactSpecifications,
+  });
+  assertStableCollectionBindings(candidate, completed);
+  if (executionError !== null) throw executionError;
+  if (closeError !== null) throw closeError;
   const status = cases.every((item) => item.status === "passed") ? "passed" : "failed";
   const core = {
     schema: RECEIPT_SCHEMA,
     authority: "local-host-collector",
     collected_at: new Date().toISOString(),
     status,
-    repository: repositoryIdentity(root),
+    repository: candidate.repository,
     corpus: {
       path: inputs.corpusBinding.path,
       sha256: inputs.corpusBinding.sha256,
@@ -510,6 +755,33 @@ function validateMetricSummary(label, value) {
   return expected;
 }
 
+function validatePeakMemory(label, value) {
+  exactKeys(label, value, [
+    "bytes", "measurement_method", "measurement_scope", "authenticated_by",
+    "sample_interval_ms",
+  ]);
+  safeInteger(`${label}.bytes`, value.bytes, 0);
+  if (!MEMORY_METHODS.includes(value.measurement_method)) {
+    fail(`${label}.measurement_method`, "is not a collector-supported method");
+  }
+  if (!MEMORY_SCOPES.includes(value.measurement_scope)) {
+    fail(`${label}.measurement_scope`, "is not a supported scope");
+  }
+  if (MEMORY_METHOD_SCOPES[value.measurement_method] !== value.measurement_scope) {
+    fail(
+      `${label}.measurement_scope`,
+      `must be ${MEMORY_METHOD_SCOPES[value.measurement_method]} for ${value.measurement_method}`,
+    );
+  }
+  if (value.authenticated_by !== MEMORY_AUTHORITY) {
+    fail(`${label}.authenticated_by`, `must be ${MEMORY_AUTHORITY}`);
+  }
+  if (value.sample_interval_ms !== null) {
+    safeInteger(`${label}.sample_interval_ms`, value.sample_interval_ms, 1);
+  }
+  return value;
+}
+
 function validateSample(label, value, caseContract) {
   exactKeys(label, value, ["observation", "evidence", "status", "metrics"]);
   const expected = evaluateObservation(caseContract, value.observation);
@@ -519,7 +791,7 @@ function validateSample(label, value, caseContract) {
   }
   exactKeys(`${label}.metrics`, value.metrics, [
     "wall_ms", "rss_before_bytes", "rss_after_bytes", "rss_peak_sampled_bytes",
-    "process_max_rss_bytes", "memory_method",
+    "process_max_rss_bytes", "memory_method", "peak_memory",
   ]);
   finiteNumber(`${label}.metrics.wall_ms`, value.metrics.wall_ms, 0);
   for (const name of ["rss_before_bytes", "rss_after_bytes", "rss_peak_sampled_bytes"]) {
@@ -529,6 +801,7 @@ function validateSample(label, value, caseContract) {
     safeInteger(`${label}.metrics.process_max_rss_bytes`, value.metrics.process_max_rss_bytes, 0);
   }
   nonemptyString(`${label}.metrics.memory_method`, value.metrics.memory_method);
+  validatePeakMemory(`${label}.metrics.peak_memory`, value.metrics.peak_memory);
   return value;
 }
 
@@ -576,8 +849,12 @@ function validateCaseReceipt(value, caseContract, manifest, initialization) {
     }
   }
   exactKeys(`${label}.metrics`, value.metrics, [
-    "wall_ms", "rss_peak_sampled_bytes", "process_max_rss_bytes", "adapter_phases_ms",
+    "wall_ms", "rss_peak_sampled_bytes", "process_max_rss_bytes", "peak_memory",
+    "adapter_phases_ms",
   ]);
+  if (value.metrics.peak_memory !== null) {
+    validatePeakMemory(`${label}.metrics.peak_memory`, value.metrics.peak_memory);
+  }
   const expectedMetrics = caseMetrics(samples);
   if (canonicalJson(expectedMetrics) !== canonicalJson(value.metrics)) {
     fail(`${label}.metrics`, "aggregate metrics are stale");
