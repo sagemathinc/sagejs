@@ -100,16 +100,27 @@ function closeTwice(resource, close) {
 }
 
 {
-  function fill(columns) {
-    const matrix = flint.ffiFmpqMatrixCreate(1n, BigInt(columns));
-    const started = process.hrtime.bigint();
-    for (let column = 0; column < columns; column += 1) {
-      assert.equal(flint.ffiFmpqMatrixSetEntry(
-        matrix, 0n, BigInt(column), BigInt(column + 1), 3n,
-      ), true);
+  function fill(columns, repetitions = 1) {
+    const matrices = Array.from(
+      { length: repetitions },
+      () => flint.ffiFmpqMatrixCreate(1n, BigInt(columns)),
+    );
+    // Measure this process's CPU rather than wall time.  On shared CI runners a
+    // scheduler pause during the larger sample can otherwise look exactly like
+    // the quadratic retained-size scan this guard is intended to detect.  The
+    // repeated small fills also keep the measured interval above Windows' CPU
+    // accounting quantum.
+    const started = process.cpuUsage();
+    for (const matrix of matrices) {
+      for (let column = 0; column < columns; column += 1) {
+        assert.equal(flint.ffiFmpqMatrixSetEntry(
+          matrix, 0n, BigInt(column), BigInt(column + 1), 3n,
+        ), true);
+      }
     }
-    const elapsed = Number(process.hrtime.bigint() - started);
-    flint.ffiFmpqMatrixClose(matrix);
+    const usage = process.cpuUsage(started);
+    const elapsed = (usage.user + usage.system) / repetitions;
+    for (const matrix of matrices) flint.ffiFmpqMatrixClose(matrix);
     return elapsed;
   }
   const median = (values) => [...values].sort((left, right) => left - right)[1];
@@ -117,7 +128,9 @@ function closeTwice(resource, close) {
   // distinguishing linear retained-size updates from an accidental quadratic
   // scan (expected ratios near 4 and 16 respectively).
   fill(40_000);
-  const small = median([fill(10_000), fill(10_000), fill(10_000)]);
+  const small = median([
+    fill(10_000, 4), fill(10_000, 4), fill(10_000, 4),
+  ]);
   const large = median([fill(40_000), fill(40_000), fill(40_000)]);
   assert.ok(
     large / small < 10,

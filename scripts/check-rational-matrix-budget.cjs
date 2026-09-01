@@ -105,8 +105,9 @@ const cases = [
     expression: "_rational_left.stack(_rational_right)",
     precheck: ["_rational_left", "_rational_right"],
     postcheck: ["_rational_left", "_rational_right", "result"],
-    // Vertical stacking copies 180,000 variable-size rational entries.
-    budget: 55,
+    // Vertical stacking copies 180,000 variable-size rational entries.  Keep
+    // modest headroom above the supported ARM64 release-host median.
+    budget: 60,
   },
   {
     name: "augment_300x300",
