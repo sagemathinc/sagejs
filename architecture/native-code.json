@@ -176,7 +176,7 @@
       "category": "external-library-bridge",
       "review_status": "audited",
       "lane": "numerical-optimization",
-      "rationale": "Bounded packed callback, force-stop, allocation, status, and linear-memory ABI over the pinned MIT NLopt Nelder-Mead and COBYLA sources; NLopt owns the algorithms, automatic selection is disabled, and Sage.js independently validates every public result."
+      "rationale": "Bounded packed callback, force-stop, allocation, status, and linear-memory ABI over the pinned MIT NLopt Nelder-Mead source; NLopt owns the algorithm, automatic selection is disabled, and Sage.js independently applies contradiction checks before any heuristic public success. COBYLA is excluded after source-bound UBSAN exposed unresolved upstream pointer-provenance undefined behavior."
     },
     {
       "path": "packages/flint-wasm/src/factor.c",

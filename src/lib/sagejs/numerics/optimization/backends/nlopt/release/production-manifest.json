@@ -5,22 +5,42 @@
     "revision": "6e6593f131ba3a38bc9edbed0a357bc01526e54b",
     "archive_sha256": "268470455acee4b4460c809772c51312be042cd000c7746049dfa6191e64a0f1",
     "license_sha256": "44039a06cc56e0e29e5c8563502ba143bd12bcd9163c00ffa2e1f15a7462cd07",
-    "source_lock_sha256": "cdda281ec76d35f8e5ed9758dd600ece5a5b762ff6570236e95ed618024d72f0",
-    "source_closure_sha256": "bcf6395e6ff2a33c9635c21908eeb7b53ccefd5d4ee9492b12c9a086e6a4dd4f",
+    "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+    "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
     "luksan_enabled": false,
     "compiled_sources": [
       "src/algs/neldermead/nldrmd.c",
-      "src/algs/cobyla/cobyla.c",
       "src/util/stop.c",
       "src/util/redblack.c",
       "src/util/rescale.c"
     ]
   },
   "reviewed_sagejs_files": {
-    "adapter_sha256": "d102e72e747a0073a8c44c04482ae7e5c1b743bff64c79913d5b8929624bb3f2",
-    "build_script_sha256": "08b45a140660063d803f0f895d7dd6342a6f3158323f8bd46b509f83496f2ee9",
-    "host_module_sha256": "041619b1538d806a225793adc9cf876e649588a73635e53965fa7b06349b6e04",
-    "release_verifier_sha256": "93bf5017133ddc09e72ae6200e1bd1f092126c8cfcc93eeda509141827fcfe1e"
+    "packages/flint-wasm/evaluator.mjs": "9e992dd85fac8a53681a41a772e8759970154492203f4fe0a5193b5ea67e46e0",
+    "packages/flint-wasm/numerical/nlopt-index.mjs": "21d752734022de158af44bc8f8cf9c164a5cd0ab95358c532632573447cbebb3",
+    "packages/flint-wasm/numerical/scripts/build-all.cjs": "6aefdb71fa589b773be46926e24c5a8e0c84a1a953ac72a1a99138a419fe014f",
+    "src/baselib/sagejs/runtime.py": "b48880325472073feb9d9d7b3a747deb5cbf66a0a0fde5538444c7f02e21e9fb",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/index.mjs": "e5e4e697cb5b68dd8020a465073c760abcc6668b6f536fbd915b6b5bde0e4315",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs": "411e823864e75e8b2f4cee2bc9c7e2fa680518820ad800cf1ecd8b3a82cc6777",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/build.cjs": "eda4ebc1033c94d2aad994ceb97e5247e4f49b7b6925806cd3ac860f1c0091dc",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs": "b53f9a068e97d041642636090f8296b940fac0dea4b2b059e44b4cf9f2242f41",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c": "0c876a9606177a26d0c8c8baf09a2f567516de201708397be508e9e46103ba03",
+    "src/lib/sagejs/numerics/optimization/multivariate.py": "3381fe66260101d5bc2c8aba1196437d74b5002cfe05a789b0b2800184c7b0f1",
+    "src/lib/sagejs/numerics/optimization/planning.py": "e899df4949507ec45c95a13ac4c742c0d28c4f0759803646eb62c5983d5b32fd",
+    "src/lib/sagejs/numerics/optimization/validation.py": "2cd270548865a54e2e290fe020d925f3f97da5a9a63c1ccf1336168c1860a939",
+    "test/numerical-p3-backends/browser-resource.test.mjs": "fb2b4a1eb0431cf18ebed85e2cbdd4e3eae65e8d0e9d324055f0d8e479885d34",
+    "test/numerical-p3-nlopt/abi-fuzz.test.mjs": "91bb9edb5561cf0d2483b644620f6266ed3b052ad2257d88f2d2d538e71db875",
+    "test/numerical-p3-nlopt/backend.test.mjs": "f5ea7032ff48f0ce56ad8b299b1a289a19ffd83eedb0318310155c5fd6543024",
+    "test/numerical-p3-nlopt/browser.mjs": "9e5f527635a372f3641b8e3203b9d3d2d37997b1dd8754049f882bd1704f77c7",
+    "test/numerical-p3-nlopt/portable-smoke.mjs": "9dee55740dbd4bfad62e911af8dec1945963587c4635a4905489cff7bc8d8813",
+    "test/numerical-p3-nlopt/public-browser.mjs": "fe7fdef04edc4e414380499162e4503a468d802770372cca0e98a418b3361746",
+    "test/numerical-p3-nlopt/public-integration.cjs": "8432367e427c59fe5149685bf77eac14772320ead8fae050427fc28a9135ee1d",
+    "test/numerical-p3-nlopt/public-sea.cjs": "7d580d850ef8cafe16be8b9952d5645c15b1d62d829dec18d19d71b8382429ce",
+    "tools/resources.ts": "b18f39c2f247b65152dc92be1945493d39c35dd010cadee84d5d98c4ee4edaa8"
+  },
+  "public_semantics_bundle": {
+    "encoding": "sorted-repository-path-nul-sha256-nul/v1",
+    "sha256": "2dadd273c6cf3e60019299b0479d7aa0d4677ed56769f15c96ddf306972324f0"
   },
   "toolchain": {
     "identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
@@ -29,10 +49,10 @@
   },
   "artifact": {
     "filename": "nlopt-methods.wasm",
-    "sha256": "2d248aaa49c9482ab0afabaff1a9358a106b4deae23a9c2f8df033d75fa37c0f",
-    "bytes": 101376,
-    "gzip_bytes": 39521,
-    "brotli_bytes": 33049,
+    "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+    "bytes": 72592,
+    "gzip_bytes": 29234,
+    "brotli_bytes": 23996,
     "initial_memory_bytes": 2097152,
     "maximum_memory_bytes": 134217728,
     "imports": [
@@ -44,20 +64,13 @@
     ]
   },
   "methods": {
-    "nlopt-nelder-mead": "NLOPT_LN_NELDERMEAD",
-    "nlopt-cobyla": "NLOPT_LN_COBYLA"
+    "nlopt-nelder-mead": "NLOPT_LN_NELDERMEAD"
   },
   "selection": "explicit-only",
   "qualification": {
-    "summary": "qualification-v1.json",
-    "summary_sha256": "24102ad172579f82c597fa211c0ac35867540ce0f386134453abbddeec5ffdcb",
-    "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
-    "oracle_output_sha256": "034eb6e6417b77600c3286c79afab5fef27b04bf6c0bbc458048b78ef6f7b39e",
-    "portable_receipts_sha256": {
-      "linux-x64": "e267ca38dba0e47aede2c5189acf21052dbceef955c11f4e4095a33da05527a6",
-      "linux-arm64": "4d151f1e7b11059f9271d2ac9d1513999b2280e39f2787d1491c7926ae8e2f3f",
-      "macos-arm64": "3d8160577d2f586618675b2a999521ecc520a10e05cff080c43f0546e60b2c21",
-      "windows-x64": "a571fddfab36f34d4dd7a7d2a78bf014419e7d06847dc255c9a72867b0ce2eb8"
-    }
+    "status": "pending_source_current_requalification",
+    "reason": "COBYLA was removed after source-bound UBSAN exposed unresolved upstream f2c pointer-provenance undefined behavior; source-current Nelder-Mead receipts must be regenerated after independent audit",
+    "public_semantics_bundle_sha256": "2dadd273c6cf3e60019299b0479d7aa0d4677ed56769f15c96ddf306972324f0",
+    "invalidated_summary": "qualification-v1.json"
   }
 }

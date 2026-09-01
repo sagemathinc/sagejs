@@ -69,39 +69,17 @@ test("Nelder-Mead final points pass independent normal, bounded, nonsmooth, and 
   assert.deepEqual(solver.inspect().liveBytes, 0);
 });
 
-test("COBYLA final points pass active, curved, redundant, equality, bounds, and scale gates", async () => {
-  const solver = await backend();
-  const corpus = JSON.parse(await readFile(corpusUrl, "utf8"));
-  for (const record of corpus.cases.filter(
-    ({ method, expect_infeasible: infeasible }) =>
-      method === "nlopt-cobyla" && !infeasible,
-  )) {
-    const result = solver.solve(optionsFromCase(record));
-    const validation = validateCase(record, result);
-    assert.equal(validation.accepted, true, `${record.id}: ${JSON.stringify(validation)}`);
-    assert.equal(result.method, "nlopt-cobyla");
-    assert.equal(result.gradientCallbacks, 0);
-    assert.equal(result.jacobianCallbacks, 0);
-    assert.equal(result.independentValidationRequired, true);
-  }
-  assert.equal(solver.inspect().liveAllocations, 0);
-  assert.equal(solver.inspect().liveBytes, 0);
-});
-
-test("COBYLA backend success never hides independently detected infeasibility", async () => {
-  const solver = await backend();
-  const corpus = JSON.parse(await readFile(corpusUrl, "utf8"));
-  const record = corpus.cases.find(({ id }) => id === "cobyla-infeasible");
-  const result = solver.solve(optionsFromCase(record));
-  const validation = validateCase(record, result);
-  assert.equal(result.backendConverged, true);
-  assert.equal(validation.expectedInfeasible, true);
-  assert.ok(validation.maximumViolation >= record.minimum_violation);
-  assert.equal(result.independentValidationRequired, true);
-});
-
 test("exact method identities fail closed without automatic substitution", async () => {
   const solver = await backend();
+  assert.throws(
+    () => solver.solve({
+      method: "nlopt-cobyla",
+      initial: [0],
+      objective: ([x]) => x * x,
+    }),
+    (error) => error instanceof NloptCapabilityError &&
+      error.details.supportedMethods.length === 1,
+  );
   assert.throws(
     () => solver.solve({ method: "auto", initial: [0], objective: ([x]) => x * x }),
     (error) => error instanceof NloptCapabilityError &&
@@ -117,7 +95,8 @@ test("exact method identities fail closed without automatic substitution", async
     }),
     NloptCapabilityError,
   );
-  assert.deepEqual(solver.capability.methods, ["nlopt-nelder-mead", "nlopt-cobyla"]);
+  assert.deepEqual(solver.capability.methods, ["nlopt-nelder-mead"]);
+  assert.equal(solver.capability.maximumConstraints, 0);
   assert.equal(solver.capability.automaticSelection, false);
 });
 
@@ -146,29 +125,10 @@ test("bounds, dimensions, options, and callback outputs fail before corruption",
     () => solver.solve({ ...base, cancellationBuffer: new Int32Array(1) }),
     /SharedArrayBuffer/,
   );
-  assert.throws(
-    () => solver.solve({
-      method: "nlopt-cobyla",
-      initial: [0],
-      objective: ([x]) => x * x,
-      inequality: () => [],
-    }),
-    /inequalityCount must be positive/,
-  );
   assert.throws(() => solver.solve({ ...base, initial: new Array(129).fill(0) }), NloptCapabilityError);
   assert.throws(
     () => solver.solve({ ...base, objective: () => NaN }),
     /objective output\[0\] is not finite/,
-  );
-  assert.throws(
-    () => solver.solve({
-      method: "nlopt-cobyla",
-      initial: [0],
-      objective: ([x]) => x * x,
-      inequalityCount: 2,
-      inequality: () => [0],
-    }),
-    /inequality output has length 1; expected 2/,
   );
   assert.equal(solver.inspect().liveAllocations, 0);
 });
@@ -249,12 +209,11 @@ test("reentrant callback entry is rejected and the reactor is reusable", async (
   }).value[0]) < 1e-6);
 });
 
-test("repeated mixed-method reuse leaves no live allocations", async () => {
+test("repeated Nelder-Mead reuse leaves no live allocations", async () => {
   const solver = await backend();
   for (let index = 0; index < 200; index += 1) {
-    const method = index % 2 === 0 ? "nlopt-nelder-mead" : "nlopt-cobyla";
     const result = solver.solve({
-      method,
+      method: "nlopt-nelder-mead",
       initial: [1 + index / 100],
       objective: ([x]) => (x - 0.25) ** 2,
       lower: [-2],

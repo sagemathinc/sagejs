@@ -18,7 +18,7 @@ const root = join(__dirname, "..", "..");
 const suffix = process.platform === "win32" ? ".exe" : "";
 const built = join(root, "build", "sea", `sagepython${suffix}`);
 
-test("a relocated Python SEA executes both explicit NLopt methods", {
+test("a relocated Python SEA executes explicit NLopt Nelder-Mead", {
   timeout: 120_000,
 }, () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-nlopt-sea-"));
@@ -30,9 +30,7 @@ test("a relocated Python SEA executes both explicit NLopt methods", {
     writeFileSync(program, [
       "from sagejs.numerics.optimization import minimize",
       "nm = minimize(lambda p: (p[0]-3.0)**2, [0.0], method='nlopt-nelder-mead')",
-      "cb = minimize(lambda p: (p[0]-2.0)**2, [0.0], constraints=[{'type':'ineq','fun':lambda p: 1.0-p[0]}], method='nlopt-cobyla')",
-      "print(nm.method, nm.backend, nm.success, abs(nm.value[0]-3.0) < 1e-6)",
-      "print(cb.method, cb.backend, cb.success, abs(cb.value[0]-1.0) < 1e-6)",
+      "print(nm.method, nm.backend, nm.success, nm.validation.truth_level, abs(nm.value[0]-3.0) < 1e-6)",
       "",
     ].join("\n"));
     const result = spawnSync(executable, [program], {
@@ -44,8 +42,7 @@ test("a relocated Python SEA executes both explicit NLopt methods", {
     assert.equal(result.status, 0, result.stderr);
     assert.equal(
       result.stdout.trim(),
-      "nlopt-nelder-mead nlopt-mit-wasm True True\n" +
-        "nlopt-cobyla nlopt-mit-wasm True True",
+      "nlopt-nelder-mead nlopt-mit-wasm True heuristic True",
     );
   } finally {
     rmSync(temporary, { recursive: true, force: true });

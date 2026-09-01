@@ -125,12 +125,11 @@ function positiveInteger(
 
 function methodCode(method) {
   if (method === "nlopt-nelder-mead") return 1;
-  if (method === "nlopt-cobyla") return 2;
   throw new NloptCapabilityError(
     `unsupported exact NLopt method ${JSON.stringify(method)}`,
     {
       requestedMethod: method,
-      supportedMethods: ["nlopt-nelder-mead", "nlopt-cobyla"],
+      supportedMethods: ["nlopt-nelder-mead"],
       automaticSelection: false,
     },
   );
@@ -695,9 +694,9 @@ function createNloptBackendFromModule(module) {
     }),
     capability: Object.freeze({
       backend: "nlopt-mit-wasm",
-      methods: Object.freeze(["nlopt-nelder-mead", "nlopt-cobyla"]),
+      methods: Object.freeze(["nlopt-nelder-mead"]),
       maximumVariables: MAXIMUM_VARIABLES,
-      maximumConstraints: MAXIMUM_CONSTRAINTS,
+      maximumConstraints: 0,
       reentrant: false,
       automaticSelection: false,
       callbackMode: "synchronous-packed-linear-memory",

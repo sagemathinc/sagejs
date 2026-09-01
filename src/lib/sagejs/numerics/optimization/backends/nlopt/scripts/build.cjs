@@ -142,7 +142,6 @@ async function main() {
 
   const compiledSources = [
     "src/algs/neldermead/nldrmd.c",
-    "src/algs/cobyla/cobyla.c",
     "src/util/stop.c",
     "src/util/redblack.c",
     "src/util/rescale.c",
@@ -155,10 +154,6 @@ async function main() {
     "src/algs/neldermead/README",
     "src/algs/neldermead/neldermead.h",
     "src/algs/neldermead/nldrmd.c",
-    "src/algs/cobyla/COPYRIGHT",
-    "src/algs/cobyla/README",
-    "src/algs/cobyla/cobyla.h",
-    "src/algs/cobyla/cobyla.c",
     "src/util/nlopt-util.h",
     "src/util/redblack.h",
     "src/util/redblack.c",
@@ -195,7 +190,6 @@ async function main() {
     `-I${join(sourceRoot, "src/api")}`,
     `-I${join(sourceRoot, "src/util")}`,
     `-I${join(sourceRoot, "src/algs/neldermead")}`,
-    `-I${join(sourceRoot, "src/algs/cobyla")}`,
   ];
   const common = [
     `--target=${toolchain.lock.build.target}`,
@@ -312,7 +306,7 @@ async function main() {
       initial_memory_bytes: 2097152,
       maximum_memory_bytes: 134217728,
     },
-    methods: ["nlopt-nelder-mead", "nlopt-cobyla"],
+    methods: ["nlopt-nelder-mead"],
     selection: "explicit-only",
   };
   writeFileSync(
