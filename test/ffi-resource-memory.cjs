@@ -102,13 +102,17 @@ function closeTwice(resource, close) {
 {
   function fill(columns) {
     const matrix = flint.ffiFmpqMatrixCreate(1n, BigInt(columns));
-    const started = process.hrtime.bigint();
+    // Measure this process's CPU rather than wall time.  On shared CI runners a
+    // scheduler pause during the larger sample can otherwise look exactly like
+    // the quadratic retained-size scan this guard is intended to detect.
+    const started = process.cpuUsage();
     for (let column = 0; column < columns; column += 1) {
       assert.equal(flint.ffiFmpqMatrixSetEntry(
         matrix, 0n, BigInt(column), BigInt(column + 1), 3n,
       ), true);
     }
-    const elapsed = Number(process.hrtime.bigint() - started);
+    const usage = process.cpuUsage(started);
+    const elapsed = usage.user + usage.system;
     flint.ffiFmpqMatrixClose(matrix);
     return elapsed;
   }
