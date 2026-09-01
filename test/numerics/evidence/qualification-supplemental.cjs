@@ -18,6 +18,10 @@ const {
 const {
   stageBrowserArtifact,
 } = require("../../../scripts/numerical-computing/qualification/prepare-browser.cjs");
+const {
+  digestPath,
+  repositoryPath,
+} = require("../../../scripts/numerical-computing/common.cjs");
 
 function peak(bytes, overrides = {}) {
   return {
@@ -124,4 +128,42 @@ test("browser artifact staging binds runtime-only modules without node_modules",
   assert.equal(fs.existsSync(path.join(temporary, "output", "new-runtime-only.mjs")), true);
   assert.equal(fs.existsSync(path.join(temporary, "output", "dist", "generated.dat")), true);
   assert.equal(fs.existsSync(path.join(temporary, "output", "node_modules")), false);
+});
+
+test("repository inputs and nonexistent outputs reject symlinked parents", (context) => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-path-boundary-test-"));
+  context.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const repository = path.join(temporary, "repository");
+  const external = path.join(temporary, "external-package");
+  fs.mkdirSync(repository);
+  fs.mkdirSync(external);
+  fs.writeFileSync(path.join(external, "kernel.mjs"), "export default 'external';\n");
+  fs.writeFileSync(path.join(external, "package.json"), JSON.stringify({ files: ["kernel.mjs"] }));
+  fs.mkdirSync(path.join(external, "dist"));
+  fs.mkdirSync(path.join(external, "release"));
+  fs.symlinkSync(external, path.join(repository, "escape"), "dir");
+  assert.throws(
+    () => repositoryPath(repository, "escape/not-created/evidence.json", "escaped output"),
+    /symbolic-link path component/,
+  );
+  assert.throws(
+    () => digestPath(repository, "escape/kernel.mjs", "escaped input"),
+    /symbolic-link path component/,
+  );
+  assert.throws(
+    () => stageBrowserArtifact(repository, "escape", "staged"),
+    /symbolic-link path component/,
+  );
+  fs.mkdirSync(path.join(repository, "source", "dist"), { recursive: true });
+  fs.mkdirSync(path.join(repository, "source", "release"), { recursive: true });
+  fs.writeFileSync(
+    path.join(repository, "source", "package.json"),
+    JSON.stringify({ files: ["kernel.mjs"] }),
+  );
+  fs.writeFileSync(path.join(repository, "source", "kernel.mjs"), "export default 1;\n");
+  fs.symlinkSync(external, path.join(repository, "output-parent"), "dir");
+  assert.throws(
+    () => stageBrowserArtifact(repository, "source", "output-parent/staged"),
+    /symbolic-link path component/,
+  );
 });

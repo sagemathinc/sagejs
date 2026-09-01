@@ -242,10 +242,38 @@ function repositoryPath(root, candidate, label = "path") {
     fail(label, "must be a repository-relative path");
   }
   const resolvedRoot = path.resolve(root);
+  let rootStatus;
+  try {
+    rootStatus = fs.lstatSync(resolvedRoot);
+  } catch {
+    fail(label, "repository root does not exist");
+  }
+  if (!rootStatus.isDirectory()) fail(label, "repository root must be a directory");
+  const realRoot = fs.realpathSync(resolvedRoot);
   const resolved = path.resolve(resolvedRoot, candidate);
   const relative = path.relative(resolvedRoot, resolved);
   if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     fail(label, "escapes the repository root");
+  }
+  let current = resolvedRoot;
+  for (const component of relative.split(path.sep).filter((item) => item.length !== 0)) {
+    current = path.join(current, component);
+    let status;
+    try {
+      status = fs.lstatSync(current);
+    } catch (error) {
+      if (error?.code === "ENOENT") break;
+      throw error;
+    }
+    if (status.isSymbolicLink()) {
+      fail(label, `refuses symbolic-link path component ${path.relative(resolvedRoot, current)}`);
+    }
+    const real = fs.realpathSync(current);
+    const realRelative = path.relative(realRoot, real);
+    if (realRelative === ".." || realRelative.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(realRelative)) {
+      fail(label, `resolved path component escapes the repository root: ${component}`);
+    }
   }
   return {
     absolute: resolved,
