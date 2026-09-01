@@ -4770,6 +4770,47 @@ def _cubic_next_factor_by_norm(
 
 
 @native
+def _cubic_small_relation_prefix_is_trivial(
+    relations: FmpzMatrix,
+    relation_count: uint64,
+    factor_count: uint64,
+) -> bool:
+    """Recognize index one in dimensions one and two by determinantal gcd."""
+    content = 0
+    if factor_count == 1:
+        row: uint64 = 0
+        while row < relation_count:
+            content, ignored_left, ignored_right = _cubic_extended_gcd(
+                content,
+                fmpz_matrix_entry(relations, row, 0),
+            )
+            if content == 1:
+                return True
+            row += 1
+        return False
+    if factor_count != 2:
+        return False
+    left_row: uint64 = 0
+    while left_row < relation_count:
+        right_row: uint64 = 0
+        while right_row < left_row:
+            determinant = fmpz_matrix_entry(relations, left_row, 0) * fmpz_matrix_entry(
+                relations, right_row, 1
+            ) - fmpz_matrix_entry(relations, left_row, 1) * fmpz_matrix_entry(
+                relations, right_row, 0
+            )
+            content, ignored_left, ignored_right = _cubic_extended_gcd(
+                content,
+                determinant,
+            )
+            if content == 1:
+                return True
+            right_row += 1
+        left_row += 1
+    return False
+
+
+@native
 def certified_complex_cubic_class_group_v1(
     output: IntegerBuffer,
     coefficients: IntegerBuffer,
@@ -4810,8 +4851,7 @@ def certified_complex_cubic_class_group_v1(
         or temporary_limit < 1048576
     ):
         return False
-    # Effort grows monotonically from adjacent ideals to PARI's five/eight-ideal
-    # permutation, then the complete base and bounded compound multipliers.
+    # Effort grows monotonically through bounded PARI-style stages.
     scheduled_compound_multiplier_limit: uint64 = 0
     if relation_effort == 6:
         scheduled_compound_multiplier_limit = 1
@@ -5035,11 +5075,7 @@ def certified_complex_cubic_class_group_v1(
                 return False
             basis_index += 1
 
-        # Expand the determinant norm into its ten homogeneous cubic
-        # coefficients once.  Polarization at exact integral points is much
-        # cheaper than reconstructing a 3-by-3 determinant for every relation
-        # or unit candidate, and the final independent point binds the compact
-        # form back to the resident multiplication table.
+        # Polarize the norm once and bind it back at an independent point.
         norm_zero = _cubic_coordinate_norm(workspace, 1, 0, 0)
         norm_one = _cubic_coordinate_norm(workspace, 0, 1, 0)
         norm_two = _cubic_coordinate_norm(workspace, 0, 0, 1)
@@ -5096,11 +5132,7 @@ def certified_complex_cubic_class_group_v1(
         sqrt_discriminant = _cubic_ceil_sqrt(absolute_discriminant)
         if sqrt_discriminant < 1:
             return False
-        # For a complex cubic, Minkowski's constant is 8/(9*pi).  The
-        # classical lower bound pi > 28/9 gives 8/(9*pi) < 2/7.  Hence every
-        # ideal class has an integral representative below this purely
-        # integral conservative envelope.  `sqrt_discriminant` is itself an
-        # upper bound, so no floating-point approximation enters the proof.
+        # Minkowski and pi > 28/9 give the integral upper bound below.
         minkowski_generator_bound = (2 * sqrt_discriminant + 6) // 7
         if (
             minkowski_generator_bound < 2
@@ -5130,11 +5162,7 @@ def certified_complex_cubic_class_group_v1(
         ):
             return False
 
-        # Retain exactly the certified generator base: the explicit
-        # field-specific GRH cutoff for monogenic maximal orders, and the
-        # unconditional Minkowski cutoff otherwise.  Reduced-ideal search may
-        # use those ideals in a different order, but it must not enlarge the
-        # presentation unconditionally.
+        # Retain exactly the certified GRH or unconditional generator base.
         factor_search_bound = generator_bound
 
         factor_count: uint64 = 0
@@ -5329,10 +5357,7 @@ def certified_complex_cubic_class_group_v1(
                     if (
                         map_count == 1
                         and absolute_discriminant % prime != 0
-                        and (
-                            not use_grh_generator_base
-                            or prime * prime <= factor_search_bound
-                        )
+                        and prime * prime <= factor_search_bound
                     ):
                         factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * factor_count
                         workspace[factor_base] = prime
@@ -5411,10 +5436,7 @@ def certified_complex_cubic_class_group_v1(
             return False
         output[63] = 3
 
-        # No relation or analytic-index computation remains when the proved
-        # generator base is empty: a group generated by the empty set is
-        # trivial. Publish this theorem directly, preserving whether its
-        # generator bound was unconditional Minkowski or conditional GRH.
+        # An empty proved generator base makes the class group trivial.
         if factor_count == 0:
             output_index: uint64 = 0
             while output_index < len(output):
@@ -5750,12 +5772,7 @@ def certified_complex_cubic_class_group_v1(
                 planning_one += 1
             planning_zero += 1
 
-        # Build one T2/LLL basis for each selected ideal. The first two efforts
-        # keep the compact four-direction shell for degree-one factors. An exact
-        # failure authorizes PARI's bounded reduced-ideal ellipsoid for every
-        # selected ideal; complements use it from the start. Its exact
-        # Gram/cofactor box is planned once and replayed unchanged at admission.
-        # Factor slot `+9` holds pair codes 1..3 or ellipsoid code 4.
+        # Plan one checked T2/LLL shell or ellipsoid per selected ideal.
         adjacent_factor_index = 0
         while adjacent_factor_index < factor_count:
             factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
@@ -6082,12 +6099,17 @@ def certified_complex_cubic_class_group_v1(
                 relation_count += 1
             group_index += 1
 
+        trivial_relation_prefix = _cubic_small_relation_prefix_is_trivial(
+            relation_candidates,
+            relation_count,
+            factor_count,
+        )
         coordinate_zero = -relation_box
-        while coordinate_zero <= relation_box:
+        while coordinate_zero <= relation_box and not trivial_relation_prefix:
             coordinate_one = -relation_box
-            while coordinate_one <= relation_box:
+            while coordinate_one <= relation_box and not trivial_relation_prefix:
                 coordinate_two = -relation_box
-                while coordinate_two <= relation_box:
+                while coordinate_two <= relation_box and not trivial_relation_prefix:
                     nonzero = (
                         coordinate_zero != 0
                         or coordinate_one != 0
@@ -6113,13 +6135,21 @@ def certified_complex_cubic_class_group_v1(
                         )
                         if next_relation_count > relation_capacity:
                             return False
+                        if next_relation_count > relation_count:
+                            trivial_relation_prefix = (
+                                _cubic_small_relation_prefix_is_trivial(
+                                    relation_candidates,
+                                    next_relation_count,
+                                    factor_count,
+                                )
+                            )
                         relation_count = next_relation_count
                     coordinate_two += 1
                 coordinate_one += 1
             coordinate_zero += 1
 
         adjacent_factor_index = 0
-        while adjacent_factor_index < factor_count:
+        while adjacent_factor_index < factor_count and not trivial_relation_prefix:
             factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
             adjacent_pair_code = workspace[factor_base + 9]
             if adjacent_pair_code > 0:
@@ -6233,17 +6263,15 @@ def certified_complex_cubic_class_group_v1(
         # multiplier limit.  The compact dependency pipeline below therefore
         # gets the first opportunity to reconstruct a unit.
         compound_search_active = (
-            not unit_found and scheduled_compound_multiplier_limit > 0
+            not trivial_relation_prefix
+            and not unit_found
+            and scheduled_compound_multiplier_limit > 0
         )
         used_compound_multiplier_limit: uint64 = 0
         if compound_search_active:
             used_compound_multiplier_limit = scheduled_compound_multiplier_limit
 
-        # If the exact prefix is archimedean-trivial, follow PARI's next
-        # deterministic `small_norm` regime: reduce products `P_0^e P_j`,
-        # where `e` makes the multiplier ideal comparable with the square of
-        # the largest factor-base norm.  These products remain selection
-        # devices; exact norm factorization and containment admit every row.
+        # Later efforts add PARI-style reduced products `P_0^e P_j`.
         compound_plan_index: uint64 = 0
         compound_multiplier_index = 0
         compound_multiplier_count = 0
@@ -6845,11 +6873,7 @@ def certified_complex_cubic_class_group_v1(
         relation_count = compact_relation_count
         output[52] = relation_count
 
-        # If the early complete shell contains no unit, reconstruct exact units
-        # from zero rows of the HNF transform.  Each row is an integral
-        # dependency among the retained principal witnesses.  Positive and
-        # negative exponent products are formed separately, then exact
-        # division in the maximal order authenticates their quotient.
+        # Reconstruct missing units from exact HNF dependencies.
         dependency_scan_active = not unit_found
         relation_transform = arena.foreign_resource(
             fmpz_matrix,

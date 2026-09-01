@@ -124,6 +124,8 @@ inverse of the degree-one prime class because their product is $(p)$.
 Completely split and ramified degree-one primes are represented by all exact
 multiplicative maps $\mathcal O \to \mathbb F_p$. Thus the free group on the
 retained factor base surjects onto $\operatorname{Cl}(\mathcal O)$.
+The degree-two factor in type $(1,2)$ is retained only when its norm $p^2$ is
+within the proved bound; this rule is identical for Minkowski and GRH bounds.
 
 The factor base is allowed to be empty. If every rational prime through the
 selected generator bound is inert, its unique prime ideal is $(p)$ and is
@@ -158,6 +160,11 @@ $$
 $$
 
 for a positive integer relation index $r$ and the true class number $h$.
+
+In factor-base dimensions one and two, the collector tracks the gcd of entries
+or of $2\times2$ minors. A gcd of $1$ stops the bounded search early, but it is
+only a scheduling signal: exact HNF and Smith reduction independently recheck
+rank and index before publication.
 
 The relation search follows PARI's `small_norm` geometry without trusting its
 output: it LLL-reduces individual prime ideals and then a bounded sequence of

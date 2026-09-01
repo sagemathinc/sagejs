@@ -93,9 +93,17 @@ test("closed native cubic receipts survive declines and authenticate targets", {
   assert.ok(emptyBase.slice(36, 50).every((value) => value === 0));
   const trivialPresentation = directReceipt([1, 1, -1, 1]);
   assert.deepEqual(trivialPresentation.slice(0, 3), [2, 1, 0]);
-  assert.deepEqual(trivialPresentation.slice(20, 24), [2, 1, 1, 35]);
+  assert.deepEqual(trivialPresentation.slice(20, 24), [2, 1, 1, 4]);
   assert.equal(trivialPresentation[35], 2);
   assert.ok(trivialPresentation.slice(36, 50).every((value) => value === 0));
+  const normBoundedPresentation = directReceipt([-1, 2, 0, 1]);
+  assert.deepEqual(normBoundedPresentation.slice(0, 3), [2, 1, 0]);
+  assert.deepEqual(normBoundedPresentation.slice(20, 24), [3, 1, 1, 3]);
+  assert.equal(normBoundedPresentation[35], 2);
+  const determinantalPresentation = directReceipt([-2, -2, 0, 1]);
+  assert.deepEqual(determinantalPresentation.slice(0, 3), [2, 1, 0]);
+  assert.deepEqual(determinantalPresentation.slice(20, 24), [3, 2, 2, 4]);
+  assert.equal(determinantalPresentation[35], 2);
   const output = runPython(String.raw`
 from sagejs.number_fields.cubic_class_number_native import certified_complex_cubic_class_group_v1
 from sagejs.number_fields.cubic_class_number_native_runtime import certified_complex_cubic_class_number
@@ -187,6 +195,9 @@ R = PolynomialRing(QQ, "x")
 x = R.gen()
 cases = (
     ("3.1.23.1", (1, 0, -1, 1), 1, (), 0),
+    ("3.1.44.1", (1, 1, -1, 1), 1, (), 0),
+    ("3.1.59.1", (-1, 2, 0, 1), 1, (), 0),
+    ("3.1.76.1", (-2, -2, 0, 1), 1, (), 0),
     ("3.1.431.1", (-8, -1, 0, 1), 1, (), 0),
     ("3.1.1083.1", (-12, -6, -1, 1), 3, (3,), 0),
     ("3.1.1371.1", (6, 3, -1, 1), 4, (4,), 0),
@@ -275,10 +286,21 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.44.1":
         assert receipt.generator_bound == 2, label
         assert receipt.factor_base_size == 1, label
-        assert receipt.relation_count == 35, label
+        assert receipt.relation_count == 4, label
         assert receipt.proof_status == "exact-trivial-presentation-unconditional", label
         assert receipt.assumptions == (), label
         assert receipt.theorem == "minkowski-generators-plus-trivial-relation-presentation", label
+    if label == "3.1.59.1":
+        assert receipt.generator_bound == 3, label
+        assert receipt.factor_base_size == 1, label
+        assert receipt.relation_count == 3, label
+        assert receipt.proof_status == "exact-trivial-presentation-unconditional", label
+        assert receipt.assumptions == (), label
+    if label == "3.1.76.1":
+        assert receipt.generator_bound == 3, label
+        assert receipt.factor_base_size == 2, label
+        assert receipt.relation_count == 4, label
+        assert receipt.proof_status == "exact-trivial-presentation-unconditional", label
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label
