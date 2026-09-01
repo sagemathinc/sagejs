@@ -25,14 +25,10 @@ function expectedPrivateKeyPath() {
 }
 
 function verifyWindowsPrivateAcl(filename) {
-  const command = [
-    "$acl = Get-Acl -LiteralPath $env:SAGEJS_OPERATOR_SIGNING_KEY",
-    "$acl.Access | ForEach-Object { [PSCustomObject]@{",
-    "Identity = $_.IdentityReference.Value",
-    "Rights = $_.FileSystemRights.ToString()",
-    "Type = $_.AccessControlType.ToString()",
-    "} } | ConvertTo-Json -Compress",
-  ].join("; ");
+  const command = "$acl = Get-Acl -LiteralPath $env:SAGEJS_OPERATOR_SIGNING_KEY; " +
+    "$acl.Access | ForEach-Object { [PSCustomObject]@{ " +
+    "Identity = $_.IdentityReference.Value; Rights = $_.FileSystemRights.ToString(); " +
+    "Type = $_.AccessControlType.ToString() } } | ConvertTo-Json -Compress";
   const result = spawnSync("powershell.exe", [
     "-NoProfile", "-NonInteractive", "-Command", command,
   ], {
@@ -41,7 +37,11 @@ function verifyWindowsPrivateAcl(filename) {
     timeout: 10_000,
   });
   if (result.error || result.status !== 0 || result.stdout.trim() === "") {
-    throw new Error("could not verify the Windows operator-signing private-key ACL");
+    throw new Error(
+      `could not verify the Windows operator-signing private-key ACL: ${
+        result.error?.message ?? result.stderr.trim() ?? "unknown error"
+      }`,
+    );
   }
   let access;
   try { access = JSON.parse(result.stdout); } catch {
