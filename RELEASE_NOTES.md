@@ -19,9 +19,11 @@ around shared semantics rather than separate language-specific wrappers:
   fitting, explicit and stiff ordinary differential equations, polynomial
   roots, FFT and spectral methods, descriptive statistics and regression, and
   deterministic parameter sweeps.
-- Sage, Python/SciPy, MATLAB, and Wolfram frontends lower to the same numerical
-  contracts. Results can emit stable JSON, explanations, equivalent source in
-  supported languages, PlotSpec/Plotly figures, and bounded animations without
+- Supported Sage, Python/SciPy, MATLAB, and Wolfram operations lower to the same
+  numerical contracts. Scalar-root source parsing is qualified in all four
+  languages; the broader catalog classifies code-emission targets separately
+  and rejects unsupported translations explicitly. Results can emit stable
+  JSON, explanations, PlotSpec/Plotly figures, and bounded animations without
   coupling visualization to solver kernels.
 - Interactive lessons and a cross-domain teaching gallery expose both success
   and failure behavior, including convergence traces, adaptive step choices,
@@ -32,9 +34,10 @@ around shared semantics rather than separate language-specific wrappers:
   outside its validated envelope.
 
 The numerical implementation is supported by backend-neutral correctness
-corpora, metamorphic and failure tests, bounded fuzz and sweep cases, and
-differential oracles drawn from NumPy, SciPy, mpmath, and R. Qualified cminpack
-integration supplies nonlinear least squares. NLopt promotion remains
+corpora, metamorphic and failure tests, bounded fuzz and sweep cases, executed
+differential oracles drawn from NumPy, SciPy, and mpmath, plus retained R
+reference source and fixtures. Qualified cminpack integration supplies
+nonlinear least squares. NLopt promotion remains
 conservative and capability-gated until its production evidence is complete.
 
 Release publication now requires an authenticated numerical evidence gate. It

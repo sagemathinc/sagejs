@@ -518,6 +518,24 @@
       "priority": "now"
     },
     {
+      "id": "numerical-laboratory",
+      "area": "Symbolics & numerics",
+      "feature": "Agent-first numerical computing laboratory",
+      "state": "available",
+      "quality": "tested",
+      "coverage": {
+        "level": "broad",
+        "label": "Broad validated numerical methods",
+        "summary": "Shared problem, plan, result, diagnostic, provenance, validation, and bounded-trace contracts span the core undergraduate numerical curriculum and expose machine-readable evidence.",
+        "includes": ["root finding", "approximation", "dense linear algebra", "adaptive integration", "optimization and fitting", "ODE solvers", "polynomial roots", "FFT and spectral methods", "statistics and regression", "parameter sweeps", "Sage / Python / MATLAB / Wolfram adapters", "PlotSpec and bounded animations"]
+      },
+      "summary": "Validated numerical methods return inspectable evidence, explanations, plots, traces, and explicitly classified multilingual views.",
+      "implementation": "Ordinary strict-Python solvers and frontends over shared NumericalProblem, NumericalPlan, NumericalResult, capability, provenance, validation, and budget contracts, with qualified optional Wasm reactors.",
+      "evidence": "Backend-neutral correctness corpora, independent NumPy/SciPy/mpmath oracles, failure and metamorphic tests, real-browser coverage, and exact four-platform Node/npm/SEA qualification.",
+      "target": "Broaden qualified problem envelopes and teaching stories while preserving explicit unsupported classifications and independent validation.",
+      "priority": "now"
+    },
+    {
       "id": "numerical-integration",
       "area": "Symbolics & numerics",
       "feature": "Numerical integration",

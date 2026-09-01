@@ -77,6 +77,34 @@ The [implementation dashboard](https://sagemathinc.github.io/sagejs/) is the
 living map of what Sage.js provides, how strongly each capability is tested,
 and what is prioritized next.
 
+## Numerical computing laboratory
+
+Sage.js 0.8.0 includes an agent-first numerical laboratory with validated root
+finding, approximation, dense linear algebra, integration, optimization and
+fitting, ODE solvers, polynomial roots, FFT and spectral methods, statistics,
+regression, and deterministic parameter sweeps. The canonical APIs return
+structured evidence rather than only a scalar or backend status:
+
+```python
+from sagejs.numerics import find_root
+
+result = find_root(
+    lambda x: cos(x) - x,
+    0.0,
+    1.0,
+    method="brent",
+    trace="evaluations",
+)
+result.to_dict()       # stable values, validation, diagnostics, and provenance
+result.explain()       # human-readable account of the computation
+```
+
+The same contracts support selected Sage, Python/SciPy, MATLAB, and Wolfram
+frontends, JSON, equivalent-code emission, PlotSpec/Plotly figures, and bounded
+animations. Unsupported methods and translations are classified explicitly.
+See the [interactive numerical laboratory](https://sagejs.org/numerical-computing/)
+and [numerical API contract](docs/numerical-computing/README.md).
+
 ## Download a standalone executable
 
 The [latest GitHub release](https://github.com/sagemathinc/sagejs/releases/latest)
