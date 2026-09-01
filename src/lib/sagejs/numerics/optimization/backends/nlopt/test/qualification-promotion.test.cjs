@@ -3,6 +3,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -10,13 +11,17 @@ const test = require("node:test");
 
 const {
   CASE_RECEIPT_SCHEMA,
+  EVIDENCE_PROGRAMS,
   EVIDENCE_RECEIPT_SCHEMA,
   REQUIRED_CHECKS,
+  attachReceiptOrigin,
   buildQualification,
   canonicalJson,
   formattedJson,
+  readJson,
   sha256,
   validateQualificationSummary,
+  validateManifestQualificationState,
   validateSelection,
   writePromotion,
 } = require("../qualification/contracts.cjs");
@@ -28,6 +33,7 @@ const {
 
 const digest = (character) => character.repeat(64);
 const candidate = "1".repeat(40);
+const campaignChallenge = digest("4");
 const caseIds = ["nelder-rosenbrock-2", "nelder-beale-2"];
 const corpusCases = [
   {
@@ -39,12 +45,34 @@ const corpusCases = [
     expected: [3, 0.5], point_tolerance: [3e-5, 3e-5], objective_tolerance: 1e-10,
   },
 ];
-const platforms = {
-  "linux-x64": { os: "linux", architecture: "x64" },
-  "linux-arm64": { os: "linux", architecture: "arm64" },
-  "macos-arm64": { os: "darwin", architecture: "arm64" },
-  "windows-x64": { os: "win32", architecture: "x64" },
+const keyRoot = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-nlopt-fixture-keys-"));
+test.after(() => fs.rmSync(keyRoot, { recursive: true, force: true }));
+const platformFacts = {
+  "linux-x64": ["linux", "x64", "bench-1"],
+  "linux-arm64": ["linux", "arm64", "bench-arm"],
+  "macos-arm64": ["darwin", "arm64", "m1"],
+  "windows-x64": ["win32", "x64", "windows"],
 };
+const platformPrivateKeys = {};
+const platforms = Object.fromEntries(Object.entries(platformFacts).map(
+  ([id, [osName, architecture, hostAlias]]) => {
+    const pair = crypto.generateKeyPairSync("rsa", { modulusLength: 3072 });
+    const privateKeyPath = path.join(keyRoot, `${id}.pem`);
+    fs.writeFileSync(privateKeyPath, pair.privateKey.export({ type: "pkcs8", format: "pem" }));
+    platformPrivateKeys[id] = privateKeyPath;
+    const der = pair.publicKey.export({ type: "spki", format: "der" });
+    return [id, {
+      os: osName,
+      architecture,
+      host_alias: hostAlias,
+      attestation: {
+        algorithm: "rsa-pkcs1-sha256",
+        public_key_spki_sha256: sha256(der),
+        public_key_pem: pair.publicKey.export({ type: "spki", format: "pem" }),
+      },
+    }];
+  },
+));
 const evidenceKinds = Object.keys(REQUIRED_CHECKS);
 
 function clone(value) {
@@ -67,7 +95,15 @@ function context() {
         "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs":
           digest("6"),
       },
-      qualification: { status: "pending_source_current_requalification" },
+      qualification: {
+        status: "pending_source_current_requalification",
+        reason: "Exact fixture pending state.",
+        public_semantics_bundle_sha256: digest("c"),
+        qualification_tooling_bundle_sha256: digest("d"),
+        selection_sha256: digest("e"),
+        oracle_sha256: digest("9"),
+        invalidated_summary: "qualification-v1.json",
+      },
     },
     artifact: { sha256: digest("a"), bytes: 72592 },
     source: {
@@ -89,6 +125,12 @@ function context() {
       case_ids: caseIds,
       evidence_kinds: evidenceKinds,
       portable_platforms: platforms,
+      browser_evidence: {
+        engine: "chromium",
+        version: "149.0.7827.196",
+        result_case_ids: caseIds,
+        results_sha256: digest("5"),
+      },
       historical_exclusions: {
         "nlopt-cobyla": {
           status: "excluded",
@@ -123,7 +165,17 @@ function common(current) {
   };
 }
 
-function caseReceipt(current, platform = platforms["linux-x64"]) {
+function signReceipt(current, value, platformId = "linux-x64") {
+  return attachReceiptOrigin(value, {
+    context: current,
+    platformId,
+    campaignChallenge,
+    privateKeyPath: platformPrivateKeys[platformId],
+  });
+}
+
+function caseReceipt(current, platformId = "linux-x64") {
+  const platform = platforms[platformId];
   const results = current.selection.case_ids.map((id) => ({
     id,
     method: "nlopt-nelder-mead",
@@ -136,16 +188,19 @@ function caseReceipt(current, platform = platforms["linux-x64"]) {
     callbacks: 10,
     independently_accepted: true,
   }));
-  return {
+  return signReceipt(current, {
     schema: CASE_RECEIPT_SCHEMA,
     ...common(current),
-    runtime: { node: "v26.7.0", ...platform },
+    runtime: { node: "v26.7.0", os: platform.os, architecture: platform.architecture },
     method: "nlopt-nelder-mead",
     results,
     results_sha256: sha256(Buffer.from(canonicalJson(results))),
-    lifecycle_after: { liveAllocations: 0, liveBytes: 0 },
+    lifecycle_after: {
+      activeContexts: 0, activeHandle: 0, liveAllocations: 0, liveBytes: 0,
+      memoryBytes: 2 * 1024 * 1024,
+    },
     automatic_selection: false,
-  };
+  }, platformId);
 }
 
 function rawSanitizer(current) {
@@ -192,21 +247,70 @@ function rawDestructive(current) {
 }
 
 function evidenceReceipt(current, kind) {
-  const stdout = kind === "browser-lifecycle" ? JSON.stringify({
-    schema: "sagejs.numerical-nlopt-browser/v1",
-    cases: current.selection.case_ids.length,
-    public_semantics_bundle_sha256: current.publicSemantics.sha256,
-    pre_set_shared_atomic_force_stop: "pass",
-    hard_worker_replacement: "pass",
-    lifecycle_after: { liveAllocations: 0, liveBytes: 0 },
-  }) : "";
-  const payload = kind === "sanitizer"
-    ? { raw: rawSanitizer(current), stdout, stderr: "" }
-    : kind === "destructive-wasm"
-      ? { raw: rawDestructive(current), stdout, stderr: "" }
-      : { stdout, stderr: "" };
+  const programs = EVIDENCE_PROGRAMS[kind].map((specification, index) => {
+    let result;
+    if (specification.result === "native-sanitizer-json") result = rawSanitizer(current);
+    else if (specification.result === "wasm-destructive-json") result = rawDestructive(current);
+    else if (specification.result === "browser-json") {
+      result = {
+        schema: "sagejs.numerical-nlopt-browser/v1",
+        chromium: current.selection.browser_evidence.version,
+        cases: current.selection.case_ids.length,
+        result_case_ids: [...current.selection.case_ids],
+        results_sha256: current.selection.browser_evidence.results_sha256,
+        public_semantics_bundle_sha256: current.publicSemantics.sha256,
+        pre_set_shared_atomic_force_stop: "pass",
+        hard_worker_replacement: "pass",
+        lifecycle_after: {
+          activeContexts: 0, activeHandle: 0, liveAllocations: 0, liveBytes: 0,
+          memoryBytes: 2 * 1024 * 1024,
+        },
+      };
+    } else if (specification.result === "node-test-tap") {
+      result = {
+        schema: "sagejs.node-test-tap-summary/v1",
+        tests: 1,
+        passed: 1,
+        failed: 0,
+        cancelled: 0,
+        skipped: 0,
+        todo: 0,
+        subtest_names: [`${kind}-${index}`],
+        stdout_sha256: "",
+      };
+    } else if (specification.result === "sea-resource-json") {
+      result = {
+        schema: "sagejs.sea-qualification-resource-digests/v1",
+        resources: [{
+          name: "numerical/nlopt-methods.wasm",
+          sha256: current.artifact.sha256,
+          bytes: current.artifact.bytes,
+        }],
+      };
+    }
+    const stdout = specification.result === "node-test-tap"
+      ? `TAP version 13\n# Subtest: ${result.subtest_names[0]}\nok 1 - pass\n1..1\n# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n`
+      : `${JSON.stringify(result)}\n`;
+    if (specification.result === "node-test-tap") result.stdout_sha256 = sha256(stdout);
+    return {
+      id: specification.id,
+      executable: specification.executable,
+      arguments: [...specification.arguments],
+      status: 0,
+      signal: null,
+      stdout,
+      stderr: "",
+      stdout_sha256: sha256(stdout),
+      stderr_sha256: sha256(""),
+      result,
+    };
+  });
+  const payload = { programs };
   const sourceBinding = record(payload);
-  return {
+  const combined = (field) => programs.map(
+    (program) => `${program.id}\n${program[field]}`,
+  ).join("\n");
+  return signReceipt(current, {
     schema: EVIDENCE_RECEIPT_SCHEMA,
     ...common(current),
     kind,
@@ -218,10 +322,7 @@ function evidenceReceipt(current, kind) {
       sha256: digest("6"),
     },
     source_evidence: {
-      schema: kind === "sanitizer" ? payload.raw.schema
-        : kind === "destructive-wasm" ? payload.raw.schema
-          : kind === "browser-lifecycle" ? "sagejs.numerical-nlopt-browser/v1"
-            : "sagejs.numerical-nlopt-command-transcript/v1",
+      schema: "sagejs.numerical-nlopt-program-evidence/v1",
       sha256: sourceBinding.sha256,
       bytes: sourceBinding.size,
       payload,
@@ -229,20 +330,41 @@ function evidenceReceipt(current, kind) {
     execution: {
       status: 0,
       signal: null,
-      stdout_sha256: sha256(stdout),
-      stderr_sha256: sha256(""),
+      stdout_sha256: sha256(combined("stdout")),
+      stderr_sha256: sha256(combined("stderr")),
     },
-  };
+  });
+}
+
+function rebindEvidence(current, receipt) {
+  const programs = receipt.source_evidence.payload.programs;
+  for (const program of programs) {
+    program.stdout_sha256 = sha256(program.stdout);
+    program.stderr_sha256 = sha256(program.stderr);
+    if (program.result?.schema === "sagejs.node-test-tap-summary/v1") {
+      program.result.stdout_sha256 = program.stdout_sha256;
+    }
+  }
+  const payloadBinding = record(receipt.source_evidence.payload);
+  receipt.source_evidence.sha256 = payloadBinding.sha256;
+  receipt.source_evidence.bytes = payloadBinding.size;
+  const combined = (field) => programs.map(
+    (program) => `${program.id}\n${program[field]}`,
+  ).join("\n");
+  receipt.execution.stdout_sha256 = sha256(combined("stdout"));
+  receipt.execution.stderr_sha256 = sha256(combined("stderr"));
+  return signReceipt(current, receipt, "linux-x64");
 }
 
 function validInputs() {
   const current = context();
   return {
     context: current,
+    campaignChallenge,
     caseReceiptRecord: record(caseReceipt(current)),
     evidenceRecords: evidenceKinds.map((kind) => record(evidenceReceipt(current, kind))),
-    portableRecords: Object.values(platforms).map((platform) =>
-      record(caseReceipt(current, platform))),
+    portableRecords: Object.keys(platforms).map((platformId) =>
+      record(caseReceipt(current, platformId))),
   };
 }
 
@@ -300,7 +422,9 @@ test("promotion independently rejects a producer's false acceptance claim", () =
   input.caseReceiptRecord.value.results_sha256 = sha256(Buffer.from(canonicalJson(
     input.caseReceiptRecord.value.results,
   )));
-  input.caseReceiptRecord = record(input.caseReceiptRecord.value);
+  input.caseReceiptRecord = record(signReceipt(
+    input.context, input.caseReceiptRecord.value, "linux-x64",
+  ));
   assert.throws(() => buildQualification(input), /independent point envelope/);
 });
 
@@ -311,16 +435,19 @@ test("embedded evidence is preserved and revalidated during durable verification
     promoted.summary.evidence.sanitizer.receipt.source_evidence.payload.raw,
     input.evidenceRecords[0].value.source_evidence.payload.raw,
   );
-  promoted.summary.evidence.sanitizer.receipt.source_evidence.payload.raw.status = "failed";
+  promoted.summary.evidence.sanitizer.receipt.source_evidence.payload.programs[0].result.status =
+    "failed";
   assert.throws(() => validateQualificationSummary(
-    promoted.summary, input.context, promoted.manifest,
+    record(promoted.summary), input.context, promoted.manifest,
   ), /durable evidence binding|stale or failed/);
 });
 
 test("unsupported Node versions cannot qualify a portable platform", () => {
   const input = validInputs();
   input.portableRecords[0].value.runtime.node = "v22.22.1";
-  input.portableRecords[0] = record(input.portableRecords[0].value);
+  input.portableRecords[0] = record(signReceipt(
+    input.context, input.portableRecords[0].value, "linux-x64",
+  ));
   assert.throws(() => buildQualification(input), /unsupported Node/);
 });
 
@@ -381,9 +508,9 @@ test("missing, duplicate, and extra portable platforms fail closed", () => {
   assert.throws(() => buildQualification(input), /duplicate portable platform/);
 
   input = validInputs();
-  input.portableRecords.push(record(caseReceipt(input.context, {
-    os: "freebsd", architecture: "x64",
-  })));
+  const unknown = caseReceipt(input.context, "windows-x64");
+  unknown.runtime = { node: "v26.7.0", os: "freebsd", architecture: "x64" };
+  input.portableRecords.push(record(unknown));
   assert.throws(() => buildQualification(input), /extra portable platform/);
 });
 
@@ -401,8 +528,127 @@ test("missing, duplicate, reordered, and extra selected cases fail closed", () =
     const value = clone(input.caseReceiptRecord.value);
     mutate(value);
     value.results_sha256 = sha256(Buffer.from(canonicalJson(value.results)));
-    input.caseReceiptRecord = record(value);
+    input.caseReceiptRecord = record(signReceipt(input.context, value, "linux-x64"));
     assert.throws(() => buildQualification(input), /case|duplicate|exactly/i);
+  }
+});
+
+test("one signed Linux receipt cannot be cloned into four platform identities", () => {
+  const input = validInputs();
+  const linux = input.portableRecords[0].value;
+  input.portableRecords = Object.entries(platforms).map(([platformId, platform]) => {
+    const forged = clone(linux);
+    forged.runtime.os = platform.os;
+    forged.runtime.architecture = platform.architecture;
+    forged.origin.platform_id = platformId;
+    forged.origin.host_alias = platform.host_alias;
+    forged.origin.public_key_spki_sha256 = platform.attestation.public_key_spki_sha256;
+    return record(forged);
+  });
+  assert.throws(() => buildQualification(input), /signed payload is stale|signature is invalid/);
+});
+
+test("missing, wrong-host, wrong-challenge, and stale signatures fail closed", () => {
+  for (const mutate of [
+    (receipt) => { delete receipt.origin; },
+    (receipt) => { receipt.origin.host_alias = "bench-arm"; },
+    (receipt) => { receipt.origin.campaign_challenge = digest("3"); },
+    (receipt) => { receipt.results[0].evaluations += 1; },
+  ]) {
+    const input = validInputs();
+    const forged = clone(input.portableRecords[0].value);
+    mutate(forged);
+    input.portableRecords[0] = record(forged);
+    assert.throws(() => buildQualification(input), /origin|signed payload|signature/i);
+  }
+});
+
+test("empty or unstructured public transcripts cannot qualify", () => {
+  for (const kind of ["public-integration", "resource-corruption", "relocation", "sea"]) {
+    const input = validInputs();
+    const index = evidenceKinds.indexOf(kind);
+    const receipt = clone(input.evidenceRecords[index].value);
+    receipt.source_evidence.payload.programs[0].stdout = "";
+    input.evidenceRecords[index] = record(rebindEvidence(input.context, receipt));
+    assert.throws(() => buildQualification(input), /empty, failed, or stale command transcript/);
+  }
+});
+
+test("fabricated sanitizer and destructive payloads require the persistent-host signature", () => {
+  for (const kind of ["sanitizer", "destructive-wasm"]) {
+    const input = validInputs();
+    const index = evidenceKinds.indexOf(kind);
+    const receipt = clone(input.evidenceRecords[index].value);
+    receipt.source_evidence.payload.programs[0].result.status = "failed";
+    const payloadBinding = record(receipt.source_evidence.payload);
+    receipt.source_evidence.sha256 = payloadBinding.sha256;
+    receipt.source_evidence.bytes = payloadBinding.size;
+    input.evidenceRecords[index] = record(receipt);
+    assert.throws(() => buildQualification(input), /signed payload is stale|signature is invalid/);
+  }
+});
+
+test("evaluation and complete lifecycle budgets are independently enforced", () => {
+  for (const mutate of [
+    (receipt) => { receipt.results[0].evaluations = 4001; receipt.results[0].callbacks = 4001; },
+    (receipt) => { receipt.lifecycle_after.activeContexts = 1; },
+    (receipt) => { receipt.lifecycle_after.activeHandle = 1; },
+  ]) {
+    const input = validInputs();
+    const receipt = clone(input.caseReceiptRecord.value);
+    mutate(receipt);
+    receipt.results_sha256 = sha256(Buffer.from(canonicalJson(receipt.results)));
+    input.caseReceiptRecord = record(signReceipt(input.context, receipt, "linux-x64"));
+    assert.throws(() => buildQualification(input), /termination contract|leaked Wasm state/);
+  }
+});
+
+test("browser identity, exact result IDs, digest, and lifecycle are bound", () => {
+  for (const mutate of [
+    (result) => { result.chromium = "150.0.0.0"; },
+    (result) => { result.result_case_ids.reverse(); },
+    (result) => { result.results_sha256 = digest("0"); },
+    (result) => { result.lifecycle_after.activeHandle = 1; },
+  ]) {
+    const input = validInputs();
+    const index = evidenceKinds.indexOf("browser-lifecycle");
+    const receipt = clone(input.evidenceRecords[index].value);
+    mutate(receipt.source_evidence.payload.programs[0].result);
+    input.evidenceRecords[index] = record(rebindEvidence(input.context, receipt));
+    assert.throws(() => buildQualification(input), /browser|quiescent/);
+  }
+});
+
+test("strict JSON and exact summary file bytes are release boundaries", () => {
+  const input = validInputs();
+  const promoted = buildQualification(input);
+  validateQualificationSummary(record(promoted.summary), input.context, promoted.manifest);
+  const compact = Buffer.from(JSON.stringify(promoted.summary));
+  assert.throws(() => validateQualificationSummary({
+    value: promoted.summary,
+    bytes: compact,
+    sha256: sha256(compact),
+    size: compact.length,
+  }, input.context, promoted.manifest), /deterministic formatted JSON/);
+
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-nlopt-strict-json-"));
+  try {
+    const filename = path.join(temporary, "duplicate.json");
+    fs.writeFileSync(filename, '{"status":"qualified","status":"pending"}\n');
+    assert.throws(() => readJson(filename, "duplicate fixture"), /duplicate object key/);
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test("only the exact pending and qualified manifest states are recognized", () => {
+  assert.equal(validateManifestQualificationState(context().manifest), "pending");
+  assert.equal(validateManifestQualificationState(buildQualification(validInputs()).manifest),
+    "qualified");
+  for (const status of ["pending", "invalidated", "corrupted", "promotion_in_progress", "other"]) {
+    const input = validInputs();
+    input.context.manifest.qualification = { status };
+    assert.throws(() => buildQualification(input), /forbidden state/);
   }
 });
 

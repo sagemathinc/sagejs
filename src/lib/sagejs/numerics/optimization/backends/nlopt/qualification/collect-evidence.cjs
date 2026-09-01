@@ -8,15 +8,19 @@ const path = require("node:path");
 
 const {
   EVIDENCE_RECEIPT_SCHEMA,
+  EVIDENCE_PROGRAMS,
   REQUIRED_CHECKS,
+  attachReceiptOrigin,
   atomicWriteFile,
   bindRecord,
   formattedJson,
   loadCurrentContext,
+  parseJsonText,
   readJson,
   sha256,
   validateRawDestructive,
   validateRawSanitizer,
+  validateEvidenceReceipt,
 } = require("./contracts.cjs");
 
 const packageRoot = path.resolve(__dirname, "..");
@@ -24,19 +28,11 @@ const root = path.resolve(packageRoot, "../../../../../../..");
 const COLLECTOR = path.relative(root, __filename).replaceAll(path.sep, "/");
 const LOG_LIMIT = 16 * 1024 * 1024;
 
-const COMMANDS = Object.freeze({
-  "browser-lifecycle": [[process.execPath, ["test/numerical-p3-nlopt/browser.mjs"]]],
-  "public-integration": [[process.execPath, ["--test", "test/numerical-p3-nlopt/public-integration.cjs"]]],
-  "resource-corruption": [
-    [process.execPath, ["--test", "test/numerical-p3-nlopt/public-browser.mjs"]],
-    [process.execPath, ["--test", "test/numerical-p3-nlopt/public-relocation.cjs"]],
-  ],
-  relocation: [[process.execPath, ["--test", "test/numerical-p3-nlopt/public-relocation.cjs"]]],
-  sea: [[process.execPath, ["--test", "test/numerical-p3-nlopt/public-sea.cjs"]]],
-});
+const COMMANDS = EVIDENCE_PROGRAMS;
 
 function usage() {
-  return `Usage: node ${COLLECTOR} --candidate COMMIT --kind KIND --output FILE
+  return `Usage: node ${COLLECTOR} --candidate COMMIT --kind KIND --output FILE \\
+  --campaign-challenge SHA256 --attestation-key FILE
 
 KIND is one of: ${Object.keys(REQUIRED_CHECKS).join(", ")}.
 The collector runs the canonical source-current command(s), rejects skips, and
@@ -47,20 +43,26 @@ evidence before wrapping it. Release collection requires clean linux-x64.
 }
 
 function parseArguments(argv) {
-  const options = { candidate: null, kind: null, output: null, help: false };
+  const options = {
+    candidate: null, kind: null, output: null, campaignChallenge: null,
+    attestationKey: null, help: false,
+  };
   for (let index = 0; index < argv.length; ++index) {
     const argument = argv[index];
     if (["--help", "-h"].includes(argument)) options.help = true;
-    else if (["--candidate", "--kind", "--output"].includes(argument)) {
+    else if ([
+      "--candidate", "--kind", "--output", "--campaign-challenge", "--attestation-key",
+    ].includes(argument)) {
       const value = argv[++index];
       if (!value || value.startsWith("--")) throw new Error(`${argument} requires a value`);
-      const field = argument.slice(2);
+      const field = argument === "--campaign-challenge" ? "campaignChallenge"
+        : argument === "--attestation-key" ? "attestationKey" : argument.slice(2);
       if (options[field] !== null) throw new Error(`${argument} may appear only once`);
       options[field] = value;
     } else throw new Error(`unknown argument ${argument}`);
   }
   if (!options.help && Object.values(options).some((value) => value === null)) {
-    throw new Error("--candidate, --kind, and --output are required");
+    throw new Error("candidate, kind, output, campaign challenge, and attestation key are required");
   }
   if (!options.help && !Object.hasOwn(REQUIRED_CHECKS, options.kind)) {
     throw new Error(`unsupported evidence kind ${options.kind}`);
@@ -127,6 +129,61 @@ function validatePackagedArtifact(current, filename = path.join(
   }
 }
 
+function tapInteger(stdout, name) {
+  const match = new RegExp(`^# ${name} ([0-9]+)$`, "m").exec(stdout);
+  if (match === null) throw new Error(`TAP transcript has no exact ${name} summary`);
+  return Number(match[1]);
+}
+
+function tapResult(stdout) {
+  const subtestNames = [...stdout.matchAll(/^# Subtest: (.+)$/gm)].map((match) => match[1]);
+  const result = {
+    schema: "sagejs.node-test-tap-summary/v1",
+    tests: tapInteger(stdout, "tests"),
+    passed: tapInteger(stdout, "pass"),
+    failed: tapInteger(stdout, "fail"),
+    cancelled: tapInteger(stdout, "cancelled"),
+    skipped: tapInteger(stdout, "skipped"),
+    todo: tapInteger(stdout, "todo"),
+    subtest_names: subtestNames,
+    stdout_sha256: sha256(stdout),
+  };
+  if (result.tests <= 0 || result.passed !== result.tests || result.failed !== 0 ||
+      result.cancelled !== 0 || result.skipped !== 0 || result.todo !== 0 ||
+      subtestNames.length !== result.tests) {
+    throw new Error("TAP transcript is not an exact complete passing test execution");
+  }
+  return result;
+}
+
+function programEvidence(specification, execution, result) {
+  const stdout = execution.stdout ?? "";
+  const stderr = execution.stderr ?? "";
+  return {
+    id: specification.id,
+    executable: specification.executable,
+    arguments: [...specification.arguments],
+    status: execution.status,
+    signal: execution.signal,
+    stdout,
+    stderr,
+    stdout_sha256: sha256(stdout),
+    stderr_sha256: sha256(stderr),
+    result,
+  };
+}
+
+function executionSummary(programs) {
+  const stdout = programs.map((program) => `${program.id}\n${program.stdout}`).join("\n");
+  const stderr = programs.map((program) => `${program.id}\n${program.stderr}`).join("\n");
+  return {
+    status: 0,
+    signal: null,
+    stdout_sha256: sha256(stdout),
+    stderr_sha256: sha256(stderr),
+  };
+}
+
 function supplemental(kind, current, temporary) {
   const script = kind === "sanitizer"
     ? "scripts/numerical-computing/qualification/run-native-sanitizers.cjs"
@@ -139,10 +196,15 @@ function supplemental(kind, current, temporary) {
   const raw = readJson(rawPath, `raw ${kind} evidence`).value;
   if (kind === "sanitizer") validateRawSanitizer(raw, current);
   else validateRawDestructive(raw, current);
-  const payload = { raw, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
+  const programs = [programEvidence(EVIDENCE_PROGRAMS[kind][0], result, raw)];
+  const payload = { programs };
   return {
-    execution: result,
-    sourceEvidence: { schema: raw.schema, ...bindRecord(payload), payload },
+    execution: executionSummary(programs),
+    sourceEvidence: {
+      schema: "sagejs.numerical-nlopt-program-evidence/v1",
+      ...bindRecord(payload),
+      payload,
+    },
   };
 }
 
@@ -150,39 +212,22 @@ function generic(kind, current) {
   if (["public-integration", "resource-corruption", "relocation"].includes(kind)) {
     validatePackagedArtifact(current);
   }
-  const results = COMMANDS[kind].map(([command, arguments_]) => execute(command, arguments_));
-  if (kind === "browser-lifecycle") {
-    const value = JSON.parse(results[0].stdout);
-    if (value.schema !== "sagejs.numerical-nlopt-browser/v1" ||
-        value.cases !== current.selection.case_ids.length ||
-        value.public_semantics_bundle_sha256 !== current.publicSemantics.sha256 ||
-        value.pre_set_shared_atomic_force_stop !== "pass" ||
-        value.hard_worker_replacement !== "pass" ||
-        value.lifecycle_after?.liveAllocations !== 0 || value.lifecycle_after?.liveBytes !== 0) {
-      throw new Error("browser lifecycle output did not satisfy its exact contract");
-    }
-  }
-  if (kind === "sea") {
-    const executable = path.join(root, "build/sea/sagepython");
-    const probe = execute(executable, ["--qualification-resource-digests"]);
-    let value;
-    try { value = JSON.parse(probe.stdout); } catch { throw new Error("SEA resource probe did not emit JSON"); }
-    const nlopt = (value.resources ?? []).find(({ name }) => name === "numerical/nlopt-methods.wasm");
-    if (value.schema !== "sagejs.sea-qualification-resource-digests/v1" ||
-        nlopt?.sha256 !== current.artifact.sha256 || nlopt?.bytes !== current.artifact.bytes) {
-      throw new Error("SEA does not embed the exact qualified NLopt artifact");
-    }
-    results.push(probe);
-  }
-  const stdout = results.map((result, index) => `command-${index}\n${result.stdout}`).join("\n");
-  const stderr = results.map((result, index) => `command-${index}\n${result.stderr}`).join("\n");
-  const payload = { stdout, stderr };
+  const programs = EVIDENCE_PROGRAMS[kind].map((specification) => {
+    const executable = specification.executable === "node"
+      ? process.execPath : path.join(root, "build/sea/sagepython");
+    const execution = execute(executable, specification.arguments);
+    let result;
+    if (specification.result === "browser-json" || specification.result === "sea-resource-json") {
+      result = parseJsonText(execution.stdout, `${kind} ${specification.id} output`);
+    } else if (specification.result === "node-test-tap") result = tapResult(execution.stdout);
+    else throw new Error(`unsupported generic result contract ${specification.result}`);
+    return programEvidence(specification, execution, result);
+  });
+  const payload = { programs };
   return {
-    execution: { status: 0, signal: null, stdout, stderr },
+    execution: executionSummary(programs),
     sourceEvidence: {
-      schema: kind === "browser-lifecycle"
-        ? "sagejs.numerical-nlopt-browser/v1"
-        : "sagejs.numerical-nlopt-command-transcript/v1",
+      schema: "sagejs.numerical-nlopt-program-evidence/v1",
       ...bindRecord(payload),
       payload,
     },
@@ -196,9 +241,8 @@ function collect(options) {
     const collected = ["sanitizer", "destructive-wasm"].includes(options.kind)
       ? supplemental(options.kind, current, temporary)
       : generic(options.kind, current);
-    const execution = collected.execution;
     const collectorBytes = fs.readFileSync(__filename);
-    return {
+    const unsigned = {
       schema: EVIDENCE_RECEIPT_SCHEMA,
       candidate_commit: current.candidate,
       artifact: { ...current.artifact },
@@ -218,13 +262,16 @@ function collect(options) {
       checks: [...REQUIRED_CHECKS[options.kind]],
       collector: { path: COLLECTOR, sha256: sha256(collectorBytes) },
       source_evidence: collected.sourceEvidence,
-      execution: {
-        status: execution.status,
-        signal: execution.signal,
-        stdout_sha256: sha256(execution.stdout ?? ""),
-        stderr_sha256: sha256(execution.stderr ?? ""),
-      },
+      execution: collected.execution,
     };
+    const receipt = attachReceiptOrigin(unsigned, {
+      context: current,
+      platformId: "linux-x64",
+      campaignChallenge: options.campaignChallenge,
+      privateKeyPath: path.resolve(options.attestationKey),
+    });
+    validateEvidenceReceipt(receipt, current, options.kind, options.campaignChallenge);
+    return receipt;
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }

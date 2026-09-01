@@ -17,6 +17,7 @@ const root = path.resolve(packageRoot, "../../../../../../..");
 function usage() {
   return `Usage: node ${path.relative(root, __filename)} \\
   --candidate COMMIT --case-receipt FILE \\
+  --campaign-challenge SHA256 \\
   --evidence FILE [--evidence FILE ...] \\
   --portable FILE [--portable FILE ...] \\
   [--summary FILE] [--manifest FILE]
@@ -48,6 +49,7 @@ function parseArguments(argv) {
   if (argv.includes("--help") || argv.includes("-h")) return { help: true };
   const accepted = new Set([
     "--candidate", "--case-receipt", "--evidence", "--portable", "--summary", "--manifest",
+    "--campaign-challenge",
   ]);
   for (let index = 0; index < argv.length; index += 2) {
     if (!accepted.has(argv[index])) throw new Error(`unknown argument ${argv[index]}`);
@@ -57,12 +59,14 @@ function parseArguments(argv) {
   }
   const candidate = one(argv, "--candidate");
   const caseReceipt = one(argv, "--case-receipt");
-  if (candidate === null || caseReceipt === null) {
-    throw new Error("--candidate and --case-receipt are required");
+  const campaignChallenge = one(argv, "--campaign-challenge");
+  if (candidate === null || caseReceipt === null || campaignChallenge === null) {
+    throw new Error("--candidate, --case-receipt, and --campaign-challenge are required");
   }
   return {
     help: false,
     candidate,
+    campaignChallenge,
     caseReceipt,
     evidence: values(argv, "--evidence"),
     portable: values(argv, "--portable"),
@@ -104,6 +108,7 @@ function run(options) {
   const context = currentContext(options.candidate, manifestPath);
   const qualification = buildQualification({
     context,
+    campaignChallenge: options.campaignChallenge,
     caseReceiptRecord: readJson(path.resolve(options.caseReceipt), "case receipt"),
     evidenceRecords: options.evidence.map((filename) =>
       readJson(path.resolve(filename), `evidence ${filename}`)),

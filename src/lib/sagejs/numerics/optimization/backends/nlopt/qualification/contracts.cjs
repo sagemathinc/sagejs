@@ -5,12 +5,13 @@ const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const CASE_RECEIPT_SCHEMA = "sagejs.numerical-nlopt-case-execution/v2";
-const EVIDENCE_RECEIPT_SCHEMA = "sagejs.numerical-nlopt-release-evidence/v1";
-const QUALIFICATION_SCHEMA = "sagejs.numerical-nlopt-qualification-summary/v2";
+const CASE_RECEIPT_SCHEMA = "sagejs.numerical-nlopt-case-execution/v3";
+const EVIDENCE_RECEIPT_SCHEMA = "sagejs.numerical-nlopt-release-evidence/v2";
+const QUALIFICATION_SCHEMA = "sagejs.numerical-nlopt-qualification-summary/v3";
 const MANIFEST_SCHEMA = "sagejs.numerical-nlopt-production-manifest/v1";
 const SHA256 = /^[0-9a-f]{64}$/;
 const COMMIT = /^[0-9a-f]{40}$/;
+const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 function fail(message) {
   throw new Error(message);
@@ -77,13 +78,101 @@ function regularBytes(filename, label) {
   return fs.readFileSync(filename);
 }
 
+// JSON.parse silently accepts duplicate object keys. Release evidence does not:
+// the producer, verifier, and reviewer must all see the same object.
+function parseJsonText(text, label = "JSON") {
+  let index = 0;
+  const error = (message) => fail(`${label}: ${message} at byte ${Buffer.byteLength(
+    text.slice(0, index),
+  )}`);
+  const whitespace = () => {
+    while (index < text.length && /[\u0009\u000a\u000d\u0020]/.test(text[index])) ++index;
+  };
+  const string = () => {
+    const start = index++;
+    while (index < text.length) {
+      const character = text[index++];
+      if (character === '"') {
+        try { return JSON.parse(text.slice(start, index)); } catch { error("invalid string"); }
+      }
+      if (character === "\\") {
+        if (index >= text.length) error("unterminated escape");
+        const escaped = text[index++];
+        if (escaped === "u") {
+          if (!/^[0-9a-fA-F]{4}$/.test(text.slice(index, index + 4))) {
+            error("invalid Unicode escape");
+          }
+          index += 4;
+        } else if (!'"\\/bfnrt'.includes(escaped)) error("invalid escape");
+      } else if (character.charCodeAt(0) < 0x20) error("unescaped control character");
+    }
+    return error("unterminated string");
+  };
+  const number = () => {
+    const match = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/.exec(
+      text.slice(index),
+    );
+    if (match === null) error("invalid number");
+    index += match[0].length;
+    const result = Number(match[0]);
+    if (!Number.isFinite(result)) error("non-finite number");
+    return result;
+  };
+  const value = () => {
+    whitespace();
+    const character = text[index];
+    if (character === '"') return string();
+    if (character === "[") {
+      ++index;
+      whitespace();
+      const result = [];
+      if (text[index] === "]") { ++index; return result; }
+      for (;;) {
+        result.push(value());
+        whitespace();
+        if (text[index] === "]") { ++index; return result; }
+        if (text[index++] !== ",") error("expected ',' or ']'");
+      }
+    }
+    if (character === "{") {
+      ++index;
+      whitespace();
+      const result = Object.create(null);
+      const keys = new Set();
+      if (text[index] === "}") { ++index; return result; }
+      for (;;) {
+        whitespace();
+        if (text[index] !== '"') error("expected an object key");
+        const key = string();
+        if (keys.has(key)) error(`duplicate object key ${JSON.stringify(key)}`);
+        keys.add(key);
+        whitespace();
+        if (text[index++] !== ":") error("expected ':'");
+        result[key] = value();
+        whitespace();
+        if (text[index] === "}") { ++index; return result; }
+        if (text[index++] !== ",") error("expected ',' or '}'");
+      }
+    }
+    for (const [token, result] of [["true", true], ["false", false], ["null", null]]) {
+      if (text.startsWith(token, index)) { index += token.length; return result; }
+    }
+    if (character === "-" || /[0-9]/.test(character ?? "")) return number();
+    return error("expected a JSON value");
+  };
+  const result = value();
+  whitespace();
+  if (index !== text.length) error("trailing content");
+  return result;
+}
+
 function readJson(filename, label) {
   const bytes = regularBytes(filename, label);
   let value;
   try {
-    value = JSON.parse(bytes.toString("utf8"));
+    value = parseJsonText(bytes.toString("utf8"), label);
   } catch (error) {
-    fail(`${label} is not valid JSON: ${error.message}`);
+    fail(`${label} is not strict JSON: ${error.message}`);
   }
   return { value, bytes, sha256: sha256(bytes), size: bytes.length };
 }
@@ -91,7 +180,7 @@ function readJson(filename, label) {
 function validateSelection(selection) {
   exactKeys(selection, [
     "schema", "method", "upstream_identity", "case_ids", "evidence_kinds",
-    "portable_platforms", "historical_exclusions",
+    "portable_platforms", "browser_evidence", "historical_exclusions",
   ], "qualification selection");
   if (selection.schema !== "sagejs.numerical-nlopt-qualification-selection/v1" ||
       selection.method !== "nlopt-nelder-mead" ||
@@ -113,18 +202,49 @@ function validateSelection(selection) {
     "linux-x64", "linux-arm64", "macos-arm64", "windows-x64",
   ], "portable platforms");
   const expected = {
-    "linux-x64": ["linux", "x64"],
-    "linux-arm64": ["linux", "arm64"],
-    "macos-arm64": ["darwin", "arm64"],
-    "windows-x64": ["win32", "x64"],
+    "linux-x64": ["linux", "x64", "bench-1"],
+    "linux-arm64": ["linux", "arm64", "bench-arm"],
+    "macos-arm64": ["darwin", "arm64", "m1"],
+    "windows-x64": ["win32", "x64", "windows"],
   };
-  for (const [id, [os, architecture]] of Object.entries(expected)) {
-    exactKeys(selection.portable_platforms[id], ["os", "architecture"], `portable platform ${id}`);
+  for (const [id, [os, architecture, hostAlias]] of Object.entries(expected)) {
+    exactKeys(selection.portable_platforms[id], [
+      "os", "architecture", "host_alias", "attestation",
+    ], `portable platform ${id}`);
     if (selection.portable_platforms[id].os !== os ||
-        selection.portable_platforms[id].architecture !== architecture) {
+        selection.portable_platforms[id].architecture !== architecture ||
+        selection.portable_platforms[id].host_alias !== hostAlias) {
       fail(`portable platform ${id} has the wrong runtime identity`);
     }
+    const attestation = selection.portable_platforms[id].attestation;
+    exactKeys(attestation, [
+      "algorithm", "public_key_spki_sha256", "public_key_pem",
+    ], `portable platform ${id} attestation`);
+    if (attestation.algorithm !== "rsa-pkcs1-sha256") {
+      fail(`portable platform ${id} has an unsupported attestation algorithm`);
+    }
+    assertSha(attestation.public_key_spki_sha256,
+      `portable platform ${id} public-key digest`);
+    let key;
+    try { key = crypto.createPublicKey(attestation.public_key_pem); } catch {
+      fail(`portable platform ${id} has an invalid public key`);
+    }
+    if (key.asymmetricKeyType !== "rsa" || key.asymmetricKeyDetails?.modulusLength < 3072 ||
+        sha256(key.export({ type: "spki", format: "der" })) !==
+          attestation.public_key_spki_sha256) {
+      fail(`portable platform ${id} public-key identity mismatch`);
+    }
   }
+  exactKeys(selection.browser_evidence, [
+    "engine", "version", "result_case_ids", "results_sha256",
+  ], "browser evidence selection");
+  if (selection.browser_evidence.engine !== "chromium" ||
+      !/^\d+\.\d+\.\d+\.\d+$/.test(selection.browser_evidence.version)) {
+    fail("browser evidence has an invalid exact Chromium identity");
+  }
+  assertExactArray(selection.browser_evidence.result_case_ids, selection.case_ids,
+    "browser evidence result case IDs");
+  assertSha(selection.browser_evidence.results_sha256, "browser result digest");
   exactKeys(selection.historical_exclusions, ["nlopt-cobyla"], "historical exclusions");
   const cobyla = selection.historical_exclusions["nlopt-cobyla"];
   exactKeys(cobyla, ["status", "reason", "qualification_rule"], "COBYLA exclusion");
@@ -133,6 +253,89 @@ function validateSelection(selection) {
     fail("COBYLA exclusion does not fail closed");
   }
   return selection;
+}
+
+function assertChallenge(value) {
+  if (typeof value !== "string" || !SHA256.test(value)) {
+    fail("qualification campaign challenge must be a SHA-256 digest");
+  }
+  return value;
+}
+
+function receiptBody(receipt) {
+  const body = { ...receipt };
+  delete body.origin;
+  return body;
+}
+
+function attachReceiptOrigin(receipt, {
+  context, platformId, campaignChallenge, privateKeyPath,
+}) {
+  assertChallenge(campaignChallenge);
+  const platform = context.selection.portable_platforms[platformId];
+  if (platform === undefined) fail(`unknown attested platform ${platformId}`);
+  const privateKey = crypto.createPrivateKey(regularBytes(
+    privateKeyPath, `${platformId} attestation private key`,
+  ));
+  const publicKey = crypto.createPublicKey(privateKey);
+  const publicDigest = sha256(publicKey.export({ type: "spki", format: "der" }));
+  if (publicKey.asymmetricKeyType !== "rsa" || publicDigest !==
+      platform.attestation.public_key_spki_sha256) {
+    fail(`${platformId} attestation key is not the candidate-bound persistent-host key`);
+  }
+  const payload = Buffer.from(formattedJson(receiptBody(receipt)));
+  const signature = crypto.sign("sha256", payload, {
+    key: privateKey,
+    padding: crypto.constants.RSA_PKCS1_PADDING,
+  }).toString("base64");
+  return {
+    ...receipt,
+    origin: {
+      schema: "sagejs.numerical-nlopt-persistent-host-attestation/v1",
+      platform_id: platformId,
+      host_alias: platform.host_alias,
+      campaign_challenge: campaignChallenge,
+      algorithm: platform.attestation.algorithm,
+      public_key_spki_sha256: publicDigest,
+      payload_sha256: sha256(payload),
+      payload_bytes: payload.length,
+      signature,
+    },
+  };
+}
+
+function validateReceiptOrigin(receipt, context, platformId, campaignChallenge, label) {
+  assertChallenge(campaignChallenge);
+  const platform = context.selection.portable_platforms[platformId];
+  if (platform === undefined) fail(`${label} names unknown platform ${platformId}`);
+  const origin = receipt.origin;
+  exactKeys(origin, [
+    "schema", "platform_id", "host_alias", "campaign_challenge", "algorithm",
+    "public_key_spki_sha256", "payload_sha256", "payload_bytes", "signature",
+  ], `${label} origin`);
+  if (origin.schema !== "sagejs.numerical-nlopt-persistent-host-attestation/v1" ||
+      origin.platform_id !== platformId || origin.host_alias !== platform.host_alias ||
+      origin.campaign_challenge !== campaignChallenge ||
+      origin.algorithm !== platform.attestation.algorithm ||
+      origin.public_key_spki_sha256 !== platform.attestation.public_key_spki_sha256) {
+    fail(`${label} does not have the exact candidate-bound platform origin`);
+  }
+  assertSha(origin.payload_sha256, `${label} attested-payload digest`);
+  if (!Number.isSafeInteger(origin.payload_bytes) || origin.payload_bytes <= 0 ||
+      typeof origin.signature !== "string" || !BASE64.test(origin.signature) ||
+      Buffer.from(origin.signature, "base64").toString("base64") !== origin.signature) {
+    fail(`${label} has an invalid persistent-host signature`);
+  }
+  const payload = Buffer.from(formattedJson(receiptBody(receipt)));
+  if (origin.payload_sha256 !== sha256(payload) || origin.payload_bytes !== payload.length) {
+    fail(`${label} persistent-host signed payload is stale`);
+  }
+  const valid = crypto.verify("sha256", payload, {
+    key: platform.attestation.public_key_pem,
+    padding: crypto.constants.RSA_PKCS1_PADDING,
+  }, Buffer.from(origin.signature, "base64"));
+  if (!valid) fail(`${label} persistent-host signature is invalid`);
+  return origin;
 }
 
 function validateCorpus(corpus, selection) {
@@ -205,6 +408,57 @@ function validateManifestShape(manifest) {
     fail("production manifest contains an excluded source family");
   }
   assertSha(manifest.public_semantics_bundle?.sha256, "public semantics bundle digest");
+  return validateManifestQualificationState(manifest);
+}
+
+function validateManifestQualificationState(manifest) {
+  const qualification = assertObject(manifest.qualification, "production manifest qualification");
+  if (qualification.status === "pending_source_current_requalification") {
+    exactKeys(qualification, [
+      "status", "reason", "public_semantics_bundle_sha256",
+      "qualification_tooling_bundle_sha256", "selection_sha256", "oracle_sha256",
+      "invalidated_summary",
+    ], "pending production manifest qualification");
+    if (typeof qualification.reason !== "string" || qualification.reason.length === 0 ||
+        qualification.invalidated_summary !== "qualification-v1.json") {
+      fail("pending production manifest qualification has invalid provenance");
+    }
+    for (const field of [
+      "public_semantics_bundle_sha256", "qualification_tooling_bundle_sha256",
+      "selection_sha256", "oracle_sha256",
+    ]) assertSha(qualification[field], `pending qualification ${field}`);
+    return "pending";
+  }
+  if (qualification.status === "qualified") {
+    exactKeys(qualification, [
+      "status", "candidate_commit", "summary_sha256", "summary_bytes",
+      "public_semantics_bundle_sha256", "qualification_tooling_bundle_sha256",
+      "selection_sha256", "corpus_sha256", "oracle_sha256", "source_closure_sha256",
+      "artifact_sha256", "artifact_bytes", "case_execution_sha256",
+      "campaign_challenge", "evidence_receipts_sha256", "portable_receipts_sha256",
+      "historical_cobyla_status",
+    ], "qualified production manifest qualification");
+    assertCommit(qualification.candidate_commit, "qualified candidate commit");
+    for (const field of [
+      "summary_sha256", "public_semantics_bundle_sha256",
+      "qualification_tooling_bundle_sha256", "selection_sha256", "corpus_sha256",
+      "oracle_sha256", "source_closure_sha256", "artifact_sha256",
+      "case_execution_sha256", "campaign_challenge",
+    ]) assertSha(qualification[field], `qualified qualification ${field}`);
+    if (!Number.isSafeInteger(qualification.summary_bytes) || qualification.summary_bytes <= 0 ||
+        !Number.isSafeInteger(qualification.artifact_bytes) || qualification.artifact_bytes <= 0 ||
+        qualification.historical_cobyla_status !== "excluded-not-qualified") {
+      fail("qualified production manifest qualification has invalid exact bindings");
+    }
+    assertObject(qualification.evidence_receipts_sha256,
+      "qualified evidence receipt bindings");
+    assertObject(qualification.portable_receipts_sha256,
+      "qualified portable receipt bindings");
+    return "qualified";
+  }
+  fail(`production manifest qualification has forbidden state ${JSON.stringify(
+    qualification.status,
+  )}; expected exactly pending_source_current_requalification or qualified`);
 }
 
 function git(root, arguments_, options = {}) {
@@ -253,7 +507,7 @@ function loadCurrentContext({ root, candidate, manifestPath, artifactPath, build
   assertCommit(candidate);
   const manifestRecord = readJson(manifestPath, "production manifest");
   const manifest = manifestRecord.value;
-  validateManifestShape(manifest);
+  const manifestState = validateManifestShape(manifest);
   const packageRoot = path.dirname(path.dirname(manifestPath));
   const sourceLock = readJson(path.join(packageRoot, "source-lock.json"), "NLopt source lock");
   const license = regularBytes(path.join(packageRoot, "licenses/COPYING"), "NLopt license");
@@ -323,6 +577,18 @@ function loadCurrentContext({ root, candidate, manifestPath, artifactPath, build
   const oracleSource = regularBytes(oracleSourcePath, "SciPy oracle source");
   const oracleRecord = readJson(oraclePath, "oracle summary");
   validateOracle(oracleRecord.value, selection, corpusRecord.sha256, sha256(oracleSource));
+  if (manifestState === "pending") {
+    const pending = manifest.qualification;
+    const bindings = [
+      ["public_semantics_bundle_sha256", manifest.public_semantics_bundle.sha256],
+      ["qualification_tooling_bundle_sha256", manifest.qualification_tooling_bundle.sha256],
+      ["selection_sha256", selectionRecord.sha256],
+      ["oracle_sha256", oracleRecord.sha256],
+    ];
+    for (const [field, expected] of bindings) {
+      if (pending[field] !== expected) fail(`pending qualification has stale ${field}`);
+    }
+  }
   validateCandidateBindings(root, candidate, [
     ...Object.keys(manifest.reviewed_sagejs_files),
     ...Object.keys(manifest.qualification_tooling_files),
@@ -334,6 +600,7 @@ function loadCurrentContext({ root, candidate, manifestPath, artifactPath, build
     root: path.resolve(root),
     candidate,
     manifest,
+    manifestState,
     manifestRecord,
     buildReport: build.value,
     buildReportBinding: { sha256: build.sha256, bytes: build.size },
@@ -438,27 +705,28 @@ function validateNumericalResult(result, record) {
   }
   if (result.backend_status !== 4 || result.backend_converged !== true ||
       !Number.isSafeInteger(result.evaluations) || result.evaluations <= 0 ||
+      result.evaluations > 4000 ||
       !Number.isSafeInteger(result.callbacks) || result.callbacks !== result.evaluations) {
     fail(`case result ${result.id} has an invalid NM termination contract`);
   }
 }
 
-function validateCaseReceipt(receipt, context, expectedPlatform = null) {
+function validateCaseReceipt(receipt, context, expectedPlatform, campaignChallenge) {
   exactKeys(receipt, [
     "schema", ...commonReceiptKeys(), "runtime", "method", "results",
-    "results_sha256", "lifecycle_after", "automatic_selection",
+    "results_sha256", "lifecycle_after", "automatic_selection", "origin",
   ], "case receipt");
   if (receipt.schema !== CASE_RECEIPT_SCHEMA || receipt.method !== "nlopt-nelder-mead" ||
       receipt.automatic_selection !== false) fail("case receipt has the wrong method contract");
   validateCommonReceipt(receipt, context, "case receipt");
   validateRuntime(receipt.runtime, "case receipt");
-  if (expectedPlatform !== null) {
-    const platform = context.selection.portable_platforms[expectedPlatform];
-    if (platform === undefined || receipt.runtime.os !== platform.os ||
-        receipt.runtime.architecture !== platform.architecture) {
-      fail(`portable receipt has the wrong platform for ${expectedPlatform}`);
-    }
+  const platform = context.selection.portable_platforms[expectedPlatform];
+  if (platform === undefined || receipt.runtime.os !== platform.os ||
+      receipt.runtime.architecture !== platform.architecture) {
+    fail(`portable receipt has the wrong platform for ${expectedPlatform}`);
   }
+  validateReceiptOrigin(receipt, context, expectedPlatform, campaignChallenge,
+    `${expectedPlatform} case receipt`);
   if (!Array.isArray(receipt.results)) fail("case receipt results must be an array");
   const ids = receipt.results.map(({ id }) => id);
   assertUnique(ids, "case receipt result IDs");
@@ -481,7 +749,15 @@ function validateCaseReceipt(receipt, context, expectedPlatform = null) {
   if (receipt.results_sha256 !== sha256(Buffer.from(canonicalJson(receipt.results)))) {
     fail("case receipt result digest mismatch");
   }
-  if (receipt.lifecycle_after?.liveAllocations !== 0 || receipt.lifecycle_after?.liveBytes !== 0) {
+  exactKeys(receipt.lifecycle_after, [
+    "activeContexts", "activeHandle", "liveAllocations", "liveBytes", "memoryBytes",
+  ], "case receipt lifecycle");
+  if (receipt.lifecycle_after.activeContexts !== 0 ||
+      receipt.lifecycle_after.activeHandle !== 0 ||
+      receipt.lifecycle_after.liveAllocations !== 0 ||
+      receipt.lifecycle_after.liveBytes !== 0 ||
+      !Number.isSafeInteger(receipt.lifecycle_after.memoryBytes) ||
+      receipt.lifecycle_after.memoryBytes <= 0) {
     fail("case receipt leaked Wasm state");
   }
   return receipt;
@@ -495,6 +771,77 @@ const REQUIRED_CHECKS = Object.freeze({
   "resource-corruption": ["browser-corrupt-fail-closed", "npm-corrupt-fail-closed", "npm-missing-fail-closed"],
   relocation: ["npm-pack", "fresh-install", "relocated-execution"],
   sea: ["embedded-artifact-identity", "relocated-execution"],
+});
+
+const EVIDENCE_PROGRAMS = Object.freeze({
+  sanitizer: [{
+    id: "native-sanitizers",
+    executable: "node",
+    arguments: [
+      "scripts/numerical-computing/qualification/run-native-sanitizers.cjs",
+      "--output", "<collector-output>",
+    ],
+    result: "native-sanitizer-json",
+  }],
+  "destructive-wasm": [{
+    id: "wasm-destructive",
+    executable: "node",
+    arguments: [
+      "scripts/numerical-computing/qualification/run-wasm-destructive.cjs",
+      "--output", "<collector-output>",
+    ],
+    result: "wasm-destructive-json",
+  }],
+  "browser-lifecycle": [{
+    id: "browser-selected-corpus",
+    executable: "node",
+    arguments: ["test/numerical-p3-nlopt/browser.mjs"],
+    result: "browser-json",
+  }],
+  "public-integration": [{
+    id: "public-integration",
+    executable: "node",
+    arguments: [
+      "--test", "--test-reporter=tap", "test/numerical-p3-nlopt/public-integration.cjs",
+    ],
+    result: "node-test-tap",
+  }],
+  "resource-corruption": [{
+    id: "browser-resource-corruption",
+    executable: "node",
+    arguments: [
+      "--test", "--test-reporter=tap", "test/numerical-p3-nlopt/public-browser.mjs",
+    ],
+    result: "node-test-tap",
+  }, {
+    id: "npm-resource-corruption",
+    executable: "node",
+    arguments: [
+      "--test", "--test-reporter=tap", "test/numerical-p3-nlopt/public-relocation.cjs",
+    ],
+    result: "node-test-tap",
+  }],
+  relocation: [{
+    id: "npm-relocation",
+    executable: "node",
+    arguments: [
+      "--test", "--test-reporter=tap", "test/numerical-p3-nlopt/public-relocation.cjs",
+    ],
+    result: "node-test-tap",
+  }],
+  sea: [{
+    id: "sea-relocation",
+    executable: "node",
+    arguments: [
+      "--test", "--test-reporter=tap", "test/numerical-p3-nlopt/public-sea.cjs",
+    ],
+    result: "node-test-tap",
+  }, {
+    id: "sea-resource-probe",
+    executable: "sagepython",
+    arguments: ["--qualification-resource-digests"],
+    result: "sea-resource-json",
+  }],
 });
 
 function validateRawSanitizer(value, context) {
@@ -553,6 +900,94 @@ function validateRawDestructive(value, context) {
   }
 }
 
+function combinedProgramStream(programs, field) {
+  return programs.map((program) => `${program.id}\n${program[field]}`).join("\n");
+}
+
+function validateZeroLifecycle(value, label) {
+  exactKeys(value, [
+    "activeContexts", "activeHandle", "liveAllocations", "liveBytes", "memoryBytes",
+  ], label);
+  if (value.activeContexts !== 0 || value.activeHandle !== 0 ||
+      value.liveAllocations !== 0 || value.liveBytes !== 0 ||
+      !Number.isSafeInteger(value.memoryBytes) || value.memoryBytes <= 0) {
+    fail(`${label} is not fully quiescent`);
+  }
+}
+
+function validateProgramEvidence(program, specification, context, kind) {
+  exactKeys(program, [
+    "id", "executable", "arguments", "status", "signal", "stdout", "stderr",
+    "stdout_sha256", "stderr_sha256", "result",
+  ], `${kind} program ${specification.id}`);
+  if (program.id !== specification.id || program.executable !== specification.executable) {
+    fail(`${kind} executed the wrong program identity`);
+  }
+  assertExactArray(program.arguments, specification.arguments,
+    `${kind} ${program.id} arguments`);
+  if (program.status !== 0 || program.signal !== null ||
+      typeof program.stdout !== "string" || program.stdout.length === 0 ||
+      typeof program.stderr !== "string" ||
+      program.stdout_sha256 !== sha256(program.stdout) ||
+      program.stderr_sha256 !== sha256(program.stderr)) {
+    fail(`${kind} ${program.id} has an empty, failed, or stale command transcript`);
+  }
+  assertSha(program.stdout_sha256, `${kind} ${program.id} stdout digest`);
+  assertSha(program.stderr_sha256, `${kind} ${program.id} stderr digest`);
+  if (specification.result === "native-sanitizer-json") {
+    validateRawSanitizer(program.result, context);
+  } else if (specification.result === "wasm-destructive-json") {
+    validateRawDestructive(program.result, context);
+  } else if (specification.result === "browser-json") {
+    const result = program.result;
+    exactKeys(result, [
+      "schema", "chromium", "cases", "result_case_ids", "results_sha256",
+      "public_semantics_bundle_sha256", "pre_set_shared_atomic_force_stop",
+      "hard_worker_replacement", "lifecycle_after",
+    ], "browser lifecycle result");
+    if (result.schema !== "sagejs.numerical-nlopt-browser/v1" ||
+        result.chromium !== context.selection.browser_evidence.version ||
+        result.cases !== context.selection.case_ids.length ||
+        result.results_sha256 !== context.selection.browser_evidence.results_sha256 ||
+        result.public_semantics_bundle_sha256 !== context.publicSemantics.sha256 ||
+        result.pre_set_shared_atomic_force_stop !== "pass" ||
+        result.hard_worker_replacement !== "pass") {
+      fail("browser lifecycle result has the wrong exact identity or result digest");
+    }
+    assertExactArray(result.result_case_ids, context.selection.case_ids,
+      "browser result case IDs");
+    validateZeroLifecycle(result.lifecycle_after, "browser lifecycle result");
+  } else if (specification.result === "node-test-tap") {
+    const result = program.result;
+    exactKeys(result, [
+      "schema", "tests", "passed", "failed", "cancelled", "skipped", "todo",
+      "subtest_names", "stdout_sha256",
+    ], `${kind} ${program.id} TAP result`);
+    if (result.schema !== "sagejs.node-test-tap-summary/v1" ||
+        !Number.isSafeInteger(result.tests) || result.tests <= 0 ||
+        result.passed !== result.tests || result.failed !== 0 || result.cancelled !== 0 ||
+        result.skipped !== 0 || result.todo !== 0 ||
+        result.stdout_sha256 !== program.stdout_sha256 ||
+        !Array.isArray(result.subtest_names) ||
+        result.subtest_names.length !== result.tests ||
+        result.subtest_names.some((name) => typeof name !== "string" || name.length === 0)) {
+      fail(`${kind} ${program.id} TAP result is incomplete or failed`);
+    }
+    assertUnique(result.subtest_names, `${kind} ${program.id} TAP subtests`);
+  } else if (specification.result === "sea-resource-json") {
+    const result = program.result;
+    if (result?.schema !== "sagejs.sea-qualification-resource-digests/v1" ||
+        !Array.isArray(result.resources)) fail("SEA resource probe result is invalid");
+    const matches = result.resources.filter(
+      ({ name }) => name === "numerical/nlopt-methods.wasm",
+    );
+    if (matches.length !== 1 || matches[0].sha256 !== context.artifact.sha256 ||
+        matches[0].bytes !== context.artifact.bytes) {
+      fail("SEA resource probe is not bound to the exact qualified artifact");
+    }
+  } else fail(`${kind} has unsupported result contract ${specification.result}`);
+}
+
 function validateEmbeddedEvidence(sourceEvidence, context, kind) {
   exactKeys(sourceEvidence, ["schema", "sha256", "bytes", "payload"],
     `${kind} source evidence`);
@@ -560,49 +995,22 @@ function validateEmbeddedEvidence(sourceEvidence, context, kind) {
   if (sourceEvidence.sha256 !== binding.sha256 || sourceEvidence.bytes !== binding.bytes) {
     fail(`${kind} embedded source evidence digest mismatch`);
   }
-  if (kind === "sanitizer") {
-    exactKeys(sourceEvidence.payload, ["raw", "stdout", "stderr"], "sanitizer source evidence");
-    if (sourceEvidence.schema !== sourceEvidence.payload.raw?.schema) {
-      fail("sanitizer source-evidence schema mismatch");
-    }
-    validateRawSanitizer(sourceEvidence.payload.raw, context);
-  } else if (kind === "destructive-wasm") {
-    exactKeys(sourceEvidence.payload, ["raw", "stdout", "stderr"],
-      "destructive Wasm source evidence");
-    if (sourceEvidence.schema !== sourceEvidence.payload.raw?.schema) {
-      fail("destructive Wasm source-evidence schema mismatch");
-    }
-    validateRawDestructive(sourceEvidence.payload.raw, context);
-  } else {
-    if (sourceEvidence.schema !== (kind === "browser-lifecycle"
-      ? "sagejs.numerical-nlopt-browser/v1"
-      : "sagejs.numerical-nlopt-command-transcript/v1")) {
-      fail(`${kind} has the wrong source-evidence schema`);
-    }
-    exactKeys(sourceEvidence.payload, ["stdout", "stderr"], `${kind} transcript`);
-    if (typeof sourceEvidence.payload.stdout !== "string" ||
-        typeof sourceEvidence.payload.stderr !== "string") fail(`${kind} transcript is invalid`);
-    if (kind === "browser-lifecycle") {
-      let parsed;
-      try { parsed = JSON.parse(sourceEvidence.payload.stdout); } catch {
-        fail("browser lifecycle transcript is not JSON");
-      }
-      if (parsed.schema !== sourceEvidence.schema ||
-          parsed.cases !== context.selection.case_ids.length ||
-          parsed.public_semantics_bundle_sha256 !== context.publicSemantics.sha256 ||
-          parsed.pre_set_shared_atomic_force_stop !== "pass" ||
-          parsed.hard_worker_replacement !== "pass" ||
-          parsed.lifecycle_after?.liveAllocations !== 0 || parsed.lifecycle_after?.liveBytes !== 0) {
-        fail("browser lifecycle transcript is stale or incomplete");
-      }
-    }
+  if (sourceEvidence.schema !== "sagejs.numerical-nlopt-program-evidence/v1") {
+    fail(`${kind} has the wrong structured program-evidence schema`);
   }
+  exactKeys(sourceEvidence.payload, ["programs"], `${kind} structured program evidence`);
+  const specifications = EVIDENCE_PROGRAMS[kind];
+  if (!Array.isArray(sourceEvidence.payload.programs)) fail(`${kind} programs must be an array`);
+  assertExactArray(sourceEvidence.payload.programs.map(({ id }) => id),
+    specifications.map(({ id }) => id), `${kind} program IDs`);
+  sourceEvidence.payload.programs.forEach((program, index) =>
+    validateProgramEvidence(program, specifications[index], context, kind));
 }
 
-function validateEvidenceReceipt(receipt, context, expectedKind) {
+function validateEvidenceReceipt(receipt, context, expectedKind, campaignChallenge) {
   exactKeys(receipt, [
     "schema", ...commonReceiptKeys(), "kind", "status", "platform", "checks",
-    "collector", "execution", "source_evidence",
+    "collector", "execution", "source_evidence", "origin",
   ], `${expectedKind} evidence`);
   if (receipt.schema !== EVIDENCE_RECEIPT_SCHEMA || receipt.kind !== expectedKind ||
       receipt.status !== "passed") fail(`${expectedKind} evidence did not pass`);
@@ -613,6 +1021,8 @@ function validateEvidenceReceipt(receipt, context, expectedKind) {
   exactKeys(receipt.platform, ["id", "os", "architecture"], `${expectedKind} platform`);
   if (receipt.platform.id !== "linux-x64" || receipt.platform.os !== "linux" ||
       receipt.platform.architecture !== "x64") fail(`${expectedKind} evidence must be linux-x64`);
+  validateReceiptOrigin(receipt, context, "linux-x64", campaignChallenge,
+    `${expectedKind} evidence`);
   assertExactArray(receipt.checks, REQUIRED_CHECKS[expectedKind], `${expectedKind} checks`);
   exactKeys(receipt.collector, ["path", "sha256"], `${expectedKind} collector`);
   if (typeof receipt.collector.path !== "string" || !receipt.collector.path.startsWith(
@@ -632,8 +1042,9 @@ function validateEvidenceReceipt(receipt, context, expectedKind) {
   }
   assertSha(receipt.execution.stdout_sha256, `${expectedKind} stdout digest`);
   assertSha(receipt.execution.stderr_sha256, `${expectedKind} stderr digest`);
-  if (receipt.execution.stdout_sha256 !== sha256(receipt.source_evidence.payload.stdout) ||
-      receipt.execution.stderr_sha256 !== sha256(receipt.source_evidence.payload.stderr)) {
+  const programs = receipt.source_evidence.payload.programs;
+  if (receipt.execution.stdout_sha256 !== sha256(combinedProgramStream(programs, "stdout")) ||
+      receipt.execution.stderr_sha256 !== sha256(combinedProgramStream(programs, "stderr"))) {
     fail(`${expectedKind} execution transcript digest mismatch`);
   }
   return receipt;
@@ -651,16 +1062,22 @@ function requireCanonicalRecord(record, label) {
   }
 }
 
-function buildQualification({ context, caseReceiptRecord, evidenceRecords, portableRecords }) {
+function buildQualification({
+  context, campaignChallenge, caseReceiptRecord, evidenceRecords, portableRecords,
+}) {
+  assertChallenge(campaignChallenge);
+  if (validateManifestQualificationState(context.manifest) !== "pending") {
+    fail("promotion requires exactly the documented pending source-current state");
+  }
   requireCanonicalRecord(caseReceiptRecord, "case receipt");
-  validateCaseReceipt(caseReceiptRecord.value, context);
+  validateCaseReceipt(caseReceiptRecord.value, context, "linux-x64", campaignChallenge);
   const evidenceByKind = new Map();
   for (const record of evidenceRecords) {
     requireCanonicalRecord(record, "evidence receipt");
     const kind = record.value?.kind;
     if (evidenceByKind.has(kind)) fail(`duplicate evidence kind ${kind}`);
     if (!context.selection.evidence_kinds.includes(kind)) fail(`extra evidence kind ${kind}`);
-    validateEvidenceReceipt(record.value, context, kind);
+    validateEvidenceReceipt(record.value, context, kind, campaignChallenge);
     evidenceByKind.set(kind, record);
   }
   assertExactArray([...evidenceByKind.keys()].sort(),
@@ -675,7 +1092,7 @@ function buildQualification({ context, caseReceiptRecord, evidenceRecords, porta
     if (found === undefined) fail("extra portable platform evidence");
     const [platformId] = found;
     if (portableByPlatform.has(platformId)) fail(`duplicate portable platform ${platformId}`);
-    validateCaseReceipt(record.value, context, platformId);
+    validateCaseReceipt(record.value, context, platformId, campaignChallenge);
     portableByPlatform.set(platformId, record);
   }
   assertExactArray([...portableByPlatform.keys()].sort(),
@@ -702,6 +1119,7 @@ function buildQualification({ context, caseReceiptRecord, evidenceRecords, porta
     upstream_identity: "NLOPT_LN_NELDERMEAD",
     automatic_selection: false,
     optimality_claim: "heuristic-only; neither local nor global optimality is certified",
+    campaign_challenge: campaignChallenge,
     artifact: { ...context.artifact },
     source: { ...context.source },
     public_semantics_bundle: { ...context.publicSemantics },
@@ -738,6 +1156,7 @@ function buildQualification({ context, caseReceiptRecord, evidenceRecords, porta
     artifact_sha256: context.artifact.sha256,
     artifact_bytes: context.artifact.bytes,
     case_execution_sha256: caseReceiptRecord.sha256,
+    campaign_challenge: campaignChallenge,
     evidence_receipts_sha256: Object.fromEntries(Object.entries(evidence).map(
       ([kind, binding]) => [kind, binding.sha256],
     )),
@@ -749,10 +1168,12 @@ function buildQualification({ context, caseReceiptRecord, evidenceRecords, porta
   return { summary, manifest, summaryBinding };
 }
 
-function validateQualificationSummary(summary, context, manifest = context.manifest) {
+function validateQualificationSummary(summaryRecord, context, manifest = context.manifest) {
+  requireCanonicalRecord(summaryRecord, "qualification summary");
+  const summary = summaryRecord.value;
   exactKeys(summary, [
     "schema", "status", "candidate_commit", "method", "upstream_identity",
-    "automatic_selection", "optimality_claim", "artifact", "source",
+    "automatic_selection", "optimality_claim", "campaign_challenge", "artifact", "source",
     "public_semantics_bundle", "qualification_tooling_bundle", "selection", "corpus",
     "oracle", "case_execution", "evidence", "portable_receipts", "historical_exclusions",
   ], "qualification summary");
@@ -761,6 +1182,7 @@ function validateQualificationSummary(summary, context, manifest = context.manif
       summary.upstream_identity !== "NLOPT_LN_NELDERMEAD" ||
       summary.automatic_selection !== false || !/neither local nor global/i.test(
         summary.optimality_claim)) fail("qualification summary has the wrong method or claim");
+  assertChallenge(summary.campaign_challenge);
   const equal = (actual, expected, label) => {
     if (canonicalJson(actual) !== canonicalJson(expected)) fail(`${label} mismatch`);
   };
@@ -787,7 +1209,8 @@ function validateQualificationSummary(summary, context, manifest = context.manif
   equal(bindRecord(summary.case_execution.receipt), {
     sha256: summary.case_execution.sha256, bytes: summary.case_execution.bytes,
   }, "case execution durable binding");
-  validateCaseReceipt(summary.case_execution.receipt, context);
+  validateCaseReceipt(summary.case_execution.receipt, context, "linux-x64",
+    summary.campaign_challenge);
   exactKeys(summary.evidence, context.selection.evidence_kinds, "qualification evidence");
   for (const [kind, binding] of Object.entries(summary.evidence)) {
     exactKeys(binding, ["sha256", "bytes", "receipt"], `${kind} evidence binding`);
@@ -795,7 +1218,7 @@ function validateQualificationSummary(summary, context, manifest = context.manif
     if (!Number.isSafeInteger(binding.bytes) || binding.bytes <= 0) fail(`${kind} evidence bytes invalid`);
     equal(bindRecord(binding.receipt), { sha256: binding.sha256, bytes: binding.bytes },
       `${kind} durable evidence binding`);
-    validateEvidenceReceipt(binding.receipt, context, kind);
+    validateEvidenceReceipt(binding.receipt, context, kind, summary.campaign_challenge);
   }
   exactKeys(summary.portable_receipts, Object.keys(context.selection.portable_platforms),
     "portable qualification receipts");
@@ -808,15 +1231,18 @@ function validateQualificationSummary(summary, context, manifest = context.manif
     }
     equal(bindRecord(binding.receipt), { sha256: binding.sha256, bytes: binding.bytes },
       `${platform} durable portable binding`);
-    validateCaseReceipt(binding.receipt, context, platform);
+    validateCaseReceipt(binding.receipt, context, platform, summary.campaign_challenge);
   }
   equal(summary.historical_exclusions, context.selection.historical_exclusions,
     "historical exclusions");
+  if (validateManifestQualificationState(manifest) !== "qualified") {
+    fail("production manifest is not in the exact qualified state");
+  }
   const qualification = manifest.qualification;
   if (qualification?.status !== "qualified" ||
       qualification.candidate_commit !== context.candidate ||
-      qualification.summary_sha256 !== bindRecord(summary).sha256 ||
-      qualification.summary_bytes !== bindRecord(summary).bytes ||
+      qualification.summary_sha256 !== summaryRecord.sha256 ||
+      qualification.summary_bytes !== summaryRecord.size ||
       qualification.public_semantics_bundle_sha256 !== context.publicSemantics.sha256 ||
       qualification.qualification_tooling_bundle_sha256 !== context.tooling.sha256 ||
       qualification.selection_sha256 !== context.selectionBinding.sha256 ||
@@ -826,6 +1252,7 @@ function validateQualificationSummary(summary, context, manifest = context.manif
       qualification.artifact_sha256 !== context.artifact.sha256 ||
       qualification.artifact_bytes !== context.artifact.bytes ||
       qualification.case_execution_sha256 !== summary.case_execution.sha256 ||
+      qualification.campaign_challenge !== summary.campaign_challenge ||
       qualification.historical_cobyla_status !== "excluded-not-qualified") {
     fail("production manifest qualification binding mismatch");
   }
@@ -903,21 +1330,26 @@ function writePromotion({ summaryPath, manifestPath, summary, manifest }) {
 
 module.exports = {
   CASE_RECEIPT_SCHEMA,
+  EVIDENCE_PROGRAMS,
   EVIDENCE_RECEIPT_SCHEMA,
   MANIFEST_SCHEMA,
   QUALIFICATION_SCHEMA,
   REQUIRED_CHECKS,
   assertCommit,
+  attachReceiptOrigin,
   atomicWriteFile,
   bindRecord,
   buildQualification,
   canonicalJson,
   formattedJson,
   loadCurrentContext,
+  parseJsonText,
   readJson,
   sha256,
   validateCaseReceipt,
   validateEvidenceReceipt,
+  validateManifestQualificationState,
+  validateReceiptOrigin,
   validateRawDestructive,
   validateRawSanitizer,
   validateQualificationSummary,

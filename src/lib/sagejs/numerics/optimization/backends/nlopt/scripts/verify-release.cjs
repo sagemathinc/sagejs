@@ -7,6 +7,7 @@ const path = require("node:path");
 const {
   loadCurrentContext,
   readJson,
+  validateManifestQualificationState,
   validateQualificationSummary,
 } = require("../qualification/contracts.cjs");
 
@@ -38,7 +39,8 @@ function main(argv = process.argv.slice(2)) {
   }
   const requireQualified = argv.includes("--require-qualified");
   const manifestRecord = readJson(manifestPath, "production manifest");
-  const pending = manifestRecord.value.qualification?.status !== "qualified";
+  const manifestState = validateManifestQualificationState(manifestRecord.value);
+  const pending = manifestState === "pending";
   if (pending && requireQualified) {
     throw new Error("the narrowed NLopt artifact is pending source-current qualification");
   }
@@ -55,11 +57,11 @@ function main(argv = process.argv.slice(2)) {
     selectionPath: path.join(packageRoot, "qualification/selection-v1.json"),
   });
   if (!pending) {
-    const summary = readJson(
+    const summaryRecord = readJson(
       path.join(packageRoot, "release/qualification-v1.json"),
       "qualification summary",
-    ).value;
-    validateQualificationSummary(summary, context, manifestRecord.value);
+    );
+    validateQualificationSummary(summaryRecord, context, manifestRecord.value);
   }
 
   process.stdout.write(`${JSON.stringify({

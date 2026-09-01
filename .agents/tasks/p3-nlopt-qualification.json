@@ -19,7 +19,8 @@
     "src/lib/sagejs/numerics/optimization/backends/nlopt/release/qualification-v1.json",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/promote-qualification.cjs",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs"
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs",
+    "test/numerical-p3-nlopt/browser.mjs"
   ],
   "dependencies": [],
   "references": [

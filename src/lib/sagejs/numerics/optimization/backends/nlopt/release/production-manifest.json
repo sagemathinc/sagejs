@@ -29,7 +29,7 @@
     "test/numerical-p3-backends/browser-resource.test.mjs": "fb2b4a1eb0431cf18ebed85e2cbdd4e3eae65e8d0e9d324055f0d8e479885d34",
     "test/numerical-p3-nlopt/abi-fuzz.test.mjs": "91bb9edb5561cf0d2483b644620f6266ed3b052ad2257d88f2d2d538e71db875",
     "test/numerical-p3-nlopt/backend.test.mjs": "f5ea7032ff48f0ce56ad8b299b1a289a19ffd83eedb0318310155c5fd6543024",
-    "test/numerical-p3-nlopt/browser.mjs": "9e5f527635a372f3641b8e3203b9d3d2d37997b1dd8754049f882bd1704f77c7",
+    "test/numerical-p3-nlopt/browser.mjs": "bc30d8355c73117b620fcfc7929b2aea926cbabe8855c541a27980bb3c04aff3",
     "test/numerical-p3-nlopt/portable-smoke.mjs": "9dee55740dbd4bfad62e911af8dec1945963587c4635a4905489cff7bc8d8813",
     "test/numerical-p3-nlopt/public-browser.mjs": "fe7fdef04edc4e414380499162e4503a468d802770372cca0e98a418b3361746",
     "test/numerical-p3-nlopt/public-integration.cjs": "8432367e427c59fe5149685bf77eac14772320ead8fae050427fc28a9135ee1d",
@@ -39,22 +39,22 @@
   },
   "public_semantics_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "95c20c32228a850c7f111ac1ea1cd7bfc461d79fa4fa7cbd09f1a20719b5f20a"
+    "sha256": "9bb49278bdc296af0fc40320187d0e5345a7d695325a5100a6da68861aca2239"
   },
   "qualification_tooling_files": {
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs": "73fa321af4a37e7b3c4e664fa472fd19402cf9501a9e5a2936415dfcfee3efa6",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs": "f93b78679c8116547c6742a429ada1cf5a7e93b4aa3bfb238b05e3ab5f05e323",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs": "cf476a6bd4ce8212943112dd238a79ed62f56d5f45bb4b0a31e3fdba47bc391f",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs": "5de8816137394dd55a8e35e015e871cdacceb1219d580d7d0ede68c930a41fab",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle-summary.json": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle.py": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs": "d0a286f9def54aedf41c824e9960de8e06645f61fc4fc1741e1930138c069fe8",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/selection-v1.json": "74c51cea04995d51967a2a4b3a6de8df96dfc7d0a76dcdabb666fae8ae701346",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/promote-qualification.cjs": "7c2e763a5b42f339d2fb736a03f29dfe8ec92325a44c0f02faf015d937937d6c",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs": "70c16272f6bfe276919afa7425f70563651b9e6a7c2de4c4226909b45aebbca9",
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs": "a383b39d3346ce950c81d4983cf3b2fe7b630b215539a67d3e158db9d91a0ba7"
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs": "f998db91accc2f9571a36b93b3a48539ddc4ca1e95c0f26967f32acb57ad1620",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/selection-v1.json": "11fd091cf2e4e11a1d04bccc98ebba59a39e732501b44b33793fd7c6ff3beb9a",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/promote-qualification.cjs": "425dda513c10e8cca8bcc05c35c3ad4d9674d889ea0adeb97139e35056d3d4bb",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs": "e420621056652b10fc83fda617621efb27df5a599b7217483472716cf3e8bcdc",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs": "0a9069de9323eed8753ef45455376dd75eb34a247bbe64c9da59bb78bc5b818a"
   },
   "qualification_tooling_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "299b3335491b7c68873141fb8ba561e897d19d8ba0240692e5dfdb3a99d3165a"
+    "sha256": "5559feb68076a954eabc1a6ccd963c709c1a7a6c91db17460008360fc2693101"
   },
   "toolchain": {
     "identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
@@ -84,9 +84,9 @@
   "qualification": {
     "status": "pending_source_current_requalification",
     "reason": "COBYLA was removed after source-bound UBSAN exposed unresolved upstream f2c pointer-provenance undefined behavior; source-current Nelder-Mead receipts must be regenerated after independent audit",
-    "public_semantics_bundle_sha256": "95c20c32228a850c7f111ac1ea1cd7bfc461d79fa4fa7cbd09f1a20719b5f20a",
-    "qualification_tooling_bundle_sha256": "299b3335491b7c68873141fb8ba561e897d19d8ba0240692e5dfdb3a99d3165a",
-    "selection_sha256": "74c51cea04995d51967a2a4b3a6de8df96dfc7d0a76dcdabb666fae8ae701346",
+    "public_semantics_bundle_sha256": "9bb49278bdc296af0fc40320187d0e5345a7d695325a5100a6da68861aca2239",
+    "qualification_tooling_bundle_sha256": "5559feb68076a954eabc1a6ccd963c709c1a7a6c91db17460008360fc2693101",
+    "selection_sha256": "11fd091cf2e4e11a1d04bccc98ebba59a39e732501b44b33793fd7c6ff3beb9a",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
     "invalidated_summary": "qualification-v1.json"
   }

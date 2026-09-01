@@ -19,10 +19,58 @@
     "sea"
   ],
   "portable_platforms": {
-    "linux-x64": { "os": "linux", "architecture": "x64" },
-    "linux-arm64": { "os": "linux", "architecture": "arm64" },
-    "macos-arm64": { "os": "darwin", "architecture": "arm64" },
-    "windows-x64": { "os": "win32", "architecture": "x64" }
+    "linux-x64": {
+      "os": "linux",
+      "architecture": "x64",
+      "host_alias": "bench-1",
+      "attestation": {
+        "algorithm": "rsa-pkcs1-sha256",
+        "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
+        "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAtRtOZIpG+zKrocgZLgom\nW0ew8UHlW2PdexVg2bwRQzTcEjci2zOaGhMLeL3zUFB1w8eOtAm6fPqUgTRKULuT\n/LklZUdiA27/H393L6z5FfKZ1PJZHG81R/OswiFhFhWm1/NnLReS0LQTOFv2sT+F\nbNd/zzv/q34KLyrVJTu6TteacBW/eTmjFEWUIenM+fD5cYUp3RLJ0aXH86ZPhMFF\nCA9pTSQgf6IcO7OnWk4jLvGguvCgsbRYcJ5zNoKQLLw1ORHWzjHKD7xDZgjoe5Ob\nmplnm+/zl6G8MyZp4uxIgBdDdcHYePHJ/YGdd78JynGNK/DCC5phL+gbP2IPhhNO\nesk1riX7Ww6ty2lo+hyzG6j96UmA18A3WCxHPGVof/zmtvrx7Cj5qmDDbYVH+JO5\nmCT1MCJHA74ET0mfKdBpKIYMiSNgeACGkHep2E7eXHeDn8vfpzwyNxflCaCiUo1T\nXw2Gz8HDWMFrTLTX0Jwoq2FQPr4vbaXVXosldBjmMxDtAgMBAAE=\n-----END PUBLIC KEY-----\n"
+      }
+    },
+    "linux-arm64": {
+      "os": "linux",
+      "architecture": "arm64",
+      "host_alias": "bench-arm",
+      "attestation": {
+        "algorithm": "rsa-pkcs1-sha256",
+        "public_key_spki_sha256": "78d44c4f7112a2f36eaddfa53fe5b375c2eec232bc0a1bee203da287aac6fbad",
+        "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAq4439l4o/xBbqqyLUl4A\nfOtSpxOLuWfY7C5tZTAafSVyRp4zR/ZtUEvDm0wsdCdwgMktS1Wzo5pv4VEYxR/O\nrnBzDjcsoeSiutA82hgnxMR+rIBIbRO5AQ8Pl5csAVnNsnq71XueO8/R2J2zCOS6\n7ZJmNfPMDtPcn9FVSWiXKU7KGYR7dKXzFrekd9kU+gQlKqBikWGih7Sa1dx8D8cl\nLb9L90ydK2zZRUpuJB+NVOQAkCOkUGHuw9oYX5mU+hUczL6mtWgyRmJUC/QiLAWT\nXWK40STPMhOMa2dfGRGoYKHt9R9rMVTiftOmpSqJCEE6vjwaAjxCrG3YDnDkaTId\n51c42KyGHshPpDOFzOBcwi8/I9UkAXIZYJMh9+xfUn637JoXdXuxrZVgPSMt7tQ3\nB7FTyrjlCf/lsL53gXoqMyWNoXbeqDwKWaqoXy/c/5ZPjrNbt8lPvM+N7sGVixU+\nQ3ZMSpXw8pTnYu0mKRysdPobtXvJLI308zD0fBeyDn4RAgMBAAE=\n-----END PUBLIC KEY-----\n"
+      }
+    },
+    "macos-arm64": {
+      "os": "darwin",
+      "architecture": "arm64",
+      "host_alias": "m1",
+      "attestation": {
+        "algorithm": "rsa-pkcs1-sha256",
+        "public_key_spki_sha256": "ad9ad8bcd3f244220017efc0127bf7c094487c828d3f6e2e8b36f96855d7e654",
+        "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAogG3st8MtcHm4E5ao8KX\nxNvoNKu9FD3sw+UQJvGSyHh7SGfsAnjie78la35k8rqMasgGyNb45MRsyJ9t0q8d\neaDC4sjULF/jnewGbEdb1cZQBodDu87/IFNWuuN2KxXL4nHohcRSXW9QIJ/6u8DJ\nq1HGSC8s1uteDopXgBK0uJUtLEA24CzfC594leLctAVcgsi5axT7d6mSCFEaCM6o\nVne5gxzNpJ0/RrRfS4+t54tZWIaMzrSJd4WApScTTFWtXxUtcUPfzoyZdU+3i20A\nhJkXDDz8qBZR/GtUtxjrS1fi+RoFzGs0t517XRyEguQ/NF9CG1xzmhj6ySXTOa/o\nPk4vguLsrbcvHSZzKtxi5ylrmxJ39IdPBC4dedVnVKTcYc/fvZ4xBQppCHIpEyLS\nf86wmA2A1VJNGor/jSqKMdZRO2YQIT0+htIDMDYcV1M0SfgzaH36G+DAhcjUtUcp\nFqlx1iedVClhxUWdiNalHujVWqcKX3f24QQTYwSDz/3FAgMBAAE=\n-----END PUBLIC KEY-----\n"
+      }
+    },
+    "windows-x64": {
+      "os": "win32",
+      "architecture": "x64",
+      "host_alias": "windows",
+      "attestation": {
+        "algorithm": "rsa-pkcs1-sha256",
+        "public_key_spki_sha256": "4b4fc63d18802dbf3faaf7c5bbc90e25d152ad30ab90e754be61beb6f17f5bce",
+        "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA2B5A5PoPl2ALVEzWZVGg\niuW2aKdSInchhMrAadKaExnrsE8f1QXLoMYn06O7HObSUzw7q4DNc3F31rxVHONS\nUVlQk+zaX9OV8U2wNDV/dBC4RAgH7GaljduzVQzUQntTqZTZKMIneBwqh6AlteWt\nPJASOJrW2/EJDjZuRgO3CRyclyU/woGePIti2QYQLXtXgSc7rfXcI6WtFJLqT/r9\n1/kd37ffG8oA3hOQuMKFEquDCR1HFxJtc8qLPRp36dmtmLonwK1w1Ut2A3FmBa5c\n/tU8lZDkeOdD13hbhGKr6HpITXr+MA75emDaxHA71TiFqkfQywt0Dnm8rfp/t6QC\n0EHmsXZi2dJqoLxUtsnet789uYqHPV69F6vIOuhVSwtkzEgvtyjcuFfvvq+6/BCk\n0pGWhL+0er7vrY2w3zjSjvcmjjGRTMCqgrpKp4VVeZ2GvxUiCtwb3oXFjzRqUsgr\nRW4Vz9S3kmxgH9hb9341U45f4mVnLA6oh+7TSYLBA9oDAgMBAAE=\n-----END PUBLIC KEY-----\n"
+      }
+    }
+  },
+  "browser_evidence": {
+    "engine": "chromium",
+    "version": "149.0.7827.196",
+    "result_case_ids": [
+      "nelder-rosenbrock-2",
+      "nelder-beale-2",
+      "nelder-nonsmooth-absolute",
+      "nelder-bounded-boundary",
+      "nelder-ill-scaled"
+    ],
+    "results_sha256": "db90cb27296d477fc73a9521acea629f6471da257879cf738a500f7bcc339c76"
   },
   "historical_exclusions": {
     "nlopt-cobyla": {

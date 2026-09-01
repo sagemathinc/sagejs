@@ -16,6 +16,7 @@ import {
 const require = createRequire(import.meta.url);
 const {
   CASE_RECEIPT_SCHEMA,
+  attachReceiptOrigin,
   atomicWriteFile,
   canonicalJson,
   formattedJson,
@@ -27,7 +28,8 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryRoot = resolve(packageRoot, "../../../../../../..");
 
 function usage() {
-  return `Usage: node ${fileURLToPath(import.meta.url)} --candidate COMMIT --output FILE
+  return `Usage: node ${fileURLToPath(import.meta.url)} --candidate COMMIT --output FILE \\
+  --platform-id ID --campaign-challenge SHA256 --attestation-key FILE
 
 Executes exactly the source-current selected NLopt Nelder-Mead corpus cases.
 The checkout must be clean and at COMMIT. The output is a source-, oracle-,
@@ -36,20 +38,30 @@ artifact-, semantics-, and qualification-tooling-bound portable receipt.
 }
 
 function parseArguments(argv) {
-  const options = { candidate: null, output: null, help: false };
+  const options = {
+    candidate: null, output: null, platformId: null, campaignChallenge: null,
+    attestationKey: null, help: false,
+  };
   for (let index = 0; index < argv.length; ++index) {
     const argument = argv[index];
     if (argument === "--help" || argument === "-h") options.help = true;
-    else if (argument === "--candidate" || argument === "--output") {
+    else if ([
+      "--candidate", "--output", "--platform-id", "--campaign-challenge",
+      "--attestation-key",
+    ].includes(argument)) {
       const value = argv[++index];
       if (!value || value.startsWith("--")) throw new Error(`${argument} requires a value`);
-      const field = argument === "--candidate" ? "candidate" : "output";
+      const field = argument === "--platform-id" ? "platformId"
+        : argument === "--campaign-challenge" ? "campaignChallenge"
+          : argument === "--attestation-key" ? "attestationKey" : argument.slice(2);
       if (options[field] !== null) throw new Error(`${argument} may appear only once`);
       options[field] = value;
     } else throw new Error(`unknown argument ${argument}`);
   }
-  if (!options.help && (options.candidate === null || options.output === null)) {
-    throw new Error("--candidate and --output are required");
+  if (!options.help && Object.entries(options).some(
+    ([name, value]) => name !== "help" && value === null,
+  )) {
+    throw new Error("candidate, output, platform, campaign challenge, and attestation key are required");
   }
   return options;
 }
@@ -83,7 +95,9 @@ function currentContext(candidate) {
   });
 }
 
-async function execute(context) {
+async function execute(context, {
+  platformId, campaignChallenge, attestationKey,
+}) {
   const artifact = await readFile(resolve(packageRoot, "build/nlopt-methods.wasm"));
   const solver = await createNloptBackend(artifact);
   const records = context.selection.case_ids.map((id) =>
@@ -116,10 +130,11 @@ async function execute(context) {
     });
   }
   const lifecycle = solver.inspect();
-  if (lifecycle.liveAllocations !== 0 || lifecycle.liveBytes !== 0) {
+  if (lifecycle.activeContexts !== 0 || lifecycle.activeHandle !== 0 ||
+      lifecycle.liveAllocations !== 0 || lifecycle.liveBytes !== 0) {
     throw new Error(`qualification leaked Wasm state: ${JSON.stringify(lifecycle)}`);
   }
-  return {
+  const unsigned = {
     schema: CASE_RECEIPT_SCHEMA,
     candidate_commit: context.candidate,
     artifact: { ...context.artifact },
@@ -140,6 +155,17 @@ async function execute(context) {
     lifecycle_after: lifecycle,
     automatic_selection: false,
   };
+  const platform = context.selection.portable_platforms[platformId];
+  if (platform === undefined || platform.os !== process.platform ||
+      platform.architecture !== process.arch) {
+    throw new Error(`runtime ${process.platform}-${process.arch} is not selected platform ${platformId}`);
+  }
+  return attachReceiptOrigin(unsigned, {
+    context,
+    platformId,
+    campaignChallenge,
+    privateKeyPath: resolve(attestationKey),
+  });
 }
 
 async function main(argv = process.argv.slice(2)) {
@@ -149,7 +175,7 @@ async function main(argv = process.argv.slice(2)) {
     return 0;
   }
   const context = currentContext(options.candidate);
-  const receipt = await execute(context);
+  const receipt = await execute(context, options);
   atomicWriteFile(resolve(options.output), Buffer.from(formattedJson(receipt)));
   process.stdout.write(`${JSON.stringify({
     schema: receipt.schema,
