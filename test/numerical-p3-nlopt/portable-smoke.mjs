@@ -12,6 +12,10 @@ const repositoryPackage = resolve(
   "../../src/lib/sagejs/numerics/optimization/backends/nlopt",
 );
 const packageRoot = resolve(process.argv[2] ?? repositoryPackage);
+const productionManifest = JSON.parse(await readFile(
+  resolve(repositoryPackage, "release/production-manifest.json"),
+  "utf8",
+));
 const { createNloptBackend } = await import(
   pathToFileURL(resolve(packageRoot, "index.mjs"))
 );
@@ -39,6 +43,8 @@ process.stdout.write(`${JSON.stringify({
     architecture: process.arch,
   },
   artifact_sha256: createHash("sha256").update(artifact).digest("hex"),
+  public_semantics_bundle_sha256:
+    productionManifest.public_semantics_bundle.sha256,
   nelder_mead: {
     residual: nelderResidual,
     evaluations: nelderMead.evaluations,

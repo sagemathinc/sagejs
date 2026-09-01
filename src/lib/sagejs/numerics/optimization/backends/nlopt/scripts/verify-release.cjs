@@ -30,28 +30,54 @@ function verifyHash(actualPath, expected, root = packageRoot) {
   );
 }
 
+function reviewedBundleHash(files) {
+  const records = Object.entries(files).sort(([left], [right]) =>
+    left < right ? -1 : left > right ? 1 : 0);
+  for (const [path, expected] of records) {
+    assert.equal(typeof path, "string");
+    assert.match(expected, /^[0-9a-f]{64}$/);
+    verifyHash(path, expected, repositoryRoot);
+  }
+  return sha256(Buffer.from(
+    records.map(([path, digest]) => `${path}\0${digest}\0`).join(""),
+  ));
+}
+
 assert.equal(manifest.selection, "explicit-only");
 assert.deepEqual(manifest.methods, {
   "nlopt-nelder-mead": "NLOPT_LN_NELDERMEAD",
 });
+assert.equal(manifest.source.luksan_enabled, false);
+verifyHash("source-lock.json", manifest.source.source_lock_sha256);
+verifyHash("licenses/COPYING", manifest.source.license_sha256);
+assert.equal(
+  manifest.public_semantics_bundle.encoding,
+  "sorted-repository-path-nul-sha256-nul/v1",
+);
+assert.equal(
+  reviewedBundleHash(manifest.reviewed_sagejs_files),
+  manifest.public_semantics_bundle.sha256,
+  "the public NLopt semantic/loader/test source bundle changed",
+);
+assert.equal(
+  manifest.qualification.public_semantics_bundle_sha256,
+  manifest.public_semantics_bundle.sha256,
+  "qualification metadata is not bound to the reviewed public semantic bundle",
+);
 assert.equal(
   manifest.qualification.status,
   "qualified",
   "the narrowed NLopt artifact is pending source-current qualification",
 );
-assert.equal(manifest.source.luksan_enabled, false);
-verifyHash("source-lock.json", manifest.source.source_lock_sha256);
-verifyHash("licenses/COPYING", manifest.source.license_sha256);
-verifyHash("src/adapter.c", manifest.reviewed_sagejs_files.adapter_sha256);
-verifyHash("scripts/build.cjs", manifest.reviewed_sagejs_files.build_script_sha256);
-verifyHash("index.mjs", manifest.reviewed_sagejs_files.host_module_sha256);
-verifyHash(
-  "scripts/verify-release.cjs",
-  manifest.reviewed_sagejs_files.release_verifier_sha256,
-);
+const qualification = json("release/qualification-v1.json");
 verifyHash(
   "release/qualification-v1.json",
   manifest.qualification.summary_sha256,
+);
+assert.equal(
+  qualification.public_semantics_bundle_sha256,
+  manifest.public_semantics_bundle.sha256,
+  "qualification summary is not bound to the reviewed public semantic bundle",
 );
 verifyHash(
   "bench/numerical-p3-nlopt/corpus.json",
@@ -73,6 +99,10 @@ for (const [platform, path] of Object.entries(receiptPaths)) {
   );
   const receipt = JSON.parse(readFileSync(resolve(repositoryRoot, path)));
   assert.equal(receipt.artifact_sha256, manifest.artifact.sha256);
+  assert.equal(
+    receipt.public_semantics_bundle_sha256,
+    manifest.public_semantics_bundle.sha256,
+  );
   assert.equal(receipt.lifecycle_after.liveAllocations, 0);
   assert.equal(receipt.lifecycle_after.liveBytes, 0);
 }
@@ -118,6 +148,7 @@ process.stdout.write(`${JSON.stringify({
   source_revision: manifest.source.revision,
   source_closure_sha256: manifest.source.source_closure_sha256,
   artifact_sha256: manifest.artifact.sha256,
+  public_semantics_bundle_sha256: manifest.public_semantics_bundle.sha256,
   qualification_sha256: manifest.qualification.summary_sha256,
   methods: Object.keys(manifest.methods),
   selection: manifest.selection,

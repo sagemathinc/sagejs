@@ -17,6 +17,10 @@ const packageRoot = resolve(
   root,
   "src/lib/sagejs/numerics/optimization/backends/nlopt",
 );
+const productionManifest = JSON.parse(await readFile(
+  resolve(packageRoot, "release/production-manifest.json"),
+  "utf8",
+));
 const routes = new Map([
   ["/index.mjs", resolve(packageRoot, "index.mjs")],
   ["/artifact.wasm", resolve(packageRoot, "build/nlopt-methods.wasm")],
@@ -163,6 +167,8 @@ try {
     chromium: await browser.version(),
     cases: result.results.length,
     results_sha256: digest,
+    public_semantics_bundle_sha256:
+      productionManifest.public_semantics_bundle.sha256,
     pre_set_shared_atomic_force_stop: "pass",
     hard_worker_replacement: "pass",
     lifecycle_after: result.inspect,

@@ -20,6 +20,7 @@ test("a real browser routes explicit minimize through NLopt", {
   skip: executablePath ? false : "Chromium is not installed",
   timeout: 180_000,
 }, async () => {
+  let corruptNloptArtifact = false;
   const contentTypes = new Map([
     [".html", "text/html; charset=utf-8"],
     [".js", "text/javascript; charset=utf-8"],
@@ -43,6 +44,12 @@ test("a real browser routes explicit minimize through NLopt", {
       "Cross-Origin-Opener-Policy": "same-origin",
       "Cross-Origin-Embedder-Policy": "require-corp",
     });
+    if (corruptNloptArtifact && relative === "dist/nlopt-methods.wasm") {
+      const bytes = Uint8Array.from(fs.readFileSync(actual));
+      bytes[Math.floor(bytes.byteLength / 2)] ^= 1;
+      response.end(bytes);
+      return;
+    }
     fs.createReadStream(actual).pipe(response);
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -112,6 +119,46 @@ print(abs(answer.value[0] - 2.0) < 1.0e-6)
         egress_bytes: 0,
       }],
     );
+
+    corruptNloptArtifact = true;
+    const corruptContext = await browser.newContext();
+    try {
+      const corruptPage = await corruptContext.newPage();
+      await corruptPage.goto(`http://127.0.0.1:${port}/`);
+      const unavailable = await corruptPage.evaluate(async () => {
+        const { createSage } = await import("/kernel.mjs");
+        const session = await createSage({ timeout: 120_000 });
+        try {
+          return await session.evaluate(`
+from sagejs.numerics.optimization import minimize
+answer = minimize(
+    lambda point: (point[0] - 2.0)**2,
+    [0.0],
+    method="nlopt-nelder-mead",
+)
+print(answer.status)
+print(answer.to_dict()["provenance"]["implementation_kind"])
+print("backend_identity" in answer.domain_payload)
+`, { timeout: 120_000 });
+        } finally {
+          await session.close();
+        }
+      });
+      assert.equal(unavailable.stderr, "");
+      assert.equal(
+        unavailable.stdout,
+        "backend_failure\nordinary_python\nFalse\n",
+      );
+      assert.equal(
+        unavailable.instrumentation.routes.some(
+          ({ capability_id }) =>
+            capability_id === "wasm-library:nlopt:derivative-free-explicit",
+        ),
+        false,
+      );
+    } finally {
+      await corruptContext.close();
+    }
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));

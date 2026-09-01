@@ -25,6 +25,20 @@ function evaluate(source) {
   return result.stdout.trim();
 }
 
+function evaluateCpython(source) {
+  const executable = process.env.PYTHON ||
+    (process.platform === "win32" ? "python" : "python3");
+  const prefix = "import collections.abc, hashlib, json, math, sys, typing\n" +
+    `sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})\n`;
+  const result = spawnSync(executable, ["-I", "-c", prefix + source], {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 180_000,
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result.stdout.trim();
+}
+
 test("public NLopt Nelder-Mead has an exact identity and heuristic conclusion", () => {
   assert.equal(evaluate(String.raw`
 from sagejs.numerics.optimization import capabilities, minimize
@@ -245,4 +259,175 @@ assert recovered.validation.truth_level == "heuristic"
 assert abs(recovered.value[0] - 2.0) < 1.0e-6
 print("public NLopt failure contracts passed")
 `), "public NLopt failure contracts passed");
+});
+
+test("NLopt option and unavailable-resource failures stay structured and unexecuted", () => {
+  assert.equal(evaluateCpython(String.raw`
+import sys
+import types
+
+runtime = types.ModuleType("sagejs.runtime")
+undefined = object()
+failure_mode = ["set"]
+
+class FakeReflect:
+    @staticmethod
+    def get(target, name):
+        return getattr(target, name, undefined)
+
+    @staticmethod
+    def set(target, name, value):
+        if failure_mode[0] == "set":
+            raise RuntimeError("synthetic private Reflect.set failure")
+        target[name] = value
+
+    @staticmethod
+    def apply(function, target, arguments):
+        return function(*arguments)
+
+class FakeObject:
+    @staticmethod
+    def create(prototype):
+        return {}
+
+class MissingBackend:
+    def solve(self, options):
+        raise RuntimeError("synthetic missing/corrupt resource sentinel")
+
+def jstype(value):
+    if value is undefined:
+        return "undefined"
+    if callable(value):
+        return "function"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, (int, float)):
+        return "number"
+    if isinstance(value, str):
+        return "string"
+    return "object"
+
+runtime.numerical_backend = lambda name: MissingBackend()
+runtime.reflect = FakeReflect()
+runtime.object = FakeObject()
+runtime.jstype = jstype
+sys.modules["sagejs.runtime"] = runtime
+
+from sagejs.numerics.optimization import minimize
+
+for mode in ("set", "apply"):
+    failure_mode[0] = mode
+    answer = minimize(
+        lambda point: (point[0] - 2.0)**2,
+        [20.0],
+        method="nlopt-nelder-mead",
+    )
+    assert not answer.success
+    assert answer.status == "backend_failure"
+    assert answer.domain_payload["stop_reason"] == "nlopt_backend_error"
+    assert "backend_identity" not in answer.domain_payload
+    provenance = answer.to_dict()["provenance"]
+    assert provenance["implementation_kind"] == "ordinary_python"
+    assert provenance["source_transparent"]
+    assert "synthetic private" not in str(answer.to_dict())
+    assert "synthetic missing" not in str(answer.to_dict())
+print("public NLopt construction/resource normalization passed")
+`), "public NLopt construction/resource normalization passed");
+});
+
+test("NLopt rejects contradictory termination and counter evidence", () => {
+  assert.equal(evaluateCpython(String.raw`
+import sys
+import types
+
+runtime = types.ModuleType("sagejs.runtime")
+undefined = object()
+result_mode = ["termination"]
+
+class FakeReflect:
+    @staticmethod
+    def get(target, name):
+        if isinstance(target, dict):
+            return target.get(name, undefined)
+        return getattr(target, name, undefined)
+
+    @staticmethod
+    def set(target, name, value):
+        target[name] = value
+
+    @staticmethod
+    def apply(function, target, arguments):
+        return function(*arguments)
+
+class FakeObject:
+    @staticmethod
+    def create(prototype):
+        return {}
+
+class FakeResult:
+    method = "nlopt-nelder-mead"
+    backend = "nlopt-mit-wasm"
+    independentValidationRequired = True
+    value = [0.0]
+    status = "invalid_arguments"
+    backendStatus = -2
+    backendConverged = True
+    evaluations = 0
+    objectiveCallbacks = 0
+    inequalityCallbacks = 0
+    equalityCallbacks = 0
+    callbackCount = 0
+    gradientCallbacks = 0
+    jacobianCallbacks = 0
+
+class FakeBackend:
+    def solve(self, options):
+        result = FakeResult()
+        if result_mode[0] == "counters":
+            result.status = "parameter_tolerance_reached"
+            result.backendStatus = 4
+            result.backendConverged = True
+            result.evaluations = 10**12
+            result.objectiveCallbacks = 10**12
+            result.callbackCount = 10**12
+        return result
+
+def jstype(value):
+    if value is undefined:
+        return "undefined"
+    if callable(value):
+        return "function"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, (int, float)):
+        return "number"
+    if isinstance(value, str):
+        return "string"
+    return "object"
+
+runtime.numerical_backend = lambda name: FakeBackend()
+runtime.reflect = FakeReflect()
+runtime.object = FakeObject()
+runtime.jstype = jstype
+sys.modules["sagejs.runtime"] = runtime
+
+from sagejs.numerics.optimization import minimize
+
+for mode, reason in (
+    ("termination", "invalid_nlopt_termination_contract"),
+    ("counters", "invalid_nlopt_counters"),
+):
+    result_mode[0] = mode
+    answer = minimize(
+        lambda point: point[0]**2,
+        [0.0],
+        method="nlopt-nelder-mead",
+    )
+    assert not answer.success
+    assert answer.status == "backend_failure"
+    assert answer.domain_payload["stop_reason"] == reason
+    assert "backend_identity" not in answer.domain_payload
+    assert answer.to_dict()["provenance"]["implementation_kind"] == "ordinary_python"
+print("public NLopt result-contract rejection passed")
+`), "public NLopt result-contract rejection passed");
 });

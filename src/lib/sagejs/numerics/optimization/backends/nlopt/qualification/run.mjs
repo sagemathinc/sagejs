@@ -19,6 +19,10 @@ const buildReport = JSON.parse(await readFile(
   resolve(packageRoot, "build/build-report.json"),
   "utf8",
 ));
+const productionManifest = JSON.parse(await readFile(
+  resolve(packageRoot, "release/production-manifest.json"),
+  "utf8",
+));
 const corpusBytes = await readFile(
   resolve(repositoryRoot, "bench/numerical-p3-nlopt/corpus.json"),
 );
@@ -71,6 +75,7 @@ const receipt = {
   artifact_sha256: buildReport.artifact.sha256,
   source_revision: buildReport.source.revision,
   source_closure_sha256: buildReport.source_closure.sha256,
+  public_semantics_bundle_sha256: productionManifest.public_semantics_bundle.sha256,
   corpus_sha256: sha256(corpusBytes),
   oracle_output_sha256: oracle.oracle_output_sha256,
   runtime: {
@@ -98,6 +103,7 @@ process.stdout.write(`${JSON.stringify({
   schema: receipt.schema,
   artifact_sha256: receipt.artifact_sha256,
   source_closure_sha256: receipt.source_closure_sha256,
+  public_semantics_bundle_sha256: receipt.public_semantics_bundle_sha256,
   corpus_sha256: receipt.corpus_sha256,
   results_sha256: receipt.results_sha256,
   runtime: receipt.runtime,
