@@ -737,7 +737,13 @@ class OptimizationResult(NumericalResult):
         planned_kind = plan.execution_target["implementation_kind"]
         provenance: dict[str, Any] = {
             "implementation": (
-                executed_backend if external_execution else plan.backend
+                executed_backend
+                if external_execution
+                else (
+                    "sagejs.numerics.optimization"
+                    if planned_kind == "ordinary_python"
+                    else plan.backend
+                )
             ),
             "source_transparent": planned_kind == "ordinary_python",
             "solver_status": status,
