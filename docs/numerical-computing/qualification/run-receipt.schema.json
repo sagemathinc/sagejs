@@ -152,6 +152,7 @@
         "name": { "$ref": "#/$defs/nonempty" },
         "path": { "$ref": "#/$defs/nonempty" },
         "sha256": { "$ref": "#/$defs/sha256" },
+        "content_sha256": { "$ref": "#/$defs/sha256" },
         "bytes": { "$ref": "#/$defs/nonnegativeInteger" },
         "files": { "$ref": "#/$defs/nonnegativeInteger" }
       }
@@ -204,7 +205,15 @@
         "name": { "$ref": "#/$defs/nonempty" },
         "version": { "$ref": "#/$defs/nonempty" },
         "engine": { "type": ["string", "null"] }
-      }
+      },
+      "allOf": [{
+        "if": {
+          "properties": { "kind": { "enum": ["browser", "worker"] } },
+          "required": ["kind"]
+        },
+        "then": { "properties": { "engine": { "$ref": "#/$defs/nonempty" } } },
+        "else": { "properties": { "engine": { "type": "null" } } }
+      }]
     },
     "runtime": {
       "type": "object",

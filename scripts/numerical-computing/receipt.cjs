@@ -782,6 +782,66 @@ function validatePeakMemory(label, value) {
   return value;
 }
 
+function expectedPeakMemoryContract(platformId, subjectKind) {
+  if (subjectKind === "node") {
+    return {
+      measurement_method: "node-process-rss-boundary-v1",
+      measurement_scope: "collector_process",
+      sample_interval_ms: 5,
+    };
+  }
+  const external = {
+    "linux-x64": ["linux-procfs-process-tree-sampled-v1", 5],
+    "linux-arm64": ["linux-procfs-process-tree-sampled-v1", 5],
+    "macos-arm64": ["macos-ps-process-tree-sampled-v1", 50],
+    "windows-x64": ["windows-cim-process-tree-sampled-v1", 50],
+  }[platformId];
+  if (external === undefined) {
+    fail("receipt.platform.id", `has no process-tree memory contract for ${subjectKind}`);
+  }
+  return {
+    measurement_method: external[0],
+    measurement_scope: "process_tree",
+    sample_interval_ms: external[1],
+  };
+}
+
+function validatePeakMemoryContract(label, value, expected) {
+  for (const name of ["measurement_method", "measurement_scope", "sample_interval_ms"]) {
+    if (value[name] !== expected[name]) {
+      fail(`${label}.${name}`, `must be ${expected[name]} for this platform and subject`);
+    }
+  }
+}
+
+function validateReceiptPeakMemoryContracts(receipt) {
+  const expected = expectedPeakMemoryContract(
+    receipt.platform.id,
+    receipt.runtime.subject.kind,
+  );
+  for (const caseReceipt of receipt.cases) {
+    for (const [groupName, samples] of [
+      ["warmup", caseReceipt.warmup],
+      ["samples", caseReceipt.samples],
+    ]) {
+      for (let index = 0; index < samples.length; index += 1) {
+        validatePeakMemoryContract(
+          `receipt case ${caseReceipt.case_id}.${groupName}[${index}].metrics.peak_memory`,
+          samples[index].metrics.peak_memory,
+          expected,
+        );
+      }
+    }
+    if (caseReceipt.metrics.peak_memory !== null) {
+      validatePeakMemoryContract(
+        `receipt case ${caseReceipt.case_id}.metrics.peak_memory`,
+        caseReceipt.metrics.peak_memory,
+        expected,
+      );
+    }
+  }
+}
+
 function validateSample(label, value, caseContract) {
   exactKeys(label, value, ["observation", "evidence", "status", "metrics"]);
   const expected = evaluateObservation(caseContract, value.observation);
@@ -996,6 +1056,7 @@ function validateReceipt(receipt) {
   if (receipt.platform.machine_id !== contentId(platformFacts)) {
     fail("receipt.platform.machine_id", "is stale");
   }
+  validateReceiptPeakMemoryContracts(receipt);
   exactKeys("receipt.runtime.collector", receipt.runtime.collector, [
     "kind", "name", "version", "node", "v8", "modules_abi",
   ]);
@@ -1138,8 +1199,10 @@ module.exports = {
   inputBindings,
   parseArtifactSpecifications,
   receiptCore,
+  expectedPeakMemoryContract,
   validateMetricSummary,
   validateReceipt,
   verifyReceipt,
   writeImmutableJson,
+  qualificationInternals: Object.freeze({ memoryMeasurement }),
 };

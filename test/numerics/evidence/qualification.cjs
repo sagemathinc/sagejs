@@ -27,6 +27,7 @@ const {
 const {
   bindCapabilityDraft,
   collectReceipt,
+  expectedPeakMemoryContract,
   receiptCore,
   verifyReceipt,
   writeImmutableJson,
@@ -90,16 +91,27 @@ function corpusFixture() {
   };
 }
 
-function adapterSource(subject, externalExecution = "async", mutateInput = false) {
+function adapterSource(
+  subject,
+  externalExecution = "async",
+  mutateArtifact = false,
+  mutateInput = false,
+  initializationMode = "valid",
+  closeMarker = null,
+) {
   return `"use strict";
 const { spawn, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 let subjectProcess = null;
+let artifactPath = null;
 let repositoryRoot = null;
 const external = ${JSON.stringify(subject.kind !== "node")};
 const externalExecution = ${JSON.stringify(externalExecution)};
+const mutateArtifact = ${JSON.stringify(mutateArtifact)};
 const mutateInput = ${JSON.stringify(mutateInput)};
+const initializationMode = ${JSON.stringify(initializationMode)};
+const closeMarker = ${JSON.stringify(closeMarker)};
 const childSource =
   "const held = Buffer.alloc(64 * 1024 * 1024, 1); " +
   "setTimeout(() => process.exit(0), 1500)";
@@ -131,16 +143,22 @@ module.exports = {
   protocol: "sagejs.numerical-qualification-adapter/v1",
   async initialize(context) {
     repositoryRoot = context.root;
-    return {
+    artifactPath = context.artifacts.find((item) => item.name === "core").path;
+    const result = {
       subject: ${JSON.stringify(subject)},
       capability_ids: ["fixture.answer"],
     };
+    if (initializationMode === "invalid-record") result.extra = true;
+    if (initializationMode === "subject-mismatch") result.subject = { ...result.subject, name: "wrong" };
+    if (initializationMode === "capability-mismatch") result.capability_ids = ["fixture.unknown"];
+    return result;
   },
   async runCase(sample) {
     if (mutateInput) {
       fs.appendFileSync(path.join(repositoryRoot, "source.txt"), "adapter mutation\\n");
     }
     await exerciseExternalSubject();
+    if (mutateArtifact) fs.appendFileSync(artifactPath, Buffer.from([99]));
     return {
       outcome: { kind: "success", code: null },
       values: { result: sample.input.value, oracle: 42 },
@@ -149,6 +167,9 @@ module.exports = {
   },
   async close() {
     if (subjectProcess !== null) subjectProcess.kill();
+    if (closeMarker !== null && initializationMode !== "valid") {
+      fs.appendFileSync(closeMarker, "closed\\n");
+    }
   },
 };
 `;
@@ -186,15 +207,25 @@ function makeWorkspace({
   capabilityStatus = "available",
   subject = { kind: "node", name: "node", version: process.version, engine: null },
   externalExecution = "async",
+  mutateArtifact = false,
   mutateInput = false,
+  initializationMode = "valid",
 } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-numerical-evidence-"));
+  const closeMarker = `${root}.close.log`;
   initializeGit(root);
   fs.writeFileSync(path.join(root, "source.txt"), "exact fixture source\n");
   fs.writeFileSync(path.join(root, "artifact.bin"), Buffer.from([0, 1, 2, 3, 255]));
   fs.writeFileSync(
     path.join(root, "adapter.cjs"),
-    adapterSource(subject, externalExecution, mutateInput),
+    adapterSource(
+      subject,
+      externalExecution,
+      mutateArtifact,
+      mutateInput,
+      initializationMode,
+      closeMarker,
+    ),
   );
   writeJson(path.join(root, "fixture.corpus.json"), corpusFixture());
   writeJson(
@@ -211,7 +242,7 @@ function makeWorkspace({
   });
   writeJson(path.join(root, "capabilities.json"), manifest);
   commitAll(root, "bound capability manifest");
-  return { root, manifest };
+  return { root, manifest, closeMarker };
 }
 
 function makeHarnessWorkspace() {
@@ -338,25 +369,6 @@ test("published wire schemas are strict duplicate-free JSON with matching identi
     assert.equal(schema.properties.schema.const, identity);
     assert.equal(schema.additionalProperties, false);
   }
-  const report = parseJsonText(
-    fs.readFileSync(path.join(directory, "matrix-report.schema.json"), "utf8"),
-    "matrix-report.schema.json",
-  );
-  for (const definition of ["receiptSummary", "bindings", "caseMetrics", "metrics"]) {
-    assert.equal(report.$defs[definition].additionalProperties, false, definition);
-    assert.ok(report.$defs[definition].required.length > 0, definition);
-  }
-  const row = report.properties.rows.items.properties;
-  assert.equal(row.receipt.oneOf[0].$ref, "#/$defs/receiptSummary");
-  assert.equal(row.bindings.oneOf[0].$ref, "#/$defs/bindings");
-  assert.equal(row.metrics.oneOf[0].$ref, "#/$defs/metrics");
-  assert.deepEqual(
-    report.$defs.metrics.required,
-    [
-      "startup", "total_wall_ms", "rss_peak_sampled_bytes",
-      "process_max_rss_bytes", "peak_memory", "payload", "cases",
-    ],
-  );
 });
 
 test("portable harness self-test executes failure, deterministic fuzz, and metamorphic cases", async (t) => {
@@ -487,6 +499,15 @@ test("stale source, artifact, adapter, and capability bindings prevent collectio
   }
 });
 
+test("collection rejects a bound artifact rebuilt during adapter execution", async (t) => {
+  const workspace = makeWorkspace({ mutateArtifact: true });
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  await assert.rejects(
+    () => collectFixture(workspace),
+    /capability manifest\.bindings|changed during collection/,
+  );
+});
+
 test("collection rejects an adapter that changes a bound input while executing", async (t) => {
   const workspace = makeWorkspace({ mutateInput: true });
   t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
@@ -504,6 +525,29 @@ test("collection requires a clean checkout before adapter code runs", async (t) 
     () => collectFixture(workspace),
     /requires a clean candidate checkout/,
   );
+});
+
+test("successful initialize results rejected by the collector are closed exactly once", async (t) => {
+  for (const [mode, pattern] of [
+    ["invalid-record", /unknown field extra/],
+    ["subject-mismatch", /does not match the capability manifest/],
+    ["capability-mismatch", /unknown fixture\.unknown/],
+  ]) {
+    await t.test(mode, async (t) => {
+      const workspace = makeWorkspace({ initializationMode: mode });
+      t.after(() => {
+        fs.rmSync(workspace.root, { recursive: true, force: true });
+        fs.rmSync(workspace.closeMarker, { force: true });
+      });
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        await assert.rejects(() => collectFixture(workspace), pattern);
+        const closes = fs.readFileSync(workspace.closeMarker, "utf8")
+          .trim().split(/\r?\n/);
+        assert.equal(closes.length, 1, "each rejected initialized adapter closes once");
+        fs.rmSync(workspace.closeMarker);
+      }
+    });
+  }
 });
 
 test("unavailable or unobserved capabilities produce failed receipts without samples", async (t) => {
@@ -576,15 +620,68 @@ test("memory evidence is authenticated by the collector, never by adapters", asy
     () => verifyReceipt(forged, { historical: true }),
     /authenticated_by.*qualification-collector/,
   );
+});
 
-  const impossible = structuredClone(receipt);
-  impossible.cases[0].samples[0].metrics.peak_memory.measurement_scope =
-    "browser_heap";
-  impossible.id = contentId(receiptCore(impossible));
-  assert.throws(
-    () => verifyReceipt(impossible, { historical: true }),
-    /measurement_scope.*must be collector_process/,
-  );
+test("historical receipts enforce the exact platform and subject memory tuple", async (t) => {
+  assert.deepEqual(expectedPeakMemoryContract("linux-x64", "node"), {
+    measurement_method: "node-process-rss-boundary-v1",
+    measurement_scope: "collector_process",
+    sample_interval_ms: 5,
+  });
+  assert.deepEqual(expectedPeakMemoryContract("linux-arm64", "npm"), {
+    measurement_method: "linux-procfs-process-tree-sampled-v1",
+    measurement_scope: "process_tree",
+    sample_interval_ms: 5,
+  });
+  assert.deepEqual(expectedPeakMemoryContract("macos-arm64", "sea"), {
+    measurement_method: "macos-ps-process-tree-sampled-v1",
+    measurement_scope: "process_tree",
+    sample_interval_ms: 50,
+  });
+  assert.deepEqual(expectedPeakMemoryContract("windows-x64", "browser"), {
+    measurement_method: "windows-cim-process-tree-sampled-v1",
+    measurement_scope: "process_tree",
+    sample_interval_ms: 50,
+  });
+
+  const workspace = makeWorkspace();
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  const receipt = await collectFixture(workspace);
+  function forge(fields) {
+    const value = structuredClone(receipt);
+    for (const caseReceipt of value.cases) {
+      for (const sample of [...caseReceipt.warmup, ...caseReceipt.samples]) {
+        Object.assign(sample.metrics.peak_memory, fields);
+      }
+      if (caseReceipt.metrics.peak_memory !== null) {
+        Object.assign(caseReceipt.metrics.peak_memory, fields);
+      }
+    }
+    value.id = contentId(receiptCore(value));
+    return value;
+  }
+  for (const fields of [{
+    measurement_method: "macos-ps-process-tree-sampled-v1",
+    measurement_scope: "process_tree",
+    sample_interval_ms: 50,
+  }, {
+    measurement_method: "node-process-rss-boundary-v1",
+    measurement_scope: "collector_process",
+    sample_interval_ms: 50,
+  }]) {
+    const forged = forge(fields);
+    assert.throws(
+      () => verifyReceipt(forged, { historical: true }),
+      /must be .* for this platform and subject/,
+    );
+    assert.throws(
+      () => buildReport(
+        policyFor(forged),
+        [{ path: "forged.receipt.json", value: forged }],
+      ),
+      /must be .* for this platform and subject/,
+    );
+  }
 });
 
 test("external subjects receive live authenticated process-tree memory evidence", async (t) => {

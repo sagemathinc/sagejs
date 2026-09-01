@@ -10,6 +10,12 @@ const { capabilityDraft } = require("./prepare-node.cjs");
 const root = path.resolve(__dirname, "..", "..", "..");
 const corpusPath = path.join(root, "bench/numerical-computing/qualification/product.corpus.json");
 const specPath = path.join(root, "bench/numerical-computing/qualification/capabilities/node-capability-spec.json");
+const browserMemoryCorpusPath = path.join(
+  root, "bench/numerical-computing/qualification/browser-memory.corpus.json",
+);
+const browserMemorySpecPath = path.join(
+  root, "bench/numerical-computing/qualification/capabilities/browser-memory-capability-spec.json",
+);
 const matrixDirectory = path.join(root, "bench/numerical-computing/qualification/matrix");
 
 function validateTemplate(template, expectedRows, requiredCapabilities = null) {
@@ -19,6 +25,22 @@ function validateTemplate(template, expectedRows, requiredCapabilities = null) {
   if (template.rows.length !== expectedRows) throw new Error(`expected ${expectedRows} matrix rows`);
   const rowIds = new Set(template.rows.map((row) => row.id));
   if (rowIds.size !== template.rows.length) throw new Error("duplicate matrix template row");
+  for (const row of template.rows) {
+    const expectedScope = row.subject.kind === "node" ? "collector_process" : "process_tree";
+    if (row.required_memory_scope !== expectedScope) {
+      throw new Error(
+        `matrix row ${row.id} must require ${expectedScope} memory, got ` +
+        `${row.required_memory_scope}`,
+      );
+    }
+    const requiresEngine = ["browser", "worker"].includes(row.subject.kind);
+    if (requiresEngine !== (typeof row.subject.engine === "string" && row.subject.engine.length > 0)) {
+      throw new Error(`matrix row ${row.id} has invalid subject engine identity`);
+    }
+    if (row.subject.kind === "worker" && row.subject.engine !== "chromium") {
+      throw new Error(`matrix worker row ${row.id} must be pinned to Chromium`);
+    }
+  }
   for (const phase of ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"]) {
     if (!template.required_program_phases.includes(phase)) throw new Error(`matrix omits ${phase}`);
   }
@@ -28,6 +50,34 @@ function validateTemplate(template, expectedRows, requiredCapabilities = null) {
     if (JSON.stringify(actual) !== JSON.stringify(expected)) {
       throw new Error("matrix required capabilities do not equal the available campaign surface");
     }
+  }
+}
+
+function validateSupplementalTemplate(template) {
+  if (template.schema !== "sagejs.numerical-qualification-supplemental-template/v1") {
+    throw new Error("unexpected supplemental evidence template schema");
+  }
+  const required = new Set([
+    "cminpack-native-sanitizers",
+    "nlopt-native-sanitizers",
+    "numerical-wasm-destructive-faults",
+    "browser-process-tree-memory",
+    "startup-package-payload-closure",
+  ]);
+  for (const item of template.requirements) {
+    if (!required.delete(item.id)) throw new Error(`unexpected supplemental requirement ${item.id}`);
+    if (item.status !== "pending") {
+      throw new Error(`checked-in supplemental requirement ${item.id} must remain pending`);
+    }
+    if (!Array.isArray(item.required_evidence) || item.required_evidence.length === 0) {
+      throw new Error(`supplemental requirement ${item.id} lacks evidence types`);
+    }
+    if (typeof item.acceptance !== "string" || item.acceptance.length < 32) {
+      throw new Error(`supplemental requirement ${item.id} lacks an acceptance contract`);
+    }
+  }
+  if (required.size !== 0) {
+    throw new Error(`missing supplemental requirements: ${[...required].join(", ")}`);
   }
 }
 
@@ -60,11 +110,25 @@ function main() {
     4,
     requiredCapabilities,
   );
+  validateSupplementalTemplate(
+    readJson(path.join(matrixDirectory, "supplemental-evidence.template.json")),
+  );
   validateTemplate(
     readJson(path.join(matrixDirectory, "full-runtime.template.json")),
-    12,
+    16,
     requiredCapabilities,
   );
+  const browserMemoryCorpus = validateCorpus(readJson(browserMemoryCorpusPath));
+  const browserMemoryDraft = capabilityDraft(
+    readJson(browserMemorySpecPath), browserMemoryCorpus,
+    { kind: "browser", name: "playwright-browser", version: "validation-only", engine: "chromium" },
+  );
+  if (browserMemoryCorpus.cases.length !== 3 ||
+      browserMemoryDraft.capabilities.length !== 1 ||
+      browserMemoryDraft.capabilities[0].id !==
+        "numerics.lifecycle.browser_process_tree_memory") {
+    throw new Error("focused browser memory campaign is incomplete");
+  }
   process.stdout.write(
     `Numerical qualification campaign valid: ${corpus.cases.length} cases, ` +
     `${available.length} available capabilities, ${unavailable.size} future fail-closed capabilities.\n`,
@@ -81,4 +145,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { main, validateTemplate };
+module.exports = { main, validateSupplementalTemplate, validateTemplate };

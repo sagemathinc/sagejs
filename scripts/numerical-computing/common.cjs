@@ -242,10 +242,38 @@ function repositoryPath(root, candidate, label = "path") {
     fail(label, "must be a repository-relative path");
   }
   const resolvedRoot = path.resolve(root);
+  let rootStatus;
+  try {
+    rootStatus = fs.lstatSync(resolvedRoot);
+  } catch {
+    fail(label, "repository root does not exist");
+  }
+  if (!rootStatus.isDirectory()) fail(label, "repository root must be a directory");
+  const realRoot = fs.realpathSync(resolvedRoot);
   const resolved = path.resolve(resolvedRoot, candidate);
   const relative = path.relative(resolvedRoot, resolved);
   if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     fail(label, "escapes the repository root");
+  }
+  let current = resolvedRoot;
+  for (const component of relative.split(path.sep).filter((item) => item.length !== 0)) {
+    current = path.join(current, component);
+    let status;
+    try {
+      status = fs.lstatSync(current);
+    } catch (error) {
+      if (error?.code === "ENOENT") break;
+      throw error;
+    }
+    if (status.isSymbolicLink()) {
+      fail(label, `refuses symbolic-link path component ${path.relative(resolvedRoot, current)}`);
+    }
+    const real = fs.realpathSync(current);
+    const realRelative = path.relative(realRoot, real);
+    if (realRelative === ".." || realRelative.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(realRelative)) {
+      fail(label, `resolved path component escapes the repository root: ${component}`);
+    }
   }
   return {
     absolute: resolved,
@@ -279,6 +307,40 @@ function digestPath(root, candidate, label = "path") {
   }
   visit(top.absolute, top.relative);
   return { path: top.relative, sha256: hash.digest("hex"), bytes, files };
+}
+
+// Unlike digestPath, this digest intentionally excludes the repository-relative
+// top-level location. It identifies the bytes and internal directory layout so
+// independently staged copies of one release artifact can be cross-bound.
+// Regular files use their ordinary raw SHA-256 digest.
+function contentDigestPath(root, candidate, label = "path") {
+  const top = repositoryPath(root, candidate, label);
+  if (!fs.existsSync(top.absolute)) fail(label, `does not exist: ${top.relative}`);
+  const status = fs.lstatSync(top.absolute);
+  if (status.isSymbolicLink()) fail(label, "symbolic links are not evidence inputs");
+  if (status.isFile()) return sha256(fs.readFileSync(top.absolute));
+  if (!status.isDirectory()) fail(label, "unsupported filesystem object");
+  const hash = createHash("sha256");
+  function visit(filename, relativeName) {
+    const itemStatus = fs.lstatSync(filename);
+    if (itemStatus.isSymbolicLink()) {
+      fail(label, `symbolic links are not evidence inputs: ${relativeName}`);
+    }
+    if (itemStatus.isDirectory()) {
+      hash.update(`directory\0${relativeName}\0`);
+      for (const name of fs.readdirSync(filename).sort()) {
+        visit(path.join(filename, name), relativeName === "." ? name : `${relativeName}/${name}`);
+      }
+      return;
+    }
+    if (!itemStatus.isFile()) fail(label, `unsupported filesystem object: ${relativeName}`);
+    const content = fs.readFileSync(filename);
+    hash.update(`file\0${relativeName}\0${content.length}\0`);
+    hash.update(content);
+    hash.update("\0");
+  }
+  visit(top.absolute, ".");
+  return hash.digest("hex");
 }
 
 function digestBundle(root, paths, label = "source paths") {
@@ -394,6 +456,7 @@ module.exports = {
   canonicalJson,
   collectorIdentity,
   contentId,
+  contentDigestPath,
   digestBundle,
   digestPath,
   enumeration,

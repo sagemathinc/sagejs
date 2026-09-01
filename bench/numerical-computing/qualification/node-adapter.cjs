@@ -5,14 +5,65 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { pathToFileURL } = require("node:url");
 
+const {
+  readBinding: readScipyOracleBinding,
+} = require("../../../scripts/numerical-computing/qualification/scipy-oracle.cjs");
+
 const PROTOCOL = "sagejs.numerical-qualification-adapter/v1";
 const MARKER = "__SAGEJS_NUMERICAL_QUALIFICATION__";
+
+const CAPABILITY_MODULE_REQUIREMENTS = Object.freeze({
+  "numerics.contracts": "sagejs.numerics",
+  "numerics.root.scalar": "sagejs.numerics",
+  "numerics.approximation.interpolation": "sagejs.numerics.approximation",
+  "numerics.approximation.splines": "sagejs.numerics.approximation",
+  "numerics.approximation.finite_difference": "sagejs.numerics.approximation",
+  "numerics.approximation.chebyshev": "sagejs.numerics.approximation",
+  "numerics.approximation.polynomial_roots": "sagejs.numerics.approximation",
+  "numerics.integration.quadrature": "sagejs.numerics.integration",
+  "numerics.linear.solve": "sagejs.numerics.linear_algebra",
+  "numerics.linear.factorizations": "sagejs.numerics.linear_algebra",
+  "numerics.optimization.scalar": "sagejs.numerics.optimization",
+  "numerics.optimization.cminpack": "external:cminpack-wasm",
+  "numerics.optimization.cminpack_optional_resource": "sagejs.numerics.optimization",
+  "numerics.optimization.nlopt_nelder_mead": "external:nlopt-wasm",
+  "numerics.optimization.nlopt_unsupported": "sagejs.numerics.optimization",
+  "numerics.optimization.nlopt_optional_resource": "external:nlopt-wasm",
+  "numerics.ode.explicit_ivp": "sagejs.numerics.ode",
+  "numerics.ode.stiff_ivp": "sagejs.numerics.ode",
+  "numerics.ode.sweeps": "sagejs.numerics.ode",
+  "numerics.spectral.dense": "sagejs.numerics.spectral",
+  "numerics.spectral.fft": "sagejs.numerics.spectral",
+  "numerics.spectral.convolution": "sagejs.numerics.spectral",
+  "numerics.spectral.sparse": "sagejs.numerics.spectral",
+  "numerics.statistics.descriptive": "sagejs.numerics.statistics",
+  "numerics.statistics.inference": "sagejs.numerics.statistics",
+  "numerics.statistics.rng": "sagejs.numerics.statistics",
+  "numerics.statistics.regression": "sagejs.numerics.statistics",
+  "numerics.sweeps.bounded": "sagejs.numerics.sweeps",
+  "numerics.frontend.scalar_root": "sagejs.numerics.frontends",
+  "numerics.frontend.catalog": "sagejs.numerics.frontends",
+  "numerics.frontend.parser_guards": "external:foreign-frontends",
+  "numerics.frontend.matlab_shapes": "sagejs.numerics.frontends",
+  "numerics.frontend.scipy_execution": "external:scipy-python",
+  "numerics.frontend.guardrails": "sagejs.numerics.frontends",
+  "numerics.teaching.root": "sagejs.numerics",
+  "numerics.teaching.cross_domain": "sagejs.numerics",
+  "numerics.teaching.scalar_optimization": "sagejs.numerics.optimization",
+  "numerics.lifecycle.repeated": "sagejs.numerics",
+  "numerics.lifecycle.recovery": "sagejs.numerics",
+  "numerics.lifecycle.memory": "sagejs.numerics.statistics",
+  "numerics.lifecycle.browser_process_tree_memory": "external:browser-process-tree-memory",
+});
 
 let session = null;
 let artifactRoot = null;
 let cminpackBackend = null;
+let nloptArtifactPath = null;
 let initializedCapabilities = [];
 let scipyPython = null;
+let scipyOracleBindingPath = null;
+let scipyOracleRoot = null;
 
 function milliseconds(started) {
   return Number(process.hrtime.bigint() - started) / 1e6;
@@ -22,28 +73,52 @@ function pythonInput(input) {
   return `input_record = json.loads(${JSON.stringify(JSON.stringify(input))})`;
 }
 
-function findScipyPython() {
-  const candidates = [];
-  if (process.env.PYTHON) candidates.push({ executable: process.env.PYTHON, prefix: [] });
-  candidates.push({ executable: "python3", prefix: [] });
-  candidates.push({ executable: "python", prefix: [] });
-  if (process.platform === "win32") candidates.push({ executable: "py", prefix: ["-3"] });
-  for (const candidate of candidates) {
-    const probe = spawnSync(candidate.executable, [
-      ...candidate.prefix, "-I", "-c",
-      "import numpy, scipy; print(scipy.__version__)",
-    ], { encoding: "utf8", timeout: 30_000 });
-    if (probe.status === 0) return candidate;
+function initializeScipyOracle(bindingPath, root) {
+  const binding = readScipyOracleBinding(bindingPath, { root });
+  scipyOracleBindingPath = bindingPath;
+  scipyOracleRoot = root;
+  scipyPython = {
+    executable: path.join(binding.prefix.path, binding.runtime.python.executable_path),
+    sitePackages: path.join(binding.prefix.path, binding.runtime.python.site_packages_path),
+    prefix: binding.prefix.path,
+    environment: binding.runtime.environment,
+  };
+  return { scipy: true, identity: binding };
+}
+
+function closeScipyOracle() {
+  let failure = null;
+  if (scipyOracleBindingPath !== null) {
+    try {
+      readScipyOracleBinding(scipyOracleBindingPath, { root: scipyOracleRoot });
+    } catch (error) {
+      failure = error;
+    }
   }
-  return null;
+  scipyPython = null;
+  scipyOracleBindingPath = null;
+  scipyOracleRoot = null;
+  if (failure !== null) throw failure;
 }
 
 function runScipySource(source, projection) {
   if (scipyPython === null) throw new Error("CPython with NumPy/SciPy is unavailable");
-  const program = `${source}\nimport json\nprint(${JSON.stringify(MARKER)} + json.dumps(${projection}))`;
+  const program = [
+    "import sys",
+    `sys.path.insert(0, ${JSON.stringify(scipyPython.sitePackages)})`,
+    source,
+    "import json",
+    `print(${JSON.stringify(MARKER)} + json.dumps(${projection}))`,
+  ].join("\n");
   const result = spawnSync(scipyPython.executable, [
-    ...scipyPython.prefix, "-I", "-c", program,
-  ], { encoding: "utf8", timeout: 120_000, maxBuffer: 4 * 1024 * 1024 });
+    "-B", "-I", "-S", "-c", program,
+  ], {
+    cwd: scipyPython.prefix,
+    env: scipyPython.environment,
+    encoding: "utf8",
+    timeout: 120_000,
+    maxBuffer: 4 * 1024 * 1024,
+  });
   if (result.error) throw result.error;
   if (result.status !== 0) {
     throw new Error(`emitted SciPy program failed (${result.status}): ${result.stderr || result.stdout}`);
@@ -115,6 +190,45 @@ output_record = {
     "success": answer.success,
     "validation_passed": answer.validation.passed,
 }`,
+    "p2-cubic-spline-polynomial": String.raw`
+from sagejs.numerics.approximation import cubic_spline
+nodes = input_record["nodes"]
+values = [x**3-2.0*x+1.0 for x in nodes]
+answer = cubic_spline(nodes, values, boundary=(-2.0, 10.0))
+output_record = {
+    "values": [answer.evaluate(x) for x in input_record["points"]],
+    "derivatives": [answer.evaluate(x, 1) for x in input_record["points"]],
+    "success": answer.success,
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+}`,
+    "p2-finite-difference-sine": String.raw`
+from sagejs.numerics.approximation import finite_difference
+x = input_record["point"]
+answer = finite_difference(
+    math.sin,
+    x,
+    derivative_order=1,
+    accuracy_order=4,
+    derivative=math.cos,
+)
+output_record = {
+    "value": answer.evaluate(0),
+    "success": answer.success,
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+    "evaluations": answer.evaluations,
+}`,
+    "p2-chebyshev-exponential": String.raw`
+from sagejs.numerics.approximation import chebyshev_approximation
+answer = chebyshev_approximation(math.exp, [-1.0, 1.0], input_record["degree"])
+output_record = {
+    "values": [answer.evaluate(x) for x in input_record["points"]],
+    "derivatives": [answer.evaluate(x, 1) for x in input_record["points"]],
+    "success": answer.success,
+    "status": answer.status,
+    "validation_kind": answer.validation.truth_level,
+}`,
     "p2-polynomial-roots-known": String.raw`
 from sagejs.numerics.approximation import polynomial_roots
 answer = polynomial_roots(input_record["coefficients"], trace="iterations")
@@ -163,6 +277,26 @@ output_record = {
 from sagejs.numerics.linear_algebra import solve
 answer = solve(input_record["matrix"], input_record["rhs"])
 output_record = {"success": answer.success, "status": answer.status}`,
+    "p2-linear-qr-factorization": String.raw`
+from sagejs.numerics.linear_algebra import qr
+answer = qr(input_record["matrix"])
+factorization = answer.factorization
+output_record = {
+    "q": factorization.q().to_rows(),
+    "r": factorization.r().to_rows(),
+    "success": answer.success,
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+}`,
+    "p2-linear-cholesky-factorization": String.raw`
+from sagejs.numerics.linear_algebra import cholesky
+answer = cholesky(input_record["matrix"])
+output_record = {
+    "lower": answer.factorization.lower().to_rows(),
+    "success": answer.success,
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+}`,
     "p3-scalar-minimum": String.raw`
 from sagejs.numerics.optimization import minimize_scalar
 answer = minimize_scalar(
@@ -174,6 +308,75 @@ output_record = {
     "status": answer.status,
     "validation_passed": answer.validation.passed,
     "evaluations": answer.evaluations,
+}`,
+    "p3-cminpack-rosenbrock-lmdif": String.raw`
+import sagejs.runtime as runtime
+from sagejs.numerics.optimization import least_squares
+
+def residual(point):
+    x, y = point
+    return [10.0 * (y - x*x), 1.0 - x]
+
+answer = least_squares(
+    residual,
+    input_record["initial"],
+    method=input_record["method"],
+    ftol=1.0e-13,
+    xtol=1.0e-13,
+    gtol=1.0e-13,
+    max_evaluations=1000,
+)
+backend = runtime.numerical_backend()
+inspect = runtime.reflect.get(backend, "inspect")
+backend_state = runtime.reflect.apply(inspect, backend, [])
+output_record = {
+    "value": answer.value,
+    "status": answer.status,
+    "method": answer.method,
+    "backend": answer.backend,
+    "success": answer.success,
+    "validation_passed": answer.validation.passed,
+    "residual_evaluations": answer.evaluations,
+    "jacobian_evaluations": answer.domain_payload.get("backend_jacobian_evaluations", 0),
+    "independent_validation_required": True,
+    "live_allocations": int(runtime.reflect.get(backend_state, "liveAllocations")),
+}`,
+    "p3-cminpack-rosenbrock-lmder": String.raw`
+import sagejs.runtime as runtime
+from sagejs.numerics.optimization import least_squares
+
+def residual(point):
+    x, y = point
+    return [10.0 * (y - x*x), 1.0 - x]
+
+def jacobian(point):
+    x, _ = point
+    return [[-20.0*x, 10.0], [-1.0, 0.0]]
+
+answer = least_squares(
+    residual,
+    input_record["initial"],
+    jacobian=jacobian,
+    method=input_record["method"],
+    ftol=1.0e-13,
+    xtol=1.0e-13,
+    gtol=1.0e-13,
+    max_evaluations=1000,
+)
+backend = runtime.numerical_backend()
+inspect = runtime.reflect.get(backend, "inspect")
+backend_state = runtime.reflect.apply(inspect, backend, [])
+output_record = {
+    "value": answer.value,
+    "status": answer.status,
+    "method": answer.method,
+    "backend": answer.backend,
+    "success": answer.success,
+    "validation_passed": answer.validation.passed,
+    "residual_evaluations": answer.evaluations,
+    "jacobian_evaluations": answer.domain_payload.get("backend_jacobian_evaluations", 0),
+    "independent_validation_required": True,
+    "live_allocations": int(runtime.reflect.get(backend_state, "liveAllocations")),
 }`,
     "p3-optimization-cancelled": String.raw`
 from sagejs.numerics.optimization import minimize_scalar
@@ -225,6 +428,365 @@ finally:
         backend_state["cminpack"] = original_backend
     else:
         del backend_state["cminpack"]
+output_record = {"records": records}`,
+    "p3-nlopt-nelder-mead-rosenbrock": String.raw`
+import sagejs.runtime as runtime
+from sagejs.numerics.optimization import minimize
+
+def rosenbrock(point):
+    x, y = point
+    return (1.0-x)**2 + 100.0*(y-x*x)**2
+
+answer = minimize(
+    rosenbrock,
+    [-1.2, 1.0],
+    method="nlopt-nelder-mead",
+    initial_step=[0.5, 0.5],
+    maxiter=2000,
+    max_evaluations=2000,
+)
+first_backend = runtime.numerical_backend("nlopt")
+repeat = minimize(
+    lambda point: (point[0]-2.0)**2 + (point[1]+1.0)**2,
+    [5.0, 5.0],
+    method="nlopt-nelder-mead",
+    maxiter=2000,
+    max_evaluations=2000,
+)
+automatic = minimize(lambda point: (point[0]-2.0)**2, [0.0])
+provenance = answer.to_dict()["provenance"]
+automatic_provenance = automatic.to_dict()["provenance"]
+cached_backend = runtime.numerical_backend("nlopt")
+general_backend = runtime.numerical_backend("cminpack")
+output_record = {
+    "value": answer.value,
+    "objective": answer.domain_payload["objective"],
+    "success": answer.success,
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+    "method": answer.method,
+    "backend": answer.backend,
+    "method_identity": answer.domain_payload["method_identity"],
+    "backend_identity": answer.domain_payload["backend_identity"],
+    "implementation_kind": provenance["implementation_kind"],
+    "source_transparent": provenance["source_transparent"],
+    "cache_reused": runtime.strict_equal(first_backend, cached_backend),
+    "cache_state_isolated": not runtime.strict_equal(first_backend, general_backend),
+    "repeat_success": repeat.success,
+    "automatic_method": automatic.method,
+    "automatic_backend": automatic.backend,
+    "automatic_source_transparent": automatic_provenance["source_transparent"],
+}`,
+    "p3-nlopt-nelder-mead-one-dimensional": String.raw`
+from sagejs.numerics.optimization import minimize
+answer = minimize(
+    lambda point: (point[0]-3.0)**2,
+    [0.0],
+    method="nlopt-nelder-mead",
+    maxiter=2000,
+    max_evaluations=2000,
+)
+output_record = {
+    "value": answer.value,
+    "objective": answer.domain_payload["objective"],
+    "success": answer.success,
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+    "method": answer.method,
+    "backend": answer.backend,
+    "backend_status": answer.domain_payload["backend_status"],
+}`,
+    "p3-nlopt-nelder-mead-zero-scale": String.raw`
+from sagejs.numerics.optimization import minimize
+answer = minimize(
+    lambda point: point[0]*point[0],
+    [1.0],
+    method="nlopt-nelder-mead",
+    maxiter=1000,
+    max_evaluations=1000,
+)
+output_record = {
+    "value": answer.value,
+    "objective": answer.domain_payload.get("objective"),
+    "success": answer.success,
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+    "method": answer.method,
+    "backend": answer.backend,
+    "backend_status": answer.domain_payload.get("backend_status"),
+    "evaluations": answer.evaluations,
+}`,
+    "p3-nlopt-nelder-mead-bound-offset-invariance": String.raw`
+from sagejs.numerics.optimization import minimize
+records = []
+for offset in input_record["offsets"]:
+    answer = minimize(
+        lambda point: offset+point[0],
+        [input_record["initial"]],
+        bounds=[[input_record["lower"], input_record["upper"]]],
+        method="nlopt-nelder-mead",
+        initial_step=input_record["initial_step"],
+        xtol=input_record["xtol"],
+        max_evaluations=input_record["max_evaluations"],
+    )
+    records.append({
+        "offset": offset,
+        "value": answer.value[0],
+        "success": answer.success,
+        "status": answer.status,
+        "validation_passed": answer.validation.passed,
+        "validation_kind": answer.validation.truth_level,
+    })
+output_record = {"records": records}`,
+    "p3-nlopt-nelder-mead-saddle-rejected": String.raw`
+from sagejs.numerics.optimization import minimize
+
+def saddle(point):
+    x = point[0]-1.0
+    y = point[1]-1.0
+    radius_squared = x*x+y*y
+    return x*x+y*y-3.0*x*y+radius_squared*radius_squared
+
+answer = minimize(
+    saddle,
+    [1.0, 1.0],
+    method="nlopt-nelder-mead",
+    initial_step=1.0e-4,
+    xtol=1.0e-3,
+)
+record = answer.to_dict()
+output_record = {
+    "value": answer.value,
+    "success": answer.success,
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+    "validation_kind": answer.validation.truth_level,
+    "method": answer.method,
+    "backend": answer.backend,
+    "implementation_kind": record["provenance"]["implementation_kind"],
+    "source_transparent": record["provenance"]["source_transparent"],
+}`,
+    "p3-nlopt-nelder-mead-active-bound": String.raw`
+from sagejs.numerics.optimization import minimize
+answer = minimize(
+    lambda point: (point[0]-3.0)**2,
+    [1.0],
+    bounds=[[input_record["lower"], input_record["upper"]]],
+    method="nlopt-nelder-mead",
+    maxiter=2000,
+    max_evaluations=2000,
+)
+output_record = {
+    "value": answer.value,
+    "success": answer.success,
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+    "method": answer.method,
+    "backend": answer.backend,
+}`,
+    "p3-nlopt-nelder-mead-dimension-33": String.raw`
+import sagejs.runtime as runtime
+from sagejs.numerics.optimization import minimize
+dimension = input_record["dimension"]
+
+class EntryWitness:
+    def __init__(self):
+        self.entered = False
+    def solve(self, options):
+        self.entered = True
+        raise RuntimeError("out-of-envelope call entered NLopt backend")
+
+backend_state = runtime._numerical_backends
+had_backend = "nlopt" in backend_state
+original_backend = backend_state["nlopt"] if had_backend else None
+witness = EntryWitness()
+backend_state["nlopt"] = witness
+try:
+    answer = minimize(
+        lambda point: sum(value*value for value in point),
+        [0.0]*dimension,
+        method="nlopt-nelder-mead",
+        maxiter=4000,
+        max_evaluations=4000,
+    )
+    output_record = {
+        "rejected": False,
+        "value": answer.value,
+        "success": answer.success,
+        "validation_passed": answer.validation.passed,
+    }
+except ValueError as error:
+    output_record = {
+        "rejected": True,
+        "error_name": error.__class__.__name__,
+        "error_message": str(error),
+    }
+except Exception as error:
+    output_record = {
+        "rejected": False,
+        "error_name": error.__class__.__name__,
+        "error_message": str(error),
+    }
+finally:
+    output_record["backend_entered"] = witness.entered
+    if had_backend:
+        backend_state["nlopt"] = original_backend
+    else:
+        del backend_state["nlopt"]`,
+    "p3-nlopt-cobyla-explicitly-unsupported": String.raw`
+import sagejs.runtime as runtime
+from sagejs.numerics.optimization import minimize
+
+class EntryWitness:
+    def __init__(self):
+        self.entered = False
+    def solve(self, options):
+        self.entered = True
+        raise RuntimeError("unsupported COBYLA entered NLopt backend")
+
+backend_state = runtime._numerical_backends
+had_backend = "nlopt" in backend_state
+original_backend = backend_state["nlopt"] if had_backend else None
+witness = EntryWitness()
+backend_state["nlopt"] = witness
+try:
+    minimize(lambda point: point[0]*point[0], [1.0], method="nlopt-cobyla")
+    output_record = {"rejected": False, "error_name": None, "error_message": ""}
+except Exception as error:
+    output_record = {
+        "rejected": True,
+        "error_name": error.__class__.__name__,
+        "error_message": str(error),
+    }
+finally:
+    output_record["backend_entered"] = witness.entered
+    if had_backend:
+        backend_state["nlopt"] = original_backend
+    else:
+        del backend_state["nlopt"]`,
+    "p3-nlopt-nonlinear-constraints-explicitly-unsupported": String.raw`
+import sagejs.runtime as runtime
+from sagejs.numerics.optimization import minimize
+
+class EntryWitness:
+    def __init__(self):
+        self.entered = False
+    def solve(self, options):
+        self.entered = True
+        raise RuntimeError("unsupported nonlinear constraint entered NLopt backend")
+
+backend_state = runtime._numerical_backends
+had_backend = "nlopt" in backend_state
+original_backend = backend_state["nlopt"] if had_backend else None
+witness = EntryWitness()
+backend_state["nlopt"] = witness
+try:
+    minimize(
+        lambda point: point[0]*point[0],
+        [1.0],
+        constraints=[{"type": "ineq", "fun": lambda point: point[0]}],
+    )
+    output_record = {"rejected": False, "error_name": None, "error_message": ""}
+except Exception as error:
+    output_record = {
+        "rejected": True,
+        "error_name": error.__class__.__name__,
+        "error_message": str(error),
+    }
+finally:
+    output_record["backend_entered"] = witness.entered
+    if had_backend:
+        backend_state["nlopt"] = original_backend
+    else:
+        del backend_state["nlopt"]`,
+    "p3-nlopt-failure-provenance": String.raw`
+import sagejs.runtime as runtime
+from sagejs.numerics.optimization import minimize
+
+def broken(_point):
+    raise RuntimeError("private callback detail")
+
+callback = minimize(broken, [1.0], method="nlopt-nelder-mead")
+cancel_checks = [0]
+def cancel():
+    cancel_checks[0] += 1
+    return cancel_checks[0] >= 3
+cancelled = minimize(
+    lambda point: (point[0]-2.0)**2,
+    [20.0],
+    method="nlopt-nelder-mead",
+    cancel=cancel,
+)
+backend = runtime.numerical_backend("nlopt")
+inspect = runtime.reflect.get(backend, "inspect")
+backend_state = runtime.reflect.apply(inspect, backend, [])
+
+def execution_record(result):
+    record = result.to_dict()
+    return {
+        "success": result.success,
+        "status": result.status,
+        "method_identity": result.domain_payload.get("method_identity"),
+        "backend_identity": result.domain_payload.get("backend_identity"),
+        "implementation_kind": record["provenance"]["implementation_kind"],
+        "source_transparent": record["provenance"]["source_transparent"],
+        "private_detail_leaked": "private callback detail" in json.dumps(
+            record, sort_keys=True
+        ),
+    }
+
+output_record = {
+    "callback": execution_record(callback),
+    "cancelled": execution_record(cancelled),
+    "cancel_checks": cancel_checks[0],
+    "active_contexts": int(runtime.reflect.get(backend_state, "activeContexts")),
+    "active_handle": int(runtime.reflect.get(backend_state, "activeHandle")),
+    "live_allocations": int(runtime.reflect.get(backend_state, "liveAllocations")),
+    "live_bytes": int(runtime.reflect.get(backend_state, "liveBytes")),
+}`,
+    "p3-nlopt-optional-resource-fail-closed": String.raw`
+import sagejs.runtime as runtime
+from sagejs.numerics.optimization import minimize
+
+class UnavailableNloptBackend:
+    def __init__(self, kind):
+        self.kind = kind
+    def solve(self, options):
+        raise RuntimeError(self.kind + " private nlopt-resource detail")
+
+backend_state = runtime._numerical_backends
+had_backend = "nlopt" in backend_state
+original_backend = backend_state["nlopt"] if had_backend else None
+records = []
+try:
+    for kind in input_record["resource_failures"]:
+        backend_state["nlopt"] = UnavailableNloptBackend(kind)
+        automatic = minimize(lambda point: (point[0]-2.0)**2, [20.0])
+        explicit = []
+        for method in ("nlopt-nelder-mead",):
+            result = minimize(lambda point: (point[0]-2.0)**2, [20.0], method=method)
+            explicit.append({
+                "method": method,
+                "success": result.success,
+                "status": result.status,
+                "reason": result.domain_payload.get("stop_reason"),
+                "private_detail_leaked": "private nlopt-resource detail" in json.dumps(
+                    result.to_dict(), sort_keys=True
+                ),
+            })
+        records.append({
+            "kind": kind,
+            "automatic_success": automatic.success,
+            "automatic_method": automatic.method,
+            "automatic_backend": automatic.backend,
+            "automatic_error": abs(automatic.value[0]-2.0),
+            "explicit": explicit,
+        })
+finally:
+    if had_backend:
+        backend_state["nlopt"] = original_backend
+    else:
+        del backend_state["nlopt"]
 output_record = {"records": records}`,
     "p4-ode-exponential": String.raw`
 from sagejs.numerics.ode import solve_ivp
@@ -326,6 +888,54 @@ output_record = {
     "status": answer.status,
     "validation_passed": answer.validation.passed,
 }`,
+    "p5-general-eigen": String.raw`
+from sagejs.numerics.spectral import general_eigen
+answer = general_eigen(input_record["matrix"])
+output_record = {
+    "value": answer.value,
+    "status": answer.status,
+    "success": answer.success,
+    "validation_passed": answer.validation.passed,
+}`,
+    "p5-singular-value-decomposition": String.raw`
+from sagejs.numerics.spectral import svd
+answer = svd(input_record["matrix"])
+output_record = {
+    "value": answer.value,
+    "status": answer.status,
+    "success": answer.success,
+    "validation_passed": answer.validation.passed,
+}`,
+    "p5-convolution-direct-oracle": String.raw`
+from sagejs.numerics.spectral import convolve
+answer = convolve(input_record["left"], input_record["right"], method="fft")
+output_record = {
+    "value": answer.value,
+    "status": answer.status,
+    "success": answer.success,
+    "validation_passed": answer.validation.passed,
+}`,
+    "p5-sparse-linear-solve": String.raw`
+from sagejs.numerics.spectral import CSRMatrix, sparse_solve
+matrix = CSRMatrix.from_dense(input_record["matrix"])
+answer = sparse_solve(matrix, input_record["rhs"], method="cg")
+output_record = {
+    "value": answer.value,
+    "status": answer.status,
+    "success": answer.success,
+    "validation_passed": answer.validation.passed,
+    "method": answer.method,
+}`,
+    "p5-sparse-dominant-eigen": String.raw`
+from sagejs.numerics.spectral import CSRMatrix, sparse_eigen
+matrix = CSRMatrix.from_dense(input_record["matrix"])
+answer = sparse_eigen(matrix, x0=input_record["initial"])
+output_record = {
+    "value": answer.value,
+    "status": answer.status,
+    "success": answer.success,
+    "validation_passed": answer.validation.passed,
+}`,
     "p5-fft-direct-oracle": String.raw`
 from sagejs.numerics.spectral import fft
 answer = fft(input_record["samples"])
@@ -340,6 +950,38 @@ answer = describe(input_record["samples"])
 output_record = {
     "value": answer.value,
     "status": answer.status,
+    "validation_passed": answer.validation.passed,
+}`,
+    "p5-statistics-inference": String.raw`
+from sagejs.numerics.statistics import one_sample_t_test
+answer = one_sample_t_test(input_record["samples"], input_record["null"])
+output_record = {
+    "value": answer.value,
+    "status": answer.status,
+    "success": answer.success,
+    "validation_passed": answer.validation.passed,
+}`,
+    "p5-statistics-rng-replay": String.raw`
+from sagejs.numerics.statistics import RandomStream
+stream = RandomStream(input_record["seed"])
+prefix = [stream.uint32() for _ in range(input_record["prefix"])]
+state = stream.state()
+continuation = [stream.uint32() for _ in range(input_record["continuation"])]
+restored = RandomStream.from_state(state)
+replayed = [restored.uint32() for _ in range(input_record["continuation"])]
+output_record = {
+    "prefix": prefix,
+    "state": state,
+    "continuation": continuation,
+    "replayed": replayed,
+}`,
+    "p5-statistics-linear-regression": String.raw`
+from sagejs.numerics.statistics import linear_regression
+answer = linear_regression(input_record["x"], input_record["y"])
+output_record = {
+    "value": answer.value,
+    "status": answer.status,
+    "success": answer.success,
     "validation_passed": answer.validation.passed,
 }`,
     "p5-bounded-sweep": String.raw`
@@ -701,6 +1343,75 @@ output_record = {"status": answer.status, "evaluations": answer.evaluations}`,
 from sagejs.numerics import find_root
 answer = find_root(lambda x: 1.0/0.0, 0.0, 1.0, method="brent")
 output_record = {"status": answer.status, "evaluations": answer.evaluations}`,
+    "p8-cminpack-cancelled": String.raw`
+import sagejs.runtime as runtime
+
+backend = runtime.numerical_backend()
+options = runtime.object.create(None)
+cancel_checks = [0]
+
+def residual(point):
+    x, y = point
+    return [10.0 * (y - x*x), 1.0 - x]
+
+def cancelled():
+    cancel_checks[0] += 1
+    return True
+
+for name, value in (
+    ("method", input_record["method"]),
+    ("initial", input_record["initial"]),
+    ("residualCount", 2),
+    ("residual", residual),
+    ("cancelled", cancelled),
+    ("maximumEvaluations", 1000),
+    ("maximumCallbackEvaluations", 2000),
+    ("functionTolerance", 1.0e-13),
+    ("stepTolerance", 1.0e-13),
+    ("gradientTolerance", 1.0e-13),
+):
+    runtime.reflect.set(options, name, value)
+
+solve = runtime.reflect.get(backend, "leastSquares")
+result = runtime.reflect.apply(solve, backend, [options])
+inspect = runtime.reflect.get(backend, "inspect")
+backend_state = runtime.reflect.apply(inspect, backend, [])
+output_record = {
+    "status": str(runtime.reflect.get(result, "status")),
+    "cancel_checks": cancel_checks[0],
+    "live_allocations": int(runtime.reflect.get(backend_state, "liveAllocations")),
+}`,
+    "p8-runtime-recovery": String.raw`
+from sagejs.numerics import find_root
+
+def fails(x):
+    raise ValueError("intentional recovery witness")
+
+contained = find_root(fails, 0.0, 2.0, method="brent")
+recovered = find_root(lambda x: x*x - 2.0, 0.0, 2.0, method="brent")
+output_record = {
+    "contained_status": contained.status,
+    "recovered_success": recovered.success,
+    "recovered_value": recovered.value,
+    "runtime_interrupt_observed": False,
+}`,
+    "p8-memory-pressure-statistics": String.raw`
+from sagejs.numerics import ResourceBudget
+from sagejs.numerics.statistics import describe
+count = input_record["samples"]
+samples = [float((index % 257) - 128) / 128.0 for index in range(count)]
+answer = describe(samples, budget=ResourceBudget(
+    max_iterations=100,
+    max_evaluations=1000000,
+    max_elapsed_ms=60000,
+    max_trace_events=256,
+    max_trace_bytes=1000000,
+))
+output_record = {
+    "samples": count,
+    "mean": answer.value["mean"],
+    "validation_passed": answer.validation.passed,
+}`,
     "p8-cross-domain-repeated-stability": String.raw`
 from sagejs.numerics import find_root
 from sagejs.numerics.integration import integrate
@@ -1035,22 +1746,20 @@ function multilingualCatalogEvidence(raw, input) {
   };
 }
 
-async function normalize(sample) {
-  const validationStarted = process.hrtime.bigint();
+async function evaluateSample(sample) {
   let evaluated;
-  if ([
-    "p3-cminpack-rosenbrock-lmdif",
-    "p3-cminpack-rosenbrock-lmder",
-    "p8-cminpack-cancelled",
-  ].includes(sample.id)) {
-    evaluated = await evaluateCminpack(sample.id, sample.input);
-  } else if (sample.id === "p6-multilingual-parser-fail-closed") {
+  if (sample.id === "p6-multilingual-parser-fail-closed") {
     evaluated = await evaluateParserGuards();
   } else if (sample.id === "p6-matlab-vector-shapes") {
     evaluated = await evaluateMatlabShapes();
   } else {
     evaluated = await evaluate(sample.id, sample.input);
   }
+  return evaluated;
+}
+
+async function normalizeEvaluated(sample, evaluated) {
+  const validationStarted = process.hrtime.bigint();
   const { raw, kernelMs } = evaluated;
   const input = sample.input;
   let observation;
@@ -1089,6 +1798,40 @@ async function normalize(sample) {
         result: raw.value,
         independent_error: Math.abs(raw.value - oracle),
       }, kernelMs);
+      break;
+    }
+    case "p2-cubic-spline-polynomial": {
+      const expectedValues = input.points.map((x) => x ** 3 - 2 * x + 1);
+      const expectedDerivatives = input.points.map((x) => 3 * x * x - 2);
+      observation = success({
+        max_value_error: Math.max(...raw.values.map((value, index) =>
+          Math.abs(value - expectedValues[index]))),
+        max_derivative_error: Math.max(...raw.derivatives.map((value, index) =>
+          Math.abs(value - expectedDerivatives[index]))),
+        public_success: raw.success,
+        validation_passed: raw.validation_passed,
+      }, kernelMs, { evaluation_points: input.points.length });
+      break;
+    }
+    case "p2-finite-difference-sine":
+      observation = success({
+        result: raw.value,
+        independent_error: Math.abs(raw.value - Math.cos(input.point)),
+        public_success: raw.success,
+        validation_passed: raw.validation_passed,
+      }, kernelMs, { evaluations: raw.evaluations });
+      break;
+    case "p2-chebyshev-exponential": {
+      const valueErrors = raw.values.map((value, index) =>
+        Math.abs(value - Math.exp(input.points[index])));
+      const derivativeErrors = raw.derivatives.map((value, index) =>
+        Math.abs(value - Math.exp(input.points[index])));
+      observation = success({
+        max_value_error: Math.max(...valueErrors),
+        max_derivative_error: Math.max(...derivativeErrors),
+        public_success: raw.success,
+        validation_kind: raw.validation_kind,
+      }, kernelMs, { evaluation_points: input.points.length });
       break;
     }
     case "p2-polynomial-roots-known":
@@ -1135,6 +1878,55 @@ async function normalize(sample) {
           input.matrix[0][1] * input.matrix[1][0],
       }, kernelMs);
       break;
+    case "p2-linear-qr-factorization": {
+      const rows = input.matrix.length;
+      const columns = input.matrix[0].length;
+      let reconstruction = 0;
+      let orthogonality = 0;
+      for (let row = 0; row < rows; row += 1) {
+        for (let column = 0; column < columns; column += 1) {
+          const value = raw.q[row].reduce((sum, item, index) =>
+            sum + item * raw.r[index][column], 0);
+          reconstruction = Math.max(reconstruction,
+            Math.abs(value - input.matrix[row][column]));
+        }
+      }
+      for (let left = 0; left < columns; left += 1) {
+        for (let right = 0; right < columns; right += 1) {
+          const value = raw.q.reduce((sum, row) => sum + row[left] * row[right], 0);
+          orthogonality = Math.max(orthogonality,
+            Math.abs(value - (left === right ? 1 : 0)));
+        }
+      }
+      observation = success({
+        max_reconstruction_error: reconstruction,
+        max_orthogonality_error: orthogonality,
+        public_success: raw.success,
+        validation_passed: raw.validation_passed,
+      }, kernelMs);
+      break;
+    }
+    case "p2-linear-cholesky-factorization": {
+      const dimension = input.matrix.length;
+      let reconstruction = 0;
+      let upperLeak = 0;
+      for (let row = 0; row < dimension; row += 1) {
+        for (let column = 0; column < dimension; column += 1) {
+          const value = raw.lower[row].reduce((sum, item, index) =>
+            sum + item * raw.lower[column][index], 0);
+          reconstruction = Math.max(reconstruction,
+            Math.abs(value - input.matrix[row][column]));
+          if (column > row) upperLeak = Math.max(upperLeak, Math.abs(raw.lower[row][column]));
+        }
+      }
+      observation = success({
+        max_reconstruction_error: reconstruction,
+        max_upper_triangle_leak: upperLeak,
+        public_success: raw.success,
+        validation_passed: raw.validation_passed,
+      }, kernelMs);
+      break;
+    }
     case "p3-scalar-minimum":
       observation = success({
         result: raw.value,
@@ -1150,12 +1942,12 @@ async function normalize(sample) {
         independent_residual_norm: evidence.residualNorm,
         independent_stationarity: evidence.stationarity,
         backend_status: raw.status,
-        independent_validation_required: raw.independentValidationRequired,
-        jacobian_evaluations: raw.jacobianEvaluations,
-        live_allocations: raw.backendState.liveAllocations,
+        independent_validation_required: raw.independent_validation_required,
+        jacobian_evaluations: raw.jacobian_evaluations,
+        live_allocations: raw.live_allocations,
       }, kernelMs, {
-        residual_evaluations: raw.residualEvaluations,
-        jacobian_evaluations: raw.jacobianEvaluations,
+        residual_evaluations: raw.residual_evaluations,
+        jacobian_evaluations: raw.jacobian_evaluations,
       });
       break;
     }
@@ -1179,6 +1971,205 @@ async function normalize(sample) {
         explicit_reasons: raw.records.map((item) => item.explicit_reason),
         private_details_leaked: raw.records.filter((item) => item.private_detail_leaked).length,
       }, kernelMs, { injected_optional_resource_failures: raw.records.length });
+      break;
+    }
+    case "p3-nlopt-nelder-mead-rosenbrock": {
+      const [x, y] = raw.value;
+      const objective = (1 - x) ** 2 + 100 * (y - x * x) ** 2;
+      observation = success({
+        maximum_parameter_error: Math.max(Math.abs(x - 1), Math.abs(y - 1)),
+        independent_objective: objective,
+        reported_objective_error: Math.abs(raw.objective - objective),
+        public_success: raw.success,
+        public_status: raw.status,
+        validation_passed: raw.validation_passed,
+        method: raw.method,
+        backend: raw.backend,
+        method_identity: raw.method_identity,
+        backend_identity: raw.backend_identity,
+        implementation_kind: raw.implementation_kind,
+        source_transparent: raw.source_transparent,
+        cache_reused: raw.cache_reused,
+        cache_state_isolated: raw.cache_state_isolated,
+        repeat_success: raw.repeat_success,
+        automatic_method: raw.automatic_method,
+        automatic_backend: raw.automatic_backend,
+        automatic_source_transparent: raw.automatic_source_transparent,
+      }, kernelMs, { public_optimization_executions: 3 });
+      break;
+    }
+    case "p3-nlopt-nelder-mead-one-dimensional": {
+      const value = raw.value[0];
+      const objective = (value - 3) ** 2;
+      observation = success({
+        result: value,
+        independent_objective: objective,
+        reported_objective_error: Math.abs(raw.objective - objective),
+        public_success: raw.success,
+        public_status: raw.status,
+        validation_passed: raw.validation_passed,
+        method: raw.method,
+        backend: raw.backend,
+        backend_status: raw.backend_status,
+      }, kernelMs);
+      break;
+    }
+    case "p3-nlopt-nelder-mead-zero-scale": {
+      const value = Array.isArray(raw.value) ? raw.value[0] : null;
+      const objective = typeof value === "number" ? value * value : null;
+      observation = success({
+        result: value,
+        independent_objective: objective,
+        reported_objective_error: typeof raw.objective === "number" &&
+          typeof objective === "number" ? Math.abs(raw.objective - objective) : null,
+        public_success: raw.success,
+        public_status: raw.status,
+        validation_passed: raw.validation_passed,
+        method: raw.method,
+        backend: raw.backend,
+        backend_status: raw.backend_status,
+        evaluations: raw.evaluations,
+      }, kernelMs, { evaluations: raw.evaluations });
+      break;
+    }
+    case "p3-nlopt-nelder-mead-bound-offset-invariance": {
+      const classifications = raw.records.map((item) => [
+        item.status, item.success, item.validation_passed, item.validation_kind,
+      ]);
+      const first = JSON.stringify(classifications[0]);
+      observation = success({
+        offsets: raw.records.map((item) => item.offset),
+        unsafe_successes: raw.records.filter((item) =>
+          Math.abs(item.value - sample.input.lower) > 1e-15 &&
+          (item.success || item.validation_passed)).length,
+        classification_invariant: classifications.every((item) => JSON.stringify(item) === first),
+        bounds_satisfied: raw.records.every((item) =>
+          item.value >= sample.input.lower && item.value <= sample.input.upper),
+        values: raw.records.map((item) => item.value),
+      }, kernelMs, { transformations: raw.records.length });
+      break;
+    }
+    case "p3-nlopt-nelder-mead-saddle-rejected": {
+      const [x, y] = raw.value;
+      const diagonalStep = 0.01;
+      const saddle = (left, right) => {
+        const shiftedLeft = left - 1;
+        const shiftedRight = right - 1;
+        const radiusSquared = shiftedLeft ** 2 + shiftedRight ** 2;
+        return shiftedLeft ** 2 + shiftedRight ** 2 -
+          3 * shiftedLeft * shiftedRight + radiusSquared ** 2;
+      };
+      const candidateObjective = saddle(x, y);
+      const diagonalObjective = saddle(1 + diagonalStep, 1 + diagonalStep);
+      observation = success({
+        public_success: raw.success,
+        public_status: raw.status,
+        validation_passed: raw.validation_passed,
+        validation_kind: raw.validation_kind,
+        method: raw.method,
+        backend: raw.backend,
+        implementation_kind: raw.implementation_kind,
+        source_transparent: raw.source_transparent,
+        independent_candidate_objective: candidateObjective,
+        independent_diagonal_descent: candidateObjective - diagonalObjective,
+      }, kernelMs);
+      break;
+    }
+    case "p3-nlopt-nelder-mead-active-bound": {
+      const point = Array.isArray(raw.value) ? raw.value : [];
+      const value = typeof point[0] === "number" ? point[0] : null;
+      const parameterError = value === null ? Number.MAX_VALUE :
+        Math.abs(value - sample.input.expected);
+      const boundsSatisfied = value !== null &&
+        value >= sample.input.lower && value <= sample.input.upper;
+      observation = success({
+        parameter_error: parameterError,
+        public_success: raw.success,
+        public_status: raw.status,
+        validation_passed: raw.validation_passed,
+        bounds_satisfied: boundsSatisfied,
+        method: raw.method,
+        backend: raw.backend,
+      }, kernelMs);
+      break;
+    }
+    case "p3-nlopt-nelder-mead-dimension-33": {
+      const values = {
+        rejected: raw.rejected,
+        error_name: raw.error_name ?? null,
+        message_matches: typeof raw.error_message === "string" &&
+          raw.error_message.includes("validated dimension envelope"),
+        backend_entered: raw.backend_entered,
+      };
+      observation = raw.rejected ?
+        failure("optimization.dimension-envelope", values, kernelMs, {
+          rejected_dimension: sample.input.dimension,
+          validated_maximum: sample.input.validated_maximum,
+        }) :
+        success(values, kernelMs, { rejected_dimension: sample.input.dimension });
+      break;
+    }
+    case "p3-nlopt-cobyla-explicitly-unsupported": {
+      const values = {
+        rejected: raw.rejected,
+        error_name: raw.error_name ?? null,
+        message_matches: typeof raw.error_message === "string" &&
+          raw.error_message.includes("unsupported"),
+        backend_entered: raw.backend_entered,
+      };
+      observation = raw.rejected ?
+        failure("optimization.unsupported-cobyla", values, kernelMs) :
+        success(values, kernelMs);
+      break;
+    }
+    case "p3-nlopt-nonlinear-constraints-explicitly-unsupported": {
+      const values = {
+        rejected: raw.rejected,
+        error_name: raw.error_name ?? null,
+        message_matches: typeof raw.error_message === "string" &&
+          raw.error_message.includes("sanitizer-clean"),
+        backend_entered: raw.backend_entered,
+      };
+      observation = raw.rejected ?
+        failure("optimization.unsupported-nonlinear-constraints", values, kernelMs) :
+        success(values, kernelMs);
+      break;
+    }
+    case "p3-nlopt-failure-provenance": {
+      const records = [raw.callback, raw.cancelled];
+      observation = success({
+        public_successes: records.filter((item) => item.success).length,
+        statuses: records.map((item) => item.status),
+        method_identities: records.map((item) => item.method_identity),
+        backend_identities: records.map((item) => item.backend_identity),
+        implementation_kinds: records.map((item) => item.implementation_kind),
+        source_transparent: records.map((item) => item.source_transparent),
+        private_details_leaked: records.filter((item) => item.private_detail_leaked).length,
+        cancel_checks: raw.cancel_checks,
+        active_contexts: raw.active_contexts,
+        active_handle: raw.active_handle,
+        live_allocations: raw.live_allocations,
+        live_bytes: raw.live_bytes,
+      }, kernelMs, { cancellation_checks: raw.cancel_checks });
+      break;
+    }
+    case "p3-nlopt-optional-resource-fail-closed": {
+      const explicit = raw.records.flatMap((item) => item.explicit);
+      observation = success({
+        resource_failures: raw.records.map((item) => item.kind),
+        automatic_successes: raw.records.filter((item) => item.automatic_success).length,
+        automatic_methods: raw.records.map((item) => item.automatic_method),
+        automatic_backends: raw.records.map((item) => item.automatic_backend),
+        maximum_automatic_error: Math.max(...raw.records.map((item) => item.automatic_error)),
+        explicit_methods: explicit.map((item) => item.method),
+        explicit_failures: explicit.filter((item) => !item.success).length,
+        explicit_statuses: explicit.map((item) => item.status),
+        explicit_reasons: explicit.map((item) => item.reason),
+        private_details_leaked: explicit.filter((item) => item.private_detail_leaked).length,
+      }, kernelMs, {
+        injected_optional_resource_failures: raw.records.length,
+        explicit_backend_requests: explicit.length,
+      });
       break;
     }
     case "p4-ode-exponential":
@@ -1226,6 +2217,89 @@ async function normalize(sample) {
       }, kernelMs);
       break;
     }
+    case "p5-general-eigen": {
+      const roots = raw.value.eigenvalues.map(complex);
+      observation = success({
+        max_eigenvalue_error: matchRealRoots(roots, input.expected_eigenvalues),
+        public_success: raw.success,
+        validation_passed: raw.validation_passed,
+      }, kernelMs, { eigenvalues: roots.length });
+      break;
+    }
+    case "p5-singular-value-decomposition": {
+      const singular = raw.value.singular_values;
+      const expected = input.expected_singular_values;
+      observation = success({
+        singular_values: singular,
+        max_singular_value_error: Math.max(...singular.map((value, index) =>
+          Math.abs(value - expected[index]))),
+        frobenius_identity_error: Math.abs(
+          singular.reduce((sum, value) => sum + value * value, 0) -
+          input.matrix.flat().reduce((sum, value) => sum + value * value, 0)
+        ),
+        public_success: raw.success,
+        validation_passed: raw.validation_passed,
+      }, kernelMs, { singular_values: singular.length });
+      break;
+    }
+    case "p5-convolution-direct-oracle": {
+      const expected = Array(input.left.length + input.right.length - 1).fill(0);
+      for (let left = 0; left < input.left.length; left += 1) {
+        for (let right = 0; right < input.right.length; right += 1) {
+          expected[left + right] += input.left[left] * input.right[right];
+        }
+      }
+      const actual = raw.value.map((value) => complex(value).re);
+      observation = success({
+        result_length: actual.length,
+        max_direct_error: Math.max(...actual.map((value, index) =>
+          Math.abs(value - expected[index]))),
+        public_success: raw.success,
+        validation_passed: raw.validation_passed,
+      }, kernelMs, { output_points: actual.length });
+      break;
+    }
+    case "p5-sparse-linear-solve": {
+      const actual = raw.value.map((value) => complex(value).re);
+      const residual = input.matrix.map((row, index) => Math.abs(
+        row.reduce((sum, value, column) => sum + value * actual[column], 0) -
+        input.rhs[index]
+      ));
+      observation = success({
+        max_independent_residual: Math.max(...residual),
+        max_solution_error: Math.max(...actual.map((value, index) =>
+          Math.abs(value - input.expected[index]))),
+        public_success: raw.success,
+        validation_passed: raw.validation_passed,
+        method: raw.method,
+      }, kernelMs);
+      break;
+    }
+    case "p5-sparse-dominant-eigen": {
+      const eigenvalue = complex(raw.value.eigenvalue);
+      const eigenvector = raw.value.eigenvector.map(complex);
+      let residual = 0;
+      for (let row = 0; row < input.matrix.length; row += 1) {
+        const product = input.matrix[row].reduce((sum, value, column) => ({
+          re: sum.re + value * eigenvector[column].re,
+          im: sum.im + value * eigenvector[column].im,
+        }), { re: 0, im: 0 });
+        const scaled = {
+          re: eigenvalue.re * eigenvector[row].re - eigenvalue.im * eigenvector[row].im,
+          im: eigenvalue.re * eigenvector[row].im + eigenvalue.im * eigenvector[row].re,
+        };
+        residual = Math.max(residual,
+          Math.hypot(product.re - scaled.re, product.im - scaled.im));
+      }
+      observation = success({
+        independent_eigen_residual: residual,
+        eigenvalue_error: Math.hypot(eigenvalue.re - input.expected_eigenvalue,
+          eigenvalue.im),
+        public_success: raw.success,
+        validation_passed: raw.validation_passed,
+      }, kernelMs);
+      break;
+    }
     case "p5-fft-direct-oracle": {
       const expected = dft(input.samples);
       const actual = raw.value.map(complex);
@@ -1246,6 +2320,52 @@ async function normalize(sample) {
       observation = success({
         mean: raw.value.mean,
         independent_variance_error: Math.abs(raw.value.variance - variance),
+        validation_passed: raw.validation_passed,
+      }, kernelMs);
+      break;
+    }
+    case "p5-statistics-inference": {
+      const mean = input.samples.reduce((sum, value) => sum + value, 0) /
+        input.samples.length;
+      const variance = input.samples.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
+        (input.samples.length - 1);
+      const statistic = (mean - input.null) / Math.sqrt(variance / input.samples.length);
+      observation = success({
+        statistic_error: Math.abs(raw.value.statistic - statistic),
+        p_value_error: Math.abs(raw.value.p_value - input.expected_p_value),
+        degrees_of_freedom: raw.value.degrees_of_freedom,
+        public_success: raw.success,
+        validation_passed: raw.validation_passed,
+      }, kernelMs);
+      break;
+    }
+    case "p5-statistics-rng-replay":
+      observation = success({
+        prefix: raw.prefix,
+        prefix_matches: raw.prefix.every((value, index) => value === input.expected_prefix[index]),
+        continuation_replayed: JSON.stringify(raw.continuation) === JSON.stringify(raw.replayed),
+        state_string_encoded: typeof raw.state.state === "string" &&
+          typeof raw.state.increment === "string",
+      }, kernelMs, { draws: raw.prefix.length + raw.continuation.length * 2 });
+      break;
+    case "p5-statistics-linear-regression": {
+      const meanX = input.x.reduce((sum, value) => sum + value, 0) / input.x.length;
+      const meanY = input.y.reduce((sum, value) => sum + value, 0) / input.y.length;
+      let covariance = 0;
+      let variance = 0;
+      for (let index = 0; index < input.x.length; index += 1) {
+        covariance += (input.x[index] - meanX) * (input.y[index] - meanY);
+        variance += (input.x[index] - meanX) ** 2;
+      }
+      const slope = covariance / variance;
+      const intercept = meanY - slope * meanX;
+      const residual = Math.max(...input.x.map((value, index) =>
+        Math.abs(raw.value.intercept + raw.value.slope * value - input.y[index])));
+      observation = success({
+        slope_error: Math.abs(raw.value.slope - slope),
+        intercept_error: Math.abs(raw.value.intercept - intercept),
+        maximum_data_residual: residual,
+        public_success: raw.success,
         validation_passed: raw.validation_passed,
       }, kernelMs);
       break;
@@ -1454,10 +2574,30 @@ async function normalize(sample) {
     case "p8-cminpack-cancelled":
       observation = failure("optimization.cancelled", {
         backend_status: raw.status,
-        cancel_checks: raw.cancelChecks,
-        live_allocations: raw.backendState.liveAllocations,
-      }, kernelMs, { cancellation_checks: raw.cancelChecks });
+        cancel_checks: raw.cancel_checks,
+        live_allocations: raw.live_allocations,
+      }, kernelMs, { cancellation_checks: raw.cancel_checks });
       break;
+    case "p8-runtime-recovery":
+      observation = success({
+        contained_status: raw.contained_status,
+        recovered: raw.recovered_success,
+        independent_residual: Math.abs(raw.recovered_value ** 2 - 2),
+        runtime_interrupt_observed: raw.runtime_interrupt_observed,
+      }, kernelMs, { runtime_interrupts: raw.runtime_interrupt_observed ? 1 : 0 });
+      break;
+    case "p8-memory-pressure-statistics": {
+      let total = 0;
+      for (let index = 0; index < input.samples; index += 1) {
+        total += ((index % 257) - 128) / 128;
+      }
+      observation = success({
+        samples: raw.samples,
+        independent_mean_error: Math.abs(raw.mean - total / input.samples),
+        validation_passed: raw.validation_passed,
+      }, kernelMs, { samples: raw.samples });
+      break;
+    }
     case "p8-cross-domain-repeated-stability": {
       const evidence = repeatedEvidence(raw.records);
       observation = success({
@@ -1474,14 +2614,33 @@ async function normalize(sample) {
   return observation;
 }
 
+async function normalize(sample) {
+  return normalizeEvaluated(sample, await evaluateSample(sample));
+}
+
 module.exports = {
   protocol: PROTOCOL,
 
+  qualificationInternals: Object.freeze({
+    marker: MARKER,
+    sourceFor,
+    parseEvaluation,
+    normalizeEvaluated,
+    initializeHostOracles(bindingPath, root) {
+      return initializeScipyOracle(bindingPath, root);
+    },
+    closeHostOracles() {
+      closeScipyOracle();
+    },
+    capabilityModuleRequirements: CAPABILITY_MODULE_REQUIREMENTS,
+  }),
+
   async initialize(context) {
-    if (session !== null || cminpackBackend !== null) {
+    if (session !== null || cminpackBackend !== null || nloptArtifactPath !== null) {
       throw new Error("the qualification adapter is already initialized");
     }
-    const artifact = context.artifacts.find((item) => item.name === "sagejs-dist");
+    try {
+      const artifact = context.artifacts.find((item) => item.name === "sagejs-dist");
     if (artifact === undefined || !fs.statSync(artifact.path).isDirectory()) {
       throw new Error("the sagejs-dist artifact must be a built dist directory");
     }
@@ -1492,13 +2651,37 @@ module.exports = {
     if (cminpackArtifact === undefined || !fs.statSync(cminpackArtifact.path).isFile()) {
       throw new Error("the cminpack-wasm artifact must be the built cminpack.wasm file");
     }
+    const runtimeCminpackPath = path.join(artifactRoot, "numerical", "cminpack.wasm");
+    if (!fs.statSync(runtimeCminpackPath).isFile()) {
+      throw new Error("sagejs-dist lacks numerical/cminpack.wasm");
+    }
+    if (!fs.readFileSync(runtimeCminpackPath).equals(fs.readFileSync(cminpackArtifact.path))) {
+      throw new Error("the bound cminpack-wasm artifact differs from the Sage.js runtime resource");
+    }
     const cminpackModulePath = path.resolve(
       __dirname, "..", "..", "..", "packages", "flint-wasm", "numerical", "index.mjs",
     );
     const { createCminpackBackend } = await import(pathToFileURL(cminpackModulePath).href);
     cminpackBackend = await createCminpackBackend(fs.readFileSync(cminpackArtifact.path));
-    scipyPython = findScipyPython();
-    try {
+    const nloptArtifact = context.artifacts.find((item) => item.name === "nlopt-wasm");
+    if (nloptArtifact === undefined || !fs.statSync(nloptArtifact.path).isFile()) {
+      throw new Error("the nlopt-wasm artifact must be the built nlopt-methods.wasm file");
+    }
+    const runtimeNloptPath = path.join(artifactRoot, "numerical", "nlopt-methods.wasm");
+    if (!fs.statSync(runtimeNloptPath).isFile()) {
+      throw new Error("sagejs-dist lacks numerical/nlopt-methods.wasm");
+    }
+    if (!fs.readFileSync(runtimeNloptPath).equals(fs.readFileSync(nloptArtifact.path))) {
+      throw new Error("the bound nlopt-wasm artifact differs from the Sage.js runtime resource");
+    }
+    nloptArtifactPath = nloptArtifact.path;
+    const scipyOracleArtifact = context.artifacts.find(
+      (item) => item.name === "scipy-oracle-binding",
+    );
+    if (scipyOracleArtifact === undefined || !fs.statSync(scipyOracleArtifact.path).isFile()) {
+      throw new Error("the scipy-oracle-binding artifact must be bound separately");
+    }
+      initializeScipyOracle(scipyOracleArtifact.path, context.root);
       const { createSage } = require(kernelPath);
       session = await createSage({ mode: "python" });
 
@@ -1526,37 +2709,12 @@ for module in modules:
 print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys=True))
 `);
       const present = new Set(parseEvaluation(probe).available);
-      const requirements = {
-      "numerics.contracts": "sagejs.numerics",
-      "numerics.root.scalar": "sagejs.numerics",
-      "numerics.approximation.interpolation": "sagejs.numerics.approximation",
-      "numerics.approximation.polynomial_roots": "sagejs.numerics.approximation",
-      "numerics.integration.quadrature": "sagejs.numerics.integration",
-      "numerics.linear.solve": "sagejs.numerics.linear_algebra",
-      "numerics.optimization.scalar": "sagejs.numerics.optimization",
-      "numerics.optimization.cminpack": "external:cminpack-wasm",
-      "numerics.optimization.cminpack_optional_resource": "sagejs.numerics.optimization",
-      "numerics.ode.explicit_ivp": "sagejs.numerics.ode",
-      "numerics.ode.stiff_ivp": "sagejs.numerics.ode",
-      "numerics.ode.sweeps": "sagejs.numerics.ode",
-      "numerics.spectral.dense": "sagejs.numerics.spectral",
-      "numerics.spectral.fft": "sagejs.numerics.spectral",
-      "numerics.statistics.descriptive": "sagejs.numerics.statistics",
-      "numerics.sweeps.bounded": "sagejs.numerics.sweeps",
-      "numerics.frontend.scalar_root": "sagejs.numerics.frontends",
-      "numerics.frontend.catalog": "sagejs.numerics.frontends",
-      "numerics.frontend.parser_guards": "sagejs.numerics.frontends",
-      "numerics.frontend.matlab_shapes": "sagejs.numerics.frontends",
-      "numerics.frontend.scipy_execution": "external:scipy-python",
-      "numerics.frontend.guardrails": "sagejs.numerics.frontends",
-      "numerics.teaching.root": "sagejs.numerics",
-      "numerics.teaching.cross_domain": "sagejs.numerics",
-      "numerics.teaching.scalar_optimization": "sagejs.numerics.optimization",
-      "numerics.lifecycle.repeated": "sagejs.numerics",
-      };
+      const requirements = CAPABILITY_MODULE_REQUIREMENTS;
       initializedCapabilities = context.capabilities
         .filter((item) => item.status === "available" && (
           requirements[item.id] === "external:cminpack-wasm" ||
+          requirements[item.id] === "external:nlopt-wasm" ||
+          requirements[item.id] === "external:foreign-frontends" ||
           (requirements[item.id] === "external:scipy-python" && scipyPython !== null) ||
           present.has(requirements[item.id])
         ))
@@ -1567,12 +2725,25 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
         capability_ids: initializedCapabilities,
       };
     } catch (error) {
-      if (session !== null) await session.close();
+      const failures = [error];
+      try {
+        if (session !== null) await session.close();
+      } catch (cleanupError) {
+        failures.push(cleanupError);
+      }
       session = null;
       artifactRoot = null;
       cminpackBackend = null;
-      scipyPython = null;
+      nloptArtifactPath = null;
+      try {
+        closeScipyOracle();
+      } catch (cleanupError) {
+        failures.push(cleanupError);
+      }
       initializedCapabilities = [];
+      if (failures.length > 1) {
+        throw new AggregateError(failures, "Node qualification initialization cleanup failed");
+      }
       throw error;
     }
   },
@@ -1582,12 +2753,23 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
   },
 
   async close() {
-    if (session !== null) await session.close();
+    let failure = null;
+    try {
+      if (session !== null) await session.close();
+    } catch (error) {
+      failure = error;
+    }
     session = null;
     artifactRoot = null;
     cminpackBackend = null;
-    scipyPython = null;
+    nloptArtifactPath = null;
+    try {
+      closeScipyOracle();
+    } catch (error) {
+      failure ??= error;
+    }
     initializedCapabilities = [];
+    if (failure !== null) throw failure;
   },
 
   qualificationState() {
@@ -1595,6 +2777,7 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
       initialized: session !== null,
       artifact_root: artifactRoot,
       cminpack_initialized: cminpackBackend !== null,
+      nlopt_artifact_initialized: nloptArtifactPath !== null,
       scipy_python_initialized: scipyPython !== null,
       capability_ids: [...initializedCapabilities],
     };

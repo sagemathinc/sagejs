@@ -15,6 +15,8 @@ import { importPath, libraryPath } from "./utils";
 import { basename, dirname, extname } from "path";
 import { runStdioKernel } from "./stdio-kernel";
 import { SAGEJS_VERSION_INFO } from "./version-info";
+import { createHash } from "node:crypto";
+import { getAsset, getAssetKeys, isSea } from "node:sea";
 
 const executable = basename(process.argv[1]);
 const executableStem = basename(executable, extname(executable)).toLowerCase();
@@ -33,6 +35,7 @@ interface SeaArguments {
     | "jupyter-kernel"
     | "jupyter-self-test"
     | "embedded-kernel"
+    | "qualification-resource-digests"
     | "pytest";
   execute: boolean;
   sage: boolean;
@@ -125,6 +128,14 @@ function parseArguments(): SeaArguments {
     tokens: false,
   };
   const rawArguments = process.argv.slice(2);
+  if (
+    rawArguments.length === 1 &&
+    rawArguments[0] === "--qualification-resource-digests" &&
+    isSea()
+  ) {
+    args.mode = "qualification-resource-digests";
+    return args;
+  }
   if (rawArguments.includes("--embedded-kernel")) {
     const allowed = new Set(["--embedded-kernel", "--python", "--sage"]);
     const unexpected = rawArguments.find((argument) => !allowed.has(argument));
@@ -387,6 +398,31 @@ const argv = parseArguments();
 const sageMode = argv.sage;
 
 async function main(): Promise<void> {
+  if (argv.mode === "qualification-resource-digests") {
+    const names = [
+      "numerical/cminpack.wasm",
+      "numerical/nlopt-methods.wasm",
+    ] as const;
+    const available = new Set(getAssetKeys());
+    const resources = names.map((name) => {
+      if (!available.has(name)) {
+        throw new Error(`single-executable qualification resource is missing ${name}`);
+      }
+      const bytes = Buffer.from(getAsset(name));
+      return {
+        name,
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+        bytes: bytes.length,
+      };
+    });
+    process.stdout.write(`${JSON.stringify({
+      schema: "sagejs.sea-qualification-resource-digests/v1",
+      schema_version: 1,
+      platform: { os: process.platform, arch: process.arch },
+      resources,
+    })}\n`);
+    return;
+  }
   if (argv.mode === "embedded-kernel") {
     await runStdioKernel(argv.sage ? "sage" : "python");
     return;

@@ -7,6 +7,7 @@ const path = require("node:path");
 const { pretty, readJson, repositoryPath } = require("../common.cjs");
 const { CAPABILITY_SCHEMA, validateCorpus } = require("../contracts.cjs");
 const { bindCapabilityDraft, writeImmutableJson } = require("../receipt.cjs");
+const { createBinding: createScipyOracleBinding } = require("./scipy-oracle.cjs");
 
 const defaultRoot = path.resolve(__dirname, "..", "..", "..");
 const DEFAULT_CORPUS = "bench/numerical-computing/qualification/product.corpus.json";
@@ -29,7 +30,11 @@ function exactKeys(label, record, required) {
   for (const name of Object.keys(record)) if (!expected.has(name)) throw new Error(`${label} unknown ${name}`);
 }
 
-function capabilityDraft(spec, corpus) {
+function capabilityDraft(
+  spec,
+  corpus,
+  subject = { kind: "node", name: "node", version: process.version, engine: null },
+) {
   exactKeys("node capability spec", spec, ["schema", "backend", "capabilities"]);
   if (spec.schema !== "sagejs.numerical-node-capability-spec/v1") {
     throw new Error("unsupported node capability spec schema");
@@ -52,20 +57,25 @@ function capabilityDraft(spec, corpus) {
   return {
     schema: CAPABILITY_SCHEMA,
     backend: spec.backend,
-    subject: { kind: "node", name: "node", version: process.version, engine: null },
+    subject,
     capabilities,
   };
 }
 
 function prepare({
   root, corpusPath, adapterPath, specPath, artifactPath, cminpackArtifactPath,
-  outputDirectory,
+  nloptArtifactPath, outputDirectory,
 }) {
   const corpus = validateCorpus(readJson(repositoryPath(root, corpusPath, "corpus").absolute));
   const spec = readJson(repositoryPath(root, specPath, "capability spec").absolute);
   const draft = capabilityDraft(spec, corpus);
   const output = repositoryPath(root, outputDirectory, "output directory");
   fs.mkdirSync(output.absolute, { recursive: true });
+  const scipyOracleBindingPath = `${output.relative}/scipy-oracle.json`;
+  writeImmutableJson(
+    path.join(root, scipyOracleBindingPath),
+    createScipyOracleBinding(),
+  );
   const draftPath = `${output.relative}/capability-draft.json`;
   fs.writeFileSync(path.join(root, draftPath), pretty(draft));
   const manifest = bindCapabilityDraft({
@@ -75,12 +85,14 @@ function prepare({
     artifactSpecifications: [
       `sagejs-dist=${artifactPath}`,
       `cminpack-wasm=${cminpackArtifactPath}`,
+      `nlopt-wasm=${nloptArtifactPath}`,
+      `scipy-oracle-binding=${scipyOracleBindingPath}`,
     ],
     draftPath,
   });
   const manifestPath = `${output.relative}/capabilities.json`;
   writeImmutableJson(path.join(root, manifestPath), manifest);
-  return { draftPath, manifestPath, manifest };
+  return { draftPath, manifestPath, manifest, scipyOracleBindingPath };
 }
 
 function usage() {
@@ -93,6 +105,7 @@ function usage() {
   --artifact PATH        built Sage.js dist directory (default: dist)
   --cminpack-artifact PATH
                          built cminpack.wasm file
+  --nlopt-artifact PATH  NLopt Wasm used by the built Sage.js runtime
   --output DIRECTORY     empty output directory (required)
 
 The generated capability manifest is immutable. Use a fresh output directory
@@ -117,9 +130,14 @@ function main(argv = process.argv.slice(2)) {
     "--cminpack-artifact",
     "packages/flint-wasm/numerical/build/cminpack.wasm",
   );
+  const nloptArtifactPath = value(
+    argv,
+    "--nlopt-artifact",
+    "dist/numerical/nlopt-methods.wasm",
+  );
   const prepared = prepare({
     root, corpusPath, adapterPath, specPath, artifactPath, cminpackArtifactPath,
-    outputDirectory,
+    nloptArtifactPath, outputDirectory,
   });
   process.stdout.write(pretty({
     capability_manifest_id: prepared.manifest.id,
@@ -131,6 +149,8 @@ function main(argv = process.argv.slice(2)) {
       `--capabilities ${prepared.manifestPath}`,
       `--artifact sagejs-dist=${artifactPath}`,
       `--artifact cminpack-wasm=${cminpackArtifactPath}`,
+      `--artifact nlopt-wasm=${nloptArtifactPath}`,
+      `--artifact scipy-oracle-binding=${prepared.scipyOracleBindingPath}`,
       `--output ${outputDirectory}/node.receipt.json`,
     ].join(" "),
   }));

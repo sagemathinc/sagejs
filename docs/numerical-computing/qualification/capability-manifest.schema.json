@@ -53,7 +53,15 @@
         "name": { "$ref": "#/$defs/nonempty" },
         "version": { "$ref": "#/$defs/nonempty" },
         "engine": { "type": ["string", "null"] }
-      }
+      },
+      "allOf": [{
+        "if": {
+          "properties": { "kind": { "enum": ["browser", "worker"] } },
+          "required": ["kind"]
+        },
+        "then": { "properties": { "engine": { "$ref": "#/$defs/nonempty" } } },
+        "else": { "properties": { "engine": { "type": "null" } } }
+      }]
     },
     "artifact": {
       "type": "object",
