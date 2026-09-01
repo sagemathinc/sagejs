@@ -80,6 +80,55 @@ function inputBindings({ root, corpusPath, adapterPath, artifactSpecifications }
   return { corpusBinding, corpus, sourceBundle, adapter, artifacts };
 }
 
+function collectionBindings({
+  root,
+  corpusPath,
+  adapterPath,
+  capabilityPath,
+  artifactSpecifications,
+}) {
+  const inputs = inputBindings({ root, corpusPath, adapterPath, artifactSpecifications });
+  const capabilityBinding = digestPath(root, capabilityPath, "capability manifest path");
+  const manifest = validateCapabilityManifest(
+    readJson(path.join(root, capabilityBinding.path)), inputs.corpus,
+  );
+  assertManifestBindings(manifest, inputs);
+  return {
+    inputs,
+    capabilityBinding,
+    manifest,
+    repository: repositoryIdentity(root),
+  };
+}
+
+function assertCleanCollectionCandidate(binding) {
+  if (!binding.repository.clean) {
+    fail("repository", "qualification collection requires a clean candidate checkout");
+  }
+}
+
+function assertStableCollectionBindings(before, after) {
+  if (canonicalJson(after.inputs) !== canonicalJson(before.inputs)) {
+    fail(
+      "qualification inputs",
+      "corpus, source, adapter, or artifact bytes changed during collection",
+    );
+  }
+  if (canonicalJson(after.capabilityBinding) !== canonicalJson(before.capabilityBinding) ||
+      canonicalJson(after.manifest) !== canonicalJson(before.manifest)) {
+    fail("capability manifest", "bytes or validated identity changed during collection");
+  }
+  if (!after.repository.clean ||
+      after.repository.commit !== before.repository.commit ||
+      after.repository.tree !== before.repository.tree ||
+      after.repository.status_sha256 !== before.repository.status_sha256) {
+    fail(
+      "repository",
+      "must remain clean at the exact candidate commit and tree throughout collection",
+    );
+  }
+}
+
 function bindCapabilityDraft({
   root,
   corpusPath,
@@ -584,54 +633,80 @@ async function collectReceipt({
   processEntryTime = process.hrtime.bigint(),
 }) {
   const collectionStarted = process.hrtime.bigint();
-  const inputs = inputBindings({ root, corpusPath, adapterPath, artifactSpecifications });
-  const capabilityBinding = digestPath(root, capabilityPath, "capability manifest path");
-  const manifest = validateCapabilityManifest(
-    readJson(path.join(root, capabilityBinding.path)), inputs.corpus,
-  );
-  assertManifestBindings(manifest, inputs);
-
-  const loadStarted = process.hrtime.bigint();
-  const adapter = loadAdapter(root, inputs.adapter.path);
-  const adapterLoadMs = elapsedMilliseconds(loadStarted);
-  const initializeStarted = process.hrtime.bigint();
-  const initialization = validateAdapterInitialization(await adapter.initialize({
+  const candidate = collectionBindings({
     root,
-    backend: manifest.backend,
-    subject: manifest.subject,
-    artifacts: inputs.artifacts.map((item) => ({
-      name: item.name,
-      path: path.join(root, item.path),
-      sha256: item.sha256,
-      bytes: item.bytes,
-    })),
-    capabilities: manifest.capabilities,
-  }));
-  const initializeMs = elapsedMilliseconds(initializeStarted);
-  if (canonicalJson(initialization.subject) !== canonicalJson(manifest.subject)) {
-    fail("adapter initialization.subject", "does not match the capability manifest");
-  }
-  const knownCapabilities = new Set(manifest.capabilities.map((item) => item.id));
-  for (const id of initialization.capability_ids) {
-    if (!knownCapabilities.has(id)) fail("adapter initialization.capability_ids", `unknown ${id}`);
-  }
-  const readyMs = elapsedMilliseconds(processEntryTime);
+    corpusPath,
+    adapterPath,
+    capabilityPath,
+    artifactSpecifications,
+  });
+  assertCleanCollectionCandidate(candidate);
+  const { inputs, capabilityBinding, manifest } = candidate;
 
+  let adapter = null;
+  let adapterLoadMs = null;
+  let initialization = null;
+  let initializeMs = null;
+  let readyMs = null;
   const cases = [];
+  let executionError = null;
+  let closeError = null;
   try {
+    const loadStarted = process.hrtime.bigint();
+    adapter = loadAdapter(root, inputs.adapter.path);
+    adapterLoadMs = elapsedMilliseconds(loadStarted);
+    const initializeStarted = process.hrtime.bigint();
+    initialization = validateAdapterInitialization(await adapter.initialize({
+      root,
+      backend: manifest.backend,
+      subject: manifest.subject,
+      artifacts: inputs.artifacts.map((item) => ({
+        name: item.name,
+        path: path.join(root, item.path),
+        sha256: item.sha256,
+        bytes: item.bytes,
+      })),
+      capabilities: manifest.capabilities,
+    }));
+    initializeMs = elapsedMilliseconds(initializeStarted);
+    if (canonicalJson(initialization.subject) !== canonicalJson(manifest.subject)) {
+      fail("adapter initialization.subject", "does not match the capability manifest");
+    }
+    const knownCapabilities = new Set(manifest.capabilities.map((item) => item.id));
+    for (const id of initialization.capability_ids) {
+      if (!knownCapabilities.has(id)) {
+        fail("adapter initialization.capability_ids", `unknown ${id}`);
+      }
+    }
+    readyMs = elapsedMilliseconds(processEntryTime);
     for (const caseContract of inputs.corpus.cases) {
       cases.push(await collectCase(adapter, caseContract, manifest, initialization));
     }
-  } finally {
-    if (typeof adapter.close === "function") await adapter.close();
+  } catch (error) {
+    executionError = error;
   }
+  try {
+    if (adapter !== null && typeof adapter.close === "function") await adapter.close();
+  } catch (error) {
+    closeError = error;
+  }
+  const completed = collectionBindings({
+    root,
+    corpusPath,
+    adapterPath,
+    capabilityPath,
+    artifactSpecifications,
+  });
+  assertStableCollectionBindings(candidate, completed);
+  if (executionError !== null) throw executionError;
+  if (closeError !== null) throw closeError;
   const status = cases.every((item) => item.status === "passed") ? "passed" : "failed";
   const core = {
     schema: RECEIPT_SCHEMA,
     authority: "local-host-collector",
     collected_at: new Date().toISOString(),
     status,
-    repository: repositoryIdentity(root),
+    repository: candidate.repository,
     corpus: {
       path: inputs.corpusBinding.path,
       sha256: inputs.corpusBinding.sha256,

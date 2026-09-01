@@ -151,6 +151,7 @@
       "description": "Authenticated optimizer profiling, evidence schemas, opportunity dossiers, campaigns, and promotion validation",
       "allowed_claims": [
         ".agents/lanes.json",
+        ".agents/task.schema.json",
         "agents/compiler-development-engine-plan.md",
         "agents/optimization-engine-plan.md",
         "architecture/optimization-engine/",
@@ -192,6 +193,8 @@
       "description": "Shared agent-facing numerical problem, plan, result, capability, provenance, resource-budget, and surface-classification contracts",
       "allowed_claims": [
         ".agents/lanes.json",
+        ".agents/task.schema.json",
+        ".agents/tasks/p0-contract-lane.json",
         "agents/numerical-computing-product-plan.md",
         "architecture/optimizer-opportunities.manifest.json",
         "docs/optimizer-opportunities.md",

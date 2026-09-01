@@ -7,9 +7,11 @@
   "status": "active",
   "owner": "user",
   "objective": "Derive the public surface from runtime capabilities, expose honest qualification/provenance/budget/outward-code contracts, and validate them exhaustively",
-  "base_commit": "5614ddc5cb2dee328debf4648189b6c93f0ca70f",
+  "base_commit": "6cf5161d094eff6abb53e9b91a85b1b70de4e957",
   "claims": [
     ".agents/lanes.json",
+    ".agents/task.schema.json",
+    ".agents/tasks/p0-contract-lane.json",
     "agents/numerical-computing-product-plan.md",
     "architecture/optimizer-opportunities.manifest.json",
     "docs/optimizer-opportunities.md",

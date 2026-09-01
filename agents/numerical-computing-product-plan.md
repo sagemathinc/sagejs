@@ -83,7 +83,13 @@ unobserved external work is classified separately. Capability discovery now
 fails closed on unclassified operations, uses one canonical runtime vocabulary,
 and checks the retained diagnostic registry exactly. Memory method and scope
 are a coupled contract, so a browser-heap estimate cannot be relabeled as
-process-tree evidence.
+process-tree evidence. Qualification collection now starts from a clean Git
+candidate and rebinds every corpus, source, adapter, artifact, manifest, and
+repository identity after adapter shutdown; persistent input changes or a
+moved/dirty `HEAD` fail closed. This authenticates a stable candidate on a
+trusted first-party collector/adapter/host boundary, not adversarial-host
+execution; stronger proof would require staged read-only inputs or OS
+isolation.
 
 This proves the shared contracts sufficiently to begin domain-owned parallel
 implementation. P1 is not classified as release-qualified until its browser,
