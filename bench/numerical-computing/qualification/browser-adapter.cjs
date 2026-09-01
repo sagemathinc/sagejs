@@ -268,6 +268,44 @@ async function runBrowserMemoryPressure(sample) {
   };
 }
 
+async function runBrowserWorkerReplacement() {
+  const started = performance.now();
+  const pending = page.evaluate(async () => {
+    try {
+      await globalThis.__sagejsQualificationSession.evaluate(
+        "while True:\n    pass",
+        { timeout: 180_000 },
+      );
+      return { interrupted: false, name: null };
+    } catch (error) {
+      return { interrupted: true, name: error?.name ?? null };
+    }
+  });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  await page.evaluate(async () => globalThis.__sagejsQualificationSession.interrupt());
+  const interruption = await pending;
+  const source = [
+    "import json",
+    `print(${JSON.stringify(internals.marker)} + json.dumps({"recovered_value": 1 + 1}))`,
+  ].join("\n");
+  const result = await page.evaluate(async ({ source }) =>
+    globalThis.__sagejsQualificationSession.evaluate(source, { timeout: 180_000 }),
+  { source });
+  const recovered = internals.parseEvaluation(result);
+  return {
+    outcome: { kind: "success", code: null },
+    values: {
+      interrupted: interruption.interrupted,
+      interruption_name: interruption.name,
+      recovered_value: recovered.recovered_value,
+    },
+    metrics: {
+      phases_ms: { browser_worker_replacement: performance.now() - started },
+      counters: { worker_replacements: interruption.interrupted ? 1 : 0 },
+    },
+  };
+}
+
 async function evaluateSample(sample) {
   if (sample.id === "p8-runtime-recovery") return runRuntimeRecovery(sample);
   if (sample.id === "p6-multilingual-parser-fail-closed") return runParserGuards();
@@ -411,6 +449,7 @@ module.exports = {
     if (["p8-browser-memory-baseline", "p8-browser-memory-pressure"].includes(sample.id)) {
       return runBrowserMemoryPressure(sample);
     }
+    if (sample.id === "p8-browser-worker-replacement") return runBrowserWorkerReplacement();
     return internals.normalizeEvaluated(sample, await evaluateSample(sample));
   },
 

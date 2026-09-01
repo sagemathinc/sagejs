@@ -46,6 +46,11 @@ function browserReceipt(baseline, pressure) {
         status: "passed",
         metrics: { peak_memory: pressure },
       },
+      {
+        case_id: "p8-browser-worker-replacement",
+        status: "passed",
+        metrics: { peak_memory: pressure },
+      },
     ],
   };
 }

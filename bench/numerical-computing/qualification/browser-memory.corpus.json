@@ -48,6 +48,23 @@
         {"id": "pressure-pages-touched", "evidence": "validation", "kind": "deep-equal", "actual": "/values/touched_pages", "expected": {"literal": 16384}}
       ],
       "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p8-browser-worker-replacement",
+      "description": "Interrupting a nonterminating browser-worker evaluation replaces the worker and preserves subsequent execution while process-tree sampling remains live.",
+      "program_phase": "P8",
+      "layer": "failure-semantics",
+      "workload_tier": "substantial-local",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 1, "evidence_check_ids": ["worker-recovered"]},
+      "input": {"operation": "browser-worker-replacement"},
+      "required_capabilities": ["numerics.lifecycle.browser_process_tree_memory"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "worker-interrupted", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/interrupted", "expected": {"literal": true}},
+        {"id": "worker-interruption-type", "evidence": "validation", "kind": "deep-equal", "actual": "/values/interruption_name", "expected": {"literal": "SageSessionInterruptedError"}},
+        {"id": "worker-recovered", "evidence": "validation", "kind": "deep-equal", "actual": "/values/recovered_value", "expected": {"literal": 2}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
     }
   ]
 }

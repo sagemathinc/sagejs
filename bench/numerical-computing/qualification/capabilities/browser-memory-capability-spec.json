@@ -7,13 +7,14 @@
   "capabilities": [
     {
       "id": "numerics.lifecycle.browser_process_tree_memory",
-      "case_ids": ["p8-browser-memory-baseline", "p8-browser-memory-pressure"],
+      "case_ids": ["p8-browser-memory-baseline", "p8-browser-memory-pressure", "p8-browser-worker-replacement"],
       "envelope": {
         "collector_scope": "process_tree",
         "allocation_bytes": 67108864,
         "comparison": "pressure-minus-baseline",
         "minimum_delta_bytes": 33554432,
-        "browser_worker_execution": true
+        "browser_worker_execution": true,
+        "worker_interrupt_and_replacement": true
       }
     }
   ]

@@ -115,7 +115,7 @@ function main() {
     readJson(browserMemorySpecPath), browserMemoryCorpus,
     { kind: "browser", name: "playwright-browser", version: "validation-only", engine: "chromium" },
   );
-  if (browserMemoryCorpus.cases.length !== 2 ||
+  if (browserMemoryCorpus.cases.length !== 3 ||
       browserMemoryDraft.capabilities.length !== 1 ||
       browserMemoryDraft.capabilities[0].id !==
         "numerics.lifecycle.browser_process_tree_memory") {

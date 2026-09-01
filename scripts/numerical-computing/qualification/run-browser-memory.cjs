@@ -114,8 +114,10 @@ function validateBrowserMemoryReceipt(receipt, minimumDelta) {
   }
   const baselineCase = caseById(receipt, "p8-browser-memory-baseline");
   const pressureCase = caseById(receipt, "p8-browser-memory-pressure");
+  const recoveryCase = caseById(receipt, "p8-browser-worker-replacement");
   const baseline = authenticatedPeak(baselineCase, "baseline");
   const pressure = authenticatedPeak(pressureCase, "pressure");
+  const recovery = authenticatedPeak(recoveryCase, "worker replacement");
   const delta = pressure.bytes - baseline.bytes;
   if (delta < minimumDelta) {
     throw new Error(
@@ -131,6 +133,8 @@ function validateBrowserMemoryReceipt(receipt, minimumDelta) {
     measurement_scope: pressure.measurement_scope,
     authenticated_by: pressure.authenticated_by,
     sample_interval_ms: pressure.sample_interval_ms,
+    worker_replacement_peak_bytes: recovery.bytes,
+    worker_replacement_passed: true,
   };
 }
 

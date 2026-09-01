@@ -77,14 +77,16 @@ node scripts/numerical-computing/qualification/run-browser-memory.cjs \
   --output build/numerical-qualification/browser-memory/worker
 ```
 
-The focused corpus first runs a zero-byte baseline and then touches 64 MiB in
-the Sage.js browser worker. The ordinary qualification collector samples the
-collector plus its live descendants from Linux `/proc`. The driver rejects a
-receipt unless both cases pass with authenticated `process_tree` measurements
-and the pressure peak exceeds the baseline by at least 32 MiB. It writes the
-full source/artifact-bound receipt and a smaller immutable summary that binds
-that receipt. A remote browser, synchronous launch, missing descendant,
-JavaScript heap-only measurement, or smaller delta fails closed.
+The focused corpus first runs a zero-byte baseline, then touches 64 MiB in the
+Sage.js browser worker, and finally interrupts a nonterminating evaluation and
+proves that the replacement worker executes a fresh program. The ordinary
+qualification collector samples the collector plus its live descendants from
+Linux `/proc`. The driver rejects a receipt unless all three cases pass with
+authenticated `process_tree` measurements and the pressure peak exceeds the
+baseline by at least 32 MiB. It writes the full source/artifact-bound receipt
+and a smaller immutable summary that binds that receipt. A remote browser,
+synchronous launch, missing descendant, JavaScript heap-only measurement,
+failed worker replacement, or smaller delta fails closed.
 
 These commands are ready for the final integrated candidate. Checked-in
 templates remain `pending`; development runs are not copied into a release
