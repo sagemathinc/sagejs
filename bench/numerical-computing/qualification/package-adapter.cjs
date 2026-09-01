@@ -317,10 +317,12 @@ module.exports = {
       runPythonName = "runRelocatedSeaPython";
       runLanguageName = "runRelocatedSeaLanguage";
       runNodeName = null;
-      const version = checkProcess(
-        packageRuntime.runRelocatedSeaLanguage(runtimeContext, "version()", "sage"),
+      const versionResult = checkProcess(
+        packageRuntime.runProcess(runtimeContext.executable, ["--version"], { timeout: 30_000 }),
         "SEA version probe",
-      ).stdout.match(/v(\d+\.\d+\.\d+)/)?.[1];
+      );
+      const version = `${versionResult.stdout}\n${versionResult.stderr}`
+        .match(/(?:sagejs\s+|v)(\d+\.\d+\.\d+)/i)?.[1];
       if (version === undefined) throw new Error("SEA version probe returned no semantic version");
       initializedSubject = { kind: "sea", name: "sagejs", version, engine: null };
     } else {

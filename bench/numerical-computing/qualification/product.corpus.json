@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.numerical-qualification-corpus/v1",
-  "id": "sagejs-numerical-product-v10",
-  "version": 10,
+  "id": "sagejs-numerical-product-v11",
+  "version": 11,
   "domain": "numerical-computing-product",
   "description": "Backend-neutral P0-P8 product cases executed through a real Sage.js artifact and checked independently by the host adapter.",
   "program_phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
@@ -458,6 +458,24 @@
       "measurement": {"warmup": 0, "samples": 1}
     },
     {
+      "id": "p3-nlopt-nelder-mead-bound-offset-invariance",
+      "description": "A bounded one-dimensional Nelder-Mead solve cannot turn a point away from the exact lower-bound minimum into validated success merely by adding a large constant to the objective.",
+      "program_phase": "P3",
+      "layer": "metamorphic",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "metamorphic", "seed": null, "trials": 3, "evidence_check_ids": ["nlopt-bound-offsets-ran", "nlopt-bound-offset-classification-invariant"]},
+      "input": {"operation": "nlopt-nelder-mead-bound-offset-invariance", "offsets": [0, 1000000, 1000000000], "initial": 1e-9, "lower": 0, "upper": 1, "initial_step": 1e-12, "xtol": 0.001, "max_evaluations": 10000},
+      "required_capabilities": ["numerics.optimization.nlopt_nelder_mead"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-bound-offset-no-false-success", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/unsafe_successes", "expected": {"literal": 0}},
+        {"id": "nlopt-bound-offset-classification-invariant", "evidence": "validation", "kind": "deep-equal", "actual": "/values/classification_invariant", "expected": {"literal": true}},
+        {"id": "nlopt-bound-offsets-ran", "evidence": "validation", "kind": "deep-equal", "actual": "/values/offsets", "expected": {"literal": [0, 1000000, 1000000000]}},
+        {"id": "nlopt-bound-offset-bounds", "evidence": "validation", "kind": "deep-equal", "actual": "/values/bounds_satisfied", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
       "id": "p3-nlopt-nelder-mead-saddle-rejected",
       "description": "An NLopt positive stop at a mixed-curvature saddle is independently shown to admit diagonal descent and cannot become public mathematical success.",
       "program_phase": "P3",
@@ -578,17 +596,18 @@
     },
     {
       "id": "p3-nlopt-cobyla-offset-saddle-rejected",
-      "description": "The public constrained-result verifier rejects a saddle even when a large constant offset makes the representable strict feasible decrease tiny relative to the objective magnitude.",
+      "description": "An actual converged COBYLA execution is denied public success when an independent two-sided tangent oracle finds strict feasible descent despite a large constant objective offset.",
       "program_phase": "P3",
       "layer": "conditioned-stress",
       "workload_tier": "instant-classroom",
       "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": ["nlopt-offset-saddle-independent-descent"]},
-      "input": {"operation": "nlopt-cobyla-offset-saddle-rejected", "offset": 1000, "scale": 0.0001, "candidate": [1, 1], "witness_step": 0.01},
+      "input": {"operation": "nlopt-cobyla-offset-saddle-rejected", "offset": 1000, "scale": 0.0001, "initial": [1, 1], "witness_step": 0.01},
       "required_capabilities": ["numerics.optimization.nlopt_cobyla"],
       "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "nlopt-offset-saddle-independent-descent", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/independent_feasible_descent", "expected": {"literal": 9e-9}},
         {"id": "nlopt-offset-saddle-witness-feasible", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_witness_violation", "expected": {"literal": 0}},
+        {"id": "nlopt-offset-saddle-backend-converged", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_status", "expected": {"literal": "converged"}},
         {"id": "nlopt-offset-saddle-public-rejection", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": false}},
         {"id": "nlopt-offset-saddle-validation-rejection", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": false}},
         {"id": "nlopt-offset-saddle-indeterminate", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_kind", "expected": {"literal": "indeterminate"}},
@@ -599,20 +618,41 @@
     },
     {
       "id": "p3-nlopt-cobyla-narrow-slack-rejected",
-      "description": "The public constrained-result verifier rejects a candidate with a strict feasible descent direction inside a 1e-11 inequality slack instead of rounding that narrow interior to an active optimum.",
+      "description": "Actual converged COBYLA executions at three deterministic positive-slack scales are all denied public success when an independent interior witness is strictly better.",
       "program_phase": "P3",
-      "layer": "conditioned-stress",
+      "layer": "metamorphic",
       "workload_tier": "instant-classroom",
-      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": ["nlopt-narrow-slack-independent-descent"]},
-      "input": {"operation": "nlopt-cobyla-narrow-slack-rejected", "slack": 1e-11, "candidate": 0, "witness": -5e-12},
+      "campaign": {"kind": "metamorphic", "seed": null, "trials": 3, "evidence_check_ids": ["nlopt-narrow-slack-scales-ran"]},
+      "input": {"operation": "nlopt-cobyla-narrow-slack-rejected", "slacks": [1e-11, 1e-18, 1e-30], "initial": 0},
       "required_capabilities": ["numerics.optimization.nlopt_cobyla"],
       "expected": {"outcome": "success", "failure_code": null},
       "checks": [
-        {"id": "nlopt-narrow-slack-independent-descent", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/independent_feasible_descent", "expected": {"literal": 4e-12}},
+        {"id": "nlopt-narrow-slack-independent-descent", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/minimum_independent_feasible_descent", "expected": {"literal": 4e-31}},
         {"id": "nlopt-narrow-slack-witness-feasible", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_witness_violation", "expected": {"literal": 0}},
-        {"id": "nlopt-narrow-slack-public-rejection", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": false}},
-        {"id": "nlopt-narrow-slack-validation-rejection", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": false}},
-        {"id": "nlopt-narrow-slack-indeterminate", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_kind", "expected": {"literal": "indeterminate"}}
+        {"id": "nlopt-narrow-slack-public-rejection", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/public_successes", "expected": {"literal": 0}},
+        {"id": "nlopt-narrow-slack-validation-rejection", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passes", "expected": {"literal": 0}},
+        {"id": "nlopt-narrow-slack-backend-converged", "evidence": "validation", "kind": "deep-equal", "actual": "/values/statuses", "expected": {"literal": ["converged", "converged", "converged"]}},
+        {"id": "nlopt-narrow-slack-indeterminate", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_kinds", "expected": {"literal": ["indeterminate", "indeterminate", "indeterminate"]}},
+        {"id": "nlopt-narrow-slack-scales-ran", "evidence": "validation", "kind": "deep-equal", "actual": "/values/slacks", "expected": {"literal": [1e-11, 1e-18, 1e-30]}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-cobyla-mixed-scale-tangent-rejected",
+      "description": "The public verifier rejects the same equality-feasible local maximum across three unrelated coordinate scales instead of deriving one global probe radius from the large fixed coordinate.",
+      "program_phase": "P3",
+      "layer": "metamorphic",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "metamorphic", "seed": null, "trials": 3, "evidence_check_ids": ["nlopt-mixed-scale-cases-ran"]},
+      "input": {"operation": "nlopt-cobyla-mixed-scale-tangent-rejected", "fixed_coordinates": [1, 1000000, 1000000000000], "witness_x": 0.001},
+      "required_capabilities": ["numerics.optimization.nlopt_cobyla"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-mixed-scale-independent-descent", "evidence": "correctness", "kind": "greater-than-or-equal", "actual": "/values/minimum_independent_feasible_descent", "expected": {"literal": 9e-7}},
+        {"id": "nlopt-mixed-scale-witness-feasible", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/maximum_equality_residual", "expected": {"literal": 0}},
+        {"id": "nlopt-mixed-scale-verifier-rejections", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passes", "expected": {"literal": 0}},
+        {"id": "nlopt-mixed-scale-indeterminate", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_kinds", "expected": {"literal": ["indeterminate", "indeterminate", "indeterminate"]}},
+        {"id": "nlopt-mixed-scale-cases-ran", "evidence": "validation", "kind": "deep-equal", "actual": "/values/fixed_coordinates", "expected": {"literal": [1, 1000000, 1000000000000]}}
       ],
       "measurement": {"warmup": 0, "samples": 1}
     },
@@ -654,7 +694,7 @@
     },
     {
       "id": "p3-nlopt-cobyla-nonminimum-rejected",
-      "description": "The public result verifier independently classifies an exact feasible COBYLA candidate with a feasible descent direction as indeterminate rather than certifying it from coordinate probes.",
+      "description": "After a bounded backend execution, the public result verifier independently classifies a separately crafted exact feasible COBYLA candidate with a feasible descent direction as indeterminate.",
       "program_phase": "P3",
       "layer": "failure-semantics",
       "workload_tier": "instant-classroom",
@@ -665,9 +705,9 @@
       "checks": [
         {"id": "nlopt-nonminimum-independent-descent", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/independent_feasible_descent", "expected": {"literal": 0.00019}},
         {"id": "nlopt-nonminimum-witness-feasible", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_witness_violation", "expected": {"literal": 1e-12}},
-        {"id": "nlopt-nonminimum-public-rejection", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": false}},
-        {"id": "nlopt-nonminimum-validation-rejection", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": false}},
-        {"id": "nlopt-nonminimum-indeterminate", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_kind", "expected": {"literal": "indeterminate"}},
+        {"id": "nlopt-nonminimum-crafted-validation-rejection", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/crafted_validation_passed", "expected": {"literal": false}},
+        {"id": "nlopt-nonminimum-crafted-indeterminate", "evidence": "validation", "kind": "deep-equal", "actual": "/values/crafted_validation_kind", "expected": {"literal": "indeterminate"}},
+        {"id": "nlopt-nonminimum-backend-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend_executed", "expected": {"literal": true}},
         {"id": "nlopt-nonminimum-method", "evidence": "validation", "kind": "deep-equal", "actual": "/values/method", "expected": {"literal": "nlopt-cobyla"}},
         {"id": "nlopt-nonminimum-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend", "expected": {"literal": "nlopt-mit-wasm"}},
         {"id": "nlopt-nonminimum-execution-provenance", "evidence": "validation", "kind": "deep-equal", "actual": "/values/implementation_kind", "expected": {"literal": "external_library_wasm"}},

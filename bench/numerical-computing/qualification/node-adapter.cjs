@@ -410,7 +410,7 @@ answer = minimize(
     maxiter=2000,
     max_evaluations=2000,
 )
-first_backend = runtime._numerical_backend_state["nlopt"]
+first_backend = runtime._nlopt_backend_state["backend"]
 repeat = minimize(
     lambda point: (point[0]-2.0)**2 + (point[1]+1.0)**2,
     [5.0, 5.0],
@@ -418,10 +418,11 @@ repeat = minimize(
     maxiter=2000,
     max_evaluations=2000,
 )
-second_backend = runtime._numerical_backend_state["nlopt"]
 automatic = minimize(lambda point: (point[0]-2.0)**2, [0.0])
 provenance = answer.to_dict()["provenance"]
 automatic_provenance = automatic.to_dict()["provenance"]
+cached_backend = runtime._nlopt_backend_state["backend"]
+general_backend = runtime._numerical_backend_state["backend"]
 output_record = {
     "value": answer.value,
     "objective": answer.domain_payload["objective"],
@@ -434,8 +435,8 @@ output_record = {
     "backend_identity": answer.domain_payload["backend_identity"],
     "implementation_kind": provenance["implementation_kind"],
     "source_transparent": provenance["source_transparent"],
-    "cache_reused": first_backend is second_backend,
-    "cache_state_isolated": first_backend is not runtime._numerical_backend_state["backend"],
+    "cache_reused": runtime.strict_equal(first_backend, cached_backend),
+    "cache_state_isolated": not runtime.strict_equal(first_backend, general_backend),
     "repeat_success": repeat.success,
     "automatic_method": automatic.method,
     "automatic_backend": automatic.backend,
@@ -480,6 +481,28 @@ output_record = {
     "backend_status": answer.domain_payload.get("backend_status"),
     "evaluations": answer.evaluations,
 }`,
+    "p3-nlopt-nelder-mead-bound-offset-invariance": String.raw`
+from sagejs.numerics.optimization import minimize
+records = []
+for offset in input_record["offsets"]:
+    answer = minimize(
+        lambda point: offset+point[0],
+        [input_record["initial"]],
+        bounds=[[input_record["lower"], input_record["upper"]]],
+        method="nlopt-nelder-mead",
+        initial_step=input_record["initial_step"],
+        xtol=input_record["xtol"],
+        max_evaluations=input_record["max_evaluations"],
+    )
+    records.append({
+        "offset": offset,
+        "value": answer.value[0],
+        "success": answer.success,
+        "status": answer.status,
+        "validation_passed": answer.validation.passed,
+        "validation_kind": answer.validation.truth_level,
+    })
+output_record = {"records": records}`,
     "p3-nlopt-nelder-mead-saddle-rejected": String.raw`
 from sagejs.numerics.optimization import minimize
 
@@ -538,10 +561,10 @@ class EntryWitness:
         self.entered = True
         raise RuntimeError("out-of-envelope call entered NLopt backend")
 
-backend_state = runtime._numerical_backend_state
-original_backend = backend_state["nlopt"]
+backend_state = runtime._nlopt_backend_state
+original_backend = backend_state["backend"]
 witness = EntryWitness()
-backend_state["nlopt"] = witness
+backend_state["backend"] = witness
 try:
     answer = minimize(
         lambda point: sum(value*value for value in point),
@@ -570,7 +593,7 @@ except Exception as error:
     }
 finally:
     output_record["backend_entered"] = witness.entered
-    backend_state["nlopt"] = original_backend`,
+    backend_state["backend"] = original_backend`,
     "p3-nlopt-cobyla-circle": String.raw`
 from sagejs.numerics.optimization import minimize
 answer = minimize(
@@ -653,20 +676,17 @@ def rotated_saddle(point):
 
 answer = minimize(
     lambda point: input_record["offset"] + input_record["scale"]*rotated_saddle(point),
-    input_record["candidate"],
+    input_record["initial"],
     constraints=[{"type": "ineq", "fun": lambda _point: 1.0}],
     method="nlopt-cobyla",
-    maxiter=2,
 )
-answer._value = input_record["candidate"]
-verification = answer.verify()
 record = answer.to_dict()
 output_record = {
     "value": answer.value,
     "success": answer.success,
     "status": answer.status,
-    "validation_passed": verification.passed,
-    "validation_kind": verification.truth_level,
+    "validation_passed": answer.validation.passed,
+    "validation_kind": answer.validation.truth_level,
     "method": answer.method,
     "backend": answer.backend,
     "implementation_kind": record["provenance"]["implementation_kind"],
@@ -675,30 +695,55 @@ output_record = {
     "p3-nlopt-cobyla-narrow-slack-rejected": String.raw`
 from sagejs.numerics.optimization import minimize
 
-answer = minimize(
-    lambda point: 1.0+point[0],
-    [input_record["candidate"]],
-    constraints=[{
-        "type": "ineq",
-        "fun": lambda point: input_record["slack"]+point[0],
-    }],
-    method="nlopt-cobyla",
-    maxiter=2,
-)
-answer._value = [input_record["candidate"]]
-verification = answer.verify()
-record = answer.to_dict()
-output_record = {
-    "value": answer.value,
-    "success": answer.success,
-    "status": answer.status,
-    "validation_passed": verification.passed,
-    "validation_kind": verification.truth_level,
-    "method": answer.method,
-    "backend": answer.backend,
-    "implementation_kind": record["provenance"]["implementation_kind"],
-    "source_transparent": record["provenance"]["source_transparent"],
-}`,
+records = []
+for slack in input_record["slacks"]:
+    answer = minimize(
+        lambda point: point[0],
+        [input_record["initial"]],
+        constraints=[{
+            "type": "ineq",
+            "fun": lambda point: slack+point[0],
+        }],
+        method="nlopt-cobyla",
+    )
+    record = answer.to_dict()
+    records.append({
+        "slack": slack,
+        "value": answer.value,
+        "success": answer.success,
+        "status": answer.status,
+        "validation_passed": answer.validation.passed,
+        "validation_kind": answer.validation.truth_level,
+        "method": answer.method,
+        "backend": answer.backend,
+        "implementation_kind": record["provenance"]["implementation_kind"],
+        "source_transparent": record["provenance"]["source_transparent"],
+    })
+output_record = {"records": records}`,
+    "p3-nlopt-cobyla-mixed-scale-tangent-rejected": String.raw`
+from sagejs.numerics.optimization import minimize
+
+def objective(point):
+    z = point[0]*point[0]
+    return z*(z-1.0)/(z+1.0)
+
+records = []
+for fixed in input_record["fixed_coordinates"]:
+    answer = minimize(
+        objective,
+        [0.0, fixed],
+        constraints=[{"type": "eq", "fun": lambda point: point[1]-fixed}],
+        method="nlopt-cobyla",
+        maxiter=2,
+    )
+    answer._value = [0.0, fixed]
+    verification = answer.verify()
+    records.append({
+        "fixed": fixed,
+        "validation_passed": verification.passed,
+        "validation_kind": verification.truth_level,
+    })
+output_record = {"records": records}`,
     "p3-nlopt-cobyla-dimension-34": String.raw`
 import sagejs.runtime as runtime
 from sagejs.numerics.optimization import minimize
@@ -711,10 +756,10 @@ class EntryWitness:
         raise RuntimeError("out-of-envelope call entered NLopt backend")
 
 dimension = input_record["dimension"]
-backend_state = runtime._numerical_backend_state
-original_backend = backend_state["nlopt"]
+backend_state = runtime._nlopt_backend_state
+original_backend = backend_state["backend"]
 witness = EntryWitness()
-backend_state["nlopt"] = witness
+backend_state["backend"] = witness
 try:
     answer = minimize(
         lambda point: sum(value*value for value in point),
@@ -737,7 +782,7 @@ except Exception as error:
     }
 finally:
     output_record["backend_entered"] = witness.entered
-    backend_state["nlopt"] = original_backend`,
+    backend_state["backend"] = original_backend`,
     "p3-nlopt-cobyla-constraint-65": String.raw`
 import sagejs.runtime as runtime
 from sagejs.numerics.optimization import minimize
@@ -752,10 +797,10 @@ class EntryWitness:
 constraints = []
 for _index in range(input_record["constraints"]):
     constraints.append({"type": "ineq", "fun": lambda _point: 1.0})
-backend_state = runtime._numerical_backend_state
-original_backend = backend_state["nlopt"]
+backend_state = runtime._nlopt_backend_state
+original_backend = backend_state["backend"]
 witness = EntryWitness()
-backend_state["nlopt"] = witness
+backend_state["backend"] = witness
 try:
     answer = minimize(
         lambda point: point[0]*point[0],
@@ -778,7 +823,7 @@ except Exception as error:
     }
 finally:
     output_record["backend_entered"] = witness.entered
-    backend_state["nlopt"] = original_backend`,
+    backend_state["backend"] = original_backend`,
     "p3-nlopt-cobyla-nonminimum-rejected": String.raw`
 from sagejs.numerics.optimization import minimize
 
@@ -804,10 +849,10 @@ verification = answer.verify()
 record = answer.to_dict()
 output_record = {
     "value": answer.value,
-    "success": answer.success,
-    "status": answer.status,
-    "validation_passed": verification.passed,
-    "validation_kind": verification.truth_level,
+    "solver_status": answer.status,
+    "crafted_validation_passed": verification.passed,
+    "crafted_validation_kind": verification.truth_level,
+    "backend_executed": record["provenance"]["implementation_kind"] == "external_library_wasm",
     "method": answer.method,
     "backend": answer.backend,
     "implementation_kind": record["provenance"]["implementation_kind"],
@@ -868,12 +913,12 @@ class UnavailableNloptBackend:
     def solve(self, options):
         raise RuntimeError(self.kind + " private nlopt-resource detail")
 
-backend_state = runtime._numerical_backend_state
-original_backend = backend_state["nlopt"]
+backend_state = runtime._nlopt_backend_state
+original_backend = backend_state["backend"]
 records = []
 try:
     for kind in input_record["resource_failures"]:
-        backend_state["nlopt"] = UnavailableNloptBackend(kind)
+        backend_state["backend"] = UnavailableNloptBackend(kind)
         automatic = minimize(lambda point: (point[0]-2.0)**2, [20.0])
         explicit = []
         for method in ("nlopt-nelder-mead", "nlopt-cobyla"):
@@ -896,7 +941,7 @@ try:
             "explicit": explicit,
         })
 finally:
-    backend_state["nlopt"] = original_backend
+    backend_state["backend"] = original_backend
 output_record = {"records": records}`,
     "p4-ode-exponential": String.raw`
 from sagejs.numerics.ode import solve_ivp
@@ -2142,6 +2187,23 @@ async function normalizeEvaluated(sample, evaluated) {
       }, kernelMs, { evaluations: raw.evaluations });
       break;
     }
+    case "p3-nlopt-nelder-mead-bound-offset-invariance": {
+      const classifications = raw.records.map((item) => [
+        item.status, item.success, item.validation_passed, item.validation_kind,
+      ]);
+      const first = JSON.stringify(classifications[0]);
+      observation = success({
+        offsets: raw.records.map((item) => item.offset),
+        unsafe_successes: raw.records.filter((item) =>
+          Math.abs(item.value - sample.input.lower) > 1e-15 &&
+          (item.success || item.validation_passed)).length,
+        classification_invariant: classifications.every((item) => JSON.stringify(item) === first),
+        bounds_satisfied: raw.records.every((item) =>
+          item.value >= sample.input.lower && item.value <= sample.input.upper),
+        values: raw.records.map((item) => item.value),
+      }, kernelMs, { transformations: raw.records.length });
+      break;
+    }
     case "p3-nlopt-nelder-mead-saddle-rejected": {
       const [x, y] = raw.value;
       const diagonalStep = 0.01;
@@ -2267,10 +2329,14 @@ async function normalizeEvaluated(sample, evaluated) {
       };
       const objective = (left, right) => sample.input.offset +
         sample.input.scale * shifted(left, right);
-      const witnessX = x + sample.input.witness_step;
-      const witnessY = y + sample.input.witness_step;
       const candidateObjective = objective(x, y);
-      const witnessObjective = objective(witnessX, witnessY);
+      const normalizedStep = sample.input.witness_step / Math.sqrt(2);
+      const witnesses = [1, -1].map((sign) => [
+        x + sign * normalizedStep,
+        y + sign * normalizedStep,
+      ]);
+      const witnessObjective = Math.min(...witnesses.map(([left, right]) =>
+        objective(left, right)));
       observation = success({
         public_success: raw.success,
         public_status: raw.status,
@@ -2288,21 +2354,41 @@ async function normalizeEvaluated(sample, evaluated) {
       break;
     }
     case "p3-nlopt-cobyla-narrow-slack-rejected": {
-      const point = Array.isArray(raw.value) ? raw.value : [];
-      const value = point.length === 1 && Number.isFinite(point[0]) ? point[0] : null;
-      const witness = sample.input.witness;
+      const records = raw.records.map((item) => {
+        const value = Array.isArray(item.value) && Number.isFinite(item.value[0]) ?
+          item.value[0] : null;
+        const witness = -item.slack / 2;
+        return {
+          ...item,
+          independent_descent: value === null ? -Number.MAX_VALUE : value - witness,
+          independent_violation: Math.max(0, -(item.slack + witness)),
+        };
+      });
       observation = success({
-        public_success: raw.success,
-        public_status: raw.status,
-        validation_passed: raw.validation_passed,
-        validation_kind: raw.validation_kind,
-        method: raw.method,
-        backend: raw.backend,
-        implementation_kind: raw.implementation_kind,
-        source_transparent: raw.source_transparent,
-        independent_feasible_descent: value === null ? -Number.MAX_VALUE : value - witness,
-        independent_witness_violation: Math.max(0, -(sample.input.slack + witness)),
-      }, kernelMs);
+        slacks: records.map((item) => item.slack),
+        public_successes: records.filter((item) => item.success).length,
+        statuses: records.map((item) => item.status),
+        validation_passes: records.filter((item) => item.validation_passed).length,
+        validation_kinds: records.map((item) => item.validation_kind),
+        minimum_independent_feasible_descent: Math.min(...records.map((item) =>
+          item.independent_descent)),
+        independent_witness_violation: Math.max(...records.map((item) =>
+          item.independent_violation)),
+      }, kernelMs, { transformations: records.length });
+      break;
+    }
+    case "p3-nlopt-cobyla-mixed-scale-tangent-rejected": {
+      const witnessX = sample.input.witness_x;
+      const z = witnessX * witnessX;
+      const witnessObjective = z * (z - 1) / (z + 1);
+      observation = success({
+        fixed_coordinates: raw.records.map((item) => item.fixed),
+        minimum_independent_feasible_descent: -witnessObjective,
+        maximum_equality_residual: Math.max(...raw.records.map((item) =>
+          Math.abs(item.fixed - item.fixed))),
+        validation_passes: raw.records.filter((item) => item.validation_passed).length,
+        validation_kinds: raw.records.map((item) => item.validation_kind),
+      }, kernelMs, { transformations: raw.records.length });
       break;
     }
     case "p3-nlopt-cobyla-dimension-34":
@@ -2342,10 +2428,10 @@ async function normalizeEvaluated(sample, evaluated) {
         0.9 * witness[1] - witness[0],
       ) : Number.MAX_VALUE;
       observation = success({
-        public_success: raw.success,
-        public_status: raw.status,
-        validation_passed: raw.validation_passed,
-        validation_kind: raw.validation_kind,
+        solver_status: raw.solver_status,
+        crafted_validation_passed: raw.crafted_validation_passed,
+        crafted_validation_kind: raw.crafted_validation_kind,
+        backend_executed: raw.backend_executed,
         method: raw.method,
         backend: raw.backend,
         implementation_kind: raw.implementation_kind,

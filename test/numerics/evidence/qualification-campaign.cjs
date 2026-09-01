@@ -18,6 +18,11 @@ const {
   renderMatrix,
 } = require("../../../scripts/numerical-computing/qualification/render-matrix.cjs");
 const { ADAPTER_PROTOCOL } = require("../../../scripts/numerical-computing/contracts.cjs");
+const {
+  bindCapabilityDraft,
+  collectReceipt,
+} = require("../../../scripts/numerical-computing/receipt.cjs");
+const packageRuntime = require("../../../scripts/package-qualification/runtime.cjs");
 
 const root = path.resolve(__dirname, "..", "..", "..");
 const campaign = path.join(root, "bench", "numerical-computing", "qualification");
@@ -129,10 +134,12 @@ test("runtime adapters are executable and cminpack evidence uses portable Sage.j
   }
   for (const id of [
     "p3-nlopt-nelder-mead-active-bound",
+    "p3-nlopt-nelder-mead-bound-offset-invariance",
     "p3-nlopt-nelder-mead-dimension-33",
     "p3-nlopt-cobyla-nonlinear-equality",
     "p3-nlopt-cobyla-offset-saddle-rejected",
     "p3-nlopt-cobyla-narrow-slack-rejected",
+    "p3-nlopt-cobyla-mixed-scale-tangent-rejected",
     "p3-nlopt-cobyla-dimension-34",
     "p3-nlopt-cobyla-constraint-65",
   ]) {
@@ -197,6 +204,74 @@ const npmPlatformArchive = process.env.SAGEJS_QUALIFICATION_NPM_PLATFORM_TGZ;
 const npmArtifactsPresent = Boolean(npmRootArchive && npmPlatformArchive &&
   fs.existsSync(npmRootArchive) && fs.existsSync(npmPlatformArchive));
 
+function linkQualificationArtifact(source, destination) {
+  try {
+    fs.linkSync(source, destination);
+  } catch (error) {
+    if (!["EXDEV", "EPERM", "EACCES"].includes(error.code)) throw error;
+    fs.copyFileSync(source, destination);
+  }
+}
+
+async function collectPackageMemoryReceipt({ kind, artifacts, version }) {
+  const directory = fs.mkdtempSync(path.join(root, "build", `numerical-${kind}-memory-`));
+  const relativeDirectory = path.relative(root, directory);
+  try {
+    const artifactSpecifications = [];
+    for (const [name, source] of artifacts) {
+      const destination = path.join(directory, path.basename(source));
+      linkQualificationArtifact(source, destination);
+      artifactSpecifications.push(`${name}=${path.relative(root, destination)}`);
+    }
+    const memoryCase = corpus.cases.find((item) => item.id === "p8-memory-pressure-statistics");
+    const memoryCorpus = {
+      ...corpus,
+      id: `sagejs-numerical-${kind}-memory-regression-v1`,
+      version: 1,
+      description: `Focused ${kind} process-tree memory regression over a real Sage.js artifact.`,
+      program_phases: ["P8"],
+      cases: [memoryCase],
+    };
+    const corpusPath = `${relativeDirectory}/memory.corpus.json`;
+    fs.writeFileSync(path.join(root, corpusPath), `${JSON.stringify(memoryCorpus, null, 2)}\n`);
+    const needed = new Set(memoryCase.required_capabilities);
+    const memorySpec = {
+      ...spec,
+      capabilities: spec.capabilities
+        .filter((item) => needed.has(item.id))
+        .map((item) => ({ ...item, case_ids: [memoryCase.id] })),
+    };
+    const subject = {
+      kind,
+      name: kind === "npm" ? "@sagemath/sagejs" : "sagejs",
+      version,
+      engine: null,
+    };
+    const draft = capabilityDraft(memorySpec, memoryCorpus, subject);
+    const draftPath = `${relativeDirectory}/capability-draft.json`;
+    fs.writeFileSync(path.join(root, draftPath), `${JSON.stringify(draft, null, 2)}\n`);
+    const adapterPath = "bench/numerical-computing/qualification/package-adapter.cjs";
+    const manifest = bindCapabilityDraft({
+      root,
+      corpusPath,
+      adapterPath,
+      artifactSpecifications,
+      draftPath,
+    });
+    const capabilityPath = `${relativeDirectory}/capabilities.json`;
+    fs.writeFileSync(path.join(root, capabilityPath), `${JSON.stringify(manifest, null, 2)}\n`);
+    return await collectReceipt({
+      root,
+      corpusPath,
+      adapterPath,
+      capabilityPath,
+      artifactSpecifications,
+    });
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+
 test("fresh npm adapter executes installed source and lazy cminpack bytes", {
   skip: npmArtifactsPresent ? false :
     "set SAGEJS_QUALIFICATION_NPM_ROOT_TGZ and SAGEJS_QUALIFICATION_NPM_PLATFORM_TGZ",
@@ -229,6 +304,58 @@ test("fresh npm adapter executes installed source and lazy cminpack bytes", {
   } finally {
     await adapter.close();
   }
+});
+
+test("fresh npm receipt measures the live installed Sage.js process tree", {
+  skip: npmArtifactsPresent ? false :
+    "set SAGEJS_QUALIFICATION_NPM_ROOT_TGZ and SAGEJS_QUALIFICATION_NPM_PLATFORM_TGZ",
+  timeout: 240_000,
+}, async () => {
+  const collectorBaseline = process.memoryUsage().rss;
+  const version = packageRuntime.archiveJson(npmRootArchive, "package.json").version;
+  const receipt = await collectPackageMemoryReceipt({
+    kind: "npm",
+    version,
+    artifacts: [
+      ["npm-root-tarball", npmRootArchive],
+      ["npm-platform-tarball", npmPlatformArchive],
+    ],
+  });
+  assert.equal(receipt.status, "passed");
+  const memory = receipt.cases[0].metrics.peak_memory;
+  assert.equal(memory.measurement_scope, "process_tree");
+  assert.equal(memory.authenticated_by, "qualification-collector");
+  assert(
+    memory.bytes > collectorBaseline + 32 * 1024 * 1024,
+    `expected installed Sage.js peak ${memory.bytes} to exceed collector baseline ${collectorBaseline}`,
+  );
+});
+
+const seaExecutable = process.env.SAGEJS_QUALIFICATION_SEA_EXECUTABLE;
+const seaArtifactPresent = Boolean(seaExecutable && fs.existsSync(seaExecutable));
+
+test("relocated SEA receipt measures the live Sage.js process tree", {
+  skip: seaArtifactPresent ? false : "set SAGEJS_QUALIFICATION_SEA_EXECUTABLE",
+  timeout: 180_000,
+}, async () => {
+  const collectorBaseline = process.memoryUsage().rss;
+  const result = packageRuntime.runProcess(seaExecutable, ["--version"], { timeout: 30_000 });
+  assert.equal(result.status, 0, result.stderr);
+  const version = `${result.stdout}\n${result.stderr}`.match(/(?:sagejs\s+|v)(\d+\.\d+\.\d+)/i)?.[1];
+  assert(version, "SEA version probe returned no semantic version");
+  const receipt = await collectPackageMemoryReceipt({
+    kind: "sea",
+    version,
+    artifacts: [["sea-executable", seaExecutable]],
+  });
+  assert.equal(receipt.status, "passed");
+  const memory = receipt.cases[0].metrics.peak_memory;
+  assert.equal(memory.measurement_scope, "process_tree");
+  assert.equal(memory.authenticated_by, "qualification-collector");
+  assert(
+    memory.bytes > collectorBaseline + 32 * 1024 * 1024,
+    `expected relocated SEA peak ${memory.bytes} to exceed collector baseline ${collectorBaseline}`,
+  );
 });
 
 const dist = path.join(root, "dist");
