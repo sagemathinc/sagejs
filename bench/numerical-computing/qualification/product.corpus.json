@@ -12,7 +12,8 @@
     "packages/flint-wasm/numerical/scripts/build.cjs",
     "packages/flint-wasm/numerical/src",
     "packages/flint-wasm/numerical/sources",
-    "packages/flint-wasm/numerical/release"
+    "packages/flint-wasm/numerical/release",
+    "scripts/package-qualification"
   ],
   "cases": [
     {

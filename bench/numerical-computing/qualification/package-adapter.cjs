@@ -3,6 +3,7 @@
 
 const path = require("node:path");
 const { performance } = require("node:perf_hooks");
+const { Worker } = require("node:worker_threads");
 
 const { ADAPTER_PROTOCOL } = require("../../../scripts/numerical-computing/contracts.cjs");
 const packageRuntime = require("../../../scripts/package-qualification/runtime.cjs");
@@ -13,6 +14,9 @@ let runtimeContext = null;
 let runPython = null;
 let runLanguage = null;
 let runNode = null;
+let runPythonName = null;
+let runLanguageName = null;
+let runNodeName = null;
 let initializedCapabilities = [];
 let initializedSubject = null;
 
@@ -38,6 +42,74 @@ const MATLAB_SHAPES = Object.freeze({
   convolution_row: "x=conv([1 2],[3 4]); size(x)",
   arrayfun_matrix: "x=arrayfun(@(x) x^2,[1 2;3 4]); size(x)",
 });
+
+const PACKAGE_RUNTIME_PATH = require.resolve("../../../scripts/package-qualification/runtime.cjs");
+const PACKAGE_WORKER_SOURCE = String.raw`
+"use strict";
+const { parentPort, workerData } = require("node:worker_threads");
+try {
+  const runtime = require(workerData.runtimePath);
+  const result = runtime[workerData.runner](workerData.context, ...workerData.args);
+  parentPort.postMessage({ ok: true, result });
+} catch (error) {
+  parentPort.postMessage({
+    ok: false,
+    error: {
+      name: error?.name ?? "Error",
+      message: String(error?.message ?? error),
+      stack: error?.stack ?? null,
+    },
+  });
+}
+`;
+
+function workerRuntimeContext(context) {
+  const fields = [
+    "kind", "target", "targetConfig", "directory", "installedRoot",
+    "platformRoot", "version", "ownedDirectory", "executable",
+  ];
+  return Object.fromEntries(fields
+    .filter((name) => context[name] !== undefined)
+    .map((name) => [name, context[name]]));
+}
+
+function runPackageAsync(runner, context, ...args) {
+  if (runner === null) throw new Error("package qualification runner is unavailable");
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(PACKAGE_WORKER_SOURCE, {
+      eval: true,
+      workerData: {
+        runtimePath: PACKAGE_RUNTIME_PATH,
+        runner,
+        context: workerRuntimeContext(context),
+        args,
+      },
+    });
+    let settled = false;
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      callback(value);
+    };
+    worker.once("message", (message) => {
+      if (message?.ok === true) {
+        finish(resolve, message.result);
+      } else {
+        const failure = new Error(message?.error?.message ?? "package qualification worker failed");
+        failure.name = message?.error?.name ?? "Error";
+        if (message?.error?.stack) failure.stack = message.error.stack;
+        finish(reject, failure);
+      }
+    });
+    worker.once("error", (error) => finish(reject, error));
+    worker.once("exit", (code) => {
+      if (code !== 0) finish(reject,
+        new Error(`package qualification worker exited with status ${code}`));
+      else if (!settled) finish(reject,
+        new Error("package qualification worker exited without a result"));
+    });
+  });
+}
 
 function artifact(context, name) {
   const found = context.artifacts.find((item) => item.name === name);
@@ -99,33 +171,39 @@ function parseShape(result, name) {
   return `(${shape[1]}, ${shape[2]})`;
 }
 
-function runParserGuards() {
+async function runParserGuards() {
   if (runNode !== null) return runInstalledParserGuards();
   const started = performance.now();
-  const records = PARSER_GUARDS.map(([language, source, expectedName, expectedMessage]) => {
-    const result = runLanguage(runtimeContext, source, language, { timeout: 180_000 });
+  const records = [];
+  for (const [language, source, expectedName, expectedMessage] of PARSER_GUARDS) {
+    const result = await runPackageAsync(
+      runLanguageName, runtimeContext, source, language, { timeout: 180_000 },
+    );
     const output = `${result.stdout}\n${result.stderr}`;
-    return {
+    records.push({
       source,
       rejected: result.status !== 0,
       name_matches: output.includes(expectedName),
       message_matches: output.includes(expectedMessage),
       positioned: /(?:line|row)\s+\d+|:\d+:\d+/i.test(output),
-    };
-  });
+    });
+  }
   const safePrograms = [
     ["matlab", "integral(@(x) x^2,0,1)"],
     ["wolfram", "NIntegrate[x^2,{x,0,1}]"],
   ];
-  const safe = safePrograms.map(([language, source]) => {
-    const result = runLanguage(runtimeContext, source, language, { timeout: 180_000 });
+  const safe = [];
+  for (const [language, source] of safePrograms) {
+    const result = await runPackageAsync(
+      runLanguageName, runtimeContext, source, language, { timeout: 180_000 },
+    );
     checkProcess(result, `${language} safe parser witness`);
-    return result.stdout;
-  });
+    safe.push(result.stdout);
+  }
   return { raw: { records, safe }, kernelMs: performance.now() - started };
 }
 
-function runInstalledParserGuards() {
+async function runInstalledParserGuards() {
   const started = performance.now();
   const program = String.raw`
 "use strict";
@@ -161,18 +239,20 @@ const cases = ${JSON.stringify(PARSER_GUARDS)};
   process.stdout.write(marker + JSON.stringify({ records, safe }) + "\n");
 })().catch((error) => { console.error(error?.stack ?? error); process.exitCode = 1; });
 `;
-  const result = checkProcess(runNode(runtimeContext, program, { timeout: 180_000 }),
+  const result = checkProcess(await runPackageAsync(
+    runNodeName, runtimeContext, program, { timeout: 180_000 },
+  ),
     "installed parser guard witness");
   return { raw: internals.parseEvaluation(result), kernelMs: performance.now() - started };
 }
 
-function runMatlabShapes() {
+async function runMatlabShapes() {
   const started = performance.now();
   const shapes = {};
   for (const [name, source] of Object.entries(MATLAB_SHAPES)) {
-    shapes[name] = parseShape(runLanguage(runtimeContext, source, "matlab", {
-      timeout: 180_000,
-    }), name);
+    shapes[name] = parseShape(await runPackageAsync(
+      runLanguageName, runtimeContext, source, "matlab", { timeout: 180_000 },
+    ), name);
   }
   return { raw: { shapes }, kernelMs: performance.now() - started };
 }
@@ -181,9 +261,12 @@ async function evaluate(sample) {
   if (sample.id === "p6-multilingual-parser-fail-closed") return runParserGuards();
   if (sample.id === "p6-matlab-vector-shapes") return runMatlabShapes();
   const started = performance.now();
-  const result = runPython(runtimeContext, internals.sourceFor(sample.id, sample.input), {
-    timeout: 180_000,
-  });
+  const result = await runPackageAsync(
+    runPythonName,
+    runtimeContext,
+    internals.sourceFor(sample.id, sample.input),
+    { timeout: 180_000 },
+  );
   checkProcess(result, `package qualification case ${sample.id}`);
   return { raw: internals.parseEvaluation(result), kernelMs: performance.now() - started };
 }
@@ -194,6 +277,9 @@ async function close() {
   runPython = null;
   runLanguage = null;
   runNode = null;
+  runPythonName = null;
+  runLanguageName = null;
+  runNodeName = null;
   initializedCapabilities = [];
   initializedSubject = null;
   internals.closeHostOracles();
@@ -214,6 +300,9 @@ module.exports = {
       runPython = packageRuntime.runInstalledSourcePython;
       runLanguage = packageRuntime.runInstalledSourceLanguage;
       runNode = packageRuntime.runInstalledNode;
+      runPythonName = "runInstalledSourcePython";
+      runLanguageName = "runInstalledSourceLanguage";
+      runNodeName = "runInstalledNode";
       initializedSubject = {
         kind: "npm", name: "@sagemath/sagejs", version: runtimeContext.version, engine: null,
       };
@@ -225,6 +314,9 @@ module.exports = {
       runPython = packageRuntime.runRelocatedSeaPython;
       runLanguage = packageRuntime.runRelocatedSeaLanguage;
       runNode = null;
+      runPythonName = "runRelocatedSeaPython";
+      runLanguageName = "runRelocatedSeaLanguage";
+      runNodeName = null;
       const version = checkProcess(
         packageRuntime.runRelocatedSeaLanguage(runtimeContext, "version()", "sage"),
         "SEA version probe",
