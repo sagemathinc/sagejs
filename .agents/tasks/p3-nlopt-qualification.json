@@ -106,18 +106,50 @@
       "commit": "ad2bbbd055bb43d47038edad1495a019b95da71c",
       "workspace_fingerprint": "3b878f933be1f66f09f69a571f8e79e327860480d657f8ac2c6af681fb8d2c21",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.54,
+      "started_at": "2026-09-01T04:45:55.653Z",
+      "commit": "2f69103981d757ee603c908efc852354b2bbb6b6",
+      "workspace_fingerprint": "14f7d750d0fd75697edc6667256297c62a13232abe412a00f2742bc4da07ffc3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.983,
+      "started_at": "2026-09-01T04:45:58.848Z",
+      "commit": "2f69103981d757ee603c908efc852354b2bbb6b6",
+      "workspace_fingerprint": "14f7d750d0fd75697edc6667256297c62a13232abe412a00f2742bc4da07ffc3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.344,
+      "started_at": "2026-09-01T04:46:00.490Z",
+      "commit": "2f69103981d757ee603c908efc852354b2bbb6b6",
+      "workspace_fingerprint": "14f7d750d0fd75697edc6667256297c62a13232abe412a00f2742bc4da07ffc3",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implemented deterministic fail-closed Nelder-Mead-only case, evidence, portable, durable-verification, and atomic-promotion tooling. The exact five-case runner passes against artifact 8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb; focused adversarial, ABI, backend, Chromium lifecycle, strict-Python, and merge checks pass. The production manifest remains pending and no final platform receipts were minted.",
+    "summary": "Implemented deterministic fail-closed Nelder-Mead-only case, evidence, portable, durable-verification, and atomic-promotion tooling, then closed the independent review's receipt-forgery findings. Every case and supplemental receipt is now campaign-bound and signed by a candidate-reviewed persistent-host key; exact structured program evidence, strict duplicate-free JSON, exact summary bytes, browser identity/results, full lifecycle cleanup, and the 4000-evaluation bound are enforced. The exact five-case runner passes against artifact 8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb. The production manifest remains in the one documented pending state and no final platform receipts were minted.",
     "risks": [
       "Final sanitizer and destructive-Wasm collection deliberately requires the reviewed P8 collector scripts, which are not present at this lane's frozen base commit.",
+      "The exact Chromium identity is intentionally candidate-bound; the persistent Linux evidence host must have that reviewed browser build available before final collection.",
       "Repository-wide pnpm test:numerics reaches an unrelated stale checked-gallery failure, and architecture:check reaches an unrelated stale optimizer-opportunity manifest; both fail-fast receipts are preserved here."
     ],
     "next_steps": [
+      "Re-review the authenticated evidence boundary and exact manifest/summary state machine.",
       "Integrate the reviewed P8 qualification collectors before attempting supplemental evidence collection.",
       "Regenerate or repair the independently stale gallery and optimizer artifacts on the integration branch, then rerun the required repository-wide checks.",
-      "Freeze the final clean candidate, run qualification/run.mjs on all four persistent platforms, collect all seven Linux x64 evidence kinds, and promote only the exact canonical receipts."
+      "Freeze the final clean candidate, generate one fresh campaign challenge, run qualification/run.mjs with each host-local key on all four persistent platforms, collect all seven signed Linux x64 evidence kinds, and promote only the exact canonical receipts."
     ]
   }
 }
