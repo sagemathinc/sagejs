@@ -158,13 +158,12 @@ def equals(left: Any, right: Any) -> Any:
     elif runtime.strict_equal(left_type, "function") and runtime.strict_equal(
         right_type, "function"
     ):
-        # Bound-function metadata is stamped as direct own properties.
-        left_self = runtime.native_get(left, "__self__")
-        right_self = runtime.native_get(right, "__self__")
+        own = runtime.native_get
+        left_self = own(left, "__self__")
+        right_self = own(right, "__self__")
         if left_self is not runtime.undefined and right_self is not runtime.undefined:
             return left_self is right_self and (
-                runtime.native_get(left, "__func__")
-                is runtime.native_get(right, "__func__")
+                own(left, "__func__") is own(right, "__func__")
             )
     elif (
         not runtime.strict_equal(left_type, "object")
