@@ -144,6 +144,14 @@ when every prime ideal above $p$ is represented; in particular, a retained
 degree-one factor of splitting type $(1,2)$ does not create the false relation
 $(p)=P_1$ when its norm-$p^2$ companion lies outside the selected factor base.
 
+Multiplier batches are adaptive. The host invokes the same closed native
+program first with no compound multiplier, then with prefixes of one, two, and
+four multipliers. A retry is permitted only when the native diagnostic proves
+that relation rank, unit rank, or the final certified unit-subgroup index is
+still incomplete. Each attempt owns a fresh exact arena and independently
+repeats every mathematical check; no partially trusted relation state crosses
+the boundary. The detached receipt records the successful prefix length.
+
 ### 4. The retained element gives an upper regulator
 
 A complex cubic has signature $(1,1)$, unit rank one, and exactly two roots of
@@ -232,11 +240,11 @@ defense in depth; it cannot promote a declined native computation.
 ## Receipt, replay, and trusted base
 
 The version-one detached receipt records the polynomial, field discriminant,
-class invariants, unit coordinates, selected generator bound, factor-base and relation
-sizes, dyadic regulator/zeta/index intervals, analytic cutoff and precision,
-the theorem name, and the GRH assumption. It is an audit record, not yet a
-standalone proof object: it does not contain all ideal relations or local Euler
-witnesses.
+class invariants, unit coordinates, selected generator bound, factor-base and
+relation sizes, successful compound-multiplier prefix, dyadic
+regulator/zeta/index intervals, analytic cutoff and precision, the theorem
+name, and the GRH assumption. It is an audit record, not yet a standalone proof
+object: it does not contain all ideal relations or local Euler witnesses.
 
 `receipt.verify()` is intentionally independent of the native program. It
 reconstructs the maximal order, checks the unit norm, and recomputes the class

@@ -3736,6 +3736,7 @@ def certified_complex_cubic_class_group_v1(
     verification_radicals: IntegerBuffer,
     verification_selectors: IntegerBuffer,
     verification_workspace: IntegerBuffer,
+    compound_multiplier_limit: uint64,
     memory_limit: uint64,
     temporary_limit: uint64,
 ) -> bool:
@@ -3758,6 +3759,7 @@ def certified_complex_cubic_class_group_v1(
         or len(verification_radicals) != 9 * _CUBIC_MAX_ORDER_WITNESSES
         or len(verification_selectors) != 3 * _CUBIC_MAX_ORDER_WITNESSES
         or len(verification_workspace) != _CUBIC_ROUND2_WORKSPACE_LENGTH
+        or compound_multiplier_limit > _CUBIC_COMPOUND_MULTIPLIERS
         or coefficients[3] != 1
         or memory_limit < 1048576
         or temporary_limit < 1048576
@@ -4407,7 +4409,7 @@ def certified_complex_cubic_class_group_v1(
         while (
             not unit_found
             and compound_multiplier_index < factor_count
-            and compound_multiplier_count < _CUBIC_COMPOUND_MULTIPLIERS
+            and compound_multiplier_count < compound_multiplier_limit
         ):
             compound_multiplier_base: uint64 = (
                 _FACTOR_OFFSET + _FACTOR_STRIDE * compound_multiplier_index
@@ -4670,7 +4672,7 @@ def certified_complex_cubic_class_group_v1(
         while (
             not unit_found
             and compound_multiplier_index < factor_count
-            and compound_multiplier_count < _CUBIC_COMPOUND_MULTIPLIERS
+            and compound_multiplier_count < compound_multiplier_limit
         ):
             compound_multiplier_base = (
                 _FACTOR_OFFSET + _FACTOR_STRIDE * compound_multiplier_index
@@ -5012,7 +5014,7 @@ def certified_complex_cubic_class_group_v1(
         while (
             not unit_found
             and compound_multiplier_index < factor_count
-            and compound_multiplier_count < _CUBIC_COMPOUND_MULTIPLIERS
+            and compound_multiplier_count < compound_multiplier_limit
         ):
             compound_multiplier_base = (
                 _FACTOR_OFFSET + _FACTOR_STRIDE * compound_multiplier_index
@@ -6506,6 +6508,7 @@ def certified_complex_cubic_class_group_v1(
         while output_index < invariant_count:
             output[3 + output_index] = workspace[_ROW_SCRATCH_OFFSET + output_index]
             output_index += 1
+        output[19] = compound_multiplier_limit
         output[20] = generator_bound
         output[21] = factor_count
         output[22] = group_count

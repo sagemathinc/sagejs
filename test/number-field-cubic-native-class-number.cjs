@@ -114,6 +114,8 @@ for index, (coefficients, order, invariants) in enumerate(cases):
     assert detached["proof_status"] == "exact-relations-conditional-grh"
     assert detached["assumptions"] == list(receipt.assumptions)
     assert detached["polynomial_coefficients"] == list(coefficients)
+    assert detached["compound_multiplier_passes"] == receipt.compound_multiplier_passes
+    assert 0 <= receipt.compound_multiplier_passes <= 4
     try:
         receipt.class_number = 999
         raise AssertionError("receipt mutation was accepted")
@@ -155,26 +157,30 @@ from sagejs.number_fields.cubic_class_number_native_runtime import certified_com
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 cases = (
-    ("3.1.23.1", (1, 0, -1, 1), 1, ()),
-    ("3.1.431.1", (-8, -1, 0, 1), 1, ()),
-    ("3.1.1083.1", (-12, -6, -1, 1), 3, (3,)),
-    ("3.1.1371.1", (6, 3, -1, 1), 4, (4,)),
-    ("3.1.1563.1", (-6, 7, -1, 1), 5, (5,)),
-    ("3.1.2856.1", (-21, 9, -1, 1), 7, (7,)),
-    ("3.1.4027.2", (8, 7, -1, 1), 6, (6,)),
-    ("3.1.5448.1", (30, -14, -1, 1), 8, (8,)),
+    ("3.1.23.1", (1, 0, -1, 1), 1, (), 0),
+    ("3.1.431.1", (-8, -1, 0, 1), 1, (), 0),
+    ("3.1.1083.1", (-12, -6, -1, 1), 3, (3,), 0),
+    ("3.1.1371.1", (6, 3, -1, 1), 4, (4,), 0),
+    ("3.1.1563.1", (-6, 7, -1, 1), 5, (5,), 0),
+    ("3.1.2856.1", (-21, 9, -1, 1), 7, (7,), 0),
+    ("3.1.4027.2", (8, 7, -1, 1), 6, (6,), 0),
+    ("3.1.5448.1", (30, -14, -1, 1), 8, (8,), 0),
     # This field needs PARI's next small_norm regime: a reduced shell in
     # compound prime ideals exposes the rank-one unit dependency.
-    ("3.1.49096.1", (-126, -6, -1, 1), 9, (9,)),
+    ("3.1.49096.1", (-126, -6, -1, 1), 9, (9,), 1),
+    # The base relation lattice finds a non-fundamental unit.  One multiplier
+    # pass shrinks its certified regulator and proves unit index one.
+    ("3.1.108115.1", (-383, -68, 0, 1), 10, (10,), 1),
     # The defining order has index 4 and a prime discriminant component above
     # one million.  The proof binder must use its deterministic word-prime
     # certificate rather than an arbitrary trial-division cutoff.
-    ("3.1.1181183.1", (-796, 92, -1, 1), 8, (2, 2, 2)),
-    # PARI needs one sub-factor-base multiplier pass after its first
-    # small_norm batch.  This also exercises a 17-ideal resident factor base.
-    ("3.1.1737311.1", (289, -42, -1, 1), 8, (2, 2, 2)),
+    ("3.1.1181183.1", (-796, 92, -1, 1), 8, (2, 2, 2), 1),
+    # PARI's narrower first small_norm batch needs one multiplier pass here;
+    # the source-transparent all-ideal adjacent batch already certifies it.
+    # This also exercises a 17-ideal resident factor base.
+    ("3.1.1737311.1", (289, -42, -1, 1), 8, (2, 2, 2), 0),
 )
-for index, (label, coefficients, expected_order, expected_invariants) in enumerate(cases):
+for index, (label, coefficients, expected_order, expected_invariants, expected_passes) in enumerate(cases):
     polynomial = R(0)
     for exponent, coefficient in enumerate(coefficients):
         polynomial += coefficient * x**exponent
@@ -183,6 +189,7 @@ for index, (label, coefficients, expected_order, expected_invariants) in enumera
     assert receipt is not None, label
     assert receipt.class_number == expected_order, label
     assert receipt.invariants == expected_invariants, label
+    assert receipt.compound_multiplier_passes == expected_passes, label
     assert receipt.matches(K), label
 print("cubic-native-lmfdb-corpus-ok")
 `);

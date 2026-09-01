@@ -31,6 +31,7 @@ _CUBIC_OUTPUT_LENGTH = 64
 _CUBIC_BUFFER_WORD_CAPACITY = 8
 _CUBIC_ARENA_MEMORY_LIMIT = 1_048_576
 _CUBIC_ARENA_TEMPORARY_LIMIT = 2_097_152
+_CUBIC_COMPOUND_MULTIPLIER_LIMITS = (0, 1, 2, 4)
 _resident_buffers: tuple[Any, ...] | None = None
 _resident_coefficients: tuple[Any, tuple[int, int, int, int], Any] | None = None
 _resident_native_module: Any | None = None
@@ -102,7 +103,9 @@ def _checked_native_values(
             return None
         equation_discriminant = _cubic_polynomial_discriminant(coefficients)
         if (
-            exact[24] != 1
+            exact[19] < 0
+            or exact[19] > 4
+            or exact[24] != 1
             or exact[28] >= -1
             or exact[29] < 1
             or exact[30] < 1
@@ -203,6 +206,10 @@ class CertifiedComplexCubicClassNumber:
     @property
     def generator_bound(self) -> int:
         return self._values[20]
+
+    @property
+    def compound_multiplier_passes(self) -> int:
+        return self._values[19]
 
     @property
     def factor_base_size(self) -> int:
@@ -336,6 +343,7 @@ class CertifiedComplexCubicClassNumber:
             "equation_order_index": self.equation_order_index,
             "order_basis_denominator": self.order_basis_denominator,
             "generator_bound": self.generator_bound,
+            "compound_multiplier_passes": self.compound_multiplier_passes,
             "factor_base_size": self.factor_base_size,
             "relation_count": self.relation_count,
             "regulator_interval": list(self.regulator_interval),
@@ -462,21 +470,33 @@ def certified_complex_cubic_class_number(
             packed_coefficients = _resident_coefficients[2]
         _resident_call_active = True
         try:
-            accepted = kernel(
-                output,
-                packed_coefficients,
-                workspace,
-                analysis_proof,
-                verification_polynomial,
-                verification_numerator,
-                verification_primes,
-                verification_radical_dimensions,
-                verification_radicals,
-                verification_selectors,
-                verification_workspace,
-                _CUBIC_ARENA_MEMORY_LIMIT,
-                _CUBIC_ARENA_TEMPORARY_LIMIT,
-            )
+            accepted = False
+            for compound_multiplier_limit in _CUBIC_COMPOUND_MULTIPLIER_LIMITS:
+                accepted = kernel(
+                    output,
+                    packed_coefficients,
+                    workspace,
+                    analysis_proof,
+                    verification_polynomial,
+                    verification_numerator,
+                    verification_primes,
+                    verification_radical_dimensions,
+                    verification_radicals,
+                    verification_selectors,
+                    verification_workspace,
+                    compound_multiplier_limit,
+                    _CUBIC_ARENA_MEMORY_LIMIT,
+                    _CUBIC_ARENA_TEMPORARY_LIMIT,
+                )
+                if accepted is True:
+                    break
+                # Only relation-rank or unit-rank exhaustion can be repaired
+                # by another PARI-style multiplier batch.  Every earlier or
+                # later failure remains a fail-closed decline rather than
+                # paying for semantically irrelevant retries.
+                failed_values = native_module.integer_buffer_values(output)
+                if int(failed_values[63]) not in (42, 43, 8):
+                    break
         finally:
             _resident_call_active = False
         if accepted is not True:
