@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "beab5189c8dd6e9253930114dfb4598138d1b46ec974d0b9b6e10538afa3ae49",
+  "source_sha256": "7ae88846a7e9faf8775d50a20703896b2bedba07d6769bba2fe5192ba7fab774",
   "counts": {
-    "total": 1046,
+    "total": 1047,
     "by_kind": {
       "declared-ffi-function": 456,
       "declared-ffi-resource": 34,
-      "napi-export": 330,
+      "napi-export": 331,
       "production-kernel": 53,
       "runtime-intrinsic": 147,
       "specialist-capability": 26
@@ -16,13 +16,13 @@
       "compiled-source": 53,
       "desktop-only": 47,
       "generated-wasm": 339,
-      "portable-fallback": 559,
+      "portable-fallback": 560,
       "shared-core": 48
     },
     "by_status": {
       "available": 582,
       "desktop-only": 47,
-      "fallback": 417
+      "fallback": 418
     }
   },
   "workflow_aliases": {
@@ -8972,6 +8972,18 @@
         "src/baselib/polynomial.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyTerms",
+      "family": "multivariate",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "canonical-sparse-polynomial-terms",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "explanation": "Exact ordered sparse multivariate terms are available in native and browser runtimes."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyToString",

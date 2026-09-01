@@ -16,7 +16,7 @@
     "classified-native-file": 236,
     "declared-ffi": 456,
     "declared-ffi-resource": 34,
-    "napi-export": 330,
+    "napi-export": 331,
     "runtime-intrinsic": 147,
     "wasm-export": 74
   },
@@ -7221,6 +7221,16 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolySub",
       "symbol": "sagejs_mpoly_sub",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyTerms",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyTerms",
+      "symbol": "sagejs_mpoly_terms",
       "disposition": "migrate-to-declared-ffi",
       "family": "multivariate"
     },

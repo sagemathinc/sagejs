@@ -16,257 +16,23 @@ _packed_prime_polynomial_module_cache = runtime.undefined
 _packed_polynomial_flint_module_cache = runtime.undefined
 _polynomial_structural_public_module_cache = runtime.undefined
 _arbitrary_prime_public_module_cache = runtime.undefined
+_polynomial_ideal_algorithms_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
 _generated_flint_resources_available_cache = runtime.undefined
 _generated_fmpz_polynomial_resources_available_cache = runtime.undefined
 _generated_fmpq_polynomial_resources_available_cache = runtime.undefined
 _POLYNOMIAL_RESOURCE_CACHE_LIMIT = 64
 _polynomial_resource_cache = []
-_STANDARD_MONOMIAL_LIMIT = 1000000
-_FGLM_DIMENSION_LIMIT = 256
 
 
-def _monomial_precedes(
-    left: Any,
-    right: Any,
-    order: str,
-) -> bool:
-    """Return whether `left` precedes `right` in ascending monomial order."""
-    if order != "lex":
-        left_degree = sum(left)
-        right_degree = sum(right)
-        if left_degree != right_degree:
-            return left_degree < right_degree
-    if order == "degrevlex":
-        index = len(left) - 1
-        while index >= 0:
-            if left[index] != right[index]:
-                return left[index] > right[index]
-            index -= 1
-        return False
-    for index in range(len(left)):
-        if left[index] != right[index]:
-            return left[index] < right[index]
-    return False
-
-
-def _sort_monomial_exponents(
-    values: list[Any],
-    order: str,
-) -> list[Any]:
-    """Sort a small standard-monomial basis without a host comparator."""
-    answer = []
-    for value in values:
-        position = 0
-        while position < len(answer) and not _monomial_precedes(
-            value, answer[position], order
-        ):
-            position += 1
-        answer.insert(position, value)
-    return answer
-
-
-def _monomial_divides(left: Any, right: Any) -> bool:
-    for index in range(len(left)):
-        if left[index] > right[index]:
-            return False
-    return True
-
-
-def _minimum_monomial_support_cover(supports: list[Any]) -> int:
-    """Return the minimum number of variables meeting every support."""
-    if len(supports) == 0:
-        return 0
-    selected = supports[0]
-    for support in supports[1:]:
-        if len(support) < len(selected):
-            selected = support
-    best = len(supports) + 1
-    for variable in selected:
-        remaining = []
-        for support in supports:
-            if variable not in support:
-                remaining.append(support)
-        candidate = 1 + _minimum_monomial_support_cover(remaining)
-        if candidate < best:
-            best = candidate
-    return best
-
-
-def _groebner_contract() -> Any:
-    return __import__(
-        "sagejs.polynomial_algorithms.groebner_contract",
-        fromlist=["GroebnerRing"],
-    )
-
-
-def _groebner_contract_ring(ring: Any) -> Any:
-    base = ring.base_ring()
-    characteristic = (
-        runtime.normalize_integer(base._modulus) if base._kind == "GF" else 0
-    )
-    return _groebner_contract().GroebnerRing(ring.ngens(), ring._order, characteristic)
-
-
-def _pack_groebner_polynomial(polynomial: Any) -> Any:
-    base = polynomial.parent().base_ring()
-    packed = []
-    for coefficient, exponents in polynomial.terms():
-        if base._kind == "QQ":
-            scalar = runtime.math_tuple(
-                [
-                    runtime.normalize_integer(coefficient._numerator),
-                    runtime.normalize_integer(coefficient._denominator),
-                ]
-            )
-        else:
-            scalar = runtime.normalize_integer(coefficient._value)
-        packed.append(runtime.math_tuple([scalar, runtime.math_tuple(exponents)]))
-    return runtime.math_tuple(packed)
-
-
-def _permute_polynomial(
-    polynomial: Any,
-    target: Any,
-    permutation: list[int],
-) -> Any:
-    """Map one polynomial to `target` using target-to-source indices."""
-    terms = []
-    for coefficient, exponents in polynomial.terms():
-        mapped = []
-        for source_index in permutation:
-            mapped.append(exponents[source_index])
-        terms.append(runtime.math_tuple([coefficient, runtime.math_tuple(mapped)]))
-    return target._from_sparse_terms(terms)
-
-
-def _inverse_permutation(permutation: list[int]) -> list[int]:
-    answer = [0] * len(permutation)
-    for target_index, source_index in enumerate(permutation):
-        answer[source_index] = target_index
-    return answer
-
-
-def _field_vector_dependence(
-    columns: list[Any],
-    target: list[Any],
-    field: Any,
-) -> Any:
-    """Express `target` in independent `columns`, or report independence."""
-    zero = field(0)
-    column_count = len(columns)
-    if column_count == 0:
-        return runtime.math_tuple(
-            [all(value == zero for value in target), runtime.math_tuple([])]
+def _polynomial_ideal_algorithms() -> Any:
+    global _polynomial_ideal_algorithms_module_cache
+    if _polynomial_ideal_algorithms_module_cache is runtime.undefined:
+        _polynomial_ideal_algorithms_module_cache = __import__(
+            "sagejs.polynomial_algorithms.ideal",
+            fromlist=["groebner_basis"],
         )
-    rows = []
-    for row_index in range(len(target)):
-        row = []
-        for column in columns:
-            row.append(field(column[row_index]))
-        row.append(field(target[row_index]))
-        rows.append(row)
-    pivot_row = 0
-    pivots = []
-    for column_index in range(column_count):
-        selected = -1
-        for row_index in range(pivot_row, len(rows)):
-            if rows[row_index][column_index] != zero:
-                selected = row_index
-                break
-        if selected == -1:
-            raise ArithmeticError("FGLM quotient vectors lost independence")
-        if selected != pivot_row:
-            rows[pivot_row], rows[selected] = rows[selected], rows[pivot_row]
-        scale = field(1) / rows[pivot_row][column_index]
-        for index in range(column_index, column_count + 1):
-            rows[pivot_row][index] *= scale
-        for row_index in range(len(rows)):
-            if row_index == pivot_row:
-                continue
-            scale = rows[row_index][column_index]
-            if scale == zero:
-                continue
-            for index in range(column_index, column_count + 1):
-                rows[row_index][index] -= scale * rows[pivot_row][index]
-        pivots.append(pivot_row)
-        pivot_row += 1
-    for row_index in range(len(rows)):
-        if all(rows[row_index][index] == zero for index in range(column_count)):
-            if rows[row_index][column_count] != zero:
-                return runtime.math_tuple([False, runtime.math_tuple([])])
-    coefficients = [zero] * column_count
-    for column_index, row_index in enumerate(pivots):
-        coefficients[column_index] = rows[row_index][column_count]
-    return runtime.math_tuple([True, runtime.math_tuple(coefficients)])
-
-
-def _evaluate_sparse_polynomial(polynomial: Any, values: list[Any]) -> Any:
-    base = polynomial.parent().base_ring()
-    result = base(0)
-    for coefficient, exponents in polynomial.terms():
-        term = coefficient
-        for index in range(len(exponents)):
-            if exponents[index]:
-                term *= values[index] ** exponents[index]
-        result += term
-    return result
-
-
-def _specialize_univariate(
-    polynomial: Any,
-    variable: int,
-    assignments: list[Any],
-) -> Any:
-    """Specialize later variables, or return `None` if earlier ones occur."""
-    base = polynomial.parent().base_ring()
-    degree = polynomial.degree(polynomial.parent().gen(variable))
-    if degree < 0:
-        return PolynomialRing(base, "_solve")(0)
-    coefficients = [base(0) for _index in range(degree + 1)]
-    for coefficient, exponents in polynomial.terms():
-        for index in range(variable):
-            if exponents[index]:
-                return None
-        scalar = coefficient
-        for index in range(variable + 1, len(exponents)):
-            if exponents[index]:
-                if assignments[index] is None:
-                    return None
-                scalar *= assignments[index] ** exponents[index]
-        coefficients[exponents[variable]] += scalar
-    return PolynomialRing(base, "_solve")(coefficients)
-
-
-def _base_field_roots(polynomial: Any, field: Any) -> list[Any]:
-    """Return roots in the prime field or rational base field."""
-    if polynomial.is_zero():
-        raise ArithmeticError("the zero polynomial does not constrain a variable")
-    if polynomial.degree() <= 0:
-        return []
-    if field._kind == "GF":
-        return polynomial.roots(False)
-    roots = []
-    for factor, _multiplicity in polynomial.factor():
-        if factor.degree() == 1:
-            coefficients = factor.coefficients()
-            root = -coefficients[0] / coefficients[1]
-            if root not in roots:
-                roots.append(root)
-    return roots
-
-
-def _descending_polynomials(polynomials: list[Any], order: str) -> list[Any]:
-    answer = []
-    for polynomial in polynomials:
-        leading = polynomial.terms()[0][1]
-        position = 0
-        while position < len(answer) and _monomial_precedes(
-            leading, answer[position].terms()[0][1], order
-        ):
-            position += 1
-        answer.insert(position, polynomial)
-    return answer
+    return _polynomial_ideal_algorithms_module_cache
 
 
 def _closed_field_horner(base: Any, coefficients: Any, value: Any) -> Any:
@@ -5286,128 +5052,12 @@ class PolynomialIdeal:
         algorithm: str = "auto",
         proof: Any = None,
     ) -> PolynomialSequence:
-        """Return a reduced Gröbner basis in the ring's global term order.
-
-        Prime fields use the portable scalar msolve F4 backend for global
-        degree-reverse-lexicographic order and primes below `2^31`. Rational
-        ideals use FLINT's bounded exact Buchberger implementation when proof
-        is required and the modular msolve backend otherwise. The explicit
-        `algorithm="buchberger"` backend is a deterministic, storage-neutral
-        exact implementation over both `QQ` and prime fields; it is intended
-        for modest problems, independent verification, and portable fallback.
-        An explicit `proof` argument overrides `proof.polynomial()`.
-        """
-        if not isinstance(algorithm, str):
-            raise TypeError("Gröbner basis algorithm must be a string")
-        if proof is not None and not isinstance(proof, bool):
-            raise TypeError("Gröbner basis proof flag must be a boolean")
-        proof_required = proof
-        if proof_required is None:
-            proof_module = __import__("sagejs._baselib.proof", fromlist=["proof"])
-            proof_required = proof_module.proof.polynomial()
-        base = self._ring.base_ring()
-        if base._kind == "GF":
-            if algorithm not in ["auto", "msolve", "buchberger"]:
-                raise ValueError("unknown prime-field Gröbner basis algorithm")
-            use_buchberger = algorithm == "buchberger" or (
-                algorithm == "auto"
-                and (
-                    self._ring._order != "degrevlex"
-                    or base._modulus >= runtime.bigint(2147483648)
-                )
-            )
-            if use_buchberger:
-                backend = "python:groebner-reference-with-provenance-v1"
-            elif self._ring._order != "degrevlex":
-                raise NotImplementedError(
-                    "msolve F4 currently requires degree reverse lexicographic order"
-                )
-            elif base._modulus >= runtime.bigint(2147483648):
-                raise NotImplementedError(
-                    "msolve F4 currently requires characteristic below 2^31"
-                )
-            else:
-                backend = "msolve:f4-prime-field-v1"
-        else:
-            if algorithm not in ["auto", "flint", "msolve", "buchberger"]:
-                raise ValueError("unknown rational Gröbner basis algorithm")
-            use_msolve = algorithm == "msolve" or (
-                algorithm == "auto"
-                and not proof_required
-                and self._ring._order == "degrevlex"
-            )
-            if algorithm == "buchberger":
-                backend = "python:groebner-reference-with-provenance-v1"
-            elif use_msolve:
-                if self._ring._order != "degrevlex":
-                    raise NotImplementedError(
-                        "msolve modular QQ currently requires degree reverse "
-                        "lexicographic order"
-                    )
-                if proof_required:
-                    raise NotImplementedError(
-                        "proof=True awaits exported msolve transformation provenance"
-                    )
-                backend = "msolve:modular-qq-v1"
-            else:
-                backend = "flint:bounded-buchberger-v1"
-        key = backend + (":proof" if proof_required else ":candidate")
-        if key not in self._groebner_cache:
-            if backend.startswith("python:"):
-                contract = _groebner_contract()
-                contract_ring = _groebner_contract_ring(self._ring)
-                packed_generators = tuple(
-                    _pack_groebner_polynomial(generator)
-                    for generator in self._generators
-                )
-                packed_basis, transformation = contract.groebner_basis_reference(
-                    packed_generators, contract_ring
-                )
-                verification = contract.verify_groebner_certificate(
-                    packed_generators,
-                    packed_basis,
-                    transformation,
-                    contract_ring,
-                )
-                if not verification.valid:
-                    raise ArithmeticError("exact Buchberger certificate failed")
-                values = []
-                for packed in packed_basis:
-                    values.append(self._ring._from_sparse_terms(packed))
-                self._groebner_transform_cache[key] = transformation
-            else:
-                native_generators = [
-                    generator._native for generator in self._generators
-                ]
-                if backend.startswith("msolve:"):
-                    native = runtime.flint_backend().mpolyGroebnerMsolve(
-                        native_generators
-                    )
-                else:
-                    native = runtime.flint_backend().mpolyGroebner(native_generators)
-                values = []
-                for value in native:
-                    values.append(MultivariatePolynomialElement(self._ring, value))
-            self._groebner_cache[key] = PolynomialSequence(values, self._ring)
-        self._groebner_metadata = {
-            "backend": backend,
-            "domain": "GF(p)" if base._kind == "GF" else "QQ",
-            "characteristic": (
-                runtime.normalize_integer(base._modulus) if base._kind == "GF" else 0
-            ),
-            "order": self._ring._order,
-            "proof": backend != "msolve:modular-qq-v1",
-            "proof_requested": proof_required,
-            "deterministic": backend != "msolve:modular-qq-v1",
-            "probabilistic": backend == "msolve:modular-qq-v1",
-        }
-        return self._groebner_cache[key]
+        """Return a reduced basis using msolve, FLINT, or exact Buchberger."""
+        return _polynomial_ideal_algorithms().groebner_basis(self, algorithm, proof)
 
     def groebner_basis_metadata(self) -> dict[str, Any]:
         """Return inspectable metadata for the most recent basis request."""
-        if len(self._groebner_metadata) == 0:
-            self.groebner_basis()
-        return dict(self._groebner_metadata)
+        return _polynomial_ideal_algorithms().groebner_basis_metadata(self)
 
     def normal_form(
         self,
@@ -5449,54 +5099,10 @@ class PolynomialIdeal:
         algorithm: str = "buchberger",
         proof: Any = None,
     ) -> PolynomialIdeal:
-        """Return the ideal obtained by eliminating `variables`.
-
-        The result remains an ideal of the original parent, generated by
-        polynomials in the retained variables. A temporary lexicographic ring
-        places the eliminated variables first, so the exact elimination
-        theorem applies independently of the original monomial order.
-        """
-        if not isinstance(variables, (list, tuple)):
-            variables = [variables]
-        eliminated = []
-        for variable in variables:
-            index = self._ring._generator_index(variable)
-            if index not in eliminated:
-                eliminated.append(index)
-        if len(eliminated) == 0:
-            return self._ring.ideal(self._generators)
-        retained = []
-        for index in range(self._ring.ngens()):
-            if index not in eliminated:
-                retained.append(index)
-        permutation = eliminated + retained
-        names = self._ring.variable_names()
-        temporary_names = [names[index] for index in permutation]
-        temporary = PolynomialRing(
-            self._ring.base_ring(), names=temporary_names, order="lex"
+        """Return the exact ideal obtained by eliminating `variables`."""
+        return _polynomial_ideal_algorithms().elimination_ideal(
+            self, variables, algorithm, proof
         )
-        mapped_generators = []
-        for generator in self._generators:
-            mapped_generators.append(
-                _permute_polynomial(generator, temporary, permutation)
-            )
-        basis = temporary.ideal(mapped_generators).groebner_basis(
-            algorithm=algorithm, proof=proof
-        )
-        inverse = _inverse_permutation(permutation)
-        answer = []
-        for polynomial in basis:
-            survives = True
-            for _coefficient, exponents in polynomial.terms():
-                for index in range(len(eliminated)):
-                    if exponents[index] != 0:
-                        survives = False
-                        break
-                if not survives:
-                    break
-            if survives:
-                answer.append(_permute_polynomial(polynomial, self._ring, inverse))
-        return self._ring.ideal(answer)
 
     eliminate = elimination_ideal
 
@@ -5505,16 +5111,7 @@ class PolynomialIdeal:
         algorithm: str = "auto",
         proof: Any = None,
     ) -> list[Any]:
-        basis = self.groebner_basis(algorithm=algorithm, proof=proof)
-        generators = self._ring.gens()
-        exponents = []
-        for polynomial in basis:
-            leading = MultivariatePolynomialElement(
-                self._ring,
-                runtime.flint_backend().mpolyLeadingMonomial(polynomial._native),
-            )
-            exponents.append(tuple(leading.degree(variable) for variable in generators))
-        return exponents
+        return _polynomial_ideal_algorithms().leading_exponents(self, algorithm, proof)
 
     def dimension(
         self,
@@ -5522,26 +5119,7 @@ class PolynomialIdeal:
         proof: Any = None,
     ) -> int:
         """Return the Krull dimension using the leading monomial ideal."""
-        leading = self._leading_exponents(algorithm=algorithm, proof=proof)
-        if any(all(exponent == 0 for exponent in value) for value in leading):
-            return -1
-        supports = []
-        for value in leading:
-            support = tuple(index for index in range(len(value)) if value[index] != 0)
-            if len(support) == 0:
-                continue
-            if support not in supports:
-                supports.append(support)
-        minimal = []
-        for index, support in enumerate(supports):
-            if any(
-                other != index and all(variable in support for variable in candidate)
-                for other, candidate in enumerate(supports)
-            ):
-                continue
-            minimal.append(support)
-        height = _minimum_monomial_support_cover(minimal)
-        return self._ring.ngens() - height
+        return _polynomial_ideal_algorithms().dimension(self, algorithm, proof)
 
     def is_zero_dimensional(
         self,
@@ -5549,54 +5127,16 @@ class PolynomialIdeal:
         proof: Any = None,
     ) -> bool:
         """Return whether this ideal has Krull dimension zero."""
-        return self.dimension(algorithm=algorithm, proof=proof) == 0
+        return _polynomial_ideal_algorithms().dimension(self, algorithm, proof) == 0
 
     def _standard_monomial_exponents(
         self,
         algorithm: str = "auto",
         proof: Any = None,
     ) -> list[Any]:
-        leading = self._leading_exponents(algorithm=algorithm, proof=proof)
-        if any(all(exponent == 0 for exponent in value) for value in leading):
-            return []
-        bounds = [0] * self._ring.ngens()
-        for value in leading:
-            active = [index for index in range(len(value)) if value[index] != 0]
-            if len(active) == 1:
-                index = active[0]
-                if bounds[index] == 0 or value[index] < bounds[index]:
-                    bounds[index] = value[index]
-        if any(bound == 0 for bound in bounds):
-            raise ValueError("normal basis requires a zero-dimensional ideal")
-        box_size = 1
-        for bound in bounds:
-            box_size *= bound
-            if box_size > _STANDARD_MONOMIAL_LIMIT:
-                raise OverflowError(
-                    "standard monomial search exceeds the 1,000,000-element limit"
-                )
-        answer = []
-        current = [0] * len(bounds)
-        for _position in range(box_size):
-            value = tuple(current)
-            if not any(_monomial_divides(generator, value) for generator in leading):
-                answer.append(value)
-            index = len(current) - 1
-            while index >= 0:
-                current[index] += 1
-                if current[index] < bounds[index]:
-                    break
-                current[index] = 0
-                index -= 1
-        return _sort_monomial_exponents(answer, self._ring._order)
-
-    def _monomial(self, exponents: Any) -> MultivariatePolynomialElement:
-        answer = self._ring(1)
-        generators = self._ring.gens()
-        for index in range(len(exponents)):
-            if exponents[index] != 0:
-                answer *= generators[index] ** exponents[index]
-        return answer
+        return _polynomial_ideal_algorithms().standard_monomial_exponents(
+            self, algorithm, proof
+        )
 
     def normal_basis(
         self,
@@ -5604,13 +5144,7 @@ class PolynomialIdeal:
         proof: Any = None,
     ) -> PolynomialSequence:
         """Return the standard monomial basis of the quotient by this ideal."""
-        return PolynomialSequence(
-            [
-                self._monomial(exponents)
-                for exponents in self._standard_monomial_exponents(algorithm, proof)
-            ],
-            self._ring,
-        )
+        return _polynomial_ideal_algorithms().normal_basis(self, algorithm, proof)
 
     quotient_basis = normal_basis
 
@@ -5621,16 +5155,9 @@ class PolynomialIdeal:
         proof: Any = None,
     ) -> Any:
         """Return coordinates in the finite standard-monomial basis."""
-        exponents = self._standard_monomial_exponents(algorithm, proof)
-        base = self._ring.base_ring()
-        coordinates = [base(0) for _index in exponents]
-        remainder = self.normal_form(value, algorithm=algorithm, proof=proof)
-        for coefficient, monomial in remainder.terms():
-            if monomial not in exponents:
-                raise ArithmeticError("normal form contains a nonstandard monomial")
-            index = exponents.index(monomial)
-            coordinates[index] = coefficient
-        return runtime.math_tuple(coordinates)
+        return _polynomial_ideal_algorithms().quotient_coordinates(
+            self, value, algorithm, proof
+        )
 
     def multiplication_matrix(
         self,
@@ -5639,20 +5166,9 @@ class PolynomialIdeal:
         proof: Any = None,
     ) -> Any:
         """Return multiplication by `variable` on the finite quotient."""
-        variable = self._ring(variable)
-        basis = self.normal_basis(algorithm=algorithm, proof=proof)
-        columns = []
-        for monomial in basis:
-            columns.append(
-                self.quotient_coordinates(
-                    variable * monomial, algorithm=algorithm, proof=proof
-                )
-            )
-        rows = []
-        for row_index in range(len(basis)):
-            rows.append([column[row_index] for column in columns])
-        matrix_module = __import__("sagejs._baselib.matrix", fromlist=["matrix"])
-        return matrix_module.matrix(self._ring.base_ring(), rows)
+        return _polynomial_ideal_algorithms().multiplication_matrix(
+            self, variable, algorithm, proof
+        )
 
     def fglm(
         self,
@@ -5661,93 +5177,10 @@ class PolynomialIdeal:
         proof: Any = None,
         other_ring: Any = None,
     ) -> PolynomialSequence:
-        """Convert a zero-dimensional ideal to another monomial order.
-
-        This exact FGLM implementation works over `QQ` and prime fields. It
-        derives target relations from linear dependence among quotient normal
-        forms and has an explicit quotient-dimension limit of 256.
-        """
-        if other_ring is None:
-            target = PolynomialRing(
-                self._ring.base_ring(),
-                names=self._ring.variable_names(),
-                order=order,
-            )
-        else:
-            target = other_ring
-            if not isinstance(target, MultivariatePolynomialRingParent):
-                raise TypeError("FGLM target must be a multivariate polynomial ring")
-            if target._order != order:
-                raise ValueError("FGLM target ring has a different monomial order")
-            if (
-                target.base_ring() is not self._ring.base_ring()
-                or target.variable_names() != self._ring.variable_names()
-            ):
-                raise TypeError("FGLM target must have the same field and variables")
-        if self.is_one(algorithm=algorithm, proof=proof):
-            return PolynomialSequence([target(1)], target)
-        if not self.is_zero_dimensional(algorithm=algorithm, proof=proof):
-            raise ValueError("FGLM requires a zero-dimensional ideal")
-        dimension = self.vector_space_dimension(algorithm=algorithm, proof=proof)
-        if dimension > _FGLM_DIMENSION_LIMIT:
-            raise OverflowError("FGLM quotient dimension exceeds the 256 limit")
-        field = self._ring.base_ring()
-        zero_exponents = tuple(0 for _index in range(self._ring.ngens()))
-        candidates = [zero_exponents]
-        processed = []
-        standard = []
-        vectors = []
-        leading = []
-        relations = []
-        while candidates:
-            monomial = candidates.pop(0)
-            if monomial in processed or any(
-                _monomial_divides(divisor, monomial) for divisor in leading
-            ):
-                continue
-            processed.append(monomial)
-            vector = list(
-                self.quotient_coordinates(
-                    self._monomial(monomial), algorithm=algorithm, proof=proof
-                )
-            )
-            dependent, coefficients = _field_vector_dependence(vectors, vector, field)
-            if dependent:
-                relation = target._from_sparse_terms([(field(1), monomial)])
-                for index in range(len(coefficients)):
-                    if coefficients[index] != field(0):
-                        relation -= coefficients[index] * target._from_sparse_terms(
-                            [(field(1), standard[index])]
-                        )
-                relations.append(relation)
-                leading.append(monomial)
-                continue
-            standard.append(monomial)
-            vectors.append(vector)
-            if len(standard) > dimension:
-                raise ArithmeticError("FGLM exceeded the quotient dimension")
-            for variable in range(self._ring.ngens()):
-                successor = list(monomial)
-                successor[variable] += 1
-                successor_tuple = tuple(successor)
-                if (
-                    successor_tuple not in processed
-                    and successor_tuple not in candidates
-                ):
-                    candidates.append(successor_tuple)
-            candidates = _sort_monomial_exponents(candidates, target._order)
-        if len(standard) != dimension:
-            raise ArithmeticError("FGLM did not recover the quotient basis")
-        ordered = _descending_polynomials(relations, target._order)
-        contract = _groebner_contract()
-        contract_ring = _groebner_contract_ring(target)
-        packed = tuple(_pack_groebner_polynomial(value) for value in ordered)
-        for right in range(len(packed)):
-            for left in range(right):
-                pair = contract.s_polynomial(packed[left], packed[right], contract_ring)
-                if contract.normal_form(pair, packed, contract_ring):
-                    raise ArithmeticError("FGLM result failed Buchberger's criterion")
-        return PolynomialSequence(ordered, target)
+        """Convert a zero-dimensional ideal to another order by exact FGLM."""
+        return _polynomial_ideal_algorithms().fglm(
+            self, order, algorithm, proof, other_ring
+        )
 
     def transformed_basis(
         self,
@@ -5756,10 +5189,9 @@ class PolynomialIdeal:
         proof: Any = None,
     ) -> PolynomialSequence:
         """Return the zero-dimensional basis transformed by exact FGLM."""
-        if algorithm != "fglm":
-            raise ValueError("only algorithm='fglm' is currently supported")
-        order = "lex" if other_ring is None else other_ring._order
-        return self.fglm(order=order, proof=proof, other_ring=other_ring)
+        return _polynomial_ideal_algorithms().transformed_basis(
+            self, other_ring, algorithm, proof
+        )
 
     def variety(
         self,
@@ -5767,60 +5199,8 @@ class PolynomialIdeal:
         algorithm: str = "fglm",
         proof: Any = None,
     ) -> list[Any]:
-        """Return base-field solutions of a zero-dimensional ideal.
-
-        Prime-field ideals return every point over their base field. Rational
-        ideals return all rational solutions; algebraic-closure solving is a
-        distinct future capability rather than an implicit approximation.
-        """
-        field = self._ring.base_ring()
-        if ring is not None and ring is not field:
-            raise NotImplementedError(
-                "variety currently solves only over the ideal's base field"
-            )
-        if algorithm != "fglm":
-            raise ValueError("only algorithm='fglm' is currently supported")
-        basis = self.fglm(order="lex", proof=proof)
-        target = basis.universe()
-        assignments = [None] * target.ngens()
-        solutions = []
-
-        def descend(variable: int) -> None:
-            if variable < 0:
-                values = list(assignments)
-                if all(
-                    _evaluate_sparse_polynomial(generator, values) == field(0)
-                    for generator in self._generators
-                ):
-                    solution = {}
-                    for index in range(self._ring.ngens()):
-                        solution[self._ring.gen(index)] = values[index]
-                    solutions.append(solution)
-                return
-            equations = []
-            for polynomial in basis:
-                specialized = _specialize_univariate(polynomial, variable, assignments)
-                if specialized is None or specialized.is_zero():
-                    continue
-                if specialized.degree() == 0:
-                    return
-                equations.append(specialized)
-            if len(equations) == 0:
-                raise ArithmeticError(
-                    "lexicographic basis did not constrain every variable"
-                )
-            selected = equations[0]
-            for equation in equations[1:]:
-                if equation.degree() < selected.degree():
-                    selected = equation
-            for root in _base_field_roots(selected, field):
-                if all(equation(root) == field(0) for equation in equations):
-                    assignments[variable] = root
-                    descend(variable - 1)
-            assignments[variable] = None
-
-        descend(target.ngens() - 1)
-        return solutions
+        """Return all base-field points of a zero-dimensional ideal."""
+        return _polynomial_ideal_algorithms().variety(self, ring, algorithm, proof)
 
     rational_points = variety
 
@@ -5830,11 +5210,9 @@ class PolynomialIdeal:
         proof: Any = None,
     ) -> Any:
         """Return the vector-space dimension of the quotient ring."""
-        try:
-            return len(self._standard_monomial_exponents(algorithm, proof))
-        except ValueError:
-            symbolic = __import__("sagejs._baselib.symbolic", fromlist=["oo"])
-            return symbolic.oo
+        return _polynomial_ideal_algorithms().vector_space_dimension(
+            self, algorithm, proof
+        )
 
     def degree(
         self,
@@ -5842,14 +5220,7 @@ class PolynomialIdeal:
         proof: Any = None,
     ) -> int:
         """Return the degree of a zero-dimensional ideal."""
-        dimension = self.dimension(algorithm=algorithm, proof=proof)
-        if dimension == -1:
-            return 0
-        if dimension != 0:
-            raise NotImplementedError(
-                "degree currently supports zero-dimensional polynomial ideals"
-            )
-        return len(self._standard_monomial_exponents(algorithm, proof))
+        return _polynomial_ideal_algorithms().degree(self, algorithm, proof)
 
     def groebner_fan(self) -> GroebnerFan:
         """Return the Gröbner-fan computation attached to this ideal."""

@@ -2557,6 +2557,7 @@
         "src/baselib/polynomial.py",
         "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
         "src/lib/sagejs/number_fields/prime_ideals.py",
+        "src/lib/sagejs/polynomial_algorithms/ideal.py",
         "test/ffi.cjs"
       ],
       "declared_ffi": null
@@ -7411,7 +7412,7 @@
       ],
       "consumers": [
         "packages/flint/test/test.cjs",
-        "src/baselib/polynomial.py"
+        "src/lib/sagejs/polynomial_algorithms/ideal.py"
       ],
       "declared_ffi": null
     },
@@ -7455,7 +7456,7 @@
         "packages/flint-wasm/test/groebner-browser-smoke.mjs",
         "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/msolve-groebner.cjs",
-        "src/baselib/polynomial.py"
+        "src/lib/sagejs/polynomial_algorithms/ideal.py"
       ],
       "declared_ffi": null
     },
@@ -7562,7 +7563,8 @@
       ],
       "consumers": [
         "packages/flint/test/msolve-groebner.cjs",
-        "src/baselib/polynomial.py"
+        "src/baselib/polynomial.py",
+        "src/lib/sagejs/polynomial_algorithms/ideal.py"
       ],
       "declared_ffi": null
     },

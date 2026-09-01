@@ -20,6 +20,11 @@ assert metadata["backend"] == "python:groebner-reference-with-provenance-v1"
 assert metadata["proof"] is True
 assert metadata["deterministic"] is True
 
+G_auto_qq = I.groebner_basis()
+assert len(G_auto_qq) == len(G) and all(
+    G_auto_qq[index] == G[index] for index in range(len(G))
+)
+
 S = PolynomialRing(GF(101), names=("a", "b"), order="lex")
 a, b = S.gens()
 J = S.ideal(a**2 - b, a * b - 1)

@@ -27,6 +27,104 @@ The metadata makes dispatch and proof status explicit. For example, a finite
 field call reports `msolve:f4-prime-field-v1`, its characteristic and order,
 and that the scalar computation is deterministic.
 
+Every supported global order also has a storage-neutral exact reference
+backend. It is useful as a portable fallback, a differential oracle, and for
+small computations outside msolve's current envelope:
+
+```sage test
+L.<x,y> = PolynomialRing(QQ, 2, order="lex")
+J = L.ideal([x^2 - y, x*y - 1])
+J.groebner_basis(algorithm="buchberger")
+# [x - y^2, y^3 - 1]
+```
+
+The implementation returns a reduced basis and verifies its exact change-of-
+basis certificate before exposing the result. It supports `QQ` and prime
+fields with `lex`, `deglex`, and `degrevlex` order on native and Wasm builds.
+
+## Ideals and finite quotient rings
+
+Polynomial sequences can be turned back into ideals, and ideals support exact
+containment, equality, sum, product, dimension, degree, and unit/zero tests:
+
+```sage test
+R.<x,y> = PolynomialRing(QQ, 2, order="degrevlex")
+I = R.ideal([x^2 - y, x*y - 1])
+I.dimension(), I.degree(), I.is_zero_dimensional()
+# (0, 3, True)
+I.groebner_basis().ideal() == I
+# True
+```
+
+For a zero-dimensional quotient, the standard monomials provide an explicit
+vector-space API:
+
+```sage test
+I.quotient_basis()
+# [1, y, x]
+I.quotient_coordinates(x + 2*y + 3)
+# (3, 2, 1)
+I.multiplication_matrix(x)
+# [0 1 0]
+# [0 0 1]
+# [1 0 0]
+```
+
+`normal_basis()` is an alias-level description of the same standard-monomial
+basis. A positive-dimensional quotient reports `+Infinity` from
+`vector_space_dimension()` and rejects finite-basis operations explicitly.
+
+## Elimination and changing order
+
+`elimination_ideal()` applies the elimination theorem in a temporary exact
+lexicographic ring, then maps the surviving generators back into the original
+parent:
+
+```sage test
+R.<x,y,z> = PolynomialRing(QQ, 3, order="degrevlex")
+I = R.ideal([x - y^2, y - z^2])
+I.elimination_ideal([x, y]).groebner_basis(algorithm="buchberger")
+# []
+I.elimination_ideal(x).groebner_basis(algorithm="buchberger")
+# [z^2 - y]
+```
+
+For zero-dimensional ideals, exact FGLM converts an already computed quotient
+to another order through linear dependence among normal forms:
+
+```sage test
+R.<x,y> = PolynomialRing(GF(101), 2, order="degrevlex")
+I = R.ideal([x^2 - y, x*y - 1])
+Glex = I.fglm()
+Glex
+# [x + 100*y^2, y^3 + 100]
+```
+
+`transformed_basis(other_ring=L)` accepts a compatible target ring explicitly.
+The current FGLM implementation is deliberately bounded to quotient dimension
+256 and verifies Buchberger's criterion on the resulting basis.
+
+## Solving zero-dimensional systems
+
+`variety()` builds on FGLM and returns dictionaries keyed by the original ring
+generators. Over a prime field it enumerates all base-field solutions; over
+`QQ` it returns all rational solutions:
+
+```sage test
+R.<x,y> = PolynomialRing(GF(5), 2, order="degrevlex")
+points = R.ideal([x - y^2, y^2 - 1]).variety()
+sorted((point[x], point[y]) for point in points)
+# [(1, 1), (1, 4)]
+
+S.<u,v> = PolynomialRing(QQ, 2, order="degrevlex")
+S.ideal([u - v, v^2 - 2]).variety()
+# []
+```
+
+The second result is empty because neither root lies in `QQ`; solving over
+algebraic closures is not silently approximated. `rational_points()` is an
+alias for the same base-field operation.
+
 ## Choosing a rational backend
 
 The FLINT Gröbner-basis implementation is still available. Sage.js mirrors
@@ -207,18 +305,20 @@ F.ideal([a^2 + 2*b, a*b + 1]).groebner_basis()
 | Domain | Order | Default backend | Contract |
 | --- | --- | --- | --- |
 | Prime `GF(p)`, `p < 2^31` | global `degrevlex` | msolve scalar F4 | deterministic and unconditional |
+| Prime `GF(p)` | `lex`, `deglex`, or `degrevlex` outside the msolve envelope | exact Buchberger | deterministic with verified transformation certificate |
 | `QQ`, proof required | any FLINT-supported global order | FLINT | bounded exact Buchberger |
 | `QQ`, proof disabled | global `degrevlex` | msolve modular F4 | probabilistic stopping test |
 | `QQ`, proof disabled | another supported global order | FLINT | exact fallback |
+| `QQ` with `algorithm="buchberger"` | `lex`, `deglex`, or `degrevlex` | exact portable Buchberger | deterministic with verified transformation certificate |
 
 The msolve paths return full reduced bases and support exact normal forms,
 leading ideals, and ideal membership. Unsupported coefficient domains, term
 orders, characteristics, and proof requests fail explicitly instead of being
 silently relabeled or sent to an inapplicable algorithm.
 
-The current port does not yet provide FGLM/order conversion, elimination
-orders, finite extension fields, modules, syzygies, resolutions, local
-standard bases, or Singular's wider commutative-algebra operations.
+The current port does not yet provide finite extension fields, algebraic-
+closure solving, modules, syzygies, resolutions, local standard bases, or
+Singular's wider commutative-algebra operations.
 
 ## Portability and safety
 
