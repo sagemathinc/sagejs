@@ -179,8 +179,12 @@ test("complete hermetic prefix closure binds files and empty directories", () =>
     const fileAdded = completePrefixClosure(root);
     assert.notEqual(fileAdded.sha256, directoryAdded.sha256);
     fs.mkdirSync(path.join(root, "Case"));
-    fs.mkdirSync(path.join(root, "case"));
-    assert.throws(() => completePrefixClosure(root), /case-colliding/);
+    try {
+      fs.mkdirSync(path.join(root, "case"));
+      assert.throws(() => completePrefixClosure(root), /case-colliding/);
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+    }
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
