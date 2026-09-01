@@ -61,6 +61,10 @@ interface SeaArguments {
   tag?: string;
   jupyter_args?: string[];
   pytest_args?: string[];
+  inspect_foreign?: boolean;
+  language?: string;
+  source?: string;
+  inspect_usage_error?: string;
 }
 
 function usage(): void {
@@ -70,6 +74,7 @@ Run Sage.js from a self-contained executable. With no program, start a REPL.
 
   ${executable} docs <search|show|export|coverage> [query]
   ${executable} pytest [pytest options] [paths]
+  ${executable} inspect-foreign --language LANGUAGE [--source SOURCE | FILE]
   ${executable} --install-jupyter-kernel [--jupyter-kernel-mode sage|python]
   ${executable} --uninstall-jupyter-kernel [--jupyter-kernel-mode sage|python]
 
@@ -236,6 +241,64 @@ function parseArguments(): SeaArguments {
   if (rawArguments[0] === "pytest") {
     args.mode = "pytest";
     args.pytest_args = rawArguments.slice(1);
+    return args;
+  }
+  if (rawArguments[0] === "inspect-foreign") {
+    args.mode = "compile";
+    args.inspect_foreign = true;
+    const reject = (message: string): void => {
+      if (args.inspect_usage_error === undefined) {
+        args.inspect_usage_error = message;
+      }
+    };
+    let optionsEnded = false;
+    for (let index = 1; index < rawArguments.length; index += 1) {
+      const argument = rawArguments[index];
+      if (!optionsEnded && argument === "--") {
+        optionsEnded = true;
+      } else if (!optionsEnded && argument === "--language") {
+        const value = rawArguments[++index];
+        if (value === undefined) reject("--language requires a value");
+        else if (args.language !== undefined) {
+          reject("--language may be specified only once");
+        } else args.language = value;
+      } else if (!optionsEnded && argument.startsWith("--language=")) {
+        if (args.language !== undefined) {
+          reject("--language may be specified only once");
+        } else args.language = argument.slice("--language=".length);
+      } else if (!optionsEnded && argument === "--source") {
+        const value = rawArguments[++index];
+        if (value === undefined) reject("--source requires a value");
+        else if (args.source !== undefined) {
+          reject("--source may be specified only once");
+        } else args.source = value;
+      } else if (!optionsEnded && argument.startsWith("--source=")) {
+        if (args.source !== undefined) {
+          reject("--source may be specified only once");
+        } else args.source = argument.slice("--source=".length);
+      } else if (
+        !optionsEnded && (argument === "--help" || argument === "-h")
+      ) {
+        console.log(
+          `Usage: ${executable} inspect-foreign --language LANGUAGE ` +
+            "[--source SOURCE | FILE]\n\n" +
+            "Lower foreign-language source without executing it and emit " +
+            "one JSON record. With no source or file, read standard input.",
+        );
+        process.exit(0);
+      } else if (
+        !optionsEnded && (argument === "--version" || argument === "-V")
+      ) {
+        console.log(`sagejs ${SAGEJS_VERSION_INFO.version}`);
+        process.exit(0);
+      } else if (!optionsEnded && argument === "-") {
+        args.files.push(argument);
+      } else if (!optionsEnded && argument.startsWith("-")) {
+        reject(`unknown inspect-foreign option ${JSON.stringify(argument)}`);
+      } else {
+        args.files.push(argument);
+      }
+    }
     return args;
   }
   let optionsEnded = false;
