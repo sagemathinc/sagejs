@@ -230,7 +230,7 @@ jobs:
           rm -rf packages/flint-wasm/dist
           cp -a build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist
 
-      - name: Download and authenticate the same-candidate numerical release gate
+      - name: Rebuild and authenticate the same-candidate numerical release gate
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -242,9 +242,18 @@ jobs:
             --repo "$GH_REPO" \
             --name numerical-release-gate \
             --dir build/validated-numerical-gate
+          gh run download "$QUALIFICATION_RUN_ID" \
+            --repo "$GH_REPO" \
+            --name numerical-release-evidence \
+            --dir build/numerical-qualification
+          pnpm release:qualify:numerics:gate -- \
+            --candidate "$SOURCE_SHA" \
+            --input build/numerical-qualification \
+            --output build/rebuilt-numerical-gate
           pnpm release:qualify:numerics:authenticate -- \
             --candidate "$SOURCE_SHA" \
-            --gate build/validated-numerical-gate/release-gate.json
+            --gate build/validated-numerical-gate/release-gate.json \
+            --rebuilt-gate build/rebuilt-numerical-gate/release-gate.json
 
       - name: Verify the receipt and stage the credential-free application
         run: |

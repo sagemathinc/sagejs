@@ -1232,7 +1232,6 @@ jobs:
             build/numerical-qualification/platform
             build/numerical-qualification/browser/rows
             build/numerical-qualification/browser/supplemental
-            build/numerical-qualification/gate
           if-no-files-found: error
           retention-days: 90
 
@@ -1263,11 +1262,17 @@ jobs:
           node-version: 26.5.1
           registry-url: https://registry.npmjs.org
 
-      - name: Restore and authenticate the mandatory numerical release gate
+      - name: Restore the mandatory numerical release gate
         uses: actions/download-artifact@v8
         with:
           name: numerical-release-gate
           path: build/validated-numerical-gate
+
+      - name: Restore the complete raw numerical evidence inventory
+        uses: actions/download-artifact@v8
+        with:
+          name: numerical-release-evidence
+          path: build/numerical-qualification
 
       - name: Download the validated release artifacts
         env:
@@ -1285,11 +1290,16 @@ jobs:
               --name "$artifact" --dir release
           done
 
-      - name: Require the passing gate and exact public npm root for this candidate
+      - name: Rebuild and authenticate the gate and exact public npm root
         run: |
+          pnpm release:qualify:numerics:gate -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --input build/numerical-qualification \
+            --output build/rebuilt-numerical-gate
           pnpm release:qualify:numerics:authenticate -- \
             --candidate "$(git rev-parse HEAD)" \
             --gate build/validated-numerical-gate/release-gate.json \
+            --rebuilt-gate build/rebuilt-numerical-gate/release-gate.json \
             --public-npm-root release/npm/sagejs.tgz
 
       - name: Create or update the draft GitHub release

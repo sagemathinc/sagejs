@@ -160,10 +160,15 @@ Then aggregate, reproduce, and authenticate the final gate:
 pnpm release:qualify:numerics:gate -- \
   --candidate "$candidate" \
   --input build/numerical-qualification \
-  --output build/numerical-qualification/gate
+  --output build/validated-numerical-gate
+pnpm release:qualify:numerics:gate -- \
+  --candidate "$candidate" \
+  --input build/numerical-qualification \
+  --output build/rebuilt-numerical-gate
 pnpm release:qualify:numerics:authenticate -- \
   --candidate "$candidate" \
-  --gate build/numerical-qualification/gate/release-gate.json \
+  --gate build/validated-numerical-gate/release-gate.json \
+  --rebuilt-gate build/rebuilt-numerical-gate/release-gate.json \
   --public-npm-root build/release/npm/sagejs.tgz
 ```
 
@@ -185,8 +190,13 @@ fifth root archive.
 Clean tag CI preserves the small publisher-facing gate as
 `numerical-release-gate` and the complete reproducible row/manifest/receipt/
 supplemental inventory as `numerical-release-evidence`, both for 90 days. The
-publisher consumes only the authenticated gate; the larger inventory exists
-for reproduction and audit and is never interpreted as executable input.
+larger artifact deliberately excludes the derived gate outputs. Before
+publishing, the candidate checkout restores that raw inventory, reruns the
+checked-in fail-closed assembler into a fresh directory, and requires exact
+byte equality with the small publisher-facing gate. Cloudflare deployment does
+the same. Thus valid-looking nested SHA/content-ID substitutions cannot be
+authorized by merely recomputing the compact outer ID; the successful producer
+run's immutable raw evidence is the trust boundary.
 
 After `pnpm bootstrap`, use the run-only test and packaging boundaries. They
 consume the exact validated native prefixes and generated artifacts instead of

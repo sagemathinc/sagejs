@@ -100,7 +100,7 @@ const draftIndex = releaseWorkflow.indexOf(
   "- name: Create or update the draft GitHub release",
 );
 const numericalGateIndex = releaseWorkflow.indexOf(
-  "- name: Require the passing gate and exact public npm root for this candidate",
+  "- name: Rebuild and authenticate the gate and exact public npm root",
 );
 const uploadIndex = releaseWorkflow.indexOf('gh release upload "$TAG"');
 const npmIndex = releaseWorkflow.indexOf(
@@ -122,8 +122,8 @@ assert.match(
 );
 assert.match(
   releaseWorkflow,
-  /release:qualify:numerics:authenticate[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
-  "automatic publication must authenticate the gate and selected public npm root",
+  /name: numerical-release-evidence[\s\S]+path: build\/numerical-qualification[\s\S]+release:qualify:numerics:gate[\s\S]+--input build\/numerical-qualification[\s\S]+release:qualify:numerics:authenticate[\s\S]+--rebuilt-gate build\/rebuilt-numerical-gate\/release-gate\.json[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
+  "automatic publication must rebuild the gate from raw evidence before authenticating the selected public npm root",
 );
 assert.ok(
   !releaseWorkflow.includes("merge-multiple: true"),
@@ -197,6 +197,8 @@ for (const required of [
   "Numerical release qualification gate",
   "qualification_sha",
   "numerical-release-gate",
+  "numerical-release-evidence",
+  "release:qualify:numerics:gate",
   "release:qualify:numerics:authenticate",
 ]) {
   assert.ok(
@@ -214,6 +216,12 @@ assert.match(numericalGateAuthenticator, /validateMatrixInventory/);
 assert.match(numericalGateAuthenticator, /validateSupplementalInventory/);
 assert.match(numericalGateAuthenticator, /validateScipyCoherence/);
 assert.match(numericalGateAuthenticator, /authenticatePublicNpmRoot/);
+assert.match(numericalGateAuthenticator, /authenticateRebuiltGate/);
+assert.match(
+  browserDeployWorkflow,
+  /--input build\/numerical-qualification[\s\S]+--rebuilt-gate build\/rebuilt-numerical-gate\/release-gate\.json/,
+  "browser deployment must reconstruct the compact gate from the raw evidence artifact",
+);
 
 const tagIndex = process.argv.indexOf("--tag");
 if (tagIndex >= 0) {

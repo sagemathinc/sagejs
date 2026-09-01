@@ -15,6 +15,7 @@ const {
 const {
   authenticate,
   authenticatePublicNpmRoot,
+  authenticateRebuiltGate,
 } = require("../../../scripts/numerical-computing/qualification/authenticate-release-gate.cjs");
 const {
   exactInputInventory,
@@ -220,6 +221,40 @@ test("publisher authentication requires an intact exact gate inventory", () => {
   ];
   for (const [mutate, pattern] of forgeries) {
     assert.throws(() => authenticate(reidentify(gate, mutate), candidate), pattern);
+  }
+});
+
+test("raw-evidence rebuild rejects valid-looking recomputed compact substitutions", () => {
+  const candidate = "1".repeat(40);
+  const rebuilt = validGate(candidate);
+  const substitutions = [
+    (value) => {
+      value.matrix_receipts[0].sha256 = sha256("foreign receipt bytes");
+      value.matrix_receipts[0].id = contentId({ foreign: "receipt" });
+    },
+    (value) => {
+      value.supplemental_evidence[0].sha256 = sha256("foreign evidence bytes");
+      value.supplemental_evidence[0].id = contentId({ foreign: "evidence" });
+    },
+    (value) => {
+      value.matrix_report.sha256 = sha256("foreign matrix report bytes");
+      value.matrix_report.id = contentId({ foreign: "matrix-report" });
+    },
+    (value) => {
+      value.matrix_policy.sha256 = sha256("foreign matrix policy bytes");
+    },
+    (value) => {
+      value.scipy_oracle_coherence.platform_bindings[0].binding_id =
+        contentId({ foreign: "scipy-binding" });
+    },
+  ];
+  for (const substitute of substitutions) {
+    const forged = reidentify(rebuilt, substitute);
+    assert.doesNotThrow(() => authenticate(forged, candidate));
+    assert.throws(
+      () => authenticateRebuiltGate(forged, rebuilt, candidate),
+      /differs from the raw-evidence rebuild/,
+    );
   }
 });
 
@@ -492,13 +527,22 @@ test("tag CI collects 12 platform and four browser rows before publication", () 
   ]) assert.match(browserCollector, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(
     ci,
-    /publish-release:[\s\S]*?needs:\n\s+- numerical-release-gate[\s\S]*?Restore and authenticate the mandatory numerical release gate/,
+    /publish-release:[\s\S]*?needs:\n\s+- numerical-release-gate[\s\S]*?Restore the mandatory numerical release gate/,
+  );
+  assert.match(
+    ci,
+    /Restore the complete raw numerical evidence inventory[\s\S]+name: numerical-release-evidence[\s\S]+path: build\/numerical-qualification/,
   );
   assert.doesNotMatch(ci, /merge-multiple:\s*true/);
-  const gate = ci.indexOf("- name: Require the passing gate and exact public npm root for this candidate");
+  const gate = ci.indexOf("- name: Rebuild and authenticate the gate and exact public npm root");
   const draft = ci.indexOf("- name: Create or update the draft GitHub release", gate);
   const npm = ci.indexOf("- name: Publish the platform and public npm packages", draft);
   assert.ok(gate >= 0 && gate < draft && draft < npm);
+  const rawUpload = ci.slice(
+    ci.indexOf("name: numerical-release-evidence"),
+    ci.indexOf("retention-days: 90", ci.indexOf("name: numerical-release-evidence")),
+  );
+  assert.doesNotMatch(rawUpload, /numerical-qualification\/gate/);
 });
 
 test("one trusted workflow publishes and recovery reruns its authenticated job", () => {
@@ -506,7 +550,10 @@ test("one trusted workflow publishes and recovery reruns its authenticated job",
   assert.match(ci, /id-token:\s*write/);
   assert.match(ci, /npm publish "\$archive"/);
   assert.doesNotMatch(ci, /secrets\.NPM_TOKEN|pnpm publish "\$archive"/);
-  assert.match(ci, /release:qualify:numerics:authenticate[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/);
+  assert.match(
+    ci,
+    /release:qualify:numerics:gate[\s\S]+--input build\/numerical-qualification[\s\S]+release:qualify:numerics:authenticate[\s\S]+--rebuilt-gate build\/rebuilt-numerical-gate\/release-gate\.json[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
+  );
   assert.match(ci, /recover-publish:[\s\S]+actions:\s*write/);
   assert.match(ci, /actions\/jobs\/\$\{publisher_id\}\/rerun/);
   assert.match(ci, /Numerical release qualification gate/);
@@ -531,5 +578,9 @@ test("Cloudflare activation requires the same qualified source SHA", () => {
   assert.match(deploy, /Numerical release qualification gate/);
   assert.match(deploy, /qualification_sha[\s\S]+source_sha/);
   assert.match(deploy, /--candidate "\$SOURCE_SHA"/);
+  assert.match(
+    deploy,
+    /--name numerical-release-evidence[\s\S]+release:qualify:numerics:gate[\s\S]+--rebuilt-gate build\/rebuilt-numerical-gate\/release-gate\.json/,
+  );
   assert.doesNotMatch(deploy, /Required legacy release job|if \[\[ "\$release_gate" == "missing" \]\]/);
 });

@@ -85,11 +85,13 @@ const EXPECTED_SUPPLEMENTAL = new Map([
 
 function usage() {
   return `Usage: node scripts/numerical-computing/qualification/authenticate-release-gate.cjs \\
-  --candidate COMMIT --gate FILE [--public-npm-root FILE]
+  --candidate COMMIT --gate FILE --rebuilt-gate FILE [--public-npm-root FILE]
 
 Authenticates the immutable final numerical release-gate document before a
-publisher or deployment consumes it. This checks the content ID and the exact
-16-row, five-category/seven-record production inventory.
+publisher or deployment consumes it. The rebuilt gate must have been assembled
+from the complete raw evidence artifact in the consuming candidate checkout.
+Exact byte equality makes the raw 16-row and seven-record inventory, rather
+than a recomputable compact content ID alone, the publication trust boundary.
 `;
 }
 
@@ -99,7 +101,7 @@ function parseArguments(argv) {
   for (let index = 0; index < argv.length; index += 2) {
     const name = argv[index];
     const value = argv[index + 1];
-    if (!["--candidate", "--gate", "--public-npm-root"].includes(name)) {
+    if (!["--candidate", "--gate", "--rebuilt-gate", "--public-npm-root"].includes(name)) {
       throw new Error(`unknown argument ${name}`);
     }
     if (!value || value.startsWith("--")) throw new Error(`${name} requires a value`);
@@ -107,7 +109,9 @@ function parseArguments(argv) {
     if (result[key] !== undefined) throw new Error(`${name} may appear only once`);
     result[key] = value;
   }
-  if (!result.candidate || !result.gate) throw new Error("--candidate and --gate are required");
+  if (!result.candidate || !result.gate || !result.rebuilt_gate) {
+    throw new Error("--candidate, --gate, and --rebuilt-gate are required");
+  }
   if (!/^[0-9a-f]{40}$/.test(result.candidate)) throw new Error("--candidate must be a full commit SHA");
   return { help: false, ...result };
 }
@@ -361,23 +365,44 @@ function authenticatePublicNpmRoot(value, filename) {
   return digest;
 }
 
+function authenticateRebuiltGate(value, rebuilt, candidate) {
+  authenticate(value, candidate);
+  authenticate(rebuilt, candidate);
+  if (canonicalJson(value) !== canonicalJson(rebuilt)) {
+    throw new Error("published numerical release gate differs from the raw-evidence rebuild");
+  }
+  return value;
+}
+
+function readGate(filename, label) {
+  const resolved = repositoryPath(root, filename, label);
+  const status = fs.lstatSync(resolved.absolute);
+  if (status.isSymbolicLink() || !status.isFile()) {
+    throw new Error(`${label} must be a non-symlink regular file`);
+  }
+  const bytes = fs.readFileSync(resolved.absolute);
+  return {
+    bytes,
+    value: parseJsonText(bytes.toString("utf8"), label),
+  };
+}
+
 function main(argv = process.argv.slice(2)) {
   const options = parseArguments(argv);
   if (options.help) {
     process.stdout.write(usage());
     return 0;
   }
-  const gate = repositoryPath(root, options.gate, "numerical release gate");
-  const status = fs.lstatSync(gate.absolute);
-  if (status.isSymbolicLink() || !status.isFile()) {
-    throw new Error("--gate must be a non-symlink regular file");
+  const gate = readGate(options.gate, "numerical release gate");
+  const rebuilt = readGate(options.rebuilt_gate, "raw-evidence rebuilt numerical release gate");
+  authenticateRebuiltGate(gate.value, rebuilt.value, options.candidate);
+  if (!gate.bytes.equals(rebuilt.bytes)) {
+    throw new Error("published numerical release gate bytes differ from the raw-evidence rebuild");
   }
-  const value = parseJsonText(fs.readFileSync(gate.absolute, "utf8"), "numerical release gate");
-  authenticate(value, options.candidate);
   if (options.public_npm_root !== undefined) {
-    authenticatePublicNpmRoot(value, options.public_npm_root);
+    authenticatePublicNpmRoot(gate.value, options.public_npm_root);
   }
-  process.stdout.write(`passed: authenticated numerical release gate ${value.id}\n`);
+  process.stdout.write(`passed: authenticated raw-evidence numerical release gate ${gate.value.id}\n`);
   return 0;
 }
 
@@ -391,5 +416,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  authenticate, authenticatePublicNpmRoot, main, parseArguments, usage,
+  authenticate, authenticatePublicNpmRoot, authenticateRebuiltGate,
+  main, parseArguments, usage,
 };
