@@ -165,6 +165,10 @@ cases = (
     ("3.1.2856.1", (-21, 9, -1, 1), 7, (7,), 0),
     ("3.1.4027.2", (8, 7, -1, 1), 6, (6,), 0),
     ("3.1.5448.1", (30, -14, -1, 1), 8, (8,), 0),
+    # The fundamental unit lies beyond the opportunistic score-9 coordinate
+    # shells. Exact relation dependencies recover it without broadening the
+    # speculative unit search; this pure cubic has class group C3 x C3.
+    ("3.1.24843.1", (-91, 0, 0, 1), 9, (3, 3), 0),
     # Two additional redundant rows preserve the fundamental-unit dependency
     # through resident relation compaction, avoiding a multiplier retry.
     ("3.1.49096.1", (-126, -6, -1, 1), 9, (9,), 0),
@@ -194,6 +198,10 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.108115.1":
         assert receipt.generator_bound == 16, label
         assert receipt.factor_base_size == 9, label
+    if label == "3.1.24843.1":
+        assert receipt.generator_bound == 13, label
+        assert receipt.factor_base_size == 8, label
+        assert receipt.relation_count == 30, label
     assert receipt.matches(K), label
 print("cubic-native-lmfdb-corpus-ok")
 `);

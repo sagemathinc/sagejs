@@ -211,12 +211,17 @@ so it is $+1$ or $-1$. The program retains the exact principal element behind
 every relation. Zero rows of the exact HNF transform give integral relation
 dependencies; multiplying positive-exponent witnesses and exactly dividing by
 the negative-exponent product reconstructs algebraic units in $\mathcal O$.
-The program also searches its bounded coordinate box by increasing
-coordinate-$\ell_1$ shells. Every candidate on the first populated shell is
-checked to have norm $+1$ or $-1$, and the candidate with the smallest
-rigorously disjoint positive logarithm on that shell is selected. It therefore
-generates a finite-index subgroup of the unit lattice. If its rigorously
-enclosed logarithm is $\widehat R$, then
+As an opportunistic shortcut, the program also searches exact maximal-order
+coordinates by increasing coordinate-$\ell_1$ shells through score $9$.
+Every candidate on the first populated shell is checked to have norm $+1$ or
+$-1$, and the candidate with the smallest rigorously disjoint positive
+logarithm on that shell is selected. If no unit occurs in those cheap shells,
+the search stops: the program recovers a unit from the exact relation
+dependencies instead of enlarging a speculative coordinate box. Thus the
+score cutoff affects only scheduling, not the accepted mathematical regime.
+Whichever path supplies the retained unit, it generates a finite-index
+subgroup of the unit lattice. If its rigorously enclosed logarithm is
+$\widehat R$, then
 
 $$
 \widehat R = qR

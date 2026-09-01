@@ -57,6 +57,11 @@ _CUBIC_MAX_GRH_BOUND_SEARCH = 4096
 _CUBIC_ANALYSIS_PROOF_CAPACITY = 512
 _CUBIC_MAX_ORDER_WITNESSES = 16
 _CUBIC_ROUND2_WORKSPACE_LENGTH = 109
+# Unit enumeration is only an opportunistic front-end to exact unit recovery
+# from relation dependencies. Searching through coordinate-L1 score 9 keeps
+# the cheap successes while avoiding the exhaustive shell that dominates pure
+# cubics such as x^3 - 91. The analytic index-one test remains the authority.
+_CUBIC_SMALL_UNIT_SCORE_LIMIT = 9
 
 # One reusable caller-owned exact workspace.  All offsets are private to the
 # closed call graph and are authenticated again before publication.
@@ -2043,8 +2048,8 @@ def _cubic_small_unit_probe(
     identity_two: int,
     scale: int,
 ) -> tuple[int, int, int, int, int, int]:
-    """Return the best unit on the first populated coordinate-L1 shell."""
-    unit_box = 9
+    """Return the best unit on the first cheap populated L1 shell, if any."""
+    unit_box = _CUBIC_SMALL_UNIT_SCORE_LIMIT
     unit_found = False
     unit_score = 1
     unit_zero = 0
@@ -2052,7 +2057,7 @@ def _cubic_small_unit_probe(
     unit_two = 0
     regulator_lower = 0
     regulator_upper = 0
-    while unit_score <= 3 * unit_box and not unit_found:
+    while unit_score <= _CUBIC_SMALL_UNIT_SCORE_LIMIT and not unit_found:
         candidate_zero = -unit_box
         while candidate_zero <= unit_box:
             absolute_zero = candidate_zero
