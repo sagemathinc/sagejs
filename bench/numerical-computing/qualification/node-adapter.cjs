@@ -196,13 +196,14 @@ class UnavailableNumericalBackend:
 def residual(point):
     return [point[0] - 2.0]
 
-backend_state = runtime._numerical_backend_state
-original_backend = backend_state["backend"]
+backend_state = runtime._numerical_backends
+had_backend = "cminpack" in backend_state
+original_backend = backend_state["cminpack"] if had_backend else None
 records = []
 try:
     for kind in input_record["resource_failures"]:
         backend = UnavailableNumericalBackend(kind)
-        backend_state["backend"] = backend
+        backend_state["cminpack"] = backend
         automatic = least_squares(residual, [20.0], method="auto")
         explicit = least_squares(
             residual, [20.0], method="cminpack-lmdif"
@@ -220,7 +221,10 @@ try:
             "private_detail_leaked": "private numerical-resource detail" in serialized,
         })
 finally:
-    backend_state["backend"] = original_backend
+    if had_backend:
+        backend_state["cminpack"] = original_backend
+    else:
+        del backend_state["cminpack"]
 output_record = {"records": records}`,
     "p4-ode-exponential": String.raw`
 from sagejs.numerics.ode import solve_ivp
