@@ -1,4 +1,4 @@
-import { basename } from "path";
+import { basename, dirname, resolve } from "path";
 import { readFile } from "fs/promises";
 import {
   createForeignFrontend,
@@ -64,7 +64,44 @@ function logicalPaths(values: readonly string[] | undefined): string[] {
   return [...new Set((values ?? []).map((value) => basename(value)))].sort();
 }
 
-function errorRecord(error: unknown): InspectionError {
+function stablePathTail(value: string): string {
+  const components = value.split(/[\\/]/).filter(Boolean);
+  return components.at(-1) ?? "<path>";
+}
+
+function sanitizeDiagnosticMessage(
+  message: string,
+  privateRoots: readonly string[],
+): string {
+  let sanitized = message;
+  for (const root of new Set(privateRoots.filter((value) => value.length > 1))) {
+    const variants = new Set([
+      root,
+      root.replaceAll("\\", "/"),
+      root.replaceAll("/", "\\"),
+    ]);
+    for (const variant of variants) {
+      const separator = variant.includes("\\") ? "\\" : "/";
+      sanitized = sanitized.replaceAll(variant + separator, "");
+      sanitized = sanitized.replaceAll(variant, ".");
+    }
+  }
+  sanitized = sanitized.replace(
+    /(["'])(?:[A-Za-z]:[\\/]|\/)([^"'\r\n]*)\1/g,
+    (_match, quote: string, tail: string) =>
+      `${quote}${stablePathTail(tail)}${quote}`,
+  );
+  return sanitized.replace(
+    /(recursive Magma load detected:\s*)(?:[A-Za-z]:[\\/]|\/)([^\r\n]+)/g,
+    (_match, prefix: string, path: string) =>
+      `${prefix}${stablePathTail(path)}`,
+  );
+}
+
+function errorRecord(
+  error: unknown,
+  privateRoots: readonly string[],
+): InspectionError {
   const value = error as {
     name?: unknown;
     message?: unknown;
@@ -75,7 +112,7 @@ function errorRecord(error: unknown): InspectionError {
   return {
     name: typeof value?.name === "string" ? value.name : "Error",
     message: typeof value?.message === "string"
-      ? value.message
+      ? sanitizeDiagnosticMessage(value.message, privateRoots)
       : "foreign-language inspection failed",
     line: Number.isInteger(value?.line) && Number(value.line) >= 1
       ? Number(value.line)
@@ -103,9 +140,15 @@ async function stdinSource(): Promise<string> {
   return chunks.join("");
 }
 
-async function input(
+interface SelectedInput {
+  input: InspectionInput;
+  source?: string;
+  physicalFilename?: string;
+}
+
+function selectInput(
   argv: ForeignInspectionCliArguments,
-): Promise<{ input: InspectionInput; source: string }> {
+): SelectedInput {
   if (argv.files.length > 1) {
     throw new ForeignInspectionUsageError("inspect-foreign accepts at most one file");
   }
@@ -124,18 +167,25 @@ async function input(
   if (filename === undefined || filename === "-") {
     return {
       input: { kind: "stdin", filename: null },
-      source: await stdinSource(),
     };
   }
   const logicalFilename = basename(filename);
+  return {
+    input: { kind: "file", filename: logicalFilename },
+    physicalFilename: filename,
+  };
+}
+
+async function selectedSource(selected: SelectedInput): Promise<string> {
+  if (selected.source !== undefined) return selected.source;
+  if (selected.physicalFilename === undefined) return stdinSource();
   try {
-    return {
-      input: { kind: "file", filename: logicalFilename },
-      source: (await readFile(filename)).toString(),
-    };
+    return (await readFile(selected.physicalFilename)).toString();
   } catch (_error) {
     throw new ForeignInspectionUsageError(
-      `unable to read foreign-language input file ${JSON.stringify(logicalFilename)}`,
+      `unable to read foreign-language input file ${
+        JSON.stringify(selected.input.filename)
+      }`,
     );
   }
 }
@@ -157,18 +207,26 @@ export async function inspectForeignLowering(
 ): Promise<{ report: ForeignLoweringInspection; exitCode: 0 | 1 | 2 }> {
   let selectedLanguage: ForeignLanguage | null = null;
   let inspectedInput: InspectionInput = { kind: "stdin", filename: null };
+  const privateRoots = [resolve(process.cwd())];
   try {
     if (argv.usageError !== undefined) {
       throw new ForeignInspectionUsageError(argv.usageError);
     }
     selectedLanguage = language(argv.language);
-    const resolved = await input(argv);
-    inspectedInput = resolved.input;
+    const selected = selectInput(argv);
+    inspectedInput = selected.input;
+    if (selected.physicalFilename !== undefined) {
+      privateRoots.push(dirname(resolve(selected.physicalFilename)));
+    }
+    const source = await selectedSource(selected);
     const frontend = await createForeignFrontend(selectedLanguage);
     try {
-      const lowering = frontend.lower(resolved.source, {
+      const lowering = frontend.lower(source, {
         captureResult: true,
-        filename: inspectedInput.filename ?? "<stdin>",
+        filename: selectedLanguage === "magma" &&
+            selected.physicalFilename !== undefined
+          ? selected.physicalFilename
+          : inspectedInput.filename ?? "<stdin>",
       });
       return {
         report: {
@@ -190,7 +248,7 @@ export async function inspectForeignLowering(
           ...base(selectedLanguage, inspectedInput),
           success: false,
           lowering: null,
-          error: errorRecord(error),
+          error: errorRecord(error, privateRoots),
         },
         exitCode: 1,
       };
@@ -202,7 +260,7 @@ export async function inspectForeignLowering(
         ...base(selectedLanguage, inspectedInput),
         success: false,
         lowering: null,
-        error: errorRecord(error),
+        error: errorRecord(error, privateRoots),
       },
       exitCode: usageError ? 2 : 1,
     };

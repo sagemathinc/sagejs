@@ -394,21 +394,31 @@ function parse_inspect_foreign_args(all_args) {
     } else if (!options_ended && argument === "--language") {
       var language = all_args[++index];
       if (language === undefined) reject("--language requires a value");
-      else ans.language = language;
+      else if (ans.language !== undefined) {
+        reject("--language may be specified only once");
+      } else ans.language = language;
     } else if (!options_ended && argument.indexOf("--language=") === 0) {
-      ans.language = argument.slice("--language=".length);
+      if (ans.language !== undefined) {
+        reject("--language may be specified only once");
+      } else ans.language = argument.slice("--language=".length);
     } else if (!options_ended && argument === "--source") {
       var source = all_args[++index];
       if (source === undefined) reject("--source requires a value");
-      else ans.source = source;
+      else if (ans.source !== undefined) {
+        reject("--source may be specified only once");
+      } else ans.source = source;
     } else if (!options_ended && argument.indexOf("--source=") === 0) {
-      ans.source = argument.slice("--source=".length);
+      if (ans.source !== undefined) {
+        reject("--source may be specified only once");
+      } else ans.source = argument.slice("--source=".length);
     } else if (!options_ended && (argument === "--help" || argument === "-h")) {
       ans.help = true;
     } else if (
       !options_ended && (argument === "--version" || argument === "-V")
     ) {
       ans.version = true;
+    } else if (!options_ended && argument === "-") {
+      ans.files.push(argument);
     } else if (!options_ended && argument[0] === "-") {
       reject("unknown inspect-foreign option " + JSON.stringify(argument));
     } else {

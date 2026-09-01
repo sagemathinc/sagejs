@@ -32,18 +32,22 @@ status 0:
 {"schema":"sagejs.foreign-lowering-inspection/v1","schema_version":1,"success":true,"language":"matlab","input":{"kind":"source","filename":null},"lowering":{"source":"import matlab as _matlab\n...","has_result":true,"loaded_files":[],"attached_files":[]},"error":null}
 ```
 
-Parser or supported-surface rejection exits with status 1. The lowering is
-explicitly null and the diagnostic preserves the frontend's error name,
-message, one-based line and column, and incomplete-input classification:
+Parser, supported-surface, frontend-load, or internal inspection failure exits
+with status 1. The lowering is explicitly null and the diagnostic preserves
+the frontend's public error name, message, one-based line and column, and
+incomplete-input classification:
 
 ```json
 {"schema":"sagejs.foreign-lowering-inspection/v1","schema_version":1,"success":false,"language":"wolfram","input":{"kind":"source","filename":null},"lowering":null,"error":{"name":"WolframSyntaxError","message":"Fourier numerical syntax is not supported by the Sage.js Wolfram frontend","line":1,"column":1,"incomplete":false}}
 ```
 
 CLI misuse exits with status 2 and uses `ForeignInspectionUsageError`; source
-positions are null. All fields are present on every record. File evidence is
-sorted and represented by stable logical basenames, never host-specific
-absolute paths.
+positions are null. Repeating `--language` or `--source` is misuse rather than
+last-option-wins shadowing. All fields are present on every record. File
+evidence is sorted and represented by stable logical basenames, never
+host-specific absolute paths. A physical input filename is used privately so
+relative Magma `load` and `Attach` directives resolve beside their program;
+physical paths are redacted from outward diagnostics.
 
 The reported source is evidence about parser and translation behavior, not an
 execution result or a promise that arbitrary generated code is safe to run.

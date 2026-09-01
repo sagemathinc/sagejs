@@ -259,15 +259,23 @@ function parseArguments(): SeaArguments {
       } else if (!optionsEnded && argument === "--language") {
         const value = rawArguments[++index];
         if (value === undefined) reject("--language requires a value");
-        else args.language = value;
+        else if (args.language !== undefined) {
+          reject("--language may be specified only once");
+        } else args.language = value;
       } else if (!optionsEnded && argument.startsWith("--language=")) {
-        args.language = argument.slice("--language=".length);
+        if (args.language !== undefined) {
+          reject("--language may be specified only once");
+        } else args.language = argument.slice("--language=".length);
       } else if (!optionsEnded && argument === "--source") {
         const value = rawArguments[++index];
         if (value === undefined) reject("--source requires a value");
-        else args.source = value;
+        else if (args.source !== undefined) {
+          reject("--source may be specified only once");
+        } else args.source = value;
       } else if (!optionsEnded && argument.startsWith("--source=")) {
-        args.source = argument.slice("--source=".length);
+        if (args.source !== undefined) {
+          reject("--source may be specified only once");
+        } else args.source = argument.slice("--source=".length);
       } else if (
         !optionsEnded && (argument === "--help" || argument === "-h")
       ) {
@@ -278,6 +286,13 @@ function parseArguments(): SeaArguments {
             "one JSON record. With no source or file, read standard input.",
         );
         process.exit(0);
+      } else if (
+        !optionsEnded && (argument === "--version" || argument === "-V")
+      ) {
+        console.log(`sagejs ${SAGEJS_VERSION_INFO.version}`);
+        process.exit(0);
+      } else if (!optionsEnded && argument === "-") {
+        args.files.push(argument);
       } else if (!optionsEnded && argument.startsWith("-")) {
         reject(`unknown inspect-foreign option ${JSON.stringify(argument)}`);
       } else {
