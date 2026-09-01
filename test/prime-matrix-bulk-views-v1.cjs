@@ -10,6 +10,7 @@ const test = require("node:test");
 
 const root = join(__dirname, "..");
 const sagejs = join(root, "bin", "sagejs");
+const dynamicAlgebraBudgetMs = process.platform === "darwin" ? 1_200 : 1_000;
 
 function runSage(source, environment = {}) {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-prime-matrix-views-"));
@@ -34,6 +35,7 @@ const witness = String.raw`
 import sagejs.runtime as runtime
 
 NATIVE_MODE = True
+DYNAMIC_ALGEBRA_BUDGET_MS = ${dynamicAlgebraBudgetMs}
 
 
 def median_time(function):
@@ -221,7 +223,7 @@ assert columns_ms < 150, columns_ms
 assert warm_list_ms < 100, warm_list_ms
 assert row_ms < 100, row_ms
 assert column_ms < 100, column_ms
-assert algebra_ms < (150 if NATIVE_MODE else 1000), algebra_ms
+assert algebra_ms < (150 if NATIVE_MODE else DYNAMIC_ALGEBRA_BUDGET_MS), algebra_ms
 
 print("PRIME_MATRIX_BULK_VIEWS_OK")
 print("list_256_first_ms=" + str(round(list_ms, 3)))
