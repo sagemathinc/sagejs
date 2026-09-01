@@ -323,21 +323,31 @@ export function createWidgetHost({
     const closeHandlers = new Set();
     const send = (type, data = {}, callbacks, metadata = {}, buffers = []) => {
       const msgId = uuid();
+      const status = (executionState) => callbacks?.iopub?.status?.({
+        header: { msg_id: uuid(), msg_type: "status" },
+        parent_header: { msg_id: msgId },
+        metadata: {},
+        content: { execution_state: executionState },
+      });
       if (queuedEvents >= limits.queuedEvents) {
         const error = new RangeError(
           `widget session exceeds the ${limits.queuedEvents} queued-event limit`,
         );
         onViolation(error, { type, commId });
-        queueMicrotask(() => callbacks?.shell?.reply?.({
-          content: {
-            status: "error",
-            ename: error.name,
-            evalue: error.message,
-          },
-        }));
+        queueMicrotask(() => {
+          callbacks?.shell?.reply?.({
+            content: {
+              status: "error",
+              ename: error.name,
+              evalue: error.message,
+            },
+          });
+          status("idle");
+        });
         return msgId;
       }
       queuedEvents += 1;
+      status("busy");
       void session.comm({
         schema: "sagejs.comm-event/v1",
         type,
@@ -365,6 +375,11 @@ export function createWidgetHost({
         },
       ).finally(() => {
         queuedEvents -= 1;
+        // The upstream widget model throttles frontend messages until it sees
+        // the matching Jupyter status-idle notification.  A shell reply alone
+        // leaves `_pending_msgs` nonzero forever, so only the first control
+        // change reaches Python.
+        status("idle");
       });
       return msgId;
     };

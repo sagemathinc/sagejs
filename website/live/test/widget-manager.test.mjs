@@ -102,7 +102,11 @@ test("widget host stores model state, buffers, and routes both comm directions",
   assert.equal(received[0].content.data.state.value, 7);
   assert.equal(received[0].parent_header.msg_id, "cell-1");
 
-  const messageId = rendered.comm.send({ method: "update", state: { value: 8 } });
+  const statusMessages = [];
+  const messageId = rendered.comm.send(
+    { method: "update", state: { value: 8 } },
+    { iopub: { status: (message) => statusMessages.push(message) } },
+  );
   assert.equal(typeof messageId, "string");
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(session.sent[0].type, "message");
@@ -110,6 +114,11 @@ test("widget host stores model state, buffers, and routes both comm directions",
   assert.equal(session.sent[0].parentId, messageId);
   assert.equal(session.sent[0].data.state.value, 8);
   assert.equal(session.handlers[0].timeout, 15_000);
+  assert.deepEqual(
+    statusMessages.map((message) => message.content.execution_state),
+    ["busy", "idle"],
+  );
+  assert.equal(statusMessages[1].parent_header.msg_id, messageId);
 
   host.reset();
   assert.equal(await environment.getSerializedModelState("model-1"), undefined);

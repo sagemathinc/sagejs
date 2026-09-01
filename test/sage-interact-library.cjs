@@ -61,6 +61,12 @@ test("PREP plotting and calculus interacts execute their documented defaults", a
     evaluated.events.filter((event) => event.type === "error"),
     [],
   );
+  assert.ok(
+    evaluated.events.some(
+      (event) => event.data?.["application/vnd.plotly.v1+json"],
+    ),
+    "show() inside an interact callback should publish its plot",
+  );
 });
 
 test("bundled Sage interact library is lazy and executes a representative subset", async (t) => {

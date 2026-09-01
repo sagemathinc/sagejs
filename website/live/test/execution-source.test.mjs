@@ -18,9 +18,12 @@ test("run cell honors explicit Sage cell markers", () => {
   assert.equal(executionSource(source, { mode: "cell", selectionStart: cursor }), "b = a + 2\nb");
 });
 
-test("run cell uses blank-line paragraphs when markers are absent", () => {
+test("run cell preserves blank lines when markers are absent", () => {
   const source = "a = 1\na\n\nb = 2\nb\n\nc = 3";
-  assert.equal(executionSource(source, { mode: "cell", selectionStart: source.indexOf("b =") }), "b = 2\nb");
+  assert.equal(
+    executionSource(source, { mode: "cell", selectionStart: source.indexOf("b =") }),
+    source,
+  );
 });
 
 test("invalid modes and types fail explicitly", () => {

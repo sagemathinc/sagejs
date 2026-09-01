@@ -102,6 +102,23 @@ try {
     await evaluate(`document.querySelector('#source').value=${JSON.stringify(source)}; document.querySelector('[data-run="all"]').click()`);
     await waitFor(ready, timeout);
   }
+  async function runCellSource(source, ready, timeout = 90_000) {
+    await evaluate(`(() => {
+      const editor = document.querySelector('#source');
+      editor.value = ${JSON.stringify(source)};
+      editor.setSelectionRange(editor.value.length);
+      document.querySelector('[data-run="cell"]').click();
+    })()`);
+    await waitFor(ready, timeout);
+  }
+  async function pressKey(key, code, windowsVirtualKeyCode) {
+    await command("Input.dispatchKeyEvent", {
+      type: "keyDown", key, code, windowsVirtualKeyCode,
+    });
+    await command("Input.dispatchKeyEvent", {
+      type: "keyUp", key, code, windowsVirtualKeyCode,
+    });
+  }
   async function renderedPlotPixelStats() {
     return evaluate(`(async () => {
       const plot = document.querySelector('#output .plot');
@@ -312,6 +329,29 @@ try {
       "Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) < -1",
     30_000,
   );
+  await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    "@interact\ndef repeated_callback(n=(1..100)):\n    print(n, n**3)",
+    "document.querySelector('#output [role=slider]') !== null && " +
+      "document.querySelector('#output')?.textContent.includes('1 1')",
+    30_000,
+  );
+  await evaluate("document.querySelector('#output [role=slider]').focus()");
+  for (const [value, cube] of [[2, 8], [3, 27], [4, 64], [5, 125], [6, 216]]) {
+    await pressKey("ArrowRight", "ArrowRight", 39);
+    await waitFor(
+      `Number(document.querySelector('#output [role=slider]')?.getAttribute('aria-valuenow')) === ${value - 1} && ` +
+        `document.querySelector('#output')?.textContent.includes('${value} ${cube}')`,
+      30_000,
+    );
+  }
+  await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    "@interact\ndef plotted_callback(n=(1..10)):\n    show(plot(x^n))",
+    "document.querySelector('#output [role=slider]') !== null && " +
+      "document.querySelector('#output .js-plotly-plot') !== null",
+    30_000,
+  );
   const expressionExample = EXAMPLES.find(
     (example) => example.id === "interactive-function-explorer",
   );
@@ -340,6 +380,36 @@ try {
   await waitFor(
     "document.querySelector('#output input[type=text]')?.value === 'x^4' && " +
       "Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) >= 0",
+    30_000,
+  );
+  await evaluate(`(() => {
+    const input = document.querySelector('#output input[type=text]');
+    const setValue = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    ).set;
+    setValue.call(input, 'x^5');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await waitFor(
+    "document.querySelector('#output input[type=text]')?.value === 'x^5' && " +
+      "Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) < -1",
+    30_000,
+  );
+  await evaluate("document.querySelector('#clear-output').click()");
+  const blankLineExplorer =
+    "from IPython.display import display\n\n" +
+    "@interact\n" +
+    "def blank_line_explorer(f=input_box('x^3 - 2*x', label='f(x)=')):\n" +
+    "    display(f)\n" +
+    "    display(f.derivative(x))\n" +
+    "    display(plot(f, (x, -2, 2), ymin=-10, ymax=10))";
+  await runCellSource(
+    blankLineExplorer,
+    "document.querySelector('#output input[type=text]')?.value === 'x^3 - 2*x' && " +
+      "document.querySelector('#output .js-plotly-plot') !== null && " +
+      "!document.querySelector('#output')?.textContent.includes('display is not defined')",
     30_000,
   );
   const galleryExample = EXAMPLES.find(

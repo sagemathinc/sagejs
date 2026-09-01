@@ -302,12 +302,13 @@ def main(kernel_command: list[str]) -> None:
             )
             final_widget_id = client.execute("slider")
             final_widget_messages = iopub_until_idle(client, final_widget_id)
-            final_widget = message_of_type(
-                final_widget_messages, "execute_result"
-            )["content"]["data"]
-            assert final_widget[
-                "application/vnd.jupyter.widget-view+json"
-            ]["model_id"] == slider_comm_id
+            final_widget = message_of_type(final_widget_messages, "execute_result")[
+                "content"
+            ]["data"]
+            assert (
+                final_widget["application/vnd.jupyter.widget-view+json"]["model_id"]
+                == slider_comm_id
+            )
 
             comm_info_request = client.session.send(
                 client.shell_channel.socket,
