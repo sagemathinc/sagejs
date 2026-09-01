@@ -99,6 +99,18 @@ function expire() {
   }, 250);
 }
 
+function cleanPosixGroupAfterNormalExit() {
+  treeKillAttempted = true;
+  // The group leader has exited successfully, but descendants in the same
+  // qualification-owned process group may still be alive. Drain the group
+  // before reporting completion so a successful adapter cannot leak workers.
+  killPosixGroup("SIGTERM");
+  hardKill = setTimeout(() => {
+    killPosixGroup("SIGKILL");
+    finish();
+  }, 250);
+}
+
 try {
   child = spawn(executable, args, {
     detached: process.platform !== "win32",
@@ -114,8 +126,11 @@ try {
     childStatus = status;
     childSignal = signal;
     childClosed = true;
-    if (!timedOut) finish();
-    else if (process.platform === "win32") finish();
+    if (!timedOut && process.platform !== "win32") {
+      cleanPosixGroupAfterNormalExit();
+    } else if (!timedOut || process.platform === "win32") {
+      finish();
+    }
     // POSIX waits for the unconditional group SIGKILL above.
   });
   child.stdin.on("error", (error) => {

@@ -6,8 +6,10 @@ const {
   chmodSync,
   copyFileSync,
   existsSync,
+  lstatSync,
   mkdtempSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -21,6 +23,7 @@ const { pathToFileURL } = require("node:url");
 const { runPnpm } = require("../pnpm-invocation.cjs");
 
 const processSupervisor = join(__dirname, "process-supervisor.cjs");
+const archiveValidator = join(__dirname, "archive-validator.cjs");
 
 const SUPPORTED_TARGETS = Object.freeze({
   "linux-x64": Object.freeze({
@@ -84,15 +87,33 @@ function fileDependency(filename) {
   return pathToFileURL(resolve(filename)).href;
 }
 
-function archiveListing(archive) {
-  return execFileSync("tar", ["-tzf", archive], { encoding: "utf8" });
-}
-
 function archiveJson(archive, filename) {
   return JSON.parse(
     execFileSync("tar", ["-xOzf", archive, `package/${filename}`], {
       encoding: "utf8",
     }),
+  );
+}
+
+function validateTarArchive(archive) {
+  const result = assertSuccessful(
+    runProcess(process.execPath, [archiveValidator, resolve(archive)], {
+      timeout: 180_000,
+    }),
+    `validate package archive ${archive}`,
+  );
+  return JSON.parse(result.stdout);
+}
+
+function memberMap(validation) {
+  return new Map(validation.members.map((member) => [member.path, member]));
+}
+
+function requireRegularMember(members, path) {
+  assert.equal(
+    members.get(path)?.type,
+    "file",
+    `package archive requires regular file ${path}`,
   );
 }
 
@@ -103,13 +124,21 @@ function assertArchiveLayout(rootArchive, platformArchive, targetName) {
     assert.ok(existsSync(archive), `missing package archive ${archive}`);
   }
 
-  const rootContents = archiveListing(rootArchive);
-  assert.doesNotMatch(rootContents, /\.sagejs-native-kernels\//);
-  assert.doesNotMatch(rootContents, /package\/dist\/native-kernels\//);
-  assert.match(rootContents, /package\/dist\/numerical\/backend\.cjs/);
-  assert.match(rootContents, /package\/dist\/numerical\/cminpack\.wasm/);
-  assert.match(rootContents, /package\/dist\/numerical\/nlopt-backend\.cjs/);
-  assert.match(rootContents, /package\/dist\/numerical\/nlopt-methods\.wasm/);
+  const rootValidation = validateTarArchive(rootArchive);
+  const rootMembers = memberMap(rootValidation);
+  for (const path of rootMembers.keys()) {
+    assert.doesNotMatch(path, /\.sagejs-native-kernels\//);
+    assert.doesNotMatch(path, /^package\/dist\/native-kernels\//);
+  }
+  for (const path of [
+    "package/package.json",
+    "package/dist/numerical/backend.cjs",
+    "package/dist/numerical/cminpack.wasm",
+    "package/dist/numerical/nlopt-backend.cjs",
+    "package/dist/numerical/nlopt-methods.wasm",
+  ]) {
+    requireRegularMember(rootMembers, path);
+  }
 
   const rootManifest = archiveJson(rootArchive, "package.json");
   assert.equal(rootManifest.name, "@sagemath/sagejs");
@@ -120,10 +149,15 @@ function assertArchiveLayout(rootArchive, platformArchive, targetName) {
       `${target.packageName}@${rootManifest.version}`,
   );
 
-  const platformContents = archiveListing(platformArchive);
-  const suffix = target.executableSuffix.replace(".", "\\.");
-  assert.match(platformContents, new RegExp(`package/bin/sagejs${suffix}$`, "m"));
-  assert.match(platformContents, new RegExp(`package/bin/sagepython${suffix}$`, "m"));
+  const platformValidation = validateTarArchive(platformArchive);
+  const platformMembers = memberMap(platformValidation);
+  for (const path of [
+    "package/package.json",
+    `package/bin/sagejs${target.executableSuffix}`,
+    `package/bin/sagepython${target.executableSuffix}`,
+  ]) {
+    requireRegularMember(platformMembers, path);
+  }
   const platformManifest = archiveJson(platformArchive, "package.json");
   assert.equal(platformManifest.name, target.packageName);
   assert.equal(platformManifest.version, rootManifest.version);
@@ -134,7 +168,7 @@ function assertArchiveLayout(rootArchive, platformArchive, targetName) {
     [`sagejs-${targetName}`]: `bin/sagejs${target.executableSuffix}`,
     [`sagepython-${targetName}`]: `bin/sagepython${target.executableSuffix}`,
   });
-  return { rootContents, rootManifest, platformContents, platformManifest };
+  return { rootManifest, rootValidation, platformManifest, platformValidation };
 }
 
 function runProcess(executable, args, options = {}) {
@@ -230,12 +264,42 @@ function assertContained(parent, child) {
   );
 }
 
+function auditInstalledClosure(consumerDirectory, installedPath, label) {
+  const consumer = realpathSync(consumerDirectory);
+  const closure = realpathSync(installedPath);
+  assertContained(consumer, closure);
+  const pending = [closure];
+  let entries = 0;
+  while (pending.length > 0) {
+    const current = pending.pop();
+    const stats = lstatSync(current);
+    assert.equal(
+      stats.isSymbolicLink(),
+      false,
+      `${label} contains a symbolic link or Windows reparse point: ${current}`,
+    );
+    assertContained(closure, realpathSync(current));
+    assertContained(consumer, realpathSync(current));
+    if (stats.isDirectory()) {
+      for (const name of readdirSync(current)) pending.push(join(current, name));
+    } else {
+      assert.equal(
+        stats.isFile(),
+        true,
+        `${label} contains a non-file special entry: ${current}`,
+      );
+    }
+    entries += 1;
+    assert.ok(entries <= 100_000, `${label} exceeds 100000 installed entries`);
+  }
+  return { closure, entries };
+}
+
 function prepareFreshInstall(options) {
   const targetName = options.target || targetForHost();
   const target = resolveTarget(targetName, options);
-  const rootArchive = resolve(options.rootArchive);
-  const platformArchive = resolve(options.platformArchive);
-  assertArchiveLayout(rootArchive, platformArchive, targetName);
+  const rootArchiveSource = resolve(options.rootArchive);
+  const platformArchiveSource = resolve(options.platformArchive);
 
   const ownedDirectory = !options.directory;
   let directory;
@@ -244,6 +308,19 @@ function prepareFreshInstall(options) {
       ? resolve(options.directory)
       : mkdtempSync(join(tmpdir(), `sagejs-npm-${targetName}-`));
     mkdirSync(directory, { recursive: true });
+    // Bind installation to private copies of exactly the bytes validated
+    // below. A caller cannot swap an external archive between validation and
+    // pnpm extraction.
+    const archiveDirectory = join(
+      directory,
+      `qualification-archives-${process.pid}-${Date.now()}`,
+    );
+    mkdirSync(archiveDirectory);
+    const rootArchive = join(archiveDirectory, "sagejs-root.tgz");
+    const platformArchive = join(archiveDirectory, "sagejs-platform.tgz");
+    copyFileSync(rootArchiveSource, rootArchive);
+    copyFileSync(platformArchiveSource, platformArchive);
+    assertArchiveLayout(rootArchive, platformArchive, targetName);
     const rootSpec = fileDependency(rootArchive);
     const platformSpec = fileDependency(platformArchive);
     const manifest = {
@@ -267,6 +344,7 @@ function prepareFreshInstall(options) {
     });
 
     const installedRoot = join(directory, "node_modules", "@sagemath", "sagejs");
+    auditInstalledClosure(directory, installedRoot, "installed @sagemath/sagejs");
     const rootManifest = JSON.parse(
       readFileSync(join(installedRoot, "package.json"), "utf8"),
     );
@@ -281,6 +359,7 @@ function prepareFreshInstall(options) {
       `${target.packageName}/package.json`,
     );
     const platformRoot = dirname(platformManifestPath);
+    auditInstalledClosure(directory, platformRoot, `installed ${target.packageName}`);
     const platformManifest = JSON.parse(
       readFileSync(platformManifestPath, "utf8"),
     );
@@ -495,10 +574,10 @@ function runRelocatedSeaLanguage(context, source, language, options = {}) {
 
 module.exports = {
   SUPPORTED_TARGETS,
-  archiveListing,
   archiveJson,
   assertArchiveLayout,
   assertSuccessful,
+  auditInstalledClosure,
   fileDependency,
   prepareFreshInstall,
   prepareRelocatedSea,
@@ -512,4 +591,5 @@ module.exports = {
   runRelocatedSeaLanguage,
   runRelocatedSeaPython,
   targetForHost,
+  validateTarArchive,
 };

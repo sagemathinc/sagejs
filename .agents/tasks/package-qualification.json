@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Provide target-parameterized fresh-install npm and relocated SEA numerical smoke qualification across all supported platforms without workspace leakage",
-  "base_commit": "9ab9c9c7d5fda5b8c0dffb0a2dd38e758833b9bd",
+  "base_commit": "6cf5161d094eff6abb53e9b91a85b1b70de4e957",
   "claims": [
     "scripts/test-npm-package.cjs",
     "scripts/package-qualification/",
@@ -62,7 +62,7 @@
     }
   ],
   "handoff": {
-    "summary": "Added isolated production-archive installation, target-parameterized public API and numerical smoke qualification, arbitrary-source npm/SEA runners for P8 adapters, and adversarial cross-platform command/layout/lifecycle tests. The root-only consumer now proves platform selection through the root archive's exact optional dependency. Linux x64 passed against freshly built root and platform archives, including lazy cminpack/NLopt and a separately relocated SEA.",
+    "summary": "Added isolated production-archive installation, target-parameterized public API and numerical smoke qualification, arbitrary-source npm/SEA runners for P8 adapters, and adversarial cross-platform command/layout/lifecycle tests. The root-only consumer proves platform selection through the root archive's exact optional dependency. Qualification now validates private copies of both tar streams before installation, rejects links, traversal, special entries, and portable-path collisions, and audits installed package closures without following links or Windows junctions/reparse points. Linux x64 passed against the production root and platform archives, including lazy cminpack/NLopt and a separately relocated SEA.",
     "risks": [
       "The committed runner is platform-neutral, but production archives still need to be executed on the persistent Linux ARM64, macOS ARM64, and Windows x64 hosts after integration provides their current artifacts."
     ],
