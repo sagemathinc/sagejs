@@ -64,7 +64,10 @@ The P0 contract audit then hardened this foundation before release:
 - qualification memory is collector-authenticated and scope-aware: Node policy
   may require collector-process RSS, while npm, SEA, browser, and worker policy
   requires sampled process-tree evidence. Adapter telemetry and browser heap
-  estimates cannot satisfy that release gate.
+  estimates cannot satisfy that release gate. Process-tree qualification also
+  requires a descendant observed during every measured sample; synchronous
+  external execution blocks the collector and therefore fails closed instead
+  of manufacturing a boundary-only memory claim.
 
 This proves the shared contracts sufficiently to begin domain-owned parallel
 implementation. P1 is not classified as release-qualified until its browser,

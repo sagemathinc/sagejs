@@ -90,25 +90,49 @@ function corpusFixture() {
   };
 }
 
-function adapterSource(subject) {
+function adapterSource(subject, externalExecution = "async") {
   return `"use strict";
-const { spawn } = require("node:child_process");
+const { spawn, spawnSync } = require("node:child_process");
 let subjectProcess = null;
+const external = ${JSON.stringify(subject.kind !== "node")};
+const externalExecution = ${JSON.stringify(externalExecution)};
+const childSource =
+  "const held = Buffer.alloc(64 * 1024 * 1024, 1); " +
+  "setTimeout(() => process.exit(0), 1500)";
+
+async function exerciseExternalSubject() {
+  if (!external) return;
+  if (externalExecution === "sync") {
+    const result = spawnSync(process.execPath, ["-e", childSource], {
+      stdio: "ignore", windowsHide: true,
+    });
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw new Error("synchronous subject fixture failed");
+    return;
+  }
+  await new Promise((resolve, reject) => {
+    subjectProcess = spawn(process.execPath, ["-e", childSource], {
+      stdio: "ignore", windowsHide: true,
+    });
+    subjectProcess.once("error", reject);
+    subjectProcess.once("close", (status) => {
+      subjectProcess = null;
+      if (status === 0) resolve();
+      else reject(new Error("asynchronous subject fixture failed"));
+    });
+  });
+}
+
 module.exports = {
   protocol: "sagejs.numerical-qualification-adapter/v1",
   async initialize(context) {
-    if (${JSON.stringify(subject.kind !== "node")}) {
-      subjectProcess = spawn(process.execPath, [
-        "-e", "setInterval(() => {}, 1000)",
-      ], { stdio: "ignore", windowsHide: true });
-      await new Promise((resolve) => setTimeout(resolve, 25));
-    }
     return {
       subject: ${JSON.stringify(subject)},
       capability_ids: ["fixture.answer"],
     };
   },
   async runCase(sample) {
+    await exerciseExternalSubject();
     return {
       outcome: { kind: "success", code: null },
       values: { result: sample.input.value, oracle: 42 },
@@ -153,12 +177,16 @@ function commitAll(root, message) {
 function makeWorkspace({
   capabilityStatus = "available",
   subject = { kind: "node", name: "node", version: process.version, engine: null },
+  externalExecution = "async",
 } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-numerical-evidence-"));
   initializeGit(root);
   fs.writeFileSync(path.join(root, "source.txt"), "exact fixture source\n");
   fs.writeFileSync(path.join(root, "artifact.bin"), Buffer.from([0, 1, 2, 3, 255]));
-  fs.writeFileSync(path.join(root, "adapter.cjs"), adapterSource(subject));
+  fs.writeFileSync(
+    path.join(root, "adapter.cjs"),
+    adapterSource(subject, externalExecution),
+  );
   writeJson(path.join(root, "fixture.corpus.json"), corpusFixture());
   writeJson(
     path.join(root, "capability-draft.json"),
@@ -503,10 +531,11 @@ test("memory evidence is authenticated by the collector, never by adapters", asy
   );
 });
 
-test("external subjects receive authenticated process-tree memory evidence", async (t) => {
+test("external subjects receive live authenticated process-tree memory evidence", async (t) => {
   const subject = { kind: "sea", name: "fixture-sea", version: "1", engine: null };
   const workspace = makeWorkspace({ subject });
   t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  const collectorRss = process.memoryUsage().rss;
   const receipt = await collectFixture(workspace);
   const memory = receipt.cases[0].metrics.peak_memory;
   const methods = {
@@ -517,12 +546,25 @@ test("external subjects receive authenticated process-tree memory evidence", asy
   assert.equal(memory.measurement_scope, "process_tree");
   assert.equal(memory.measurement_method, methods[process.platform]);
   assert.equal(memory.authenticated_by, "qualification-collector");
-  assert(memory.bytes > 0);
+  assert(
+    memory.bytes > collectorRss + 32 * 1024 * 1024,
+    "the authenticated peak must include the touched 64 MiB child allocation",
+  );
   const report = buildReport(
     policyFor(receipt),
     [{ path: "sea.receipt.json", value: receipt }],
   );
   assert.equal(report.status, "passed");
+});
+
+test("synchronous external execution cannot fabricate process-tree evidence", async (t) => {
+  const subject = { kind: "npm", name: "fixture-npm", version: "1", engine: null };
+  const workspace = makeWorkspace({ subject, externalExecution: "sync" });
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  await assert.rejects(
+    () => collectFixture(workspace),
+    /synchronous or remote execution cannot qualify process-tree memory/,
+  );
 });
 
 test("phase and campaign contracts reject unauditable fuzz and matrix coverage", async (t) => {

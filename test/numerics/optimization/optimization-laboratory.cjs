@@ -256,8 +256,9 @@ assert large_plan.method == "bfgs" and supports(large_problem)
 
 try:
     minimize(lambda point: point[0]*point[0], [1.0], constraints=[lambda point: point[0]])
-    raise AssertionError("nonlinear constraints must fail closed")
-except NotImplementedError:
+    raise AssertionError("callable-only constraints must fail as malformed records")
+except TypeError as error:
+    assert "must be a mapping" in str(error)
     pass
 
 print("optimization success laboratory passed")

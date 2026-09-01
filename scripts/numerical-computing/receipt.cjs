@@ -336,12 +336,11 @@ function memoryMeasurement(subject) {
   const read = processTree ? processTreeRssSnapshot : () => process.memoryUsage().rss;
   let peak = 0;
   let error = null;
+  let descendantObserved = false;
   const sample = () => {
     try {
       const observation = read();
-      if (processTree && observation?.descendants < 1) {
-        throw new Error("external subject has no collector-descendant process");
-      }
+      if (processTree && observation?.descendants >= 1) descendantObserved = true;
       const value = processTree ? observation?.bytes : observation;
       if (!Number.isSafeInteger(value) || value < 0) {
         throw new Error("memory sampler returned no authenticated measurement");
@@ -360,6 +359,13 @@ function memoryMeasurement(subject) {
       clearInterval(timer);
       sample();
       if (error !== null) fail("memory measurement", error.message);
+      if (processTree && !descendantObserved) {
+        fail(
+          "memory measurement",
+          "external subject had no collector-descendant process during the sample; " +
+            "synchronous or remote execution cannot qualify process-tree memory",
+        );
+      }
       return {
         bytes: peak,
         measurement_method,
