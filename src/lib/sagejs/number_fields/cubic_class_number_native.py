@@ -53,6 +53,8 @@ _CUBIC_COMPOUND_MULTIPLIERS = 4
 _CUBIC_MAX_RELATION_EFFORT = 5
 _CUBIC_INITIAL_ADJACENT_IDEALS = 3
 _CUBIC_NARROW_ADJACENT_MAX_FACTORS = 11
+_CUBIC_RELATION_REDUNDANCY_TAIL = 6
+_CUBIC_RELATION_RECOVERY_TAIL = 18
 _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES = 500
 _CUBIC_REDUCED_ENUMERATION_MAX_COORDINATE = 32
 _CUBIC_MAX_FACTOR_SEARCH_BOUND = 257
@@ -2720,6 +2722,60 @@ def _cubic_append_reduced_ideal_ellipsoid(
             coefficient_one += 1
         coefficient_two += 1
     return (relation_count, candidate_count)
+
+
+@native
+def _cubic_copy_relation_support_tail(
+    relation_matrix: FmpzMatrix,
+    relation_elements: FmpzMatrix,
+    relation_support: FmpzMatrix,
+    relation_count: uint64,
+    factor_count: uint64,
+    tail_start: uint64,
+    target_matrix: FmpzMatrix,
+    target_elements: FmpzMatrix,
+) -> uint64:
+    """Copy canonical class support followed by a redundant witness tail."""
+    target_row: uint64 = 0
+    copy_pass: uint64 = 0
+    while copy_pass < 2:
+        source_row: uint64 = 0
+        if copy_pass == 1:
+            source_row = tail_start
+        while source_row < relation_count:
+            copy_support_row = (
+                copy_pass == 0
+                and fmpz_matrix_entry(relation_support, source_row, 0) != 0
+            )
+            copy_tail_row = (
+                copy_pass == 1
+                and fmpz_matrix_entry(relation_support, source_row, 0) == 0
+            )
+            if copy_support_row or copy_tail_row:
+                column: uint64 = 0
+                while column < factor_count:
+                    if not fmpz_matrix_set_entry(
+                        target_matrix,
+                        target_row,
+                        column,
+                        fmpz_matrix_entry(relation_matrix, source_row, column),
+                    ):
+                        return relation_count + 1
+                    column += 1
+                coordinate: uint64 = 0
+                while coordinate < 3:
+                    if not fmpz_matrix_set_entry(
+                        target_elements,
+                        target_row,
+                        coordinate,
+                        fmpz_matrix_entry(relation_elements, source_row, coordinate),
+                    ):
+                        return relation_count + 1
+                    coordinate += 1
+                target_row += 1
+            source_row += 1
+        copy_pass += 1
+    return target_row
 
 
 @native
@@ -6473,12 +6529,12 @@ def certified_complex_cubic_class_group_v1(
                 incremental_column += 1
             incremental_row += 1
 
-        # Preserve up to eighteen final reduced-ideal witnesses not already in
+        # Preserve a bounded tail of final reduced-ideal witnesses not already in
         # the HNF support.  These redundant principal relations are useful for
         # finding a short generator of the rank-one unit lattice.
         compact_tail_start: uint64 = 0
-        if relation_count > 18:
-            compact_tail_start = relation_count - 18
+        if relation_count > _CUBIC_RELATION_REDUNDANCY_TAIL:
+            compact_tail_start = relation_count - _CUBIC_RELATION_REDUNDANCY_TAIL
         compact_tail_count: uint64 = 0
         compact_source_row = compact_tail_start
         while compact_source_row < relation_count:
@@ -6501,63 +6557,16 @@ def certified_complex_cubic_class_group_v1(
             compact_relation_count,
             3,
         )
-        compact_row: uint64 = 0
-        compact_pass: uint64 = 0
-        while compact_pass < 2:
-            compact_source_row = 0
-            if compact_pass == 1:
-                compact_source_row = compact_tail_start
-            while compact_source_row < relation_count:
-                copy_support_row = (
-                    compact_pass == 0
-                    and fmpz_matrix_entry(
-                        relation_support,
-                        compact_source_row,
-                        0,
-                    )
-                    != 0
-                )
-                copy_tail_row = (
-                    compact_pass == 1
-                    and fmpz_matrix_entry(
-                        relation_support,
-                        compact_source_row,
-                        0,
-                    )
-                    == 0
-                )
-                if copy_support_row or copy_tail_row:
-                    compact_column: uint64 = 0
-                    while compact_column < factor_count:
-                        if not fmpz_matrix_set_entry(
-                            compact_relation_matrix,
-                            compact_row,
-                            compact_column,
-                            fmpz_matrix_entry(
-                                relation_matrix,
-                                compact_source_row,
-                                compact_column,
-                            ),
-                        ):
-                            return False
-                        compact_column += 1
-                    compact_coordinate: uint64 = 0
-                    while compact_coordinate < 3:
-                        if not fmpz_matrix_set_entry(
-                            compact_relation_elements,
-                            compact_row,
-                            compact_coordinate,
-                            fmpz_matrix_entry(
-                                relation_elements,
-                                compact_source_row,
-                                compact_coordinate,
-                            ),
-                        ):
-                            return False
-                        compact_coordinate += 1
-                    compact_row += 1
-                compact_source_row += 1
-            compact_pass += 1
+        compact_row: uint64 = _cubic_copy_relation_support_tail(
+            relation_matrix,
+            relation_elements,
+            relation_support,
+            relation_count,
+            factor_count,
+            compact_tail_start,
+            compact_relation_matrix,
+            compact_relation_elements,
+        )
         if compact_row != compact_relation_count:
             return False
         if not fmpz_matrix_hnf_into(
@@ -6569,7 +6578,7 @@ def certified_complex_cubic_class_group_v1(
         compact_row = 0
         while compact_row < compact_relation_count:
             compact_nonzero = False
-            compact_column = 0
+            compact_column: uint64 = 0
             while compact_column < factor_count:
                 if (
                     fmpz_matrix_entry(
@@ -6925,38 +6934,73 @@ def certified_complex_cubic_class_group_v1(
             dependency_row += 1
         output[59] = 434
         # Compaction is optimized for the class lattice and normally retains
-        # enough redundant rows for the unit lattice as well.  If it does not,
-        # inspect the still-resident uncompressed prefix exactly before asking
-        # the host for a multiplier retry.  Conditional arena children make
-        # this exceptional LLL/log workspace cost-free on the ordinary path.
+        # enough redundant rows for the unit lattice as well. If it does not,
+        # expand only to the canonical class support plus an eighteen-witness
+        # recovery tail before asking the host for a multiplier retry. This
+        # preserves the old short-unit envelope without making the exceptional
+        # HNF/LLL/log workspace operate on the entire raw collection matrix.
         if not unit_found:
+            recovery_tail_start: uint64 = 0
+            if uncompacted_relation_count > _CUBIC_RELATION_RECOVERY_TAIL:
+                recovery_tail_start = (
+                    uncompacted_relation_count - _CUBIC_RELATION_RECOVERY_TAIL
+                )
+            recovery_tail_count: uint64 = 0
+            recovery_source_row: uint64 = recovery_tail_start
+            while recovery_source_row < uncompacted_relation_count:
+                if fmpz_matrix_entry(relation_support, recovery_source_row, 0) == 0:
+                    recovery_tail_count += 1
+                recovery_source_row += 1
+            recovery_relation_count: uint64 = support_count + recovery_tail_count
+            recovery_relation_matrix = arena.foreign_resource(
+                fmpz_matrix,
+                recovery_relation_count,
+                factor_count,
+            )
+            recovery_relation_elements = arena.foreign_resource(
+                fmpz_matrix,
+                recovery_relation_count,
+                3,
+            )
+            recovery_row: uint64 = _cubic_copy_relation_support_tail(
+                relation_matrix,
+                relation_elements,
+                relation_support,
+                uncompacted_relation_count,
+                factor_count,
+                recovery_tail_start,
+                recovery_relation_matrix,
+                recovery_relation_elements,
+            )
+            if recovery_row != recovery_relation_count:
+                return False
             prefix_matrix = arena.foreign_resource(
                 fmpz_matrix,
-                uncompacted_relation_count,
+                recovery_relation_count,
                 factor_count,
             )
             prefix_hnf = arena.foreign_resource(
                 fmpz_matrix,
-                uncompacted_relation_count,
+                recovery_relation_count,
                 factor_count,
             )
             prefix_transform = arena.foreign_resource(
                 fmpz_matrix,
-                uncompacted_relation_count,
-                uncompacted_relation_count,
+                recovery_relation_count,
+                recovery_relation_count,
             )
             prefix_dependency_rows: uint64 = 1
-            if uncompacted_relation_count > factor_count:
-                prefix_dependency_rows = uncompacted_relation_count - factor_count
+            if recovery_relation_count > factor_count:
+                prefix_dependency_rows = recovery_relation_count - factor_count
             prefix_dependencies = arena.foreign_resource(
                 fmpz_matrix,
                 prefix_dependency_rows,
-                uncompacted_relation_count,
+                recovery_relation_count,
             )
             prefix_dependencies_reduced = arena.foreign_resource(
                 fmpz_matrix,
                 prefix_dependency_rows,
-                uncompacted_relation_count,
+                recovery_relation_count,
             )
             prefix_dependency_transform = arena.foreign_resource(
                 fmpz_matrix,
@@ -6965,13 +7009,13 @@ def certified_complex_cubic_class_group_v1(
             )
             prefix_logs = arena.foreign_resource(
                 fmpz_matrix,
-                uncompacted_relation_count,
+                recovery_relation_count,
                 2,
             )
             prefix_unit_combinations = arena.foreign_resource(
                 fmpz_matrix,
                 2,
-                uncompacted_relation_count,
+                recovery_relation_count,
             )
             prefix_unit_result = arena.foreign_resource(
                 fmpz_matrix,
@@ -6981,9 +7025,9 @@ def certified_complex_cubic_class_group_v1(
             prefix_unit_status = _cubic_relation_prefix_has_archimedean_unit(
                 workspace,
                 coefficients,
-                relation_candidates,
-                relation_elements,
-                uncompacted_relation_count,
+                recovery_relation_matrix,
+                recovery_relation_elements,
+                recovery_relation_count,
                 factor_count,
                 denominator,
                 basis_zero_zero,

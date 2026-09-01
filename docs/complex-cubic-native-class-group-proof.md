@@ -188,11 +188,12 @@ smoothness, ideal containment, and the independent proof replay remain the
 correctness authority for every admitted relation.
 
 Relation compaction retains the class-lattice support plus a bounded tail of
-eighteen redundant witnesses. Those extra rows preserve short unit
+six redundant witnesses. Those extra rows preserve ordinary short unit
 dependencies without making every HNF transform operate on the full collection
-matrix. If the compact dependency lattice still yields no exact unit, the
-program conditionally allocates one uncompressed HNF/LLL/log workspace inside
-the same arena and attempts exact unit reconstruction before declining.
+matrix. If that compact dependency lattice yields no exact unit, the program
+conditionally expands to the same canonical class support plus eighteen final
+witnesses and attempts exact unit reconstruction there. It never makes the
+exceptional HNF/LLL/log workspace operate on the entire raw collection matrix.
 
 Relation effort remains adaptive. For factor bases of dimension at most $11$,
 the host first invokes the closed native program with the three largest

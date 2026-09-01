@@ -173,8 +173,9 @@ cases = (
     # shells. Exact relation dependencies recover it without broadening the
     # speculative unit search; this pure cubic has class group C3 x C3.
     ("3.1.24843.1", (-91, 0, 0, 1), 9, (3, 3), 0),
-    # Two additional redundant rows preserve the fundamental-unit dependency
-    # through resident relation compaction, avoiding a multiplier retry.
+    # The six-row compact tail misses the fundamental-unit dependency. The
+    # bounded eighteen-row recovery tail finds it without using the entire raw
+    # collection matrix or authorizing a multiplier retry.
     ("3.1.49096.1", (-126, -6, -1, 1), 9, (9,), 0),
     # The sharper elementary Euler-constant enclosure proves PARI's GRH
     # generator cutoff 16.  The exact reduced ellipsoid in the complementary
@@ -209,11 +210,13 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label
-        assert receipt.relation_count == 29, label
+        assert receipt.relation_count == 18, label
+    if label == "3.1.49096.1":
+        assert receipt.relation_count == 16, label
     if label == "3.1.1802479.1":
         assert receipt.generator_bound == 41, label
         assert receipt.factor_base_size == 16, label
-        assert receipt.relation_count == 38, label
+        assert receipt.relation_count == 26, label
     assert receipt.matches(K), label
 print("cubic-native-lmfdb-corpus-ok")
 `);
