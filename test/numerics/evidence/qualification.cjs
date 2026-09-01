@@ -529,6 +529,15 @@ test("memory evidence is authenticated by the collector, never by adapters", asy
     () => verifyReceipt(forged, { historical: true }),
     /authenticated_by.*qualification-collector/,
   );
+
+  const impossible = structuredClone(receipt);
+  impossible.cases[0].samples[0].metrics.peak_memory.measurement_scope =
+    "browser_heap";
+  impossible.id = contentId(receiptCore(impossible));
+  assert.throws(
+    () => verifyReceipt(impossible, { historical: true }),
+    /measurement_scope.*must be collector_process/,
+  );
 });
 
 test("external subjects receive live authenticated process-tree memory evidence", async (t) => {

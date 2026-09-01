@@ -11,7 +11,9 @@ const test = require("node:test");
 
 const root = join(__dirname, "..", "..", "..");
 const {
+  loadLiveDiagnostics,
   loadLiveSurface,
+  validateSupportingDocuments,
   validateSurface,
 } = require("../../../scripts/check-numerical-surface.cjs");
 const {
@@ -47,6 +49,36 @@ test("the retained ledger is derived exhaustively from public registries", () =>
   const misclassified = structuredClone(live);
   misclassified.frontend_operations[0].classification = "unsupported";
   assert.throws(() => validateSurface(misclassified, live), /ledger is stale/);
+
+  const diagnostics = loadLiveDiagnostics();
+  validateSupportingDocuments(diagnostics);
+  assert.throws(
+    () => validateSupportingDocuments(diagnostics.slice(1)),
+    /diagnostic ledger is stale/,
+  );
+});
+
+test("problem, result, and trace schemas cover every emitted common record", () => {
+  const problem = JSON.parse(readFileSync(
+    join(root, "docs/numerical-computing/problem.schema.json"), "utf8",
+  ));
+  const result = JSON.parse(readFileSync(
+    join(root, "docs/numerical-computing/result.schema.json"), "utf8",
+  ));
+  const trace = JSON.parse(readFileSync(
+    join(root, "docs/numerical-computing/trace.schema.json"), "utf8",
+  ));
+  assert.equal(problem.properties.trace_policy.$ref, "trace.schema.json#/$defs/policy");
+  assert.equal(trace.$id, "https://sagejs.org/schemas/trace.schema.json");
+  assert.ok(problem.properties.constraints);
+  const runtimeKinds = JSON.parse(runPython(String.raw`
+from sagejs.numerics.model import FUNCTION_RECORD_KINDS
+print(json.dumps(list(FUNCTION_RECORD_KINDS)))
+`));
+  assert.deepEqual(problem.$defs.callback.properties.kind.enum, runtimeKinds);
+  assert.ok(problem.$defs.ode_resource_budget.properties.max_workspace_bytes);
+  assert.ok(result.properties.provenance.properties.execution_binding_status.enum
+    .includes("external_execution_unobserved"));
 });
 
 test("npm is a first-class qualification subject in code and schemas", () => {
@@ -70,6 +102,7 @@ test("common records expose honest budgets, bindings, limitations, and code owne
 from sagejs.numerics import capabilities
 from sagejs.numerics.frontends import create_frontend_registry, matlab_fzero_intent
 from sagejs.numerics.model import (
+    NumericalConstraint,
     NumericalPlan,
     NumericalProblem,
     NumericalResult,
@@ -83,8 +116,25 @@ assert "sweeps.parameter_sweep" in registry["operation_index"]
 budget_contract = registry["resource_budget_contract"]
 assert budget_contract["not_common_fields"]["max_callback_depth"] == "unsupported_common_contract"
 assert budget_contract["not_common_fields"]["max_memory_bytes"] == "domain_specific_only"
+ode_budget = budget_contract["domain_specific"]["ode.initial_value_problem"]
+assert "max_workspace_bytes" in ode_budget
+assert "max_validation_evaluations" in ode_budget
 sweep = registry["operation_index"]["sweeps.parameter_sweep"]["capability"]
 assert "max_memory_bytes" in sweep["resource_budgets"]["cooperative"]
+for entry in registry["operation_index"].values():
+    methods = entry["capability"].get("methods", {})
+    if not isinstance(methods, dict):
+        continue
+    for method in methods.values():
+        targets = method.get("implementation_targets", {})
+        assert not any(str(item).startswith("sagejs-") for item in targets.get("runtimes", []))
+
+from sagejs.numerics.capabilities import _operation_classification
+try:
+    _operation_classification({})
+    raise AssertionError("an unclassified operation was accepted")
+except ValueError:
+    pass
 
 frontend = create_frontend_registry()
 metadata = frontend.metadata()
@@ -102,6 +152,7 @@ problem = NumericalProblem(
     "external_operation",
     function_record={"kind": "none", "replayable": True},
 )
+assert problem.to_dict()["derivative"] == {"kind": "none", "replayable": True}
 plan = NumericalPlan(
     problem,
     method="external-method",
@@ -126,6 +177,9 @@ result = NumericalResult(
     provenance={
         "implementation": "external-wasm",
         "implementation_kind": "external_library_wasm",
+        "source_digest": digest_a,
+        "artifact_sha256": digest_b,
+        "qualification_receipt_sha256": digest_c,
     },
     limitations=["finite_precision"],
     domain_payload={"limitations": {"research_scale": "unsupported"}},
@@ -136,6 +190,113 @@ assert record["provenance"]["execution_binding_status"] == "receipt_qualified"
 assert [item["code"] for item in record["limitations"]] == [
     "finite_precision", "research_scale"
 ]
+
+unobserved = NumericalResult(
+    problem,
+    plan,
+    success=True,
+    status="converged",
+    value=1.0,
+    validation=NumericalValidation("validated_approximate", True),
+).to_dict()
+assert unobserved["provenance"]["execution_binding_status"] == "external_execution_unobserved"
+
+try:
+    NumericalResult(
+        problem,
+        plan,
+        success=True,
+        status="converged",
+        value=1.0,
+        validation=NumericalValidation("validated_approximate", True),
+        provenance={
+            "implementation_kind": "external_library_wasm",
+            "artifact_sha256": "d" * 64,
+            "qualification_receipt_sha256": digest_c,
+        },
+    ).to_dict()
+    raise AssertionError("mismatched observed artifact was accepted")
+except ValueError:
+    pass
+
+nested = NumericalProblem(
+    "test",
+    "immutable",
+    function_record={
+        "kind": "sampled_data",
+        "replayable": True,
+        "samples": [{"x": [1.0], "y": [2.0]}],
+    },
+    numeric_type="complex-binary64",
+    variables=[{"name": "z", "shape": [2]}],
+    bounds={"box": {"lower": [0.0], "upper": [1.0]}},
+    initial_data={"points": [[0.5]]},
+    source_intent={"source": {"tokens": ["z"]}},
+)
+nested_digest = nested.digest
+nested.function_record["samples"][0]["x"].append(9.0)
+nested.bounds["box"]["lower"].append(-1.0)
+nested.initial_data["points"][0].append(0.75)
+nested.source_intent["source"]["tokens"].append("mutated")
+nested.to_dict()["variables"][0]["shape"].append(3)
+assert nested.digest == nested_digest
+complex_plan = NumericalPlan(
+    nested,
+    method="witness",
+    backend="ordinary-python",
+    reason="numeric type witness",
+    capability={},
+)
+assert complex_plan.to_dict()["numeric_type"] == "complex-binary64"
+complex_result = NumericalResult(
+    nested,
+    complex_plan,
+    success=True,
+    status="converged",
+    validation=NumericalValidation("validated_approximate", True),
+).to_dict()
+assert complex_result["precision"] == {"kind": "complex-binary64", "bits": 53}
+
+constraint = NumericalConstraint("inequality", lambda value: value[0], tolerance=1e-8)
+constrained = NumericalProblem(
+    "test",
+    "constrained",
+    function_record={"kind": "none", "replayable": True},
+    constraints=[constraint],
+)
+assert constrained.to_dict()["constraints"][0]["sense"] == "greater_equal"
+
+other = NumericalProblem("test", "other")
+other_plan = NumericalPlan(
+    other,
+    method="other",
+    backend="ordinary-python",
+    reason="different problem",
+    capability={},
+)
+for constructor in (
+    lambda: NumericalResult(
+        nested, other_plan, success=False, status="invalid_problem",
+        validation=NumericalValidation("indeterminate", False),
+    ),
+    lambda: NumericalResult(
+        nested, complex_plan, success=True, status="converged",
+        validation=NumericalValidation("indeterminate", False),
+    ),
+    lambda: NumericalResult(
+        nested, complex_plan, success=False, status="maximum_iterations",
+        validation=NumericalValidation("indeterminate", False), iterations=-1,
+    ),
+    lambda: NumericalResult(
+        nested, complex_plan, success=False, status="maximum_elapsed_time",
+        validation=NumericalValidation("indeterminate", False), elapsed_ms=-0.1,
+    ),
+):
+    try:
+        constructor()
+        raise AssertionError("an inconsistent result contract was accepted")
+    except ValueError:
+        pass
 
 intent = matlab_fzero_intent(
     lambda x: math.cos(x) - x,

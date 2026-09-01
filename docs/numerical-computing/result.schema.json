@@ -27,7 +27,20 @@
     "diagnostics": {"type": "array"},
     "method": {"type": "string", "minLength": 1},
     "backend": {"type": "string", "minLength": 1},
-    "precision": {"type": "object"},
+    "precision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "bits"],
+      "properties": {
+        "kind": {"type": "string", "minLength": 1},
+        "bits": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "integer", "minimum": 1}
+          ]
+        }
+      }
+    },
     "iterations": {"type": "integer", "minimum": 0},
     "evaluations": {"type": "integer", "minimum": 0},
     "elapsed_ms": {"type": "number", "minimum": 0},
@@ -41,7 +54,7 @@
         "source_digest": {"$ref": "#/$defs/optional_sha256"},
         "artifact_sha256": {"$ref": "#/$defs/optional_sha256"},
         "qualification_receipt_sha256": {"$ref": "#/$defs/optional_sha256"},
-        "execution_binding_status": {"enum": ["source_transparent_or_unobserved", "external_artifact_unbound", "artifact_digest_bound", "receipt_qualified"]}
+        "execution_binding_status": {"enum": ["source_transparent_or_unobserved", "source_transparent", "source_digest_bound", "external_execution_unobserved", "external_artifact_unbound", "artifact_digest_bound", "receipt_qualified"]}
       }
     },
     "limitations": {

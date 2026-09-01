@@ -17,17 +17,26 @@
     "bounds": {"type": "object"},
     "tolerances": {"type": "object"},
     "method_request": {"type": "string", "minLength": 1},
-    "resource_budget": {"$ref": "#/$defs/resource_budget"},
+    "resource_budget": {
+      "oneOf": [
+        {"$ref": "#/$defs/resource_budget"},
+        {"$ref": "#/$defs/ode_resource_budget"}
+      ]
+    },
     "trace_policy": {"$ref": "trace.schema.json#/$defs/policy"},
     "source_intent": {"type": "object"},
-    "metadata": {"type": "object"}
+    "metadata": {"type": "object"},
+    "constraints": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/constraint"}
+    }
   },
   "$defs": {
     "callback": {
       "type": "object",
       "required": ["kind", "replayable"],
       "properties": {
-        "kind": {"enum": ["none", "expression", "module_function", "source", "opaque_callback", "explicit_callback"]},
+        "kind": {"enum": ["none", "expression", "module_function", "source", "opaque_callback", "explicit_callback", "dense_binary64_data", "polynomial_coefficients", "sampled_data", "statistics_operation", "analytic_reference", "parameterized_decay"]},
         "replayable": {"type": "boolean"},
         "expression": {"type": "string"},
         "variable": {"type": "string"},
@@ -35,6 +44,33 @@
         "name": {"type": "string"},
         "content_hash": {"type": "string"}
       }
+    },
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "sense", "count", "tolerances", "function"],
+      "properties": {
+        "kind": {"enum": ["inequality", "equality"]},
+        "sense": {"enum": ["greater_equal", "equal"]},
+        "count": {"const": 1},
+        "tolerances": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {"type": "number", "minimum": 0}
+        },
+        "function": {"$ref": "#/$defs/callback"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "inequality"}}},
+          "then": {"properties": {"sense": {"const": "greater_equal"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "equality"}}},
+          "then": {"properties": {"sense": {"const": "equal"}}}
+        }
+      ]
     },
     "resource_budget": {
       "type": "object",
@@ -46,6 +82,24 @@
         "max_elapsed_ms": {"type": "integer", "minimum": 1},
         "max_trace_events": {"type": "integer", "minimum": 2},
         "max_trace_bytes": {"type": "integer", "minimum": 1024}
+      }
+    },
+    "ode_resource_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_iterations", "max_evaluations", "max_elapsed_ms", "max_trace_events", "max_trace_bytes", "max_steps", "max_output_points", "max_event_iterations", "max_validation_evaluations", "max_linear_solve_failures", "max_workspace_bytes"],
+      "properties": {
+        "max_iterations": {"type": "integer", "minimum": 1},
+        "max_evaluations": {"type": "integer", "minimum": 1},
+        "max_elapsed_ms": {"type": "integer", "minimum": 1},
+        "max_trace_events": {"type": "integer", "minimum": 2},
+        "max_trace_bytes": {"type": "integer", "minimum": 1024},
+        "max_steps": {"type": "integer", "minimum": 1},
+        "max_output_points": {"type": "integer", "minimum": 2},
+        "max_event_iterations": {"type": "integer", "minimum": 1},
+        "max_validation_evaluations": {"type": "integer", "minimum": 1},
+        "max_linear_solve_failures": {"type": "integer", "minimum": 1},
+        "max_workspace_bytes": {"type": "integer", "minimum": 1}
       }
     }
   }

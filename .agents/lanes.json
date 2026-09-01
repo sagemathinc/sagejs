@@ -191,6 +191,7 @@
       "id": "numerical-contracts",
       "description": "Shared agent-facing numerical problem, plan, result, capability, provenance, resource-budget, and surface-classification contracts",
       "allowed_claims": [
+        ".agents/lanes.json",
         "agents/numerical-computing-product-plan.md",
         "architecture/optimizer-opportunities.manifest.json",
         "docs/optimizer-opportunities.md",
@@ -209,6 +210,9 @@
         "src/lib/sagejs/numerics/frontends/operations.py",
         "src/lib/sagejs/numerics/frontends/registry.py",
         "src/lib/sagejs/numerics/model.py",
+        "src/lib/sagejs/numerics/ode/capabilities.py",
+        "src/lib/sagejs/numerics/ode/model.py",
+        "src/lib/sagejs/numerics/statistics/capabilities.py",
         "src/lib/sagejs/numerics/sweeps.py"
       ],
       "required_checks": [

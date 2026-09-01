@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
@@ -41,6 +42,21 @@ STATUS_CODES = (
     "backend_failure",
 )
 
+FUNCTION_RECORD_KINDS = (
+    "none",
+    "expression",
+    "module_function",
+    "source",
+    "opaque_callback",
+    "explicit_callback",
+    "dense_binary64_data",
+    "polynomial_coefficients",
+    "sampled_data",
+    "statistics_operation",
+    "analytic_reference",
+    "parameterized_decay",
+)
+
 _HEX_DIGITS = "0123456789abcdef"
 
 
@@ -52,6 +68,52 @@ def _optional_sha256(value: Any, name: str) -> str | None:
     if len(value) != 64 or any(character not in _HEX_DIGITS for character in value):
         raise ValueError(name + " must be a lowercase SHA-256 digest or None")
     return value
+
+
+def _function_record(
+    value: Mapping[str, Any] | None,
+    path: str,
+    *,
+    live_callback: bool,
+) -> dict[str, JSONValue]:
+    if value is None:
+        value = {
+            "kind": "opaque_callback" if live_callback else "none",
+            "replayable": False if live_callback else True,
+        }
+    record = materialize_object(value, path)
+    kind = record.get("kind")
+    if kind not in FUNCTION_RECORD_KINDS:
+        raise ValueError(
+            path + ".kind must be one of " + ", ".join(FUNCTION_RECORD_KINDS)
+        )
+    if not isinstance(record.get("replayable"), bool):
+        raise TypeError(path + ".replayable must be a boolean")
+    return record
+
+
+def _nonnegative_integer(value: Any, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(name + " must be a nonnegative integer")
+    return value
+
+
+def _nonnegative_finite(value: Any, name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError(name + " must be a nonnegative finite number")
+    answer = float(value)
+    if not math.isfinite(answer) or answer < 0.0:
+        raise ValueError(name + " must be a nonnegative finite number")
+    return answer
+
+
+def _precision_record(numeric_type: str) -> dict[str, JSONValue]:
+    normalized = numeric_type.lower().replace("_", "-")
+    if normalized == "complex-binary64":
+        return {"kind": "complex-binary64", "bits": 53}
+    if "binary64" in normalized:
+        return {"kind": "binary64", "bits": 53}
+    return {"kind": numeric_type, "bits": None}
 
 
 def _execution_target(
@@ -83,8 +145,16 @@ def _execution_target(
         "execution target qualification_receipt_sha256",
     )
     if implementation_kind == "ordinary_python":
+        if artifact_sha256 is not None or receipt_sha256 is not None:
+            raise ValueError(
+                "ordinary Python execution targets cannot declare artifact or receipt digests"
+            )
         binding_status = (
             "source_digest_bound" if source_digest is not None else "source_transparent"
+        )
+    elif receipt_sha256 is not None and artifact_sha256 is None:
+        raise ValueError(
+            "execution target qualification receipt requires an artifact digest"
         )
     elif artifact_sha256 is None:
         binding_status = "declared_unbound"
@@ -228,9 +298,11 @@ class NumericalConstraint:
         self._kind = kind
         self._function = function
         self._tolerance = float(tolerance)
-        if function_record is None:
-            function_record = {"kind": "opaque_callback", "replayable": False}
-        self._function_record = materialize_object(function_record, "$.constraint")
+        if not math.isfinite(self._tolerance) or self._tolerance < 0.0:
+            raise ValueError("constraint tolerance must be finite and nonnegative")
+        self._function_record = _function_record(
+            function_record, "$.constraint.function", live_callback=True
+        )
 
     @property
     def kind(self) -> str:
@@ -294,22 +366,23 @@ class NumericalProblem:
         self._operation = operation
         self._function = function
         self._derivative = derivative
-        if function_record is None:
-            function_record = {
-                "kind": "opaque_callback" if function is not None else "none",
-                "replayable": False,
-            }
-        self._function_record = materialize_object(
-            function_record, "$.problem.function"
+        self._function_record = _function_record(
+            function_record,
+            "$.problem.function",
+            live_callback=function is not None,
         )
-        self._numeric_type = str(numeric_type)
+        if not isinstance(numeric_type, str) or numeric_type == "":
+            raise TypeError("problem numeric_type must be a nonempty string")
+        self._numeric_type = numeric_type
         self._variables = materialize_array(variables, "$.problem.variables")
         self._initial_data = materialize_object(initial_data, "$.problem.initial_data")
         self._bounds = materialize_object(bounds, "$.problem.bounds")
         self._tolerances = materialize_object(tolerances, "$.problem.tolerances")
         self._method = str(method)
-        self._derivative_record = materialize_object(
-            derivative_record, "$.problem.derivative"
+        self._derivative_record = _function_record(
+            derivative_record,
+            "$.problem.derivative",
+            live_callback=derivative is not None,
         )
         self._constraints = tuple(constraints)
         for constraint in self._constraints:
@@ -352,16 +425,20 @@ class NumericalProblem:
         return self._method
 
     @property
+    def numeric_type(self) -> str:
+        return self._numeric_type
+
+    @property
     def bounds(self) -> dict[str, Any]:
-        return dict(self._bounds)
+        return materialize_object(self._bounds, "$.problem.bounds")
 
     @property
     def initial_data(self) -> dict[str, Any]:
-        return dict(self._initial_data)
+        return materialize_object(self._initial_data, "$.problem.initial_data")
 
     @property
     def tolerances(self) -> dict[str, Any]:
-        return dict(self._tolerances)
+        return materialize_object(self._tolerances, "$.problem.tolerances")
 
     @property
     def resource_budget(self) -> ResourceBudget:
@@ -373,11 +450,11 @@ class NumericalProblem:
 
     @property
     def function_record(self) -> dict[str, Any]:
-        return dict(self._function_record)
+        return materialize_object(self._function_record, "$.problem.function")
 
     @property
     def source_intent(self) -> dict[str, Any]:
-        return dict(self._source_intent)
+        return materialize_object(self._source_intent, "$.problem.source_intent")
 
     @property
     def constraints(self) -> list[NumericalConstraint]:
@@ -395,7 +472,7 @@ class NumericalProblem:
             "domain": self._domain,
             "operation": self._operation,
             "numeric_type": self._numeric_type,
-            "variables": list(self._variables),
+            "variables": materialize_array(self._variables, "$.problem.variables"),
             "function": self.function_record,
             "derivative": materialize_object(
                 self._derivative_record, "$.problem.derivative"
@@ -485,15 +562,20 @@ class NumericalPlan:
             "method": self._method,
             "backend": self._backend,
             "selection_reason": self._reason,
-            "numeric_type": "binary64",
+            "numeric_type": self._problem.numeric_type,
             "capability": materialize_object(self._capability, "$.plan.capability"),
             "fallback": materialize_object(self._fallback, "$.plan.fallback"),
             "expected_resources": materialize_object(
                 self._expected_resources, "$.plan.expected_resources"
             ),
             "execution_target": self.execution_target,
-            "rejected_alternatives": list(self._rejected),
-            "diagnostics": [dict(value) for value in self._diagnostics],
+            "rejected_alternatives": materialize_array(
+                self._rejected, "$.plan.rejected_alternatives"
+            ),
+            "diagnostics": [
+                materialize_object(value, "$.plan.diagnostics")
+                for value in self._diagnostics
+            ],
         }
 
 
@@ -535,7 +617,7 @@ class NumericalValidation:
         return {
             "truth_level": self._truth_level,
             "passed": self._passed,
-            "checks": list(self._checks),
+            "checks": materialize_array(self._checks, "$.validation.checks"),
             "residual": self._residual,
             "error_estimate": self._error_estimate,
             "condition_estimate": self._condition_estimate,
@@ -566,6 +648,16 @@ class NumericalResult:
     ) -> None:
         if status not in STATUS_CODES:
             raise ValueError("unknown numerical status code: " + status)
+        if not isinstance(problem, NumericalProblem):
+            raise TypeError("result problem must be a NumericalProblem")
+        if not isinstance(plan, NumericalPlan):
+            raise TypeError("result plan must be a NumericalPlan")
+        if plan.problem.digest != problem.digest:
+            raise ValueError("result plan was resolved for a different problem")
+        if not isinstance(validation, NumericalValidation):
+            raise TypeError("result validation must be a NumericalValidation")
+        if bool(success) and not validation.passed:
+            raise ValueError("a successful result requires passed validation")
         self._problem = problem
         self._plan = plan
         self._success = bool(success)
@@ -575,9 +667,9 @@ class NumericalResult:
         self._diagnostics = tuple(
             materialize_diagnostic(value) for value in diagnostics
         )
-        self._iterations = int(iterations)
-        self._evaluations = int(evaluations)
-        self._elapsed_ms = float(elapsed_ms)
+        self._iterations = _nonnegative_integer(iterations, "result iterations")
+        self._evaluations = _nonnegative_integer(evaluations, "result evaluations")
+        self._elapsed_ms = _nonnegative_finite(elapsed_ms, "result elapsed_ms")
         self._trace = NumericalTrace(problem.trace_policy) if trace is None else trace
         self._measurements = materialize_object(measurements, "$.result.measurements")
         self._provenance = materialize_object(provenance, "$.result.provenance")
@@ -648,27 +740,79 @@ class NumericalResult:
         record = materialize_object(self._provenance, "$.result.provenance")
         target = self._plan.execution_target
         record["planned_execution_target"] = target
-        for name in (
-            "source_digest",
-            "artifact_sha256",
-            "qualification_receipt_sha256",
-        ):
-            if name not in record:
-                record[name] = target[name]
-        observed_external = record.get("implementation_kind") not in (
-            None,
-            "ordinary_python",
+        source = _optional_sha256(
+            record.get("source_digest"), "provenance source_digest"
         )
-        artifact = record.get("artifact_sha256")
-        receipt = record.get("qualification_receipt_sha256")
-        if observed_external and artifact is None:
+        artifact = _optional_sha256(
+            record.get("artifact_sha256"), "provenance artifact_sha256"
+        )
+        receipt = _optional_sha256(
+            record.get("qualification_receipt_sha256"),
+            "provenance qualification_receipt_sha256",
+        )
+        record["source_digest"] = source
+        record["artifact_sha256"] = artifact
+        record["qualification_receipt_sha256"] = receipt
+        observed_kind = record.get("implementation_kind")
+        planned_kind = target["implementation_kind"]
+        if observed_kind is None:
+            if source is not None or artifact is not None or receipt is not None:
+                raise ValueError(
+                    "observed provenance digests require an implementation_kind"
+                )
+            record["execution_binding_status"] = (
+                "source_transparent_or_unobserved"
+                if planned_kind == "ordinary_python"
+                else "external_execution_unobserved"
+            )
+            return record
+        if not isinstance(observed_kind, str) or observed_kind == "":
+            raise TypeError("provenance implementation_kind must be nonempty")
+        if planned_kind == "ordinary_python":
+            if observed_kind != "ordinary_python":
+                raise ValueError("observed implementation kind contradicts the plan")
+            if artifact is not None or receipt is not None:
+                raise ValueError(
+                    "ordinary Python provenance cannot carry artifact or receipt digests"
+                )
+            planned_source = target["source_digest"]
+            if planned_source is not None and source not in (None, planned_source):
+                raise ValueError("observed source digest contradicts the plan")
+            record["execution_binding_status"] = (
+                "source_digest_bound" if source is not None else "source_transparent"
+            )
+            return record
+        if observed_kind == "ordinary_python":
+            raise ValueError("observed implementation kind contradicts the plan")
+        if planned_kind != "external_artifact" and observed_kind != planned_kind:
+            raise ValueError("observed implementation kind contradicts the plan")
+        planned_source = target["source_digest"]
+        planned_artifact = target["artifact_sha256"]
+        planned_receipt = target["qualification_receipt_sha256"]
+        if planned_source is not None and source not in (None, planned_source):
+            raise ValueError("observed source digest contradicts the plan")
+        if planned_artifact is not None and artifact not in (None, planned_artifact):
+            raise ValueError("observed artifact digest contradicts the plan")
+        if planned_receipt is not None and receipt not in (None, planned_receipt):
+            raise ValueError("observed qualification receipt contradicts the plan")
+        if receipt is not None and artifact is None:
+            raise ValueError(
+                "observed qualification receipt requires an artifact digest"
+            )
+        if artifact is None:
             record["execution_binding_status"] = "external_artifact_unbound"
-        elif observed_external and receipt is None:
+        elif receipt is None:
             record["execution_binding_status"] = "artifact_digest_bound"
-        elif observed_external:
+        elif (
+            target["binding_status"] == "receipt_qualified"
+            and artifact == planned_artifact
+            and receipt == planned_receipt
+        ):
             record["execution_binding_status"] = "receipt_qualified"
         else:
-            record["execution_binding_status"] = "source_transparent_or_unobserved"
+            raise ValueError(
+                "an observed receipt is not bound to the planned qualified artifact"
+            )
         return record
 
     def to_dict(self) -> dict[str, JSONValue]:
@@ -679,10 +823,13 @@ class NumericalResult:
             "status": self._status,
             "value": self.value,
             "validation": self._validation.to_dict(),
-            "diagnostics": [dict(value) for value in self._diagnostics],
+            "diagnostics": [
+                materialize_object(value, "$.result.diagnostics")
+                for value in self._diagnostics
+            ],
             "method": self.method,
             "backend": self.backend,
-            "precision": {"kind": "binary64", "bits": 53},
+            "precision": _precision_record(self._problem.numeric_type),
             "iterations": self._iterations,
             "evaluations": self._evaluations,
             "elapsed_ms": self._elapsed_ms,

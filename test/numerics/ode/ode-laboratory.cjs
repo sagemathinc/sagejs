@@ -69,11 +69,15 @@ assert capabilities["unsupported_methods"]["radau"]["classification"] == "unsupp
 assert capabilities["implemented_methods"]["rk45"]["stiff"] is False
 assert capabilities["implemented_methods"]["rosenbrock4"]["stiff"] is True
 assert capabilities["implemented_methods"]["rosenbrock4"]["automatic_selection"] is False
-assert capabilities["portability_evidence"]["qualified_runtimes"] == [
-    "cpython-linux-x64",
-    "sagejs-node-linux-x64",
+assert capabilities["implementation_targets"]["runtimes"] == [
+    "browser",
+    "node",
+    "sea",
+    "cpython",
 ]
-assert "windows-x64" in capabilities["portability_evidence"]["pending_targets"]
+assert "windows-x64" in capabilities["implementation_targets"]["platforms"]
+assert "qualified_runtimes" not in capabilities["implementation_targets"]
+assert "portability_evidence" not in capabilities
 
 calls = [0]
 def counted(t, y):

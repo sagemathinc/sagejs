@@ -8,6 +8,7 @@ const { spawnSync } = require("node:child_process");
 
 const root = join(__dirname, "..");
 const surfacePath = join(root, "docs/numerical-computing/surface.json");
+const diagnosticsPath = join(root, "docs/numerical-computing/diagnostics.json");
 const classifications = new Set([
   "faithful",
   "translated",
@@ -153,6 +154,30 @@ print(json.dumps(capabilities(), sort_keys=True, separators=(",", ":")))
   };
 }
 
+function loadLiveDiagnostics() {
+  const python = process.env.PYTHON ||
+    (process.platform === "win32" ? "python" : "python3");
+  const source = String.raw`
+import collections.abc, hashlib, json, math, sys, typing
+sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})
+from sagejs.numerics.diagnostics import diagnostic_registry
+print(json.dumps(diagnostic_registry(), sort_keys=True, separators=(",", ":")))
+`;
+  const result = spawnSync(python, ["-I", "-c", source], {
+    cwd: root,
+    encoding: "utf8",
+    env: { ...process.env, SAGEJS_NATIVE_DISABLE: "1" },
+    timeout: 180_000,
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(
+      `could not inspect numerical diagnostics:\n${result.stderr || result.stdout}`,
+    );
+  }
+  return JSON.parse(result.stdout);
+}
+
 function validateRows(label, retained, live) {
   if (!Array.isArray(retained)) throw new Error(`${label} must be an array`);
   const ids = retained.map((item) => item.id);
@@ -187,17 +212,19 @@ function validateSurface(retained, live) {
   validateRows("frontend", retained.frontend_operations, live.frontend_operations);
 }
 
-function validateSupportingDocuments() {
+function validateSupportingDocuments(liveDiagnostics) {
   const diagnostics = JSON.parse(
-    readFileSync(join(root, "docs/numerical-computing/diagnostics.json"), "utf8"),
+    readFileSync(diagnosticsPath, "utf8"),
   );
   const inventory = readFileSync(
     join(root, "docs/numerical-computing/inventory.md"),
     "utf8",
   );
-  if (new Set(diagnostics.codes).size !== diagnostics.codes.length) {
-    throw new Error("duplicate numerical diagnostic code");
-  }
+  assert.deepEqual(
+    diagnostics,
+    { schema_version: 1, diagnostics: liveDiagnostics },
+    "numerical diagnostic ledger is stale; run pnpm architecture:numerics -- --write",
+  );
   for (const required of [
     "Existing Sage.js runtime",
     "Language frontends",
@@ -208,17 +235,22 @@ function validateSupportingDocuments() {
       throw new Error(`numerical inventory is missing ${required}`);
     }
   }
-  return diagnostics.codes.length;
+  return diagnostics.diagnostics.length;
 }
 
 function main() {
   const live = loadLiveSurface();
+  const liveDiagnostics = loadLiveDiagnostics();
   if (process.argv.slice(2).includes("--write")) {
     writeFileSync(surfacePath, JSON.stringify(live, null, 2) + "\n");
+    writeFileSync(
+      diagnosticsPath,
+      JSON.stringify({ schema_version: 1, diagnostics: liveDiagnostics }, null, 2) + "\n",
+    );
   }
   const retained = JSON.parse(readFileSync(surfacePath, "utf8"));
   validateSurface(retained, live);
-  const diagnosticCount = validateSupportingDocuments();
+  const diagnosticCount = validateSupportingDocuments(liveDiagnostics);
   console.log(
     `Numerical surface is exhaustive (${live.capability_operations.length} capabilities, ` +
       `${live.frontend_operations.length} frontends, ${diagnosticCount} diagnostics).`,
@@ -227,4 +259,9 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { loadLiveSurface, validateSurface };
+module.exports = {
+  loadLiveDiagnostics,
+  loadLiveSurface,
+  validateSupportingDocuments,
+  validateSurface,
+};

@@ -69,6 +69,22 @@ The P0 contract audit then hardened this foundation before release:
   external execution blocks the collector and therefore fails closed instead
   of manufacturing a boundary-only memory claim.
 
+A second independent P0 review made the wire contracts executable rather than
+merely illustrative. Problem records now use a single explicit registry of
+callable/data-intent tags, serialize absent derivatives as valid `none`
+records, include constrained problems, and admit the complete ODE hard-budget
+extension. Nested problem state is detached at every accessor so a published
+digest cannot be changed by mutating a returned record. Plans preserve the
+problem's numeric type, results reject cross-problem plans, invalid success
+claims, and negative accounting, and complex-binary64 precision is reported
+honestly. Execution receipts become `receipt_qualified` only when observed
+artifact and receipt digests match the planned qualified target; planned but
+unobserved external work is classified separately. Capability discovery now
+fails closed on unclassified operations, uses one canonical runtime vocabulary,
+and checks the retained diagnostic registry exactly. Memory method and scope
+are a coupled contract, so a browser-heap estimate cannot be relabeled as
+process-tree evidence.
+
 This proves the shared contracts sufficiently to begin domain-owned parallel
 implementation. P1 is not classified as release-qualified until its browser,
 SEA, four-platform, performance, startup, memory, and payload receipts are

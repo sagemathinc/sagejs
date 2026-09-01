@@ -34,6 +34,7 @@ const {
   ADAPTER_PROTOCOL,
   MEMORY_AUTHORITY,
   MEMORY_METHODS,
+  MEMORY_METHOD_SCOPES,
   MEMORY_SCOPES,
   RECEIPT_SCHEMA,
   createCapabilityManifest,
@@ -690,6 +691,12 @@ function validatePeakMemory(label, value) {
   }
   if (!MEMORY_SCOPES.includes(value.measurement_scope)) {
     fail(`${label}.measurement_scope`, "is not a supported scope");
+  }
+  if (MEMORY_METHOD_SCOPES[value.measurement_method] !== value.measurement_scope) {
+    fail(
+      `${label}.measurement_scope`,
+      `must be ${MEMORY_METHOD_SCOPES[value.measurement_method]} for ${value.measurement_method}`,
+    );
   }
   if (value.authenticated_by !== MEMORY_AUTHORITY) {
     fail(`${label}.authenticated_by`, `must be ${MEMORY_AUTHORITY}`);
