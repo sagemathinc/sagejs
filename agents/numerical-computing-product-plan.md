@@ -79,7 +79,10 @@ problem's numeric type, results reject cross-problem plans, invalid success
 claims, and negative accounting, and complex-binary64 precision is reported
 honestly. Execution receipts become `receipt_qualified` only when observed
 artifact and receipt digests match the planned qualified target; planned but
-unobserved external work is classified separately. Capability discovery now
+unobserved external work is classified separately. An external backend that
+fails before returning its implementation identity remains unobserved rather
+than being mislabeled as ordinary Python; actual ordinary-Python results retain
+their source-transparent identity. Capability discovery now
 fails closed on unclassified operations, uses one canonical runtime vocabulary,
 and checks the retained diagnostic registry exactly. Memory method and scope
 are a coupled contract, so a browser-heap estimate cannot be relabeled as

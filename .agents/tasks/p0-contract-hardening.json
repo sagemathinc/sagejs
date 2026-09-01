@@ -39,6 +39,7 @@
     "src/lib/sagejs/numerics/frontends/operations.py",
     "src/lib/sagejs/numerics/frontends/registry.py",
     "src/lib/sagejs/numerics/model.py",
+    "src/lib/sagejs/numerics/optimization/_core.py",
     "src/lib/sagejs/numerics/ode/capabilities.py",
     "src/lib/sagejs/numerics/ode/model.py",
     "src/lib/sagejs/numerics/statistics/capabilities.py",
@@ -73,38 +74,7 @@
     "pnpm test:numerics",
     "pnpm architecture:check"
   ],
-  "runs": [
-    {
-      "command": "pnpm architecture:check",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 11.145,
-      "started_at": "2026-09-01T00:16:27.476Z",
-      "commit": "7168be8abc5520fc0eb4895e23942e8007e3a133",
-      "workspace_fingerprint": "0891f0e3145cdf12e3afb0bec2ef01826d856c5afa2fa58d61e42dd9c71049a2",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:baselib:strict",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 51.931,
-      "started_at": "2026-09-01T00:16:42.139Z",
-      "commit": "7168be8abc5520fc0eb4895e23942e8007e3a133",
-      "workspace_fingerprint": "0891f0e3145cdf12e3afb0bec2ef01826d856c5afa2fa58d61e42dd9c71049a2",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:numerics",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 670.286,
-      "started_at": "2026-09-01T00:17:38.696Z",
-      "commit": "7168be8abc5520fc0eb4895e23942e8007e3a133",
-      "workspace_fingerprint": "0891f0e3145cdf12e3afb0bec2ef01826d856c5afa2fa58d61e42dd9c71049a2",
-      "platform": "linux-x64"
-    }
-  ],
+  "runs": [],
   "handoff": {
     "summary": "The numerical surface is derived exhaustively from the live public registry and actual frontend registrations: 49 capabilities, 22 frontend operations, and 17 diagnostics are classified without a second hardcoded ledger. The shared plan/result contracts now expose honest execution provenance, binding state, limitations, budget support, and language-neutral versus frontend-owned outward code. npm is a first-class qualification subject. Run receipts and matrix policies carry collector-authenticated, scope-specific peak-memory evidence; external subjects must present a live collector descendant during every sample, with a touched 64 MiB child proving real process-tree inclusion and synchronous execution failing closed. Strict Python, the full numerical suite, and every architecture gate pass at 7168be8ab.",
     "risks": [
