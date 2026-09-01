@@ -51,7 +51,7 @@ test("root story stays generated from current numerical evidence", () => {
       { id: "cosine-fixed-point", status: "converged", success: true, validation: true, diagnostics: [] },
       { id: "jump-discontinuity", status: "converged", success: false, validation: false, diagnostics: ["validation_failed"] },
       { id: "invalid-bracket", status: "invalid_bracket", success: false, validation: false, diagnostics: ["invalid_bracket"] },
-      { id: "newton-two-cycle", status: "maximum_iterations", success: false, validation: false, diagnostics: ["maximum_iterations"] },
+      { id: "newton-two-cycle", status: "maximum_iterations", success: false, validation: false, diagnostics: ["non_replayable_callback", "maximum_iterations"] },
     ],
   );
   const success = story.cases[0];

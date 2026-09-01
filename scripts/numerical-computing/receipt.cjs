@@ -10,7 +10,6 @@ const {
   array,
   canonicalJson,
   collectorIdentity,
-  contentDigestPath,
   contentId,
   digestBundle,
   digestPath,
@@ -35,6 +34,7 @@ const {
   ADAPTER_PROTOCOL,
   MEMORY_AUTHORITY,
   MEMORY_METHODS,
+  MEMORY_METHOD_SCOPES,
   MEMORY_SCOPES,
   RECEIPT_SCHEMA,
   createCapabilityManifest,
@@ -64,10 +64,7 @@ function parseArtifactSpecifications(root, specifications) {
         fail(`${label}.name`, "contains unsupported characters");
       }
       const binding = digestPath(root, specification.slice(separator + 1), `${label}.path`);
-      const content_sha256 = contentDigestPath(
-        root, specification.slice(separator + 1), `${label}.content`,
-      );
-      return { name, ...binding, content_sha256 };
+      return { name, ...binding };
     },
     { minimum: 1, uniqueBy: (item) => item.name },
   );
@@ -81,6 +78,55 @@ function inputBindings({ root, corpusPath, adapterPath, artifactSpecifications }
   const adapter = digestPath(root, adapterPath, "adapter path");
   const artifacts = parseArtifactSpecifications(root, artifactSpecifications);
   return { corpusBinding, corpus, sourceBundle, adapter, artifacts };
+}
+
+function collectionBindings({
+  root,
+  corpusPath,
+  adapterPath,
+  capabilityPath,
+  artifactSpecifications,
+}) {
+  const inputs = inputBindings({ root, corpusPath, adapterPath, artifactSpecifications });
+  const capabilityBinding = digestPath(root, capabilityPath, "capability manifest path");
+  const manifest = validateCapabilityManifest(
+    readJson(path.join(root, capabilityBinding.path)), inputs.corpus,
+  );
+  assertManifestBindings(manifest, inputs);
+  return {
+    inputs,
+    capabilityBinding,
+    manifest,
+    repository: repositoryIdentity(root),
+  };
+}
+
+function assertCleanCollectionCandidate(binding) {
+  if (!binding.repository.clean) {
+    fail("repository", "qualification collection requires a clean candidate checkout");
+  }
+}
+
+function assertStableCollectionBindings(before, after) {
+  if (canonicalJson(after.inputs) !== canonicalJson(before.inputs)) {
+    fail(
+      "qualification inputs",
+      "corpus, source, adapter, or artifact bytes changed during collection",
+    );
+  }
+  if (canonicalJson(after.capabilityBinding) !== canonicalJson(before.capabilityBinding) ||
+      canonicalJson(after.manifest) !== canonicalJson(before.manifest)) {
+    fail("capability manifest", "bytes or validated identity changed during collection");
+  }
+  if (!after.repository.clean ||
+      after.repository.commit !== before.repository.commit ||
+      after.repository.tree !== before.repository.tree ||
+      after.repository.status_sha256 !== before.repository.status_sha256) {
+    fail(
+      "repository",
+      "must remain clean at the exact candidate commit and tree throughout collection",
+    );
+  }
 }
 
 function bindCapabilityDraft({
@@ -552,15 +598,12 @@ function payloadMetrics(inputs, capabilityBinding) {
     adapter_bytes: inputs.adapter.bytes,
     capability_manifest_bytes: capabilityBinding.bytes,
     artifact_installed_bytes: inputs.artifacts.reduce((total, item) => total + item.bytes, 0),
-    artifacts: inputs.artifacts.map(({
-      name, path: artifactPath, bytes, files, sha256: digest, content_sha256,
-    }) => ({
+    artifacts: inputs.artifacts.map(({ name, path: artifactPath, bytes, files, sha256: digest }) => ({
       name,
       path: artifactPath,
       bytes,
       files,
       sha256: digest,
-      content_sha256,
     })),
   };
 }
@@ -590,66 +633,80 @@ async function collectReceipt({
   processEntryTime = process.hrtime.bigint(),
 }) {
   const collectionStarted = process.hrtime.bigint();
-  const initialRepository = repositoryIdentity(root);
-  const inputs = inputBindings({ root, corpusPath, adapterPath, artifactSpecifications });
-  const capabilityBinding = digestPath(root, capabilityPath, "capability manifest path");
-  const manifest = validateCapabilityManifest(
-    readJson(path.join(root, capabilityBinding.path)), inputs.corpus,
-  );
-  assertManifestBindings(manifest, inputs);
-
-  const loadStarted = process.hrtime.bigint();
-  const adapter = loadAdapter(root, inputs.adapter.path);
-  const adapterLoadMs = elapsedMilliseconds(loadStarted);
-  const initializeStarted = process.hrtime.bigint();
-  const initialization = validateAdapterInitialization(await adapter.initialize({
+  const candidate = collectionBindings({
     root,
-    backend: manifest.backend,
-    subject: manifest.subject,
-    artifacts: inputs.artifacts.map((item) => ({
-      name: item.name,
-      path: path.join(root, item.path),
-      sha256: item.sha256,
-      bytes: item.bytes,
-    })),
-    capabilities: manifest.capabilities,
-  }));
-  const initializeMs = elapsedMilliseconds(initializeStarted);
-  if (canonicalJson(initialization.subject) !== canonicalJson(manifest.subject)) {
-    fail("adapter initialization.subject", "does not match the capability manifest");
-  }
-  const knownCapabilities = new Set(manifest.capabilities.map((item) => item.id));
-  for (const id of initialization.capability_ids) {
-    if (!knownCapabilities.has(id)) fail("adapter initialization.capability_ids", `unknown ${id}`);
-  }
-  const readyMs = elapsedMilliseconds(processEntryTime);
+    corpusPath,
+    adapterPath,
+    capabilityPath,
+    artifactSpecifications,
+  });
+  assertCleanCollectionCandidate(candidate);
+  const { inputs, capabilityBinding, manifest } = candidate;
 
+  let adapter = null;
+  let adapterLoadMs = null;
+  let initialization = null;
+  let initializeMs = null;
+  let readyMs = null;
   const cases = [];
+  let executionError = null;
+  let closeError = null;
   try {
+    const loadStarted = process.hrtime.bigint();
+    adapter = loadAdapter(root, inputs.adapter.path);
+    adapterLoadMs = elapsedMilliseconds(loadStarted);
+    const initializeStarted = process.hrtime.bigint();
+    initialization = validateAdapterInitialization(await adapter.initialize({
+      root,
+      backend: manifest.backend,
+      subject: manifest.subject,
+      artifacts: inputs.artifacts.map((item) => ({
+        name: item.name,
+        path: path.join(root, item.path),
+        sha256: item.sha256,
+        bytes: item.bytes,
+      })),
+      capabilities: manifest.capabilities,
+    }));
+    initializeMs = elapsedMilliseconds(initializeStarted);
+    if (canonicalJson(initialization.subject) !== canonicalJson(manifest.subject)) {
+      fail("adapter initialization.subject", "does not match the capability manifest");
+    }
+    const knownCapabilities = new Set(manifest.capabilities.map((item) => item.id));
+    for (const id of initialization.capability_ids) {
+      if (!knownCapabilities.has(id)) {
+        fail("adapter initialization.capability_ids", `unknown ${id}`);
+      }
+    }
+    readyMs = elapsedMilliseconds(processEntryTime);
     for (const caseContract of inputs.corpus.cases) {
       cases.push(await collectCase(adapter, caseContract, manifest, initialization));
     }
-  } finally {
-    if (typeof adapter.close === "function") await adapter.close();
+  } catch (error) {
+    executionError = error;
   }
-  const finalInputs = inputBindings({ root, corpusPath, adapterPath, artifactSpecifications });
-  const finalCapabilityBinding = digestPath(root, capabilityPath, "capability manifest path");
-  const finalRepository = repositoryIdentity(root);
-  if (canonicalJson(finalInputs) !== canonicalJson(inputs) ||
-      canonicalJson(finalCapabilityBinding) !== canonicalJson(capabilityBinding) ||
-      canonicalJson(finalRepository) !== canonicalJson(initialRepository)) {
-    fail(
-      "receipt inputs",
-      "changed while qualification executed; concurrent rebuilds cannot produce evidence",
-    );
+  try {
+    if (adapter !== null && typeof adapter.close === "function") await adapter.close();
+  } catch (error) {
+    closeError = error;
   }
+  const completed = collectionBindings({
+    root,
+    corpusPath,
+    adapterPath,
+    capabilityPath,
+    artifactSpecifications,
+  });
+  assertStableCollectionBindings(candidate, completed);
+  if (executionError !== null) throw executionError;
+  if (closeError !== null) throw closeError;
   const status = cases.every((item) => item.status === "passed") ? "passed" : "failed";
   const core = {
     schema: RECEIPT_SCHEMA,
     authority: "local-host-collector",
     collected_at: new Date().toISOString(),
     status,
-    repository: finalRepository,
+    repository: candidate.repository,
     corpus: {
       path: inputs.corpusBinding.path,
       sha256: inputs.corpusBinding.sha256,
@@ -709,6 +766,12 @@ function validatePeakMemory(label, value) {
   }
   if (!MEMORY_SCOPES.includes(value.measurement_scope)) {
     fail(`${label}.measurement_scope`, "is not a supported scope");
+  }
+  if (MEMORY_METHOD_SCOPES[value.measurement_method] !== value.measurement_scope) {
+    fail(
+      `${label}.measurement_scope`,
+      `must be ${MEMORY_METHOD_SCOPES[value.measurement_method]} for ${value.measurement_method}`,
+    );
   }
   if (value.authenticated_by !== MEMORY_AUTHORITY) {
     fail(`${label}.authenticated_by`, `must be ${MEMORY_AUTHORITY}`);
@@ -873,14 +936,12 @@ function validateReceipt(receipt) {
     fail("receipt.repository.status_sha256", "clean checkout must hash an empty status");
   }
   function validatePathBinding(label, value, named = false) {
-    const hasContentDigest = named && Object.hasOwn(value, "content_sha256");
     exactKeys(label, value, named
-      ? ["name", "path", "sha256", ...(hasContentDigest ? ["content_sha256"] : []), "bytes", "files"]
+      ? ["name", "path", "sha256", "bytes", "files"]
       : ["path", "sha256", "bytes", "files"]);
     if (named) nonemptyString(`${label}.name`, value.name);
     nonemptyString(`${label}.path`, value.path);
     validateSha256(`${label}.sha256`, value.sha256);
-    if (hasContentDigest) validateSha256(`${label}.content_sha256`, value.content_sha256);
     safeInteger(`${label}.bytes`, value.bytes, 0);
     safeInteger(`${label}.files`, value.files, 0);
     return value;
@@ -1003,9 +1064,6 @@ function assertCurrentBinding(receipt, root, requireClean) {
   const artifacts = receipt.artifacts.map((item) => ({
     name: item.name,
     ...digestPath(root, item.path, `receipt artifact ${item.name}`),
-    ...(Object.hasOwn(item, "content_sha256")
-      ? { content_sha256: contentDigestPath(root, item.path, `receipt artifact ${item.name}`) }
-      : {}),
   }));
   if (canonicalJson(artifacts) !== canonicalJson(receipt.artifacts)) {
     fail("receipt.artifacts", "do not match current artifact bytes");
@@ -1084,5 +1142,4 @@ module.exports = {
   validateReceipt,
   verifyReceipt,
   writeImmutableJson,
-  qualificationInternals: Object.freeze({ memoryMeasurement }),
 };

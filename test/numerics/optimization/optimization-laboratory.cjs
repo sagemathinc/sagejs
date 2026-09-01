@@ -52,9 +52,11 @@ import math
 from sagejs.numerics.optimization import (
     MAX_FIT_OBSERVATIONS,
     MAX_RESIDUAL_DIMENSION,
+    OptimizationResult,
     capabilities,
     curve_fit,
     least_squares,
+    least_squares_problem,
     linear_fit,
     minimize,
     minimize_problem,
@@ -63,6 +65,8 @@ from sagejs.numerics.optimization import (
     supports,
     solve_nonlinear_system,
 )
+from sagejs.numerics.model import NumericalValidation
+from sagejs.numerics.trace import NumericalTrace
 from sagejs.numerics.optimization.visualization import _decimate_records
 from sagejs.plotting import lower_plot_spec
 
@@ -104,6 +108,33 @@ interior = minimize_scalar(counted_scalar, -1.0, 5.0)
 assert interior.success and abs(interior.value - 2.0) < 1.0e-8
 assert interior.method == "bounded-brent"
 assert interior.validation.passed and interior.verify().passed
+ordinary_provenance = interior.to_dict()["provenance"]
+assert ordinary_provenance["implementation_kind"] == "ordinary_python"
+assert ordinary_provenance["execution_binding_status"] == "source_transparent"
+
+external_problem = least_squares_problem(
+    lambda point: [point[0] - 1.0],
+    [0.0],
+    method="cminpack-lmdif",
+)
+external_plan = plan(external_problem)
+unexecuted_external = OptimizationResult(
+    external_problem,
+    external_plan,
+    success=False,
+    status="backend_failure",
+    value=None,
+    validation=NumericalValidation("indeterminate", False),
+    diagnostics=[],
+    iterations=0,
+    evaluations=0,
+    elapsed_ms=0.0,
+    trace=NumericalTrace(external_problem.trace_policy),
+    measurements={},
+    domain_payload={"stop_reason": "backend_unavailable"},
+).to_dict()
+assert "implementation_kind" not in unexecuted_external["provenance"]
+assert unexecuted_external["provenance"]["execution_binding_status"] == "external_execution_unobserved"
 calls_after_solve_and_verify = scalar_calls[0]
 assert interior.explanation()["outcome"]["success"]
 assert "bounded-brent" in interior.explain()

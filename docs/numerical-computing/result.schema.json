@@ -19,15 +19,28 @@
         "truth_level": {"enum": ["exact", "rigorous", "validated_approximate", "heuristic", "indeterminate"]},
         "passed": {"type": "boolean"},
         "checks": {"type": "array"},
-        "residual": {"type": ["number", "null"]},
-        "error_estimate": {"type": ["number", "null"]},
-        "condition_estimate": {"type": ["number", "null"]}
+        "residual": {"type": ["number", "null"], "minimum": 0},
+        "error_estimate": {"type": ["number", "null"], "minimum": 0},
+        "condition_estimate": {"type": ["number", "null"], "minimum": 0}
       }
     },
     "diagnostics": {"type": "array"},
     "method": {"type": "string", "minLength": 1},
     "backend": {"type": "string", "minLength": 1},
-    "precision": {"type": "object"},
+    "precision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "bits"],
+      "properties": {
+        "kind": {"type": "string", "minLength": 1},
+        "bits": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "integer", "minimum": 1}
+          ]
+        }
+      }
+    },
     "iterations": {"type": "integer", "minimum": 0},
     "evaluations": {"type": "integer", "minimum": 0},
     "elapsed_ms": {"type": "number", "minimum": 0},
@@ -41,7 +54,7 @@
         "source_digest": {"$ref": "#/$defs/optional_sha256"},
         "artifact_sha256": {"$ref": "#/$defs/optional_sha256"},
         "qualification_receipt_sha256": {"$ref": "#/$defs/optional_sha256"},
-        "execution_binding_status": {"enum": ["source_transparent_or_unobserved", "external_artifact_unbound", "artifact_digest_bound", "receipt_qualified"]}
+        "execution_binding_status": {"enum": ["source_transparent_or_unobserved", "source_transparent", "source_digest_bound", "external_execution_unobserved", "external_artifact_unbound", "artifact_digest_bound", "receipt_qualified"]}
       }
     },
     "limitations": {
@@ -59,6 +72,17 @@
     "reproducibility": {"type": "object"},
     "domain_payload": {"type": "object"}
   },
+  "allOf": [
+    {
+      "if": {"properties": {"success": {"const": true}}},
+      "then": {
+        "properties": {
+          "status": {"enum": ["converged", "exact_root"]},
+          "validation": {"properties": {"passed": {"const": true}}}
+        }
+      }
+    }
+  ],
   "$defs": {
     "optional_sha256": {
       "oneOf": [

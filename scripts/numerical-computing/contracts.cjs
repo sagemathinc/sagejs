@@ -71,6 +71,13 @@ const MEMORY_METHODS = Object.freeze([
   "windows-cim-process-tree-sampled-v1",
   "browser-performance-memory-v1",
 ]);
+const MEMORY_METHOD_SCOPES = Object.freeze({
+  "node-process-rss-boundary-v1": "collector_process",
+  "linux-procfs-process-tree-sampled-v1": "process_tree",
+  "macos-ps-process-tree-sampled-v1": "process_tree",
+  "windows-cim-process-tree-sampled-v1": "process_tree",
+  "browser-performance-memory-v1": "browser_heap",
+});
 const MEMORY_AUTHORITY = "qualification-collector";
 const CHECK_KINDS = Object.freeze([
   "deep-equal",
@@ -525,6 +532,7 @@ module.exports = {
   ENGINE_SUBJECT_KINDS,
   MEMORY_AUTHORITY,
   MEMORY_METHODS,
+  MEMORY_METHOD_SCOPES,
   MEMORY_SCOPES,
   POLICY_SCHEMA,
   PROGRAM_PHASES,

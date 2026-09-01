@@ -88,7 +88,39 @@
         "sample_interval_ms": {
           "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }]
         }
-      }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "measurement_method": { "const": "node-process-rss-boundary-v1" },
+            "measurement_scope": { "const": "collector_process" }
+          }
+        },
+        {
+          "properties": {
+            "measurement_method": { "const": "linux-procfs-process-tree-sampled-v1" },
+            "measurement_scope": { "const": "process_tree" }
+          }
+        },
+        {
+          "properties": {
+            "measurement_method": { "const": "macos-ps-process-tree-sampled-v1" },
+            "measurement_scope": { "const": "process_tree" }
+          }
+        },
+        {
+          "properties": {
+            "measurement_method": { "const": "windows-cim-process-tree-sampled-v1" },
+            "measurement_scope": { "const": "process_tree" }
+          }
+        },
+        {
+          "properties": {
+            "measurement_method": { "const": "browser-performance-memory-v1" },
+            "measurement_scope": { "const": "browser_heap" }
+          }
+        }
+      ]
     },
     "repository": {
       "type": "object",

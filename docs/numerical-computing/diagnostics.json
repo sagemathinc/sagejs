@@ -1,22 +1,158 @@
 {
   "schema_version": 1,
-  "codes": [
-    "backend_fallback",
-    "callback_error",
-    "cancelled",
-    "discontinuity_suspected",
-    "finite_difference_derivative",
-    "ill_conditioned",
-    "invalid_bracket",
-    "loss_of_significance",
-    "maximum_evaluations",
-    "maximum_elapsed_time",
-    "maximum_iterations",
-    "non_replayable_callback",
-    "nonfinite_evaluation",
-    "stagnation",
-    "trace_truncated",
-    "validation_failed",
-    "zero_derivative"
+  "diagnostics": [
+    {
+      "code": "backend_fallback",
+      "message": "The preferred backend was unavailable or outside its validated envelope.",
+      "phase": "planning",
+      "severity": "info",
+      "suggested_actions": [
+        "Inspect the selected fallback and capability record."
+      ]
+    },
+    {
+      "code": "callback_error",
+      "message": "A user callback raised an exception.",
+      "phase": "execution",
+      "severity": "error",
+      "suggested_actions": [
+        "Inspect and test the callback at representative inputs."
+      ]
+    },
+    {
+      "code": "cancelled",
+      "message": "The computation was cancelled before convergence.",
+      "phase": "execution",
+      "severity": "warning",
+      "suggested_actions": [
+        "Resume with a larger resource budget if appropriate."
+      ]
+    },
+    {
+      "code": "discontinuity_suspected",
+      "message": "A sign change may be caused by a discontinuity rather than a root.",
+      "phase": "validation",
+      "severity": "warning",
+      "suggested_actions": [
+        "Inspect the function near the returned point or provide a continuous bracket."
+      ]
+    },
+    {
+      "code": "finite_difference_derivative",
+      "message": "A derivative was estimated with finite differences.",
+      "phase": "planning",
+      "severity": "info",
+      "suggested_actions": [
+        "Provide an analytic derivative when accuracy or cost matters."
+      ]
+    },
+    {
+      "code": "ill_conditioned",
+      "message": "The problem or reported solution is ill-conditioned.",
+      "phase": "validation",
+      "severity": "warning",
+      "suggested_actions": [
+        "Rescale, reformulate, or increase precision."
+      ]
+    },
+    {
+      "code": "invalid_bracket",
+      "message": "The interval endpoints do not bracket a finite sign change.",
+      "phase": "planning",
+      "severity": "error",
+      "suggested_actions": [
+        "Choose endpoints with finite function values of opposite signs."
+      ]
+    },
+    {
+      "code": "loss_of_significance",
+      "message": "Floating-point cancellation may have reduced meaningful accuracy.",
+      "phase": "validation",
+      "severity": "warning",
+      "suggested_actions": [
+        "Rescale or repeat at higher precision."
+      ]
+    },
+    {
+      "code": "maximum_elapsed_time",
+      "message": "The elapsed-time budget was exhausted.",
+      "phase": "execution",
+      "severity": "warning",
+      "suggested_actions": [
+        "Increase the time budget or choose a more suitable method."
+      ]
+    },
+    {
+      "code": "maximum_evaluations",
+      "message": "The function-evaluation budget was exhausted.",
+      "phase": "execution",
+      "severity": "warning",
+      "suggested_actions": [
+        "Increase the budget or choose a more suitable method."
+      ]
+    },
+    {
+      "code": "maximum_iterations",
+      "message": "The iteration budget was exhausted.",
+      "phase": "execution",
+      "severity": "warning",
+      "suggested_actions": [
+        "Increase the budget, improve initial data, or choose another method."
+      ]
+    },
+    {
+      "code": "non_replayable_callback",
+      "message": "The computation used an opaque live callback that cannot be serialized for replay.",
+      "phase": "provenance",
+      "severity": "info",
+      "suggested_actions": [
+        "Provide a stable expression or module/function reference."
+      ]
+    },
+    {
+      "code": "nonfinite_evaluation",
+      "message": "The numerical function returned a non-finite value.",
+      "phase": "execution",
+      "severity": "error",
+      "suggested_actions": [
+        "Restrict the domain or repair the callback."
+      ]
+    },
+    {
+      "code": "stagnation",
+      "message": "Iterations stopped making representable progress.",
+      "phase": "execution",
+      "severity": "warning",
+      "suggested_actions": [
+        "Rescale, change method, or increase precision."
+      ]
+    },
+    {
+      "code": "trace_truncated",
+      "message": "The semantic trace exceeded its event or byte budget and was deterministically decimated.",
+      "phase": "trace",
+      "severity": "warning",
+      "suggested_actions": [
+        "Increase the trace budget or request a less detailed trace level."
+      ]
+    },
+    {
+      "code": "validation_failed",
+      "message": "Independent mathematical validation did not support the solver's success claim.",
+      "phase": "validation",
+      "severity": "error",
+      "suggested_actions": [
+        "Inspect residuals and repeat with an independent method."
+      ]
+    },
+    {
+      "code": "zero_derivative",
+      "message": "Newton's method encountered a zero or unusable derivative.",
+      "phase": "execution",
+      "severity": "warning",
+      "suggested_actions": [
+        "Choose a different initial point or use a bracketed method."
+      ]
+    }
   ]
 }

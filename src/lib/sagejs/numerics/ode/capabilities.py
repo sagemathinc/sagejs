@@ -9,17 +9,17 @@ from .rosenbrock import rosenbrock4_workspace_bytes
 
 ODE_CAPABILITY_SCHEMA_VERSION = 1
 
-_QUALIFIED_RUNTIMES: list[JSONValue] = [
-    "cpython-linux-x64",
-    "sagejs-node-linux-x64",
-]
-
-_PENDING_TARGETS: list[JSONValue] = [
-    "browser-wasm",
-    "sagejs-sea",
+_IMPLEMENTATION_PLATFORMS: list[JSONValue] = [
+    "linux-x64",
     "linux-arm64",
     "macos-arm64",
     "windows-x64",
+]
+_IMPLEMENTATION_RUNTIMES: list[JSONValue] = [
+    "browser",
+    "node",
+    "sea",
+    "cpython",
 ]
 
 _METHODS: dict[str, dict[str, JSONValue]] = {
@@ -34,7 +34,8 @@ _METHODS: dict[str, dict[str, JSONValue]] = {
         "dense_output": "cubic_hermite",
         "events": "sign_changes_on_accepted_steps",
         "stiff": False,
-        "qualified_runtimes": _QUALIFIED_RUNTIMES,
+        "platforms": _IMPLEMENTATION_PLATFORMS,
+        "runtimes": _IMPLEMENTATION_RUNTIMES,
     },
     "rk45": {
         "classification": "translated",
@@ -47,7 +48,8 @@ _METHODS: dict[str, dict[str, JSONValue]] = {
         "dense_output": "shampine_quartic",
         "events": "sign_changes_on_accepted_steps",
         "stiff": False,
-        "qualified_runtimes": _QUALIFIED_RUNTIMES,
+        "platforms": _IMPLEMENTATION_PLATFORMS,
+        "runtimes": _IMPLEMENTATION_RUNTIMES,
     },
     "rosenbrock4": {
         "classification": "translated",
@@ -64,7 +66,8 @@ _METHODS: dict[str, dict[str, JSONValue]] = {
         "nonlinear_solver": "not_applicable_linearly_implicit_no_newton_iterations",
         "stiff": True,
         "automatic_selection": False,
-        "qualified_runtimes": _QUALIFIED_RUNTIMES,
+        "platforms": _IMPLEMENTATION_PLATFORMS,
+        "runtimes": _IMPLEMENTATION_RUNTIMES,
     },
 }
 
@@ -125,11 +128,13 @@ def ode_capabilities() -> dict[str, JSONValue]:
             "mass_matrix": False,
             "differential_algebraic": False,
         },
-        "portability_evidence": {
-            "qualified_runtimes": list(_QUALIFIED_RUNTIMES),
-            "pending_targets": list(_PENDING_TARGETS),
+        "implementation_targets": {
+            "platforms": list(_IMPLEMENTATION_PLATFORMS),
+            "runtimes": list(_IMPLEMENTATION_RUNTIMES),
+            "qualification": "declared targets only; exact receipts are owned by P8",
         },
         "parameter_sweeps": {
+            "classification": "extension",
             "status": "implemented",
             "scheduler": "bounded-batch-v1",
             "ordering": "stable_input_order",

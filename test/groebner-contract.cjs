@@ -7,6 +7,8 @@ const { readFileSync } = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
+const { pythonExecutable } = require("../tools/python-executable.cjs");
+
 const root = path.resolve(__dirname, "..");
 const moduleRoot = path.join(root, "src", "lib");
 const contractProgram = String.raw`
@@ -93,11 +95,12 @@ print("groebner contract ok")
 `;
 
 test("the exact Groebner contract works unchanged in CPython", () => {
-  const result = spawnSync("/usr/bin/python3", ["-I", "-c", contractProgram], {
+  const result = spawnSync(pythonExecutable(), ["-I", "-c", contractProgram], {
     cwd: root,
     env: process.env,
     encoding: "utf8",
   });
+  assert.ifError(result.error);
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /groebner contract ok/);
 });

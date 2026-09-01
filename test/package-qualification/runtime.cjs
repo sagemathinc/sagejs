@@ -5,20 +5,27 @@
 const assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
 const {
+  chmodSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
+const { fileURLToPath } = require("node:url");
+const { gzipSync } = require("node:zlib");
 
 const {
   SUPPORTED_TARGETS,
   assertArchiveLayout,
+  auditInstalledClosure,
+  expectedPublishedRootManifest,
   fileDependency,
   prepareFreshInstall,
   resolveTarget,
@@ -26,6 +33,7 @@ const {
   runProcess,
   runRelocatedSeaLanguage,
   targetForHost,
+  validateTarArchive,
 } = require("../../scripts/package-qualification/runtime.cjs");
 const {
   MARKER,
@@ -36,6 +44,36 @@ const {
   cleanupQualification,
 } = require("../../scripts/test-npm-package.cjs");
 
+const sourceManifest = JSON.parse(
+  readFileSync(join(__dirname, "..", "..", "package.json"), "utf8"),
+);
+
+function fixtureRootManifest(version) {
+  assert.equal(version, sourceManifest.version);
+  return expectedPublishedRootManifest();
+}
+
+function fixturePlatformManifest(targetName, version) {
+  const target = SUPPORTED_TARGETS[targetName];
+  const manifest = {
+    name: target.packageName,
+    version,
+    description: `Sage.js native executables for ${targetName}`,
+    repository: sourceManifest.repository,
+    homepage: sourceManifest.homepage,
+    license: sourceManifest.license,
+    os: [target.os],
+    cpu: [target.arch],
+    bin: {
+      [`sagejs-${targetName}`]: `bin/sagejs${target.executableSuffix}`,
+      [`sagepython-${targetName}`]: `bin/sagepython${target.executableSuffix}`,
+    },
+    files: ["bin", "licenses", "LICENSE", "README.md"],
+  };
+  if (target.libc) manifest.libc = [target.libc];
+  return manifest;
+}
+
 function writeFixtureFile(root, filename) {
   const output = join(root, "package", filename);
   mkdirSync(join(output, ".."), { recursive: true });
@@ -43,12 +81,14 @@ function writeFixtureFile(root, filename) {
 }
 
 function pack(directory, archive) {
-  execFileSync("tar", ["-czf", archive, "package"], { cwd: directory });
+  execFileSync("tar", ["--format=ustar", "-czf", archive, "package"], {
+    cwd: directory,
+  });
 }
 
 function createArchives(temporary, targetName) {
   const target = SUPPORTED_TARGETS[targetName];
-  const version = "1.2.3";
+  const version = sourceManifest.version;
   const root = join(temporary, "root");
   const platform = join(temporary, "platform");
   for (const filename of [
@@ -59,11 +99,7 @@ function createArchives(temporary, targetName) {
   ]) {
     writeFixtureFile(root, filename);
   }
-  const rootManifest = {
-    name: "@sagemath/sagejs",
-    version,
-    optionalDependencies: { [target.packageName]: version },
-  };
+  const rootManifest = fixtureRootManifest(version);
   writeFileSync(
     join(root, "package", "package.json"),
     JSON.stringify(rootManifest),
@@ -72,17 +108,7 @@ function createArchives(temporary, targetName) {
   for (const name of ["sagejs", "sagepython"]) {
     writeFixtureFile(platform, `bin/${name}${target.executableSuffix}`);
   }
-  const platformManifest = {
-    name: target.packageName,
-    version,
-    os: [target.os],
-    cpu: [target.arch],
-    bin: {
-      [`sagejs-${targetName}`]: `bin/sagejs${target.executableSuffix}`,
-      [`sagepython-${targetName}`]: `bin/sagepython${target.executableSuffix}`,
-    },
-  };
-  if (target.libc) platformManifest.libc = [target.libc];
+  const platformManifest = fixturePlatformManifest(targetName, version);
   writeFileSync(
     join(platform, "package", "package.json"),
     JSON.stringify(platformManifest),
@@ -100,6 +126,49 @@ function createArchives(temporary, targetName) {
     rootArchive,
     rootManifest,
   };
+}
+
+function writeOctal(header, offset, length, value) {
+  header.write(`${value.toString(8).padStart(length - 1, "0")}\0`, offset, length);
+}
+
+function tarHeader({
+  data = "",
+  linkName = "",
+  magic = "ustar\0",
+  name,
+  prefix = "",
+  type = "0",
+  version = "00",
+}) {
+  const content = Buffer.from(data);
+  const header = Buffer.alloc(512);
+  assert.ok(Buffer.byteLength(name) < 100, `test tar name is too long: ${name}`);
+  header.write(name, 0, 100);
+  writeOctal(header, 100, 8, type === "5" ? 0o755 : 0o644);
+  writeOctal(header, 108, 8, 0);
+  writeOctal(header, 116, 8, 0);
+  writeOctal(header, 124, 12, content.length);
+  writeOctal(header, 136, 12, 0);
+  header.fill(32, 148, 156);
+  header.write(type, 156, 1);
+  header.write(linkName, 157, 100);
+  header.write(magic, 257, 6);
+  header.write(version, 263, 2);
+  header.write(prefix, 345, 155);
+  let checksum = 0;
+  for (const byte of header) checksum += byte;
+  header.write(`${checksum.toString(8).padStart(6, "0")}\0 `, 148, 8);
+  const padding = Buffer.alloc((512 - (content.length % 512)) % 512);
+  return Buffer.concat([header, content, padding]);
+}
+
+function writeRawTarGz(filename, entries) {
+  const archive = Buffer.concat([
+    ...entries.map((entry) => Buffer.isBuffer(entry) ? entry : tarHeader(entry)),
+    Buffer.alloc(1024),
+  ]);
+  writeFileSync(filename, gzipSync(archive));
 }
 
 test("release targets map to native Node identities and packages", () => {
@@ -147,6 +216,19 @@ test("archive checks require the root platform edge and exact target metadata", 
     } = fixture;
     assertArchiveLayout(rootArchive, platformArchive, "windows-x64");
 
+    rootManifest.dependencies["unexpected-network-edge"] =
+      "https://example.invalid/evil.tgz";
+    writeFileSync(
+      join(root, "package", "package.json"),
+      JSON.stringify(rootManifest),
+    );
+    pack(root, rootArchive);
+    assert.throws(
+      () => assertArchiveLayout(rootArchive, platformArchive, "windows-x64"),
+      /trusted publish contract/,
+    );
+    delete rootManifest.dependencies["unexpected-network-edge"];
+
     delete rootManifest.optionalDependencies["@sagemath/sagejs-win32-x64"];
     writeFileSync(
       join(root, "package", "package.json"),
@@ -187,6 +269,247 @@ test("archive checks require the root platform edge and exact target metadata", 
     assert.throws(
       () => assertArchiveLayout(rootArchive, platformArchive, "windows-x64"),
       /nlopt-methods/,
+    );
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test("fresh install rejects a same-user replacement of validated archive bytes", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-archive-swap-"));
+  let consumer;
+  try {
+    const target = targetForHost();
+    assert.ok(target, `unsupported test host ${process.platform}-${process.arch}`);
+    const good = createArchives(join(temporary, "good"), target);
+    const replacement = createArchives(join(temporary, "replacement"), target);
+    writeFileSync(
+      join(
+        replacement.root,
+        "package",
+        "dist",
+        "numerical",
+        "backend.cjs",
+      ),
+      "EVIL",
+    );
+    pack(replacement.root, replacement.rootArchive);
+
+    assert.throws(
+      () =>
+        prepareFreshInstall({
+          target,
+          rootArchive: good.rootArchive,
+          platformArchive: good.platformArchive,
+          installRunner(_args, options) {
+            consumer = options.cwd;
+            const manifest = JSON.parse(
+              readFileSync(join(consumer, "package.json"), "utf8"),
+            );
+            const privateRoot = fileURLToPath(
+              manifest.dependencies["@sagemath/sagejs"],
+            );
+            chmodSync(privateRoot, 0o600);
+            copyFileSync(replacement.rootArchive, privateRoot);
+          },
+        }),
+      /validated package archive changed during installation/,
+    );
+    assert.ok(consumer);
+    assert.equal(existsSync(consumer), false);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test("archive validation rejects links, traversal, special entries, and collisions", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-malicious-archive-"));
+  try {
+    const archive = join(temporary, "malicious.tgz");
+    const cases = [
+      {
+        entries: [{ name: "/etc/passwd", data: "escape" }],
+        expected: /absolute path/,
+      },
+      {
+        entries: [{ name: "package/../escape", data: "escape" }],
+        expected: /non-canonical path/,
+      },
+      {
+        entries: [{ name: "outside/package", data: "escape" }],
+        expected: /outside package/,
+      },
+      {
+        entries: [{
+          name: "package/dist/numerical/backend.cjs",
+          linkName: "/etc/passwd",
+          type: "2",
+        }],
+        expected: /forbidden type.*2/,
+      },
+      {
+        entries: [{
+          name: "package/bin/sagejs",
+          linkName: "/etc/passwd",
+          type: "2",
+        }],
+        expected: /forbidden type.*2/,
+      },
+      {
+        entries: [{
+          name: "package/hardlink",
+          linkName: "package/file",
+          type: "1",
+        }],
+        expected: /forbidden type.*1/,
+      },
+      {
+        entries: [{ name: "package/device", type: "3" }],
+        expected: /forbidden type.*3/,
+      },
+      {
+        entries: [{ name: "package/fifo", type: "6" }],
+        expected: /forbidden type.*6/,
+      },
+      {
+        entries: [
+          { name: "package/duplicate", data: "first" },
+          { name: "package/duplicate", data: "second" },
+        ],
+        expected: /duplicate normalized path/,
+      },
+      {
+        entries: [
+          { name: "package/Case", data: "first" },
+          { name: "package/case", data: "second" },
+        ],
+        expected: /duplicate normalized path/,
+      },
+      {
+        entries: [{ name: "package\\windows-escape", data: "escape" }],
+        expected: /backslash path separator/,
+      },
+      {
+        entries: [{ name: "package/Σ", data: "sigma" }],
+        expected: /portable ASCII/,
+      },
+      {
+        entries: [{ name: "package/ß", data: "sharp s" }],
+        expected: /portable ASCII/,
+      },
+      {
+        entries: [{ name: "foo", prefix: "package", magic: "", version: "" }],
+        expected: /supported ustar\/00 dialect/,
+      },
+      {
+        entries: [
+          { name: "package/before-zero", data: "first" },
+          Buffer.alloc(512),
+          { name: "package/after-zero", data: "second" },
+        ],
+        expected: /nonzero block after its end marker/,
+      },
+    ];
+    for (const { entries, expected } of cases) {
+      writeRawTarGz(archive, entries);
+      assert.throws(() => validateTarArchive(archive), expected);
+    }
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test("otherwise valid archives cannot replace required files with absolute links", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-required-link-"));
+  try {
+    const targetName = "windows-x64";
+    const target = SUPPORTED_TARGETS[targetName];
+    const version = sourceManifest.version;
+    const rootArchive = join(temporary, "root.tgz");
+    const platformArchive = join(temporary, "platform.tgz");
+    const rootManifest = JSON.stringify(fixtureRootManifest(version));
+    const platformManifest = JSON.stringify(
+      fixturePlatformManifest(targetName, version),
+    );
+    const ordinaryRootEntries = [
+      { name: "package/package.json", data: rootManifest },
+      { name: "package/dist/numerical/backend.cjs", data: "backend" },
+      { name: "package/dist/numerical/cminpack.wasm", data: "wasm" },
+      { name: "package/dist/numerical/nlopt-backend.cjs", data: "backend" },
+      { name: "package/dist/numerical/nlopt-methods.wasm", data: "wasm" },
+    ];
+    const ordinaryPlatformEntries = [
+      { name: "package/package.json", data: platformManifest },
+      { name: "package/bin/sagejs.exe", data: "sea" },
+      { name: "package/bin/sagepython.exe", data: "sea" },
+    ];
+
+    writeRawTarGz(rootArchive, [
+      ...ordinaryRootEntries.filter(
+        (entry) => entry.name !== "package/dist/numerical/backend.cjs",
+      ),
+      {
+        name: "package/dist/numerical/backend.cjs",
+        linkName: "/etc/passwd",
+        type: "2",
+      },
+    ]);
+    writeRawTarGz(platformArchive, ordinaryPlatformEntries);
+    assert.throws(
+      () => assertArchiveLayout(rootArchive, platformArchive, targetName),
+      /forbidden type.*2/,
+    );
+
+    writeRawTarGz(rootArchive, ordinaryRootEntries);
+    writeRawTarGz(platformArchive, [
+      ...ordinaryPlatformEntries.filter(
+        (entry) => entry.name !== "package/bin/sagejs.exe",
+      ),
+      {
+        name: "package/bin/sagejs.exe",
+        linkName: "/etc/passwd",
+        type: "2",
+      },
+    ]);
+    assert.throws(
+      () => assertArchiveLayout(rootArchive, platformArchive, targetName),
+      /forbidden type.*2/,
+    );
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test("installed closure audit rejects internal and escaping links", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-installed-closure-"));
+  try {
+    const consumer = join(temporary, "consumer");
+    const closure = join(consumer, "store", "package");
+    const external = join(temporary, "external");
+    mkdirSync(closure, { recursive: true });
+    mkdirSync(external, { recursive: true });
+    writeFileSync(join(closure, "ordinary-file"), "safe");
+    const linkType = process.platform === "win32" ? "junction" : "dir";
+    const internalLink = join(closure, "escape");
+    symlinkSync(external, internalLink, linkType);
+    assert.throws(
+      () => auditInstalledClosure(consumer, closure, "test closure"),
+      /symbolic link|reparse point/,
+    );
+    rmSync(internalLink, { recursive: true, force: true });
+
+    const publicLink = join(consumer, "public-package");
+    symlinkSync(closure, publicLink, linkType);
+    assert.equal(
+      auditInstalledClosure(consumer, publicLink, "test closure").entries,
+      2,
+    );
+
+    const escapingRoot = join(consumer, "escaping-package");
+    symlinkSync(external, escapingRoot, linkType);
+    assert.throws(
+      () => auditInstalledClosure(consumer, escapingRoot, "test closure"),
+      /escaped fresh install/,
     );
   } finally {
     rmSync(temporary, { recursive: true, force: true });
@@ -273,6 +596,107 @@ test("process timeout terminates descendants, not only their parent", async () =
     rmSync(temporary, { recursive: true, force: true });
   }
 });
+
+test("bounded stdout and stderr overflow still terminates the owned tree", async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-process-overflow-"));
+  try {
+    const sentinels = [];
+    for (const producer of ["stdout", "stderr", "worker"]) {
+      const sentinel = join(temporary, `${producer}-descendant-survived`);
+      sentinels.push(sentinel);
+      const descendant = [
+        'const { writeFileSync } = require("node:fs");',
+        `setTimeout(() => writeFileSync(${JSON.stringify(sentinel)}, "alive"), 700);`,
+        "setInterval(() => {}, 1000);",
+      ].join("\n");
+      const lines = [
+        'const { spawn } = require("node:child_process");',
+        `spawn(process.execPath, ["-e", ${JSON.stringify(descendant)}], { stdio: "ignore" });`,
+      ];
+      if (producer === "worker") {
+        lines.push(
+          'const { Worker } = require("node:worker_threads");',
+          'new Worker(`process.stdout.write("x".repeat(1024 * 1024)); setInterval(() => {}, 1000)`, { eval: true });',
+        );
+      } else {
+        lines.push(
+          `process.${producer}.write("x".repeat(1024 * 1024));`,
+          "setInterval(() => {}, 1000);",
+        );
+      }
+      let error;
+      try {
+        runProcess(process.execPath, ["-e", lines.join("\n")], {
+          maxBuffer: 1024,
+          timeout: 5_000,
+        });
+      } catch (caught) {
+        error = caught;
+      }
+      assert.match(error?.message || "", /output exceeded 1024 bytes/);
+      assert.equal(error.code, "ENOBUFS");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    for (const sentinel of sentinels) assert.equal(existsSync(sentinel), false);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test(
+  "normal POSIX completion drains descendants in the owned process group",
+  { skip: process.platform === "win32" },
+  async () => {
+    const temporary = mkdtempSync(join(tmpdir(), "sagejs-process-drain-"));
+    try {
+      const sentinel = join(temporary, "descendant-survived");
+      const descendant = [
+        'const { writeFileSync } = require("node:fs");',
+        `setTimeout(() => writeFileSync(${JSON.stringify(sentinel)}, "alive"), 600);`,
+      ].join("\n");
+      const parent = [
+        'const { spawn } = require("node:child_process");',
+        `const child = spawn(process.execPath, ["-e", ${JSON.stringify(descendant)}], { stdio: "ignore" });`,
+        "child.unref();",
+      ].join("\n");
+      const result = runProcess(process.execPath, ["-e", parent]);
+      assert.equal(result.status, 0);
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      assert.equal(existsSync(sentinel), false);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  },
+);
+
+test(
+  "an explicitly detached POSIX session remains outside process-group containment",
+  { skip: process.platform === "win32" },
+  async () => {
+    const temporary = mkdtempSync(join(tmpdir(), "sagejs-process-detached-"));
+    try {
+      const sentinel = join(temporary, "detached-finished");
+      const descendant = [
+        'const { writeFileSync } = require("node:fs");',
+        `setTimeout(() => writeFileSync(${JSON.stringify(sentinel)}, "detached"), 600);`,
+      ].join("\n");
+      const parent = [
+        'const { spawn } = require("node:child_process");',
+        `const child = spawn(process.execPath, ["-e", ${JSON.stringify(descendant)}], {`,
+        "  detached: true,",
+        '  stdio: "ignore",',
+        "});",
+        "child.unref();",
+      ].join("\n");
+      const result = runProcess(process.execPath, ["-e", parent]);
+      assert.equal(result.status, 0);
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      assert.equal(readFileSync(sentinel, "utf8"), "detached");
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  },
+);
 
 test("the representative smoke covers ordinary Python and both lazy backends", () => {
   const source = numericalSmokeSource();

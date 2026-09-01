@@ -95,12 +95,14 @@ entries are sorted. Path traversal, absolute input paths, symbolic links, and
 special filesystem objects are rejected. JSON parsing rejects duplicate object
 keys, non-finite numbers, trailing content, and ambiguous escapes.
 
-The receipt records the current Git commit and tree, clean/dirty state, and a
-digest of the porcelain status. Dirty development receipts remain valid as
-exact byte-bound evidence, but a release policy should set `require_clean` to
-`true`. The current-binding verifier also requires the same commit, tree,
-source, adapter, artifact, capability manifest, platform facts, and Node
-collector runtime.
+The receipt records the current Git commit and tree, clean state, and a digest
+of the porcelain status. Collection fails before loading adapter code unless
+the checkout is clean. After the adapter is closed, the collector rebinds the
+corpus, complete source bundle, adapter, artifacts, capability manifest, and
+repository identity. It rejects the run unless all bytes and validated
+identities are unchanged and `HEAD` remains the original clean candidate.
+The current-binding verifier additionally requires the same platform facts and
+Node collector runtime.
 
 Content IDs detect accidental or adversarial mutation; they are not digital
 signatures. `verify --historical` proves internal consistency and bound content
@@ -171,12 +173,21 @@ artifact, runtime, or run gets a new receipt. Derived JSON/Markdown matrix
 reports may be regenerated because their identity is a deterministic function
 of policy and receipt content.
 
+Pre- and post-execution rebinding detects persistent or concurrent input
+changes; it is not hostile-host attestation. In particular, a trusted adapter
+could change, consume, and restore bytes between the two bindings. Proving
+otherwise requires collector-owned staged read-only inputs or operating-system
+isolation and is outside this receipt format. Release automation therefore
+trusts the first-party adapter, collector, and persistent host while retaining
+exact evidence for the stable candidate they executed.
+
 The adversarial suite in
 `test/numerics/evidence/qualification.cjs` covers duplicate JSON keys, source,
 adapter, and artifact changes after capability binding, receipt mutation,
 mutation followed by content-ID recomputation, removed case evidence, forged
 platform identity, unavailable capabilities, duplicate matrix evidence,
-missing platform rows, and receipt overwrite attempts.
+missing platform rows, bound-input mutation during execution, dirty candidate
+collection, and receipt overwrite attempts.
 
 See [cross-platform.md](cross-platform.md) for collection and reporting, and
 [domain-integration.md](domain-integration.md) for the adapter protocol and

@@ -90,15 +90,23 @@ function corpusFixture() {
   };
 }
 
-function adapterSource(subject, externalExecution = "async", mutateArtifact = false) {
+function adapterSource(
+  subject,
+  externalExecution = "async",
+  mutateArtifact = false,
+  mutateInput = false,
+) {
   return `"use strict";
 const { spawn, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
+const path = require("node:path");
 let subjectProcess = null;
 let artifactPath = null;
+let repositoryRoot = null;
 const external = ${JSON.stringify(subject.kind !== "node")};
 const externalExecution = ${JSON.stringify(externalExecution)};
 const mutateArtifact = ${JSON.stringify(mutateArtifact)};
+const mutateInput = ${JSON.stringify(mutateInput)};
 const childSource =
   "const held = Buffer.alloc(64 * 1024 * 1024, 1); " +
   "setTimeout(() => process.exit(0), 1500)";
@@ -129,6 +137,7 @@ async function exerciseExternalSubject() {
 module.exports = {
   protocol: "sagejs.numerical-qualification-adapter/v1",
   async initialize(context) {
+    repositoryRoot = context.root;
     artifactPath = context.artifacts.find((item) => item.name === "core").path;
     return {
       subject: ${JSON.stringify(subject)},
@@ -136,6 +145,9 @@ module.exports = {
     };
   },
   async runCase(sample) {
+    if (mutateInput) {
+      fs.appendFileSync(path.join(repositoryRoot, "source.txt"), "adapter mutation\\n");
+    }
     await exerciseExternalSubject();
     if (mutateArtifact) fs.appendFileSync(artifactPath, Buffer.from([99]));
     return {
@@ -184,6 +196,7 @@ function makeWorkspace({
   subject = { kind: "node", name: "node", version: process.version, engine: null },
   externalExecution = "async",
   mutateArtifact = false,
+  mutateInput = false,
 } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-numerical-evidence-"));
   initializeGit(root);
@@ -191,7 +204,7 @@ function makeWorkspace({
   fs.writeFileSync(path.join(root, "artifact.bin"), Buffer.from([0, 1, 2, 3, 255]));
   fs.writeFileSync(
     path.join(root, "adapter.cjs"),
-    adapterSource(subject, externalExecution, mutateArtifact),
+    adapterSource(subject, externalExecution, mutateArtifact, mutateInput),
   );
   writeJson(path.join(root, "fixture.corpus.json"), corpusFixture());
   writeJson(
@@ -471,6 +484,25 @@ test("collection rejects a bound artifact rebuilt during adapter execution", asy
   await assert.rejects(
     () => collectFixture(workspace),
     /changed while qualification executed/,
+  );
+});
+
+test("collection rejects an adapter that changes a bound input while executing", async (t) => {
+  const workspace = makeWorkspace({ mutateInput: true });
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  await assert.rejects(
+    () => collectFixture(workspace),
+    /capability manifest\.bindings|changed during collection/,
+  );
+});
+
+test("collection requires a clean checkout before adapter code runs", async (t) => {
+  const workspace = makeWorkspace();
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(workspace.root, "untracked.txt"), "not a release candidate\n");
+  await assert.rejects(
+    () => collectFixture(workspace),
+    /requires a clean candidate checkout/,
   );
 });
 

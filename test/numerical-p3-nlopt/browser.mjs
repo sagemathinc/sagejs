@@ -166,6 +166,7 @@ try {
     schema: "sagejs.numerical-nlopt-browser/v1",
     chromium: await browser.version(),
     cases: result.results.length,
+    result_case_ids: result.results.map(({ id }) => id),
     results_sha256: digest,
     public_semantics_bundle_sha256:
       productionManifest.public_semantics_bundle.sha256,

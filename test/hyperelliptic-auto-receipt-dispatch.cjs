@@ -106,7 +106,7 @@ policyApi.installAutoReceiptPolicyRuntime(verified, {
 }
 
 function runSage(source, environment = {}) {
-  const result = spawnSync(SAGEJS, [], {
+  const result = spawnSync(process.execPath, [SAGEJS], {
     cwd: ROOT,
     encoding: "utf8",
     input: source,
@@ -445,7 +445,7 @@ test("trusted startup rejects a provider installed before Sage.js", (context) =>
   const item = enabledEmptyPolicy();
   context.after(() => fs.rmSync(item.root, { recursive: true, force: true }));
   const preloadFile = preload(item, "enabled");
-  const result = spawnSync(SAGEJS, [], {
+  const result = spawnSync(process.execPath, [SAGEJS], {
     cwd: ROOT,
     encoding: "utf8",
     input: "print(1)\n",

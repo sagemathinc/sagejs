@@ -315,8 +315,18 @@
         "rosenbrock4"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -360,9 +370,9 @@
           "windows-x64"
         ],
         "runtimes": [
-          "sagejs-browser",
-          "sagejs-node",
-          "sagejs-sea"
+          "browser",
+          "node",
+          "sea"
         ]
       },
       "receipt_qualification": {
@@ -399,7 +409,6 @@
       "methods": [
         "bfgs",
         "nelder-mead",
-        "nlopt-cobyla",
         "nlopt-nelder-mead",
         "projected-bfgs"
       ],
@@ -411,9 +420,9 @@
           "windows-x64"
         ],
         "runtimes": [
-          "sagejs-browser",
-          "sagejs-node",
-          "sagejs-sea"
+          "browser",
+          "node",
+          "sea"
         ]
       },
       "receipt_qualification": {
@@ -440,9 +449,9 @@
           "windows-x64"
         ],
         "runtimes": [
-          "sagejs-browser",
-          "sagejs-node",
-          "sagejs-sea"
+          "browser",
+          "node",
+          "sea"
         ]
       },
       "receipt_qualification": {
@@ -511,6 +520,7 @@
         ],
         "runtimes": [
           "browser",
+          "cpython",
           "node",
           "sea"
         ]

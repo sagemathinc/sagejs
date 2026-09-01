@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sagejs.org/schemas/numerical-trace-v1.json",
+  "$id": "https://sagejs.org/schemas/trace.schema.json",
   "title": "Sage.js NumericalTrace",
   "type": "object",
   "additionalProperties": false,
@@ -33,8 +33,8 @@
       "properties": {
         "sequence": {"type": "integer", "minimum": 0},
         "kind": {"type": "string", "minLength": 1},
-        "iteration": {"type": ["integer", "null"]},
-        "evaluation": {"type": ["integer", "null"]},
+        "iteration": {"type": ["integer", "null"], "minimum": 0},
+        "evaluation": {"type": ["integer", "null"], "minimum": 0},
         "accepted": {"type": ["boolean", "null"]},
         "data": {"type": "object"},
         "diagnostics": {"type": "array"},

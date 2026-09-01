@@ -69,6 +69,50 @@ The P0 contract audit then hardened this foundation before release:
   external execution blocks the collector and therefore fails closed instead
   of manufacturing a boundary-only memory claim.
 
+A second independent P0 review made the wire contracts executable rather than
+merely illustrative. Problem records now use a single explicit registry of
+callable/data-intent tags, serialize absent derivatives as valid `none`
+records, include constrained problems, and admit the complete ODE hard-budget
+extension. Nested problem state is detached at every accessor so a published
+digest cannot be changed by mutating a returned record. Plans preserve the
+problem's numeric type, results reject cross-problem plans, invalid success
+claims, and negative accounting, and complex-binary64 precision is reported
+honestly. Execution receipts become `receipt_qualified` only when observed
+artifact and receipt digests match the planned qualified target; planned but
+unobserved external work is classified separately. An external backend that
+fails before returning its implementation identity remains unobserved rather
+than being mislabeled as ordinary Python; actual ordinary-Python results retain
+their source-transparent identity. Capability discovery now
+fails closed on unclassified operations, uses one canonical runtime vocabulary,
+and checks the retained diagnostic registry exactly. Memory method and scope
+are a coupled contract, so a browser-heap estimate cannot be relabeled as
+process-tree evidence. Qualification collection now starts from a clean Git
+candidate and rebinds every corpus, source, adapter, artifact, manifest, and
+repository identity after adapter shutdown; persistent input changes or a
+moved/dirty `HEAD` fail closed. This authenticates a stable candidate on a
+trusted first-party collector/adapter/host boundary, not adversarial-host
+execution; stronger proof would require staged read-only inputs or OS
+isolation.
+
+The final fail-closed contract review also made the executable records obey
+their published schemas at construction time. Nonempty plan identifiers,
+strict booleans, finite nonnegative validation estimates, bounded counters,
+problem/result trace-policy identity, and hard trace retention bytes are now
+runtime invariants rather than documentation conventions. Solver termination
+and validated success remain deliberately distinct: a solver may report
+`converged` while independent validation rejects the answer, but a result may
+never claim success for a failure status or failed validation. Domain execution
+accounting checks resource ceilings before incrementing so failure records do
+not serialize impossible `max + 1` counters. Capability normalization rejects
+malformed target arrays and every caller-owned receipt claim, and names CPython
+explicitly for the same-source root methods. Only a verified P8 report may
+overlay receipt qualification, and its platform/runtime envelope must remain a
+subset of the method's declared implementation targets. Matrix rendering now
+derives and emits the required memory scope for every subject kind, and the
+published matrix-report schema constrains the exact receipt summary, bindings,
+case metrics, payload, and authenticated-memory wire format instead of using
+open object placeholders.
+
 This proves the shared contracts sufficiently to begin domain-owned parallel
 implementation. P1 is not classified as release-qualified until its browser,
 SEA, four-platform, performance, startup, memory, and payload receipts are
