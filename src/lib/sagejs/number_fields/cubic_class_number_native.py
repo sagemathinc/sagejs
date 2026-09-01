@@ -50,6 +50,8 @@ _CUBIC_MAX_POWERS = 12
 _CUBIC_MAX_RELATIONS = 1024
 _CUBIC_MAX_COMPOUND_PAIRS = 128
 _CUBIC_COMPOUND_MULTIPLIERS = 4
+_CUBIC_MAX_RELATION_EFFORT = 5
+_CUBIC_INITIAL_ADJACENT_IDEALS = 3
 _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES = 500
 _CUBIC_REDUCED_ENUMERATION_MAX_COORDINATE = 32
 _CUBIC_MAX_FACTOR_SEARCH_BOUND = 257
@@ -4673,7 +4675,7 @@ def certified_complex_cubic_class_group_v1(
     verification_radicals: IntegerBuffer,
     verification_selectors: IntegerBuffer,
     verification_workspace: IntegerBuffer,
-    compound_multiplier_limit: uint64,
+    relation_effort: uint64,
     memory_limit: uint64,
     temporary_limit: uint64,
 ) -> bool:
@@ -4695,23 +4697,24 @@ def certified_complex_cubic_class_group_v1(
         or len(verification_radicals) != 9 * _CUBIC_MAX_ORDER_WITNESSES
         or len(verification_selectors) != 3 * _CUBIC_MAX_ORDER_WITNESSES
         or len(verification_workspace) != _CUBIC_ROUND2_WORKSPACE_LENGTH
-        or compound_multiplier_limit > _CUBIC_COMPOUND_MULTIPLIERS
+        or relation_effort < 1
+        or relation_effort > _CUBIC_MAX_RELATION_EFFORT
         or coefficients[3] != 1
         or memory_limit < 1048576
         or temporary_limit < 1048576
     ):
         return False
-    scheduled_compound_multiplier_limit: uint64 = compound_multiplier_limit
-    # Limit one is the resident prefix probe.  A later host retry with limit
-    # two authorizes the first true multiplier, preserving the old 0,1,2,4
-    # mathematical schedule while avoiding a duplicate setup call when the
-    # prefix unit can be reconstructed directly.
-    if compound_multiplier_limit == 1:
-        scheduled_compound_multiplier_limit = 0
-    elif compound_multiplier_limit == 2:
+    # Relation effort is monotone. The first call uses PARI's narrow
+    # three-adjacent-ideal prefix, the second restores the complete adjacent
+    # set, and only later calls authorize one, two, then four compound
+    # multipliers. Every retry recomputes and authenticates its own exact state.
+    scheduled_compound_multiplier_limit: uint64 = 0
+    if relation_effort == 3:
         scheduled_compound_multiplier_limit = 1
-    elif compound_multiplier_limit == 3:
+    elif relation_effort == 4:
         scheduled_compound_multiplier_limit = 2
+    elif relation_effort == 5:
+        scheduled_compound_multiplier_limit = _CUBIC_COMPOUND_MULTIPLIERS
     with NativeExactArena(memory_limit, temporary_limit) as arena:
         workspace = arena.integer_vector(_CUBIC_WORKSPACE_LENGTH, 0)
         polynomial = arena.foreign_resource(fmpz_polynomial, 4)
@@ -5352,18 +5355,21 @@ def certified_complex_cubic_class_group_v1(
         # found in the reduced ideal above 11.  PARI's factor-base permutation
         # places a small independent sub-factor-base first and the remaining
         # ideals later; `small_norm` traverses that permutation backward.  The
-        # bounded source-transparent analogue presently visits every retained
-        # noninert ideal, including the residue-degree-two complement in a
+        # bounded source-transparent analogue first visits the three final
+        # factor-base ideals, which have the largest norms in the canonical
+        # ordering. A retry then visits every retained noninert ideal,
+        # including the residue-degree-two complement in a
         # `(1,2)` split.  The latter is essential in `3.1.108115.1`, where
         # PARI's second successful reduced lattice is precisely the ideal of
-        # norm 9.  This is a slightly broader schedule than PARI's early stop,
-        # but prevents a middle generator (the ideal over 29 in
-        # `3.1.12763.1`) from receiving no reduced search at all.  A later
-        # staged rank test can recover PARI's early-stop optimization without
-        # weakening this regime.
+        # norm 9. The complete retry prevents a middle generator (the ideal
+        # over 29 in `3.1.12763.1`) from receiving no reduced search at all.
+        # Exact rank, unit, and analytic-index failures are the only signals
+        # that authorize broader relation effort.
         adjacent_ideal_count: uint64 = 0
         adjacent_candidate_count: uint64 = 0
         adjacent_factor_cursor: uint64 = 0
+        if relation_effort == 1 and factor_count > _CUBIC_INITIAL_ADJACENT_IDEALS:
+            adjacent_factor_cursor = factor_count - _CUBIC_INITIAL_ADJACENT_IDEALS
         while adjacent_factor_cursor < factor_count:
             adjacent_factor_index: uint64 = adjacent_factor_cursor
             adjacent_factor_base: uint64 = (

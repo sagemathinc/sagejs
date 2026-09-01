@@ -31,7 +31,7 @@ _CUBIC_OUTPUT_LENGTH = 64
 _CUBIC_BUFFER_WORD_CAPACITY = 8
 _CUBIC_ARENA_MEMORY_LIMIT = 1_048_576
 _CUBIC_ARENA_TEMPORARY_LIMIT = 2_097_152
-_CUBIC_COMPOUND_MULTIPLIER_LIMITS = (1, 2, 3, 4)
+_CUBIC_RELATION_EFFORTS = (1, 2, 3, 4, 5)
 _resident_buffers: tuple[Any, ...] | None = None
 _resident_coefficients: tuple[Any, tuple[int, int, int, int], Any] | None = None
 _resident_native_module: Any | None = None
@@ -464,7 +464,7 @@ def certified_complex_cubic_class_number(
         _resident_call_active = True
         try:
             accepted = False
-            for compound_multiplier_limit in _CUBIC_COMPOUND_MULTIPLIER_LIMITS:
+            for relation_effort in _CUBIC_RELATION_EFFORTS:
                 accepted = kernel(
                     output,
                     packed_coefficients,
@@ -476,18 +476,18 @@ def certified_complex_cubic_class_number(
                     verification_radicals,
                     verification_selectors,
                     verification_workspace,
-                    compound_multiplier_limit,
+                    relation_effort,
                     _CUBIC_ARENA_MEMORY_LIMIT,
                     _CUBIC_ARENA_TEMPORARY_LIMIT,
                 )
                 if accepted is True:
                     break
-                # Only relation-rank or unit-rank exhaustion can be repaired
-                # by another PARI-style multiplier batch.  Every earlier or
-                # later failure remains a fail-closed decline rather than
-                # paying for semantically irrelevant retries.
+                # Only relation-rank, unit-rank, or analytic-index exhaustion
+                # can authorize broader adjacent or compound relation effort.
+                # Every earlier failure remains a fail-closed decline rather
+                # than paying for semantically irrelevant retries.
                 failed_values = native_module.integer_buffer_values(output)
-                if int(failed_values[63]) not in (42, 43, 8):
+                if int(failed_values[63]) not in (41, 42, 43, 8):
                     break
         finally:
             _resident_call_active = False

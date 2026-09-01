@@ -165,6 +165,10 @@ cases = (
     ("3.1.2856.1", (-21, 9, -1, 1), 7, (7,), 0),
     ("3.1.4027.2", (8, 7, -1, 1), 6, (6,), 0),
     ("3.1.5448.1", (30, -14, -1, 1), 8, (8,), 0),
+    # The narrow three-ideal prefix leaves analytic index 2. The exact status
+    # authorizes a complete adjacent-ideal retry, which finds the middle
+    # generator above 29 without authorizing a compound multiplier.
+    ("3.1.12763.1", (-22, 1, -1, 1), 8, (2, 4), 0),
     # The fundamental unit lies beyond the opportunistic score-9 coordinate
     # shells. Exact relation dependencies recover it without broadening the
     # speculative unit search; this pure cubic has class group C3 x C3.
@@ -201,7 +205,7 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label
-        assert receipt.relation_count == 30, label
+        assert receipt.relation_count == 29, label
     assert receipt.matches(K), label
 print("cubic-native-lmfdb-corpus-ok")
 `);
