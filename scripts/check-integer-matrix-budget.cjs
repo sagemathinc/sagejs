@@ -43,7 +43,10 @@ function nativeReference(size, seed) {
 }
 
 const cases = [
-  { name: "random_500", expression: "random_matrix(ZZ, 500)", budget: 15 },
+  // These allocation-heavy operations have a bimodal warm-process cost on
+  // macOS arm64 (roughly 8 ms or 15.2 ms) as GC and allocator work moves
+  // between samples. Keep narrow headroom above the slower healthy cluster.
+  { name: "random_500", expression: "random_matrix(ZZ, 500)", budget: 18 },
   {
     name: "construct_500",
     expression: "matrix(ZZ, 500, 500, _integer_budget_values)",
@@ -64,7 +67,7 @@ const cases = [
   {
     name: "select_rows_500",
     expression: "_integer_left.matrix_from_rows(_integer_selection_indices)",
-    budget: 5,
+    budget: 6,
   },
   {
     name: "select_columns_500",
