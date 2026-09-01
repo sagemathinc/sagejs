@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 240,
+    "classified-native-file": 242,
     "declared-ffi": 456,
     "declared-ffi-resource": 34,
     "napi-export": 330,
@@ -8934,6 +8934,22 @@
       "id": "native-file:bench/number-field-round2-proof-resource-witness.c",
       "kind": "classified-native-file",
       "path": "bench/number-field-round2-proof-resource-witness.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+      "kind": "classified-native-file",
+      "path": "bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
+      "kind": "classified-native-file",
+      "path": "bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "integration"

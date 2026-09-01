@@ -95,6 +95,20 @@
       "rationale": "Standalone no-allocation C-to-Wasm microbenchmark that separates internal arithmetic from synchronous Wasm-to-JavaScript objective callback cost; it is not linked into Sage.js or used as a mathematical implementation."
     },
     {
+      "path": "bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Qualification-only ASAN/UBSAN/LSAN harness for the pinned upstream cminpack lmdif/lmder components, including callback failure propagation; it is compiled only by the release evidence collector and is never linked into or shipped with Sage.js."
+    },
+    {
+      "path": "bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Qualification-only ASAN/UBSAN/LSAN harness for the pinned upstream NLopt component closure. Release evidence compiles the selected Nelder-Mead-only path and its cancellation behavior; the guarded COBYLA path is excluded after source-bound sanitizer failure. The harness is never linked into or shipped with Sage.js."
+    },
+    {
       "path": "bench/rforest/portable_trace_harness.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
