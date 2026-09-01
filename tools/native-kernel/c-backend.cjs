@@ -97,6 +97,27 @@ function cString(value) {
   return JSON.stringify(String(value));
 }
 
+// GMP's textual parser is dramatically more expensive than its machine-word
+// setters.  Native IR has already authenticated integer literals, so emit the
+// direct operation whenever the value fits the smallest `long`/`unsigned
+// long` widths supported by our targets (32 bits, notably Windows x64).
+// Larger literals retain the portable decimal path.
+function mpzMachineLiteral(target, value) {
+  let integer;
+  try {
+    integer = BigInt(String(value));
+  } catch (_error) {
+    return null;
+  }
+  if (integer >= -2147483647n && integer <= 2147483647n) {
+    return `mpz_set_si(${target}, ${integer}L)`;
+  }
+  if (integer >= 0n && integer <= 4294967295n) {
+    return `mpz_set_ui(${target}, ${integer}UL)`;
+  }
+  return null;
+}
+
 function cName(name) {
   return `sagejs_${name}`;
 }
@@ -114,6 +135,11 @@ function nativeValue(local) {
 
 function emitOperation(operation, locals, indent) {
   if (operation.kind === "integer.constant") {
+    const machine = mpzMachineLiteral(
+      nativeValue(locals.get(operation.target)),
+      operation.value,
+    );
+    if (machine !== null) return `${indent}${machine};`;
     return [
       `${indent}if (mpz_set_str(${nativeValue(locals.get(operation.target))}, ` +
         `${cString(operation.value)}, 10) != 0)`,
@@ -509,6 +535,8 @@ function emitSparseRowsOperation(operation, context, indent) {
 function emitExactOperation(operation, context, indent) {
   const target = exactValue(operation.target, context);
   if (operation.kind === "integer.constant") {
+    const machine = mpzMachineLiteral(target, operation.value);
+    if (machine !== null) return `${indent}${machine};`;
     return [
       `${indent}if (mpz_set_str(${target}, ${cString(operation.value)}, 10) != 0)`,
       `${indent}{`,
@@ -1088,12 +1116,17 @@ function emitExactOperation(operation, context, indent) {
   if (operation.kind === "integer.sequence.get") {
     const index = exactValue(operation.index, context);
     const position = `sagejs_sequence_index_${operation.target}`;
-    const cases = operation.values.map((value, itemIndex) => [
-      `${indent}        case ${itemIndex}:`,
-      `${indent}            if (mpz_set_str(${target}, ` +
-        `${cString(value)}, 10) != 0) goto fail;`,
-      `${indent}            break;`,
-    ].join("\n")).join("\n");
+    const cases = operation.values.map((value, itemIndex) => {
+      const machine = mpzMachineLiteral(target, value);
+      const assignment = machine === null
+        ? `if (mpz_set_str(${target}, ${cString(value)}, 10) != 0) goto fail;`
+        : `${machine};`;
+      return [
+        `${indent}        case ${itemIndex}:`,
+        `${indent}            ${assignment}`,
+        `${indent}            break;`,
+      ].join("\n");
+    }).join("\n");
     return [
       `${indent}{`,
       `${indent}    long ${position};`,
@@ -2140,9 +2173,12 @@ function emitExactWrapper(fn) {
       initialization.push(`    mpz_init(${value});`, `    ${initialized} = 1;`);
       parse = `if (!get_integer(env, args[${index}], ${value}))\n` +
         "            goto fail;";
-      defaultValue = `if (mpz_set_str(${value}, ` +
-        `${cString(param.default)}, 10) != 0)\n` +
-        "            goto fail;";
+      const machine = mpzMachineLiteral(value, param.default);
+      defaultValue = machine === null
+        ? `if (mpz_set_str(${value}, ` +
+          `${cString(param.default)}, 10) != 0)\n` +
+          "            goto fail;"
+        : `${machine};`;
       cleanup.push(`    if (${initialized})`, `        mpz_clear(${value});`);
     } else if (param.type === "uint64") {
       declarations.push(`    uint64_t ${value};`);
