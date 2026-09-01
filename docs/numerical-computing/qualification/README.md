@@ -131,9 +131,14 @@ descendant visible to the collector at each sample. Linux reads `/proc`, macOS
 reads `ps`, and Windows reads CIM. `browser_heap` is supplemental and cannot
 satisfy a process-tree policy. Adapter telemetry cannot populate or authenticate
 `peak_memory`; the exact authority is always `qualification-collector`.
-An external-subject sample fails if the collector sees no descendant process,
-so an adapter connected to an unrelated or remote browser cannot relabel the
-collector's RSS as browser process-tree evidence.
+An external-subject sample fails unless the collector observes a live
+descendant while that sample executes. In particular, an adapter must await an
+asynchronously supervised local process: a synchronous child blocks the
+collector's sampling loop and is deliberately unqualifiable, while a remote
+browser cannot relabel the collector's RSS as browser process-tree evidence.
+The collector tolerates the short launch interval before a descendant appears,
+but it never turns a before/after collector-only boundary into process-tree
+evidence.
 
 Sampled measurements cannot observe every short synchronous allocation spike;
 the Node process high-water value is retained separately as diagnostic data.

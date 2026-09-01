@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Derive the public surface from runtime capabilities, expose honest qualification/provenance/budget/outward-code contracts, and validate them exhaustively",
-  "base_commit": "9b344479a2cc6d41bd2a376b03ab371fe6237ab1",
+  "base_commit": "5614ddc5cb2dee328debf4648189b6c93f0ca70f",
   "claims": [
     "agents/numerical-computing-product-plan.md",
     "architecture/optimizer-opportunities.manifest.json",
@@ -39,6 +39,7 @@
     "test/numerics/contracts/common-contracts.cjs",
     "test/numerical-root-laboratory.cjs",
     "test/numerics/evidence/qualification.cjs",
+    "test/numerics/optimization/optimization-laboratory.cjs",
     "website/numerical-computing/stories/root-finding.json"
   ],
   "dependencies": [],
