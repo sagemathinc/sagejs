@@ -44,6 +44,16 @@
         "optimizer-development",
         "distribution",
         "numerical-contracts",
+        "numerical-linear-algebra",
+        "numerical-approximation",
+        "numerical-integration",
+        "numerical-optimization",
+        "numerical-ode",
+        "numerical-spectral",
+        "numerical-statistics",
+        "numerical-multilingual",
+        "numerical-sweeps",
+        "numerical-qualification",
         "integration"
       ]
     },
