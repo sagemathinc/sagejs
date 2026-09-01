@@ -34,7 +34,9 @@ test("exact cubic and direct-Minkowski projections are isolated zero-algebra vie
   assert.equal(payload.status, "ok");
   assert.equal(payload.rows.length, 6);
   for (const row of payload.rows) {
-    assert.ok(row.repeat_median_seconds <= 0.025, JSON.stringify(row));
+    // Absolute latency is measured by the dedicated class-unit benchmark.
+    // This integration test runs alongside independent files, so wall-clock
+    // microbenchmarks here would turn test-runner contention into failures.
     assert.ok(row.verify_seconds > row.repeat_median_seconds, JSON.stringify(row));
     assert.deepEqual(row.counters, {
       engine_discrete_logs: 0,
