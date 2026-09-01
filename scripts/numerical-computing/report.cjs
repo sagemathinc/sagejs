@@ -114,7 +114,11 @@ function rowEvidence(row, receiptRecord, requireClean) {
       adapter_sha256: receipt.adapter.sha256,
       capability_manifest_id: receipt.capability_manifest.snapshot.id,
       capability_manifest_sha256: receipt.capability_manifest.sha256,
-      artifacts: receipt.artifacts.map((item) => ({ name: item.name, sha256: item.sha256 })),
+      artifacts: receipt.artifacts.map((item) => ({
+        name: item.name,
+        sha256: item.sha256,
+        content_sha256: item.content_sha256 ?? null,
+      })),
     },
     coverage: {
       program_phases: [...phases].sort(),

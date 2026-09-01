@@ -2,6 +2,8 @@
 "use strict";
 
 const path = require("node:path");
+const fs = require("node:fs");
+const { createHash } = require("node:crypto");
 const { performance } = require("node:perf_hooks");
 const { Worker } = require("node:worker_threads");
 
@@ -73,41 +75,73 @@ function workerRuntimeContext(context) {
     .map((name) => [name, context[name]]));
 }
 
-function runPackageAsync(runner, context, ...args) {
-  if (runner === null) throw new Error("package qualification runner is unavailable");
+function runQualificationWorker(source, workerData, {
+  resultTimeoutMs = 240_000,
+  postMessageExitTimeoutMs = 2_000,
+} = {}) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker(PACKAGE_WORKER_SOURCE, {
+    const worker = new Worker(source, {
       eval: true,
-      workerData: {
-        runtimePath: PACKAGE_RUNTIME_PATH,
-        runner,
-        context: workerRuntimeContext(context),
-        args,
-      },
+      workerData,
     });
     let settled = false;
+    let message = null;
+    let terminalError = null;
+    let exitTimer = null;
+    const resultTimer = setTimeout(() => {
+      terminalError ??= new Error("package qualification worker timed out before a clean exit");
+      void worker.terminate();
+    }, resultTimeoutMs);
+    resultTimer.unref?.();
     const finish = (callback, value) => {
       if (settled) return;
       settled = true;
+      clearTimeout(resultTimer);
+      if (exitTimer !== null) clearTimeout(exitTimer);
       callback(value);
     };
-    worker.once("message", (message) => {
-      if (message?.ok === true) {
-        finish(resolve, message.result);
-      } else {
-        const failure = new Error(message?.error?.message ?? "package qualification worker failed");
-        failure.name = message?.error?.name ?? "Error";
-        if (message?.error?.stack) failure.stack = message.error.stack;
-        finish(reject, failure);
+    worker.on("message", (next) => {
+      if (message !== null) {
+        terminalError ??= new Error("package qualification worker emitted duplicate results");
+        void worker.terminate();
+        return;
       }
+      message = next;
+      exitTimer = setTimeout(() => {
+        terminalError ??= new Error(
+          "package qualification worker retained live handles after emitting a result",
+        );
+        void worker.terminate();
+      }, postMessageExitTimeoutMs);
+      exitTimer.unref?.();
     });
-    worker.once("error", (error) => finish(reject, error));
+    worker.once("error", (error) => {
+      terminalError ??= error;
+    });
     worker.once("exit", (code) => {
-      if (code !== 0) finish(reject,
-        new Error(`package qualification worker exited with status ${code}`));
-      else if (!settled) finish(reject,
-        new Error("package qualification worker exited without a result"));
+      if (terminalError !== null) return finish(reject, terminalError);
+      if (code !== 0) {
+        return finish(reject, new Error(`package qualification worker exited with status ${code}`));
+      }
+      if (message === null) {
+        return finish(reject, new Error("package qualification worker exited without a result"));
+      }
+      if (message?.ok === true) return finish(resolve, message.result);
+      const failure = new Error(message?.error?.message ?? "package qualification worker failed");
+      failure.name = message?.error?.name ?? "Error";
+      if (message?.error?.stack) failure.stack = message.error.stack;
+      return finish(reject, failure);
     });
+  });
+}
+
+function runPackageAsync(runner, context, ...args) {
+  if (runner === null) throw new Error("package qualification runner is unavailable");
+  return runQualificationWorker(PACKAGE_WORKER_SOURCE, {
+    runtimePath: PACKAGE_RUNTIME_PATH,
+    runner,
+    context: workerRuntimeContext(context),
+    args,
   });
 }
 
@@ -122,6 +156,68 @@ function checkProcess(result, description) {
     throw new Error(`${description} failed (${result.status})\n${result.stdout}\n${result.stderr}`);
   }
   return result;
+}
+
+function assertSameFile(left, right, description) {
+  const expected = fs.readFileSync(left);
+  const actual = fs.readFileSync(right);
+  if (!expected.equals(actual)) {
+    throw new Error(`${description} differs from the bound source-current artifact`);
+  }
+}
+
+function fileIdentity(filename) {
+  const bytes = fs.readFileSync(filename);
+  return {
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    bytes: bytes.length,
+  };
+}
+
+function validateSeaResourceDigests(result, expected) {
+  checkProcess(result, "SEA embedded numerical resource digest probe");
+  if (String(result.stderr ?? "").length !== 0) {
+    throw new Error("SEA embedded numerical resource digest probe wrote to stderr");
+  }
+  const lines = String(result.stdout ?? "").trim().split(/\r?\n/);
+  if (lines.length !== 1) {
+    throw new Error("SEA embedded numerical resource digest probe must emit one JSON line");
+  }
+  let value;
+  try {
+    value = JSON.parse(lines[0]);
+  } catch {
+    throw new Error("SEA embedded numerical resource digest probe emitted malformed JSON");
+  }
+  const exactKeys = (record, keys, label) => {
+    if (record === null || typeof record !== "object" || Array.isArray(record) ||
+        Object.keys(record).sort().join("\0") !== [...keys].sort().join("\0")) {
+      throw new Error(`${label} has an invalid schema`);
+    }
+  };
+  exactKeys(value, ["schema", "schema_version", "platform", "resources"], "SEA resource record");
+  exactKeys(value.platform, ["os", "arch"], "SEA resource platform");
+  if (value.schema !== "sagejs.sea-qualification-resource-digests/v1" ||
+      value.schema_version !== 1 || value.platform.os !== process.platform ||
+      value.platform.arch !== process.arch || !Array.isArray(value.resources) ||
+      value.resources.length !== 2) {
+    throw new Error("SEA embedded numerical resource digest probe has an invalid identity");
+  }
+  const resources = new Map();
+  for (const resource of value.resources) {
+    exactKeys(resource, ["name", "sha256", "bytes"], "SEA resource");
+    if (resources.has(resource.name)) throw new Error(`duplicate SEA resource ${resource.name}`);
+    resources.set(resource.name, resource);
+  }
+  for (const [name, identity] of Object.entries(expected)) {
+    const actual = resources.get(name);
+    if (actual?.sha256 !== identity.sha256 || actual?.bytes !== identity.bytes) {
+      throw new Error(`SEA embedded ${name} differs from the bound source-current artifact`);
+    }
+    resources.delete(name);
+  }
+  if (resources.size !== 0) throw new Error("SEA resource probe returned unexpected resources");
+  return value;
 }
 
 function moduleProbeSource() {
@@ -297,6 +393,16 @@ module.exports = {
         platformArchive: artifact(context, "npm-platform-tarball"),
         installStdio: "pipe",
       });
+      assertSameFile(
+        artifact(context, "cminpack-wasm"),
+        path.join(runtimeContext.installedRoot, "dist", "numerical", "cminpack.wasm"),
+        "fresh npm cminpack resource",
+      );
+      assertSameFile(
+        artifact(context, "nlopt-wasm"),
+        path.join(runtimeContext.installedRoot, "dist", "numerical", "nlopt-methods.wasm"),
+        "fresh npm NLopt resource",
+      );
       runPython = packageRuntime.runInstalledSourcePython;
       runLanguage = packageRuntime.runInstalledSourceLanguage;
       runNode = packageRuntime.runInstalledNode;
@@ -307,6 +413,10 @@ module.exports = {
         kind: "npm", name: "@sagemath/sagejs", version: runtimeContext.version, engine: null,
       };
     } else if (context.subject.kind === "sea") {
+      const expectedResources = {
+        "numerical/cminpack.wasm": fileIdentity(artifact(context, "cminpack-wasm")),
+        "numerical/nlopt-methods.wasm": fileIdentity(artifact(context, "nlopt-wasm")),
+      };
       runtimeContext = packageRuntime.prepareRelocatedSea({
         target: packageRuntime.targetForHost(),
         executable: artifact(context, "sea-executable"),
@@ -324,6 +434,14 @@ module.exports = {
       const version = `${versionResult.stdout}\n${versionResult.stderr}`
         .match(/(?:sagejs\s+|v)(\d+\.\d+\.\d+)/i)?.[1];
       if (version === undefined) throw new Error("SEA version probe returned no semantic version");
+      validateSeaResourceDigests(
+        packageRuntime.runProcess(
+          runtimeContext.executable,
+          ["--qualification-resource-digests"],
+          { timeout: 30_000 },
+        ),
+        expectedResources,
+      );
       initializedSubject = { kind: "sea", name: "sagejs", version, engine: null };
     } else {
       throw new Error(`package adapter refuses subject kind ${context.subject.kind}`);
@@ -357,5 +475,10 @@ module.exports = {
       target: runtimeContext?.target ?? null,
       capability_ids: [...initializedCapabilities],
     };
+  },
+
+  _testing: {
+    runQualificationWorker,
+    validateSeaResourceDigests,
   },
 };

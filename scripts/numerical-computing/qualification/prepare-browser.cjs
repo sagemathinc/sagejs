@@ -4,7 +4,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { pretty, readJson, repositoryPath } = require("../common.cjs");
+const { pretty, readJson, repositoryPath, sha256 } = require("../common.cjs");
 const { validateCorpus } = require("../contracts.cjs");
 const { bindCapabilityDraft, writeImmutableJson } = require("../receipt.cjs");
 const { capabilityDraft } = require("./prepare-node.cjs");
@@ -27,6 +27,25 @@ function copyReleaseEntry(source, destination) {
   if (!status.isFile()) throw new Error(`browser artifact refuses special file ${source}`);
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(source, destination, fs.constants.COPYFILE_EXCL);
+}
+
+function noFollowReleaseEntry(sourceRoot, entry) {
+  let current = sourceRoot;
+  for (const component of entry.split(/[\\/]/).filter(Boolean)) {
+    current = path.join(current, component);
+    if (!fs.existsSync(current)) {
+      throw new Error(`browser package files entry is missing: ${entry}`);
+    }
+    const status = fs.lstatSync(current);
+    if (status.isSymbolicLink()) {
+      throw new Error(`browser artifact refuses symbolic-link path component ${entry}`);
+    }
+  }
+  const relative = path.relative(sourceRoot, fs.realpathSync(current));
+  if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`browser package files entry escapes package: ${entry}`);
+  }
+  return current;
 }
 
 function stageBrowserArtifact(root, artifactPath, outputPath) {
@@ -62,12 +81,7 @@ function stageBrowserArtifact(root, artifactPath, outputPath) {
       throw new Error(`invalid browser package files entry ${JSON.stringify(entry)}`);
     }
     const normalized = entry.replace(/[\\/]$/, "");
-    const input = path.resolve(source.absolute, normalized);
-    const relative = path.relative(source.absolute, input);
-    if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-      throw new Error(`browser package files entry escapes package: ${entry}`);
-    }
-    if (!fs.existsSync(input)) throw new Error(`browser package files entry is missing: ${entry}`);
+    const input = noFollowReleaseEntry(source.absolute, normalized);
     copyReleaseEntry(input, path.join(destination.absolute, normalized));
   }
   return destination.relative;
@@ -85,9 +99,12 @@ function subjectFor(kind, engine, version) {
   if (!['chromium', 'firefox', 'webkit'].includes(engine)) {
     throw new Error("--engine must be chromium, firefox, or webkit");
   }
+  if (kind === "worker" && engine !== "chromium") {
+    throw new Error("the release worker subject is pinned to Chromium");
+  }
   return kind === "browser"
     ? { kind, name: "playwright-browser", version, engine }
-    : { kind, name: "sagejs-browser-worker", version, engine: null };
+    : { kind, name: "sagejs-browser-worker", version, engine };
 }
 
 async function prepare({
@@ -99,8 +116,10 @@ async function prepare({
   const adapter = require(repositoryPath(root, adapterPath, "adapter").absolute);
   const launched = await adapter._testing.launchBrowser(engine);
   let version;
+  let browserExecutable;
   try {
     version = launched.version;
+    browserExecutable = launched.executable;
   } finally {
     await launched.browser.close();
   }
@@ -119,6 +138,7 @@ async function prepare({
     adapterPath,
     artifactSpecifications: [
       `sagejs-browser=${stagedArtifactPath}`,
+      `browser-dist=${stagedArtifactPath}/dist`,
       `cminpack-wasm=${cminpackArtifactPath}`,
       `nlopt-wasm=${nloptArtifactPath}`,
     ],
@@ -126,7 +146,15 @@ async function prepare({
   });
   const manifestPath = `${output.relative}/capabilities.json`;
   writeImmutableJson(path.join(root, manifestPath), manifest);
-  return { draftPath, manifestPath, manifest, engine, artifactPath: stagedArtifactPath };
+  return {
+    draftPath,
+    manifestPath,
+    manifest,
+    engine,
+    artifactPath: stagedArtifactPath,
+    browserDistPath: `${stagedArtifactPath}/dist`,
+    browserExecutable,
+  };
 }
 
 function usage() {
@@ -184,6 +212,7 @@ async function main(argv = process.argv.slice(2)) {
       `--adapter ${adapterPath}`,
       `--capabilities ${prepared.manifestPath}`,
       `--artifact sagejs-browser=${prepared.artifactPath}`,
+      `--artifact browser-dist=${prepared.browserDistPath}`,
       `--artifact cminpack-wasm=${cminpackArtifactPath}`,
       `--artifact nlopt-wasm=${nloptArtifactPath}`,
       `--output ${outputDirectory}/${kind}-${engine}.receipt.json`,

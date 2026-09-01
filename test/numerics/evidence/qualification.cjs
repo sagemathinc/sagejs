@@ -90,12 +90,15 @@ function corpusFixture() {
   };
 }
 
-function adapterSource(subject, externalExecution = "async") {
+function adapterSource(subject, externalExecution = "async", mutateArtifact = false) {
   return `"use strict";
 const { spawn, spawnSync } = require("node:child_process");
+const fs = require("node:fs");
 let subjectProcess = null;
+let artifactPath = null;
 const external = ${JSON.stringify(subject.kind !== "node")};
 const externalExecution = ${JSON.stringify(externalExecution)};
+const mutateArtifact = ${JSON.stringify(mutateArtifact)};
 const childSource =
   "const held = Buffer.alloc(64 * 1024 * 1024, 1); " +
   "setTimeout(() => process.exit(0), 1500)";
@@ -126,6 +129,7 @@ async function exerciseExternalSubject() {
 module.exports = {
   protocol: "sagejs.numerical-qualification-adapter/v1",
   async initialize(context) {
+    artifactPath = context.artifacts.find((item) => item.name === "core").path;
     return {
       subject: ${JSON.stringify(subject)},
       capability_ids: ["fixture.answer"],
@@ -133,6 +137,7 @@ module.exports = {
   },
   async runCase(sample) {
     await exerciseExternalSubject();
+    if (mutateArtifact) fs.appendFileSync(artifactPath, Buffer.from([99]));
     return {
       outcome: { kind: "success", code: null },
       values: { result: sample.input.value, oracle: 42 },
@@ -178,6 +183,7 @@ function makeWorkspace({
   capabilityStatus = "available",
   subject = { kind: "node", name: "node", version: process.version, engine: null },
   externalExecution = "async",
+  mutateArtifact = false,
 } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-numerical-evidence-"));
   initializeGit(root);
@@ -185,7 +191,7 @@ function makeWorkspace({
   fs.writeFileSync(path.join(root, "artifact.bin"), Buffer.from([0, 1, 2, 3, 255]));
   fs.writeFileSync(
     path.join(root, "adapter.cjs"),
-    adapterSource(subject, externalExecution),
+    adapterSource(subject, externalExecution, mutateArtifact),
   );
   writeJson(path.join(root, "fixture.corpus.json"), corpusFixture());
   writeJson(
@@ -457,6 +463,15 @@ test("stale source, artifact, adapter, and capability bindings prevent collectio
       await assert.rejects(() => collectFixture(workspace), pattern);
     });
   }
+});
+
+test("collection rejects a bound artifact rebuilt during adapter execution", async (t) => {
+  const workspace = makeWorkspace({ mutateArtifact: true });
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  await assert.rejects(
+    () => collectFixture(workspace),
+    /changed while qualification executed/,
+  );
 });
 
 test("unavailable or unobserved capabilities produce failed receipts without samples", async (t) => {

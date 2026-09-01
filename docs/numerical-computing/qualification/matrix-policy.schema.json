@@ -56,7 +56,15 @@
             "subject_name": { "$ref": "#/$defs/nonempty" },
             "subject_version": { "$ref": "#/$defs/nonempty" },
             "subject_engine": { "type": ["string", "null"] }
-          }
+          },
+          "allOf": [{
+            "if": {
+              "properties": { "subject_kind": { "enum": ["browser", "worker"] } },
+              "required": ["subject_kind"]
+            },
+            "then": { "properties": { "subject_engine": { "$ref": "#/$defs/nonempty" } } },
+            "else": { "properties": { "subject_engine": { "type": "null" } } }
+          }]
         },
         "required_program_phases": {
           "type": "array",

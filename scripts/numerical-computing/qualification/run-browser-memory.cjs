@@ -4,7 +4,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { contentId, digestPath } = require("../common.cjs");
+const { canonicalJson, contentId, digestPath, repositoryPath, sha256 } = require("../common.cjs");
 const { collectReceipt, writeImmutableJson } = require("../receipt.cjs");
 const { prepare } = require("./prepare-browser.cjs");
 
@@ -14,6 +14,7 @@ const CORPUS = "bench/numerical-computing/qualification/browser-memory.corpus.js
 const ADAPTER = "bench/numerical-computing/qualification/browser-adapter.cjs";
 const SPEC = "bench/numerical-computing/qualification/capabilities/browser-memory-capability-spec.json";
 const DEFAULT_DELTA = 32 * 1024 * 1024;
+const COLLECTOR = "scripts/numerical-computing/qualification/run-browser-memory.cjs";
 
 function usage() {
   return `Usage: node scripts/numerical-computing/qualification/run-browser-memory.cjs [options]
@@ -138,23 +139,19 @@ function validateBrowserMemoryReceipt(receipt, minimumDelta) {
   };
 }
 
-function ensureEmptyIgnoredOutput(directory) {
-  const absolute = path.resolve(root, directory);
-  const relative = path.relative(root, absolute);
-  if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-    throw new Error("--output escapes the repository root");
-  }
-  if (fs.existsSync(absolute) && fs.readdirSync(absolute).length !== 0) {
+function ensureEmptyIgnoredOutput(directory, repositoryRoot = root) {
+  const resolved = repositoryPath(repositoryRoot, directory, "browser memory output");
+  if (fs.existsSync(resolved.absolute) && fs.readdirSync(resolved.absolute).length !== 0) {
     throw new Error(`output directory is not empty: ${directory}`);
   }
-  fs.mkdirSync(absolute, { recursive: true });
+  fs.mkdirSync(resolved.absolute, { recursive: true });
   const ignored = require("node:child_process").spawnSync(
-    "git", ["-C", root, "check-ignore", "--quiet", relative],
+    "git", ["-C", repositoryRoot, "check-ignore", "--quiet", resolved.relative],
   );
   if (ignored.status !== 0) {
     throw new Error("--output must be ignored so evidence collection does not dirty its source checkout");
   }
-  return relative.split(path.sep).join("/");
+  return resolved.relative;
 }
 
 async function run(options) {
@@ -176,6 +173,7 @@ async function run(options) {
   });
   const artifactSpecifications = [
     `sagejs-browser=${prepared.artifactPath}`,
+    `browser-dist=${prepared.browserDistPath}`,
     `cminpack-wasm=${options.cminpackArtifactPath}`,
     `nlopt-wasm=${options.nloptArtifactPath}`,
   ];
@@ -187,6 +185,18 @@ async function run(options) {
     artifactSpecifications,
     processEntryTime,
   });
+  const adapter = require(path.join(root, ADAPTER));
+  const actualExecutable = adapter._testing.lastBrowserExecutable();
+  if (actualExecutable === null ||
+      canonicalJson(actualExecutable) !== canonicalJson(prepared.browserExecutable)) {
+    throw new Error("measured browser executable differs from the prepared executable binding");
+  }
+  const executablePath = fs.realpathSync(actualExecutable.path);
+  const executableBytes = fs.readFileSync(executablePath);
+  if (executablePath !== actualExecutable.path || executableBytes.length !== actualExecutable.bytes ||
+      sha256(executableBytes) !== actualExecutable.sha256) {
+    throw new Error("measured browser executable changed while qualification executed");
+  }
   const receiptPath = `${outputDirectory}/${options.kind}-${options.engine}.receipt.json`;
   writeImmutableJson(path.join(root, receiptPath), receipt);
   const memory = validateBrowserMemoryReceipt(receipt, options.minimumDelta);
@@ -197,6 +207,8 @@ async function run(options) {
     repository: receipt.repository,
     platform: receipt.platform,
     subject: receipt.runtime.subject,
+    collector: digestPath(root, COLLECTOR, "browser memory collector"),
+    browser_executable: actualExecutable,
     corpus: receipt.corpus,
     source_bundle: receipt.source_bundle,
     adapter: receipt.adapter,
@@ -240,6 +252,7 @@ if (require.main === module) {
 
 module.exports = {
   DEFAULT_DELTA,
+  ensureEmptyIgnoredOutput,
   main,
   parseArguments,
   run,

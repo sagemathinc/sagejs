@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
 const { performance } = require("node:perf_hooks");
+const { createHash } = require("node:crypto");
 
 const { ADAPTER_PROTOCOL } = require("../../../scripts/numerical-computing/contracts.cjs");
 const nodeAdapter = require("./node-adapter.cjs");
@@ -25,6 +26,11 @@ let page = null;
 let subject = null;
 let initializedCapabilities = [];
 let browserDiagnostics = [];
+let lastBrowserExecutable = null;
+
+function sha256(bytes) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
 
 function diagnostic(message) {
   browserDiagnostics.push(String(message));
@@ -32,9 +38,16 @@ function diagnostic(message) {
 }
 
 function browserEngine(contextSubject) {
-  return contextSubject.kind === "browser"
-    ? contextSubject.engine
-    : process.env.SAGEJS_QUALIFICATION_WORKER_ENGINE ?? "chromium";
+  if (!["browser", "worker"].includes(contextSubject.kind)) {
+    throw new Error(`browser adapter cannot initialize ${contextSubject.kind} subject`);
+  }
+  if (!["chromium", "firefox", "webkit"].includes(contextSubject.engine)) {
+    throw new Error(`browser adapter received unsupported engine ${contextSubject.engine}`);
+  }
+  if (contextSubject.kind === "worker" && contextSubject.engine !== "chromium") {
+    throw new Error("browser-worker qualification is pinned to Chromium");
+  }
+  return contextSubject.engine;
 }
 
 function browserExecutable(type, engine) {
@@ -62,12 +75,25 @@ async function launchBrowser(engine) {
   if (executablePath === null) {
     throw new Error(`Playwright ${engine} is not installed; install it or set SAGEJS_${engine.toUpperCase()}_EXECUTABLE`);
   }
+  const exactExecutablePath = fs.realpathSync(executablePath);
+  const executableBytes = fs.readFileSync(exactExecutablePath);
   const launched = await type.launch({
-    executablePath,
+    executablePath: exactExecutablePath,
     headless: true,
     args: engine === "chromium" ? ["--no-sandbox", "--disable-dev-shm-usage"] : [],
   });
-  return { browser: launched, version: launched.version(), executablePath };
+  const version = launched.version();
+  return {
+    browser: launched,
+    version,
+    executablePath: exactExecutablePath,
+    executable: {
+      path: exactExecutablePath,
+      sha256: sha256(executableBytes),
+      bytes: executableBytes.length,
+      version,
+    },
+  };
 }
 
 async function listen(root) {
@@ -345,6 +371,11 @@ module.exports = {
     if (artifact === undefined || !fs.statSync(artifact.path).isDirectory()) {
       throw new Error("the sagejs-browser artifact must be a built flint-wasm package directory");
     }
+    const browserDist = context.artifacts.find((item) => item.name === "browser-dist");
+    if (browserDist === undefined || !fs.statSync(browserDist.path).isDirectory() ||
+        fs.realpathSync(browserDist.path) !== fs.realpathSync(path.join(artifact.path, "dist"))) {
+      throw new Error("browser-dist must bind the exact staged browser dist directory");
+    }
     for (const filename of [
       "kernel.mjs",
       "dist/cminpack.wasm",
@@ -375,6 +406,7 @@ module.exports = {
     try {
       server = await listen(artifactRoot);
       const launched = await launchBrowser(engine);
+      lastBrowserExecutable = launched.executable;
       browser = launched.browser;
       page = await browser.newPage();
       page.on("console", (message) => diagnostic(`console ${message.type()}: ${message.text()}`));
@@ -433,7 +465,7 @@ module.exports = {
         .sort();
       subject = context.subject.kind === "browser"
         ? { kind: "browser", name: "playwright-browser", version: launched.version, engine }
-        : { kind: "worker", name: "sagejs-browser-worker", version: launched.version, engine: null };
+        : { kind: "worker", name: "sagejs-browser-worker", version: launched.version, engine };
       return { subject, capability_ids: initializedCapabilities };
     } catch (error) {
       const details = browserDiagnostics.length === 0
@@ -464,5 +496,10 @@ module.exports = {
     };
   },
 
-  _testing: Object.freeze({ browserExecutable, launchBrowser }),
+  _testing: Object.freeze({
+    browserEngine,
+    browserExecutable,
+    launchBrowser,
+    lastBrowserExecutable: () => lastBrowserExecutable,
+  }),
 };

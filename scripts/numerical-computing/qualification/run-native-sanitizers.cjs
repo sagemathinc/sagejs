@@ -21,6 +21,7 @@ const root = path.resolve(__dirname, "..", "..", "..");
 const SCHEMA = "sagejs.numerical-native-sanitizer-evidence/v1";
 const LOG_LIMIT = 8 * 1024 * 1024;
 const COMPONENTS = Object.freeze(["cminpack", "nlopt"]);
+const COLLECTOR = "scripts/numerical-computing/qualification/run-native-sanitizers.cjs";
 const SANITIZERS = Object.freeze({
   address: {
     flag: "-fsanitize=address",
@@ -119,6 +120,8 @@ function cminpackRecipe() {
     assertDigest(path.join(sourceRoot, relative), expected.sha256, `cminpack ${relative}`);
   }
   const harness = "bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c";
+  const artifactPath = path.join(packageRoot, report.artifact.path);
+  assertDigest(artifactPath, report.artifact.sha256, "cminpack Wasm artifact");
   return {
     id: "cminpack",
     revision: lock.cminpack.revision,
@@ -126,6 +129,10 @@ function cminpackRecipe() {
     build_report: digestPath(root, path.relative(root, reportPath), "cminpack build report"),
     source_closure_sha256: report.source_closure.sha256,
     harness: digestPath(root, harness, "cminpack sanitizer harness"),
+    artifact: {
+      ...digestPath(root, path.relative(root, artifactPath), "cminpack Wasm artifact"),
+      content_sha256: report.artifact.sha256,
+    },
     sourceRoot,
     includeDirectories: [path.join(sourceRoot, "include"), path.join(sourceRoot, "src")],
     definitions: ["-DCMINPACK_NO_DLL"],
@@ -180,6 +187,8 @@ function nloptRecipe() {
   if (configEntry === undefined) throw new Error("NLopt report omits generated/nlopt_config.h");
   assertDigest(configPath, configEntry.sha256, "NLopt generated config");
   const harness = "bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c";
+  const artifactPath = path.join(packageRoot, "build", report.artifact.filename);
+  assertDigest(artifactPath, report.artifact.sha256, "NLopt Wasm artifact");
   return {
     id: "nlopt",
     revision: lock.nlopt.revision,
@@ -187,6 +196,10 @@ function nloptRecipe() {
     build_report: digestPath(root, path.relative(root, reportPath), "NLopt build report"),
     source_closure_sha256: report.source_closure.sha256,
     harness: digestPath(root, harness, "NLopt sanitizer harness"),
+    artifact: {
+      ...digestPath(root, path.relative(root, artifactPath), "NLopt Wasm artifact"),
+      content_sha256: report.artifact.sha256,
+    },
     sourceRoot,
     includeDirectories: [
       path.dirname(configPath), path.join(sourceRoot, "src/api"),
@@ -223,7 +236,7 @@ function resolveCompiler(command) {
   return {
     command,
     path: resolved,
-    sha256: fileDigest(resolved).sha256,
+    ...fileDigest(resolved),
     version: version.stdout.trim(),
   };
 }
@@ -308,6 +321,7 @@ function componentEvidence(compiler, recipe, temporaryRoot) {
     build_report: recipe.build_report,
     source_closure_sha256: recipe.source_closure_sha256,
     harness: recipe.harness,
+    artifact: recipe.artifact,
     source_files: recipe.sources.map((filename) => ({
       path: normalizedToken(filename, temporaryRoot),
       ...fileDigest(filename),
@@ -340,6 +354,7 @@ function buildEvidence(options) {
       status: components.every((item) => item.status === "passed") ? "passed" : "failed",
       repository,
       platform: platformIdentity(),
+      collector: digestPath(root, COLLECTOR, "native sanitizer collector"),
       compiler,
       scope: {
         claim: "native-source-component-sanitizer-evidence",

@@ -24,9 +24,11 @@ function value(argv, name, fallback = null) {
 function usage() {
   return `Usage:
   node scripts/numerical-computing/qualification/prepare-package.cjs npm \\
-    --root-archive FILE --platform-archive FILE --output DIRECTORY
+    --root-archive FILE --platform-archive FILE --cminpack-artifact FILE \
+    --nlopt-artifact FILE --output DIRECTORY
   node scripts/numerical-computing/qualification/prepare-package.cjs sea \\
-    --executable FILE --version VERSION --output DIRECTORY
+    --executable FILE --version VERSION --cminpack-artifact FILE \
+    --nlopt-artifact FILE --output DIRECTORY
 
 The command binds the complete product corpus and capability draft to exact
 package or relocated-SEA artifacts. Run it on the matching persistent platform;
@@ -51,17 +53,24 @@ function prepare(argv) {
     version,
     engine: null,
   };
-  const artifacts = kind === "npm"
+  const productArtifacts = kind === "npm"
     ? [
       `npm-root-tarball=${value(argv, "--root-archive")}`,
       `npm-platform-tarball=${value(argv, "--platform-archive")}`,
     ]
     : [`sea-executable=${value(argv, "--executable")}`];
-  if (artifacts.some((item) => item.endsWith("=null"))) {
+  if (productArtifacts.some((item) => item.endsWith("=null"))) {
     throw new Error(kind === "npm"
       ? "npm preparation requires --root-archive and --platform-archive"
       : "SEA preparation requires --executable");
   }
+  const artifacts = [
+    ...productArtifacts,
+    `cminpack-wasm=${value(
+      argv, "--cminpack-artifact", "packages/flint-wasm/numerical/build/cminpack.wasm",
+    )}`,
+    `nlopt-wasm=${value(argv, "--nlopt-artifact", "dist/numerical/nlopt-methods.wasm")}`,
+  ];
   const corpus = validateCorpus(readJson(repositoryPath(root, corpusPath, "corpus").absolute));
   const spec = readJson(repositoryPath(root, specPath, "capability spec").absolute);
   const draft = capabilityDraft(spec, corpus, subject);

@@ -171,7 +171,7 @@ test("browser-worker adapter interrupts, replaces, and reuses the real worker", 
   delete require.cache[require.resolve(browserAdapterPath)];
   const adapter = require(browserAdapterPath);
   const draft = capabilityDraft(spec, corpus, {
-    kind: "worker", name: "sagejs-browser-worker", version: "probe", engine: null,
+    kind: "worker", name: "sagejs-browser-worker", version: "probe", engine: "chromium",
   });
   const initialized = await adapter.initialize({
     root,
@@ -186,6 +186,7 @@ test("browser-worker adapter interrupts, replaces, and reuses the real worker", 
   });
   try {
     assert.equal(initialized.subject.kind, "worker");
+    assert.equal(initialized.subject.engine, "chromium");
     assert(initialized.capability_ids.includes("numerics.lifecycle.recovery"));
     const item = corpus.cases.find((entry) => entry.id === "p8-runtime-recovery");
     const observed = await adapter.runCase(item);

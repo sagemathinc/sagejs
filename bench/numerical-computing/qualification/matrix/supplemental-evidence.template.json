@@ -21,8 +21,8 @@
       "id": "numerical-wasm-destructive-faults",
       "platform": "linux-x64",
       "status": "pending",
-      "required_evidence": ["allocation-failure", "corrupt-region", "artifact-digest-mismatch", "post-failure-recovery"],
-      "acceptance": "Authenticated cminpack and NLopt reactors fail closed on every injected fault, release all contexts/handles/allocations/bytes, expose no private callback or resource details, and remain reusable after recovery."
+      "required_evidence": ["allocation-failure", "corrupt-region", "runner-build-report-artifact-mismatch", "harness-input-artifact-mismatch", "product-malformed-artifact-fail-closed", "post-failure-recovery"],
+      "acceptance": "The qualification runner rejects raw artifact bytes that disagree with the source-current build-report digest, the isolated harness authenticates its exact input bytes, and the real Sage.js runtime loader fails closed on malformed cminpack and NLopt Wasm. Both reactors reject invalid and overlapping regions for every retained method, trigger and clean the complete contiguous allocation-failure envelope, release all contexts/handles/allocations/bytes after callback failure and cancellation, and remain reusable after recovery."
     },
     {
       "id": "browser-process-tree-memory",
@@ -30,6 +30,13 @@
       "status": "pending",
       "required_evidence": ["chromium", "firefox", "webkit", "worker-replacement"],
       "acceptance": "For Chromium, Firefox, WebKit, and the Chromium worker-recovery row, the qualification collector authenticates operating-system process-tree peak memory for the exact browser executable. The dedicated baseline/64-MiB touched-worker workload must increase peak RSS by at least 32 MiB; browser-heap counters are supplemental and cannot substitute for process-tree evidence."
+    },
+    {
+      "id": "startup-package-payload-closure",
+      "platform": "linux-x64",
+      "status": "pending",
+      "required_evidence": ["package-graph-lazy-ownership", "sea-startup-budgets", "browser-artifact-payload-and-pack-topology", "numerical-trace-presentation-payload", "wasm-production-resource-closure"],
+      "acceptance": "The exact clean candidate passes the repository's authoritative lazy package ownership/source-byte budgets, eleven-sample fresh-process SEA startup limits, browser compressed-payload and eager-pack topology limits, numerical trace/story/Plotly payload ceilings, and production Wasm resource-closure gate. Evidence binds the actual SEA and browser distribution plus every policy and executable command input."
     }
   ]
 }

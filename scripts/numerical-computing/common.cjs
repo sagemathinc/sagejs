@@ -309,6 +309,40 @@ function digestPath(root, candidate, label = "path") {
   return { path: top.relative, sha256: hash.digest("hex"), bytes, files };
 }
 
+// Unlike digestPath, this digest intentionally excludes the repository-relative
+// top-level location. It identifies the bytes and internal directory layout so
+// independently staged copies of one release artifact can be cross-bound.
+// Regular files use their ordinary raw SHA-256 digest.
+function contentDigestPath(root, candidate, label = "path") {
+  const top = repositoryPath(root, candidate, label);
+  if (!fs.existsSync(top.absolute)) fail(label, `does not exist: ${top.relative}`);
+  const status = fs.lstatSync(top.absolute);
+  if (status.isSymbolicLink()) fail(label, "symbolic links are not evidence inputs");
+  if (status.isFile()) return sha256(fs.readFileSync(top.absolute));
+  if (!status.isDirectory()) fail(label, "unsupported filesystem object");
+  const hash = createHash("sha256");
+  function visit(filename, relativeName) {
+    const itemStatus = fs.lstatSync(filename);
+    if (itemStatus.isSymbolicLink()) {
+      fail(label, `symbolic links are not evidence inputs: ${relativeName}`);
+    }
+    if (itemStatus.isDirectory()) {
+      hash.update(`directory\0${relativeName}\0`);
+      for (const name of fs.readdirSync(filename).sort()) {
+        visit(path.join(filename, name), relativeName === "." ? name : `${relativeName}/${name}`);
+      }
+      return;
+    }
+    if (!itemStatus.isFile()) fail(label, `unsupported filesystem object: ${relativeName}`);
+    const content = fs.readFileSync(filename);
+    hash.update(`file\0${relativeName}\0${content.length}\0`);
+    hash.update(content);
+    hash.update("\0");
+  }
+  visit(top.absolute, ".");
+  return hash.digest("hex");
+}
+
 function digestBundle(root, paths, label = "source paths") {
   const normalized = array(label, paths, (itemLabel, item) =>
     repositoryPath(root, nonemptyString(itemLabel, item), itemLabel).relative,
@@ -422,6 +456,7 @@ module.exports = {
   canonicalJson,
   collectorIdentity,
   contentId,
+  contentDigestPath,
   digestBundle,
   digestPath,
   enumeration,

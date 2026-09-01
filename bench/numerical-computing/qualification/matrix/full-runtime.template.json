@@ -22,6 +22,6 @@
     {"id": "linux-x64-browser-chromium", "platform": "linux-x64", "subject": {"kind": "browser", "name": "playwright-browser", "engine": "chromium"}, "required_memory_scope": "process_tree"},
     {"id": "linux-x64-browser-firefox", "platform": "linux-x64", "subject": {"kind": "browser", "name": "playwright-browser", "engine": "firefox"}, "required_memory_scope": "process_tree"},
     {"id": "linux-x64-browser-webkit", "platform": "linux-x64", "subject": {"kind": "browser", "name": "playwright-browser", "engine": "webkit"}, "required_memory_scope": "process_tree"},
-    {"id": "linux-x64-browser-worker", "platform": "linux-x64", "subject": {"kind": "worker", "name": "sagejs-browser-worker", "engine": null}, "required_memory_scope": "process_tree"}
+    {"id": "linux-x64-browser-worker", "platform": "linux-x64", "subject": {"kind": "worker", "name": "sagejs-browser-worker", "engine": "chromium"}, "required_memory_scope": "process_tree"}
   ]
 }

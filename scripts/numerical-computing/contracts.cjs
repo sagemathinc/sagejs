@@ -58,6 +58,7 @@ const SUBJECT_KINDS = Object.freeze([
   "worker",
   "other",
 ]);
+const ENGINE_SUBJECT_KINDS = Object.freeze(["browser", "worker"]);
 const MEMORY_SCOPES = Object.freeze([
   "collector_process",
   "process_tree",
@@ -264,8 +265,12 @@ function validateSubject(label, value) {
   exactKeys(label, value, ["kind", "name", "version", "engine"]);
   const kind = enumeration(`${label}.kind`, value.kind, SUBJECT_KINDS);
   const engine = value.engine === null ? null : nonemptyString(`${label}.engine`, value.engine);
-  if (kind === "browser" && engine === null) fail(`${label}.engine`, "is required for a browser");
-  if (kind !== "browser" && engine !== null) fail(`${label}.engine`, "must be null outside a browser");
+  if (ENGINE_SUBJECT_KINDS.includes(kind) && engine === null) {
+    fail(`${label}.engine`, `is required for a ${kind} subject`);
+  }
+  if (!ENGINE_SUBJECT_KINDS.includes(kind) && engine !== null) {
+    fail(`${label}.engine`, "must be null outside a browser or worker subject");
+  }
   return {
     kind,
     name: nonemptyString(`${label}.name`, value.name),
@@ -436,8 +441,12 @@ function validatePolicyMatch(label, value) {
   const engine = value.subject_engine === null
     ? null
     : nonemptyString(`${label}.subject_engine`, value.subject_engine);
-  if (kind === "browser" && engine === null) fail(`${label}.subject_engine`, "is required for a browser");
-  if (kind !== "browser" && engine !== null) fail(`${label}.subject_engine`, "must be null outside a browser");
+  if (ENGINE_SUBJECT_KINDS.includes(kind) && engine === null) {
+    fail(`${label}.subject_engine`, `is required for a ${kind} subject`);
+  }
+  if (!ENGINE_SUBJECT_KINDS.includes(kind) && engine !== null) {
+    fail(`${label}.subject_engine`, "must be null outside a browser or worker subject");
+  }
   return {
     corpus_id: nonemptyString(`${label}.corpus_id`, value.corpus_id),
     corpus_sha256: validateSha256(`${label}.corpus_sha256`, value.corpus_sha256),
@@ -513,6 +522,7 @@ module.exports = {
   CASE_LAYERS,
   CHECK_KINDS,
   CORPUS_SCHEMA,
+  ENGINE_SUBJECT_KINDS,
   MEMORY_AUTHORITY,
   MEMORY_METHODS,
   MEMORY_SCOPES,

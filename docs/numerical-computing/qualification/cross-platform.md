@@ -57,8 +57,9 @@ Firefox, and WebKit with:
 ```
 
 The adapter must exercise that browser and return its actual version. Create a
-separate capability manifest and receipt for each engine. SEA and worker
-adapters likewise return the executable or worker runtime actually invoked.
+separate capability manifest and receipt for each engine. Worker subjects also
+carry an exact engine identity; the release worker row is pinned to Chromium.
+SEA and worker adapters likewise return the executable or worker runtime actually invoked.
 A Node-only adapter cannot produce browser, SEA, or worker evidence.
 
 ## Define the required matrix

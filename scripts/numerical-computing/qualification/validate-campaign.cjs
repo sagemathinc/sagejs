@@ -33,6 +33,13 @@ function validateTemplate(template, expectedRows, requiredCapabilities = null) {
         `${row.required_memory_scope}`,
       );
     }
+    const requiresEngine = ["browser", "worker"].includes(row.subject.kind);
+    if (requiresEngine !== (typeof row.subject.engine === "string" && row.subject.engine.length > 0)) {
+      throw new Error(`matrix row ${row.id} has invalid subject engine identity`);
+    }
+    if (row.subject.kind === "worker" && row.subject.engine !== "chromium") {
+      throw new Error(`matrix worker row ${row.id} must be pinned to Chromium`);
+    }
   }
   for (const phase of ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"]) {
     if (!template.required_program_phases.includes(phase)) throw new Error(`matrix omits ${phase}`);
