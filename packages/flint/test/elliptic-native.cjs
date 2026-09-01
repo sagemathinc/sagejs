@@ -303,10 +303,9 @@ test("parallel central grids cooperatively observe a shared cancellation flag", 
     `const { parentPort, workerData } = require("node:worker_threads");
      const flag = new Int32Array(workerData);
      parentPort.on("message", () => {
+       Atomics.store(flag, 0, 1);
        Atomics.store(flag, 1, 1);
        Atomics.notify(flag, 1);
-       Atomics.wait(flag, 0, 0, 5);
-       Atomics.store(flag, 0, 1);
      });
      parentPort.postMessage("ready");`,
     { eval: true, workerData: shared },
