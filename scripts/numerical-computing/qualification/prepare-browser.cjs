@@ -109,6 +109,20 @@ function subjectFor(kind, engine, version) {
     : { kind, name: "sagejs-browser-worker", version, engine };
 }
 
+function browserArtifactSpecifications({
+  stagedArtifactPath, cminpackArtifactPath, nloptArtifactPath,
+  browserExecutableBindingPath, scipyOracleBindingPath,
+}) {
+  return [
+    `sagejs-browser=${stagedArtifactPath}`,
+    `browser-dist=${stagedArtifactPath}/dist`,
+    `cminpack-wasm=${cminpackArtifactPath}`,
+    `nlopt-wasm=${nloptArtifactPath}`,
+    `browser-executable-binding=${browserExecutableBindingPath}`,
+    `scipy-oracle-binding=${scipyOracleBindingPath}`,
+  ];
+}
+
 async function prepare({
   root, corpusPath, adapterPath, specPath, artifactPath, cminpackArtifactPath,
   nloptArtifactPath, outputDirectory, kind, engine,
@@ -144,23 +158,21 @@ async function prepare({
   );
   const draftPath = `${output.relative}/capability-draft.json`;
   fs.writeFileSync(path.join(root, draftPath), pretty(draft));
+  const artifacts = browserArtifactSpecifications({
+    stagedArtifactPath, cminpackArtifactPath, nloptArtifactPath,
+    browserExecutableBindingPath, scipyOracleBindingPath,
+  });
   const manifest = bindCapabilityDraft({
     root,
     corpusPath,
     adapterPath,
-    artifactSpecifications: [
-      `sagejs-browser=${stagedArtifactPath}`,
-      `browser-dist=${stagedArtifactPath}/dist`,
-      `cminpack-wasm=${cminpackArtifactPath}`,
-      `nlopt-wasm=${nloptArtifactPath}`,
-      `browser-executable-binding=${browserExecutableBindingPath}`,
-      `scipy-oracle-binding=${scipyOracleBindingPath}`,
-    ],
+    artifactSpecifications: artifacts,
     draftPath,
   });
   const manifestPath = `${output.relative}/capabilities.json`;
   writeImmutableJson(path.join(root, manifestPath), manifest);
   return {
+    artifacts,
     draftPath,
     manifestPath,
     manifest,
@@ -227,12 +239,7 @@ async function main(argv = process.argv.slice(2)) {
       `--corpus ${corpusPath}`,
       `--adapter ${adapterPath}`,
       `--capabilities ${prepared.manifestPath}`,
-      `--artifact sagejs-browser=${prepared.artifactPath}`,
-      `--artifact browser-dist=${prepared.browserDistPath}`,
-      `--artifact cminpack-wasm=${cminpackArtifactPath}`,
-      `--artifact nlopt-wasm=${nloptArtifactPath}`,
-      `--artifact browser-executable-binding=${prepared.browserExecutableBindingPath}`,
-      `--artifact scipy-oracle-binding=${prepared.scipyOracleBindingPath}`,
+      ...prepared.artifacts.map((artifact) => `--artifact ${artifact}`),
       `--output ${outputDirectory}/${kind}-${engine}.receipt.json`,
     ].join(" "),
   }));
@@ -249,4 +256,6 @@ if (require.main === module) {
   );
 }
 
-module.exports = { main, prepare, stageBrowserArtifact, subjectFor, usage };
+module.exports = {
+  browserArtifactSpecifications, main, prepare, stageBrowserArtifact, subjectFor, usage,
+};

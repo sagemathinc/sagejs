@@ -943,6 +943,7 @@ function verifyMatrixArtifactCoherence(matrix, supplemental) {
     throw new Error("supplemental artifact coherence is not passing");
   }
   const componentDigests = coherence.component_content_sha256;
+  const npmRootDigests = new Set();
   for (const row of matrix.rows) {
     const artifacts = new Map(
       (row.bindings?.artifacts ?? []).map((artifact) => [artifact.name, artifact]),
@@ -962,13 +963,52 @@ function verifyMatrixArtifactCoherence(matrix, supplemental) {
         throw new Error(`${row.row_id} browser distribution differs from payload evidence`);
       }
     }
+    if (row.receipt.subject.kind === "npm") {
+      const roots = row.bindings?.artifacts?.filter(
+        (artifact) => artifact.name === "npm-root-tarball",
+      );
+      if (roots?.length !== 1 || !/^[0-9a-f]{64}$/.test(roots[0].content_sha256 ?? "")) {
+        throw new Error(`${row.row_id} lacks one content-bound public npm root tarball`);
+      }
+      npmRootDigests.add(roots[0].content_sha256);
+    }
     if (row.row_id === "linux-x64-sea" &&
         artifacts.get("sea-executable")?.content_sha256 !==
           coherence.linux_sea?.content_sha256) {
       throw new Error("linux-x64 SEA differs from startup evidence");
     }
   }
-  return true;
+  if (npmRootDigests.size !== 1) {
+    throw new Error("full-runtime npm rows do not bind one identical public root tarball");
+  }
+  return { npmRootContentSha256: [...npmRootDigests][0] };
+}
+
+function compactReceiptRowId(receipt) {
+  const platform = receipt.platform?.id;
+  const subject = receipt.runtime?.subject;
+  if (subject?.kind === "browser") return `${platform}-browser-${subject.engine}`;
+  if (subject?.kind === "worker") return `${platform}-browser-worker`;
+  return `${platform}-${subject?.kind}`;
+}
+
+function supplementalEvidenceIdentity(record) {
+  const value = record.value;
+  switch (value.schema) {
+    case "sagejs.numerical-native-sanitizer-evidence/v1":
+      return { category: "native-sanitizers", schema: value.schema };
+    case "sagejs.numerical-wasm-destructive-evidence/v1":
+      return { category: "wasm-destructive", schema: value.schema };
+    case "sagejs.numerical-structural-performance-evidence/v1":
+      return { category: "structural-performance", schema: value.schema };
+    case "sagejs.numerical-browser-memory-evidence/v1": {
+      const subject = value.subject;
+      const suffix = subject?.kind === "worker" ? "worker" : subject?.engine;
+      return { category: `browser-memory-${suffix}`, schema: value.schema };
+    }
+    default:
+      throw new Error(`release gate cannot compact foreign evidence schema ${value.schema}`);
+  }
 }
 
 function verifyMatrixScipyOracleCoherence(matrixReceiptRecords, {
@@ -1030,7 +1070,7 @@ function verifyMatrixScipyOracleCoherence(matrixReceiptRecords, {
       }],
     });
   }
-  const expectedPlatforms = ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"];
+  const expectedPlatforms = ["linux-arm64", "linux-x64", "macos-arm64", "windows-x64"];
   if (catalogIds.size !== 1 || byPlatform.size !== expectedPlatforms.length ||
       expectedPlatforms.some((platformId) => !byPlatform.has(platformId))) {
     throw new Error("full-runtime matrix lacks one source-current SciPy oracle per platform");
@@ -1093,7 +1133,7 @@ function buildReleaseGate({
       supplementalReport.status !== "passed") {
     throw new Error("supplemental report is not a passing release report for the candidate");
   }
-  verifyMatrixArtifactCoherence(matrix, supplementalReport);
+  const matrixArtifactCoherence = verifyMatrixArtifactCoherence(matrix, supplementalReport);
   const scipyOracleCoherence = verifyMatrixScipyOracleCoherence(matrixReceiptRecords);
   const core = {
     schema: RELEASE_GATE_SCHEMA,
@@ -1105,10 +1145,11 @@ function buildReleaseGate({
       id: matrix.id,
     },
     matrix_receipts: matrixReceiptRecords.map((record) => ({
+      row_id: compactReceiptRowId(record.value),
       path: record.path,
       sha256: record.sha256,
       id: record.value.id,
-    })).sort((left, right) => left.path.localeCompare(right.path)),
+    })).sort((left, right) => left.row_id.localeCompare(right.row_id)),
     capability_manifests: [...matrixManifestRecords].map(([rowId, record]) => ({
       row_id: rowId,
       path: record.path,
@@ -1131,12 +1172,14 @@ function buildReleaseGate({
       id: supplementalReport.id,
       template_sha256: supplementalReport.template.sha256,
       rows: supplementalReport.rows.length,
+      requirement_ids: supplementalReport.rows.map((row) => row.requirement_id).sort(),
     },
     supplemental_evidence: supplementalEvidenceRecords.map((record) => ({
+      ...supplementalEvidenceIdentity(record),
       path: record.path,
       sha256: record.sha256,
       id: record.value.id,
-    })).sort((left, right) => left.path.localeCompare(right.path)),
+    })).sort((left, right) => left.category.localeCompare(right.category)),
     artifact_coherence: {
       cminpack_content_sha256:
         supplementalReport.artifact_coherence.component_content_sha256.cminpack,
@@ -1146,6 +1189,7 @@ function buildReleaseGate({
         supplementalReport.artifact_coherence.linux_sea.content_sha256,
       browser_distribution_content_sha256:
         supplementalReport.artifact_coherence.browser_distribution.content_sha256,
+      public_npm_root_content_sha256: matrixArtifactCoherence.npmRootContentSha256,
     },
     scipy_oracle_coherence: scipyOracleCoherence,
   };

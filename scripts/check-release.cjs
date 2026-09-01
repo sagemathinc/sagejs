@@ -100,7 +100,7 @@ const draftIndex = releaseWorkflow.indexOf(
   "- name: Create or update the draft GitHub release",
 );
 const numericalGateIndex = releaseWorkflow.indexOf(
-  "- name: Require the passing gate for this exact tagged candidate",
+  "- name: Require the passing gate and exact public npm root for this candidate",
 );
 const uploadIndex = releaseWorkflow.indexOf('gh release upload "$TAG"');
 const npmIndex = releaseWorkflow.indexOf(
@@ -122,8 +122,8 @@ assert.match(
 );
 assert.match(
   releaseWorkflow,
-  /release:qualify:numerics:authenticate/,
-  "automatic publication must authenticate the complete numerical evidence inventory",
+  /release:qualify:numerics:authenticate[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
+  "automatic publication must authenticate the gate and selected public npm root",
 );
 assert.ok(
   !releaseWorkflow.includes("merge-multiple: true"),
@@ -153,6 +153,16 @@ assert.ok(
   releaseWorkflow.includes('npm publish "$archive"'),
   "release workflow must invoke the OIDC-aware npm CLI directly",
 );
+assert.match(
+  releaseWorkflow,
+  /createHash\("sha512"\)[\s\S]+npm view "\$\{name\}@\$\{version\}" dist\.integrity --json/,
+  "idempotent publication must bind existing registry packages to the exact local archives",
+);
+assert.match(
+  releaseWorkflow,
+  /\[\[ "\$version" == "\$package_version" \]\]/,
+  "every platform archive must match the public root package version",
+);
 assert.ok(
   !releaseWorkflow.includes('pnpm publish "$archive"'),
   "release workflow must not route Trusted Publishing through pnpm",
@@ -160,28 +170,25 @@ assert.ok(
 
 assert.match(
   validatedPublishWorkflow,
-  /\.conclusion[\s\S]+success/,
-  "manual publication must reject a merely completed but failed source run",
-);
-assert.match(
-  validatedPublishWorkflow,
-  /Numerical release qualification gate/,
-  "manual publication must require the source run's numerical gate job",
-);
-assert.match(
-  validatedPublishWorkflow,
-  /release:qualify:numerics:authenticate/,
-  "manual publication must authenticate the complete numerical evidence inventory",
-);
-assert.match(
-  validatedPublishWorkflow,
-  /id-token:\s*write/,
-  "manual publication must use npm Trusted Publishing",
+  /gh workflow run \.github\/workflows\/ci\.yml/,
+  "manual recovery must delegate to the one npm-trusted workflow identity",
 );
 assert.ok(
   !validatedPublishWorkflow.includes("secrets.NPM_TOKEN") &&
-    !validatedPublishWorkflow.includes('pnpm publish "$archive"'),
-  "manual publication must not retain a token or pnpm publication bypass",
+    !validatedPublishWorkflow.includes("id-token: write") &&
+    !validatedPublishWorkflow.includes("npm publish") &&
+    !validatedPublishWorkflow.includes("pnpm publish"),
+  "manual recovery must not contain any npm publication authority or command",
+);
+assert.match(
+  releaseWorkflow,
+  /recover-publish:[\s\S]+actions:\s*write[\s\S]+actions\/jobs\/\$\{publisher_id\}\/rerun/,
+  "trusted CI recovery must authenticate and rerun its original publisher job",
+);
+assert.match(
+  releaseWorkflow,
+  /\.head_branch \/\/ ""[\s\S]+== "\$RECOVERY_TAG"/,
+  "recovery must bind the source run to the exact immutable tag, not only its commit",
 );
 
 for (const required of [
@@ -203,8 +210,10 @@ assert.match(
   "browser deployment must bind the numerical gate to its exact Wasm source SHA",
 );
 assert.match(numericalGateAuthenticator, /RELEASE_GATE_SCHEMA/);
-assert.match(numericalGateAuthenticator, /matrix_receipts\?\.length !== 16/);
-assert.match(numericalGateAuthenticator, /supplemental_evidence\?\.length !== 7/);
+assert.match(numericalGateAuthenticator, /validateMatrixInventory/);
+assert.match(numericalGateAuthenticator, /validateSupplementalInventory/);
+assert.match(numericalGateAuthenticator, /validateScipyCoherence/);
+assert.match(numericalGateAuthenticator, /authenticatePublicNpmRoot/);
 
 const tagIndex = process.argv.indexOf("--tag");
 if (tagIndex >= 0) {

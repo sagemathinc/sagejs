@@ -62,6 +62,17 @@ function capabilityDraft(
   };
 }
 
+function nodeArtifactSpecifications({
+  artifactPath, cminpackArtifactPath, nloptArtifactPath, scipyOracleBindingPath,
+}) {
+  return [
+    `sagejs-dist=${artifactPath}`,
+    `cminpack-wasm=${cminpackArtifactPath}`,
+    `nlopt-wasm=${nloptArtifactPath}`,
+    `scipy-oracle-binding=${scipyOracleBindingPath}`,
+  ];
+}
+
 function prepare({
   root, corpusPath, adapterPath, specPath, artifactPath, cminpackArtifactPath,
   nloptArtifactPath, outputDirectory,
@@ -78,21 +89,19 @@ function prepare({
   );
   const draftPath = `${output.relative}/capability-draft.json`;
   fs.writeFileSync(path.join(root, draftPath), pretty(draft));
+  const artifacts = nodeArtifactSpecifications({
+    artifactPath, cminpackArtifactPath, nloptArtifactPath, scipyOracleBindingPath,
+  });
   const manifest = bindCapabilityDraft({
     root,
     corpusPath,
     adapterPath,
-    artifactSpecifications: [
-      `sagejs-dist=${artifactPath}`,
-      `cminpack-wasm=${cminpackArtifactPath}`,
-      `nlopt-wasm=${nloptArtifactPath}`,
-      `scipy-oracle-binding=${scipyOracleBindingPath}`,
-    ],
+    artifactSpecifications: artifacts,
     draftPath,
   });
   const manifestPath = `${output.relative}/capabilities.json`;
   writeImmutableJson(path.join(root, manifestPath), manifest);
-  return { draftPath, manifestPath, manifest, scipyOracleBindingPath };
+  return { artifacts, draftPath, manifestPath, manifest, scipyOracleBindingPath };
 }
 
 function usage() {
@@ -147,10 +156,7 @@ function main(argv = process.argv.slice(2)) {
       `--corpus ${corpusPath}`,
       `--adapter ${adapterPath}`,
       `--capabilities ${prepared.manifestPath}`,
-      `--artifact sagejs-dist=${artifactPath}`,
-      `--artifact cminpack-wasm=${cminpackArtifactPath}`,
-      `--artifact nlopt-wasm=${nloptArtifactPath}`,
-      `--artifact scipy-oracle-binding=${prepared.scipyOracleBindingPath}`,
+      ...prepared.artifacts.map((artifact) => `--artifact ${artifact}`),
       `--output ${outputDirectory}/node.receipt.json`,
     ].join(" "),
   }));
@@ -166,4 +172,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { capabilityDraft, main, prepare, usage };
+module.exports = { capabilityDraft, main, nodeArtifactSpecifications, prepare, usage };

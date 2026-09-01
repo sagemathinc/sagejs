@@ -163,7 +163,8 @@ pnpm release:qualify:numerics:gate -- \
   --output build/numerical-qualification/gate
 pnpm release:qualify:numerics:authenticate -- \
   --candidate "$candidate" \
-  --gate build/numerical-qualification/gate/release-gate.json
+  --gate build/numerical-qualification/gate/release-gate.json \
+  --public-npm-root build/release/npm/sagejs.tgz
 ```
 
 The gate is exactly 16 product rows (Node/npm/SEA on four platforms plus four
@@ -173,6 +174,13 @@ jobs are independent; the browser job consumes only the candidate's already
 built Linux SEA, and the aggregation job consumes only their immutable
 evidence. This one-way DAG avoids both circular qualification and a publisher
 which silently rebuilds what it is supposed to authenticate.
+
+All four npm rows must bind byte-identical public `@sagemath/sagejs` root
+tarballs. The gate records their one path-independent content digest, and the
+publisher compares the Linux x64 copy selected for npm publication against
+that digest after downloading it. A platform-local `pnpm pack` difference is
+therefore a release failure; a publisher cannot silently select an unqualified
+fifth root archive.
 
 Clean tag CI preserves the small publisher-facing gate as
 `numerical-release-gate` and the complete reproducible row/manifest/receipt/
@@ -242,6 +250,21 @@ After every required native job passes, the protected release workflow should:
 - publish all four platform npm packages before `@sagemath/sagejs`;
 - wait for registry consistency; and
 - make the GitHub Release public and latest only after npm succeeds.
+
+npm Trusted Publishing authorizes the calling workflow filename. Consequently
+`.github/workflows/ci.yml` is the only workflow that executes `npm publish`.
+If its publication job fails after every producer and the numerical gate pass,
+dispatch **Request validated release publication recovery** with the original
+tagged CI run ID and immutable tag. That small bridge dispatches `ci.yml` at
+the tag; its recovery job verifies the exact source SHA and each required job,
+then reruns the original publisher job by job ID. It deliberately does not
+require the overall source run to have succeeded (the publisher failure is the
+reason recovery exists), but it does require that run to have been triggered by
+the exact requested tag rather than merely another tag at the same commit. It
+never receives an npm OIDC token itself. The rerun treats an existing npm
+version as idempotent only when its registry SHA-512 integrity equals the exact
+qualified local archive; a partial publication from different bytes fails
+closed instead of being mixed into the GitHub release.
 
 Deploy `app.sagejs.org` only from the successful reproducible Wasm run and the
 successful numerical-qualification CI run for the same source SHA. Supply both

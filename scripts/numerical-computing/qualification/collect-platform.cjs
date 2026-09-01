@@ -9,6 +9,7 @@ const { platformIdentity, repositoryIdentity, repositoryPath } = require("../com
 const packageRuntime = require("../../package-qualification/runtime.cjs");
 const { prepare: prepareNode } = require("./prepare-node.cjs");
 const { prepare: preparePackage } = require("./prepare-package.cjs");
+const { manifestBoundArtifacts } = require("./prepared-artifacts.cjs");
 
 const root = path.resolve(__dirname, "..", "..", "..");
 const CORPUS = "bench/numerical-computing/qualification/product.corpus.json";
@@ -120,7 +121,7 @@ function collect({ rowId, prepared, receiptName }) {
     "--corpus", CORPUS,
     "--adapter", prepared.adapterPath,
     "--capabilities", prepared.manifestPath,
-    ...prepared.artifacts.flatMap((item) => ["--artifact", item]),
+    ...manifestBoundArtifacts(prepared, rowId).flatMap((item) => ["--artifact", item]),
     "--output", `${prepared.outputDirectory}/${receiptName}`,
   ], `collect ${rowId}`);
   runNode([
@@ -173,9 +174,6 @@ function run(options) {
         ...nodePrepared,
         adapterPath: NODE_ADAPTER,
         outputDirectory: nodeDirectory,
-        artifacts: [
-          `sagejs-dist=${DIST}`, `cminpack-wasm=${CMINPACK}`, `nlopt-wasm=${NLOPT}`,
-        ],
       },
       receiptName: "node.receipt.json",
     });

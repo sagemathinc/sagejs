@@ -19,6 +19,16 @@ on:
         required: false
         default: all
         type: string
+      recovery_run_id:
+        description: Completed tagged CI run whose original publish job should be rerun
+        required: false
+        default: ""
+        type: string
+      recovery_tag:
+        description: Immutable release tag built by recovery_run_id
+        required: false
+        default: ""
+        type: string
   schedule:
     - cron: "17 4 * * 1"
 
@@ -32,6 +42,7 @@ concurrency:
 jobs:
   routine:
     name: Routine gate (Linux x64)
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.recovery_run_id == '' }}
     runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 25
     env:
@@ -328,6 +339,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: numerical-qualification-linux-x64
+          overwrite: true
           path: build/numerical-qualification/platform/linux-x64
           if-no-files-found: error
           retention-days: 14
@@ -336,6 +348,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-linux-x64
+          overwrite: true
           path: |
             build/release/sagejs-linux-x64.tar.xz
             build/release/sagejs-linux-x64.tar.xz.sha256
@@ -482,6 +495,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: numerical-qualification-linux-arm64
+          overwrite: true
           path: build/numerical-qualification/platform/linux-arm64
           if-no-files-found: error
           retention-days: 14
@@ -490,6 +504,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-linux-arm64
+          overwrite: true
           path: |
             build/release/sagejs-linux-arm64.tar.xz
             build/release/sagejs-linux-arm64.tar.xz.sha256
@@ -728,6 +743,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: numerical-qualification-windows-x64
+          overwrite: true
           path: build/numerical-qualification/platform/windows-x64
           if-no-files-found: error
           retention-days: 14
@@ -736,6 +752,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-windows-x64
+          overwrite: true
           path: |
             build/release/sagejs-windows-x64.zip
             build/release/sagejs-windows-x64.zip.sha256
@@ -882,6 +899,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-macos-arm64-qualification-input
+          overwrite: true
           path: |
             build/numerical-qualification/platform/macos-arm64
             build/release/npm/sagejs.tgz
@@ -894,6 +912,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-macos-arm64-unsigned
+          overwrite: true
           path: |
             build/sea/sagejs
             build/sea/sagepython
@@ -1021,6 +1040,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: numerical-qualification-macos-arm64
+          overwrite: true
           path: build/numerical-qualification/platform/macos-arm64
           if-no-files-found: error
           retention-days: 14
@@ -1029,6 +1049,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-macos-arm64
+          overwrite: true
           path: |
             build/release/sagejs-macos-arm64.zip
             build/release/sagejs-macos-arm64.zip.sha256
@@ -1125,6 +1146,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: numerical-qualification-browser-supplemental
+          overwrite: true
           path: |
             build/numerical-qualification/browser
             build/sea/sagejs
@@ -1196,6 +1218,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: numerical-release-gate
+          overwrite: true
           path: build/numerical-qualification/gate
           if-no-files-found: error
           retention-days: 90
@@ -1204,6 +1227,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: numerical-release-evidence
+          overwrite: true
           path: |
             build/numerical-qualification/platform
             build/numerical-qualification/browser/rows
@@ -1245,12 +1269,6 @@ jobs:
           name: numerical-release-gate
           path: build/validated-numerical-gate
 
-      - name: Require the passing gate for this exact tagged candidate
-        run: |
-          pnpm release:qualify:numerics:authenticate -- \
-            --candidate "$(git rev-parse HEAD)" \
-            --gate build/validated-numerical-gate/release-gate.json
-
       - name: Download the validated release artifacts
         env:
           GH_TOKEN: ${{ github.token }}
@@ -1266,6 +1284,13 @@ jobs:
             gh run download "$GITHUB_RUN_ID" --repo "$GH_REPO" \
               --name "$artifact" --dir release
           done
+
+      - name: Require the passing gate and exact public npm root for this candidate
+        run: |
+          pnpm release:qualify:numerics:authenticate -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --gate build/validated-numerical-gate/release-gate.json \
+            --public-npm-root release/npm/sagejs.tgz
 
       - name: Create or update the draft GitHub release
         env:
@@ -1313,13 +1338,28 @@ jobs:
           publish_package() {
             local archive="$1"
             local tag="$2"
-            local metadata name version published tags tagged_version
+            local metadata name version published published_integrity local_integrity tags tagged_version
             metadata="$(tar -xOzf "$archive" package/package.json)"
             name="$(node -e 'console.log(JSON.parse(process.argv[1]).name)' "$metadata")"
             version="$(node -e 'console.log(JSON.parse(process.argv[1]).version)' "$metadata")"
+            [[ "$version" == "$package_version" ]] || {
+              echo "$archive contains ${name}@${version}, expected version ${package_version}" >&2
+              exit 1
+            }
+            local_integrity="$(node -e \
+              'const fs=require("node:fs"),crypto=require("node:crypto"); const bytes=fs.readFileSync(process.argv[1]); console.log(`sha512-${crypto.createHash("sha512").update(bytes).digest("base64")}`)' \
+              "$archive")"
             if published="$(npm view "${name}@${version}" version --json 2>/dev/null)"; then
               [[ "$(node -e 'console.log(JSON.parse(process.argv[1]))' "$published")" == "$version" ]] || {
                 echo "Unexpected published version for ${name}@${version}: $published" >&2
+                exit 1
+              }
+              published_integrity="$(npm view "${name}@${version}" dist.integrity --json)"
+              published_integrity="$(node -e \
+                'const value=JSON.parse(process.argv[1]); if(typeof value !== "string") process.exit(1); console.log(value)' \
+                "$published_integrity")"
+              [[ "$published_integrity" == "$local_integrity" ]] || {
+                echo "${name}@${version} exists with different registry integrity" >&2
                 exit 1
               }
               tags="$(npm view "$name" dist-tags --json)"
@@ -1378,3 +1418,83 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: gh release edit "$TAG" --draft=false --latest
+
+  recover-publish:
+    name: Re-run a validated release publication
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Check out the immutable recovery tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.recovery_tag }}
+
+      - name: Authenticate the source run and rerun its original trusted publisher
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RECOVERY_RUN_ID: ${{ inputs.recovery_run_id }}
+          RECOVERY_TAG: ${{ inputs.recovery_tag }}
+        run: |
+          [[ "$RECOVERY_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
+            echo "recovery_run_id must be a positive Actions run ID" >&2
+            exit 1
+          }
+          [[ "$RECOVERY_TAG" == v* ]] || {
+            echo "recovery_tag must be a release tag" >&2
+            exit 1
+          }
+          [[ "$GITHUB_REF_NAME" == "$RECOVERY_TAG" ]] || {
+            echo "Dispatch this recovery at ref $RECOVERY_TAG, not $GITHUB_REF_NAME" >&2
+            exit 1
+          }
+          run_metadata="$(gh api "repos/${GH_REPO}/actions/runs/${RECOVERY_RUN_ID}")"
+          [[ "$(jq -r .name <<<"$run_metadata")" == "Sage.js CI" ]]
+          [[ "$(jq -r .path <<<"$run_metadata")" == ".github/workflows/ci.yml" ]]
+          [[ "$(jq -r .event <<<"$run_metadata")" == "push" ]]
+          [[ "$(jq -r .status <<<"$run_metadata")" == "completed" ]]
+          [[ "$(jq -r '.head_branch // ""' <<<"$run_metadata")" == "$RECOVERY_TAG" ]] || {
+            echo "Source run was not triggered by exact tag $RECOVERY_TAG" >&2
+            exit 1
+          }
+          source_sha="$(jq -r .head_sha <<<"$run_metadata")"
+          tag_sha="$(git rev-list -n 1 "$RECOVERY_TAG")"
+          [[ "$source_sha" == "$tag_sha" && "$tag_sha" == "$(git rev-parse HEAD)" ]] || {
+            echo "Recovery source/tag/checkout SHA mismatch" >&2
+            exit 1
+          }
+          jobs="$(gh api "repos/${GH_REPO}/actions/runs/${RECOVERY_RUN_ID}/jobs?per_page=100")"
+          for required in \
+            "Linux x64 native, tests, and SEA" \
+            "Linux arm64 native, tests, and SEA" \
+            "macOS arm64 native, tests, and SEA" \
+            "Windows x64 native, tests, and SEA" \
+            "Sign and notarize macOS arm64 release" \
+            "Numerical browser and supplemental qualification" \
+            "Numerical release qualification gate"
+          do
+            conclusions="$(jq -r --arg name "$required" \
+              '[.jobs[] | select(.name == $name) | .conclusion] | @json' <<<"$jobs")"
+            [[ "$conclusions" == '["success"]' ]] || {
+              echo "Required source job '$required' conclusions are $conclusions" >&2
+              exit 1
+            }
+          done
+          publisher="$(jq -c \
+            '[.jobs[] | select(.name == "Publish tagged GitHub and npm release") | {id,conclusion}]' \
+            <<<"$jobs")"
+          [[ "$(jq length <<<"$publisher")" -eq 1 ]] || {
+            echo "Source run does not have exactly one original publisher job" >&2
+            exit 1
+          }
+          conclusion="$(jq -r '.[0].conclusion' <<<"$publisher")"
+          [[ "$conclusion" != "success" ]] || {
+            echo "The original publisher already succeeded; refusing a redundant rerun" >&2
+            exit 1
+          }
+          publisher_id="$(jq -r '.[0].id' <<<"$publisher")"
+          gh api --method POST "repos/${GH_REPO}/actions/jobs/${publisher_id}/rerun"

@@ -10,6 +10,7 @@ const {
   array,
   canonicalJson,
   collectorIdentity,
+  contentDigestPath,
   contentId,
   digestBundle,
   digestPath,
@@ -64,7 +65,11 @@ function parseArtifactSpecifications(root, specifications) {
         fail(`${label}.name`, "contains unsupported characters");
       }
       const binding = digestPath(root, specification.slice(separator + 1), `${label}.path`);
-      return { name, ...binding };
+      return {
+        name,
+        ...binding,
+        content_sha256: contentDigestPath(root, binding.path, `${label}.content`),
+      };
     },
     { minimum: 1, uniqueBy: (item) => item.name },
   );
@@ -598,12 +603,15 @@ function payloadMetrics(inputs, capabilityBinding) {
     adapter_bytes: inputs.adapter.bytes,
     capability_manifest_bytes: capabilityBinding.bytes,
     artifact_installed_bytes: inputs.artifacts.reduce((total, item) => total + item.bytes, 0),
-    artifacts: inputs.artifacts.map(({ name, path: artifactPath, bytes, files, sha256: digest }) => ({
+    artifacts: inputs.artifacts.map(({
+      name, path: artifactPath, bytes, files, sha256: digest, content_sha256,
+    }) => ({
       name,
       path: artifactPath,
       bytes,
       files,
       sha256: digest,
+      content_sha256,
     })),
   };
 }
@@ -997,11 +1005,12 @@ function validateReceipt(receipt) {
   }
   function validatePathBinding(label, value, named = false) {
     exactKeys(label, value, named
-      ? ["name", "path", "sha256", "bytes", "files"]
+      ? ["name", "path", "sha256", "content_sha256", "bytes", "files"]
       : ["path", "sha256", "bytes", "files"]);
     if (named) nonemptyString(`${label}.name`, value.name);
     nonemptyString(`${label}.path`, value.path);
     validateSha256(`${label}.sha256`, value.sha256);
+    if (named) validateSha256(`${label}.content_sha256`, value.content_sha256);
     safeInteger(`${label}.bytes`, value.bytes, 0);
     safeInteger(`${label}.files`, value.files, 0);
     return value;
@@ -1125,6 +1134,7 @@ function assertCurrentBinding(receipt, root, requireClean) {
   const artifacts = receipt.artifacts.map((item) => ({
     name: item.name,
     ...digestPath(root, item.path, `receipt artifact ${item.name}`),
+    content_sha256: contentDigestPath(root, item.path, `receipt artifact ${item.name} content`),
   }));
   if (canonicalJson(artifacts) !== canonicalJson(receipt.artifacts)) {
     fail("receipt.artifacts", "do not match current artifact bytes");

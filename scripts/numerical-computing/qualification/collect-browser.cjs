@@ -7,6 +7,7 @@ const path = require("node:path");
 
 const { platformIdentity, repositoryIdentity, repositoryPath } = require("../common.cjs");
 const { prepare } = require("./prepare-browser.cjs");
+const { manifestBoundArtifacts } = require("./prepared-artifacts.cjs");
 
 const root = path.resolve(__dirname, "..", "..", "..");
 const CORPUS = "bench/numerical-computing/qualification/product.corpus.json";
@@ -99,10 +100,7 @@ async function collectRow({ kind, engine, output, artifact }) {
     "--corpus", CORPUS,
     "--adapter", ADAPTER,
     "--capabilities", prepared.manifestPath,
-    "--artifact", `sagejs-browser=${prepared.artifactPath}`,
-    "--artifact", `browser-dist=${prepared.browserDistPath}`,
-    "--artifact", `cminpack-wasm=${CMINPACK}`,
-    "--artifact", `nlopt-wasm=${NLOPT}`,
+    ...manifestBoundArtifacts(prepared, rowId).flatMap((item) => ["--artifact", item]),
     "--output", receipt,
   ], `collect ${rowId}`);
   runNode([

@@ -5,7 +5,15 @@ const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { repositoryIdentity, repositoryPath } = require("../common.cjs");
+const {
+  canonicalJson,
+  contentDigestPath,
+  digestPath,
+  readJson,
+  repositoryIdentity,
+  repositoryPath,
+} = require("../common.cjs");
+const { authenticate } = require("./authenticate-release-gate.cjs");
 
 const root = path.resolve(__dirname, "..", "..", "..");
 const TEMPLATE = "bench/numerical-computing/qualification/matrix/full-runtime.template.json";
@@ -152,6 +160,108 @@ function expectedEvidence(input) {
   ].map((filename) => requireRegular(filename, "supplemental evidence"));
 }
 
+function exactInputInventory(input, rows, evidence) {
+  const resolved = repositoryPath(root, input, "qualification input inventory");
+  const required = new Set([
+    ...rows.flatMap((row) => [row.manifest, row.receipt]),
+    ...evidence,
+  ]);
+  const allowedFiles = new Set(required);
+  const allowedDirectories = new Set([
+    input,
+    `${input}/platform`,
+    `${input}/browser`,
+    `${input}/browser/rows`,
+    `${input}/browser/supplemental`,
+  ]);
+  const browserArtifacts = [];
+  for (const row of rows) {
+    const directory = path.posix.dirname(row.manifest);
+    allowedDirectories.add(path.posix.dirname(directory));
+    allowedDirectories.add(directory);
+    allowedFiles.add(`${directory}/capability-draft.json`);
+    allowedFiles.add(`${directory}/scipy-oracle.json`);
+    if (row.id.startsWith("linux-x64-browser-")) {
+      allowedFiles.add(`${directory}/browser-executable.json`);
+      browserArtifacts.push({ directory: `${directory}/browser-artifact`, receipt: row.receipt });
+    }
+  }
+  for (const [directoryName, stem] of [
+    ["memory-browser-chromium", "browser-chromium"],
+    ["memory-browser-firefox", "browser-firefox"],
+    ["memory-browser-webkit", "browser-webkit"],
+    ["memory-worker-chromium", "worker-chromium"],
+  ]) {
+    const directory = `${input}/browser/supplemental/${directoryName}`;
+    allowedDirectories.add(directory);
+    for (const filename of [
+      "capability-draft.json", "capabilities.json", "browser-executable.json",
+      "scipy-oracle.json", `${stem}.receipt.json`, `${stem}.memory-evidence.json`,
+    ]) allowedFiles.add(`${directory}/${filename}`);
+    browserArtifacts.push({
+      directory: `${directory}/browser-artifact`,
+      receipt: `${directory}/${stem}.receipt.json`,
+    });
+  }
+  for (const artifact of browserArtifacts) allowedDirectories.add(artifact.directory);
+  const folded = new Map();
+  const files = [];
+  const directories = [];
+  function visit(filename) {
+    const status = fs.lstatSync(filename);
+    const relative = path.relative(root, filename).split(path.sep).join("/");
+    if (relative !== relative.normalize("NFC") || relative.includes("\\") ||
+        relative.split("/").some((part) => part === "")) {
+      throw new Error(`qualification input contains a non-portable path ${relative}`);
+    }
+    const key = relative.normalize("NFC").toLocaleLowerCase("en-US");
+    const previous = folded.get(key);
+    if (previous !== undefined && previous !== relative) {
+      throw new Error(`qualification input contains case-colliding paths ${previous} and ${relative}`);
+    }
+    folded.set(key, relative);
+    if (status.isDirectory()) {
+      directories.push(relative);
+      for (const name of fs.readdirSync(filename).sort()) visit(path.join(filename, name));
+      return;
+    }
+    if (!status.isFile() || status.isSymbolicLink()) {
+      throw new Error(`qualification input contains a non-regular file ${relative}`);
+    }
+    files.push(relative);
+  }
+  visit(resolved.absolute);
+  for (const artifact of browserArtifacts) {
+    const receipt = readJson(path.join(root, artifact.receipt));
+    const bindings = receipt.artifacts?.filter((item) => item.name === "sagejs-browser");
+    if (bindings?.length !== 1 || bindings[0].path !== artifact.directory) {
+      throw new Error(`${artifact.receipt} does not bind its exact browser-artifact directory`);
+    }
+    const current = {
+      name: "sagejs-browser",
+      ...digestPath(root, artifact.directory, "generated browser artifact"),
+      content_sha256: contentDigestPath(root, artifact.directory, "generated browser artifact"),
+    };
+    if (canonicalJson(current) !== canonicalJson(bindings[0])) {
+      throw new Error(`${artifact.directory} differs from its authenticated receipt binding`);
+    }
+  }
+  for (const filename of files) {
+    if (allowedFiles.has(filename)) continue;
+    if (browserArtifacts.some((artifact) => filename.startsWith(`${artifact.directory}/`))) continue;
+    throw new Error(`qualification input contains foreign file ${filename}`);
+  }
+  for (const directory of directories) {
+    if (allowedDirectories.has(directory)) continue;
+    if (browserArtifacts.some((artifact) => directory.startsWith(`${artifact.directory}/`))) continue;
+    throw new Error(`qualification input contains foreign directory ${directory}`);
+  }
+  for (const filename of required) {
+    if (!files.includes(filename)) throw new Error(`qualification input lacks ${filename}`);
+  }
+  return files.sort();
+}
+
 function run(options) {
   const before = repositoryIdentity(root);
   if (!before.clean || before.commit !== options.candidate) {
@@ -163,6 +273,7 @@ function run(options) {
   const input = rejectSymlinks(options.input);
   const rows = expectedRows(input);
   const evidence = expectedEvidence(input);
+  exactInputInventory(input, rows, evidence);
   const output = cleanOutput(options.output);
   const policy = `${output}/full-runtime.policy.json`;
   const matrix = `${output}/full-runtime.report.json`;
@@ -197,12 +308,7 @@ function run(options) {
   ], "assemble numerical release gate");
 
   const document = JSON.parse(fs.readFileSync(path.join(root, gate), "utf8"));
-  if (document.status !== "passed" || document.candidate !== options.candidate ||
-      document.matrix_receipts?.length !== 16 ||
-      document.capability_manifests?.length !== 16 ||
-      document.supplemental_evidence?.length !== 7) {
-    throw new Error("release-gate output does not contain the exact passing evidence inventory");
-  }
+  authenticate(document, options.candidate);
   const after = repositoryIdentity(root);
   if (!after.clean || after.commit !== before.commit || after.tree !== before.tree ||
       after.status_sha256 !== before.status_sha256) {
@@ -234,6 +340,7 @@ if (require.main === module) {
 module.exports = {
   expectedEvidence,
   expectedRows,
+  exactInputInventory,
   main,
   parseArguments,
   rejectSymlinks,
