@@ -191,7 +191,7 @@ many coefficients and an independently known dimension.
   levels, with exact $V_d$ metadata.
 - [x] Level-$1$ generators $E_4$, $E_6$, and $\Delta$, with the relation
   $E_4^3-E_6^2=1728\Delta$ checked exactly.
-- [ ] Eta products and quotients in a declared domain with a proof of
+- [x] Eta products and quotients in a declared domain with a proof of
   holomorphy at every cusp, rather than only a formal product expansion.
 - [ ] Theta series of integral quadratic forms with proved weight, level, and
   character.
@@ -215,7 +215,7 @@ many coefficients and an independently known dimension.
   at all required cusps or another audited criterion.
 - [x] Certify old/new placement using degeneracy maps and Hecke data where
   available.
-- [ ] Recover Hecke-stable subspaces and eigenforms from the constructed span
+- [x] Recover Hecke-stable subspaces and eigenforms from the constructed span
   without assuming that the chosen formula generators are eigenforms.
 - [x] Make formula search deterministic and bounded; no unbounded enumeration
   of eta products, theta lattices, or products is allowed in `auto` mode.
@@ -248,7 +248,7 @@ many coefficients and an independently known dimension.
 - [x] Use modular symbols to identify missing cusp directions when a formula
   candidate family spans only a proper subspace, while retaining that honest
   P0B result.
-- [ ] Use formula-generated forms as independent oracles for modular-symbol
+- [x] Use formula-generated forms as independent oracles for modular-symbol
   normalization, sign conventions, character embeddings, and bad-prime
   coefficients.
 - [x] Let `algorithm="auto"` choose only from receipt-backed domains; explicit
@@ -289,11 +289,11 @@ many coefficients and an independently known dimension.
 - [x] Cover rational weight-$2$ newforms at prime and composite levels.
 - [x] Cover a higher-weight trivial-character space of dimension greater than
   one.
-- [ ] Cover quadratic and higher-degree coefficient fields.
+- [x] Cover quadratic and higher-degree coefficient fields.
 - [x] Cover nontrivial primitive and imprimitive Dirichlet characters.
-- [ ] Cover old/new decompositions at levels $p$, $p^2$, $pq$, and a level
+- [x] Cover old/new decompositions at levels $p$, $p^2$, $pq$, and a level
   with several degeneracy sources.
-- [ ] Cover a repeated anemic eigensystem that must be separated using bad
+- [x] Cover a repeated anemic eigensystem that must be separated using bad
   primes or additional operators.
 - [x] Cover exact Eisenstein series with nontrivial characters and compare
   generalized Bernoulli constant terms.
@@ -306,11 +306,11 @@ many coefficients and an independently known dimension.
   the construction engine.
 - [x] Cover a formula family whose rank is strictly smaller than the ambient
   dimension and verify that it is returned only as a certified subspace.
-- [ ] Check every coefficient through the Sturm bound against an independent
+- [x] Check every coefficient through the Sturm bound against an independent
   implementation.
 - [x] Check selected coefficients beyond the Sturm bound by independent Hecke
   recurrences and direct comparison.
-- [ ] Differentially compare exact bases and newform packets with SageMath,
+- [x] Differentially compare exact bases and newform packets with SageMath,
   PARI/GP, and Magma on a pinned corpus.
 - [ ] Compare normalized eigenvalues with pinned LMFDB records where labels
   and coefficient-field embeddings are unambiguous.
@@ -320,12 +320,14 @@ many coefficients and an independently known dimension.
 
 The pinned P0 differential receipt lives in
 `bench/modular/qexp-correctness/pinned-corpus.json`. Its current rows cover
-level $1$, prime and composite levels, a nontrivial character, an old space, a
-quadratic coefficient field, exact full/proper formula comparisons, and
-beyond-Sturm prime-power recurrences. SageMath and Magma independently replay
-the pins. The broader unchecked entries above remain open intentionally: this
-receipt does not yet cover a higher-degree coefficient field, every old/new
-level shape, PARI/GP, or every coefficient in the full declared P0 domain.
+level $1$, prime and composite levels, a nontrivial character, old/new spaces
+at $p$, $p^2$, $pq$, and $2\cdot3\cdot11$, bad-prime separation, quadratic
+and cubic coefficient fields, exact full/proper formula comparisons, and
+beyond-Sturm prime-power recurrences. SageMath, Magma, and PARI independently
+replay the pins. Every pinned rational row-space hash includes all
+coefficients through a precision strictly beyond the applicable Sturm bound.
+This bounded corpus does not claim exhaustive coverage of every modular form
+in the broader future P1 domain.
 
 ### Performance and architecture
 
@@ -351,18 +353,24 @@ level shape, PARI/GP, or every coefficient in the full declared P0 domain.
 
 ### P0 completion gate
 
-- [ ] General supported modular-symbol spaces no longer raise the current
+- [x] General supported modular-symbol spaces no longer raise the current
   specialized-model `q_expansion_basis` error.
-- [ ] The declared constructive-formula corpus returns exact certified bases
+- [x] The declared constructive-formula corpus returns exact certified bases
   or honestly labeled proper subspaces through the same public API.
-- [ ] Every overlapping P0A/P0B row has an exact span-equality differential
+- [x] Every overlapping P0A/P0B row has an exact span-equality differential
   certificate.
-- [ ] The `ModularForms` cusp/newform API returns exact bases and normalized
+- [x] The `ModularForms` cusp/newform API returns exact bases and normalized
   newforms for every declared initial-domain case.
-- [ ] Every acceptance row has an independent Sturm-bound certificate.
-- [ ] The implementation is source-frozen with exact cross-platform receipts.
-- [ ] Documentation includes a guided example from space construction through
+- [x] Every acceptance row has an independent Sturm-bound certificate.
+- [x] The implementation is source-frozen with exact cross-platform receipts.
+- [x] Documentation includes a guided example from space construction through
   decomposition, newforms, $q$-expansions, and an attached $L$-series input.
+
+The frozen bundle has SHA-256
+`4008ac76d02eeac6fbf8b081466d5219562ee1042f244f7203f7a4879b55a9f2`.
+At commit `a9ae669f5a111398ed7a03b5592d8064d0afe87a`, the required checks on
+[\#93](https://github.com/sagemathinc/sagejs/pull/93) passed on Linux x64,
+Linux arm64, macOS arm64, native Windows x64, and real-browser Chromium.
 
 ## P1: complete the classical modular-form object layer
 

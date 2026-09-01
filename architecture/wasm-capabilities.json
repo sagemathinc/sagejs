@@ -15566,6 +15566,25 @@
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:mpolyTerms",
+      "kind": "napi-export",
+      "family": "multivariate",
+      "source": "packages/flint/src/multivariate.c",
+      "disposition": "portable-fallback",
+      "fallback": "canonical-sparse-polynomial-terms",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "tests": [
+        "native-public-fallback-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The native adapter extracts canonical FLINT terms; browser execution reads the equivalent canonical ordered sparse representation without a Wasm boundary crossing.",
+      "public_explanation": "Exact ordered sparse multivariate terms are available in native and browser runtimes."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:mpolyToString",
       "kind": "napi-export",
       "family": "multivariate",

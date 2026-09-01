@@ -141,6 +141,11 @@ for _native_exception in (
     runtime.reference_error,
     runtime.syntax_error,
 ):
+    runtime.reflect.set(
+        _native_exception,
+        "__name__",
+        runtime.reflect.get(_native_exception, "name"),
+    )
     runtime.object.defineProperty(
         _native_exception,
         "__python_type__",

@@ -18,6 +18,18 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 MAX_EXACT_TWIST_CONDUCTOR = 4096
+_eta_products_module_cache: Any = runtime.undefined
+
+
+def _eta_products_module() -> Any:
+    """Load the higher-layer eta-product registry without a startup edge."""
+    global _eta_products_module_cache
+    if _eta_products_module_cache is runtime.undefined:
+        _eta_products_module_cache = __import__(
+            "sagejs.modular_forms.eta_products",
+            fromlist=["CertifiedEtaProduct"],
+        )
+    return _eta_products_module_cache
 
 
 def _global(name: str) -> Any:
@@ -361,6 +373,10 @@ class CertifiedModularForm(sage.Element):
 
     qexp = q_expansion
 
+    def extend_precision(self, prec: Any) -> CertifiedModularForm:
+        """Replay the finite construction tree at a larger exact precision."""
+        return _extend_certified_modular_form(self, prec)
+
     def __getitem__(self, exponent: Any) -> Any:
         exponent = _nonnegative(exponent, "coefficient exponent")
         if exponent >= self._precision:
@@ -662,6 +678,63 @@ def certified_modular_form(source: Any, prec: Any = None) -> CertifiedModularFor
     )
 
 
+def _extend_certified_modular_form(
+    form: CertifiedModularForm,
+    prec: Any,
+) -> CertifiedModularForm:
+    """Replay a certified construction at exactly the requested precision."""
+    precision = _nonnegative(prec, "precision")
+    if precision <= form.precision():
+        return certified_modular_form(form, precision)
+    recipe = form.construction()
+    kind = recipe[0]
+    if kind == "source":
+        replay = certified_modular_form(recipe[1], precision)
+    elif kind == "character-eisenstein":
+        replay = character_eisenstein_series(
+            recipe[1],
+            recipe[2],
+            recipe[3],
+            precision,
+            recipe[4],
+            recipe[5],
+            recipe[6],
+        )
+    elif kind == "sum":
+        replay = _extend_certified_modular_form(
+            recipe[1], precision
+        ) + _extend_certified_modular_form(recipe[2], precision)
+    elif kind == "product":
+        replay = _extend_certified_modular_form(
+            recipe[1], precision
+        ) * _extend_certified_modular_form(recipe[2], precision)
+    elif kind == "scale":
+        replay = _extend_certified_modular_form(recipe[1], precision) * recipe[2]
+    elif kind == "level-lift":
+        replay = _extend_certified_modular_form(recipe[1], precision).lift_level(
+            recipe[2]
+        )
+    elif kind == "V":
+        replay = _extend_certified_modular_form(recipe[1], precision).V(recipe[2])
+    elif kind == "twist":
+        replay = _extend_certified_modular_form(recipe[1], precision).twist(recipe[2])
+    elif kind == "truncate":
+        replay = _extend_certified_modular_form(recipe[1], precision)
+    elif kind == "eta-product":
+        replay = _eta_products_module().CertifiedEtaProduct(
+            recipe[1], recipe[2], precision
+        )
+    else:
+        raise NotImplementedError(
+            "this certified modular-form construction cannot be extended"
+        )
+    if replay.precision() < precision:
+        raise ArithmeticError(
+            "construction replay did not reach the requested precision"
+        )
+    return certified_modular_form(replay, precision)
+
+
 def character_eisenstein_series(
     chi: Any,
     psi: Any,
@@ -829,9 +902,70 @@ def _matrix_from_candidates(
     return matrix_constructor(sage.QQ, rows).row_space().basis_matrix()
 
 
+def _candidate_coefficient_matrix(
+    candidates: list[CertifiedModularForm], precision: int
+) -> Any:
+    matrix_constructor = _global("matrix")
+    if len(candidates) == 0:
+        return matrix_constructor(sage.QQ, 0, precision)
+    return matrix_constructor(
+        sage.QQ,
+        [[candidate[index] for index in range(precision)] for candidate in candidates],
+    )
+
+
 def _series_from_matrix(matrix: Any, precision: int, variable: str) -> list[Any]:
     ring = _series_ring(matrix.base_ring(), variable, precision)
     return [ring(row.list()).add_bigoh(precision) for row in matrix.rows()]
+
+
+def _matrix_from_series(forms: list[Any], precision: int) -> Any:
+    matrix_constructor = _global("matrix")
+    if len(forms) == 0:
+        return matrix_constructor(sage.QQ, 0, precision)
+    return matrix_constructor(
+        sage.QQ,
+        [[form[index] for index in range(precision)] for form in forms],
+    )
+
+
+def _hecke_image_matrix(
+    source: Any,
+    index: int,
+    weight: int,
+    character: ExactNebentypus,
+    output_precision: int,
+) -> Any:
+    r"""Apply the exact $q$-expansion formula for $T_n$ to matrix rows."""
+    required = index * max(0, output_precision - 1) + 1
+    if source.ncols() < required:
+        raise ValueError(
+            "Hecke action requires source precision at least " + str(required)
+        )
+    rows = []
+    for row in source.rows():
+        coefficients = [sage.QQ(0)]
+        for exponent in range(1, output_precision):
+            common = _integer(_global("gcd")(exponent, index), "Hecke gcd")
+            coefficient = sage.QQ(0)
+            for divisor_value in sage.divisors(common):
+                divisor = _positive(divisor_value, "Hecke divisor")
+                character_value = character(divisor)
+                if character_value == 0:
+                    continue
+                source_index = exponent * index // (divisor * divisor)
+                coefficient += (
+                    character_value
+                    * (sage.ZZ(divisor) ** (weight - 1))
+                    * row[source_index]
+                )
+            coefficients.append(coefficient)
+        rows.append(coefficients)
+    return (
+        _matrix_from_series([], output_precision)
+        if not rows
+        else _global("matrix")(sage.QQ, rows)
+    )
 
 
 class FormulaAmbientComparisonCertificate(sage.Parent):
@@ -930,6 +1064,10 @@ class FormulaAmbientComparisonCertificate(sage.Parent):
         r"""Return $C$ such that $C A=B$ for ambient/formula row bases."""
         return self._formula_coordinates
 
+    def ambient_coefficient_matrix(self) -> Any:
+        """Return the independently reconstructed ambient coefficient rows."""
+        return self._ambient_matrix
+
     def missing_ambient_coordinates(self) -> Any:
         """Return ambient-basis rows completing the formula span."""
         return self._missing_ambient_coordinates
@@ -997,6 +1135,596 @@ class FormulaAmbientComparisonCertificate(sage.Parent):
     toString = __repr__
 
 
+class FormulaHeckeObstruction(sage.Parent):
+    """An exact witness that one formula basis vector leaves the subspace."""
+
+    def __init__(self, certificate: Any, basis_index: int) -> None:
+        self._certificate = certificate
+        self._basis_index = basis_index
+        runtime.object.freeze(self)
+
+    def certificate(self) -> Any:
+        return self._certificate
+
+    def hecke_index(self) -> int:
+        return self._certificate.hecke_index()
+
+    def source_basis_index(self) -> int:
+        return self._basis_index
+
+    def ambient_coordinates(self) -> Any:
+        return self._certificate.image_ambient_coordinates().row(self._basis_index)
+
+    def q_expansion(self, prec: Any = None, variable: str = "q") -> Any:
+        precision = (
+            self._certificate.precision()
+            if prec is None
+            else _nonnegative(prec, "precision")
+        )
+        if precision > self._certificate.precision():
+            raise ValueError("requested precision exceeds the obstruction data")
+        matrix = self._certificate.image_coefficient_matrix().matrix_from_rows(
+            [self._basis_index]
+        )
+        return _series_from_matrix(
+            matrix,
+            self._certificate.precision(),
+            variable,
+        )[0].add_bigoh(precision)
+
+    qexp = q_expansion
+
+    def verify(self) -> bool:
+        if self._certificate.is_stable():
+            return False
+        formula = self._certificate.formula_subspace().coefficient_matrix()
+        image = self._certificate.image_coefficient_matrix().row(self._basis_index)
+        return formula.stack(image).rank() > formula.rank()
+
+    def __repr__(self) -> str:
+        return (
+            "Hecke-stability obstruction: T_"
+            + str(self.hecke_index())
+            + " sends formula basis vector "
+            + str(self._basis_index)
+            + " outside the certified span"
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class FormulaHeckeActionCertificate(sage.Parent):
+    r"""A Sturm certificate for $T_n$ on a formula-generated subspace.
+
+    The canonical formula basis is first expressed in the certified candidate
+    rows, whose construction trees are replayed at the larger precision needed
+    by $T_n$.  The standard coefficient formula
+
+    $$
+    a_m(T_n f)=\sum_{d\mid(m,n)}\chi(d)d^{k-1}a_{mn/d^2}(f)
+    $$
+
+    is then evaluated through the Sturm precision.  The independently
+    reconstructed modular-symbol basis certifies that every image remains in
+    the ambient cusp space. Stability produces an exact matrix. Failure
+    produces a particular image whose rank modulo the formula rows is nonzero.
+    """
+
+    def __init__(self, formula_subspace: Any, index: Any) -> None:
+        self._formula_subspace = formula_subspace
+        self._index = _positive(index, "Hecke index")
+        self._precision = formula_subspace.proof_precision()
+        self._required_precision = self._index * (self._precision - 1) + 1
+        comparison = formula_subspace.ambient_comparison()
+        candidates = formula_subspace.candidates()
+        candidate_prefix = _candidate_coefficient_matrix(
+            candidates,
+            self._precision,
+        )
+        matrix_constructor = _global("matrix")
+        if formula_subspace.dimension() == 0:
+            self._formula_candidate_coordinates = matrix_constructor(
+                sage.QQ,
+                0,
+                len(candidates),
+            )
+        else:
+            self._formula_candidate_coordinates = candidate_prefix.solve_left(
+                formula_subspace.coefficient_matrix()
+            )
+        extended_candidates = [
+            _extend_certified_modular_form(candidate, self._required_precision)
+            for candidate in candidates
+        ]
+        self._extended_candidate_matrix = _candidate_coefficient_matrix(
+            extended_candidates,
+            self._required_precision,
+        )
+        self._formula_extended_matrix = (
+            self._formula_candidate_coordinates * self._extended_candidate_matrix
+        )
+        self._image_matrix = _hecke_image_matrix(
+            self._formula_extended_matrix,
+            self._index,
+            formula_subspace.weight(),
+            ExactNebentypus.trivial(formula_subspace.level()),
+            self._precision,
+        )
+        ambient_matrix = comparison.ambient_coefficient_matrix()
+        if self._image_matrix.nrows() == 0:
+            self._image_ambient_coordinates = matrix_constructor(
+                sage.QQ,
+                0,
+                ambient_matrix.nrows(),
+            )
+        else:
+            self._image_ambient_coordinates = ambient_matrix.solve_left(
+                self._image_matrix
+            )
+        formula_matrix = formula_subspace.coefficient_matrix()
+        self._stable = (
+            formula_matrix.stack(self._image_matrix).rank()
+            == formula_subspace.dimension()
+        )
+        self._matrix = None
+        self._obstruction_index = None
+        if self._stable:
+            if formula_subspace.dimension() == 0:
+                self._matrix = matrix_constructor(sage.QQ, 0, 0)
+            else:
+                self._matrix = formula_matrix.solve_left(self._image_matrix)
+        else:
+            for basis_index, row in enumerate(self._image_matrix.rows()):
+                if formula_matrix.stack(row).rank() > formula_subspace.dimension():
+                    self._obstruction_index = basis_index
+                    break
+        self._verified = self._verify()
+        if not self._verified:
+            raise ArithmeticError("formula Hecke-action certificate failed")
+        runtime.object.freeze(self)
+
+    def formula_subspace(self) -> Any:
+        return self._formula_subspace
+
+    def hecke_index(self) -> int:
+        return self._index
+
+    index = hecke_index
+
+    def precision(self) -> int:
+        return self._precision
+
+    def required_source_precision(self) -> int:
+        return self._required_precision
+
+    def is_stable(self) -> bool:
+        return self._stable
+
+    def image_coefficient_matrix(self) -> Any:
+        return self._image_matrix
+
+    def image_ambient_coordinates(self) -> Any:
+        return self._image_ambient_coordinates
+
+    def matrix(self) -> Any:
+        if not self._stable:
+            raise ValueError(str(self.obstruction()))
+        return self._matrix
+
+    def obstruction(self) -> Any:
+        if self._stable:
+            return None
+        basis_index = self._obstruction_index
+        if basis_index is None:
+            raise ArithmeticError("missing Hecke-stability obstruction index")
+        return FormulaHeckeObstruction(self, basis_index)
+
+    def verify(self) -> bool:
+        return self._verify()
+
+    def is_verified(self) -> bool:
+        return self._verified
+
+    def _verify(self) -> bool:
+        subspace = self._formula_subspace
+        comparison = subspace.ambient_comparison()
+        if self._precision <= subspace.sturm_bound():
+            return False
+        if self._required_precision != self._index * (self._precision - 1) + 1:
+            return False
+        candidate_prefix = self._extended_candidate_matrix.matrix_from_columns(
+            list(range(self._precision))
+        )
+        if (
+            self._formula_candidate_coordinates * candidate_prefix
+            != subspace.coefficient_matrix()
+        ):
+            return False
+        if (
+            self._formula_candidate_coordinates * self._extended_candidate_matrix
+            != self._formula_extended_matrix
+        ):
+            return False
+        replay = _hecke_image_matrix(
+            self._formula_extended_matrix,
+            self._index,
+            subspace.weight(),
+            ExactNebentypus.trivial(subspace.level()),
+            self._precision,
+        )
+        if replay != self._image_matrix:
+            return False
+        ambient_matrix = comparison.ambient_coefficient_matrix()
+        if self._image_ambient_coordinates * ambient_matrix != self._image_matrix:
+            return False
+        formula_matrix = subspace.coefficient_matrix()
+        stable = formula_matrix.stack(self._image_matrix).rank() == subspace.dimension()
+        if stable != self._stable:
+            return False
+        if stable:
+            return self._matrix * formula_matrix == self._image_matrix
+        if self._obstruction_index is None:
+            return False
+        return FormulaHeckeObstruction(
+            self,
+            self._obstruction_index,
+        ).verify()
+
+    def __repr__(self) -> str:
+        result = "stable" if self._stable else "not stable"
+        return (
+            "Verified T_"
+            + str(self._index)
+            + " formula-subspace action through q^"
+            + str(self._precision - 1)
+            + ": "
+            + result
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class FormulaHeckeSubspace(sage.Parent):
+    """An exact Hecke-stable subspace in formula-basis coordinates."""
+
+    def __init__(
+        self,
+        ambient: Any,
+        basis_matrix: Any,
+        simple: bool = False,
+    ) -> None:
+        self._ambient = ambient
+        if basis_matrix.ncols() != ambient.dimension():
+            raise ValueError("constituent basis has the wrong ambient degree")
+        self._basis_matrix = basis_matrix.row_space().basis_matrix()
+        self._simple = bool(simple)
+        self._hecke_cache = runtime.map()
+        runtime.object.freeze(self)
+
+    def ambient_space(self) -> Any:
+        return self._ambient
+
+    def formula_subspace(self) -> Any:
+        return self._ambient
+
+    def level(self) -> int:
+        return self._ambient.level()
+
+    def weight(self) -> int:
+        return self._ambient.weight()
+
+    def character(self) -> ExactNebentypus:
+        return ExactNebentypus.trivial(self.level())
+
+    def base_ring(self) -> Any:
+        return sage.QQ
+
+    def dimension(self) -> int:
+        return self._basis_matrix.nrows()
+
+    degree = dimension
+
+    def basis_matrix(self) -> Any:
+        """Return rows in the canonical basis of the formula subspace."""
+        return self._basis_matrix
+
+    def coefficient_matrix(self) -> Any:
+        return self._basis_matrix * self._ambient.coefficient_matrix()
+
+    def is_simple(self) -> bool:
+        return self._simple
+
+    def q_expansion_basis(self, prec: Any = None, variable: str = "q") -> list[Any]:
+        precision = (
+            self._ambient._display_precision
+            if prec is None
+            else _nonnegative(prec, "precision")
+        )
+        if precision > self._ambient.proof_precision():
+            raise ValueError("requested precision exceeds the certified formula data")
+        return [
+            series.add_bigoh(precision)
+            for series in _series_from_matrix(
+                self.coefficient_matrix(),
+                self._ambient.proof_precision(),
+                variable,
+            )
+        ]
+
+    basis = q_expansion_basis
+
+    def hecke_matrix(self, index: Any) -> Any:
+        hecke_index = _positive(index, "Hecke index")
+        cached = self._hecke_cache.get(hecke_index)
+        if cached is not runtime.undefined:
+            return cached
+        ambient_matrix = self._ambient.hecke_matrix(hecke_index)
+        images = self._basis_matrix * ambient_matrix
+        result = self._basis_matrix.solve_left(images)
+        if result * self._basis_matrix != images:
+            raise ArithmeticError(
+                "the Hecke operator did not preserve this formula constituent"
+            )
+        self._hecke_cache.set(hecke_index, result)
+        return result
+
+    T = hecke_matrix
+    hecke_operator = hecke_matrix
+
+    def eigenpacket(self, name: str = "a") -> FormulaEigenpacket:
+        if not self._simple:
+            raise ValueError("an eigenpacket requires a certified simple constituent")
+        return FormulaEigenpacket(self, name)
+
+    def __repr__(self) -> str:
+        label = "simple Hecke constituent" if self._simple else "Hecke subspace"
+        return (
+            "Certified formula-generated "
+            + label
+            + " of dimension "
+            + str(self.dimension())
+            + " in weight "
+            + str(self.weight())
+            + " and level "
+            + str(self.level())
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+def _formula_space_dimension(space: FormulaHeckeSubspace) -> int:
+    return space.dimension()
+
+
+def _formula_primitive_operator(
+    constituent: FormulaHeckeSubspace,
+) -> tuple[Any, Any, tuple[Any, ...]]:
+    dimension = constituent.dimension()
+    bound = max(7, constituent.ambient_space().sturm_bound() + 1)
+    operators = []
+    for index in range(2, bound + 2):
+        operator = constituent.hecke_matrix(index)
+        operators.append((index, operator))
+        polynomial = operator.charpoly("x")
+        factors = list(polynomial.factor())
+        if (
+            polynomial.degree() == dimension
+            and len(factors) == 1
+            and factors[0][1] == 1
+        ):
+            return operator, polynomial, runtime.math_tuple([(index, 1)])
+    for left_index in range(len(operators)):
+        for right_index in range(left_index + 1, len(operators)):
+            for coefficient in [1, 2, 3, 4]:
+                operator = (
+                    operators[left_index][1] + coefficient * operators[right_index][1]
+                )
+                polynomial = operator.charpoly("x")
+                factors = list(polynomial.factor())
+                if (
+                    polynomial.degree() == dimension
+                    and len(factors) == 1
+                    and factors[0][1] == 1
+                ):
+                    return (
+                        operator,
+                        polynomial,
+                        runtime.math_tuple(
+                            [
+                                (operators[left_index][0], 1),
+                                (operators[right_index][0], coefficient),
+                            ]
+                        ),
+                    )
+    raise ArithmeticError("could not find a primitive formula Hecke operator")
+
+
+@runtime.lightweight_math_class
+class FormulaEigenpacket(sage.Element):
+    """A normalized exact eigenpacket recovered from a formula Hecke module."""
+
+    def __init__(self, constituent: FormulaHeckeSubspace, name: str = "a") -> None:
+        self._kind = "FormulaEigenpacket"
+        self._constituent = constituent
+        self._dimension = constituent.dimension()
+        primitive, polynomial, recipe = _formula_primitive_operator(constituent)
+        self._primitive_operator = primitive
+        self._defining_polynomial = polynomial
+        self._primitive_recipe = recipe
+        self._coefficient_field: Any = (
+            sage.QQ
+            if self._dimension == 1
+            else _global("NumberField")(polynomial, name)
+        )
+        identity = _global("identity_matrix")(sage.QQ, self._dimension)
+        powers = [identity]
+        for _index in range(1, self._dimension):
+            powers.append(powers[-1] * primitive)
+        self._powers = runtime.math_tuple(powers)
+        self._power_rows = _global("matrix")(
+            sage.QQ,
+            [power.list() for power in powers],
+        )
+        if self._power_rows.rank() != self._dimension:
+            raise ArithmeticError("primitive formula Hecke powers are dependent")
+        self._coefficient_cache = runtime.map()
+        self._coefficient_cache.set(1, self._coefficient_field(1))
+        runtime.object.freeze(self)
+
+    def parent(self) -> FormulaHeckeSubspace:
+        return self._constituent
+
+    hecke_constituent = parent
+
+    def level(self) -> int:
+        return self._constituent.level()
+
+    def weight(self) -> int:
+        return self._constituent.weight()
+
+    def character(self) -> ExactNebentypus:
+        return self._constituent.character()
+
+    def base_ring(self) -> Any:
+        return self._coefficient_field
+
+    coefficient_field = base_ring
+
+    def defining_polynomial(self) -> Any:
+        return self._defining_polynomial
+
+    def primitive_hecke_recipe(self) -> Any:
+        return self._primitive_recipe
+
+    def _coordinates_for_operator(self, operator: Any) -> Any:
+        solution = self._power_rows.solve_left(
+            _global("vector")(sage.QQ, operator.list())
+        )
+        return _global("vector")(sage.QQ, solution.list())
+
+    def hecke_eigenvalue(self, index: Any) -> Any:
+        hecke_index = _nonnegative(index, "Hecke index")
+        if hecke_index == 0:
+            return self._coefficient_field(0)
+        cached = self._coefficient_cache.get(hecke_index)
+        if cached is not runtime.undefined:
+            return cached
+        coordinates = self._coordinates_for_operator(
+            self._constituent.hecke_matrix(hecke_index)
+        )
+        if self._coefficient_field is sage.QQ:
+            answer = coordinates[0]
+        else:
+            answer = self._coefficient_field._from_coefficients(coordinates.list())
+        self._coefficient_cache.set(hecke_index, answer)
+        return answer
+
+    __getitem__ = hecke_eigenvalue
+    an = hecke_eigenvalue
+
+    def q_expansion(self, prec: Any = None, variable: str = "q") -> Any:
+        precision = (
+            self._constituent.ambient_space()._display_precision
+            if prec is None
+            else _nonnegative(prec, "precision")
+        )
+        ring = _series_ring(self._coefficient_field, variable, precision)
+        return ring(
+            [self.hecke_eigenvalue(index) for index in range(precision)]
+        ).add_bigoh(precision)
+
+    qexp = q_expansion
+
+    def certificate(self, prec: Any = None) -> FormulaEigenpacketCertificate:
+        precision = (
+            max(2, self._constituent.ambient_space().sturm_bound() + 1)
+            if prec is None
+            else _positive(prec, "precision")
+        )
+        return FormulaEigenpacketCertificate(self, precision)
+
+    def lseries_input(self, coefficient_bound: Any = None) -> Any:
+        r"""Return exact arithmetic-normalized input for $L(f,s)$."""
+        from .newforms import ModularFormLSeriesInput
+
+        bound = (
+            max(1, self._constituent.ambient_space().sturm_bound() + 1)
+            if coefficient_bound is None
+            else _nonnegative(coefficient_bound, "coefficient bound")
+        )
+        return ModularFormLSeriesInput(self, bound)
+
+    def __repr__(self) -> str:
+        return (
+            "q + ... (normalized eigenpacket in a certified formula subspace "
+            + "of level "
+            + str(self.level())
+            + ", weight "
+            + str(self.weight())
+            + ", and coefficient field "
+            + str(self._coefficient_field)
+            + ")"
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class FormulaEigenpacketCertificate(sage.Parent):
+    """Replayable exact certificate for a formula-derived eigenpacket."""
+
+    def __init__(self, packet: FormulaEigenpacket, precision: int) -> None:
+        self._packet = packet
+        self._precision = precision
+        self._sturm_bound = packet.parent().ambient_space().sturm_bound()
+        if precision <= self._sturm_bound:
+            raise ValueError("certificate precision must exceed the Sturm bound")
+        self._verified = self._verify()
+        if not self._verified:
+            raise ArithmeticError("formula eigenpacket certificate failed")
+        runtime.object.freeze(self)
+
+    def packet(self) -> FormulaEigenpacket:
+        return self._packet
+
+    def precision(self) -> int:
+        return self._precision
+
+    def sturm_bound(self) -> int:
+        return self._sturm_bound
+
+    def verify(self) -> bool:
+        return self._verify()
+
+    def is_verified(self) -> bool:
+        return self._verified
+
+    def _verify(self) -> bool:
+        packet = self._packet
+        if packet.hecke_eigenvalue(1) != packet.coefficient_field()(1):
+            return False
+        for index in range(1, self._precision):
+            operator = packet.parent().hecke_matrix(index)
+            coordinates = packet._coordinates_for_operator(operator)
+            replay = packet._powers[0] * coordinates[0]
+            for exponent in range(1, packet._dimension):
+                replay += packet._powers[exponent] * coordinates[exponent]
+            if replay != operator:
+                return False
+        return self._precision > self._sturm_bound
+
+    def __repr__(self) -> str:
+        return "Sturm-certified formula eigenpacket through q^" + str(
+            self._precision - 1
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 class CertifiedFormulaSubspace(sage.Parent):
     """The exact contained subspace spanned by certified formula candidates."""
 
@@ -1014,6 +1742,8 @@ class CertifiedFormulaSubspace(sage.Parent):
         self._proof_precision = proof_precision
         self._matrix = _matrix_from_candidates(candidates, proof_precision)
         self._ambient_comparison = FormulaAmbientComparisonCertificate(self)
+        self._hecke_certificate_cache = runtime.map()
+        self._decomposition_cache = runtime.map()
         self._verified = self._verify()
         if not self._verified:
             raise ArithmeticError("formula-generated subspace certificate failed")
@@ -1158,6 +1888,139 @@ class CertifiedFormulaSubspace(sage.Parent):
             return qexp._saturated_integer_row_basis(matrix).row_space()
         raise NotImplementedError("formula q-expansion modules support only QQ and ZZ")
 
+    def hecke_action_certificate(self, index: Any) -> FormulaHeckeActionCertificate:
+        """Return an exact stability or obstruction certificate for $T_n$."""
+        hecke_index = _positive(index, "Hecke index")
+        cached = self._hecke_certificate_cache.get(hecke_index)
+        if cached is not runtime.undefined:
+            return cached
+        certificate = FormulaHeckeActionCertificate(self, hecke_index)
+        self._hecke_certificate_cache.set(hecke_index, certificate)
+        return certificate
+
+    def is_hecke_stable(self, index: Any) -> bool:
+        return self.hecke_action_certificate(index).is_stable()
+
+    def hecke_obstruction(self, index: Any) -> Any:
+        """Return an exact escaping image, or `None` when $T_n$ is stable."""
+        return self.hecke_action_certificate(index).obstruction()
+
+    def hecke_matrix(self, index: Any) -> Any:
+        r"""Return $T_n$ in the canonical formula basis when it is stable."""
+        return self.hecke_action_certificate(index).matrix()
+
+    T = hecke_matrix
+    hecke_operator = hecke_matrix
+
+    def _good_hecke_primes(self, bound: int) -> list[int]:
+        answer = []
+        for candidate in range(2, bound + 1):
+            if sage.is_prime(candidate) and self.level() % candidate:
+                answer.append(candidate)
+        return answer
+
+    def _refine_hecke_spaces(
+        self,
+        spaces: list[FormulaHeckeSubspace],
+        operator_index: int,
+    ) -> tuple[list[FormulaHeckeSubspace], list[FormulaHeckeSubspace]]:
+        finished = []
+        remaining = []
+        for space in spaces:
+            if space.dimension() <= 1:
+                finished.append(FormulaHeckeSubspace(self, space.basis_matrix(), True))
+                continue
+            operator = space.hecke_matrix(operator_index)
+            factors = list(operator.charpoly().factor())
+            if len(factors) == 1 and factors[0][1] == 1:
+                finished.append(FormulaHeckeSubspace(self, space.basis_matrix(), True))
+                continue
+            for factor_value, exponent in factors:
+                local_basis = factor_value(operator).left_kernel_matrix()
+                if local_basis.nrows() == 0:
+                    continue
+                constituent = FormulaHeckeSubspace(
+                    self,
+                    local_basis * space.basis_matrix(),
+                    exponent == 1,
+                )
+                if exponent == 1:
+                    finished.append(constituent)
+                else:
+                    remaining.append(constituent)
+        return finished, remaining
+
+    def hecke_decomposition(
+        self,
+        bound: Any = None,
+        anemic: bool = True,
+    ) -> list[FormulaHeckeSubspace]:
+        r"""Decompose a Hecke-stable formula span into exact constituents.
+
+        Good-prime operators are used first.  With `anemic=False`, every
+        bad-prime $U_p$ is also used to separate repeated oldform packets.
+        Any operator which does not preserve the formula span raises with its
+        exact `FormulaHeckeObstruction` rather than manufacturing a restriction.
+        """
+        decomposition_bound = (
+            max(7, self.sturm_bound() + 1)
+            if bound is None
+            else _positive(bound, "decomposition bound")
+        )
+        key = str(decomposition_bound) + (":1" if anemic else ":0")
+        cached = self._decomposition_cache.get(key)
+        if cached is not runtime.undefined:
+            return list(cached)
+        if self.dimension() == 0:
+            self._decomposition_cache.set(key, runtime.math_tuple([]))
+            return []
+        identity = _global("identity_matrix")(sage.QQ, self.dimension())
+        active = [FormulaHeckeSubspace(self, identity)]
+        finished = []
+        for prime in self._good_hecke_primes(decomposition_bound):
+            if not self.is_hecke_stable(prime):
+                raise ValueError(str(self.hecke_obstruction(prime)))
+            newly_finished, active = self._refine_hecke_spaces(active, prime)
+            finished.extend(newly_finished)
+            if len(active) == 0:
+                break
+        answer = finished + active
+        if not anemic:
+            for prime_value, _exponent in sage.factor(self.level()):
+                prime = _positive(prime_value, "bad Hecke prime")
+                if not self.is_hecke_stable(prime):
+                    raise ValueError(str(self.hecke_obstruction(prime)))
+                already_simple = [space for space in answer if space.is_simple()]
+                unresolved = [space for space in answer if not space.is_simple()]
+                newly_finished, unresolved = self._refine_hecke_spaces(
+                    unresolved,
+                    prime,
+                )
+                answer = already_simple + newly_finished + unresolved
+        answer.sort(key=_formula_space_dimension)
+        frozen = runtime.math_tuple(answer)
+        self._decomposition_cache.set(key, frozen)
+        return list(frozen)
+
+    decomposition = hecke_decomposition
+
+    def eigenforms(
+        self,
+        names: str = "a",
+        bound: Any = None,
+        anemic: bool = False,
+    ) -> list[FormulaEigenpacket]:
+        """Return normalized exact packets from the certified Hecke span."""
+        constituents = self.hecke_decomposition(bound=bound, anemic=anemic)
+        if any(not constituent.is_simple() for constituent in constituents):
+            raise ArithmeticError(
+                "the selected Hecke operators did not separate every constituent"
+            )
+        return [
+            constituent.eigenpacket(str(names) + str(index))
+            for index, constituent in enumerate(constituents)
+        ]
+
     def verify(self) -> bool:
         return self._verify()
 
@@ -1220,9 +2083,9 @@ def _default_formula_candidates(
             if candidate.level() != space.level():
                 candidate = candidate.lift_level(space.level())
             candidates.append(candidate)
-    from .eta_products import registry_eta_product_candidates
-
-    candidates.extend(registry_eta_product_candidates(space, precision))
+    candidates.extend(
+        _eta_products_module().registry_eta_product_candidates(space, precision)
+    )
     return candidates
 
 
@@ -1425,7 +2288,12 @@ __all__ = [
     "CertifiedFormulaSubspace",
     "CertifiedModularForm",
     "ExactNebentypus",
+    "FormulaEigenpacket",
+    "FormulaEigenpacketCertificate",
     "FormulaAmbientComparisonCertificate",
+    "FormulaHeckeActionCertificate",
+    "FormulaHeckeObstruction",
+    "FormulaHeckeSubspace",
     "MAX_EXACT_TWIST_CONDUCTOR",
     "OldformMetadata",
     "QExpansionAlgebraCertificate",

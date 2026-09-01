@@ -45,7 +45,7 @@ function verifySageMath() {
   const jsonStart = result.stdout.indexOf("{");
   if (jsonStart < 0) throw new Error("SageMath oracle did not emit JSON");
   const payload = JSON.parse(result.stdout.slice(jsonStart));
-  assert.equal(payload.schema, "sagejs.modular-qexp-differential-corpus.v1");
+  assert.equal(payload.schema, "sagejs.modular-qexp-differential-corpus.v2");
   const byId = new Map(payload.trivial_character.map((item) => [item.id, item]));
   for (const expected of PINNED.trivial_character) {
     const actual = byId.get(expected.id);
@@ -66,22 +66,48 @@ function verifySageMath() {
     sha256(canonicalRows(payload.nontrivial_character.basis_rref)),
     PINNED.nontrivial_character.basis_sha256,
   );
-  assert.equal(
-    sha256(canonicalRows(payload.old_new.ambient_rref)),
-    PINNED.old_new.ambient_sha256,
-  );
-  assert.equal(
-    sha256(canonicalRows(payload.old_new.old_rref)),
-    PINNED.old_new.old_sha256,
-  );
+  const oldNewById = new Map(payload.old_new.map((item) => [item.id, item]));
+  for (const expected of PINNED.old_new) {
+    const actual = oldNewById.get(expected.id);
+    assert.ok(actual, `missing SageMath old/new case ${expected.id}`);
+    assert.equal(actual.sturm_bound, expected.sturm_bound);
+    assert.equal(
+      sha256(canonicalRows(actual.ambient_rref)),
+      expected.ambient_sha256,
+    );
+    assert.equal(
+      sha256(canonicalRows(actual.old_rref)),
+      expected.old_sha256,
+    );
+    assert.equal(
+      sha256(canonicalRows(actual.new_rref)),
+      expected.new_sha256,
+    );
+    assert.deepEqual(
+      actual.hecke_characteristic_polynomials,
+      expected.hecke_characteristic_polynomials,
+    );
+  }
   assert.deepEqual(
     payload.coefficient_field.coefficient_minpolys,
     PINNED.coefficient_field.coefficient_minpolys,
   );
+  assert.equal(
+    sha256(canonicalRows(payload.coefficient_field.basis_rref)),
+    PINNED.coefficient_field.basis_sha256,
+  );
+  assert.deepEqual(
+    payload.higher_coefficient_field.coefficient_minpolys,
+    PINNED.higher_coefficient_field.coefficient_minpolys,
+  );
+  assert.equal(
+    sha256(canonicalRows(payload.higher_coefficient_field.basis_rref)),
+    PINNED.higher_coefficient_field.basis_sha256,
+  );
   return {
     executable,
     version: payload.oracle.version,
-    cases: PINNED.trivial_character.length + 3,
+    cases: PINNED.trivial_character.length + PINNED.old_new.length + 3,
     status: "pass",
   };
 }
@@ -90,6 +116,7 @@ function parseMagma(stdout) {
   const lines = stdout.split(/\r?\n/);
   const matrices = new Map();
   const dimensions = new Map();
+  const oldNewDimensions = new Map();
   const hecke = new Map();
   let version = null;
   for (let index = 0; index < lines.length; index += 1) {
@@ -121,12 +148,34 @@ function parseMagma(stdout) {
         columns: Number(columns),
         encoded,
       });
+    } else if (line.startsWith("SAGEJS_QEXP_MAGMA_OLDNEW|")) {
+      const [, id, level, weight, precision, ambient, old, fresh] =
+        line.split("|");
+      oldNewDimensions.set(id, {
+        level: Number(level),
+        weight: Number(weight),
+        precision: Number(precision),
+        ambient: Number(ambient),
+        old: Number(old),
+        new: Number(fresh),
+      });
     } else if (line.startsWith("SAGEJS_QEXP_MAGMA_HECKE|")) {
       const [, id, prime, ...polynomialParts] = line.split("|");
-      hecke.set(`${id}:${prime}`, polynomialParts.join("|").replaceAll("$.1", "x"));
+      let polynomial = polynomialParts.join("|");
+      while (
+        index + 1 < lines.length &&
+        !lines[index + 1].startsWith("SAGEJS_QEXP_MAGMA")
+      ) {
+        index += 1;
+        polynomial += ` ${lines[index]}`;
+      }
+      hecke.set(
+        `${id}:${prime}`,
+        polynomial.replaceAll("$.1", "x").replace(/\s+/gu, " ").trim(),
+      );
     }
   }
-  return { dimensions, hecke, matrices, version };
+  return { dimensions, hecke, matrices, oldNewDimensions, version };
 }
 
 function verifyMagma() {
@@ -147,10 +196,29 @@ function verifyMagma() {
     assert.equal(matrix.columns, expected.precision);
     assert.equal(sha256(matrix.encoded), expected.ambient_sha256);
   }
-  const oldNew = parsed.matrices.get(
-    `${PINNED.old_new.id}:ambient_rref`,
-  );
-  assert.equal(sha256(oldNew.encoded), PINNED.old_new.ambient_sha256);
+  for (const expected of PINNED.old_new) {
+    assert.deepEqual(parsed.oldNewDimensions.get(expected.id), {
+      level: expected.level,
+      weight: expected.weight,
+      precision: expected.precision,
+      ambient: expected.ambient_dimension,
+      old: expected.old_dimension,
+      new: expected.new_dimension,
+    });
+    for (const label of ["ambient", "old", "new"]) {
+      const matrix = parsed.matrices.get(`${expected.id}:${label}_rref`);
+      assert.equal(
+        sha256(matrix.encoded),
+        expected[`${label}_sha256`],
+        `${expected.id} ${label}`,
+      );
+    }
+    for (const [index, polynomial] of Object.entries(
+      expected.hecke_characteristic_polynomials,
+    )) {
+      assert.equal(parsed.hecke.get(`${expected.id}:${index}`), polynomial);
+    }
+  }
   for (const [prime, expected] of Object.entries(
     PINNED.coefficient_field.hecke_characteristic_polynomials,
   )) {
@@ -159,10 +227,90 @@ function verifyMagma() {
       expected,
     );
   }
+  for (const expected of [
+    PINNED.coefficient_field,
+    PINNED.higher_coefficient_field,
+  ]) {
+    const matrix = parsed.matrices.get(`${expected.id}:ambient_rref`);
+    assert.equal(matrix.rows, expected.field_degree);
+    assert.equal(matrix.columns, expected.precision);
+    assert.equal(sha256(matrix.encoded), expected.basis_sha256);
+  }
+  for (const [prime, expected] of Object.entries(
+    PINNED.higher_coefficient_field.hecke_characteristic_polynomials,
+  )) {
+    assert.equal(parsed.hecke.get(`level41-weight2:${prime}`), expected);
+  }
   return {
     executable,
     version: parsed.version,
-    cases: PINNED.trivial_character.length + 2,
+    cases: PINNED.trivial_character.length + PINNED.old_new.length + 2,
+    status: "pass",
+  };
+}
+
+function verifyPari() {
+  const executable = process.env.SAGE || "/home/user/sagelite/sage";
+  const result = run(executable, [
+    "-python",
+    path.join(HERE, "pari-oracle.py"),
+  ]);
+  const jsonStart = result.stdout.indexOf("{");
+  if (jsonStart < 0) throw new Error("PARI oracle did not emit JSON");
+  const payload = JSON.parse(result.stdout.slice(jsonStart));
+  assert.equal(payload.schema, "sagejs.modular-qexp-pari-corpus.v1");
+  assert.equal(payload.oracle.version, PINNED.oracles.pari);
+  const trivialById = new Map(
+    payload.trivial_character.map((item) => [item.id, item]),
+  );
+  for (const expected of PINNED.trivial_character) {
+    assert.equal(
+      sha256(canonicalRows(trivialById.get(expected.id).ambient_rref)),
+      expected.ambient_sha256,
+    );
+  }
+  const oldNewById = new Map(payload.old_new.map((item) => [item.id, item]));
+  for (const expected of PINNED.old_new) {
+    const actual = oldNewById.get(expected.id);
+    for (const label of ["ambient", "old", "new"]) {
+      assert.equal(
+        sha256(canonicalRows(actual[`${label}_rref`])),
+        expected[`${label}_sha256`],
+      );
+    }
+    assert.deepEqual(
+      actual.hecke_characteristic_polynomials,
+      expected.hecke_characteristic_polynomials,
+    );
+  }
+  assert.deepEqual(
+    payload.coefficient_field_hecke[PINNED.coefficient_field.id],
+    PINNED.coefficient_field.hecke_characteristic_polynomials,
+  );
+  assert.equal(
+    sha256(
+      canonicalRows(
+        payload.coefficient_field_basis[PINNED.coefficient_field.id],
+      ),
+    ),
+    PINNED.coefficient_field.basis_sha256,
+  );
+  assert.equal(
+    sha256(
+      canonicalRows(
+        payload.coefficient_field_basis[PINNED.higher_coefficient_field.id],
+      ),
+    ),
+    PINNED.higher_coefficient_field.basis_sha256,
+  );
+  assert.deepEqual(
+    payload.coefficient_field_hecke[PINNED.higher_coefficient_field.id],
+    PINNED.higher_coefficient_field.hecke_characteristic_polynomials,
+  );
+  return {
+    executable,
+    version: payload.oracle.version,
+    cases: PINNED.trivial_character.length + PINNED.old_new.length + 2,
     status: "pass",
   };
 }
@@ -172,5 +320,6 @@ const receipt = {
   pinned_corpus: "bench/modular/qexp-correctness/pinned-corpus.json",
   sagemath: verifySageMath(),
   magma: verifyMagma(),
+  pari: verifyPari(),
 };
 process.stdout.write(`${JSON.stringify(receipt, null, 2)}\n`);

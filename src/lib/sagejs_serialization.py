@@ -81,5 +81,74 @@ def load(file):
     return loads(file.read())
 
 
+def _unexpected_keyword(function, keywords):
+    if len(keywords) != 0:
+        name = next(iter(keywords))
+        raise TypeError(
+            function + "() got an unexpected keyword argument '" + name + "'"
+        )
+
+
+def _file_path(filename):
+    if isinstance(filename, str):
+        return filename
+    method = getattr(filename, "__fspath__", None)
+    if method is None:
+        raise TypeError(
+            "expected str, bytes or os.PathLike object, not " + type(filename).__name__
+        )
+    answer = method()
+    if not isinstance(answer, str):
+        raise TypeError("__fspath__() must return str")
+    return answer
+
+
+def _sobj_filename(filename):
+    path = _file_path(filename)
+    return path if path.endswith(".sobj") else path + ".sobj"
+
+
+def sage_dumps(value, compress=True, **keywords):
+    """Implement the Sage-compatible global `dumps`."""
+    _unexpected_keyword("dumps", keywords)
+    return dumps(value)
+
+
+def sage_loads(source, compress=True, **keywords):
+    """Implement the Sage-compatible global `loads`."""
+    _unexpected_keyword("loads", keywords)
+    return loads(source)
+
+
+def sage_save(value, filename, compress=True, **keywords):
+    """Implement the Sage-compatible global `save`."""
+    path = _file_path(filename)
+    separator = max(path.rfind("/"), path.rfind("\\"))
+    dot = path.rfind(".")
+    extension = "" if dot <= separator else path[dot:]
+    method = getattr(value, "save", None)
+    if extension != "" and extension != ".sobj" and method is not None:
+        method(path, **keywords)
+        return None
+    _unexpected_keyword("save", keywords)
+    with open(_sobj_filename(path), "wb") as output:
+        output.write(dumps(value))
+    return None
+
+
+def sage_load(*filenames, **keywords):
+    """Implement the Sage-compatible global `load`."""
+    if len(filenames) == 0:
+        raise TypeError("load() needs at least one filename")
+    compress = keywords.pop("compress", True)
+    keywords.pop("verbose", True)
+    _unexpected_keyword("load", keywords)
+    answers = []
+    for filename in filenames:
+        with open(_sobj_filename(filename), "rb") as input_file:
+            answers.append(sage_loads(input_file.read(), compress))
+    return answers[0] if len(answers) == 1 else answers
+
+
 SCHEMA = "https://sagejs.org/serialization/v1"
 VERSION = 1

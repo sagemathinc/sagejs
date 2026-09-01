@@ -266,6 +266,14 @@ def _combinat_random_below(bound: Any) -> Any:
             return runtime.native_mod(draw, bound)
 
 
+def _partition_strip_zeros(entries: list[int]) -> list[int]:
+    """Drop the trailing zeros a partition may be written with."""
+    end = len(entries)
+    while end > 0 and entries[end - 1] == 0:
+        end -= 1
+    return entries[0:end]
+
+
 def _partition_entries(value: Any) -> list[int]:
     """Return the parts of a partition, a list, or a tuple as plain integers."""
     if isinstance(value, Partition):
@@ -277,7 +285,7 @@ def _partition_entries(value: Any) -> list[int]:
         if not runtime.is_exact_integer(part):
             raise TypeError("partition parts must be integers")
         entries.append(int(part))
-    return entries
+    return _partition_strip_zeros(entries)
 
 
 def _partition_validate(entries: list[int]) -> None:
@@ -660,7 +668,7 @@ class Partitions_all(_PartitionsBase):
             if not runtime.is_exact_integer(part):
                 return False
             entries.append(int(part))
-        return _partition_is_weakly_decreasing(entries)
+        return _partition_is_weakly_decreasing(_partition_strip_zeros(entries))
 
     def __iter__(self) -> Iterator[Partition]:
         size = 0
@@ -1014,6 +1022,7 @@ class Partitions_n(_PartitionsBase):
                 entries.append(int(part))
         else:
             return False
+        entries = _partition_strip_zeros(entries)
         if not _partition_is_weakly_decreasing(entries):
             return False
         total = 0

@@ -98,6 +98,7 @@
     "sagejs.number_fields.zeta_coefficients",
     "sagejs.polynomial_algorithms.extension_field_factor",
     "sagejs.polynomial_algorithms.extension_field_roots",
+    "sagejs.polynomial_algorithms.ideal",
     "sagejs.quaternion_algebras",
     "sagejs.quaternion_algebras.algebra",
     "sagejs.quaternion_algebras.class_set",
@@ -118,6 +119,7 @@
     "sagejs.number_fields.local_polygons",
     "sagejs.number_fields.om_auto_selector",
     "sagejs.number_fields.om_maxmin",
+    "sagejs.polynomial_algorithms.groebner_contract",
     "sagejs.polynomial_algorithms.structural_calculus",
     "sagejs.polynomial_algorithms.public_structural",
     "sagejs.kernels.polynomial.structural_flint"

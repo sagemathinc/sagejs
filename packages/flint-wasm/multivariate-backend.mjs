@@ -1081,6 +1081,15 @@ export function createMultivariateBackend(instance, {
       }
       return coefficients;
     },
+    mpolyTerms(value) {
+      value = assertPolynomial(value);
+      return value.terms.map(({ coefficient, exponents }) => [
+        value.context.kind === "qq"
+          ? { numerator: coefficient.numerator, denominator: coefficient.denominator }
+          : coefficient,
+        exponents.map((exponent) => BigInt(exponent)),
+      ]);
+    },
     mpolyLength: (value) => assertPolynomial(value).terms.length,
     mpolyDegree(value, variable) {
       value = assertPolynomial(value);

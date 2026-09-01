@@ -42,6 +42,15 @@ ETA_PRODUCTS = {
 }
 
 
+OLD_NEW_CASES = (
+    ("level37-weight2-prime", 37, 2, 12),
+    ("level121-weight2-prime-square", 121, 2, 25),
+    ("level33-weight2-two-prime", 33, 2, 16),
+    ("level66-weight2-several-degeneracy-sources", 66, 2, 28),
+    ("level22-weight2-bad-prime-separation", 22, 2, 16),
+)
+
+
 def coefficient_rows(forms, precision):
     return [list(form.padded_list(precision)) for form in forms]
 
@@ -125,41 +134,65 @@ def character_case():
     }
 
 
-def old_new_case():
-    precision = 16
-    full = ambient_matrix(22, 2, precision)
-    source = ModularSymbols(11, 2, sign=1).cuspidal_submodule()
+def old_matrix(level, weight, precision):
     rows = []
-    for form in source.q_expansion_basis(precision):
-        for factor in (1, 2):
-            rows.append(
-                [
-                    form[index // factor] if index % factor == 0 else QQ(0)
-                    for index in range(precision)
-                ]
-            )
-    old = rational_echelon(rows, precision)
-    target = ModularSymbols(22, 2, sign=1).cuspidal_submodule()
+    for prime, _exponent in ZZ(level).factor():
+        source = ModularSymbols(level // prime, weight, sign=1).cuspidal_submodule()
+        for form in source.q_expansion_basis(precision):
+            for factor in (1, int(prime)):
+                rows.append(
+                    [
+                        form[index // factor] if index % factor == 0 else QQ(0)
+                        for index in range(precision)
+                    ]
+                )
+    return rational_echelon(rows, precision)
+
+
+def old_new_case(case_id, level, weight, precision):
+    target = ModularSymbols(level, weight, sign=1).cuspidal_submodule()
+    full = rational_echelon(
+        coefficient_rows(target.q_expansion_basis(precision), precision),
+        precision,
+    )
+    old = old_matrix(level, weight, precision)
+    new = target.new_submodule()
+    new_matrix = rational_echelon(
+        coefficient_rows(new.q_expansion_basis(precision), precision),
+        precision,
+    )
     return {
-        "id": "level22-weight2-entirely-old",
-        "level": 22,
-        "weight": 2,
+        "id": case_id,
+        "level": level,
+        "weight": weight,
         "precision": precision,
+        "sturm_bound": int(CuspForms(Gamma0(level), weight).sturm_bound()),
         "ambient_rref": serialized_matrix(full),
         "old_rref": serialized_matrix(old),
-        "new_dimension": int(target.new_submodule().dimension()),
+        "new_rref": serialized_matrix(new_matrix),
+        "hecke_characteristic_polynomials": {
+            str(index): str(target.hecke_matrix(index).charpoly()) for index in (2, 3)
+        },
     }
 
 
-def coefficient_field_case():
-    form = Newforms(Gamma0(23), 2, names="a")[0]
+def coefficient_field_case(case_id, level, name, precision):
+    form = Newforms(Gamma0(level), 2, names=name)[0]
+    symbols = ModularSymbols(level, 2, sign=1).cuspidal_submodule().new_submodule()
+    basis = rational_echelon(
+        coefficient_rows(symbols.q_expansion_basis(precision), precision),
+        precision,
+    )
     primes = (2, 3, 5, 7, 11, 13)
     return {
-        "id": "level23-weight2-quadratic-newform",
-        "level": 23,
+        "id": case_id,
+        "level": level,
         "weight": 2,
+        "precision": precision,
+        "sturm_bound": int(CuspForms(Gamma0(level), 2).sturm_bound()),
         "field_degree": int(form.base_ring().degree()),
         "defining_polynomial": str(form.base_ring().defining_polynomial()),
+        "basis_rref": serialized_matrix(basis),
         "coefficient_minpolys": {
             str(prime): str(form[prime].minpoly()) for prime in primes
         },
@@ -168,12 +201,17 @@ def coefficient_field_case():
 
 def main():
     payload = {
-        "schema": "sagejs.modular-qexp-differential-corpus.v1",
+        "schema": "sagejs.modular-qexp-differential-corpus.v2",
         "oracle": {"name": "SageMath", "version": SAGE_VERSION},
         "trivial_character": [trivial_case(*case) for case in TRIVIAL_CASES],
         "nontrivial_character": character_case(),
-        "old_new": old_new_case(),
-        "coefficient_field": coefficient_field_case(),
+        "old_new": [old_new_case(*case) for case in OLD_NEW_CASES],
+        "coefficient_field": coefficient_field_case(
+            "level23-weight2-quadratic-newform", 23, "a", 12
+        ),
+        "higher_coefficient_field": coefficient_field_case(
+            "level41-weight2-cubic-newform", 41, "b", 16
+        ),
     }
     print(json.dumps(payload, indent=2, sort_keys=True))
 

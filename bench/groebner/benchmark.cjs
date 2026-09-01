@@ -41,19 +41,19 @@ function simpleSystem(kind, modulus = 0n) {
   ];
 }
 
-function cyclic5() {
-  const context = flint.mpolyContext("qq", 5, "degrevlex", 0n);
+function cyclic(size) {
+  const context = flint.mpolyContext("qq", size, "degrevlex", 0n);
   const variables = Array.from(
-    { length: 5 },
+    { length: size },
     (_, index) => flint.mpolyGen(context, index),
   );
   const generators = [];
-  for (let degree = 1; degree < 5; degree += 1) {
+  for (let degree = 1; degree < size; degree += 1) {
     generators.push(sum(
       variables.map((_, start) => product(
         Array.from(
           { length: degree },
-          (__, offset) => variables[(start + offset) % 5],
+          (__, offset) => variables[(start + offset) % size],
         ),
         context,
       )),
@@ -64,6 +64,41 @@ function cyclic5() {
     product(variables, context),
     flint.mpolyConstant(context, 1n, 1n),
   ));
+  return generators;
+}
+
+function katsura(size) {
+  const context = flint.mpolyContext("qq", size + 1, "degrevlex", 0n);
+  const variables = Array.from(
+    { length: size + 1 },
+    (_, index) => flint.mpolyGen(context, index),
+  );
+  const one = flint.mpolyConstant(context, 1n, 1n);
+  const two = flint.mpolyConstant(context, 2n, 1n);
+  const first = flint.mpolySub(
+    flint.mpolyAdd(
+      variables[0],
+      flint.mpolyMul(two, sum(variables.slice(1), context)),
+    ),
+    one,
+  );
+  const generators = [first];
+  for (let degree = 1; degree <= size; degree += 1) {
+    const terms = [];
+    for (let index = -size; index <= size; index += 1) {
+      const other = degree - index;
+      if (Math.abs(other) <= size) {
+        terms.push(flint.mpolyMul(
+          variables[Math.abs(index)],
+          variables[Math.abs(other)],
+        ));
+      }
+    }
+    generators.push(flint.mpolySub(
+      sum(terms, context),
+      variables[degree],
+    ));
+  }
   return generators;
 }
 
@@ -96,8 +131,15 @@ const cases = [
   ["simple-gf65537", "msolve", simpleSystem("nmod", 65537n), 9],
   ["simple-qq", "msolve", simpleSystem("qq"), 9],
   ["simple-qq", "flint", simpleSystem("qq"), 9],
-  ["cyclic5-qq", "msolve", cyclic5(), 5],
-  ["cyclic5-qq", "flint", cyclic5(), 3],
+  ["cyclic5-qq", "msolve", cyclic(5), 5],
+  ["cyclic5-qq", "flint", cyclic(5), 3],
+  ["katsura6-qq", "msolve", katsura(6), 3],
+  ["katsura6-qq", "flint", katsura(6), 3],
+  // FLINT's bounded naive Buchberger path does not complete cyclic-6 on a
+  // documentation-sized time budget, so keep only the useful F4 measurement
+  // in the routine benchmark.  See docs/groebner-bases.md for the capped
+  // comparison.
+  ["cyclic6-qq", "msolve", cyclic(6), 3],
 ];
 
 const results = cases.map((entry) => measure(...entry));
