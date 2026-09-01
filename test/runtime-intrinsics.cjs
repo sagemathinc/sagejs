@@ -154,6 +154,18 @@ assert.match(
   /frozen = ρσ_native_freeze_tuple\(values, prototype\)/,
 );
 
+for (const mode of ["python", "sage"]) {
+  const bootstrap = readFileSync(
+    join(root, "dist", "runtime-cache", `runtime-bootstrap-${mode}.js`),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    bootstrap,
+    /\bρσ_native_get\b/u,
+    `${mode} bootstrap must lower native_get calls instead of retaining a missing symbol`,
+  );
+}
+
 const exactValueCodec = compile(
   "import sagejs.runtime as runtime\n" +
     "packed = runtime.exact_integer_values_to_packed_bytes(values)\n" +

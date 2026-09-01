@@ -149,8 +149,8 @@ def equals(left: Any, right: Any) -> Any:
             right_type, "function"
         ):
             return False
-    # Repeated attribute access creates distinct bound-method function
-    # objects in both CPython and Sage.js.  Python compares them by the
+    # Repeated attribute access creates distinct bound-method objects.
+    # Python compares them by the
     # underlying function and receiver, which is essential for removing
     # observers registered with `obj.method`. Keep this function-only branch
     # after the primitive fast paths: numeric equality dominates mathematical
@@ -158,12 +158,12 @@ def equals(left: Any, right: Any) -> Any:
     elif runtime.strict_equal(left_type, "function") and runtime.strict_equal(
         right_type, "function"
     ):
-        own = runtime.native_get
-        left_self = own(left, "__self__")
-        right_self = own(right, "__self__")
+        left_self = runtime.native_get(left, "__self__")
+        right_self = runtime.native_get(right, "__self__")
         if left_self is not runtime.undefined and right_self is not runtime.undefined:
             return left_self is right_self and (
-                own(left, "__func__") is own(right, "__func__")
+                runtime.native_get(left, "__func__")
+                is runtime.native_get(right, "__func__")
             )
     elif (
         not runtime.strict_equal(left_type, "object")
