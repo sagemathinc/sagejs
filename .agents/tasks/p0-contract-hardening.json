@@ -4,7 +4,7 @@
   "id": "p0-contract-hardening",
   "title": "Harden numerical capability and result contracts",
   "lane": "numerical-contracts",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Derive the public surface from runtime capabilities, expose honest qualification/provenance/budget/outward-code contracts, and validate them exhaustively",
   "base_commit": "6cf5161d094eff6abb53e9b91a85b1b70de4e957",
@@ -184,10 +184,50 @@
       "commit": "b18c15d04530e0b81ff65523e3742e2fb71e5102",
       "workspace_fingerprint": "fbff169999a3d9872636b81e6fe217bc80db576304028135eeefc659f51fdf59",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/contracts/common-contracts.cjs test/numerics/capability-facade.cjs test/numerics/approximation/approximation-laboratory.test.cjs test/numerics/ode/ode-laboratory.cjs test/numerics/optimization/optimization-laboratory.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 72.641,
+      "started_at": "2026-09-01T04:56:08.595Z",
+      "commit": "20170eba361dd42e46048524fa7b49ce28a7cad0",
+      "workspace_fingerprint": "0f0f0e3cba4aa62fa3dace1922d2953e4d6e29a09b9a32df6d704648b5e314fa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 50.772,
+      "started_at": "2026-09-01T04:57:34.770Z",
+      "commit": "20170eba361dd42e46048524fa7b49ce28a7cad0",
+      "workspace_fingerprint": "0f0f0e3cba4aa62fa3dace1922d2953e4d6e29a09b9a32df6d704648b5e314fa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.904,
+      "started_at": "2026-09-01T04:58:33.647Z",
+      "commit": "20170eba361dd42e46048524fa7b49ce28a7cad0",
+      "workspace_fingerprint": "0f0f0e3cba4aa62fa3dace1922d2953e4d6e29a09b9a32df6d704648b5e314fa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 691.615,
+      "started_at": "2026-09-01T05:00:03.514Z",
+      "commit": "20170eba361dd42e46048524fa7b49ce28a7cad0",
+      "workspace_fingerprint": "0f0f0e3cba4aa62fa3dace1922d2953e4d6e29a09b9a32df6d704648b5e314fa",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "The numerical surface is derived exhaustively from the live public registry and actual frontend registrations: 49 capabilities, 22 frontend operations, and 17 diagnostics are classified without a second hardcoded ledger. Common problem, plan, result, trace, provenance, resource-budget, outward-code, and receipt contracts now fail closed: nested records are immutable, schemas cover the records domains actually emit, result/plan identities and counters are validated, external execution is qualified only by matching observed artifacts and receipts, and unexecuted external plans remain explicitly unobserved. npm is a first-class qualification subject. Collector-authenticated peak-memory evidence has exact method/scope rules, collection rebinds source, corpus, adapter, artifact, capability, and clean repository identity after execution, and the matrix renderer now emits valid required memory scopes. Adversarial regressions cover malformed capability evidence, schema/runtime drift, budget overflow, bounded traces, replayability, result invariants, and input mutation. The exact Linux x64 workspace passed a fresh eight-stage build and all 23 numerical test files, strict Python across 350 modules, and every architecture gate.",
+    "summary": "The numerical surface is derived exhaustively from the live public registry and actual frontend registrations: 49 capabilities, 22 frontend operations, and 17 diagnostics are classified without a second hardcoded ledger. Common problem, plan, result, trace, provenance, resource-budget, outward-code, and receipt contracts now fail closed: nested records are immutable, schemas cover the records domains actually emit, result/plan identities and counters are validated, external execution is qualified only by matching observed artifacts and receipts, and unexecuted external plans remain explicitly unobserved. npm is a first-class qualification subject. Collector-authenticated peak-memory evidence has exact method/scope rules, collection rebinds source, corpus, adapter, artifact, capability, and clean repository identity after execution, and the matrix renderer emits valid required memory scopes. Live callbacks can no longer masquerade as absent/replayable records, and the public capability registry rejects every caller-owned receipt claim; verified P8 reports exclusively own qualification overlays within declared implementation targets. Adversarial regressions cover malformed capability evidence, schema/runtime drift, budget overflow, bounded traces, replayability, result invariants, and input mutation. Exact implementation commit 20170eba3 passed a fresh eight-stage build and the complete 23-file numerical suite, all 20 affected CPython/Sage.js tests, strict Python across 350 modules, and every architecture gate with commit-bound lane receipts.",
     "risks": [
       "Process-tree RSS is an explicitly sampled measurement, not an instantaneous operating-system high-water mark; its stable method ID and sample interval preserve that limitation.",
       "Receipts trust the first-party collector, adapter, and host. Exact pre/post rebinding detects persistent or concurrent input changes but does not claim hostile-host attestation or prove a mutate-use-restore attack impossible.",
