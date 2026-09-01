@@ -94,8 +94,8 @@ _CUBIC_ANALYTIC_VALUE_OFFSET = 5306
 _CUBIC_ANALYTIC_MAX_VALUES = 256
 _CUBIC_ANALYTIC_PRECISION = 64
 _CUBIC_PROOF_ANALYTIC_GRH = 1
-_CUBIC_PROOF_EMPTY_MINKOWSKI = 2
-_CUBIC_PROOF_EMPTY_GRH = 3
+_CUBIC_PROOF_TRIVIAL_MINKOWSKI = 2
+_CUBIC_PROOF_TRIVIAL_GRH = 3
 
 
 @native
@@ -5431,9 +5431,9 @@ def certified_complex_cubic_class_group_v1(
             output[29] = equation_order_index
             output[30] = denominator
             output[34] = equation_discriminant
-            output[35] = _CUBIC_PROOF_EMPTY_MINKOWSKI
+            output[35] = _CUBIC_PROOF_TRIVIAL_MINKOWSKI
             if use_grh_generator_base:
-                output[35] = _CUBIC_PROOF_EMPTY_GRH
+                output[35] = _CUBIC_PROOF_TRIVIAL_GRH
             return True
 
         (
@@ -6594,13 +6594,39 @@ def certified_complex_cubic_class_group_v1(
         output[55] = invariant_count
         output[63] = 43
 
-        # Compact incrementally before asking for a transformation matrix.
-        # The current canonical row HNF has at most `factor_count` rows.  For
-        # each original relation, canonicalize only that basis plus the new
-        # row.  Retain the original row exactly when the canonical HNF changes;
-        # otherwise it already lies in the retained integral lattice.  This is
-        # the resident analogue of PARI's incremental `hnfspec` regime and
-        # avoids ever transforming the wide collection matrix.
+        # Principal rows present an upper group surjecting onto the class
+        # group. If that exact quotient is trivial, no unit or analytic index
+        # calculation can strengthen the class-group conclusion.
+        if class_number_upper == 1:
+            output_index = 0
+            while output_index < len(output):
+                output[output_index] = 0
+                output_index += 1
+            output[0] = 2
+            output[1] = 1
+            output[19] = used_compound_multiplier_limit
+            output[20] = generator_bound
+            output[21] = factor_count
+            output[22] = group_count
+            output[23] = relation_count
+            output[24] = 1
+            output[25] = identity_zero
+            output[26] = identity_one
+            output[27] = identity_two
+            output[28] = order_discriminant
+            output[29] = equation_order_index
+            output[30] = denominator
+            output[31] = relation_box
+            output[32] = unit_box
+            output[33] = relation_rank
+            output[34] = equation_discriminant
+            output[35] = _CUBIC_PROOF_TRIVIAL_MINKOWSKI
+            if use_grh_generator_base:
+                output[35] = _CUBIC_PROOF_TRIVIAL_GRH
+            return True
+
+        # Retain exactly the rows that change the incremental canonical HNF,
+        # avoiding a transformation of the wide collection matrix.
         relation_support = arena.foreign_resource(
             fmpz_matrix,
             relation_count,
@@ -6879,12 +6905,7 @@ def certified_complex_cubic_class_group_v1(
                 dependency_relations,
             ):
                 return False
-        # HNF dependencies may have coefficients far larger than the final
-        # unit.  Combining fixed-precision log intervals with those
-        # coefficients can erase every useful bit before Euclidean cleanup.
-        # PARI derives its working precision from relation size and retries at
-        # higher precision.  The closed regime can plan that precision in one
-        # bounded pass because the exact transform is already resident.
+        # Plan log precision from the resident dependency coefficients.
         dependency_coefficient_bits: uint64 = 0
         if dependency_scan_active:
             dependency_probe_row: uint64 = 0
@@ -6908,13 +6929,7 @@ def certified_complex_cubic_class_group_v1(
         output[59] = 432
         output[60] = dependency_coefficient_bits
         dependency_log_scale = analytic_scale
-        # A dependency log first multiplies relation-log uncertainty by an
-        # HNF-transform coefficient and the rank-one Euclidean cleanup may
-        # then multiply that interval by a quotient of comparable size.
-        # Budget for both exact-linear-algebra layers.  One-coefficient guard
-        # precision is insufficient for `3.1.36020.1`, whose 151-bit
-        # transform reduces to a small regulator only after a second large
-        # cancellation.
+        # Budget for both dependency combination and Euclidean cleanup.
         dependency_precision_extra: uint64 = 2 * dependency_coefficient_bits + 64
         dependency_precision_index: uint64 = 0
         while dependency_precision_index < dependency_precision_extra:
@@ -7130,12 +7145,7 @@ def certified_complex_cubic_class_group_v1(
                         reduction_step += 1
             dependency_row += 1
         output[59] = 434
-        # Compaction is optimized for the class lattice and normally retains
-        # enough redundant rows for the unit lattice as well. If it does not,
-        # expand only to the canonical class support plus an eighteen-witness
-        # recovery tail before asking the host for a multiplier retry. This
-        # preserves the old short-unit envelope without making the exceptional
-        # HNF/LLL/log workspace operate on the entire raw collection matrix.
+        # If class-lattice compaction loses the unit, add a bounded witness tail.
         if not unit_found:
             recovery_tail_start: uint64 = 0
             if uncompacted_relation_count > _CUBIC_RELATION_RECOVERY_TAIL:
@@ -7327,11 +7337,7 @@ def certified_complex_cubic_class_group_v1(
 
             if dependency_materialization_active:
                 output[59] = 436
-                # Expanding positive and negative products separately may
-                # create enormous values that cancel only in the final
-                # quotient.  The archimedean reconstruction above is the
-                # general path; retain a small exact-product fallback, but
-                # enforce an explicit work envelope before any power is built.
+                # Bound the small exact-product fallback before exponentiation.
                 dependency_exponent_total = 0
                 relation_index = 0
                 while relation_index < relation_count:

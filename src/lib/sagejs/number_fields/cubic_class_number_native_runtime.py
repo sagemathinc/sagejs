@@ -23,8 +23,8 @@ from sagejs.number_fields.cubic_class_number_native import (
     _CUBIC_MAX_ORDER_WITNESSES,
     _CUBIC_MAX_RELATIONS,
     _CUBIC_PROOF_ANALYTIC_GRH,
-    _CUBIC_PROOF_EMPTY_GRH,
-    _CUBIC_PROOF_EMPTY_MINKOWSKI,
+    _CUBIC_PROOF_TRIVIAL_GRH,
+    _CUBIC_PROOF_TRIVIAL_MINKOWSKI,
     _CUBIC_ROUND2_WORKSPACE_LENGTH,
     certified_complex_cubic_class_group_v1,
 )
@@ -82,6 +82,23 @@ def _cubic_polynomial_discriminant(coefficients: tuple[int, ...]) -> int:
     )
 
 
+def _cubic_ceil_sqrt(value: int) -> int:
+    """Return the exact ceiling square root of a nonnegative integer."""
+    if value < 2:
+        return value
+    low = 0
+    high = 1
+    while high * high < value:
+        high *= 2
+    while high - low > 1:
+        middle = (low + high) // 2
+        if middle * middle < value:
+            low = middle
+        else:
+            high = middle
+    return high
+
+
 def _checked_native_values(
     coefficients: tuple[int, int, int, int], values: Any
 ) -> tuple[int, ...] | None:
@@ -106,9 +123,12 @@ def _checked_native_values(
             return None
         equation_discriminant = _cubic_polynomial_discriminant(coefficients)
         proof_mode = exact[35]
+        discriminant_root = _cubic_ceil_sqrt(-exact[28])
+        minkowski_bound = (2 * discriminant_root + 6) // 7
         if (
             exact[19] < 0
             or exact[19] > 4
+            or exact[20] < 2
             or exact[24] != 1
             or exact[28] >= -1
             or exact[29] < 1
@@ -119,8 +139,8 @@ def _checked_native_values(
             or proof_mode
             not in (
                 _CUBIC_PROOF_ANALYTIC_GRH,
-                _CUBIC_PROOF_EMPTY_MINKOWSKI,
-                _CUBIC_PROOF_EMPTY_GRH,
+                _CUBIC_PROOF_TRIVIAL_MINKOWSKI,
+                _CUBIC_PROOF_TRIVIAL_GRH,
             )
             or exact[21] < 0
             or exact[21] > _CUBIC_MAX_FACTORS
@@ -153,10 +173,13 @@ def _checked_native_values(
         elif (
             class_number != 1
             or invariant_count != 0
-            or exact[21] != 0
-            or exact[22] != 0
-            or exact[23] != 0
+            or (exact[21] == 0 and exact[23] != 0)
             or any(exact[index] != 0 for index in range(36, 50))
+            or (
+                proof_mode == _CUBIC_PROOF_TRIVIAL_MINKOWSKI
+                and exact[20] != minkowski_bound
+            )
+            or (proof_mode == _CUBIC_PROOF_TRIVIAL_GRH and exact[20] >= minkowski_bound)
         ):
             return None
         return exact
@@ -257,24 +280,34 @@ class CertifiedComplexCubicClassNumber:
 
     @property
     def proof_status(self) -> str:
-        if self._values[35] == _CUBIC_PROOF_EMPTY_MINKOWSKI:
-            return "exact-empty-generator-base-unconditional"
-        if self._values[35] == _CUBIC_PROOF_EMPTY_GRH:
-            return "exact-empty-generator-base-conditional-grh"
+        if self._values[35] == _CUBIC_PROOF_TRIVIAL_MINKOWSKI:
+            if self.factor_base_size == 0:
+                return "exact-empty-generator-base-unconditional"
+            return "exact-trivial-presentation-unconditional"
+        if self._values[35] == _CUBIC_PROOF_TRIVIAL_GRH:
+            if self.factor_base_size == 0:
+                return "exact-empty-generator-base-conditional-grh"
+            return "exact-trivial-presentation-conditional-grh"
         return "exact-relations-conditional-grh"
 
     @property
     def assumptions(self) -> tuple[str, ...]:
-        if self._values[35] == _CUBIC_PROOF_EMPTY_MINKOWSKI:
+        if self._values[35] == _CUBIC_PROOF_TRIVIAL_MINKOWSKI:
             return ()
         return ("GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",)
 
     @property
     def theorem(self) -> str:
-        if self._values[35] == _CUBIC_PROOF_EMPTY_MINKOWSKI:
-            return "minkowski-generators-plus-empty-factor-base"
-        if self._values[35] == _CUBIC_PROOF_EMPTY_GRH:
-            return "belabas-diaz-y-diaz-friedman-generators-plus-empty-factor-base"
+        if self._values[35] == _CUBIC_PROOF_TRIVIAL_MINKOWSKI:
+            suffix = "empty-factor-base"
+            if self.factor_base_size != 0:
+                suffix = "trivial-relation-presentation"
+            return "minkowski-generators-plus-" + suffix
+        if self._values[35] == _CUBIC_PROOF_TRIVIAL_GRH:
+            suffix = "empty-factor-base"
+            if self.factor_base_size != 0:
+                suffix = "trivial-relation-presentation"
+            return "belabas-diaz-y-diaz-friedman-generators-plus-" + suffix
         return "belabas-diaz-y-diaz-friedman-generators-plus-belabas-friedman-index-one"
 
     def matches(self, field: Any) -> bool:

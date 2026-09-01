@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
 const { readFileSync } = require("node:fs");
-const { resolve } = require("node:path");
+const { join, resolve } = require("node:path");
 const test = require("node:test");
 
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
@@ -67,6 +67,35 @@ test("closed native cubic receipts survive declines and authenticate targets", {
     ).provenance.file,
     checkerPath,
   );
+  const directModule = require(join(compiled.outputPath, "index.cjs"));
+  const directKernel = directModule.certified_complex_cubic_class_group_v1;
+  const zeros = (length) => directKernel.createIntegerBuffer(length, 8);
+  const directOutput = zeros(64);
+  const directBuffers = [
+    zeros(512), zeros(4), zeros(9), zeros(16),
+    zeros(16), zeros(144), zeros(48), zeros(109),
+  ];
+  const directReceipt = (coefficients) => {
+    assert.equal(directKernel(
+      directOutput,
+      directKernel.packIntegerBuffer(coefficients),
+      ...directBuffers,
+      1,
+      1048576,
+      2097152,
+    ), true);
+    return directOutput.toArray().map(Number);
+  };
+  const emptyBase = directReceipt([1, 0, -1, 1]);
+  assert.deepEqual(emptyBase.slice(0, 3), [2, 1, 0]);
+  assert.deepEqual(emptyBase.slice(20, 24), [2, 0, 0, 0]);
+  assert.equal(emptyBase[35], 2);
+  assert.ok(emptyBase.slice(36, 50).every((value) => value === 0));
+  const trivialPresentation = directReceipt([1, 1, -1, 1]);
+  assert.deepEqual(trivialPresentation.slice(0, 3), [2, 1, 0]);
+  assert.deepEqual(trivialPresentation.slice(20, 24), [2, 1, 1, 35]);
+  assert.equal(trivialPresentation[35], 2);
+  assert.ok(trivialPresentation.slice(36, 50).every((value) => value === 0));
   const output = runPython(String.raw`
 from sagejs.number_fields.cubic_class_number_native import certified_complex_cubic_class_group_v1
 from sagejs.number_fields.cubic_class_number_native_runtime import certified_complex_cubic_class_number
@@ -243,6 +272,13 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
         assert receipt.proof_status == "exact-empty-generator-base-unconditional", label
         assert receipt.assumptions == (), label
         assert receipt.theorem == "minkowski-generators-plus-empty-factor-base", label
+    if label == "3.1.44.1":
+        assert receipt.generator_bound == 2, label
+        assert receipt.factor_base_size == 1, label
+        assert receipt.relation_count == 35, label
+        assert receipt.proof_status == "exact-trivial-presentation-unconditional", label
+        assert receipt.assumptions == (), label
+        assert receipt.theorem == "minkowski-generators-plus-trivial-relation-presentation", label
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label

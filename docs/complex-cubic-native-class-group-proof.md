@@ -146,8 +146,12 @@ L \subseteq \ker\!\left(F \longrightarrow
 $$
 
 Consequently $F/L$ surjects onto $\operatorname{Cl}(\mathcal O)$. Exact HNF
-and Smith normal form give its invariant factors and order $\widehat h$;
-therefore
+and Smith reduction compute $F/L$. If it has order $1$, the class group is
+already proved trivial, and the program publishes this exact presentation
+without computing a unit, regulator, or analytic index. As with an empty
+factor base, the receipt distinguishes an unconditional Minkowski generator
+bound from a GRH-conditional generator bound. Otherwise those normal forms
+give invariant factors and order $\widehat h$, so
 
 $$
 \widehat h = r h
