@@ -649,23 +649,17 @@ def documentation_registry():
     return registry
 
 
-_numerical_backend_state = {"backend": None, "nlopt": None}
+_numerical_backends = {}
 
 
 def numerical_backend(name="cminpack"):
-    if name == "cminpack":
-        key = "backend"
-        suffix = ""
-    elif name == "nlopt":
-        key = "nlopt"
-        suffix = "-nlopt"
-    else:
+    if name not in ("cminpack", "nlopt"):
         raise ValueError("unknown numerical backend")
-    if _numerical_backend_state[key] is None:
-        _numerical_backend_state[key] = require_module(
-            "@sagemath/sagejs-numerical" + suffix
+    if name not in _numerical_backends:
+        _numerical_backends[name] = require_module(
+            "@sagemath/sagejs-numerical" + ("" if name == "cminpack" else "-nlopt")
         )
-    return _numerical_backend_state[key]
+    return _numerical_backends[name]
 
 
 array = Array
