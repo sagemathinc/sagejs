@@ -12,6 +12,20 @@ TRACE_SCHEMA_VERSION = 1
 TRACE_LEVELS = ("none", "summary", "iterations", "evaluations", "debug")
 
 
+def _optional_counter(value: Any, name: str) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(name + " must be a nonnegative integer or None")
+    return value
+
+
+def _optional_boolean(value: Any, name: str) -> bool | None:
+    if value is not None and not isinstance(value, bool):
+        raise TypeError(name + " must be a boolean or None")
+    return value
+
+
 class TracePolicy:
     """Hard trace limits independent of a solver's iteration budget."""
 
@@ -81,14 +95,16 @@ class TraceEvent:
             raise TypeError("trace kind must be a nonempty string")
         self._sequence = sequence
         self._kind = kind
-        self._iteration = iteration
-        self._evaluation = evaluation
-        self._accepted = accepted
+        self._iteration = _optional_counter(iteration, "trace iteration")
+        self._evaluation = _optional_counter(evaluation, "trace evaluation")
+        self._accepted = _optional_boolean(accepted, "trace accepted")
         self._data = materialize_object(data, "$.trace.event.data")
         self._diagnostics = tuple(
             materialize_diagnostic(value) for value in diagnostics
         )
-        self._important = bool(important)
+        if not isinstance(important, bool):
+            raise TypeError("trace important must be a boolean")
+        self._important = important
 
     @property
     def sequence(self) -> int:
@@ -123,6 +139,8 @@ class NumericalTrace:
     """Append-only trace with deterministic head/important/tail retention."""
 
     def __init__(self, policy: TracePolicy | None = None) -> None:
+        if policy is not None and not isinstance(policy, TracePolicy):
+            raise TypeError("trace policy must be a TracePolicy")
         self._policy = TracePolicy() if policy is None else policy
         self._events: list[TraceEvent] = []
         self._next_sequence = 0
@@ -164,6 +182,8 @@ class NumericalTrace:
         important: bool = False,
         force: bool = False,
     ) -> TraceEvent | None:
+        if not isinstance(force, bool):
+            raise TypeError("trace force must be a boolean")
         self._observed += 1
         if not force and not self.wants(kind):
             return None
@@ -182,27 +202,40 @@ class NumericalTrace:
         self._enforce_budget()
         return event
 
-    def _enforce_budget(self) -> None:
-        maximum = self._policy.max_events
-        while (
-            len(self._events) > maximum
-            or len(
-                canonical_json([event.to_dict() for event in self._events]).encode(
-                    "utf-8"
-                )
-            )
-            > self._policy.max_bytes
-        ):
-            if len(self._events) <= 2:
-                break
+    def _event_bytes(self) -> int:
+        return len(
+            canonical_json([event.to_dict() for event in self._events]).encode("utf-8")
+        )
+
+    def _remove_retained_event(self, *, allow_endpoints: bool) -> None:
+        if not self._events:
+            return
+        if not allow_endpoints and len(self._events) > 2:
             middle = self._events[1:-1]
             removable = [event for event in middle if not event.important]
             if not removable:
                 removable = middle
             remove = removable[len(removable) // 2]
-            self._events.remove(remove)
-            self._dropped += 1
-            self._truncated = True
+        else:
+            # A byte ceiling is absolute: when even the protected head/tail
+            # cannot fit, prefer the newest event and then drop it too if it is
+            # individually oversized. Important events influence retention but
+            # can never override a hard resource budget.
+            removable = [event for event in self._events[:-1] if not event.important]
+            if not removable:
+                removable = [event for event in self._events if not event.important]
+            if not removable:
+                removable = self._events[:-1] or self._events
+            remove = removable[0]
+        self._events.remove(remove)
+        self._dropped += 1
+        self._truncated = True
+
+    def _enforce_budget(self) -> None:
+        while len(self._events) > self._policy.max_events:
+            self._remove_retained_event(allow_endpoints=False)
+        while self._event_bytes() > self._policy.max_bytes and self._events:
+            self._remove_retained_event(allow_endpoints=True)
 
     def to_dict(self) -> dict[str, JSONValue]:
         diagnostics: list[dict[str, JSONValue]] = []

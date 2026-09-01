@@ -493,6 +493,7 @@ iteration_exhausted = interpolate(
 )
 assert not iteration_exhausted.success
 assert iteration_exhausted.status == "maximum_iterations"
+assert iteration_exhausted.iterations == iteration_budget.max_iterations
 
 def delayed_final_holdout(x):
     if x == 1.0:

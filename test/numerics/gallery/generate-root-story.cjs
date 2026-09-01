@@ -331,7 +331,7 @@ function buildStory() {
         status: "maximum_iterations",
         success: false,
         validation_passed: false,
-        diagnostic_codes: ["maximum_iterations"],
+        diagnostic_codes: ["non_replayable_callback", "maximum_iterations"],
       },
     ),
   ];

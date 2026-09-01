@@ -94,6 +94,24 @@ trusted first-party collector/adapter/host boundary, not adversarial-host
 execution; stronger proof would require staged read-only inputs or OS
 isolation.
 
+The final fail-closed contract review also made the executable records obey
+their published schemas at construction time. Nonempty plan identifiers,
+strict booleans, finite nonnegative validation estimates, bounded counters,
+problem/result trace-policy identity, and hard trace retention bytes are now
+runtime invariants rather than documentation conventions. Solver termination
+and validated success remain deliberately distinct: a solver may report
+`converged` while independent validation rejects the answer, but a result may
+never claim success for a failure status or failed validation. Domain execution
+accounting checks resource ceilings before incrementing so failure records do
+not serialize impossible `max + 1` counters. Capability normalization rejects
+malformed target arrays and arbitrary receipt claims, names CPython explicitly
+for the same-source root methods, and accepts receipt-qualified evidence only
+with valid target envelopes and retained SHA-256 digests. Matrix rendering now
+derives and emits the required memory scope for every subject kind, and the
+published matrix-report schema constrains the exact receipt summary, bindings,
+case metrics, payload, and authenticated-memory wire format instead of using
+open object placeholders.
+
 This proves the shared contracts sufficiently to begin domain-owned parallel
 implementation. P1 is not classified as release-qualified until its browser,
 SEA, four-platform, performance, startup, memory, and payload receipts are

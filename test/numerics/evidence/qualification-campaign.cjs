@@ -9,7 +9,11 @@ const path = require("node:path");
 const test = require("node:test");
 
 const { readJson } = require("../../../scripts/numerical-computing/common.cjs");
-const { validateCorpus } = require("../../../scripts/numerical-computing/contracts.cjs");
+const {
+  CAPABILITY_SCHEMA,
+  createCapabilityManifest,
+  validateCorpus,
+} = require("../../../scripts/numerical-computing/contracts.cjs");
 const {
   capabilityDraft,
 } = require("../../../scripts/numerical-computing/qualification/prepare-node.cjs");
@@ -88,6 +92,79 @@ test("matrix templates enumerate native and runtime rows without fake evidence",
   assert.throws(
     () => renderMatrix(nodeTemplate, corpus, new Map()),
     /missing bound capability manifest for linux-x64-node/,
+  );
+});
+
+test("matrix rendering reaches a valid policy with exact memory scopes", () => {
+  const caseId = corpus.cases[0].id;
+  const digest = (character) => character.repeat(64);
+  const manifest = (subject, artifact) => createCapabilityManifest({
+    schema: CAPABILITY_SCHEMA,
+    backend: { id: "synthetic-backend", version: "1" },
+    subject,
+    capabilities: [{
+      id: "numerics.contracts",
+      status: "available",
+      reason: null,
+      case_ids: [caseId],
+      envelope: {},
+    }],
+  }, {
+    corpus_sha256: digest("d"),
+    source_bundle_sha256: digest("a"),
+    adapter_sha256: digest("b"),
+    artifacts: [{ name: artifact, sha256: digest("c") }],
+  }, corpus);
+  const node = manifest(
+    { kind: "node", name: "node", version: "v1", engine: null },
+    "node-artifact",
+  );
+  const npm = manifest(
+    { kind: "npm", name: "@sagemath/sagejs", version: "1.0.0", engine: null },
+    "npm-artifact",
+  );
+  const template = {
+    schema: "sagejs.numerical-qualification-matrix-template/v1",
+    id: "synthetic-render-success",
+    description: "Exercise the complete renderer rather than only missing-manifest errors.",
+    require_clean: true,
+    required_program_phases: [corpus.cases[0].program_phase],
+    required_case_layers: [corpus.cases[0].layer],
+    required_capabilities: ["numerics.contracts"],
+    rows: [
+      {
+        id: "linux-x64-node",
+        platform: "linux-x64",
+        subject: { kind: "node", name: "node", engine: null },
+      },
+      {
+        id: "linux-x64-npm",
+        platform: "linux-x64",
+        subject: { kind: "npm", name: "@sagemath/sagejs", engine: null },
+        required_memory_scope: "process_tree",
+      },
+    ],
+  };
+  const policy = renderMatrix(template, corpus, new Map([
+    ["linux-x64-node", node],
+    ["linux-x64-npm", npm],
+  ]));
+  assert.deepEqual(
+    policy.rows.map((row) => [row.id, row.required_memory_scope]),
+    [
+      ["linux-x64-node", "collector_process"],
+      ["linux-x64-npm", "process_tree"],
+    ],
+  );
+
+  const forged = structuredClone(template);
+  forged.rows[1].required_memory_scope = "collector_process";
+  assert.throws(
+    () => renderMatrix(forged, corpus, new Map([
+      ["linux-x64-node", node],
+      ["linux-x64-npm", npm],
+    ])),
+    /npm must use process_tree/,
   );
 });
 

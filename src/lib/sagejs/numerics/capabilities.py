@@ -43,6 +43,7 @@ _ROOT_METHODS: dict[str, dict[str, JSONValue]] = {
             "browser",
             "node",
             "sea",
+            "cpython",
             "linux-x64",
             "linux-arm64",
             "macos-arm64",
@@ -60,6 +61,7 @@ _ROOT_METHODS: dict[str, dict[str, JSONValue]] = {
             "browser",
             "node",
             "sea",
+            "cpython",
             "linux-x64",
             "linux-arm64",
             "macos-arm64",
@@ -77,6 +79,7 @@ _ROOT_METHODS: dict[str, dict[str, JSONValue]] = {
             "browser",
             "node",
             "sea",
+            "cpython",
             "linux-x64",
             "linux-arm64",
             "macos-arm64",
@@ -95,6 +98,7 @@ _ROOT_METHODS: dict[str, dict[str, JSONValue]] = {
             "browser",
             "node",
             "sea",
+            "cpython",
             "linux-x64",
             "linux-arm64",
             "macos-arm64",
@@ -276,59 +280,138 @@ def _runtime_id(value: Any) -> str:
     return str(selected)
 
 
+def _platform_id(value: Any) -> str:
+    if not isinstance(value, str) or value not in _TARGET_PLATFORMS:
+        raise ValueError("unknown numerical implementation platform: " + str(value))
+    return value
+
+
+def _declared_array(value: Any, name: str) -> list[Any]:
+    if not isinstance(value, list):
+        raise TypeError(name + " must be an array")
+    return value
+
+
+def _receipt_digest(value: Any) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(
+            "receipt qualification digests must be lowercase SHA-256 digests"
+        )
+    return value
+
+
+def _normalize_receipt_qualification(value: Any) -> dict[str, JSONValue]:
+    record = _detached_object(value, "numerical receipt qualification")
+    required = {"status", "platforms", "runtimes", "receipt_sha256"}
+    if set(record) != required:
+        raise ValueError(
+            "receipt qualification must contain exactly status, platforms, "
+            "runtimes, and receipt_sha256"
+        )
+    status = record["status"]
+    if status not in ("unqualified_in_public_registry", "receipt_qualified"):
+        raise ValueError("unknown numerical receipt qualification status")
+    platforms = sorted(
+        {
+            _platform_id(target)
+            for target in _declared_array(
+                record["platforms"], "receipt qualification platforms"
+            )
+        }
+    )
+    runtimes = sorted(
+        {
+            _runtime_id(target)
+            for target in _declared_array(
+                record["runtimes"], "receipt qualification runtimes"
+            )
+        }
+    )
+    receipts = sorted(
+        {
+            _receipt_digest(digest)
+            for digest in _declared_array(
+                record["receipt_sha256"], "receipt qualification digests"
+            )
+        }
+    )
+    if status == "unqualified_in_public_registry":
+        if platforms or runtimes or receipts:
+            raise ValueError(
+                "an unqualified receipt record cannot claim platforms, runtimes, "
+                "or receipt digests"
+            )
+    elif not receipts or (not platforms and not runtimes):
+        raise ValueError(
+            "a receipt-qualified method requires retained receipt digests and "
+            "a platform or runtime envelope"
+        )
+    return _detached_object(
+        {
+            "status": status,
+            "platforms": platforms,
+            "runtimes": runtimes,
+            "receipt_sha256": receipts,
+        },
+        "normalized receipt qualification",
+    )
+
+
 def _normalize_method_record(value: Mapping[str, Any]) -> dict[str, JSONValue]:
     record = _detached_object(value, "numerical method capability")
     platforms: list[str] = []
     runtimes: list[str] = []
     declared_platforms = record.pop("platforms", [])
     declared_runtimes = record.pop("runtimes", [])
-    if isinstance(declared_platforms, list):
-        for target in declared_platforms:
-            if target in _TARGET_RUNTIMES or target in _RUNTIME_ALIASES:
-                runtimes.append(_runtime_id(target))
-            else:
-                if target not in _TARGET_PLATFORMS:
-                    raise ValueError(
-                        "unknown numerical implementation platform: " + str(target)
-                    )
-                platforms.append(target)
-    if isinstance(declared_runtimes, list):
-        runtimes.extend(_runtime_id(target) for target in declared_runtimes)
-    raw_targets = record.get("implementation_targets")
-    targets: JSONValue
-    if not isinstance(raw_targets, dict):
-        targets = materialize_json(
-            {
-                "platforms": sorted(set(platforms)),
-                "runtimes": sorted(set(runtimes)),
-            }
+    for target in _declared_array(declared_platforms, "numerical method platforms"):
+        if target in _TARGET_RUNTIMES or target in _RUNTIME_ALIASES:
+            runtimes.append(_runtime_id(target))
+        else:
+            platforms.append(_platform_id(target))
+    runtimes.extend(
+        _runtime_id(target)
+        for target in _declared_array(declared_runtimes, "numerical method runtimes")
+    )
+    if "implementation_targets" in record:
+        raw_targets = _detached_object(
+            record["implementation_targets"], "numerical implementation targets"
         )
-    else:
-        raw_platforms = raw_targets.get("platforms", [])
-        raw_runtimes = raw_targets.get("runtimes", [])
-        if not isinstance(raw_platforms, list) or not isinstance(raw_runtimes, list):
-            raise TypeError(
-                "implementation target platforms and runtimes must be arrays"
+        if set(raw_targets) != {"platforms", "runtimes"}:
+            raise ValueError(
+                "implementation targets must contain exactly platforms and runtimes"
             )
-        normalized_platforms: list[str] = []
-        for target in raw_platforms:
-            if not isinstance(target, str) or target not in _TARGET_PLATFORMS:
-                raise ValueError("implementation targets contain an unknown platform")
-            normalized_platforms.append(target)
-        targets = materialize_json(
-            {
-                "platforms": sorted(set(normalized_platforms)),
-                "runtimes": sorted(set(_runtime_id(target) for target in raw_runtimes)),
-            }
+        platforms.extend(
+            _platform_id(target)
+            for target in _declared_array(
+                raw_targets["platforms"], "implementation target platforms"
+            )
         )
-    record["implementation_targets"] = targets
-    if "receipt_qualification" not in record:
-        record["receipt_qualification"] = {
+        runtimes.extend(
+            _runtime_id(target)
+            for target in _declared_array(
+                raw_targets["runtimes"], "implementation target runtimes"
+            )
+        )
+    record["implementation_targets"] = materialize_json(
+        {
+            "platforms": sorted(set(platforms)),
+            "runtimes": sorted(set(runtimes)),
+        }
+    )
+    qualification = record.get(
+        "receipt_qualification",
+        {
             "status": "unqualified_in_public_registry",
             "platforms": [],
             "runtimes": [],
             "receipt_sha256": [],
-        }
+        },
+    )
+    record["receipt_qualification"] = _normalize_receipt_qualification(qualification)
     return record
 
 
@@ -338,12 +421,14 @@ def _normalize_operation_capability(
     record = _detached_object(capability, "numerical operation capability")
     methods = record.get("methods")
     if isinstance(methods, dict):
-        record["methods"] = {
-            str(name): _normalize_method_record(value)
-            if isinstance(value, Mapping)
-            else materialize_json(value)
-            for name, value in sorted(methods.items())
-        }
+        normalized_methods: dict[str, JSONValue] = {}
+        for name, value in sorted(methods.items()):
+            if not isinstance(value, Mapping):
+                raise TypeError(
+                    "numerical method capability " + str(name) + " must be an object"
+                )
+            normalized_methods[str(name)] = _normalize_method_record(value)
+        record["methods"] = normalized_methods
     surface: dict[str, JSONValue] = {
         "classification": _operation_classification(record),
         "status": "implemented",

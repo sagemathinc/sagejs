@@ -41,6 +41,7 @@ STATUS_CODES = (
     "invalid_problem",
     "backend_failure",
 )
+SUCCESS_STATUS_CODES = ("converged", "exact_root")
 
 FUNCTION_RECORD_KINDS = (
     "none",
@@ -105,6 +106,18 @@ def _nonnegative_finite(value: Any, name: str) -> float:
     if not math.isfinite(answer) or answer < 0.0:
         raise ValueError(name + " must be a nonnegative finite number")
     return answer
+
+
+def _nonempty_string(value: Any, name: str) -> str:
+    if not isinstance(value, str) or value == "":
+        raise TypeError(name + " must be a nonempty string")
+    return value
+
+
+def _optional_nonnegative_finite(value: Any, name: str) -> float | None:
+    if value is None:
+        return None
+    return _nonnegative_finite(value, name)
 
 
 def _precision_record(numeric_type: str) -> dict[str, JSONValue]:
@@ -239,10 +252,18 @@ class ResourceBudget:
             "max_trace_events": max_trace_events,
             "max_trace_bytes": max_trace_bytes,
         }
+        minimums = {
+            "max_iterations": 1,
+            "max_evaluations": 1,
+            "max_elapsed_ms": 1,
+            "max_trace_events": 2,
+            "max_trace_bytes": 1024,
+        }
         for name in values:
             value = values[name]
-            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-                raise ValueError(name + " must be a positive integer")
+            minimum = minimums[name]
+            if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+                raise ValueError(name + " must be an integer at least " + str(minimum))
         self._values = values
 
     def __getattr__(self, name: str) -> int:
@@ -378,7 +399,7 @@ class NumericalProblem:
         self._initial_data = materialize_object(initial_data, "$.problem.initial_data")
         self._bounds = materialize_object(bounds, "$.problem.bounds")
         self._tolerances = materialize_object(tolerances, "$.problem.tolerances")
-        self._method = str(method)
+        self._method = _nonempty_string(method, "problem method")
         self._derivative_record = _function_record(
             derivative_record,
             "$.problem.derivative",
@@ -388,9 +409,15 @@ class NumericalProblem:
         for constraint in self._constraints:
             if not isinstance(constraint, NumericalConstraint):
                 raise TypeError("invalid numerical constraint")
+        if resource_budget is not None and not isinstance(
+            resource_budget, ResourceBudget
+        ):
+            raise TypeError("problem resource_budget must be a ResourceBudget")
         self._resource_budget = (
             ResourceBudget() if resource_budget is None else resource_budget
         )
+        if trace_policy is not None and not isinstance(trace_policy, TracePolicy):
+            raise TypeError("problem trace_policy must be a TracePolicy")
         self._trace_policy = (
             TracePolicy(
                 max_events=self._resource_budget.max_trace_events,
@@ -399,6 +426,14 @@ class NumericalProblem:
             if trace_policy is None
             else trace_policy
         )
+        if self._trace_policy.max_events > self._resource_budget.max_trace_events:
+            raise ValueError(
+                "trace policy max_events exceeds the problem resource budget"
+            )
+        if self._trace_policy.max_bytes > self._resource_budget.max_trace_bytes:
+            raise ValueError(
+                "trace policy max_bytes exceeds the problem resource budget"
+            )
         self._source_intent = materialize_object(
             source_intent, "$.problem.source_intent"
         )
@@ -462,8 +497,10 @@ class NumericalProblem:
 
     @property
     def replayable(self) -> bool:
-        return self._function_record.get("replayable") is True and all(
-            constraint.replayable for constraint in self._constraints
+        return (
+            self._function_record.get("replayable") is True
+            and self._derivative_record.get("replayable") is True
+            and all(constraint.replayable for constraint in self._constraints)
         )
 
     def to_dict(self) -> dict[str, JSONValue]:
@@ -519,10 +556,12 @@ class NumericalPlan:
         rejected_alternatives: Sequence[Any] = (),
         diagnostics: Sequence[NumericalDiagnostic | Mapping[str, Any]] = (),
     ) -> None:
+        if not isinstance(problem, NumericalProblem):
+            raise TypeError("plan problem must be a NumericalProblem")
         self._problem = problem
-        self._method = str(method)
-        self._backend = str(backend)
-        self._reason = str(reason)
+        self._method = _nonempty_string(method, "plan method")
+        self._backend = _nonempty_string(backend, "plan backend")
+        self._reason = _nonempty_string(reason, "plan selection reason")
         self._capability = materialize_object(capability, "$.plan.capability")
         self._fallback = materialize_object(fallback, "$.plan.fallback")
         self._expected_resources = materialize_object(
@@ -594,12 +633,18 @@ class NumericalValidation:
     ) -> None:
         if truth_level not in TRUTH_LEVELS:
             raise ValueError("unknown numerical truth level: " + truth_level)
+        if not isinstance(passed, bool):
+            raise TypeError("validation passed must be a boolean")
         self._truth_level = truth_level
-        self._passed = bool(passed)
+        self._passed = passed
         self._checks = materialize_array(checks, "$.validation.checks")
-        self._residual = residual
-        self._error_estimate = error_estimate
-        self._condition_estimate = condition_estimate
+        self._residual = _optional_nonnegative_finite(residual, "validation residual")
+        self._error_estimate = _optional_nonnegative_finite(
+            error_estimate, "validation error_estimate"
+        )
+        self._condition_estimate = _optional_nonnegative_finite(
+            condition_estimate, "validation condition_estimate"
+        )
 
     @property
     def passed(self) -> bool:
@@ -656,11 +701,16 @@ class NumericalResult:
             raise ValueError("result plan was resolved for a different problem")
         if not isinstance(validation, NumericalValidation):
             raise TypeError("result validation must be a NumericalValidation")
-        if bool(success) and not validation.passed:
+        if not isinstance(success, bool):
+            raise TypeError("result success must be a boolean")
+        status_is_success = status in SUCCESS_STATUS_CODES
+        if success and not status_is_success:
+            raise ValueError("a successful result contradicts its solver status")
+        if success and not validation.passed:
             raise ValueError("a successful result requires passed validation")
         self._problem = problem
         self._plan = plan
-        self._success = bool(success)
+        self._success = success
         self._status = status
         self._value = materialize_json(value, "$.result.value")
         self._validation = validation
@@ -669,8 +719,18 @@ class NumericalResult:
         )
         self._iterations = _nonnegative_integer(iterations, "result iterations")
         self._evaluations = _nonnegative_integer(evaluations, "result evaluations")
+        if self._iterations > problem.resource_budget.max_iterations:
+            raise ValueError("result iterations exceed the problem resource budget")
+        if self._evaluations > problem.resource_budget.max_evaluations:
+            raise ValueError("result evaluations exceed the problem resource budget")
         self._elapsed_ms = _nonnegative_finite(elapsed_ms, "result elapsed_ms")
+        if trace is not None and not isinstance(trace, NumericalTrace):
+            raise TypeError("result trace must be a NumericalTrace")
         self._trace = NumericalTrace(problem.trace_policy) if trace is None else trace
+        if self._trace.policy.to_dict() != problem.trace_policy.to_dict():
+            raise ValueError(
+                "result trace policy differs from the problem trace policy"
+            )
         self._measurements = materialize_object(measurements, "$.result.measurements")
         self._provenance = materialize_object(provenance, "$.result.provenance")
         self._domain_payload = materialize_object(

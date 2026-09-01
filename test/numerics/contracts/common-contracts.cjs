@@ -38,6 +38,20 @@ sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})
   return result.stdout.trim();
 }
 
+function assertClosedSchemaRecord(value, schema, label) {
+  assert.ok(value !== null && typeof value === "object" && !Array.isArray(value),
+    `${label} must be an object`);
+  for (const name of schema.required || []) {
+    assert.ok(Object.hasOwn(value, name), `${label}.${name} is required`);
+  }
+  if (schema.additionalProperties === false) {
+    for (const name of Object.keys(value)) {
+      assert.ok(Object.hasOwn(schema.properties || {}, name),
+        `${label}.${name} is not declared by the schema`);
+    }
+  }
+}
+
 test("the retained ledger is derived exhaustively from public registries", () => {
   const live = loadLiveSurface();
   validateSurface(structuredClone(live), live);
@@ -65,6 +79,9 @@ test("problem, result, and trace schemas cover every emitted common record", () 
   const result = JSON.parse(readFileSync(
     join(root, "docs/numerical-computing/result.schema.json"), "utf8",
   ));
+  const plan = JSON.parse(readFileSync(
+    join(root, "docs/numerical-computing/plan.schema.json"), "utf8",
+  ));
   const trace = JSON.parse(readFileSync(
     join(root, "docs/numerical-computing/trace.schema.json"), "utf8",
   ));
@@ -79,6 +96,93 @@ print(json.dumps(list(FUNCTION_RECORD_KINDS)))
   assert.ok(problem.$defs.ode_resource_budget.properties.max_workspace_bytes);
   assert.ok(result.properties.provenance.properties.execution_binding_status.enum
     .includes("external_execution_unobserved"));
+
+  const emitted = JSON.parse(runPython(String.raw`
+from sagejs.numerics.model import (
+    NumericalPlan, NumericalProblem, NumericalResult, NumericalValidation,
+    ResourceBudget,
+)
+from sagejs.numerics.trace import NumericalTrace, TracePolicy
+
+budget = ResourceBudget(
+    max_iterations=4,
+    max_evaluations=8,
+    max_trace_events=4,
+    max_trace_bytes=2048,
+)
+policy = TracePolicy("debug", max_events=4, max_bytes=2048)
+problem = NumericalProblem(
+    "test", "schema_witness", resource_budget=budget, trace_policy=policy
+)
+plan = NumericalPlan(
+    problem,
+    method="witness",
+    backend="ordinary-python",
+    reason="schema witness",
+    capability={},
+)
+trace = NumericalTrace(policy)
+trace.append(
+    "finish", iteration=1, evaluation=2, accepted=True,
+    data={"residual": 0.0}, important=True, force=True,
+)
+validation = NumericalValidation(
+    "validated_approximate", True, residual=0.0, error_estimate=0.0
+)
+result = NumericalResult(
+    problem,
+    plan,
+    success=True,
+    status="converged",
+    validation=validation,
+    iterations=1,
+    evaluations=2,
+    trace=trace,
+)
+print(json.dumps({
+    "problem": problem.to_dict(),
+    "plan": plan.to_dict(),
+    "trace": trace.to_dict(),
+    "result": result.to_dict(),
+}))
+`));
+  assertClosedSchemaRecord(emitted.problem, problem, "problem");
+  assertClosedSchemaRecord(emitted.plan, plan, "plan");
+  assertClosedSchemaRecord(emitted.trace, trace, "trace");
+  assertClosedSchemaRecord(emitted.result, result, "result");
+  assertClosedSchemaRecord(
+    emitted.problem.resource_budget,
+    problem.$defs.resource_budget,
+    "problem.resource_budget",
+  );
+  assertClosedSchemaRecord(
+    emitted.trace.policy,
+    trace.$defs.policy,
+    "trace.policy",
+  );
+  assertClosedSchemaRecord(
+    emitted.trace.events[0],
+    trace.$defs.event,
+    "trace.events[0]",
+  );
+  assertClosedSchemaRecord(
+    emitted.result.validation,
+    result.properties.validation,
+    "result.validation",
+  );
+  assertClosedSchemaRecord(
+    emitted.plan.execution_target,
+    plan.properties.execution_target,
+    "plan.execution_target",
+  );
+  assert.equal(typeof emitted.result.success, "boolean");
+  assert.equal(typeof emitted.result.validation.passed, "boolean");
+  assert.ok(emitted.trace.events[0].iteration >= 0);
+  assert.ok(emitted.trace.events[0].evaluation >= 0);
+  assert.ok(emitted.problem.resource_budget.max_trace_events >=
+    problem.$defs.resource_budget.properties.max_trace_events.minimum);
+  assert.ok(emitted.problem.resource_budget.max_trace_bytes >=
+    problem.$defs.resource_budget.properties.max_trace_bytes.minimum);
 });
 
 test("npm is a first-class qualification subject in code and schemas", () => {
@@ -109,6 +213,8 @@ from sagejs.numerics.model import (
     NumericalValidation,
     ResourceBudget,
 )
+from sagejs.numerics._json import canonical_json
+from sagejs.numerics.trace import NumericalTrace, TraceEvent, TracePolicy
 
 registry = capabilities()
 assert registry["schema_version"] == 3
@@ -129,12 +235,71 @@ for entry in registry["operation_index"].values():
         targets = method.get("implementation_targets", {})
         assert not any(str(item).startswith("sagejs-") for item in targets.get("runtimes", []))
 
-from sagejs.numerics.capabilities import _operation_classification
+for method in registry["domains"]["roots"]["operations"]["scalar_root"]["methods"].values():
+    assert "cpython" in method["implementation_targets"]["runtimes"]
+
+from sagejs.numerics.capabilities import _normalize_method_record, _operation_classification
 try:
     _operation_classification({})
     raise AssertionError("an unclassified operation was accepted")
 except ValueError:
     pass
+
+invalid_capability_records = (
+    {"platforms": "linux-x64"},
+    {"runtimes": "node"},
+    {"implementation_targets": []},
+    {"implementation_targets": {"platforms": [], "runtimes": [], "extra": []}},
+    {
+        "receipt_qualification": {
+            "status": "receipt_qualified",
+            "platforms": ["unknown-platform"],
+            "runtimes": ["node"],
+            "receipt_sha256": ["a" * 64],
+        }
+    },
+    {
+        "receipt_qualification": {
+            "status": "receipt_qualified",
+            "platforms": ["linux-x64"],
+            "runtimes": ["node"],
+            "receipt_sha256": ["not-a-digest"],
+        }
+    },
+    {
+        "receipt_qualification": {
+            "status": "unqualified_in_public_registry",
+            "platforms": ["linux-x64"],
+            "runtimes": [],
+            "receipt_sha256": [],
+        }
+    },
+)
+for invalid_record in invalid_capability_records:
+    try:
+        _normalize_method_record(invalid_record)
+        raise AssertionError("malformed capability evidence was accepted")
+    except (TypeError, ValueError):
+        pass
+
+qualified_method = _normalize_method_record({
+    "platforms": ["node", "linux-x64"],
+    "implementation_targets": {
+        "platforms": ["macos-arm64"],
+        "runtimes": ["cpython"],
+    },
+    "receipt_qualification": {
+        "status": "receipt_qualified",
+        "platforms": ["linux-x64"],
+        "runtimes": ["node"],
+        "receipt_sha256": ["a" * 64],
+    },
+})
+assert qualified_method["implementation_targets"] == {
+    "platforms": ["linux-x64", "macos-arm64"],
+    "runtimes": ["cpython", "node"],
+}
+assert qualified_method["receipt_qualification"]["receipt_sha256"] == ["a" * 64]
 
 frontend = create_frontend_registry()
 metadata = frontend.metadata()
@@ -257,6 +422,14 @@ complex_result = NumericalResult(
 ).to_dict()
 assert complex_result["precision"] == {"kind": "complex-binary64", "bits": 53}
 
+derivative_not_replayable = NumericalProblem(
+    "test",
+    "derivative_replayability",
+    function_record={"kind": "expression", "replayable": True},
+    derivative_record={"kind": "opaque_callback", "replayable": False},
+)
+assert derivative_not_replayable.replayable is False
+
 constraint = NumericalConstraint("inequality", lambda value: value[0], tolerance=1e-8)
 constrained = NumericalProblem(
     "test",
@@ -297,6 +470,97 @@ for constructor in (
         raise AssertionError("an inconsistent result contract was accepted")
     except ValueError:
         pass
+
+budget = ResourceBudget(
+    max_iterations=2,
+    max_evaluations=3,
+    max_trace_events=2,
+    max_trace_bytes=1024,
+)
+budget_policy = TracePolicy("debug", max_events=2, max_bytes=1024)
+budget_problem = NumericalProblem(
+    "test",
+    "budgeted",
+    resource_budget=budget,
+    trace_policy=budget_policy,
+)
+budget_plan = NumericalPlan(
+    budget_problem,
+    method="budgeted",
+    backend="ordinary-python",
+    reason="adversarial contract witness",
+    capability={},
+)
+failed_validation = NumericalValidation("indeterminate", False)
+for constructor in (
+    lambda: ResourceBudget(max_trace_events=1),
+    lambda: ResourceBudget(max_trace_bytes=1023),
+    lambda: NumericalProblem(
+        "test",
+        "bad_trace_budget",
+        resource_budget=budget,
+        trace_policy=TracePolicy("debug", max_events=3, max_bytes=1024),
+    ),
+    lambda: NumericalPlan(
+        budget_problem, method="", backend="ordinary-python", reason="reason",
+        capability={},
+    ),
+    lambda: NumericalPlan(
+        budget_problem, method="method", backend="", reason="reason",
+        capability={},
+    ),
+    lambda: NumericalPlan(
+        budget_problem, method="method", backend="ordinary-python", reason="",
+        capability={},
+    ),
+    lambda: NumericalValidation("indeterminate", "false"),
+    lambda: NumericalValidation("indeterminate", False, residual="0"),
+    lambda: NumericalValidation("indeterminate", False, residual=-1.0),
+    lambda: TraceEvent(0, "iteration", iteration=-1),
+    lambda: TraceEvent(0, "evaluation", evaluation=True),
+    lambda: TraceEvent(0, "candidate", accepted="yes"),
+    lambda: TraceEvent(0, "candidate", important=1),
+    lambda: NumericalTrace(budget_policy).append("finish", force=1),
+    lambda: NumericalResult(
+        budget_problem, budget_plan, success="false", status="backend_failure",
+        validation=failed_validation,
+    ),
+    lambda: NumericalResult(
+        budget_problem, budget_plan, success=True, status="backend_failure",
+        validation=NumericalValidation("validated_approximate", True),
+    ),
+    lambda: NumericalResult(
+        budget_problem, budget_plan, success=False, status="maximum_iterations",
+        validation=failed_validation, iterations=3,
+    ),
+    lambda: NumericalResult(
+        budget_problem, budget_plan, success=False, status="maximum_evaluations",
+        validation=failed_validation, evaluations=4,
+    ),
+    lambda: NumericalResult(
+        budget_problem, budget_plan, success=False, status="backend_failure",
+        validation=failed_validation,
+        trace=NumericalTrace(TracePolicy("summary", max_events=2, max_bytes=1024)),
+    ),
+):
+    try:
+        constructor()
+        raise AssertionError("an invalid common numerical record was accepted")
+    except (TypeError, ValueError):
+        pass
+
+oversized = NumericalTrace(budget_policy)
+oversized.append(
+    "debug",
+    data={"payload": "x" * 5000},
+    important=True,
+    force=True,
+)
+oversized_record = oversized.to_dict()
+assert oversized_record["truncated"] is True
+assert oversized_record["retained_events"] == 0
+assert oversized_record["dropped_events"] == 1
+assert len(canonical_json(oversized_record["events"]).encode("utf-8")) <= 1024
 
 intent = matlab_fzero_intent(
     lambda x: math.cos(x) - x,

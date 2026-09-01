@@ -142,7 +142,7 @@ def root_problem(
         function_record["variable"] = variable
     derivative_record: dict[str, Any] = {
         "kind": "explicit_callback" if derivative is not None else "none",
-        "replayable": False,
+        "replayable": derivative is None,
     }
     budget = ResourceBudget(
         max_iterations=maxiter,

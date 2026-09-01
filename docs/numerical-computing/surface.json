@@ -521,6 +521,7 @@
         ],
         "runtimes": [
           "browser",
+          "cpython",
           "node",
           "sea"
         ]

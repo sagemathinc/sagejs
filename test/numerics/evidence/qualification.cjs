@@ -338,6 +338,25 @@ test("published wire schemas are strict duplicate-free JSON with matching identi
     assert.equal(schema.properties.schema.const, identity);
     assert.equal(schema.additionalProperties, false);
   }
+  const report = parseJsonText(
+    fs.readFileSync(path.join(directory, "matrix-report.schema.json"), "utf8"),
+    "matrix-report.schema.json",
+  );
+  for (const definition of ["receiptSummary", "bindings", "caseMetrics", "metrics"]) {
+    assert.equal(report.$defs[definition].additionalProperties, false, definition);
+    assert.ok(report.$defs[definition].required.length > 0, definition);
+  }
+  const row = report.properties.rows.items.properties;
+  assert.equal(row.receipt.oneOf[0].$ref, "#/$defs/receiptSummary");
+  assert.equal(row.bindings.oneOf[0].$ref, "#/$defs/bindings");
+  assert.equal(row.metrics.oneOf[0].$ref, "#/$defs/metrics");
+  assert.deepEqual(
+    report.$defs.metrics.required,
+    [
+      "startup", "total_wall_ms", "rss_peak_sampled_bytes",
+      "process_max_rss_bytes", "peak_memory", "payload", "cases",
+    ],
+  );
 });
 
 test("portable harness self-test executes failure, deterministic fuzz, and metamorphic cases", async (t) => {

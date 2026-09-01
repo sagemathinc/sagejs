@@ -33,8 +33,8 @@
       "properties": {
         "sequence": {"type": "integer", "minimum": 0},
         "kind": {"type": "string", "minLength": 1},
-        "iteration": {"type": ["integer", "null"]},
-        "evaluation": {"type": ["integer", "null"]},
+        "iteration": {"type": ["integer", "null"], "minimum": 0},
+        "evaluation": {"type": ["integer", "null"], "minimum": 0},
         "accepted": {"type": ["boolean", "null"]},
         "data": {"type": "object"},
         "diagnostics": {"type": "array"},

@@ -19,9 +19,9 @@
         "truth_level": {"enum": ["exact", "rigorous", "validated_approximate", "heuristic", "indeterminate"]},
         "passed": {"type": "boolean"},
         "checks": {"type": "array"},
-        "residual": {"type": ["number", "null"]},
-        "error_estimate": {"type": ["number", "null"]},
-        "condition_estimate": {"type": ["number", "null"]}
+        "residual": {"type": ["number", "null"], "minimum": 0},
+        "error_estimate": {"type": ["number", "null"], "minimum": 0},
+        "condition_estimate": {"type": ["number", "null"], "minimum": 0}
       }
     },
     "diagnostics": {"type": "array"},
@@ -72,6 +72,17 @@
     "reproducibility": {"type": "object"},
     "domain_payload": {"type": "object"}
   },
+  "allOf": [
+    {
+      "if": {"properties": {"success": {"const": true}}},
+      "then": {
+        "properties": {
+          "status": {"enum": ["converged", "exact_root"]},
+          "validation": {"properties": {"passed": {"const": true}}}
+        }
+      }
+    }
+  ],
   "$defs": {
     "optional_sha256": {
       "oneOf": [
