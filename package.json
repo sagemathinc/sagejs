@@ -124,7 +124,7 @@
     "test:website:browser": "node scripts/test-reference-browser.cjs",
     "baselib:status": "node scripts/baselib-status.cjs",
     "architecture:packages": "node scripts/check-package-graph.cjs",
-    "architecture:numerics": "node scripts/check-numerical-surface.cjs",
+    "architecture:numerics": "node scripts/check-numerical-surface.cjs && node scripts/check-numerical-browser-closure.cjs",
     "architecture:native": "node scripts/check-native-architecture.cjs",
     "architecture:exports": "node scripts/audit-native-exports.cjs --check",
     "architecture:wasm": "node scripts/check-wasm-capabilities.cjs",
