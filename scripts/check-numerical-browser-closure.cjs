@@ -6,7 +6,7 @@ const {
   readdirSync,
   readFileSync,
 } = require("node:fs");
-const { join, relative, resolve, sep } = require("node:path");
+const { dirname, join, relative, resolve, sep } = require("node:path");
 const { execFileSync } = require("node:child_process");
 
 const DEFAULT_ROOT = resolve(__dirname, "..");
@@ -31,6 +31,19 @@ function numericalModuleName(libraryDirectory, filename) {
     : name.slice(0, -3);
   const segments = name.split("/");
   if (segments.some((segment) => segment.startsWith("_"))) return null;
+  // A public runtime module must live below explicit Python packages.  The
+  // numerical tree also contains qualification-only Python programs (for
+  // example, a SciPy oracle) that are executable evidence producers, not
+  // importable browser runtime modules.  Requiring __init__.py in every
+  // intermediate directory keeps those programs out of the lazy bundle
+  // without maintaining a second path allow/deny list.
+  let directory = join(libraryDirectory, ...segments.slice(0, -1));
+  const packageRoot = join(libraryDirectory, "sagejs", "numerics");
+  while (directory.startsWith(packageRoot) && directory !== libraryDirectory) {
+    if (!existsSync(join(directory, "__init__.py"))) return null;
+    if (directory === packageRoot) break;
+    directory = dirname(directory);
+  }
   return name.replaceAll("/", ".");
 }
 

@@ -556,10 +556,26 @@ function loadCurrentContext({ root, candidate, manifestPath, artifactPath, build
         WebAssembly.Module.imports(new WebAssembly.Module(artifact)))) {
     fail("manifest/build/runtime Wasm imports mismatch");
   }
-  for (const field of ["identity", "target", "floating_point_contract"]) {
+  for (const field of ["target", "floating_point_contract"]) {
     if (manifest.toolchain[field] !== build.value.toolchain[field]) {
       fail(`manifest/build toolchain ${field} mismatch`);
     }
+  }
+  const { inspectToolchain, toolchainDigest } = require(path.join(
+    root, "packages/wasm-toolchain/scripts/toolchain.cjs",
+  ));
+  const preparedToolchain = inspectToolchain({ root });
+  if (!preparedToolchain.ready ||
+      build.value.toolchain.identity !== preparedToolchain.lockDigest) {
+    fail("build report does not name the prepared host toolchain identity");
+  }
+  const canonicalToolchainIdentity = toolchainDigest(
+    preparedToolchain.lock,
+    undefined,
+    preparedToolchain.lock.canonicalBuilder,
+  );
+  if (manifest.toolchain.identity !== canonicalToolchainIdentity) {
+    fail("manifest does not name the canonical builder toolchain identity");
   }
   const publicDigest = reviewedBundle(root, manifest.reviewed_sagejs_files, "public semantics bundle");
   if (publicDigest !== manifest.public_semantics_bundle.sha256) {

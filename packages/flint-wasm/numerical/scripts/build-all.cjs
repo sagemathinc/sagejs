@@ -2,7 +2,7 @@
 "use strict";
 
 const { createHash } = require("node:crypto");
-const { copyFileSync, existsSync, mkdirSync, readFileSync } = require("node:fs");
+const { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { buildSync } = require("esbuild");
@@ -15,10 +15,31 @@ const nloptRoot = join(
 );
 const nodeRuntimeDirectory = join(repositoryRoot, "dist/numerical");
 const browserRuntimeDirectory = join(repositoryRoot, "packages/flint-wasm/dist");
+const { inspectToolchain } = require(
+  join(repositoryRoot, "packages/wasm-toolchain/scripts/toolchain.cjs"),
+);
+const { toolchainDigest } = require(
+  join(repositoryRoot, "packages/wasm-toolchain/scripts/toolchain.cjs"),
+);
 
-function run(script) {
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.keys(value).sort().map(
+      (key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`,
+    ).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function run(script, environment = process.env) {
   const result = spawnSync(process.execPath, [script], {
     cwd: repositoryRoot,
+    env: environment,
     stdio: "inherit",
   });
   if (result.error) throw result.error;
@@ -27,7 +48,69 @@ function run(script) {
   }
 }
 
-run(join(packageRoot, "scripts/build.cjs"));
+const inspection = inspectToolchain({ root: repositoryRoot });
+if (!inspection.ready) {
+  for (const filename of [
+    join(nodeRuntimeDirectory, "backend.cjs"),
+    join(nodeRuntimeDirectory, "cminpack.wasm"),
+    join(nodeRuntimeDirectory, "nlopt-backend.cjs"),
+    join(nodeRuntimeDirectory, "nlopt-methods.wasm"),
+    join(browserRuntimeDirectory, "numerical-backend.mjs"),
+    join(browserRuntimeDirectory, "cminpack.wasm"),
+    join(browserRuntimeDirectory, "nlopt-backend.mjs"),
+    join(browserRuntimeDirectory, "nlopt-methods.wasm"),
+  ]) rmSync(filename, { force: true });
+  process.stdout.write(
+    "Skipped optional numerical Wasm reactors: the pinned toolchain is not prepared.\n",
+  );
+  process.exit(0);
+}
+
+const canonicalIdentity = toolchainDigest(
+  inspection.lock,
+  undefined,
+  inspection.lock.canonicalBuilder,
+);
+const cminpackEnvironment = inspection.platform === inspection.lock.canonicalBuilder
+  ? process.env
+  : { ...process.env, SAGEJS_NUMERICAL_CANDIDATE_BUILD: "1" };
+run(join(packageRoot, "scripts/build.cjs"), cminpackEnvironment);
+
+// The production manifest records the canonical Linux-x64 toolchain identity,
+// while the prepared-toolchain identity intentionally includes the host SDK
+// archive.  Non-canonical hosts must still reproduce exactly the canonical
+// artifact, source closure, and ABI; they must not compare unlike host-cache
+// identities or bypass production verification entirely.
+const cminpackManifest = JSON.parse(readFileSync(
+  join(packageRoot, "release/production-manifest.json"),
+  "utf8",
+));
+const cminpackReport = JSON.parse(readFileSync(
+  join(packageRoot, "build/build-report.json"),
+  "utf8",
+));
+const cminpackArtifact = readFileSync(join(packageRoot, "build/cminpack.wasm"));
+const cminpackAbi = sha256(Buffer.from(canonicalJson({
+  imports: cminpackReport.artifact.imports,
+  exports: cminpackReport.artifact.exports,
+  memory: cminpackReport.artifact.memory,
+})));
+if (
+  cminpackReport.toolchain.identity !== inspection.lockDigest ||
+  cminpackManifest.toolchain.identity !== canonicalIdentity ||
+  cminpackReport.toolchain.target !== cminpackManifest.toolchain.target ||
+  cminpackReport.toolchain.floating_point_contract !==
+    cminpackManifest.toolchain.floating_point_contract ||
+  cminpackReport.source_closure.sha256 !== cminpackManifest.source_closure.sha256 ||
+  cminpackReport.artifact.sha256 !== cminpackManifest.artifact.sha256 ||
+  cminpackReport.artifact.bytes !== cminpackManifest.artifact.bytes ||
+  sha256(cminpackArtifact) !== cminpackManifest.artifact.sha256 ||
+  cminpackAbi !== cminpackManifest.abi.sha256
+) {
+  throw new Error(
+    "the cminpack build does not reproduce its canonical production manifest",
+  );
+}
 run(join(nloptRoot, "scripts/build.cjs"));
 run(join(nloptRoot, "scripts/verify-release.cjs"));
 

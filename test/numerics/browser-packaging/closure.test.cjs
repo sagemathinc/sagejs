@@ -26,6 +26,7 @@ function fixture() {
     "sagejs/numerics/optimization/__init__.py",
     "sagejs/numerics/optimization/visualization.py",
     "sagejs/numerics/optimization/_core.py",
+    "sagejs/numerics/optimization/qualification/oracle.py",
     "sagejs/numerics/frontends/__init__.py",
     "sagejs/numerics/frontends/portable.py",
   ]) write(join(root, "src", "lib", name));
