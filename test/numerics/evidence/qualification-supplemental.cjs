@@ -43,7 +43,9 @@ const {
 const {
   buildReleaseGate,
   buildSupplementalReport,
+  qualificationInternals: supplementalInternals,
   verifyEvidence,
+  verifyMatrixBrowserSubjectCoherence,
 } = require(
   "../../../scripts/numerical-computing/qualification/supplemental-report.cjs",
 );
@@ -157,6 +159,7 @@ function browserEvidence(kind, engine) {
     subject: {
       kind,
       name: kind === "worker" ? "sagejs-browser-worker" : "playwright-browser",
+      version: "1",
       engine,
     },
     corpus: {
@@ -628,6 +631,33 @@ test("supplemental release report fails closed on omission, stale input, and tam
   const tampered = destructiveEvidence();
   tampered.checks["corrupt-region"].status = "failed";
   assert.throws(() => verifyEvidence(tampered, candidate), /content ID mismatch/);
+});
+
+test("browser memory subjects exactly match full-runtime browser receipts", () => {
+  const matrix = matrixReport();
+  const records = evidenceRecords().filter((record) =>
+    record.value.schema === "sagejs.numerical-browser-memory-evidence/v1");
+  assert.equal(verifyMatrixBrowserSubjectCoherence(matrix, records), true);
+
+  const substituted = structuredClone(records);
+  const chromium = substituted.find((record) =>
+    record.value.subject.kind === "browser" && record.value.subject.engine === "chromium");
+  chromium.value.subject.version = "2";
+  const { id: _oldId, ...core } = chromium.value;
+  chromium.value.id = contentId(core);
+  assert.throws(
+    () => verifyMatrixBrowserSubjectCoherence(matrix, substituted),
+    /differs from its full-runtime receipt/,
+  );
+});
+
+test("matrix receipt identity rejects duplicate verified receipts", () => {
+  const ids = new Set();
+  supplementalInternals.addUniqueReceiptId(ids, "sha256:first");
+  assert.throws(
+    () => supplementalInternals.addUniqueReceiptId(ids, "sha256:first"),
+    /duplicate matrix receipt sha256:first/,
+  );
 });
 
 test("recomputed supplemental evidence forgeries and incomplete release inputs fail closed", () => {

@@ -817,13 +817,64 @@ function verifyMatrixReport(value, candidate, policy, template, receiptRecords) 
     if (receipt.repository.commit !== candidate) {
       throw new Error(`matrix receipt ${receipt.id} is not bound to candidate ${candidate}`);
     }
-    if (!receiptIds.add(receipt.id)) throw new Error(`duplicate matrix receipt ${receipt.id}`);
+    addUniqueReceiptId(receiptIds, receipt.id);
   }
   const rebuilt = buildReport(policy, receiptRecords);
   if (canonicalJson(rebuilt) !== canonicalJson(value)) {
     throw new Error("matrix report does not reproduce from its authenticated receipt files");
   }
   return value;
+}
+
+function addUniqueReceiptId(receiptIds, receiptId) {
+  if (receiptIds.has(receiptId)) throw new Error(`duplicate matrix receipt ${receiptId}`);
+  receiptIds.add(receiptId);
+}
+
+function verifyMatrixBrowserSubjectCoherence(matrix, supplementalEvidenceRecords) {
+  const expectedKeys = new Set([
+    "browser:chromium", "browser:firefox", "browser:webkit", "worker:chromium",
+  ]);
+  const memorySubjects = new Map();
+  for (const record of supplementalEvidenceRecords) {
+    if (record.value?.schema !== "sagejs.numerical-browser-memory-evidence/v1") continue;
+    const subject = record.value.subject;
+    const key = `${subject?.kind}:${subject?.engine}`;
+    if (!expectedKeys.has(key)) {
+      throw new Error(`supplemental browser memory has unexpected subject ${key}`);
+    }
+    if (memorySubjects.has(key)) {
+      throw new Error(`supplemental browser memory duplicates subject ${key}`);
+    }
+    memorySubjects.set(key, subject);
+  }
+  if (memorySubjects.size !== expectedKeys.size) {
+    const missing = [...expectedKeys].filter((key) => !memorySubjects.has(key));
+    throw new Error(`supplemental browser memory lacks exact subjects: ${missing.join(", ")}`);
+  }
+
+  const matrixSubjects = new Map();
+  for (const row of matrix.rows) {
+    const subject = row.receipt?.subject;
+    if (!["browser", "worker"].includes(subject?.kind)) continue;
+    const key = `${subject.kind}:${subject.engine}`;
+    if (!expectedKeys.has(key) || matrixSubjects.has(key)) {
+      throw new Error(`full-runtime matrix substitutes browser subject ${key}`);
+    }
+    matrixSubjects.set(key, subject);
+  }
+  if (matrixSubjects.size !== expectedKeys.size) {
+    const missing = [...expectedKeys].filter((key) => !matrixSubjects.has(key));
+    throw new Error(`full-runtime matrix lacks exact browser subjects: ${missing.join(", ")}`);
+  }
+  for (const key of expectedKeys) {
+    if (canonicalJson(matrixSubjects.get(key)) !== canonicalJson(memorySubjects.get(key))) {
+      throw new Error(
+        `supplemental browser memory subject ${key} differs from its full-runtime receipt`,
+      );
+    }
+  }
+  return true;
 }
 
 function verifyMatrixArtifactCoherence(matrix, supplemental) {
@@ -890,6 +941,7 @@ function buildReleaseGate({
     matrixReportRecord.value, candidate, policy, matrixTemplateRecord.value,
     matrixReceiptRecords,
   );
+  verifyMatrixBrowserSubjectCoherence(matrix, supplementalEvidenceRecords);
   verifyContentId(supplementalReport, "supplemental report");
   if (supplementalReport.schema !== REPORT_SCHEMA_SUPPLEMENTAL ||
       supplementalReport.mode !== "release" || supplementalReport.candidate !== candidate ||
@@ -969,4 +1021,6 @@ module.exports = {
   verifyCompiledPolicy,
   verifyMatrixReport,
   verifyMatrixArtifactCoherence,
+  verifyMatrixBrowserSubjectCoherence,
+  qualificationInternals: { addUniqueReceiptId },
 };
