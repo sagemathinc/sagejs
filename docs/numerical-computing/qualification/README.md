@@ -133,6 +133,12 @@ descendant visible to the collector at each sample. Linux reads `/proc`, macOS
 reads `ps`, and Windows reads CIM. `browser_heap` is supplemental and cannot
 satisfy a process-tree policy. Adapter telemetry cannot populate or authenticate
 `peak_memory`; the exact authority is always `qualification-collector`.
+Historical verification enforces the exact platform/subject tuple instead of
+accepting another globally known method: Node is
+`node-process-rss-boundary-v1` at 5 ms; Linux external subjects are
+`linux-procfs-process-tree-sampled-v1` at 5 ms; macOS is
+`macos-ps-process-tree-sampled-v1` at 50 ms; and Windows is
+`windows-cim-process-tree-sampled-v1` at 50 ms.
 An external-subject sample fails unless the collector observes a live
 descendant while that sample executes. In particular, an adapter must await an
 asynchronously supervised local process: a synchronous child blocks the
@@ -201,6 +207,47 @@ adapter exercise the integrated P0-P8 numerical surface through a built
 Sage.js artifact. The checked-in matrix files are templates, not receipts or
 claims that any platform row has been measured.
 
+## Hermetic SciPy oracle
+
+Every one of the 16 full-runtime rows executes the same emitted SciPy oracle
+programs through a separately bound, per-platform CPython prefix. The checked
+catalog selects exact CPython 3.14.4 python-build-standalone 20260414 archives
+and exact NumPy 2.5.1 and SciPy 1.18.0 wheels for Linux x64, Linux ARM64, macOS
+ARM64, and Windows x64. It binds every source URL, raw SHA-256, byte count, and
+the normalized installed closure. A version match is not sufficient.
+
+Provision a host into ignored build storage with:
+
+```console
+node scripts/numerical-computing/qualification/provision-scipy-oracle.cjs \
+  --artifact-directory build/qualification/scipy-inputs \
+  --prefix build/qualification/scipy-prefix \
+  --provenance build/qualification/scipy-provenance.json \
+  --download
+```
+
+The network step is outside receipt collection. The provisioner first verifies
+the catalog's raw archive bytes. Its tar and wheel parsers reject traversal,
+absolute and nonportable names, hardlinks, special members, duplicates, case
+collisions, unsupported ZIP features, `.data` wheel members, inconsistent
+RECORD hashes, and expansion-budget violations. It materializes only internal
+tar symlinks whose transitive target is a regular in-archive file, creating an
+independent `nlink == 1` copy. The unused `share/terminfo/**` archive subtree is
+deterministically pruned. Wheels are RECORD-verified and directly unpacked;
+`pip` is intentionally not involved. The final prefix contains only real
+directories and unique regular files, has an empty `.qualification-tmp`, and
+must exactly match the catalog's complete path/kind/content closure before its
+provenance file is published.
+
+Producer jobs set `SAGEJS_QUALIFICATION_SCIPY_PREFIX` and
+`SAGEJS_QUALIFICATION_SCIPY_PROVENANCE`. Adapters authenticate the prefix,
+provenance, catalog, executable, complete import closure, deterministic launch
+environment, and runtime versions before and after execution. Aggregation uses
+the uploaded binding snapshot and exact source-current catalog without trying
+to reopen producer-local paths. A missing input, stale closure, foreign
+platform, link alias, or changed runtime makes the row impossible rather than
+skipped.
+
 ## Mandatory release wiring
 
 The P8 collectors and release-gate builder are not optional diagnostic tools.
@@ -217,6 +264,7 @@ recorded and authenticated before and after collection but are not reopened on
 the aggregation host.
 
 Until that package command, release workflow dependency, artifact transport,
-and all non-pending catalog rows exist, this infrastructure deliberately cannot
-produce an eligible release gate. A green ordinary test suite is not a
-substitute for the source-current qualification document.
+and four-platform oracle provisioning are exercised by the exact candidate,
+this infrastructure deliberately cannot produce an eligible release gate. A
+green ordinary test suite is not a substitute for the source-current
+qualification document.

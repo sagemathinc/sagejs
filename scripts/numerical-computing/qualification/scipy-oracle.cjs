@@ -14,14 +14,43 @@ const {
 } = require("../common.cjs");
 
 const SCHEMA = "sagejs.numerical-scipy-oracle-binding/v2";
-const PROVENANCE_SCHEMA = "sagejs.numerical-scipy-oracle-provenance/v1";
-const CATALOG_SCHEMA = "sagejs.numerical-scipy-oracle-catalog/v1";
+const PROVENANCE_SCHEMA = "sagejs.numerical-scipy-oracle-provenance/v2";
+const CATALOG_SCHEMA = "sagejs.numerical-scipy-oracle-catalog/v2";
 const CATALOG_PATH =
   "bench/numerical-computing/qualification/scipy-oracle-catalog.json";
 const POLICY = Object.freeze({
   python: "3.14.4",
   numpy: "2.5.1",
   scipy: "1.18.0",
+});
+const PROVISIONING_POLICY = Object.freeze({
+  schema: "sagejs.numerical-scipy-oracle-provisioning-policy/v1",
+  python_archive: Object.freeze({
+    format: "tar.gz",
+    strip_prefix: "python/",
+    prune: Object.freeze(["share/terminfo/**"]),
+    symlinks: "materialize-internal-regular-target",
+    hardlinks: "reject",
+    special_files: "reject",
+  }),
+  wheels: Object.freeze({
+    format: "zip",
+    install: "direct-record-verified-unpack",
+    data_members: "reject",
+    record_hash: "sha256-required",
+  }),
+  filesystem: Object.freeze({
+    links: "reject",
+    regular_nlink: 1,
+    case_collisions: "reject",
+    temporary_directory: ".qualification-tmp",
+  }),
+  limits: Object.freeze({
+    entries: 20_000,
+    member_bytes: 256 * 1024 * 1024,
+    expanded_bytes: 1024 * 1024 * 1024,
+    path_bytes: 4096,
+  }),
 });
 const ORACLE_ENVIRONMENT = Object.freeze({
   LANG: "C.UTF-8",
@@ -146,6 +175,9 @@ function prefixPath(prefix, relative, label, kind = "file") {
   if ((kind === "file" && !status.isFile()) || (kind === "directory" && !status.isDirectory())) {
     throw new Error(`${label} has the wrong filesystem kind`);
   }
+  if (kind === "file" && status.nlink !== 1) {
+    throw new Error(`${label} must have exactly one filesystem link`);
+  }
   return real;
 }
 
@@ -172,6 +204,9 @@ function completePrefixClosure(prefixPath) {
       return;
     }
     if (!status.isFile()) throw new Error(`SciPy oracle prefix contains special file ${relative}`);
+    if (status.nlink !== 1) {
+      throw new Error(`SciPy oracle prefix contains hardlinked file ${relative}`);
+    }
     const bytes = fs.readFileSync(filename);
     records.push({
       path: portable,
@@ -221,6 +256,7 @@ function readStrictJson(filename, label) {
   if (!status.isFile() || status.isSymbolicLink()) {
     throw new Error(`${label} must be a regular non-symbolic-link file`);
   }
+  if (status.nlink !== 1) throw new Error(`${label} must not be hardlinked`);
   if (fs.realpathSync(absolute) !== absolute) {
     throw new Error(`${label} path or parent is a link, junction, or noncanonical alias`);
   }
@@ -233,8 +269,22 @@ function validateInput(value, label) {
     throw new Error(`${label}.kind is unsupported`);
   }
   for (const name of ["name", "version", "filename", "source"]) nonempty(value[name], `${label}.${name}`);
-  if (path.basename(value.filename) !== value.filename || value.filename.includes("\\")) {
-    throw new Error(`${label}.filename is not a basename`);
+  const filename = value.filename;
+  const windowsStem = filename.split(".", 1)[0].toLocaleUpperCase("en-US");
+  if (!/^[A-Za-z0-9][A-Za-z0-9._+-]*$/.test(filename) ||
+      filename === "." || filename === ".." || filename.endsWith(".") ||
+      filename.endsWith(" ") || filename.includes(":") ||
+      /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/.test(windowsStem)) {
+    throw new Error(`${label}.filename is not a portable regular basename`);
+  }
+  let source;
+  try {
+    source = new URL(value.source);
+  } catch {
+    throw new Error(`${label}.source must be an HTTPS artifact URL`);
+  }
+  if (source.protocol !== "https:" || source.username || source.password || source.hash) {
+    throw new Error(`${label}.source must be an HTTPS artifact URL without credentials or fragment`);
   }
   digest(value.sha256, `${label}.sha256`);
   integer(value.bytes, `${label}.bytes`, 1);
@@ -280,12 +330,19 @@ function validatePrefixRecord(value, label) {
 }
 
 function validateCatalog(value) {
-  exactKeys(value, ["schema", "id", "policy", "platforms"], "SciPy oracle catalog");
+  exactKeys(
+    value,
+    ["schema", "id", "policy", "provisioning", "platforms"],
+    "SciPy oracle catalog",
+  );
   if (value.schema !== CATALOG_SCHEMA) throw new Error("SciPy oracle catalog has wrong schema");
   const { id, ...core } = value;
   if (id !== contentId(core)) throw new Error("SciPy oracle catalog content ID mismatch");
   if (canonicalJson(value.policy) !== canonicalJson(POLICY)) {
     throw new Error("SciPy oracle catalog policy differs from qualification policy");
+  }
+  if (canonicalJson(value.provisioning) !== canonicalJson(PROVISIONING_POLICY)) {
+    throw new Error("SciPy oracle catalog provisioning policy differs from qualification policy");
   }
   if (!Array.isArray(value.platforms) || value.platforms.length !== 4) {
     throw new Error("SciPy oracle catalog must contain four supported platforms");
@@ -326,7 +383,7 @@ function validateProvenance(value, expectedRow = null) {
     value,
     [
       "schema", "id", "platform", "policy", "python_executable", "site_packages",
-      "inputs", "prefix",
+      "provisioning", "inputs", "prefix",
     ],
     "SciPy oracle provenance",
   );
@@ -337,6 +394,9 @@ function validateProvenance(value, expectedRow = null) {
   if (canonicalJson(value.policy) !== canonicalJson(POLICY)) {
     throw new Error("SciPy oracle provenance policy differs from qualification policy");
   }
+  if (canonicalJson(value.provisioning) !== canonicalJson(PROVISIONING_POLICY)) {
+    throw new Error("SciPy oracle provenance provisioning policy differs from qualification policy");
+  }
   canonicalRelative(value.python_executable, "SciPy oracle provenance.python_executable");
   canonicalRelative(value.site_packages, "SciPy oracle provenance.site_packages");
   validateInputs(value.inputs, "provenance.inputs");
@@ -346,6 +406,7 @@ function validateProvenance(value, expectedRow = null) {
       platform: expectedRow.platform,
       python_executable: expectedRow.python_executable,
       site_packages: expectedRow.site_packages,
+      provisioning: PROVISIONING_POLICY,
       inputs: expectedRow.inputs,
       prefix: expectedRow.prefix,
     };
@@ -353,6 +414,7 @@ function validateProvenance(value, expectedRow = null) {
       platform: value.platform,
       python_executable: value.python_executable,
       site_packages: value.site_packages,
+      provisioning: value.provisioning,
       inputs: value.inputs,
       prefix: value.prefix,
     };
@@ -412,8 +474,10 @@ function probePrefix(prefix, executableRelative, sitePackagesRelative, platformI
       record.numpy?.version !== POLICY.numpy || record.scipy?.version !== POLICY.scipy) {
     throw new Error("hermetic SciPy oracle versions differ from policy");
   }
-  for (const name of ["executable", "prefix", "base_prefix", ...record.import_paths]) {
-    inside(prefix, name, "hermetic Python runtime path");
+  for (const runtimePath of [
+    record.executable, record.prefix, record.base_prefix, ...record.import_paths,
+  ]) {
+    inside(prefix, runtimePath, "hermetic Python runtime path");
   }
   if (path.resolve(record.temporary_directory) !== temporary) {
     throw new Error("hermetic Python tempfile selection escaped its authenticated prefix");
@@ -710,6 +774,7 @@ module.exports = {
   CATALOG_SCHEMA,
   ORACLE_ENVIRONMENT,
   POLICY,
+  PROVISIONING_POLICY,
   PROVENANCE_SCHEMA,
   SCHEMA,
   createBinding,

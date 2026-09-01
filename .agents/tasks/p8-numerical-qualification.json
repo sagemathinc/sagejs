@@ -4,17 +4,19 @@
   "id": "p8-numerical-qualification",
   "title": "P8 numerical qualification campaign",
   "lane": "numerical-qualification",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Build backend-neutral P0-P8 corpora, real Sage.js Node adapters, capability binding drafts, fail-closed matrix policy templates, and qualification tests without fabricating platform evidence",
-  "base_commit": "0db9496934dbb35b3d2d0a720a9b9b2846a63205",
+  "base_commit": "5614efa098d5ff94c8670024e737570b1bfa4421",
   "claims": [
     ".agents/lanes.json",
     "bench/numerical-computing/qualification/",
     "docs/numerical-computing/qualification/",
     "scripts/numerical-computing/qualification/",
+    "test/numerics/evidence/qualification.cjs",
     "test/numerics/evidence/qualification-campaign.cjs",
     "test/numerics/evidence/qualification-scipy-oracle.cjs",
+    "test/numerics/evidence/qualification-scipy-provisioner.cjs",
     "test/numerics/evidence/qualification-supplemental.cjs"
   ],
   "dependencies": [],
@@ -38,7 +40,10 @@
   },
   "validation": [
     "node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs",
+    "env SAGEJS_QUALIFICATION_SCIPY_PREFIX=$PWD/build/qualification/scipy-prefix-linux-x64 SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$PWD/build/qualification/scipy-linux-x64.provenance.json node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs test/numerics/evidence/qualification-scipy-oracle.cjs test/numerics/evidence/qualification-scipy-provisioner.cjs test/numerics/evidence/qualification-supplemental.cjs",
     "node scripts/numerical-computing/qualification/validate-campaign.cjs",
+    "pnpm build:check",
+    "pnpm test:baselib:strict",
     "pnpm architecture:check"
   ],
   "runs": [
@@ -61,20 +66,81 @@
       "commit": "49ddadf2803fc7df3f379e7fbfc3ebff23640249",
       "workspace_fingerprint": "fa4bc6113fa3a67ab326f4f901aed39b16eff9dee4655af43d0e5dc26ded0ee4",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.79,
+      "started_at": "2026-09-01T07:32:00.683Z",
+      "commit": "5c3de0fbf7eee2961f7480a4756697e117a530e9",
+      "workspace_fingerprint": "7d6ae6bef3b8c208c6156acec30b7b6f82c18283e1d97c25f7ebec9068d76f7f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_QUALIFICATION_SCIPY_PREFIX=/home/user/sagejs-worktrees/p8-numerical-qualification/build/qualification/scipy-prefix-linux-x64 SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=/home/user/sagejs-worktrees/p8-numerical-qualification/build/qualification/scipy-linux-x64.provenance.json node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs test/numerics/evidence/qualification-scipy-oracle.cjs test/numerics/evidence/qualification-scipy-provisioner.cjs test/numerics/evidence/qualification-supplemental.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.06,
+      "started_at": "2026-09-01T07:32:18.984Z",
+      "commit": "5c3de0fbf7eee2961f7480a4756697e117a530e9",
+      "workspace_fingerprint": "7d6ae6bef3b8c208c6156acec30b7b6f82c18283e1d97c25f7ebec9068d76f7f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/numerical-computing/qualification/validate-campaign.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.068,
+      "started_at": "2026-09-01T07:33:23.569Z",
+      "commit": "5c3de0fbf7eee2961f7480a4756697e117a530e9",
+      "workspace_fingerprint": "7d6ae6bef3b8c208c6156acec30b7b6f82c18283e1d97c25f7ebec9068d76f7f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 509.091,
+      "started_at": "2026-09-01T07:33:24.340Z",
+      "commit": "5c3de0fbf7eee2961f7480a4756697e117a530e9",
+      "workspace_fingerprint": "7d6ae6bef3b8c208c6156acec30b7b6f82c18283e1d97c25f7ebec9068d76f7f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 50.239,
+      "started_at": "2026-09-01T07:42:01.868Z",
+      "commit": "5c3de0fbf7eee2961f7480a4756697e117a530e9",
+      "workspace_fingerprint": "7d6ae6bef3b8c208c6156acec30b7b6f82c18283e1d97c25f7ebec9068d76f7f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.03,
+      "started_at": "2026-09-01T07:42:58.278Z",
+      "commit": "5c3de0fbf7eee2961f7480a4756697e117a530e9",
+      "workspace_fingerprint": "7d6ae6bef3b8c208c6156acec30b7b6f82c18283e1d97c25f7ebec9068d76f7f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Advanced the source-bound P0-P8 Node qualification campaign to corpus v5: 39 backend-neutral cases and 26 available capabilities. Corrected the final multilingual catalog to 63 supported, 25 structured-unsupported, and 59 envelope-bound emitters; replaced stale unsafe MATLAB/Wolfram catalog witnesses; executed eleven built-MATLAB-parser programs for one-output and callback row/column shape; and fault-injected missing/corrupt cminpack optional resources through the real public least-squares artifact. Automatic least squares remains on independently checked ordinary Python while explicit cminpack returns stable nonleaking structured failure. A disposable dirty-lane full campaign passed all 39 cases; it is not a release receipt and no platform evidence was checked in.",
+    "summary": "Made the source-current P0-P8 campaign release-gate ready without creating platform receipts. The 65-case corpus and 40 available capabilities now execute against the integrated Node/browser-worker artifacts, including current unified cminpack/NLopt cache semantics and SEA parser-guard capability. Historical receipt verification pins the exact subject/platform memory collector tuple and lifecycle cleanup covers collector-rejected successful initialization. Added a checked four-platform hermetic SciPy catalog for CPython 3.14.4, NumPy 2.5.1, and SciPy 1.18.0 plus a source-bound safe tar/wheel provisioner. A real Linux x64 download normalized to the catalog's f8b50254026c... closure (4293 files, 409 directories, 366341985 bytes), created an authenticated runtime binding, and the rebuilt real first-party adapter campaign passed. The full 16-row policy requires one exact per-platform oracle binding and independently verified scipy_execution; evidence remains deliberately absent until the frozen release candidate is measured.",
     "risks": [
-      "No final Node, SEA, browser, or worker platform receipt has been collected. Both matrix templates intentionally remain evidence-free and fail closed until the exact clean candidate is measured on each required host/runtime.",
-      "The cminpack case injects missing/corrupt failures at the built runtime's lazy backend state and checks the public least-squares result; browser fetch and corrupt-byte isolation remain separate browser qualification evidence.",
-      "The merged source currently has a stale optimizer-opportunity generated manifest, so architecture:check stops at that shared integration-owned check after all earlier architecture gates pass.",
-      "NLopt central integration was not yet present at the source closure and therefore has no capability or campaign case in corpus v5."
+      "No final Node, npm, SEA, browser, or worker platform receipt was collected. The checked templates stay evidence-free and fail closed until the exact clean candidate is measured on all required hosts and runtimes.",
+      "Only Linux x64 was reprovisioned in this lane. The other three exact catalog closures came from the authenticated cross-platform artifact research and must be reprovisioned on the final four-host campaign.",
+      "Local npm and SEA adapter cases were skipped because release archives were not supplied; their parser-guard, resource-identity, process-tree, and lifecycle boundaries have focused executable regressions but still require candidate archive receipts.",
+      "architecture:check reaches native classification and then fails only because the two existing qualification-only cminpack/NLopt sanitizer harnesses are not yet classified in the shared native registry. Integration owns those entries.",
+      "The NLopt production manifest remains pending source-current promotion, so the final release gate is intentionally impossible until the selected Nelder-Mead-only artifact is requalified."
     ],
     "next_steps": [
-      "After central NLopt integration lands, reactivate this lane, merge the new source closure, and add exact executable cases/capability envelopes for its public selection, fallback, cancellation, and resource semantics.",
-      "Refresh the shared optimizer-opportunity artifacts in the integration lane and rerun architecture:check.",
-      "Only after source freeze, bind fresh capability manifests and collect immutable clean receipts independently on every required Node, SEA, browser, and worker row."
+      "Classify both qualification-only sanitizer harnesses in architecture/native-code.json on the integration branch and rerun full architecture checks.",
+      "Promote the reviewed selected-source NLopt manifest, provision the exact hermetic oracle on all four persistent hosts, and package the frozen candidate.",
+      "Collect and aggregate immutable candidate-bound Node, fresh-npm, relocated-SEA, browser, worker, sanitizer, destructive-Wasm, memory, and structural-performance evidence; release wiring must reject any missing row."
     ]
   }
 }

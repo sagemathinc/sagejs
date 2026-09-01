@@ -445,7 +445,7 @@ answer = minimize(
     maxiter=2000,
     max_evaluations=2000,
 )
-first_backend = runtime._nlopt_backend_state["backend"]
+first_backend = runtime.numerical_backend("nlopt")
 repeat = minimize(
     lambda point: (point[0]-2.0)**2 + (point[1]+1.0)**2,
     [5.0, 5.0],
@@ -456,8 +456,8 @@ repeat = minimize(
 automatic = minimize(lambda point: (point[0]-2.0)**2, [0.0])
 provenance = answer.to_dict()["provenance"]
 automatic_provenance = automatic.to_dict()["provenance"]
-cached_backend = runtime._nlopt_backend_state["backend"]
-general_backend = runtime._numerical_backend_state["backend"]
+cached_backend = runtime.numerical_backend("nlopt")
+general_backend = runtime.numerical_backend("cminpack")
 output_record = {
     "value": answer.value,
     "objective": answer.domain_payload["objective"],
@@ -596,10 +596,11 @@ class EntryWitness:
         self.entered = True
         raise RuntimeError("out-of-envelope call entered NLopt backend")
 
-backend_state = runtime._nlopt_backend_state
-original_backend = backend_state["backend"]
+backend_state = runtime._numerical_backends
+had_backend = "nlopt" in backend_state
+original_backend = backend_state["nlopt"] if had_backend else None
 witness = EntryWitness()
-backend_state["backend"] = witness
+backend_state["nlopt"] = witness
 try:
     answer = minimize(
         lambda point: sum(value*value for value in point),
@@ -628,7 +629,10 @@ except Exception as error:
     }
 finally:
     output_record["backend_entered"] = witness.entered
-    backend_state["backend"] = original_backend`,
+    if had_backend:
+        backend_state["nlopt"] = original_backend
+    else:
+        del backend_state["nlopt"]`,
     "p3-nlopt-cobyla-explicitly-unsupported": String.raw`
 import sagejs.runtime as runtime
 from sagejs.numerics.optimization import minimize
@@ -640,10 +644,11 @@ class EntryWitness:
         self.entered = True
         raise RuntimeError("unsupported COBYLA entered NLopt backend")
 
-backend_state = runtime._nlopt_backend_state
-original_backend = backend_state["backend"]
+backend_state = runtime._numerical_backends
+had_backend = "nlopt" in backend_state
+original_backend = backend_state["nlopt"] if had_backend else None
 witness = EntryWitness()
-backend_state["backend"] = witness
+backend_state["nlopt"] = witness
 try:
     minimize(lambda point: point[0]*point[0], [1.0], method="nlopt-cobyla")
     output_record = {"rejected": False, "error_name": None, "error_message": ""}
@@ -655,7 +660,10 @@ except Exception as error:
     }
 finally:
     output_record["backend_entered"] = witness.entered
-    backend_state["backend"] = original_backend`,
+    if had_backend:
+        backend_state["nlopt"] = original_backend
+    else:
+        del backend_state["nlopt"]`,
     "p3-nlopt-nonlinear-constraints-explicitly-unsupported": String.raw`
 import sagejs.runtime as runtime
 from sagejs.numerics.optimization import minimize
@@ -667,10 +675,11 @@ class EntryWitness:
         self.entered = True
         raise RuntimeError("unsupported nonlinear constraint entered NLopt backend")
 
-backend_state = runtime._nlopt_backend_state
-original_backend = backend_state["backend"]
+backend_state = runtime._numerical_backends
+had_backend = "nlopt" in backend_state
+original_backend = backend_state["nlopt"] if had_backend else None
 witness = EntryWitness()
-backend_state["backend"] = witness
+backend_state["nlopt"] = witness
 try:
     minimize(
         lambda point: point[0]*point[0],
@@ -686,7 +695,10 @@ except Exception as error:
     }
 finally:
     output_record["backend_entered"] = witness.entered
-    backend_state["backend"] = original_backend`,
+    if had_backend:
+        backend_state["nlopt"] = original_backend
+    else:
+        del backend_state["nlopt"]`,
     "p3-nlopt-failure-provenance": String.raw`
 import sagejs.runtime as runtime
 from sagejs.numerics.optimization import minimize
@@ -742,12 +754,13 @@ class UnavailableNloptBackend:
     def solve(self, options):
         raise RuntimeError(self.kind + " private nlopt-resource detail")
 
-backend_state = runtime._nlopt_backend_state
-original_backend = backend_state["backend"]
+backend_state = runtime._numerical_backends
+had_backend = "nlopt" in backend_state
+original_backend = backend_state["nlopt"] if had_backend else None
 records = []
 try:
     for kind in input_record["resource_failures"]:
-        backend_state["backend"] = UnavailableNloptBackend(kind)
+        backend_state["nlopt"] = UnavailableNloptBackend(kind)
         automatic = minimize(lambda point: (point[0]-2.0)**2, [20.0])
         explicit = []
         for method in ("nlopt-nelder-mead",):
@@ -770,7 +783,10 @@ try:
             "explicit": explicit,
         })
 finally:
-    backend_state["backend"] = original_backend
+    if had_backend:
+        backend_state["nlopt"] = original_backend
+    else:
+        del backend_state["nlopt"]
 output_record = {"records": records}`,
     "p4-ode-exponential": String.raw`
 from sagejs.numerics.ode import solve_ivp

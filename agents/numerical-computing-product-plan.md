@@ -1000,6 +1000,21 @@ fabricated after the fact, and remain useful without animation.
 Acceptance: published capabilities are reproducible and fail closed outside
 their validated envelopes.
 
+The implemented P8 evidence boundary now treats the differential SciPy oracle
+as a release artifact rather than an ambient host package. A checked four-host
+catalog selects exact standalone CPython 3.14.4, NumPy 2.5.1, and SciPy 1.18.0
+bytes and exact normalized prefix closures. A source-bound provisioner verifies
+and safely parses those inputs, materializes internal archive links as unique
+regular files, RECORD-verifies wheels without `pip`, and rejects traversal,
+hardlinks, special members, case collisions, `.data` members, and expansion
+bombs. All 16 matrix subjects bind and reauthenticate one per-platform oracle
+snapshot before and after execution. Receipt verification also pins the exact
+platform/subject memory method, scope, and interval rather than accepting a
+different globally known collector method. This leaves the final measurements
+honestly absent until the frozen candidate is exercised on every declared
+runtime; catalog qualification is input/source closure, not a fabricated
+product receipt.
+
 ## The first three demonstrations I would build
 
 ### 1. Root-finding story

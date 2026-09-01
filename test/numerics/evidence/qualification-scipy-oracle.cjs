@@ -20,6 +20,7 @@ const {
   ORACLE_ENVIRONMENT,
   POLICY,
   PROVENANCE_SCHEMA,
+  PROVISIONING_POLICY,
   SCHEMA,
   createBinding,
   validateBinding,
@@ -69,6 +70,7 @@ function qualifiedCatalog() {
   return identified({
     schema: CATALOG_SCHEMA,
     policy: { ...POLICY },
+    provisioning: PROVISIONING_POLICY,
     platforms: [
       platform("linux-x64", true),
       platform("linux-arm64"),
@@ -89,6 +91,7 @@ function historicalBinding() {
     policy: { ...POLICY },
     python_executable: row.python_executable,
     site_packages: row.site_packages,
+    provisioning: PROVISIONING_POLICY,
     inputs: row.inputs,
     prefix: row.prefix,
   });
@@ -146,20 +149,18 @@ function reidentify(value) {
   return value;
 }
 
-test("checked-in SciPy oracle catalog is fail-closed on every supported platform", () => {
+test("checked-in SciPy oracle catalog binds qualified exact inputs on every platform", () => {
   const catalog = validateCatalog(JSON.parse(fs.readFileSync(CATALOG_PATH, "utf8")));
   assert.equal(catalog.platforms.length, 4);
-  assert(catalog.platforms.every((row) => row.status === "pending"));
+  assert(catalog.platforms.every((row) => row.status === "qualified"));
+  assert(catalog.platforms.every((row) => row.inputs.length === 3));
+  assert(catalog.platforms.every((row) => row.prefix.files > 4000));
   assert.throws(
     () => createBinding({
-      prefixPath: "/qualification/not-consulted",
-      provenancePath: "/qualification/not-consulted.json",
       platformId: "linux-x64",
+      prefixPath: null,
+      provenancePath: null,
     }),
-    /pending; release receipts are forbidden/,
-  );
-  assert.throws(
-    () => createBinding({ platformId: "linux-x64" }),
     /explicit SAGEJS_QUALIFICATION_SCIPY_PREFIX/,
   );
 });
@@ -210,6 +211,38 @@ test("complete hermetic prefix closure rejects links and junctions", (t) => {
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
     fs.rmSync(external, { recursive: true, force: true });
+  }
+});
+
+test("complete hermetic prefix closure rejects external hardlink aliases", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-scipy-hardlink-"));
+  const external = `${root}-external`;
+  try {
+    fs.writeFileSync(external, "runtime");
+    try {
+      fs.linkSync(external, path.join(root, "python"));
+    } catch (error) {
+      t.skip(`host cannot create a hardlink fixture: ${error.message}`);
+      return;
+    }
+    assert.throws(() => completePrefixClosure(root), /hardlinked file/);
+    fs.writeFileSync(external, "mutated runtime");
+    assert.equal(fs.readFileSync(path.join(root, "python"), "utf8"), "mutated runtime");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(external, { force: true });
+  }
+});
+
+test("catalog input names are portable regular basenames", () => {
+  for (const filename of [
+    ".", "..", "wheel.whl:stream", "folder/wheel.whl", "folder\\wheel.whl",
+    "CON", "nul.txt", "trailing.", "control\u0001.whl",
+  ]) {
+    const catalog = qualifiedCatalog();
+    catalog.platforms[0].inputs[1].filename = filename;
+    reidentify(catalog);
+    assert.throws(() => validateCatalog(catalog), /portable regular basename/);
   }
 });
 

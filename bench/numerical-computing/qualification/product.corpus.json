@@ -15,6 +15,8 @@
     "packages/flint-wasm/numerical/release",
     "scripts/package-qualification",
     "scripts/numerical-computing/qualification/scipy-oracle.cjs",
+    "scripts/numerical-computing/qualification/scipy-oracle-provisioner.cjs",
+    "scripts/numerical-computing/qualification/provision-scipy-oracle.cjs",
     "bench/numerical-computing/qualification/scipy-oracle-catalog.json"
   ],
   "cases": [

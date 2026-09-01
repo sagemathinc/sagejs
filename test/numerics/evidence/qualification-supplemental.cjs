@@ -60,6 +60,7 @@ const {
   ORACLE_ENVIRONMENT: SCIPY_ORACLE_ENVIRONMENT,
   POLICY: SCIPY_POLICY,
   PROVENANCE_SCHEMA: SCIPY_PROVENANCE_SCHEMA,
+  PROVISIONING_POLICY: SCIPY_PROVISIONING_POLICY,
   SCHEMA: SCIPY_BINDING_SCHEMA,
 } = require(
   "../../../scripts/numerical-computing/qualification/scipy-oracle.cjs",
@@ -100,6 +101,7 @@ function scipyCatalog(sourceSuffix = "v1") {
   return identified({
     schema: SCIPY_CATALOG_SCHEMA,
     policy: { ...SCIPY_POLICY },
+    provisioning: SCIPY_PROVISIONING_POLICY,
     platforms: ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"].map(
       (platformId, index) => ({
         platform: platformId,
@@ -130,6 +132,7 @@ function scipyBinding(catalog, platformId, { moduleSuffix = "v1" } = {}) {
     policy: { ...SCIPY_POLICY },
     python_executable: row.python_executable,
     site_packages: row.site_packages,
+    provisioning: SCIPY_PROVISIONING_POLICY,
     inputs: row.inputs,
     prefix: row.prefix,
   });
