@@ -190,6 +190,10 @@ cases = (
     # traversed backward as [6,3,1,5,...]. After both compact prefixes fail,
     # the full checked ellipsoids on those first four ideals certify C9.
     ("3.1.26412.1", (-159, 9, -1, 1), 9, (9,), 0),
+    # PARI admits its decisive relation after the fifth ideal in the same
+    # reverse permutation. The bounded five-ideal stage certifies C6 without
+    # constructing the complete nine-ideal reduced batch.
+    ("3.1.27116.3", (49, 19, -1, 1), 6, (6,), 0),
     # The defining order has index 4 and a prime discriminant component above
     # one million.  The proof binder must use its deterministic word-prime
     # certificate rather than an arbitrary trial-division cutoff.
@@ -224,6 +228,14 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
         assert receipt.generator_bound == 15, label
         assert receipt.factor_base_size == 6, label
         assert receipt.relation_count == 13, label
+    if label == "3.1.27116.3":
+        assert receipt.generator_bound == 20, label
+        assert receipt.factor_base_size == 9, label
+        assert receipt.relation_count == 17, label
+    if label == "3.1.1181183.1":
+        assert receipt.generator_bound == 30, label
+        assert receipt.factor_base_size == 11, label
+        assert receipt.relation_count == 19, label
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label

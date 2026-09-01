@@ -50,9 +50,11 @@ _CUBIC_MAX_POWERS = 12
 _CUBIC_MAX_RELATIONS = 1024
 _CUBIC_MAX_COMPOUND_PAIRS = 128
 _CUBIC_COMPOUND_MULTIPLIERS = 4
-_CUBIC_MAX_RELATION_EFFORT = 7
+_CUBIC_MAX_RELATION_EFFORT = 8
 _CUBIC_INITIAL_ADJACENT_IDEALS = 3
 _CUBIC_SECOND_ADJACENT_IDEALS = 4
+_CUBIC_PARI_INITIAL_ADJACENT_IDEALS = 5
+_CUBIC_PARI_EXPANDED_ADJACENT_IDEALS = 8
 _CUBIC_NARROW_ADJACENT_MAX_FACTORS = 11
 _CUBIC_RELATION_REDUNDANCY_TAIL = 6
 _CUBIC_RELATION_RECOVERY_TAIL = 18
@@ -4808,16 +4810,16 @@ def certified_complex_cubic_class_group_v1(
     # Relation effort is monotone. The cheap first call uses three canonical
     # adjacent ideals. The second adds one ideal and every certified
     # residue-degree-two complement. The third uses PARI's source-derived
-    # factor-base permutation and full reduced ellipsoids, and the fourth
-    # restores the complete adjacent set. Only later calls authorize one, two,
-    # then four compound multipliers. Every retry recomputes and authenticates
-    # its own exact state.
+    # factor-base permutation and full reduced ellipsoids on five, then eight,
+    # ideals; the fifth restores the complete adjacent set. Only later calls
+    # authorize one, two, then four compound multipliers. Every retry recomputes
+    # and authenticates its own exact state.
     scheduled_compound_multiplier_limit: uint64 = 0
-    if relation_effort == 5:
+    if relation_effort == 6:
         scheduled_compound_multiplier_limit = 1
-    elif relation_effort == 6:
-        scheduled_compound_multiplier_limit = 2
     elif relation_effort == 7:
+        scheduled_compound_multiplier_limit = 2
+    elif relation_effort == 8:
         scheduled_compound_multiplier_limit = _CUBIC_COMPOUND_MULTIPLIERS
     with NativeExactArena(memory_limit, temporary_limit) as arena:
         workspace = arena.integer_vector(_CUBIC_WORKSPACE_LENGTH, 0)
@@ -5463,8 +5465,8 @@ def certified_complex_cubic_class_group_v1(
         # redundant final factors next, then appends the remaining sorted
         # ideals. `small_norm` traverses this permutation backward. For
         # `3.1.26412.1` this is [2,4,5,1,3,6], hence the observed search order
-        # [6,3,1,5,...]. The third effort uses its first four positions and
-        # every residue-degree-two complement. Exact rank, unit, and
+        # [6,3,1,5,...]. Broader efforts use its first five, then eight,
+        # positions and every residue-degree-two complement. Exact rank, unit, and
         # analytic-index failures are the only signals that authorize broader
         # relation effort.
         adjacent_ideal_count: uint64 = 0
@@ -5472,15 +5474,19 @@ def certified_complex_cubic_class_group_v1(
         adjacent_prefix_start: uint64 = 0
         adjacent_factor_cursor: uint64 = 0
         adjacent_prefix: uint64 = _CUBIC_INITIAL_ADJACENT_IDEALS
-        if relation_effort == 2 or relation_effort == 3:
+        if relation_effort == 2:
             adjacent_prefix = _CUBIC_SECOND_ADJACENT_IDEALS
+        elif relation_effort == 3:
+            adjacent_prefix = _CUBIC_PARI_INITIAL_ADJACENT_IDEALS
+        elif relation_effort == 4:
+            adjacent_prefix = _CUBIC_PARI_EXPANDED_ADJACENT_IDEALS
         use_canonical_prefix = (
             relation_effort <= 2
             and factor_count <= _CUBIC_NARROW_ADJACENT_MAX_FACTORS
             and factor_count > adjacent_prefix
         )
         use_pari_permutation = (
-            relation_effort == 3
+            (relation_effort == 3 or relation_effort == 4)
             and factor_count <= _CUBIC_NARROW_ADJACENT_MAX_FACTORS
             and factor_count > adjacent_prefix
         )
@@ -5612,7 +5618,7 @@ def certified_complex_cubic_class_group_v1(
                 )
             if (
                 relation_effort >= 2
-                and relation_effort <= 3
+                and relation_effort <= 4
                 and workspace[adjacent_factor_base + 8] == 1
             ):
                 schedule_adjacent = True
@@ -5744,8 +5750,8 @@ def certified_complex_cubic_class_group_v1(
                 planning_one += 1
             planning_zero += 1
 
-        # Build one T2/LLL basis for each selected ideal. The first effort keeps
-        # the compact four-direction shell for degree-one factors. An exact
+        # Build one T2/LLL basis for each selected ideal. The first two efforts
+        # keep the compact four-direction shell for degree-one factors. An exact
         # failure authorizes PARI's bounded reduced-ideal ellipsoid for every
         # selected ideal; complements use it from the start. Its exact
         # Gram/cofactor box is planned once and replayed unchanged at admission.

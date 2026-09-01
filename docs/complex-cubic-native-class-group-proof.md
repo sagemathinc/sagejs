@@ -212,15 +212,15 @@ with every adjacent ideal because a fixed three-ideal prefix is structurally
 too narrow to justify a duplicate exact setup. Only an exact relation-rank,
 unit-rank, or analytic-index failure authorizes a second attempt. That attempt
 visits the four largest canonical ideals and every certified residue-degree-two
-complement of a retained degree-one ideal. A further exact failure authorizes
-the first four ideals in the source-derived PARI permutation, every certified
-residue-degree-two complement, and the union of the compact shell with the full
-checked reduced-ideal ellipsoid. The next failure authorizes those searches for
-every factor-base ideal. Remaining failures then authorize prefixes of one,
-two, and four compound multipliers. Each retry owns a fresh exact arena and
-independently repeats every mathematical check; no partially trusted relation
-state crosses the boundary. The detached receipt records the compound prefix
-actually used, not merely the effort authorized by the call.
+complement of a retained degree-one ideal. Further exact failures authorize the
+first five and then eight ideals in the source-derived PARI permutation, every
+certified residue-degree-two complement, and the union of the compact shell
+with the full checked reduced-ideal ellipsoid. The next failure authorizes those
+searches for every factor-base ideal. Remaining failures then authorize
+prefixes of one, two, and four compound multipliers. Each retry owns a fresh
+exact arena and independently repeats every mathematical check; no partially
+trusted relation state crosses the boundary. The detached receipt records the
+compound prefix actually used, not merely the effort authorized by the call.
 
 ### 4. The retained element gives an upper regulator
 
