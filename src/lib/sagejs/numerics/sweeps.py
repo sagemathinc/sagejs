@@ -1,7 +1,7 @@
 """Deterministic, resource-bounded numerical parameter sweeps.
 
 The scheduler in this module deliberately does not import a thread, process,
-or browser-worker runtime.  Its default executor is sequential.  Hosts that
+or browser-worker executor. Its default executor is sequential. Hosts that
 can execute independent Python callables concurrently may supply a synchronous
 batch executor; the scheduler still owns stable ordering, fixed resource
 credits, failure policy, and provenance.
