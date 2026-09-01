@@ -92,10 +92,118 @@ exercise:
 - the production npm package plus its platform package in a fresh temporary
   project.
 
-The long-term interface should be a single checked-in command, for example
-`pnpm release:qualify --platform <name>`, shared by these hosts and GitHub CI.
-Until that exists, treat the workflow steps as executable specifications and
-record the exact commands and SHA in the release notes or an agent receipt.
+Numerical product qualification has checked-in production entry points. Each
+platform producer first provisions the authenticated, link-free SciPy oracle
+declared by
+`bench/numerical-computing/qualification/scipy-oracle-catalog.json`; a Python
+or SciPy found on `PATH` is intentionally never accepted. On POSIX hosts the
+essential sequence is:
+
+```sh
+candidate=$(git rev-parse HEAD)
+rm -rf build/numerical-scipy build/numerical-qualification/platform/PLATFORM
+mkdir -p build/numerical-scipy-downloads build/numerical-scipy
+pnpm release:qualify:numerics:oracle -- \
+  --artifact-directory build/numerical-scipy-downloads \
+  --prefix build/numerical-scipy/prefix \
+  --provenance build/numerical-scipy/provenance.json \
+  --download
+export SAGEJS_QUALIFICATION_SCIPY_PREFIX="$PWD/build/numerical-scipy/prefix"
+export SAGEJS_QUALIFICATION_SCIPY_PROVENANCE="$PWD/build/numerical-scipy/provenance.json"
+pnpm release:qualify:numerics:platform -- \
+  --candidate "$candidate" \
+  --root-archive build/release/npm/sagejs.tgz \
+  --platform-archive build/release/npm/sagejs-PLATFORM.tgz \
+  --sea-executable PATH/TO/SAGEJS \
+  --output build/numerical-qualification/platform/PLATFORM
+```
+
+Replace `PLATFORM` with `linux-x64`, `linux-arm64`, `macos-arm64`, or
+`windows-x64`. Use the equivalent PowerShell environment assignments on native
+Windows. The platform collector derives and checks its platform rather than
+trusting a command-line label. It cold-runs and immediately verifies the Node,
+fresh-npm, and relocated-SEA product rows against the same source commit,
+corpus, artifacts, and hermetic oracle. The macOS signing workflow may collect
+the Node row before signing and the npm/SEA rows after signing only because the
+two jobs restore the same source and provision the identical content-addressed
+oracle at the identical workspace path.
+
+Linux x64 also collects the four real-browser rows and all supplemental gates
+after the production browser artifact and the exact Linux SEA exist:
+
+```sh
+pnpm exec playwright-core install chromium firefox webkit
+pnpm release:qualify:numerics:browser -- \
+  --candidate "$candidate" \
+  --artifact packages/flint-wasm \
+  --output build/numerical-qualification/browser
+```
+
+This produces Chromium, Firefox, WebKit, and Chromium-worker product receipts,
+native ASAN/UBSAN/LSAN evidence for cminpack and NLopt, destructive Wasm fault
+evidence, four process-tree memory records, and the structural startup/package/
+payload/closure record. “Skipped”, “unsupported”, stale-candidate, dirty-tree,
+or missing evidence is a release failure, never an optional result.
+
+Copy producer outputs without merging their directories into this exact
+layout:
+
+```text
+build/numerical-qualification/
+  platform/{linux-x64,linux-arm64,macos-arm64,windows-x64}/
+  browser/
+```
+
+Then aggregate, reproduce, and authenticate the final gate:
+
+```sh
+pnpm release:qualify:numerics:gate -- \
+  --candidate "$candidate" \
+  --input build/numerical-qualification \
+  --output build/numerical-qualification/gate
+mkdir -p build/validated-numerical-gate
+cp build/numerical-qualification/gate/release-gate.json \
+  build/validated-numerical-gate/release-gate.json
+rm -rf build/numerical-qualification/gate
+pnpm release:qualify:numerics:gate -- \
+  --candidate "$candidate" \
+  --input build/numerical-qualification \
+  --output build/numerical-qualification/gate
+pnpm release:qualify:numerics:authenticate -- \
+  --candidate "$candidate" \
+  --gate build/validated-numerical-gate/release-gate.json \
+  --rebuilt-gate build/numerical-qualification/gate/release-gate.json \
+  --public-npm-root build/release/npm/sagejs.tgz
+```
+
+The gate is exactly 16 product rows (Node/npm/SEA on four platforms plus four
+browser/worker rows), five supplemental categories represented by seven raw
+records, and one source-current hermetic SciPy binding per platform. Producer
+jobs are independent; the browser job consumes only the candidate's already
+built Linux SEA, and the aggregation job consumes only their immutable
+evidence. This one-way DAG avoids both circular qualification and a publisher
+which silently rebuilds what it is supposed to authenticate.
+
+All four npm rows must bind byte-identical public `@sagemath/sagejs` root
+tarballs. The gate records their one path-independent content digest, and the
+publisher compares the Linux x64 copy selected for npm publication against
+that digest after downloading it. A platform-local `pnpm pack` difference is
+therefore a release failure; a publisher cannot silently select an unqualified
+fifth root archive.
+
+Clean tag CI preserves the small publisher-facing gate as
+`numerical-release-gate` and the complete reproducible row/manifest/receipt/
+supplemental inventory as `numerical-release-evidence`, both for 90 days. The
+larger artifact deliberately excludes the derived gate outputs. Before
+publishing, the candidate checkout restores that raw inventory, reruns the
+checked-in fail-closed assembler at its canonical
+`build/numerical-qualification/gate` path, and requires exact byte equality
+with the small publisher-facing gate. The aggregation job itself also performs
+this same real second reconstruction before preserving either artifact, and
+the assembler rejects noncanonical input/output layouts. Cloudflare deployment
+does the same. Thus valid-looking nested SHA/content-ID substitutions cannot be
+authorized by merely recomputing the compact outer ID; the successful producer
+run's immutable raw evidence is the trust boundary.
 
 After `pnpm bootstrap`, use the run-only test and packaging boundaries. They
 consume the exact validated native prefixes and generated artifacts instead of
@@ -141,8 +249,10 @@ git push origin vX.Y.Z
 Use an unsigned annotated tag only when signing is unavailable and the early
 alpha release policy explicitly allows it. Never force-push a tag.
 
-The tag starts the clean native/SEA workflow and the reproducible Wasm release
-workflow. Monitor individual jobs and stop or cancel dependent work promptly
+The tag starts the clean native/SEA workflow, mandatory numerical qualification
+DAG, and reproducible Wasm release workflow. The native release publisher
+cannot run until the exact 16-row numerical gate and all five supplemental
+categories pass. Monitor individual jobs and stop or cancel dependent work promptly
 after a failure. Pull the complete failed-job log and identify the first causal
 error rather than reacting to the final aggregate failure.
 
@@ -158,9 +268,28 @@ After every required native job passes, the protected release workflow should:
 - wait for registry consistency; and
 - make the GitHub Release public and latest only after npm succeeds.
 
-Deploy `app.sagejs.org` only from the successful reproducible Wasm run for the
-same source SHA. The deployment workflow intentionally requires that SHA to be
-reachable from `origin/main`.
+npm Trusted Publishing authorizes the calling workflow filename. Consequently
+`.github/workflows/ci.yml` is the only workflow that executes `npm publish`.
+If its publication job fails after every producer and the numerical gate pass,
+dispatch **Request validated release publication recovery** with the original
+tagged CI run ID and immutable tag. That small bridge dispatches `ci.yml` at
+the tag; its recovery job retrieves every paginated job attempt, verifies the
+exact source SHA and the unique latest occurrence of each required producer,
+then reruns the latest failed/cancelled publisher job by job ID. It deliberately does not
+require the overall source run to have succeeded (the publisher failure is the
+reason recovery exists), but it does require that run to have been triggered by
+the exact requested tag rather than merely another tag at the same commit. It
+never receives an npm OIDC token itself. The rerun treats an existing npm
+version as idempotent only when its registry SHA-512 integrity equals the exact
+qualified local archive; a partial publication from different bytes fails
+closed instead of being mixed into the GitHub release.
+
+Deploy `app.sagejs.org` only from the successful reproducible Wasm run and the
+successful numerical-qualification CI run for the same source SHA. Supply both
+run IDs to the deployment workflow. It rejects different SHAs, a missing or
+non-successful numerical gate job, and a gate artifact whose content ID or
+exact inventory fails authentication. Production additionally requires that
+SHA to be reachable from `origin/main`.
 
 ### 6. Verify as a new user
 
@@ -219,8 +348,6 @@ budgets remain exclusive.
 The current workflows prove a great deal, but the release interface should be
 simpler and faster:
 
-- Add `pnpm release:qualify --platform ...` so persistent hosts and GitHub call
-  one implementation instead of duplicating shell sequences.
 - Add a coordinator which runs the four cached hosts concurrently, streams
   stage progress, records durations, and emits one source-bound receipt.
 - Record native family and final-pack compile timings in the same learned timing

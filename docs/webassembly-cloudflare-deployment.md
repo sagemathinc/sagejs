@@ -14,7 +14,9 @@ those objects at the same origin, applies the reviewed isolation headers, and
 caches immutable content-addressed assets at the edge.
 
 The deployment workflow does not build an unreviewed bundle. It accepts the run
-ID of a successful **Sage.js WebAssembly reproducible release** workflow,
+ID of a successful **Sage.js WebAssembly reproducible release** workflow and a
+successful **Sage.js CI** run for the same commit. The CI run must contain the
+passing 16-row numerical release gate and all five supplemental categories. It
 requires both clean builds, byte reproducibility, the native oracle, and all
 browser parity, sharded performance, security, offline, and recovery gates to
 have passed, then checks out that run's exact commit. It downloads one of the
@@ -81,13 +83,16 @@ baseline. Candidate artifacts have distinct names, contain no deployment
 credentials, and are explicitly rejected by the deployment workflow. They can
 never substitute for a release run.
 
-First run **Sage.js WebAssembly reproducible release** for the candidate
+First run **Sage.js WebAssembly reproducible release** and tagged **Sage.js
+CI** for the candidate
 commit. Wait for its native oracle, two clean builds, reproducibility check,
 complete Chromium, Firefox, and WebKit parity, all twelve browser-performance
-shards, Chromium security/offline checks, WebKit recovery checks, and workload
-route enforcement to succeed. Copy the numeric run ID from the Actions URL.
+shards, Chromium security/offline checks, WebKit recovery checks, workload
+route enforcement, and numerical release qualification to succeed. Copy both
+numeric run IDs from their Actions URLs.
 
-Then run **Deploy the Sage.js browser application** with that run ID:
+Then run **Deploy the Sage.js browser application** with the Wasm run ID as
+`source_run_id` and the same-commit CI run ID as `qualification_run_id`:
 
 - choose `preview` to publish a unique `workers.dev` Worker; the optional alias
   accepts only lowercase letters, digits, and hyphens;
@@ -119,7 +124,8 @@ performs the one-time setup above, the exact remaining activation step is:
 
 1. confirm the private `sagejs` R2 bucket and its bucket-scoped credentials;
 2. install the environment secrets and variables listed above;
-3. run a successful reproducible Wasm release;
+3. run a successful reproducible Wasm release and same-SHA numerical release
+   qualification;
 4. invoke the deployment workflow once for preview and once for production.
 
 Do not describe `app.sagejs.org` as deployed until the production workflow's

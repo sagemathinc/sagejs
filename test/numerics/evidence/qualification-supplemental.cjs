@@ -49,6 +49,7 @@ const {
   buildSupplementalReport,
   qualificationInternals: supplementalInternals,
   verifyEvidence,
+  verifyMatrixArtifactCoherence,
   verifyMatrixBrowserSubjectCoherence,
   verifyMatrixScipyOracleCoherence,
 } = require(
@@ -423,10 +424,13 @@ function matrixReport(policy = compiledMatrixPolicy()) {
           { name: "cminpack-wasm", sha256: "1".repeat(64), content_sha256: "a".repeat(64) },
           { name: "nlopt-wasm", sha256: "2".repeat(64), content_sha256: "b".repeat(64) },
           ...(row.match.subject_kind === "browser" || row.match.subject_kind === "worker"
-            ? [{ name: "sagejs-browser", sha256: "3".repeat(64), content_sha256: "8".repeat(64) }]
+            ? [{ name: "browser-dist", sha256: "3".repeat(64), content_sha256: "8".repeat(64) }]
             : []),
           ...(row.id === "linux-x64-sea"
             ? [{ name: "sea-executable", sha256: "4".repeat(64), content_sha256: "3".repeat(64) }]
+            : []),
+          ...(row.match.subject_kind === "npm"
+            ? [{ name: "npm-root-tarball", sha256: "5".repeat(64), content_sha256: "9".repeat(64) }]
             : []),
         ],
       },
@@ -434,6 +438,30 @@ function matrixReport(policy = compiledMatrixPolicy()) {
     unmatched_receipt_ids: [],
   });
 }
+
+test("all npm rows bind one identical public root tarball", () => {
+  const matrix = matrixReport();
+  const supplemental = {
+    artifact_coherence: {
+      status: "passed",
+      reasons: [],
+      component_content_sha256: { cminpack: "a".repeat(64), nlopt: "b".repeat(64) },
+      browser_distribution: { content_sha256: "8".repeat(64) },
+      linux_sea: { content_sha256: "3".repeat(64) },
+    },
+  };
+  assert.deepEqual(verifyMatrixArtifactCoherence(matrix, supplemental), {
+    npmRootContentSha256: "9".repeat(64),
+  });
+  const substituted = structuredClone(matrix);
+  substituted.rows.find((row) => row.row_id === "windows-x64-npm")
+    .bindings.artifacts.find((artifact) => artifact.name === "npm-root-tarball")
+    .content_sha256 = "7".repeat(64);
+  assert.throws(
+    () => verifyMatrixArtifactCoherence(substituted, supplemental),
+    /one identical public root tarball/,
+  );
+});
 
 function canonicalTemplateRecord(template = fullRuntimeTemplate()) {
   const filename = path.join(

@@ -19,6 +19,16 @@ on:
         required: false
         default: all
         type: string
+      recovery_run_id:
+        description: Completed tagged CI run whose original publish job should be rerun
+        required: false
+        default: ""
+        type: string
+      recovery_tag:
+        description: Immutable release tag built by recovery_run_id
+        required: false
+        default: ""
+        type: string
   schedule:
     - cron: "17 4 * * 1"
 
@@ -32,6 +42,7 @@ concurrency:
 jobs:
   routine:
     name: Routine gate (Linux x64)
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.recovery_run_id == '' }}
     runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 25
     env:
@@ -130,7 +141,7 @@ jobs:
     needs: routine
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'linux-x64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-ubuntu-2404
-    timeout-minutes: 90
+    timeout-minutes: 150
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
 
@@ -294,10 +305,50 @@ jobs:
           pnpm test:npm-package
           cp install.sh build/release/install.sh
 
+      - name: Cache authenticated numerical oracle inputs
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/cache@v6
+        with:
+          path: build/numerical-scipy-downloads
+          key: numerical-scipy-linux-x64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
+
+      - name: Provision the hermetic numerical oracle
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          mkdir -p build/numerical-scipy-downloads build/numerical-scipy
+          pnpm release:qualify:numerics:oracle -- \
+            --artifact-directory build/numerical-scipy-downloads \
+            --prefix build/numerical-scipy/prefix \
+            --provenance build/numerical-scipy/provenance.json \
+            --download
+          echo "SAGEJS_QUALIFICATION_SCIPY_PREFIX=$(pwd)/build/numerical-scipy/prefix" >> "$GITHUB_ENV"
+          echo "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$(pwd)/build/numerical-scipy/provenance.json" >> "$GITHUB_ENV"
+
+      - name: Collect exact Linux x64 numerical product rows
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          pnpm release:qualify:numerics:platform -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --root-archive build/release/npm/sagejs.tgz \
+            --platform-archive build/release/npm/sagejs-linux-x64.tgz \
+            --sea-executable build/sea/sagejs \
+            --output build/numerical-qualification/platform/linux-x64
+
+      - name: Upload Linux x64 numerical qualification
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: numerical-qualification-linux-x64
+          overwrite: true
+          path: build/numerical-qualification/platform/linux-x64
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload Linux x64 SEA artifacts
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-linux-x64
+          overwrite: true
           path: |
             build/release/sagejs-linux-x64.tar.xz
             build/release/sagejs-linux-x64.tar.xz.sha256
@@ -312,7 +363,7 @@ jobs:
     needs: routine
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'linux-arm64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
-    timeout-minutes: 90
+    timeout-minutes: 150
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
 
@@ -406,12 +457,54 @@ jobs:
           sha256sum sagejs-linux-arm64.tar.xz > sagejs-linux-arm64.tar.xz.sha256
 
       - name: Package Linux arm64 for npm
-        run: pnpm package:native-npm linux-arm64 build/sea/sagejs build/sea/sagepython
+        run: |
+          pnpm package:native-npm linux-arm64 build/sea/sagejs build/sea/sagepython
+          SAGEJS_SKIP_PREPACK=1 pnpm pack --out build/release/npm/sagejs.tgz
+
+      - name: Cache authenticated numerical oracle inputs
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/cache@v6
+        with:
+          path: build/numerical-scipy-downloads
+          key: numerical-scipy-linux-arm64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
+
+      - name: Provision the hermetic numerical oracle
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          mkdir -p build/numerical-scipy-downloads build/numerical-scipy
+          pnpm release:qualify:numerics:oracle -- \
+            --artifact-directory build/numerical-scipy-downloads \
+            --prefix build/numerical-scipy/prefix \
+            --provenance build/numerical-scipy/provenance.json \
+            --download
+          echo "SAGEJS_QUALIFICATION_SCIPY_PREFIX=$(pwd)/build/numerical-scipy/prefix" >> "$GITHUB_ENV"
+          echo "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$(pwd)/build/numerical-scipy/provenance.json" >> "$GITHUB_ENV"
+
+      - name: Collect exact Linux arm64 numerical product rows
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          pnpm release:qualify:numerics:platform -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --root-archive build/release/npm/sagejs.tgz \
+            --platform-archive build/release/npm/sagejs-linux-arm64.tgz \
+            --sea-executable build/sea/sagejs \
+            --output build/numerical-qualification/platform/linux-arm64
+
+      - name: Upload Linux arm64 numerical qualification
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: numerical-qualification-linux-arm64
+          overwrite: true
+          path: build/numerical-qualification/platform/linux-arm64
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Upload Linux arm64 SEA artifacts
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-linux-arm64
+          overwrite: true
           path: |
             build/release/sagejs-linux-arm64.tar.xz
             build/release/sagejs-linux-arm64.tar.xz.sha256
@@ -424,7 +517,7 @@ jobs:
     needs: routine
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'windows-x64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-windows-2025
-    timeout-minutes: 180
+    timeout-minutes: 240
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
     permissions:
@@ -607,10 +700,59 @@ jobs:
       - name: Package Windows x64 for npm
         run: pnpm package:native-npm windows-x64 build/sea/sagejs.exe build/sea/sagepython.exe
 
+      - name: Pack the public npm package on Windows
+        env:
+          SAGEJS_SKIP_PREPACK: "1"
+        run: pnpm pack --out build/release/npm/sagejs.tgz
+
+      - name: Cache authenticated numerical oracle inputs
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/cache@v6
+        with:
+          path: build/numerical-scipy-downloads
+          key: numerical-scipy-windows-x64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
+
+      - name: Provision the hermetic numerical oracle
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build/numerical-scipy-downloads,build/numerical-scipy | Out-Null
+          pnpm release:qualify:numerics:oracle -- `
+            --artifact-directory build/numerical-scipy-downloads `
+            --prefix build/numerical-scipy/prefix `
+            --provenance build/numerical-scipy/provenance.json `
+            --download
+          $root = (Resolve-Path .).Path
+          "SAGEJS_QUALIFICATION_SCIPY_PREFIX=$root\build\numerical-scipy\prefix" >> $env:GITHUB_ENV
+          "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$root\build\numerical-scipy\provenance.json" >> $env:GITHUB_ENV
+
+      - name: Collect exact Windows x64 numerical product rows
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $candidate = git rev-parse HEAD
+          pnpm release:qualify:numerics:platform -- `
+            --candidate $candidate `
+            --root-archive build/release/npm/sagejs.tgz `
+            --platform-archive build/release/npm/sagejs-windows-x64.tgz `
+            --sea-executable build/sea/sagejs.exe `
+            --output build/numerical-qualification/platform/windows-x64
+
+      - name: Upload Windows x64 numerical qualification
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: numerical-qualification-windows-x64
+          overwrite: true
+          path: build/numerical-qualification/platform/windows-x64
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload Windows x64 SEA artifacts
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-windows-x64
+          overwrite: true
           path: |
             build/release/sagejs-windows-x64.zip
             build/release/sagejs-windows-x64.zip.sha256
@@ -623,7 +765,7 @@ jobs:
     needs: routine
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'macos-arm64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-6vcpu-macos-15
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
 
@@ -719,11 +861,58 @@ jobs:
           SAGEJS_BUILD_JOBS: "6"
         run: pnpm test:sea:reuse
 
+      - name: Pack public npm source for signed qualification
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          SAGEJS_SKIP_PREPACK: "1"
+        run: pnpm pack --out build/release/npm/sagejs.tgz
+
+      - name: Cache authenticated numerical oracle inputs
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/cache@v6
+        with:
+          path: build/numerical-scipy-downloads
+          key: numerical-scipy-macos-arm64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
+
+      - name: Provision the hermetic numerical oracle
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          mkdir -p build/numerical-scipy-downloads build/numerical-scipy
+          pnpm release:qualify:numerics:oracle -- \
+            --artifact-directory build/numerical-scipy-downloads \
+            --prefix build/numerical-scipy/prefix \
+            --provenance build/numerical-scipy/provenance.json \
+            --download
+          echo "SAGEJS_QUALIFICATION_SCIPY_PREFIX=$(pwd)/build/numerical-scipy/prefix" >> "$GITHUB_ENV"
+          echo "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$(pwd)/build/numerical-scipy/provenance.json" >> "$GITHUB_ENV"
+
+      - name: Collect the exact macOS Node numerical row
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          pnpm release:qualify:numerics:platform -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --subjects node \
+            --output build/numerical-qualification/platform/macos-arm64
+
+      - name: Upload macOS numerical signing inputs
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-macos-arm64-qualification-input
+          overwrite: true
+          path: |
+            build/numerical-qualification/platform/macos-arm64
+            build/release/npm/sagejs.tgz
+            dist/numerical
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload validated macOS executables for signing
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-macos-arm64-unsigned
+          overwrite: true
           path: |
             build/sea/sagejs
             build/sea/sagepython
@@ -736,7 +925,7 @@ jobs:
     needs: macos-arm64
     # Blacksmith's macOS fleet is available in 6- and 12-vCPU sizes only.
     runs-on: blacksmith-6vcpu-macos-15
-    timeout-minutes: 45
+    timeout-minutes: 120
     environment: sagejs-signing
 
     steps:
@@ -753,11 +942,37 @@ jobs:
         with:
           node-version: 26.5.1
 
+      - name: Install the exact source dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Download the validated macOS executables
         uses: actions/download-artifact@v8
         with:
           name: sagejs-macos-arm64-unsigned
           path: build/sea
+
+      - name: Download the source-bound numerical qualification inputs
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-macos-arm64-qualification-input
+          path: .
+
+      - name: Cache authenticated numerical oracle inputs
+        uses: actions/cache@v6
+        with:
+          path: build/numerical-scipy-downloads
+          key: numerical-scipy-macos-arm64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
+
+      - name: Provision the identical hermetic numerical oracle
+        run: |
+          mkdir -p build/numerical-scipy-downloads build/numerical-scipy
+          pnpm release:qualify:numerics:oracle -- \
+            --artifact-directory build/numerical-scipy-downloads \
+            --prefix build/numerical-scipy/prefix \
+            --provenance build/numerical-scipy/provenance.json \
+            --download
+          echo "SAGEJS_QUALIFICATION_SCIPY_PREFIX=$(pwd)/build/numerical-scipy/prefix" >> "$GITHUB_ENV"
+          echo "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$(pwd)/build/numerical-scipy/provenance.json" >> "$GITHUB_ENV"
 
       - name: Restore executable permissions
         run: chmod 755 build/sea/sagejs build/sea/sagepython
@@ -811,10 +1026,30 @@ jobs:
             build/release/sagejs-macos-arm64/sagejs \
             build/release/sagejs-macos-arm64/sagepython
 
+      - name: Collect exact signed macOS npm and SEA numerical rows
+        run: |
+          pnpm release:qualify:numerics:platform -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --subjects npm,sea \
+            --root-archive build/release/npm/sagejs.tgz \
+            --platform-archive build/release/npm/sagejs-macos-arm64.tgz \
+            --sea-executable build/release/sagejs-macos-arm64/sagejs \
+            --output build/numerical-qualification/platform/macos-arm64
+
+      - name: Upload signed macOS numerical qualification
+        uses: actions/upload-artifact@v7
+        with:
+          name: numerical-qualification-macos-arm64
+          overwrite: true
+          path: build/numerical-qualification/platform/macos-arm64
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload signed macOS arm64 artifacts
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-macos-arm64
+          overwrite: true
           path: |
             build/release/sagejs-macos-arm64.zip
             build/release/sagejs-macos-arm64.zip.sha256
@@ -824,17 +1059,203 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  publish-release:
-    name: Publish tagged GitHub and npm release
+  numerical-browser-qualification:
+    name: Numerical browser and supplemental qualification
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: linux-x64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    environment: sagejs-source-mirror
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      SAGEJS_WASM_SOURCE_MIRROR_DIR: /tmp/sagejs-numerical-source-mirror
+
+    steps:
+      - name: Check out the exact tagged candidate
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+
+      - name: Fetch every pinned Wasm source from the private mirror
+        run: |
+          node tools/source-mirror/scripts/source-mirror.mjs fetch \
+            --output "$SAGEJS_WASM_SOURCE_MIRROR_DIR"
+          node tools/source-mirror/scripts/source-mirror.mjs environment \
+            --input "$SAGEJS_WASM_SOURCE_MIRROR_DIR" >> "$GITHUB_ENV"
+
+      - name: Install the exact JavaScript dependency graph
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache authenticated numerical oracle inputs
+        uses: actions/cache@v6
+        with:
+          path: build/numerical-scipy-downloads
+          key: numerical-scipy-linux-x64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
+
+      - name: Provision the hermetic numerical oracle
+        run: |
+          mkdir -p build/numerical-scipy-downloads build/numerical-scipy
+          pnpm release:qualify:numerics:oracle -- \
+            --artifact-directory build/numerical-scipy-downloads \
+            --prefix build/numerical-scipy/prefix \
+            --provenance build/numerical-scipy/provenance.json \
+            --download
+          echo "SAGEJS_QUALIFICATION_SCIPY_PREFIX=$(pwd)/build/numerical-scipy/prefix" >> "$GITHUB_ENV"
+          echo "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$(pwd)/build/numerical-scipy/provenance.json" >> "$GITHUB_ENV"
+
+      - name: Restore the exact Linux SEA selected for publication
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-linux-x64
+          path: build/linux-release
+
+      - name: Build the source-authenticated browser product
+        run: |
+          node packages/wasm-toolchain/scripts/toolchain.cjs prepare
+          pnpm build
+          pnpm --dir packages/flint-wasm build
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+          mkdir -p build/sea
+          tar -xJf build/linux-release/sagejs-linux-x64.tar.xz -C build/linux-release
+          cp build/linux-release/sagejs-linux-x64/sagejs build/sea/sagejs
+          chmod 755 build/sea/sagejs
+
+      - name: Install all required real browser engines
+        run: pnpm exec playwright-core install --with-deps chromium firefox webkit
+
+      - name: Collect four browser rows and five supplemental categories
+        run: |
+          pnpm release:qualify:numerics:browser -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --artifact packages/flint-wasm \
+            --output build/numerical-qualification/browser
+
+      - name: Upload browser and supplemental numerical qualification
+        uses: actions/upload-artifact@v7
+        with:
+          name: numerical-qualification-browser-supplemental
+          overwrite: true
+          path: |
+            build/numerical-qualification/browser
+            build/sea/sagejs
+            dist/numerical
+            packages/flint-wasm/dist
+            packages/flint-wasm/numerical/build
+          if-no-files-found: error
+          retention-days: 14
+
+  numerical-release-gate:
+    name: Numerical release qualification gate
     if: startsWith(github.ref, 'refs/tags/v')
     needs:
       - linux-x64
       - linux-arm64
       - windows-x64
       - macos-sign
+      - numerical-browser-qualification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the exact tagged candidate
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Restore each platform producer without cross-artifact merging
+        uses: actions/download-artifact@v8
+        with:
+          name: numerical-qualification-linux-x64
+          path: build/numerical-qualification/platform/linux-x64
+      - uses: actions/download-artifact@v8
+        with:
+          name: numerical-qualification-linux-arm64
+          path: build/numerical-qualification/platform/linux-arm64
+      - uses: actions/download-artifact@v8
+        with:
+          name: numerical-qualification-windows-x64
+          path: build/numerical-qualification/platform/windows-x64
+      - uses: actions/download-artifact@v8
+        with:
+          name: numerical-qualification-macos-arm64
+          path: build/numerical-qualification/platform/macos-arm64
+      - uses: actions/download-artifact@v8
+        with:
+          name: numerical-qualification-browser-supplemental
+          path: .
+
+      - name: Rebuild and require the exact 16-row release gate
+        run: |
+          pnpm release:qualify:numerics:gate -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --input build/numerical-qualification \
+            --output build/numerical-qualification/gate
+          mkdir -p build/validated-numerical-gate
+          cp build/numerical-qualification/gate/release-gate.json \
+            build/validated-numerical-gate/release-gate.json
+          rm -rf build/numerical-qualification/gate
+          pnpm release:qualify:numerics:gate -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --input build/numerical-qualification \
+            --output build/numerical-qualification/gate
+          pnpm release:qualify:numerics:authenticate -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --gate build/validated-numerical-gate/release-gate.json \
+            --rebuilt-gate build/numerical-qualification/gate/release-gate.json
+
+      - name: Preserve the final numerical release evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: numerical-release-gate
+          overwrite: true
+          path: build/numerical-qualification/gate
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Preserve the reproducible raw numerical evidence inventory
+        uses: actions/upload-artifact@v7
+        with:
+          name: numerical-release-evidence
+          overwrite: true
+          path: |
+            build/numerical-qualification/platform
+            build/numerical-qualification/browser/rows
+            build/numerical-qualification/browser/supplemental
+          if-no-files-found: error
+          retention-days: 90
+
+  publish-release:
+    name: Publish tagged GitHub and npm release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - numerical-release-gate
     runs-on: ubuntu-24.04
     environment: sagejs-release
     permissions:
+      actions: read
       contents: write
       id-token: write
 
@@ -853,11 +1274,45 @@ jobs:
           node-version: 26.5.1
           registry-url: https://registry.npmjs.org
 
-      - name: Download the validated release artifacts
+      - name: Restore the mandatory numerical release gate
         uses: actions/download-artifact@v8
         with:
-          path: release
-          merge-multiple: true
+          name: numerical-release-gate
+          path: build/validated-numerical-gate
+
+      - name: Restore the complete raw numerical evidence inventory
+        uses: actions/download-artifact@v8
+        with:
+          name: numerical-release-evidence
+          path: build/numerical-qualification
+
+      - name: Download the validated release artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p release
+          for artifact in \
+            sagejs-linux-x64 \
+            sagejs-linux-arm64 \
+            sagejs-windows-x64 \
+            sagejs-macos-arm64
+          do
+            gh run download "$GITHUB_RUN_ID" --repo "$GH_REPO" \
+              --name "$artifact" --dir release
+          done
+
+      - name: Rebuild and authenticate the gate and exact public npm root
+        run: |
+          pnpm release:qualify:numerics:gate -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --input build/numerical-qualification \
+            --output build/numerical-qualification/gate
+          pnpm release:qualify:numerics:authenticate -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --gate build/validated-numerical-gate/release-gate.json \
+            --rebuilt-gate build/numerical-qualification/gate/release-gate.json \
+            --public-npm-root release/npm/sagejs.tgz
 
       - name: Create or update the draft GitHub release
         env:
@@ -905,13 +1360,28 @@ jobs:
           publish_package() {
             local archive="$1"
             local tag="$2"
-            local metadata name version published tags tagged_version
+            local metadata name version published published_integrity local_integrity tags tagged_version
             metadata="$(tar -xOzf "$archive" package/package.json)"
             name="$(node -e 'console.log(JSON.parse(process.argv[1]).name)' "$metadata")"
             version="$(node -e 'console.log(JSON.parse(process.argv[1]).version)' "$metadata")"
+            [[ "$version" == "$package_version" ]] || {
+              echo "$archive contains ${name}@${version}, expected version ${package_version}" >&2
+              exit 1
+            }
+            local_integrity="$(node -e \
+              'const fs=require("node:fs"),crypto=require("node:crypto"); const bytes=fs.readFileSync(process.argv[1]); console.log(`sha512-${crypto.createHash("sha512").update(bytes).digest("base64")}`)' \
+              "$archive")"
             if published="$(npm view "${name}@${version}" version --json 2>/dev/null)"; then
               [[ "$(node -e 'console.log(JSON.parse(process.argv[1]))' "$published")" == "$version" ]] || {
                 echo "Unexpected published version for ${name}@${version}: $published" >&2
+                exit 1
+              }
+              published_integrity="$(npm view "${name}@${version}" dist.integrity --json)"
+              published_integrity="$(node -e \
+                'const value=JSON.parse(process.argv[1]); if(typeof value !== "string") process.exit(1); console.log(value)' \
+                "$published_integrity")"
+              [[ "$published_integrity" == "$local_integrity" ]] || {
+                echo "${name}@${version} exists with different registry integrity" >&2
                 exit 1
               }
               tags="$(npm view "$name" dist-tags --json)"
@@ -970,3 +1440,59 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: gh release edit "$TAG" --draft=false --latest
+
+  recover-publish:
+    name: Re-run a validated release publication
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Check out the immutable recovery tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.recovery_tag }}
+
+      - name: Authenticate the source run and rerun its original trusted publisher
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RECOVERY_RUN_ID: ${{ inputs.recovery_run_id }}
+          RECOVERY_TAG: ${{ inputs.recovery_tag }}
+        run: |
+          set -euo pipefail
+          [[ "$RECOVERY_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
+            echo "recovery_run_id must be a positive Actions run ID" >&2
+            exit 1
+          }
+          [[ "$RECOVERY_TAG" == v* ]] || {
+            echo "recovery_tag must be a release tag" >&2
+            exit 1
+          }
+          [[ "$GITHUB_REF_NAME" == "$RECOVERY_TAG" ]] || {
+            echo "Dispatch this recovery at ref $RECOVERY_TAG, not $GITHUB_REF_NAME" >&2
+            exit 1
+          }
+          run_metadata="$(gh api "repos/${GH_REPO}/actions/runs/${RECOVERY_RUN_ID}")"
+          [[ "$(jq -r .name <<<"$run_metadata")" == "Sage.js CI" ]]
+          [[ "$(jq -r .path <<<"$run_metadata")" == ".github/workflows/ci.yml" ]]
+          [[ "$(jq -r .event <<<"$run_metadata")" == "push" ]]
+          [[ "$(jq -r .status <<<"$run_metadata")" == "completed" ]]
+          [[ "$(jq -r '.head_branch // ""' <<<"$run_metadata")" == "$RECOVERY_TAG" ]] || {
+            echo "Source run was not triggered by exact tag $RECOVERY_TAG" >&2
+            exit 1
+          }
+          source_sha="$(jq -r .head_sha <<<"$run_metadata")"
+          tag_sha="$(git rev-list -n 1 "$RECOVERY_TAG")"
+          [[ "$source_sha" == "$tag_sha" && "$tag_sha" == "$(git rev-parse HEAD)" ]] || {
+            echo "Recovery source/tag/checkout SHA mismatch" >&2
+            exit 1
+          }
+          jobs_file="$(mktemp)"
+          gh api --paginate \
+            "repos/${GH_REPO}/actions/runs/${RECOVERY_RUN_ID}/jobs?filter=all&per_page=100" \
+            | jq -s '.' > "$jobs_file"
+          publisher_id="$(node scripts/release/select-recovery-publisher.cjs < "$jobs_file")"
+          gh api --method POST "repos/${GH_REPO}/actions/jobs/${publisher_id}/rerun"

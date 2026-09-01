@@ -7,6 +7,7 @@ const path = require("node:path");
 const { canonicalJson, contentId, digestPath, repositoryPath, sha256 } = require("../common.cjs");
 const { collectReceipt, writeImmutableJson } = require("../receipt.cjs");
 const { prepare } = require("./prepare-browser.cjs");
+const { manifestBoundArtifacts } = require("./prepared-artifacts.cjs");
 
 const processEntryTime = process.hrtime.bigint();
 const root = path.resolve(__dirname, "..", "..", "..");
@@ -171,14 +172,10 @@ async function run(options) {
     kind: options.kind,
     engine: options.engine,
   });
-  const artifactSpecifications = [
-    `sagejs-browser=${prepared.artifactPath}`,
-    `browser-dist=${prepared.browserDistPath}`,
-    `cminpack-wasm=${options.cminpackArtifactPath}`,
-    `nlopt-wasm=${options.nloptArtifactPath}`,
-    `browser-executable-binding=${prepared.browserExecutableBindingPath}`,
-    `scipy-oracle-binding=${prepared.scipyOracleBindingPath}`,
-  ];
+  const artifactSpecifications = manifestBoundArtifacts(
+    prepared,
+    `browser memory ${options.kind}/${options.engine}`,
+  );
   const receipt = await collectReceipt({
     root,
     corpusPath: CORPUS,
