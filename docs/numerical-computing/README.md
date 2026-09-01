@@ -38,10 +38,32 @@ if supports(problem):
 ```
 
 `capabilities("ode")` returns one detached domain document. The unfiltered
-registry indexes every operation under an unambiguous `domain.operation` key;
-package-local registries retain their more specialized evidence and envelope
-fields. The initial four-language scalar-root slice remains the reference
-example while the shared multilingual surface is expanded in P6.
+registry indexes every operation under an unambiguous `domain.operation` key
+and every public adapter under its versioned frontend key. It also states the
+common resource-budget contract. Callback-depth and allocation-byte limits are
+not silently implied; memory is domain-specific and currently cooperative only
+for bounded sweeps.
+
+Method records deliberately separate `implementation_targets` from
+`receipt_qualification`. A target says where an implementation is intended to
+run. The public capability registry rejects caller-owned receipt claims and
+always emits empty qualification arrays; only a verified P8 report may overlay
+qualification. Any such verified envelope must be a subset of the declared
+implementation targets. A platform name in the former never proves the latter.
+
+Canonical domain results are mathematical evidence records and do not invent a
+source language. Code generation is owned by `FrontendExecutionResult`, which
+retains the frontend intent:
+
+```python
+wrapped = frontend_registry.execute(intent)
+wrapped.to_code("matlab")
+wrapped.numerical_result.to_dict()  # canonical evidence
+```
+
+Every common plan contains a planned execution target. Every common result
+states its planned target, observed implementation, source/artifact/receipt
+digests when supplied, binding status, and an explicit limitations array.
 
 See `surface.json` for the exhaustive classification ledger and
 `evidence-policy.json` for routine and release claims. The source and oracle

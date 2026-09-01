@@ -33,13 +33,21 @@ function values(argv, name) {
   return result;
 }
 
-function exactKeys(label, record, required) {
+function exactKeys(label, record, required, optional = []) {
   if (record === null || typeof record !== "object" || Array.isArray(record)) {
     throw new Error(`${label} must be an object`);
   }
-  const expected = new Set(required);
+  const expected = new Set([...required, ...optional]);
   for (const name of required) if (!Object.hasOwn(record, name)) throw new Error(`${label} missing ${name}`);
   for (const name of Object.keys(record)) if (!expected.has(name)) throw new Error(`${label} unknown ${name}`);
+}
+
+function requiredMemoryScope(subjectKind) {
+  if (subjectKind === "node") return "collector_process";
+  if (["npm", "sea", "browser", "worker"].includes(subjectKind)) {
+    return "process_tree";
+  }
+  throw new Error(`no qualified memory scope for subject kind ${subjectKind}`);
 }
 
 function manifestArguments(specifications) {
@@ -65,7 +73,12 @@ function renderMatrix(template, corpus, manifests) {
     throw new Error("unsupported numerical matrix template schema");
   }
   const rows = template.rows.map((row) => {
-    exactKeys(`matrix row ${row.id}`, row, ["id", "platform", "subject"]);
+    exactKeys(
+      `matrix row ${row.id}`,
+      row,
+      ["id", "platform", "subject"],
+      ["required_memory_scope"],
+    );
     exactKeys(`matrix row ${row.id}.subject`, row.subject, ["kind", "name", "engine"]);
     const manifest = manifests.get(row.id);
     if (manifest === undefined) throw new Error(`missing bound capability manifest for ${row.id}`);
@@ -78,6 +91,14 @@ function renderMatrix(template, corpus, manifests) {
       if (capabilities.get(id)?.status !== "available") {
         throw new Error(`row ${row.id} lacks available capability ${id}`);
       }
+    }
+    const memoryScope = requiredMemoryScope(manifest.subject.kind);
+    if (row.required_memory_scope !== undefined &&
+        row.required_memory_scope !== memoryScope) {
+      throw new Error(
+        `row ${row.id} requires ${row.required_memory_scope} memory, ` +
+        `but ${manifest.subject.kind} must use ${memoryScope}`,
+      );
     }
     return {
       id: row.id,
@@ -98,6 +119,7 @@ function renderMatrix(template, corpus, manifests) {
       required_case_layers: template.required_case_layers,
       required_capabilities: template.required_capabilities,
       required_artifacts: manifest.bindings.artifacts,
+      required_memory_scope: memoryScope,
     };
   });
   const sourceHashes = new Set(rows.map((row) => row.match.source_bundle_sha256));
@@ -157,4 +179,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { main, manifestArguments, renderMatrix, usage };
+module.exports = { main, manifestArguments, renderMatrix, requiredMemoryScope, usage };

@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from .model import (
+    FRONTEND_CLASSIFICATIONS,
     FrontendDiagnostic,
     NumericalFrontendIntent,
     OperationRef,
@@ -31,10 +32,26 @@ class OperationAdapter:
         emitters: Mapping[str, Emitter],
         parsers: Mapping[str, Parser] | None = None,
         executor: Executor | None = None,
+        classification: str = "translated",
+        capability_operations: Sequence[str] | None = None,
     ) -> None:
         if not isinstance(operation, OperationRef):
             raise TypeError("operation adapter requires an OperationRef")
+        if classification not in FRONTEND_CLASSIFICATIONS:
+            raise ValueError("unknown frontend classification: " + classification)
         self.operation = operation
+        self._classification = classification
+        if capability_operations is None:
+            capability_operations = (operation.domain + "." + operation.name,)
+        self._capability_operations = tuple(
+            str(value) for value in capability_operations
+        )
+        if not self._capability_operations or any(
+            value == "" or "." not in value for value in self._capability_operations
+        ):
+            raise ValueError(
+                "frontend capability operation references must be qualified names"
+            )
         self.aliases: dict[str, tuple[str, ...]] = {}
         self.lowerers: dict[str, Lowerer] = {}
         self.emitters: dict[str, Emitter] = {}
@@ -53,6 +70,23 @@ class OperationAdapter:
             for language in parsers:
                 self.parsers[canonical_language(language)] = parsers[language]
         self.executor = executor
+
+    def metadata(self) -> dict[str, Any]:
+        """Return a fresh, detached description of this public adapter."""
+        return {
+            "operation": self.operation.to_dict(),
+            "operation_key": self.operation.key,
+            "classification": self._classification,
+            "capability_operations": list(self._capability_operations),
+            "aliases": {
+                language: list(self.aliases[language])
+                for language in sorted(self.aliases)
+            },
+            "source_languages": sorted(self.lowerers),
+            "target_languages": sorted(self.emitters),
+            "round_trip_languages": sorted(self.parsers),
+            "executable": self.executor is not None,
+        }
 
 
 class FrontendRegistry:
@@ -93,6 +127,10 @@ class FrontendRegistry:
 
     def operations(self) -> tuple[OperationRef, ...]:
         return tuple(self._adapters[key].operation for key in sorted(self._adapters))
+
+    def metadata(self) -> tuple[dict[str, Any], ...]:
+        """Return detached metadata for every registered operation."""
+        return tuple(self._adapters[key].metadata() for key in sorted(self._adapters))
 
     def adapter(self, operation: OperationRef) -> OperationAdapter:
         adapter = self._adapters.get(operation.key)
@@ -178,7 +216,12 @@ class FrontendRegistry:
                     operation=intent.operation,
                 )
             )
-        return adapter.executor(intent)
+        result = adapter.executor(intent)
+        from .operations import FrontendExecutionResult
+
+        if isinstance(result, FrontendExecutionResult):
+            return result
+        return FrontendExecutionResult(intent, result)
 
 
 __all__ = ["FrontendRegistry", "OperationAdapter"]

@@ -124,6 +124,7 @@ def _operation_record(name: str) -> dict[str, JSONValue]:
             "random_draws_during_planning": False,
         }
     return {
+        "classification": "extension",
         "default_method": str(source["default_method"]),
         "methods": methods,
         "requirements": list(source["requirements"]),

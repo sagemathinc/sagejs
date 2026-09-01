@@ -52,6 +52,63 @@ SWEEP_ITEM_STATUSES = (
 _MAX_SAFE_INTEGER = 9_007_199_254_740_991
 
 
+def sweep_capabilities() -> dict[str, JSONValue]:
+    """Return the public generic bounded-sweep capability document."""
+    return {
+        "schema_version": SWEEP_SCHEMA_VERSION,
+        "domain": "sweeps",
+        "operations": {
+            "parameter_sweep": {
+                "classification": "extension",
+                "methods": {
+                    SWEEP_SCHEDULER: {
+                        "classification": "extension",
+                        "backend": "ordinary-python",
+                        "ordering": "stable_input_order",
+                        "failure_modes": list(SWEEP_MODES),
+                        "seed_algorithm": SWEEP_SEED_ALGORITHM,
+                        "implementation_targets": {
+                            "platforms": [
+                                "linux-x64",
+                                "linux-arm64",
+                                "macos-arm64",
+                                "windows-x64",
+                            ],
+                            "runtimes": ["browser", "node", "sea"],
+                        },
+                        "receipt_qualification": {
+                            "status": "unqualified_in_public_registry",
+                            "platforms": [],
+                            "runtimes": [],
+                            "receipt_sha256": [],
+                        },
+                    }
+                },
+                "resource_budgets": {
+                    "hard": [
+                        "max_items",
+                        "max_input_bytes",
+                        "max_result_bytes",
+                        "max_evaluations",
+                        "max_elapsed_ms",
+                        "max_trace_events",
+                        "max_trace_bytes",
+                        "max_concurrency",
+                    ],
+                    "cooperative": ["max_memory_bytes", "cancellation"],
+                    "unsupported": ["max_callback_depth", "max_allocation_bytes"],
+                },
+                "frontends": {
+                    "sage": "run_parameter_sweep",
+                    "python-scipy": "sagejs.run_parameter_sweep",
+                    "matlab": "arrayfun (input translation only)",
+                    "wolfram": "Map (input translation only)",
+                },
+            }
+        },
+    }
+
+
 def _positive_integer(value: Any, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise ValueError(name + " must be a positive integer")

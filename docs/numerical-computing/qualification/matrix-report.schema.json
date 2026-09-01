@@ -26,14 +26,22 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "row_id", "status", "reasons", "receipt", "bindings", "coverage", "metrics"
+          "row_id", "required_memory_scope", "status", "reasons", "receipt", "bindings",
+          "coverage", "metrics"
         ],
         "properties": {
           "row_id": { "type": "string", "minLength": 1 },
+          "required_memory_scope": {
+            "enum": ["collector_process", "process_tree", "browser_heap"]
+          },
           "status": { "enum": ["passed", "failed", "missing"] },
           "reasons": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-          "receipt": { "type": ["object", "null"] },
-          "bindings": { "type": ["object", "null"] },
+          "receipt": {
+            "oneOf": [{ "$ref": "#/$defs/receiptSummary" }, { "type": "null" }]
+          },
+          "bindings": {
+            "oneOf": [{ "$ref": "#/$defs/bindings" }, { "type": "null" }]
+          },
           "coverage": {
             "oneOf": [
               { "type": "null" },
@@ -56,7 +64,9 @@
               }
             ]
           },
-          "metrics": { "type": ["object", "null"] }
+          "metrics": {
+            "oneOf": [{ "$ref": "#/$defs/metrics" }, { "type": "null" }]
+          }
         }
       }
     },
@@ -65,6 +75,141 @@
       "uniqueItems": true,
       "items": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
     },
-    "id": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+    "id": { "$ref": "#/$defs/contentId" }
+  },
+  "$defs": {
+    "nonempty": { "type": "string", "minLength": 1 },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "contentId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "nonnegativeInteger": { "type": "integer", "minimum": 0 },
+    "receiptSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path", "id", "collected_at", "repository_commit", "platform", "machine_id",
+        "collector", "subject"
+      ],
+      "properties": {
+        "path": { "$ref": "#/$defs/nonempty" },
+        "id": { "$ref": "#/$defs/contentId" },
+        "collected_at": { "type": "string", "format": "date-time" },
+        "repository_commit": { "type": "string", "pattern": "^[0-9a-f]{40,64}$" },
+        "platform": {
+          "enum": ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]
+        },
+        "machine_id": { "$ref": "#/$defs/contentId" },
+        "collector": {
+          "$ref": "run-receipt.schema.json#/$defs/runtime/properties/collector"
+        },
+        "subject": { "$ref": "run-receipt.schema.json#/$defs/subject" }
+      }
+    },
+    "artifactDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "sha256"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonempty" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "corpus_sha256", "source_bundle_sha256", "adapter_sha256",
+        "capability_manifest_id", "capability_manifest_sha256", "artifacts"
+      ],
+      "properties": {
+        "corpus_sha256": { "$ref": "#/$defs/sha256" },
+        "source_bundle_sha256": { "$ref": "#/$defs/sha256" },
+        "adapter_sha256": { "$ref": "#/$defs/sha256" },
+        "capability_manifest_id": { "$ref": "#/$defs/contentId" },
+        "capability_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/artifactDigest" }
+        }
+      }
+    },
+    "caseMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "program_phase", "layer", "workload_tier", "campaign", "wall_ms",
+        "rss_peak_sampled_bytes", "process_max_rss_bytes", "peak_memory",
+        "adapter_phases_ms"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonempty" },
+        "program_phase": {
+          "enum": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"]
+        },
+        "layer": { "$ref": "#/$defs/nonempty" },
+        "workload_tier": { "$ref": "#/$defs/nonempty" },
+        "campaign": {
+          "$ref": "run-receipt.schema.json#/$defs/caseEvidence/properties/campaign"
+        },
+        "wall_ms": {
+          "oneOf": [
+            { "$ref": "run-receipt.schema.json#/$defs/summary" },
+            { "type": "null" }
+          ]
+        },
+        "rss_peak_sampled_bytes": {
+          "oneOf": [{ "$ref": "#/$defs/nonnegativeInteger" }, { "type": "null" }]
+        },
+        "process_max_rss_bytes": {
+          "oneOf": [{ "$ref": "#/$defs/nonnegativeInteger" }, { "type": "null" }]
+        },
+        "peak_memory": {
+          "oneOf": [
+            { "$ref": "run-receipt.schema.json#/$defs/peakMemory" },
+            { "type": "null" }
+          ]
+        },
+        "adapter_phases_ms": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "run-receipt.schema.json#/$defs/summary"
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "startup", "total_wall_ms", "rss_peak_sampled_bytes",
+        "process_max_rss_bytes", "peak_memory", "payload", "cases"
+      ],
+      "properties": {
+        "startup": {
+          "$ref": "run-receipt.schema.json#/$defs/runMetrics/properties/startup"
+        },
+        "total_wall_ms": { "type": "number", "minimum": 0 },
+        "rss_peak_sampled_bytes": {
+          "oneOf": [{ "$ref": "#/$defs/nonnegativeInteger" }, { "type": "null" }]
+        },
+        "process_max_rss_bytes": {
+          "oneOf": [{ "$ref": "#/$defs/nonnegativeInteger" }, { "type": "null" }]
+        },
+        "peak_memory": {
+          "oneOf": [
+            { "$ref": "run-receipt.schema.json#/$defs/peakMemory" },
+            { "type": "null" }
+          ]
+        },
+        "payload": {
+          "$ref": "run-receipt.schema.json#/$defs/runMetrics/properties/payload"
+        },
+        "cases": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/caseMetrics" }
+        }
+      }
+    }
   }
 }

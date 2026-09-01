@@ -2,13 +2,34 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from ._json import JSONValue, materialize_json
 from .diagnostics import NumericalDiagnostic
-from .model import NumericalPlan, NumericalProblem
+from .model import NumericalPlan, NumericalProblem, ResourceBudget
 
 CAPABILITY_SCHEMA_VERSION = 1
+
+_TARGET_PLATFORMS = (
+    "linux-x64",
+    "linux-arm64",
+    "macos-arm64",
+    "windows-x64",
+)
+_TARGET_RUNTIMES = (
+    "browser",
+    "node",
+    "sea",
+    "cpython",
+)
+_RUNTIME_ALIASES = {
+    "sagejs-node": "node",
+    "sagejs-browser": "browser",
+    "sagejs-sea": "sea",
+    "browser-wasm": "browser",
+}
+_CLASSIFICATION_PRIORITY = ("extension", "translated", "faithful")
 
 _ROOT_METHODS: dict[str, dict[str, JSONValue]] = {
     "bisection": {
@@ -22,6 +43,7 @@ _ROOT_METHODS: dict[str, dict[str, JSONValue]] = {
             "browser",
             "node",
             "sea",
+            "cpython",
             "linux-x64",
             "linux-arm64",
             "macos-arm64",
@@ -39,6 +61,7 @@ _ROOT_METHODS: dict[str, dict[str, JSONValue]] = {
             "browser",
             "node",
             "sea",
+            "cpython",
             "linux-x64",
             "linux-arm64",
             "macos-arm64",
@@ -56,6 +79,7 @@ _ROOT_METHODS: dict[str, dict[str, JSONValue]] = {
             "browser",
             "node",
             "sea",
+            "cpython",
             "linux-x64",
             "linux-arm64",
             "macos-arm64",
@@ -74,6 +98,7 @@ _ROOT_METHODS: dict[str, dict[str, JSONValue]] = {
             "browser",
             "node",
             "sea",
+            "cpython",
             "linux-x64",
             "linux-arm64",
             "macos-arm64",
@@ -194,6 +219,7 @@ _DOMAIN_NAMES = (
     "ode",
     "spectral",
     "statistics",
+    "sweeps",
 )
 
 _DOMAIN_ALIASES = {
@@ -209,6 +235,289 @@ def _detached_object(value: Any, description: str) -> dict[str, JSONValue]:
     if not isinstance(detached, dict):
         raise TypeError(description + " must be an object")
     return detached
+
+
+def _method_ids(capability: Mapping[str, Any]) -> list[str]:
+    methods = capability.get("methods")
+    if isinstance(methods, dict):
+        return sorted(str(name) for name in methods)
+    if isinstance(methods, list):
+        return sorted(str(name) for name in methods)
+    scheduler = capability.get("scheduler")
+    if isinstance(scheduler, str) and scheduler != "":
+        return [scheduler]
+    return []
+
+
+def _operation_classification(capability: Mapping[str, Any]) -> str:
+    declared = capability.get("classification")
+    if isinstance(declared, str) and declared in _CLASSIFICATION_PRIORITY:
+        return declared
+    methods = capability.get("methods")
+    classifications: set[str] = set()
+    if isinstance(methods, dict):
+        for value in methods.values():
+            if isinstance(value, dict):
+                classification = value.get("classification")
+                if (
+                    isinstance(classification, str)
+                    and classification in _CLASSIFICATION_PRIORITY
+                ):
+                    classifications.add(classification)
+    for classification in _CLASSIFICATION_PRIORITY:
+        if classification in classifications:
+            return classification
+    raise ValueError(
+        "numerical operation capability requires an explicit classification "
+        "or classified methods"
+    )
+
+
+def _runtime_id(value: Any) -> str:
+    selected = _RUNTIME_ALIASES.get(value, value)
+    if selected not in _TARGET_RUNTIMES:
+        raise ValueError("unknown numerical implementation runtime: " + str(value))
+    return str(selected)
+
+
+def _platform_id(value: Any) -> str:
+    if not isinstance(value, str) or value not in _TARGET_PLATFORMS:
+        raise ValueError("unknown numerical implementation platform: " + str(value))
+    return value
+
+
+def _declared_array(value: Any, name: str) -> list[Any]:
+    if not isinstance(value, list):
+        raise TypeError(name + " must be an array")
+    return value
+
+
+def _receipt_digest(value: Any) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(
+            "receipt qualification digests must be lowercase SHA-256 digests"
+        )
+    return value
+
+
+def _normalize_receipt_qualification(
+    value: Any,
+    *,
+    implementation_platforms: set[str],
+    implementation_runtimes: set[str],
+) -> dict[str, JSONValue]:
+    record = _detached_object(value, "numerical receipt qualification")
+    required = {"status", "platforms", "runtimes", "receipt_sha256"}
+    if set(record) != required:
+        raise ValueError(
+            "receipt qualification must contain exactly status, platforms, "
+            "runtimes, and receipt_sha256"
+        )
+    status = record["status"]
+    if status not in ("unqualified_in_public_registry", "receipt_qualified"):
+        raise ValueError("unknown numerical receipt qualification status")
+    platforms = sorted(
+        {
+            _platform_id(target)
+            for target in _declared_array(
+                record["platforms"], "receipt qualification platforms"
+            )
+        }
+    )
+    runtimes = sorted(
+        {
+            _runtime_id(target)
+            for target in _declared_array(
+                record["runtimes"], "receipt qualification runtimes"
+            )
+        }
+    )
+    receipts = sorted(
+        {
+            _receipt_digest(digest)
+            for digest in _declared_array(
+                record["receipt_sha256"], "receipt qualification digests"
+            )
+        }
+    )
+    if status == "unqualified_in_public_registry":
+        if platforms or runtimes or receipts:
+            raise ValueError(
+                "an unqualified receipt record cannot claim platforms, runtimes, "
+                "or receipt digests"
+            )
+    else:
+        if not receipts or (not platforms and not runtimes):
+            raise ValueError(
+                "a receipt-qualified method requires retained receipt digests and "
+                "a platform or runtime envelope"
+            )
+        if not set(platforms).issubset(implementation_platforms) or not set(
+            runtimes
+        ).issubset(implementation_runtimes):
+            raise ValueError(
+                "a receipt qualification envelope must be a subset of its "
+                "implementation targets"
+            )
+        raise ValueError(
+            "the public capability registry cannot accept caller-owned receipt "
+            "qualification; use a verified P8 report overlay"
+        )
+    return _detached_object(
+        {
+            "status": status,
+            "platforms": platforms,
+            "runtimes": runtimes,
+            "receipt_sha256": receipts,
+        },
+        "normalized receipt qualification",
+    )
+
+
+def _normalize_method_record(value: Mapping[str, Any]) -> dict[str, JSONValue]:
+    record = _detached_object(value, "numerical method capability")
+    platforms: list[str] = []
+    runtimes: list[str] = []
+    declared_platforms = record.pop("platforms", [])
+    declared_runtimes = record.pop("runtimes", [])
+    for target in _declared_array(declared_platforms, "numerical method platforms"):
+        if target in _TARGET_RUNTIMES or target in _RUNTIME_ALIASES:
+            runtimes.append(_runtime_id(target))
+        else:
+            platforms.append(_platform_id(target))
+    runtimes.extend(
+        _runtime_id(target)
+        for target in _declared_array(declared_runtimes, "numerical method runtimes")
+    )
+    if "implementation_targets" in record:
+        raw_targets = _detached_object(
+            record["implementation_targets"], "numerical implementation targets"
+        )
+        if set(raw_targets) != {"platforms", "runtimes"}:
+            raise ValueError(
+                "implementation targets must contain exactly platforms and runtimes"
+            )
+        platforms.extend(
+            _platform_id(target)
+            for target in _declared_array(
+                raw_targets["platforms"], "implementation target platforms"
+            )
+        )
+        runtimes.extend(
+            _runtime_id(target)
+            for target in _declared_array(
+                raw_targets["runtimes"], "implementation target runtimes"
+            )
+        )
+    normalized_platforms = sorted(set(platforms))
+    normalized_runtimes = sorted(set(runtimes))
+    record["implementation_targets"] = materialize_json(
+        {
+            "platforms": normalized_platforms,
+            "runtimes": normalized_runtimes,
+        }
+    )
+    qualification = record.get(
+        "receipt_qualification",
+        {
+            "status": "unqualified_in_public_registry",
+            "platforms": [],
+            "runtimes": [],
+            "receipt_sha256": [],
+        },
+    )
+    record["receipt_qualification"] = _normalize_receipt_qualification(
+        qualification,
+        implementation_platforms=set(normalized_platforms),
+        implementation_runtimes=set(normalized_runtimes),
+    )
+    return record
+
+
+def _normalize_operation_capability(
+    capability: Mapping[str, Any],
+) -> dict[str, JSONValue]:
+    record = _detached_object(capability, "numerical operation capability")
+    methods = record.get("methods")
+    if isinstance(methods, dict):
+        normalized_methods: dict[str, JSONValue] = {}
+        for name, value in sorted(methods.items()):
+            if not isinstance(value, Mapping):
+                raise TypeError(
+                    "numerical method capability " + str(name) + " must be an object"
+                )
+            normalized_methods[str(name)] = _normalize_method_record(value)
+        record["methods"] = normalized_methods
+    surface: dict[str, JSONValue] = {
+        "classification": _operation_classification(record),
+        "status": "implemented",
+        "methods": materialize_json(_method_ids(record)),
+    }
+    record["surface"] = surface
+    return record
+
+
+def _normalize_domain_document(
+    domain: str, document: Mapping[str, Any]
+) -> dict[str, JSONValue]:
+    record = _detached_object(document, domain + " capability document")
+    operations = record.get("operations")
+    if not isinstance(operations, dict):
+        raise TypeError(domain + " capability document has no operations")
+    record["operations"] = {
+        str(name): _normalize_operation_capability(value)
+        if isinstance(value, Mapping)
+        else value
+        for name, value in sorted(operations.items())
+    }
+    implementation_claims = record.pop("qualification", None)
+    if implementation_claims is not None:
+        record["implementation_claims"] = _normalize_implementation_claims(
+            implementation_claims
+        )
+    record["receipt_qualification"] = {
+        "status": "not_bound_by_public_capability_registry",
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": [],
+        "evidence_source": "P8 qualification reports",
+    }
+    return record
+
+
+def _normalize_implementation_claims(value: Any) -> JSONValue:
+    if isinstance(value, Mapping):
+        answer: dict[str, JSONValue] = {}
+        for key, item in value.items():
+            if key == "runtimes":
+                if not isinstance(item, list):
+                    raise TypeError("implementation claim runtimes must be an array")
+                answer[key] = materialize_json(
+                    sorted(set(_runtime_id(target) for target in item))
+                )
+            elif key == "platforms":
+                if not isinstance(item, list):
+                    raise ValueError(
+                        "implementation claims contain an unknown platform"
+                    )
+                normalized_platforms: list[str] = []
+                for target in item:
+                    if not isinstance(target, str) or target not in _TARGET_PLATFORMS:
+                        raise ValueError(
+                            "implementation claims contain an unknown platform"
+                        )
+                    normalized_platforms.append(target)
+                answer[key] = materialize_json(sorted(set(normalized_platforms)))
+            else:
+                answer[str(key)] = _normalize_implementation_claims(item)
+        return answer
+    if isinstance(value, list):
+        return [_normalize_implementation_claims(item) for item in value]
+    return materialize_json(value)
 
 
 def _canonical_domain(domain: str) -> str:
@@ -267,7 +576,7 @@ def _domain_document(domain: str) -> dict[str, JSONValue]:
                         "methods": detail["implemented_methods"],
                         "unsupported_methods": detail["unsupported_methods"],
                         "supported_state": detail["supported_state"],
-                        "portability_evidence": detail["portability_evidence"],
+                        "implementation_targets": detail["implementation_targets"],
                         "limitations": detail["limitations"],
                     },
                     "parameter_sweep": detail["parameter_sweeps"],
@@ -280,9 +589,26 @@ def _domain_document(domain: str) -> dict[str, JSONValue]:
         from .spectral import capabilities as spectral_capabilities
 
         return _detached_object(spectral_capabilities(), "spectral capability document")
-    from .statistics import capabilities as statistics_capabilities
+    if domain == "statistics":
+        from .statistics import capabilities as statistics_capabilities
 
-    return _detached_object(statistics_capabilities(), "statistics capability document")
+        return _detached_object(
+            statistics_capabilities(), "statistics capability document"
+        )
+    from .sweeps import sweep_capabilities
+
+    return _detached_object(sweep_capabilities(), "sweep capability document")
+
+
+def _resource_budget_contract() -> dict[str, JSONValue]:
+    from .ode.model import OdeResourceBudget
+
+    record = ResourceBudget.capability_record()
+    domain_specific = record.get("domain_specific")
+    if not isinstance(domain_specific, dict):
+        raise TypeError("resource budget capability has no domain-specific registry")
+    domain_specific.update(OdeResourceBudget.domain_capability_record())
+    return record
 
 
 def capabilities(domain: str | None = None) -> dict[str, JSONValue]:
@@ -294,11 +620,14 @@ def capabilities(domain: str | None = None) -> dict[str, JSONValue]:
     if domain is not None:
         if not isinstance(domain, str):
             raise TypeError("numerical capability domain must be a string or None")
-        return _domain_document(_canonical_domain(domain))
+        canonical = _canonical_domain(domain)
+        return _normalize_domain_document(canonical, _domain_document(canonical))
     domains: dict[str, JSONValue] = {}
     operation_index: dict[str, JSONValue] = {}
     for domain_name in _DOMAIN_NAMES:
-        document = _domain_document(domain_name)
+        document = _normalize_domain_document(
+            domain_name, _domain_document(domain_name)
+        )
         domains[domain_name] = document
         operations = document.get("operations")
         if not isinstance(operations, dict):
@@ -309,10 +638,31 @@ def capabilities(domain: str | None = None) -> dict[str, JSONValue]:
                 "operation": operation_name,
                 "capability": operations[operation_name],
             }
+    from .frontends import create_frontend_registry
+
+    frontend_index: dict[str, JSONValue] = {}
+    for metadata in create_frontend_registry().metadata():
+        key = metadata.get("operation_key")
+        if not isinstance(key, str) or key == "" or key in frontend_index:
+            raise TypeError("invalid or duplicate numerical frontend operation")
+        references = metadata.get("capability_operations")
+        if not isinstance(references, list) or any(
+            not isinstance(reference, str) or reference not in operation_index
+            for reference in references
+        ):
+            raise TypeError(key + " references an unknown numerical capability")
+        frontend_index[key] = metadata
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "domains": domains,
         "operation_index": operation_index,
+        "frontend_index": frontend_index,
+        "resource_budget_contract": _resource_budget_contract(),
+        "portability_contract": {
+            "implementation_targets": "declared build/runtime targets",
+            "receipt_qualification": "unqualified; verified P8 reports own qualification overlays",
+            "qualification_envelope": "must be a subset of implementation targets",
+        },
     }
 
 
