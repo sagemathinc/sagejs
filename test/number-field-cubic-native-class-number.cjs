@@ -82,10 +82,10 @@ def field(coefficients, name):
         polynomial += coefficient * x**exponent
     return NumberField(polynomial, name)
 
-# This valid field used to decline after leaving FLINT's fmpz cache pointing
-# into an unmapped GMP checkpoint.  Every following computation must remain
-# independent and safe.
-declined = field((-1, 2, 0, 1), "declined")
+# A valid field beyond the current Minkowski-bound envelope declines after
+# native maximal-order analysis. Every following computation must remain
+# independent and safe after its exact arena is released.
+declined = field((100000, 1, 0, 1), "declined")
 assert certified_complex_cubic_class_number(declined) is None
 
 cases = (
@@ -99,7 +99,10 @@ for index, (coefficients, order, invariants) in enumerate(cases):
     assert receipt.class_number == order
     assert receipt.invariants == invariants
     assert receipt.proof_status == "exact-relations-conditional-grh"
-    assert receipt.theorem == "minkowski-generators-plus-belabas-friedman-grh-index-one"
+    assert receipt.theorem == (
+        "belabas-diaz-y-diaz-friedman-generators-plus-"
+        "belabas-friedman-index-one"
+    )
     assert receipt.assumptions == (
         "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
     )
@@ -130,7 +133,7 @@ from sagejs.number_fields.cubic_class_number_native_runtime import certified_com
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-for index, coefficients in enumerate(((-55, 9, 0, 1), (-4, 3, -1, 1))):
+for index, coefficients in enumerate(((1, 0, -1, 1), (-8, -1, 0, 1), (-55, 9, 0, 1), (-4, 3, -1, 1))):
     polynomial = R(0)
     for exponent, coefficient in enumerate(coefficients):
         polynomial += coefficient * x**exponent
@@ -152,12 +155,24 @@ from sagejs.number_fields.cubic_class_number_native_runtime import certified_com
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 cases = (
+    ("3.1.23.1", (1, 0, -1, 1), 1, ()),
+    ("3.1.431.1", (-8, -1, 0, 1), 1, ()),
     ("3.1.1083.1", (-12, -6, -1, 1), 3, (3,)),
     ("3.1.1371.1", (6, 3, -1, 1), 4, (4,)),
     ("3.1.1563.1", (-6, 7, -1, 1), 5, (5,)),
     ("3.1.2856.1", (-21, 9, -1, 1), 7, (7,)),
     ("3.1.4027.2", (8, 7, -1, 1), 6, (6,)),
     ("3.1.5448.1", (30, -14, -1, 1), 8, (8,)),
+    # This field needs PARI's next small_norm regime: a reduced shell in
+    # compound prime ideals exposes the rank-one unit dependency.
+    ("3.1.49096.1", (-126, -6, -1, 1), 9, (9,)),
+    # The defining order has index 4 and a prime discriminant component above
+    # one million.  The proof binder must use its deterministic word-prime
+    # certificate rather than an arbitrary trial-division cutoff.
+    ("3.1.1181183.1", (-796, 92, -1, 1), 8, (2, 2, 2)),
+    # PARI needs one sub-factor-base multiplier pass after its first
+    # small_norm batch.  This also exercises a 17-ideal resident factor base.
+    ("3.1.1737311.1", (289, -42, -1, 1), 8, (2, 2, 2)),
 )
 for index, (label, coefficients, expected_order, expected_invariants) in enumerate(cases):
     polynomial = R(0)

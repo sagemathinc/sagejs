@@ -7,7 +7,7 @@ from typing import Any
 import sagejs.runtime as _runtime
 
 __sagejs_ffi_declaration__ = (
-    "flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292"
+    "flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81"
 )
 
 
@@ -27,7 +27,7 @@ class FmpzMatrix:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
         )
 
     def __enter__(self) -> FmpzMatrix:
@@ -55,7 +55,7 @@ class FmpqMatrix:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
         )
 
     def __enter__(self) -> FmpqMatrix:
@@ -83,7 +83,7 @@ class FmpzVector:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
         )
 
     def __enter__(self) -> FmpzVector:
@@ -111,7 +111,7 @@ class FmpqVector:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
         )
 
     def __enter__(self) -> FmpqVector:
@@ -139,7 +139,7 @@ class NmodMatrix:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
         )
 
     def __enter__(self) -> NmodMatrix:
@@ -167,7 +167,7 @@ class FmpqValue:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_value",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_value",
         )
 
     def __enter__(self) -> FmpqValue:
@@ -188,7 +188,7 @@ class FlintByteRegion:
         return cls(
             _runtime.ffi_resource_create(
                 __sagejs_ffi_declaration__ + ":__resource_byte_region_from_bytes",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
                 "@sagemath/sagejs-flint",
                 "ffiFlintByteRegionFromBytes",
                 "ffiFlintByteRegionClose",
@@ -214,7 +214,7 @@ class FlintByteRegion:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
         )
 
     def __enter__(self) -> FlintByteRegion:
@@ -229,7 +229,7 @@ class FlintByteRegion:
         """Copy this resource's byte payload into host-owned storage."""
         return _runtime.ffi_resource_copy_bytes(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "ffiFlintByteRegionCopyBytes",
         )
 
@@ -257,7 +257,7 @@ class NumberFieldOrderResource:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_order_resource",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_order_resource",
         )
 
     def __enter__(self) -> NumberFieldOrderResource:
@@ -272,7 +272,7 @@ class NumberFieldOrderResource:
         """Copy this resource's byte payload into host-owned storage."""
         return _runtime.ffi_resource_copy_bytes(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_order_resource",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_order_resource",
             "ffiNumberFieldOrderResourceCopyBytes",
         )
 
@@ -300,7 +300,7 @@ class NumberFieldAnalysisResource:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_analysis_resource",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_analysis_resource",
         )
 
     def __enter__(self) -> NumberFieldAnalysisResource:
@@ -315,7 +315,7 @@ class NumberFieldAnalysisResource:
         """Copy this resource's byte payload into host-owned storage."""
         return _runtime.ffi_resource_copy_bytes(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_analysis_resource",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_analysis_resource",
             "ffiNumberFieldAnalysisResourceCopyBytes",
         )
 
@@ -343,7 +343,7 @@ class NativeExactWorkspace:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace",
         )
 
     def __enter__(self) -> NativeExactWorkspace:
@@ -371,7 +371,7 @@ class NativeExactWorkspaceBorrow:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace_borrow",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace_borrow",
         )
 
     def __enter__(self) -> NativeExactWorkspaceBorrow:
@@ -399,7 +399,7 @@ class FmpzPolynomial:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
         )
 
     def __enter__(self) -> FmpzPolynomial:
@@ -427,7 +427,7 @@ class FmpqPolynomial:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
         )
 
     def __enter__(self) -> FmpqPolynomial:
@@ -455,7 +455,7 @@ class FmpqPolynomialWorkspace:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
         )
 
     def __enter__(self) -> FmpqPolynomialWorkspace:
@@ -483,7 +483,7 @@ class FmpqPolynomialPair:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_pair",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_pair",
         )
 
     def __enter__(self) -> FmpqPolynomialPair:
@@ -511,7 +511,7 @@ class FmpqMumfordResult:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_mumford_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_mumford_result",
         )
 
     def __enter__(self) -> FmpqMumfordResult:
@@ -539,7 +539,7 @@ class FmpzModPolynomial:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
         )
 
     def __enter__(self) -> FmpzModPolynomial:
@@ -567,7 +567,7 @@ class FmpzModPolynomialDivisionResult:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_division_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_division_result",
         )
 
     def __enter__(self) -> FmpzModPolynomialDivisionResult:
@@ -595,7 +595,7 @@ class FmpzModPolynomialXgcdResult:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_xgcd_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_xgcd_result",
         )
 
     def __enter__(self) -> FmpzModPolynomialXgcdResult:
@@ -623,7 +623,7 @@ class FmpzModPolynomialFactorization:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_factorization",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_factorization",
         )
 
     def __enter__(self) -> FmpzModPolynomialFactorization:
@@ -638,7 +638,7 @@ class FmpzModPolynomialFactorization:
         """Copy this resource's byte payload into host-owned storage."""
         return _runtime.ffi_resource_copy_bytes(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_factorization",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_factorization",
             "ffiFmpzModPolynomialFactorizationCopyBytes",
         )
 
@@ -666,7 +666,7 @@ class FmpzModPolynomialRoots:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_roots",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_roots",
         )
 
     def __enter__(self) -> FmpzModPolynomialRoots:
@@ -681,7 +681,7 @@ class FmpzModPolynomialRoots:
         """Copy this resource's byte payload into host-owned storage."""
         return _runtime.ffi_resource_copy_bytes(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_roots",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_roots",
             "ffiFmpzModPolynomialRootsCopyBytes",
         )
 
@@ -709,7 +709,7 @@ class FqContext:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_context",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_context",
         )
 
     def __enter__(self) -> FqContext:
@@ -737,7 +737,7 @@ class FqElement:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
         )
 
     def __enter__(self) -> FqElement:
@@ -765,7 +765,7 @@ class FqPolynomial:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
         )
 
     def __enter__(self) -> FqPolynomial:
@@ -793,7 +793,7 @@ class ExactPolynomialFactorization:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:exact_polynomial_factorization",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:exact_polynomial_factorization",
         )
 
     def __enter__(self) -> ExactPolynomialFactorization:
@@ -808,7 +808,7 @@ class ExactPolynomialFactorization:
         """Copy this resource's byte payload into host-owned storage."""
         return _runtime.ffi_resource_copy_bytes(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:exact_polynomial_factorization",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:exact_polynomial_factorization",
             "ffiExactPolynomialFactorizationCopyBytes",
         )
 
@@ -836,7 +836,7 @@ class FmpzPolynomialDivisionResult:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial_division_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial_division_result",
         )
 
     def __enter__(self) -> FmpzPolynomialDivisionResult:
@@ -864,7 +864,7 @@ class FmpqPolynomialDivisionResult:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_division_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_division_result",
         )
 
     def __enter__(self) -> FmpqPolynomialDivisionResult:
@@ -892,7 +892,7 @@ class FmpzPolynomialXgcdResult:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial_xgcd_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial_xgcd_result",
         )
 
     def __enter__(self) -> FmpzPolynomialXgcdResult:
@@ -920,7 +920,7 @@ class FmpqPolynomialXgcdResult:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_xgcd_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_xgcd_result",
         )
 
     def __enter__(self) -> FmpqPolynomialXgcdResult:
@@ -948,7 +948,7 @@ class DirichletGroup:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:dirichlet_group",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:dirichlet_group",
         )
 
     def __enter__(self) -> DirichletGroup:
@@ -965,7 +965,7 @@ def fmpz_polynomial(length: int) -> FmpzPolynomial:
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialCreate",
             "ffiFmpzPolynomialClose",
@@ -989,7 +989,7 @@ def fmpz_polynomial_set_coefficient(
         "ffiFmpzPolynomialSetCoefficient",
         [polynomial._ffi_borrow(), index, coefficient],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "uint64",
             "Integer",
         ],
@@ -1009,7 +1009,7 @@ def fmpz_polynomial_seal(polynomial: FmpzPolynomial) -> bool:
         "ffiFmpzPolynomialSeal",
         [polynomial._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial"
         ],
         "bool",
         ["status", [1], None],
@@ -1027,7 +1027,7 @@ def fmpz_polynomial_length(polynomial: FmpzPolynomial) -> int:
         "ffiFmpzPolynomialLength",
         [polynomial._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial"
         ],
         "Integer",
         ["status", [1], None],
@@ -1045,8 +1045,8 @@ def fmpz_polynomial_equal(left: FmpzPolynomial, right: FmpzPolynomial) -> int:
         "ffiFmpzPolynomialEqual",
         [left._ffi_borrow(), right._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
         ],
         "Integer",
         ["status", [1], None],
@@ -1064,7 +1064,7 @@ def fmpz_polynomial_coefficient(polynomial: FmpzPolynomial, index: int) -> int:
         "ffiFmpzPolynomialCoefficient",
         [polynomial._ffi_borrow(), index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "uint64",
         ],
         "Integer",
@@ -1080,14 +1080,14 @@ def fmpz_polynomial_add(left: FmpzPolynomial, right: FmpzPolynomial) -> FmpzPoly
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_add",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialAdd",
             "ffiFmpzPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -1102,14 +1102,14 @@ def fmpz_polynomial_sub(left: FmpzPolynomial, right: FmpzPolynomial) -> FmpzPoly
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_sub",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialSub",
             "ffiFmpzPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -1124,13 +1124,13 @@ def fmpz_polynomial_neg(source: FmpzPolynomial) -> FmpzPolynomial:
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_neg",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialNeg",
             "ffiFmpzPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -1147,13 +1147,13 @@ def fmpz_polynomial_scalar_floor_div(
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_scalar_floor_div",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialScalarFloorDiv",
             "ffiFmpzPolynomialClose",
             [source._ffi_borrow(), divisor],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
                 "Integer",
             ],
             [None, None],
@@ -1169,13 +1169,13 @@ def fmpz_polynomial_truncate(source: FmpzPolynomial, stop: int) -> FmpzPolynomia
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_truncate",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialTruncate",
             "ffiFmpzPolynomialClose",
             [source._ffi_borrow(), stop],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
                 "uint64",
             ],
             [None, None],
@@ -1193,14 +1193,14 @@ def fmpz_polynomial_compose(
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_compose",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialCompose",
             "ffiFmpzPolynomialClose",
             [outer._ffi_borrow(), inner._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -1215,13 +1215,13 @@ def fmpz_polynomial_reverse(source: FmpzPolynomial, length: int) -> FmpzPolynomi
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_reverse",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialReverse",
             "ffiFmpzPolynomialClose",
             [source._ffi_borrow(), length],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
                 "uint64",
             ],
             [None, None],
@@ -1237,13 +1237,13 @@ def fmpz_polynomial_shift_left(source: FmpzPolynomial, amount: int) -> FmpzPolyn
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_shift_left",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialShiftLeft",
             "ffiFmpzPolynomialClose",
             [source._ffi_borrow(), amount],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
                 "uint64",
             ],
             [None, None],
@@ -1259,13 +1259,13 @@ def fmpz_polynomial_shift_right(source: FmpzPolynomial, amount: int) -> FmpzPoly
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_shift_right",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialShiftRight",
             "ffiFmpzPolynomialClose",
             [source._ffi_borrow(), amount],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
                 "uint64",
             ],
             [None, None],
@@ -1281,13 +1281,13 @@ def fmpz_polynomial_integral(source: FmpzPolynomial) -> FmpqPolynomial:
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_integral",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialIntegral",
             "ffiFmpqPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -1305,8 +1305,8 @@ def fmpz_polynomial_resultant(left: FmpzPolynomial, right: FmpzPolynomial) -> in
         "ffiFmpzPolynomialResultant",
         [left._ffi_borrow(), right._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
         ],
         "Integer",
         ["status", [1], None],
@@ -1324,7 +1324,7 @@ def fmpz_polynomial_discriminant(source: FmpzPolynomial) -> int:
         "ffiFmpzPolynomialDiscriminant",
         [source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial"
         ],
         "Integer",
         ["status", [1], None],
@@ -1339,13 +1339,13 @@ def fmpz_polynomial_derivative(source: FmpzPolynomial) -> FmpzPolynomial:
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_derivative",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialDerivative",
             "ffiFmpzPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -1360,14 +1360,14 @@ def fmpz_polynomial_mul(left: FmpzPolynomial, right: FmpzPolynomial) -> FmpzPoly
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_mul",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialMul",
             "ffiFmpzPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -1382,14 +1382,14 @@ def fmpz_polynomial_gcd(left: FmpzPolynomial, right: FmpzPolynomial) -> FmpzPoly
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_gcd",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialGcd",
             "ffiFmpzPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -1406,14 +1406,14 @@ def fmpz_polynomial_xgcd_resource(
     return FmpzPolynomialXgcdResult(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_xgcd_resource",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial_xgcd_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial_xgcd_result",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialXgcdResource",
             "ffiFmpzPolynomialXgcdResultClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -1428,13 +1428,13 @@ def fmpz_polynomial_xgcd_result_gcd(xgcd: FmpzPolynomialXgcdResult) -> FmpzPolyn
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_xgcd_result_gcd",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialXgcdResultGcd",
             "ffiFmpzPolynomialClose",
             [xgcd._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial_xgcd_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial_xgcd_result"
             ],
             [None],
             "zero_is_error",
@@ -1452,13 +1452,13 @@ def fmpz_polynomial_xgcd_result_left_coefficient(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__
             + ":fmpz_polynomial_xgcd_result_left_coefficient",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialXgcdResultLeftCoefficient",
             "ffiFmpzPolynomialClose",
             [xgcd._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial_xgcd_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial_xgcd_result"
             ],
             [None],
             "zero_is_error",
@@ -1476,13 +1476,13 @@ def fmpz_polynomial_xgcd_result_right_coefficient(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__
             + ":fmpz_polynomial_xgcd_result_right_coefficient",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialXgcdResultRightCoefficient",
             "ffiFmpzPolynomialClose",
             [xgcd._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial_xgcd_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial_xgcd_result"
             ],
             [None],
             "zero_is_error",
@@ -1499,13 +1499,13 @@ def fmpz_polynomial_factor_resource(
     return ExactPolynomialFactorization(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_factor_resource",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:exact_polynomial_factorization",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:exact_polynomial_factorization",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialFactorResource",
             "ffiExactPolynomialFactorizationClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -1522,14 +1522,14 @@ def fmpz_polynomial_divexact(
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_divexact",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialDivExact",
             "ffiFmpzPolynomialClose",
             [dividend._ffi_borrow(), divisor._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -1546,14 +1546,14 @@ def fmpz_polynomial_quo_rem_resource(
     return FmpzPolynomialDivisionResult(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_quo_rem_resource",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial_division_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial_division_result",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialQuoRemResource",
             "ffiFmpzPolynomialDivisionResultClose",
             [dividend._ffi_borrow(), divisor._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -1570,13 +1570,13 @@ def fmpz_polynomial_division_result_quotient(
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_division_result_quotient",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialDivisionResultQuotient",
             "ffiFmpzPolynomialClose",
             [division._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial_division_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial_division_result"
             ],
             [None],
             "zero_is_error",
@@ -1593,13 +1593,13 @@ def fmpz_polynomial_division_result_remainder(
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_division_result_remainder",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialDivisionResultRemainder",
             "ffiFmpzPolynomialClose",
             [division._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial_division_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial_division_result"
             ],
             [None],
             "zero_is_error",
@@ -1614,13 +1614,13 @@ def fmpz_polynomial_pow(source: FmpzPolynomial, exponent: int) -> FmpzPolynomial
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_pow",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialPow",
             "ffiFmpzPolynomialClose",
             [source._ffi_borrow(), exponent],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
                 "uint64",
             ],
             [None, None],
@@ -1636,7 +1636,7 @@ def fmpz_polynomial_cyclotomic(order: int) -> FmpzPolynomial:
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_cyclotomic",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialCyclotomic",
             "ffiFmpzPolynomialClose",
@@ -1658,7 +1658,7 @@ def fmpz_polynomial_evaluate(source: FmpzPolynomial, argument: int) -> int:
         "ffiFmpzPolynomialEvaluate",
         [source._ffi_borrow(), argument],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "Integer",
         ],
         "Integer",
@@ -1676,13 +1676,13 @@ def fmpz_polynomial_evaluate_rational(
     return FmpqValue(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_evaluate_rational",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_value",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_value",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialEvaluateRational",
             "ffiFmpqValueClose",
             [source._ffi_borrow(), numerator, denominator],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
                 "Integer",
                 "Integer",
             ],
@@ -1699,13 +1699,13 @@ def fmpz_polynomial_serialize(source: FmpzPolynomial) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_serialize",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialSerialize",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -1720,13 +1720,13 @@ def fmpz_polynomial_format(source: FmpzPolynomial) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_format",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialFormat",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -1743,13 +1743,13 @@ def fmpz_polynomial_from_byte_region(
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_polynomial_from_byte_region",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzPolynomialFromByteRegion",
             "ffiFmpzPolynomialClose",
             [source._ffi_borrow(), offset, length],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
                 "uint64",
                 "uint64",
             ],
@@ -1766,7 +1766,7 @@ def fmpq_polynomial_workspace(slot_count: int) -> FmpqPolynomialWorkspace:
     return FmpqPolynomialWorkspace(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_workspace",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialWorkspaceCreate",
             "ffiFmpqPolynomialWorkspaceClose",
@@ -1790,9 +1790,9 @@ def fmpq_polynomial_workspace_load(
         "ffiFmpqPolynomialWorkspaceLoad",
         [workspace._ffi_borrow(), output, source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
         ],
         "bool",
         ["status", [1], None],
@@ -1809,13 +1809,13 @@ def fmpq_polynomial_workspace_copy_pair_out(
     return FmpqPolynomialPair(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_workspace_copy_pair_out",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_pair",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_pair",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialWorkspaceCopyPairOut",
             "ffiFmpqPolynomialPairClose",
             [workspace._ffi_borrow(), u_slot, v_slot],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
                 "uint64",
                 "uint64",
             ],
@@ -1840,10 +1840,10 @@ def fmpq_polynomial_workspace_load_pair(
         "ffiFmpqPolynomialWorkspaceLoadPair",
         [workspace._ffi_borrow(), u_output, v_output, source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_pair",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_pair",
         ],
         "bool",
         ["status", [1], None],
@@ -1861,13 +1861,13 @@ def fmpq_polynomial_workspace_move_mumford_result_out(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__
             + ":fmpq_polynomial_workspace_move_mumford_result_out",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_mumford_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_mumford_result",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialWorkspaceMoveMumfordResultOut",
             "ffiFmpqMumfordResultClose",
             [workspace._ffi_borrow(), u_slot, v_slot, genus],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
                 "uint64",
                 "uint64",
                 "uint64",
@@ -1894,10 +1894,10 @@ def fmpq_polynomial_workspace_load_mumford_result(
         "ffiFmpqPolynomialWorkspaceLoadMumfordResult",
         [workspace._ffi_borrow(), u_output, v_output, source._ffi_borrow(), genus],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_mumford_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_mumford_result",
             "uint64",
         ],
         "bool",
@@ -1918,7 +1918,7 @@ def fmpq_polynomial_workspace_zero(
         "ffiFmpqPolynomialWorkspaceZero",
         [workspace._ffi_borrow(), output],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
         ],
         "bool",
@@ -1939,7 +1939,7 @@ def fmpq_polynomial_workspace_one(
         "ffiFmpqPolynomialWorkspaceOne",
         [workspace._ffi_borrow(), output],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
         ],
         "bool",
@@ -1960,7 +1960,7 @@ def fmpq_polynomial_workspace_copy(
         "ffiFmpqPolynomialWorkspaceCopy",
         [workspace._ffi_borrow(), output, source],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
         ],
@@ -1982,7 +1982,7 @@ def fmpq_polynomial_workspace_swap(
         "ffiFmpqPolynomialWorkspaceSwap",
         [workspace._ffi_borrow(), left, right],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
         ],
@@ -2004,7 +2004,7 @@ def fmpq_polynomial_workspace_monic(
         "ffiFmpqPolynomialWorkspaceMonic",
         [workspace._ffi_borrow(), output, source],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
         ],
@@ -2026,7 +2026,7 @@ def fmpq_polynomial_workspace_add(
         "ffiFmpqPolynomialWorkspaceAdd",
         [workspace._ffi_borrow(), output, left, right],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
             "uint64",
@@ -2049,7 +2049,7 @@ def fmpq_polynomial_workspace_sub(
         "ffiFmpqPolynomialWorkspaceSub",
         [workspace._ffi_borrow(), output, left, right],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
             "uint64",
@@ -2072,7 +2072,7 @@ def fmpq_polynomial_workspace_neg(
         "ffiFmpqPolynomialWorkspaceNeg",
         [workspace._ffi_borrow(), output, source],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
         ],
@@ -2094,7 +2094,7 @@ def fmpq_polynomial_workspace_mul(
         "ffiFmpqPolynomialWorkspaceMul",
         [workspace._ffi_borrow(), output, left, right],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
             "uint64",
@@ -2117,7 +2117,7 @@ def fmpq_polynomial_workspace_divexact(
         "ffiFmpqPolynomialWorkspaceDivExact",
         [workspace._ffi_borrow(), output, left, right],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
             "uint64",
@@ -2140,7 +2140,7 @@ def fmpq_polynomial_workspace_rem(
         "ffiFmpqPolynomialWorkspaceRemainder",
         [workspace._ffi_borrow(), output, left, right],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
             "uint64",
@@ -2175,7 +2175,7 @@ def fmpq_polynomial_workspace_xgcd(
             right,
         ],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
             "uint64",
@@ -2200,7 +2200,7 @@ def fmpq_polynomial_workspace_length(
         "ffiFmpqPolynomialWorkspaceLength",
         [workspace._ffi_borrow(), slot],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
         ],
         "uint64",
@@ -2221,7 +2221,7 @@ def fmpq_polynomial_workspace_allocated_bytes(
         "ffiFmpqPolynomialWorkspaceAllocatedBytes",
         [workspace._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace"
         ],
         "uint64",
         ["direct", [], None],
@@ -2241,7 +2241,7 @@ def fmpq_polynomial_workspace_is_zero(
         "ffiFmpqPolynomialWorkspaceIsZero",
         [workspace._ffi_borrow(), slot],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
         ],
         "uint64",
@@ -2262,7 +2262,7 @@ def fmpq_polynomial_workspace_is_one(
         "ffiFmpqPolynomialWorkspaceIsOne",
         [workspace._ffi_borrow(), slot],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
         ],
         "uint64",
@@ -2283,7 +2283,7 @@ def fmpq_polynomial_workspace_equal(
         "ffiFmpqPolynomialWorkspaceEqual",
         [workspace._ffi_borrow(), left, right],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
         ],
@@ -2305,7 +2305,7 @@ def fmpq_polynomial_workspace_coefficient_numerator(
         "ffiFmpqPolynomialWorkspaceCoefficientNumerator",
         [workspace._ffi_borrow(), slot, index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
         ],
@@ -2328,7 +2328,7 @@ def fmpq_polynomial_workspace_coefficient_denominator(
         "ffiFmpqPolynomialWorkspaceCoefficientDenominator",
         [workspace._ffi_borrow(), slot, index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_workspace",
             "uint64",
             "uint64",
         ],
@@ -2345,7 +2345,7 @@ def fmpq_polynomial(length: int) -> FmpqPolynomial:
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialCreate",
             "ffiFmpqPolynomialClose",
@@ -2369,7 +2369,7 @@ def fmpq_polynomial_set_coefficient(
         "ffiFmpqPolynomialSetCoefficient",
         [polynomial._ffi_borrow(), index, numerator, denominator],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "uint64",
             "Integer",
             "Integer",
@@ -2390,7 +2390,7 @@ def fmpq_polynomial_seal(polynomial: FmpqPolynomial) -> bool:
         "ffiFmpqPolynomialSeal",
         [polynomial._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial"
         ],
         "bool",
         ["status", [1], None],
@@ -2408,7 +2408,7 @@ def fmpq_polynomial_length(polynomial: FmpqPolynomial) -> int:
         "ffiFmpqPolynomialLength",
         [polynomial._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial"
         ],
         "Integer",
         ["status", [1], None],
@@ -2426,8 +2426,8 @@ def fmpq_polynomial_equal(left: FmpqPolynomial, right: FmpqPolynomial) -> int:
         "ffiFmpqPolynomialEqual",
         [left._ffi_borrow(), right._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
         ],
         "Integer",
         ["status", [1], None],
@@ -2447,7 +2447,7 @@ def fmpq_polynomial_coefficient_numerator(
         "ffiFmpqPolynomialCoefficientNumerator",
         [polynomial._ffi_borrow(), index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "uint64",
         ],
         "Integer",
@@ -2468,7 +2468,7 @@ def fmpq_polynomial_coefficient_denominator(
         "ffiFmpqPolynomialCoefficientDenominator",
         [polynomial._ffi_borrow(), index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "uint64",
         ],
         "Integer",
@@ -2484,14 +2484,14 @@ def fmpq_polynomial_add(left: FmpqPolynomial, right: FmpqPolynomial) -> FmpqPoly
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_add",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialAdd",
             "ffiFmpqPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -2506,14 +2506,14 @@ def fmpq_polynomial_sub(left: FmpqPolynomial, right: FmpqPolynomial) -> FmpqPoly
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_sub",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialSub",
             "ffiFmpqPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -2528,13 +2528,13 @@ def fmpq_polynomial_neg(source: FmpqPolynomial) -> FmpqPolynomial:
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_neg",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialNeg",
             "ffiFmpqPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -2551,13 +2551,13 @@ def fmpq_polynomial_scalar_div(
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_scalar_div",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialScalarDiv",
             "ffiFmpqPolynomialClose",
             [source._ffi_borrow(), numerator, denominator],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
                 "Integer",
                 "Integer",
             ],
@@ -2574,13 +2574,13 @@ def fmpq_polynomial_truncate(source: FmpqPolynomial, stop: int) -> FmpqPolynomia
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_truncate",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialTruncate",
             "ffiFmpqPolynomialClose",
             [source._ffi_borrow(), stop],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
                 "uint64",
             ],
             [None, None],
@@ -2598,14 +2598,14 @@ def fmpq_polynomial_compose(
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_compose",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialCompose",
             "ffiFmpqPolynomialClose",
             [outer._ffi_borrow(), inner._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -2620,13 +2620,13 @@ def fmpq_polynomial_reverse(source: FmpqPolynomial, length: int) -> FmpqPolynomi
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_reverse",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialReverse",
             "ffiFmpqPolynomialClose",
             [source._ffi_borrow(), length],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
                 "uint64",
             ],
             [None, None],
@@ -2642,13 +2642,13 @@ def fmpq_polynomial_shift_left(source: FmpqPolynomial, amount: int) -> FmpqPolyn
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_shift_left",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialShiftLeft",
             "ffiFmpqPolynomialClose",
             [source._ffi_borrow(), amount],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
                 "uint64",
             ],
             [None, None],
@@ -2664,13 +2664,13 @@ def fmpq_polynomial_shift_right(source: FmpqPolynomial, amount: int) -> FmpqPoly
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_shift_right",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialShiftRight",
             "ffiFmpqPolynomialClose",
             [source._ffi_borrow(), amount],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
                 "uint64",
             ],
             [None, None],
@@ -2686,13 +2686,13 @@ def fmpq_polynomial_integral(source: FmpqPolynomial) -> FmpqPolynomial:
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_integral",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialIntegral",
             "ffiFmpqPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -2707,14 +2707,14 @@ def fmpq_polynomial_resultant(left: FmpqPolynomial, right: FmpqPolynomial) -> Fm
     return FmpqValue(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_resultant",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_value",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_value",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialResultant",
             "ffiFmpqValueClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -2729,13 +2729,13 @@ def fmpq_polynomial_discriminant(source: FmpqPolynomial) -> FmpqValue:
     return FmpqValue(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_discriminant",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_value",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_value",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialDiscriminant",
             "ffiFmpqValueClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -2750,13 +2750,13 @@ def fmpq_polynomial_derivative(source: FmpqPolynomial) -> FmpqPolynomial:
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_derivative",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialDerivative",
             "ffiFmpqPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -2771,14 +2771,14 @@ def fmpq_polynomial_mul(left: FmpqPolynomial, right: FmpqPolynomial) -> FmpqPoly
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_mul",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialMul",
             "ffiFmpqPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -2793,14 +2793,14 @@ def fmpq_polynomial_gcd(left: FmpqPolynomial, right: FmpqPolynomial) -> FmpqPoly
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_gcd",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialGcd",
             "ffiFmpqPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -2817,14 +2817,14 @@ def fmpq_polynomial_xgcd_resource(
     return FmpqPolynomialXgcdResult(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_xgcd_resource",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_xgcd_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_xgcd_result",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialXgcdResource",
             "ffiFmpqPolynomialXgcdResultClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -2839,13 +2839,13 @@ def fmpq_polynomial_xgcd_result_gcd(xgcd: FmpqPolynomialXgcdResult) -> FmpqPolyn
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_xgcd_result_gcd",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialXgcdResultGcd",
             "ffiFmpqPolynomialClose",
             [xgcd._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_xgcd_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_xgcd_result"
             ],
             [None],
             "zero_is_error",
@@ -2863,13 +2863,13 @@ def fmpq_polynomial_xgcd_result_left_coefficient(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__
             + ":fmpq_polynomial_xgcd_result_left_coefficient",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialXgcdResultLeftCoefficient",
             "ffiFmpqPolynomialClose",
             [xgcd._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_xgcd_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_xgcd_result"
             ],
             [None],
             "zero_is_error",
@@ -2887,13 +2887,13 @@ def fmpq_polynomial_xgcd_result_right_coefficient(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__
             + ":fmpq_polynomial_xgcd_result_right_coefficient",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialXgcdResultRightCoefficient",
             "ffiFmpqPolynomialClose",
             [xgcd._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_xgcd_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_xgcd_result"
             ],
             [None],
             "zero_is_error",
@@ -2910,13 +2910,13 @@ def fmpq_polynomial_factor_resource(
     return ExactPolynomialFactorization(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_factor_resource",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:exact_polynomial_factorization",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:exact_polynomial_factorization",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialFactorResource",
             "ffiExactPolynomialFactorizationClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -2936,7 +2936,7 @@ def exact_polynomial_factorization_count(
         "ffiExactPolynomialFactorizationCount",
         [factorization._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:exact_polynomial_factorization"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:exact_polynomial_factorization"
         ],
         "Integer",
         ["status", [1], None],
@@ -2956,7 +2956,7 @@ def exact_polynomial_factorization_exponent(
         "ffiExactPolynomialFactorizationExponent",
         [factorization._ffi_borrow(), index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:exact_polynomial_factorization",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:exact_polynomial_factorization",
             "uint64",
         ],
         "Integer",
@@ -2977,7 +2977,7 @@ def exact_polynomial_factorization_unit_numerator(
         "ffiExactPolynomialFactorizationUnitNumerator",
         [factorization._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:exact_polynomial_factorization"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:exact_polynomial_factorization"
         ],
         "Integer",
         ["status", [1], None],
@@ -2997,7 +2997,7 @@ def exact_polynomial_factorization_unit_denominator(
         "ffiExactPolynomialFactorizationUnitDenominator",
         [factorization._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:exact_polynomial_factorization"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:exact_polynomial_factorization"
         ],
         "Integer",
         ["status", [1], None],
@@ -3014,13 +3014,13 @@ def exact_polynomial_factorization_fmpz_factor(
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":exact_polynomial_factorization_fmpz_factor",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiExactPolynomialFactorizationFmpzFactor",
             "ffiFmpzPolynomialClose",
             [factorization._ffi_borrow(), index],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:exact_polynomial_factorization",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:exact_polynomial_factorization",
                 "uint64",
             ],
             [None, None],
@@ -3038,13 +3038,13 @@ def exact_polynomial_factorization_fmpq_factor(
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":exact_polynomial_factorization_fmpq_factor",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiExactPolynomialFactorizationFmpqFactor",
             "ffiFmpqPolynomialClose",
             [factorization._ffi_borrow(), index],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:exact_polynomial_factorization",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:exact_polynomial_factorization",
                 "uint64",
             ],
             [None, None],
@@ -3062,14 +3062,14 @@ def fmpq_polynomial_divexact(
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_divexact",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialDivExact",
             "ffiFmpqPolynomialClose",
             [dividend._ffi_borrow(), divisor._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -3086,14 +3086,14 @@ def fmpq_polynomial_quo_rem_resource(
     return FmpqPolynomialDivisionResult(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_quo_rem_resource",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_division_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_division_result",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialQuoRemResource",
             "ffiFmpqPolynomialDivisionResultClose",
             [dividend._ffi_borrow(), divisor._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -3110,13 +3110,13 @@ def fmpq_polynomial_division_result_quotient(
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_division_result_quotient",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialDivisionResultQuotient",
             "ffiFmpqPolynomialClose",
             [division._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_division_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_division_result"
             ],
             [None],
             "zero_is_error",
@@ -3133,13 +3133,13 @@ def fmpq_polynomial_division_result_remainder(
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_division_result_remainder",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialDivisionResultRemainder",
             "ffiFmpqPolynomialClose",
             [division._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial_division_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial_division_result"
             ],
             [None],
             "zero_is_error",
@@ -3154,13 +3154,13 @@ def fmpq_polynomial_pow(source: FmpqPolynomial, exponent: int) -> FmpqPolynomial
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_pow",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialPow",
             "ffiFmpqPolynomialClose",
             [source._ffi_borrow(), exponent],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
                 "uint64",
             ],
             [None, None],
@@ -3178,13 +3178,13 @@ def fmpq_polynomial_evaluate(
     return FmpqValue(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_evaluate",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_value",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_value",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialEvaluate",
             "ffiFmpqValueClose",
             [source._ffi_borrow(), numerator, denominator],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
                 "Integer",
                 "Integer",
             ],
@@ -3201,13 +3201,13 @@ def fmpq_polynomial_serialize(source: FmpqPolynomial) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_serialize",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialSerialize",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -3222,13 +3222,13 @@ def fmpq_polynomial_format(source: FmpqPolynomial) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_format",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialFormat",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -3245,13 +3245,13 @@ def fmpq_polynomial_from_byte_region(
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_polynomial_from_byte_region",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqPolynomialFromByteRegion",
             "ffiFmpqPolynomialClose",
             [source._ffi_borrow(), offset, length],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
                 "uint64",
                 "uint64",
             ],
@@ -3268,13 +3268,13 @@ def fmpz_vector_from_byte_region(source: FlintByteRegion, length: int) -> FmpzVe
     return FmpzVector(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_vector_from_byte_region",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
             "@sagemath/sagejs-flint",
             "ffiFmpzVectorFromByteRegion",
             "ffiFmpzVectorClose",
             [source._ffi_borrow(), length],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
                 "uint64",
             ],
             [None, None],
@@ -3290,7 +3290,7 @@ def fmpz_perfect_power_data(number: int) -> FmpzVector:
     return FmpzVector(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_perfect_power_data",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
             "@sagemath/sagejs-flint",
             "ffiFmpzPerfectPowerData",
             "ffiFmpzVectorClose",
@@ -3325,13 +3325,13 @@ def fmpq_vector_from_byte_region(source: FlintByteRegion, length: int) -> FmpqVe
     return FmpqVector(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_vector_from_byte_region",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
             "@sagemath/sagejs-flint",
             "ffiFmpqVectorFromByteRegion",
             "ffiFmpqVectorClose",
             [source._ffi_borrow(), length],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
                 "uint64",
             ],
             [None, None],
@@ -3350,7 +3350,7 @@ def fmpz_vector_length(vector: FmpzVector) -> int:
         "ffiFmpzVectorLength",
         [vector._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector"
         ],
         "uint64",
         ["direct", [], None],
@@ -3368,7 +3368,7 @@ def fmpq_vector_length(vector: FmpqVector) -> int:
         "ffiFmpqVectorLength",
         [vector._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector"
         ],
         "uint64",
         ["direct", [], None],
@@ -3386,7 +3386,7 @@ def fmpz_vector_entry(vector: FmpzVector, index: int) -> int:
         "ffiFmpzVectorEntry",
         [vector._ffi_borrow(), index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
             "uint64",
         ],
         "Integer",
@@ -3405,7 +3405,7 @@ def fmpq_vector_entry_numerator(vector: FmpqVector, index: int) -> int:
         "ffiFmpqVectorEntryNumerator",
         [vector._ffi_borrow(), index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
             "uint64",
         ],
         "Integer",
@@ -3424,7 +3424,7 @@ def fmpq_vector_entry_denominator(vector: FmpqVector, index: int) -> int:
         "ffiFmpqVectorEntryDenominator",
         [vector._ffi_borrow(), index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
             "uint64",
         ],
         "Integer",
@@ -3443,7 +3443,7 @@ def fmpz_vector_set_entry(vector: FmpzVector, index: int, entry: int) -> bool:
         "ffiFmpzVectorSetEntry",
         [vector._ffi_borrow(), index, entry],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
             "uint64",
             "Integer",
         ],
@@ -3465,7 +3465,7 @@ def fmpq_vector_set_entry(
         "ffiFmpqVectorSetEntry",
         [vector._ffi_borrow(), index, numerator, denominator],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
             "uint64",
             "Integer",
             "Integer",
@@ -3483,13 +3483,13 @@ def fmpz_vector_copy(source: FmpzVector) -> FmpzVector:
     return FmpzVector(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_vector_copy",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
             "@sagemath/sagejs-flint",
             "ffiFmpzVectorCopy",
             "ffiFmpzVectorClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector"
             ],
             [None],
             "zero_is_error",
@@ -3504,13 +3504,13 @@ def fmpq_vector_copy(source: FmpqVector) -> FmpqVector:
     return FmpqVector(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_vector_copy",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
             "@sagemath/sagejs-flint",
             "ffiFmpqVectorCopy",
             "ffiFmpqVectorClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector"
             ],
             [None],
             "zero_is_error",
@@ -3525,13 +3525,13 @@ def fmpz_vector_serialize(source: FmpzVector) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_vector_serialize",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpzVectorSerialize",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector"
             ],
             [None],
             "zero_is_error",
@@ -3546,13 +3546,13 @@ def fmpq_vector_serialize(source: FmpqVector) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_vector_serialize",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpqVectorSerialize",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector"
             ],
             [None],
             "zero_is_error",
@@ -3570,8 +3570,8 @@ def fmpz_vector_equal(left: FmpzVector, right: FmpzVector) -> bool:
         "ffiFmpzVectorEqual",
         [left._ffi_borrow(), right._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
         ],
         "bool",
         ["direct", [], None],
@@ -3589,8 +3589,8 @@ def fmpq_vector_equal(left: FmpqVector, right: FmpqVector) -> bool:
         "ffiFmpqVectorEqual",
         [left._ffi_borrow(), right._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
         ],
         "bool",
         ["direct", [], None],
@@ -3605,14 +3605,14 @@ def fmpz_vector_add(left: FmpzVector, right: FmpzVector) -> FmpzVector:
     return FmpzVector(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_vector_add",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
             "@sagemath/sagejs-flint",
             "ffiFmpzVectorAdd",
             "ffiFmpzVectorClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
             ],
             [None, None],
             "zero_is_error",
@@ -3627,14 +3627,14 @@ def fmpq_vector_add(left: FmpqVector, right: FmpqVector) -> FmpqVector:
     return FmpqVector(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_vector_add",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
             "@sagemath/sagejs-flint",
             "ffiFmpqVectorAdd",
             "ffiFmpqVectorClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
             ],
             [None, None],
             "zero_is_error",
@@ -3649,14 +3649,14 @@ def fmpz_vector_sub(left: FmpzVector, right: FmpzVector) -> FmpzVector:
     return FmpzVector(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_vector_sub",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
             "@sagemath/sagejs-flint",
             "ffiFmpzVectorSub",
             "ffiFmpzVectorClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
             ],
             [None, None],
             "zero_is_error",
@@ -3671,14 +3671,14 @@ def fmpq_vector_sub(left: FmpqVector, right: FmpqVector) -> FmpqVector:
     return FmpqVector(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_vector_sub",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
             "@sagemath/sagejs-flint",
             "ffiFmpqVectorSub",
             "ffiFmpqVectorClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
             ],
             [None, None],
             "zero_is_error",
@@ -3693,13 +3693,13 @@ def fmpz_vector_scalar_mul(source: FmpzVector, scalar: int) -> FmpzVector:
     return FmpzVector(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_vector_scalar_mul",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
             "@sagemath/sagejs-flint",
             "ffiFmpzVectorScalarMul",
             "ffiFmpzVectorClose",
             [source._ffi_borrow(), scalar],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
                 "Integer",
             ],
             [None, None],
@@ -3717,13 +3717,13 @@ def fmpq_vector_scalar_mul(
     return FmpqVector(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_vector_scalar_mul",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
             "@sagemath/sagejs-flint",
             "ffiFmpqVectorScalarMul",
             "ffiFmpqVectorClose",
             [source._ffi_borrow(), numerator, denominator],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
                 "Integer",
                 "Integer",
             ],
@@ -3743,8 +3743,8 @@ def fmpz_vector_dot(left: FmpzVector, right: FmpzVector) -> int:
         "ffiFmpzVectorDot",
         [left._ffi_borrow(), right._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_vector",
         ],
         "Integer",
         ["status", [1], None],
@@ -3759,14 +3759,14 @@ def fmpq_vector_dot(left: FmpqVector, right: FmpqVector) -> FmpqValue:
     return FmpqValue(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_vector_dot",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_value",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_value",
             "@sagemath/sagejs-flint",
             "ffiFmpqVectorDot",
             "ffiFmpqValueClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_vector",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_vector",
             ],
             [None, None],
             "zero_is_error",
@@ -3787,7 +3787,7 @@ def native_exact_workspace(
     return NativeExactWorkspace(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":native_exact_workspace",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace",
             "@sagemath/sagejs-flint",
             "ffiNativeExactWorkspaceCreate",
             "ffiNativeExactWorkspaceClose",
@@ -3815,7 +3815,7 @@ def native_exact_workspace_capacity(workspace: NativeExactWorkspace) -> int:
         "ffiNativeExactWorkspaceCapacity",
         [workspace._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace"
         ],
         "uint64",
         ["direct", [], None],
@@ -3833,7 +3833,7 @@ def native_exact_workspace_maximum_bits(workspace: NativeExactWorkspace) -> int:
         "ffiNativeExactWorkspaceMaximumBits",
         [workspace._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace"
         ],
         "uint64",
         ["direct", [], None],
@@ -3851,7 +3851,7 @@ def native_exact_workspace_generation(workspace: NativeExactWorkspace) -> int:
         "ffiNativeExactWorkspaceGeneration",
         [workspace._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace"
         ],
         "uint64",
         ["direct", [], None],
@@ -3869,7 +3869,7 @@ def native_exact_workspace_specification_high(workspace: NativeExactWorkspace) -
         "ffiNativeExactWorkspaceSpecificationHigh",
         [workspace._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace"
         ],
         "uint64",
         ["direct", [], None],
@@ -3887,7 +3887,7 @@ def native_exact_workspace_specification_low(workspace: NativeExactWorkspace) ->
         "ffiNativeExactWorkspaceSpecificationLow",
         [workspace._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace"
         ],
         "uint64",
         ["direct", [], None],
@@ -3915,7 +3915,7 @@ def native_exact_workspace_reset(
             specification_low,
         ],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace",
             "uint64",
             "uint64",
             "uint64",
@@ -3938,7 +3938,7 @@ def native_exact_workspace_borrow(
     return NativeExactWorkspaceBorrow(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":native_exact_workspace_borrow",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace_borrow",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace_borrow",
             "@sagemath/sagejs-flint",
             "ffiNativeExactWorkspaceBorrow",
             "ffiNativeExactWorkspaceBorrowClose",
@@ -3949,7 +3949,7 @@ def native_exact_workspace_borrow(
                 specification_low,
             ],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace",
                 "uint64",
                 "uint64",
                 "uint64",
@@ -3970,7 +3970,7 @@ def native_exact_workspace_borrow_length(borrow: NativeExactWorkspaceBorrow) -> 
         "ffiNativeExactWorkspaceBorrowLength",
         [borrow._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace_borrow"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace_borrow"
         ],
         "uint64",
         ["direct", [], None],
@@ -3988,7 +3988,7 @@ def native_exact_workspace_borrow_generation(borrow: NativeExactWorkspaceBorrow)
         "ffiNativeExactWorkspaceBorrowGeneration",
         [borrow._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace_borrow"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace_borrow"
         ],
         "uint64",
         ["direct", [], None],
@@ -4008,7 +4008,7 @@ def native_exact_workspace_borrow_set(
         "ffiNativeExactWorkspaceBorrowSet",
         [borrow._ffi_borrow(), index, value],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace_borrow",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace_borrow",
             "uint64",
             "Integer",
         ],
@@ -4030,7 +4030,7 @@ def native_exact_workspace_borrow_entry(
         "ffiNativeExactWorkspaceBorrowEntry",
         [borrow._ffi_borrow(), index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace_borrow",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace_borrow",
             "uint64",
         ],
         "Integer",
@@ -4051,7 +4051,7 @@ def native_exact_workspace_borrow_addmul(
         "ffiNativeExactWorkspaceBorrowAddmul",
         [borrow._ffi_borrow(), index, left, right],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace_borrow",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace_borrow",
             "uint64",
             "Integer",
             "Integer",
@@ -4074,7 +4074,7 @@ def native_exact_workspace_borrow_submul(
         "ffiNativeExactWorkspaceBorrowSubmul",
         [borrow._ffi_borrow(), index, left, right],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace_borrow",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace_borrow",
             "uint64",
             "Integer",
             "Integer",
@@ -4097,7 +4097,7 @@ def native_exact_workspace_borrow_swap(
         "ffiNativeExactWorkspaceBorrowSwap",
         [borrow._ffi_borrow(), left, right],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:native_exact_workspace_borrow",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:native_exact_workspace_borrow",
             "uint64",
             "uint64",
         ],
@@ -4114,7 +4114,7 @@ def fmpz_matrix(rows: int, columns: int) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixCreate",
             "ffiFmpzMatrixClose",
@@ -4136,7 +4136,7 @@ def fmpz_matrix_nrows(matrix: FmpzMatrix) -> int:
         "ffiFmpzMatrixNrows",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -4154,7 +4154,7 @@ def fmpz_matrix_ncols(matrix: FmpzMatrix) -> int:
         "ffiFmpzMatrixNcols",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -4174,7 +4174,7 @@ def fmpz_matrix_set_entry(
         "ffiFmpzMatrixSetEntry",
         [matrix._ffi_borrow(), row, column, entry],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "uint64",
             "uint64",
             "Integer",
@@ -4195,7 +4195,7 @@ def fmpz_matrix_entry(matrix: FmpzMatrix, row: int, column: int) -> int:
         "ffiFmpzMatrixEntry",
         [matrix._ffi_borrow(), row, column],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "uint64",
             "uint64",
         ],
@@ -4214,13 +4214,13 @@ def fmpz_matrix_export_mod_ui(
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_export_mod_ui",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixExportModUi",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow(), modulus, width],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
                 "uint64",
                 "uint64",
             ],
@@ -4237,13 +4237,13 @@ def fmpz_matrix_copy(source: FmpzMatrix) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_copy",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixCopy",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
             ],
             [None],
             "zero_is_error",
@@ -4258,13 +4258,13 @@ def fmpz_matrix_neg(source: FmpzMatrix) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_neg",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixNeg",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
             ],
             [None],
             "zero_is_error",
@@ -4279,13 +4279,13 @@ def fmpz_matrix_scalar_mul(source: FmpzMatrix, scalar: int) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_scalar_mul",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixScalarMul",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow(), scalar],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
                 "Integer",
             ],
             [None, None],
@@ -4304,8 +4304,8 @@ def fmpz_matrix_equal(left: FmpzMatrix, right: FmpzMatrix) -> bool:
         "ffiFmpzMatrixEqual",
         [left._ffi_borrow(), right._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
         ],
         "bool",
         ["direct", [], None],
@@ -4323,7 +4323,7 @@ def fmpz_matrix_is_zero(matrix: FmpzMatrix) -> bool:
         "ffiFmpzMatrixIsZero",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
         ],
         "bool",
         ["direct", [], None],
@@ -4341,7 +4341,7 @@ def fmpz_matrix_is_one(matrix: FmpzMatrix) -> bool:
         "ffiFmpzMatrixIsOne",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
         ],
         "bool",
         ["direct", [], None],
@@ -4356,14 +4356,14 @@ def fmpz_matrix_add(left: FmpzMatrix, right: FmpzMatrix) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_add",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixAdd",
             "ffiFmpzMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -4378,14 +4378,14 @@ def fmpz_matrix_sub(left: FmpzMatrix, right: FmpzMatrix) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_sub",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixSub",
             "ffiFmpzMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -4400,13 +4400,13 @@ def fmpz_matrix_transpose(source: FmpzMatrix) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_transpose",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixTranspose",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
             ],
             [None],
             "zero_is_error",
@@ -4421,14 +4421,14 @@ def fmpz_matrix_mul(left: FmpzMatrix, right: FmpzMatrix) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_mul",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixMul",
             "ffiFmpzMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -4445,14 +4445,14 @@ def fmpz_matrix_mul_vector(
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_mul_vector",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixMulVector",
             "ffiFlintByteRegionClose",
             [matrix._ffi_borrow(), vector._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             ],
             [None, None],
             "zero_is_error",
@@ -4469,14 +4469,14 @@ def fmpz_vector_mul_matrix(
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_vector_mul_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpzVectorMulMatrix",
             "ffiFlintByteRegionClose",
             [vector._ffi_borrow(), matrix._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -4491,13 +4491,13 @@ def fmpz_matrix_pow(source: FmpzMatrix, exponent: int) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_pow",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixPow",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow(), exponent],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
                 "uint64",
             ],
             [None, None],
@@ -4516,7 +4516,7 @@ def fmpz_matrix_rank(matrix: FmpzMatrix) -> int:
         "ffiFmpzMatrixRank",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -4534,7 +4534,7 @@ def fmpz_matrix_rank_mod_46337(matrix: FmpzMatrix) -> int:
         "ffiFmpzMatrixRankMod46337",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -4552,7 +4552,7 @@ def fmpz_matrix_det(source: FmpzMatrix) -> int:
         "ffiFmpzMatrixDet",
         [source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
         ],
         "Integer",
         ["status", [1], None],
@@ -4570,7 +4570,7 @@ def fmpz_matrix_trace(source: FmpzMatrix) -> int:
         "ffiFmpzMatrixTrace",
         [source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
         ],
         "Integer",
         ["status", [1], None],
@@ -4585,13 +4585,13 @@ def fmpz_matrix_hnf(source: FmpzMatrix) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_hnf",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixHnf",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
             ],
             [None],
             "zero_is_error",
@@ -4609,8 +4609,8 @@ def fmpz_matrix_hnf_into(hermite: FmpzMatrix, source: FmpzMatrix) -> bool:
         "ffiFmpzMatrixHnfInto",
         [hermite._ffi_borrow(), source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
         ],
         "bool",
         ["status", [1], None],
@@ -4625,19 +4625,38 @@ def fmpz_matrix_snf(source: FmpzMatrix) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_snf",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixSnf",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
             ],
             [None],
             "zero_is_error",
             "RuntimeError",
             "integer matrix SNF failed",
         )
+    )
+
+
+def fmpz_matrix_snf_into(smith: FmpzMatrix, source: FmpzMatrix) -> bool:
+    """Call declared flint:fmpz_matrix_snf_into."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpz_matrix_snf_into",
+        "@sagemath/sagejs-flint",
+        "ffiFmpzMatrixSnfInto",
+        [smith._ffi_borrow(), source._ffi_borrow()],
+        [
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+        ],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "integer matrix SNF dimensions or aliases are invalid",
+        [],
     )
 
 
@@ -4651,14 +4670,36 @@ def fmpz_matrix_hnf_transform(
         "ffiFmpzMatrixHnfTransform",
         [hermite._ffi_borrow(), transform._ffi_borrow(), source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
         ],
         "bool",
         ["status", [1], None],
         "ValueError",
         "integer matrix HNF transform dimensions or aliases are invalid",
+        [],
+    )
+
+
+def fmpz_matrix_lll_transform(
+    reduced: FmpzMatrix, transform: FmpzMatrix, source: FmpzMatrix
+) -> bool:
+    """Call declared flint:fmpz_matrix_lll_transform."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpz_matrix_lll_transform",
+        "@sagemath/sagejs-flint",
+        "ffiFmpzMatrixLllTransform",
+        [reduced._ffi_borrow(), transform._ffi_borrow(), source._ffi_borrow()],
+        [
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+        ],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "integer matrix LLL transform dimensions or aliases are invalid",
         [],
     )
 
@@ -4681,10 +4722,10 @@ def fmpz_matrix_snf_transform(
             source._ffi_borrow(),
         ],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
         ],
         "bool",
         ["status", [1], None],
@@ -4699,13 +4740,13 @@ def fmpz_matrix_right_kernel(source: FmpzMatrix) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_right_kernel",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixRightKernel",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
             ],
             [None],
             "zero_is_error",
@@ -4720,13 +4761,13 @@ def fmpz_matrix_charpoly(source: FmpzMatrix) -> FmpzPolynomial:
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_charpoly",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixCharpoly",
             "ffiFmpzPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
             ],
             [None],
             "zero_is_error",
@@ -4741,13 +4782,13 @@ def fmpz_matrix_minpoly(source: FmpzMatrix) -> FmpzPolynomial:
     return FmpzPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_minpoly",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixMinpoly",
             "ffiFmpzPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
             ],
             [None],
             "zero_is_error",
@@ -4762,13 +4803,13 @@ def fmpq_matrix_from_fmpz(source: FmpzMatrix) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_from_fmpz",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixFromFmpz",
             "ffiFmpqMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
             ],
             [None],
             "zero_is_error",
@@ -4783,13 +4824,13 @@ def fmpz_matrix_from_fmpq_integral(source: FmpqMatrix) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_from_fmpq_integral",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixFromFmpqIntegral",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -4810,13 +4851,13 @@ def fmpz_matrix_submatrix(
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_submatrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixSubmatrix",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow(), row_start, row_stop, column_start, column_stop],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
                 "uint64",
                 "uint64",
                 "uint64",
@@ -4837,13 +4878,13 @@ def fmpz_matrix_select_rows(
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_select_rows",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixSelectRows",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow(), indices, count],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
                 "UInt64Buffer",
                 "uint64",
             ],
@@ -4860,13 +4901,13 @@ def fmpz_matrix_prefix_rows(source: FmpzMatrix, count: int) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_prefix_rows",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixPrefixRows",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow(), count],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
                 "uint64",
             ],
             [None, None],
@@ -4884,13 +4925,13 @@ def fmpz_matrix_select_columns(
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_select_columns",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixSelectColumns",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow(), indices, count],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
                 "UInt64Buffer",
                 "uint64",
             ],
@@ -4910,7 +4951,7 @@ def fmpz_matrix_swap_rows(matrix: FmpzMatrix, first: int, second: int) -> bool:
         "ffiFmpzMatrixSwapRows",
         [matrix._ffi_borrow(), first, second],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "uint64",
             "uint64",
         ],
@@ -4930,7 +4971,7 @@ def fmpz_matrix_swap_columns(matrix: FmpzMatrix, first: int, second: int) -> boo
         "ffiFmpzMatrixSwapColumns",
         [matrix._ffi_borrow(), first, second],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "uint64",
             "uint64",
         ],
@@ -4952,10 +4993,10 @@ def fmpz_matrix_set_block(
         "ffiFmpzMatrixSetBlock",
         [target._ffi_borrow(), target_row, target_column, source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "uint64",
             "uint64",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
         ],
         "bool",
         ["status", [1], None],
@@ -4970,14 +5011,14 @@ def fmpz_matrix_stack(top: FmpzMatrix, bottom: FmpzMatrix) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_stack",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixStack",
             "ffiFmpzMatrixClose",
             [top._ffi_borrow(), bottom._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -4992,14 +5033,14 @@ def fmpz_matrix_augment(left: FmpzMatrix, right: FmpzMatrix) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_augment",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixAugment",
             "ffiFmpzMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -5017,7 +5058,7 @@ def fmpz_matrix_nonzero_count(source: FmpzMatrix) -> int:
         "ffiFmpzMatrixNonzeroCount",
         [source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -5032,13 +5073,13 @@ def fmpz_matrix_echelon_pivots(source: FmpzMatrix) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_echelon_pivots",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixEchelonPivots",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
             ],
             [None],
             "zero_is_error",
@@ -5053,13 +5094,13 @@ def fmpz_matrix_format(source: FmpzMatrix) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_format",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixFormat",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
             ],
             [None],
             "zero_is_error",
@@ -5074,13 +5115,13 @@ def fmpz_matrix_serialize(source: FmpzMatrix) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_serialize",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixSerialize",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix"
             ],
             [None],
             "zero_is_error",
@@ -5097,13 +5138,13 @@ def fmpz_matrix_serialize_sequence(
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_serialize_sequence",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixSerializeSequence",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow(), start, stride, count],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
                 "uint64",
                 "uint64",
                 "uint64",
@@ -5121,7 +5162,7 @@ def flint_byte_region(length: int) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":flint_byte_region",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFlintByteRegionCreate",
             "ffiFlintByteRegionClose",
@@ -5143,7 +5184,7 @@ def flint_byte_region_set(region: FlintByteRegion, index: int, value: int) -> bo
         "ffiFlintByteRegionSet",
         [region._ffi_borrow(), index, value],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "uint64",
             "uint64",
         ],
@@ -5160,13 +5201,13 @@ def fmpz_matrix_deserialize(source: FlintByteRegion) -> FmpzMatrix:
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_deserialize",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixDeserialize",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region"
             ],
             [None],
             "zero_is_error",
@@ -5183,13 +5224,13 @@ def fmpz_matrix_deserialize_entries(
     return FmpzMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_matrix_deserialize_entries",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpzMatrixDeserializeEntries",
             "ffiFmpzMatrixClose",
             [source._ffi_borrow(), rows, columns],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
                 "uint64",
                 "uint64",
             ],
@@ -5206,7 +5247,7 @@ def fmpq_matrix(rows: int, columns: int) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixCreate",
             "ffiFmpqMatrixClose",
@@ -5227,7 +5268,7 @@ def fmpq_matrix_randbits(
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_randbits",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixRandbits",
             "ffiFmpqMatrixClose",
@@ -5249,7 +5290,7 @@ def fmpq_matrix_nrows(matrix: FmpqMatrix) -> int:
         "ffiFmpqMatrixNrows",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -5267,7 +5308,7 @@ def fmpq_matrix_ncols(matrix: FmpqMatrix) -> int:
         "ffiFmpqMatrixNcols",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -5287,7 +5328,7 @@ def fmpq_matrix_set_entry(
         "ffiFmpqMatrixSetEntry",
         [matrix._ffi_borrow(), row, column, numerator, denominator],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "uint64",
             "uint64",
             "Integer",
@@ -5316,7 +5357,7 @@ def fmpq_matrix_add_scaled_entry(
         "ffiFmpqMatrixAddScaledEntry",
         [matrix._ffi_borrow(), row, column, numerator, denominator, scale],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "uint64",
             "uint64",
             "Integer",
@@ -5339,7 +5380,7 @@ def fmpq_matrix_entry_numerator(matrix: FmpqMatrix, row: int, column: int) -> in
         "ffiFmpqMatrixEntryNumerator",
         [matrix._ffi_borrow(), row, column],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "uint64",
             "uint64",
         ],
@@ -5359,7 +5400,7 @@ def fmpq_matrix_entry_denominator(matrix: FmpqMatrix, row: int, column: int) -> 
         "ffiFmpqMatrixEntryDenominator",
         [matrix._ffi_borrow(), row, column],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "uint64",
             "uint64",
         ],
@@ -5379,7 +5420,7 @@ def fmpq_matrix_entry_is_zero(matrix: FmpqMatrix, row: int, column: int) -> bool
         "ffiFmpqMatrixEntryIsZero",
         [matrix._ffi_borrow(), row, column],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "uint64",
             "uint64",
         ],
@@ -5396,13 +5437,13 @@ def fmpq_matrix_copy(source: FmpqMatrix) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_copy",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixCopy",
             "ffiFmpqMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -5417,13 +5458,13 @@ def fmpq_matrix_neg(source: FmpqMatrix) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_neg",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixNeg",
             "ffiFmpqMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -5440,13 +5481,13 @@ def fmpq_matrix_scalar_mul(
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_scalar_mul",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixScalarMul",
             "ffiFmpqMatrixClose",
             [source._ffi_borrow(), numerator, denominator],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
                 "Integer",
                 "Integer",
             ],
@@ -5466,8 +5507,8 @@ def fmpq_matrix_equal(left: FmpqMatrix, right: FmpqMatrix) -> bool:
         "ffiFmpqMatrixEqual",
         [left._ffi_borrow(), right._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
         ],
         "bool",
         ["direct", [], None],
@@ -5485,7 +5526,7 @@ def fmpq_matrix_is_zero(matrix: FmpqMatrix) -> bool:
         "ffiFmpqMatrixIsZero",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
         ],
         "bool",
         ["direct", [], None],
@@ -5503,7 +5544,7 @@ def fmpq_matrix_is_one(matrix: FmpqMatrix) -> bool:
         "ffiFmpqMatrixIsOne",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
         ],
         "bool",
         ["direct", [], None],
@@ -5518,14 +5559,14 @@ def fmpq_matrix_add(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_add",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixAdd",
             "ffiFmpqMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -5540,14 +5581,14 @@ def fmpq_matrix_sub(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_sub",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixSub",
             "ffiFmpqMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -5562,13 +5603,13 @@ def fmpq_matrix_transpose(source: FmpqMatrix) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_transpose",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixTranspose",
             "ffiFmpqMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -5583,14 +5624,14 @@ def fmpq_matrix_mul(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_mul",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixMul",
             "ffiFmpqMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -5607,14 +5648,14 @@ def fmpq_matrix_mul_vector(
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_mul_vector",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixMulVector",
             "ffiFlintByteRegionClose",
             [matrix._ffi_borrow(), vector._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             ],
             [None, None],
             "zero_is_error",
@@ -5631,14 +5672,14 @@ def fmpq_vector_mul_matrix(
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_vector_mul_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpqVectorMulMatrix",
             "ffiFlintByteRegionClose",
             [vector._ffi_borrow(), matrix._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -5653,13 +5694,13 @@ def fmpq_matrix_inv(source: FmpqMatrix) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_inv",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixInv",
             "ffiFmpqMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -5674,14 +5715,14 @@ def fmpq_matrix_solve(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_solve",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixSolve",
             "ffiFmpqMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -5696,13 +5737,13 @@ def fmpq_matrix_rref(source: FmpqMatrix) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_rref",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixRref",
             "ffiFmpqMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -5717,13 +5758,13 @@ def fmpq_matrix_right_kernel(source: FmpqMatrix) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_right_kernel",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixRightKernel",
             "ffiFmpqMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -5738,13 +5779,13 @@ def fmpq_matrix_charpoly(source: FmpqMatrix) -> FmpqPolynomial:
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_charpoly",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixCharpoly",
             "ffiFmpqPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -5759,13 +5800,13 @@ def fmpq_matrix_minpoly(source: FmpqMatrix) -> FmpqPolynomial:
     return FmpqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_minpoly",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixMinpoly",
             "ffiFmpqPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -5783,7 +5824,7 @@ def fmpq_matrix_rank(matrix: FmpqMatrix) -> int:
         "ffiFmpqMatrixRank",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -5798,13 +5839,13 @@ def fmpq_matrix_det(source: FmpqMatrix) -> FmpqValue:
     return FmpqValue(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_det",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_value",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_value",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixDet",
             "ffiFmpqValueClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -5819,13 +5860,13 @@ def fmpq_matrix_trace(source: FmpqMatrix) -> FmpqValue:
     return FmpqValue(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_trace",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_value",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_value",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixTrace",
             "ffiFmpqValueClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -5846,13 +5887,13 @@ def fmpq_matrix_submatrix(
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_submatrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixSubmatrix",
             "ffiFmpqMatrixClose",
             [source._ffi_borrow(), row_start, row_stop, column_start, column_stop],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
                 "uint64",
                 "uint64",
                 "uint64",
@@ -5873,13 +5914,13 @@ def fmpq_matrix_select_rows(
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_select_rows",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixSelectRows",
             "ffiFmpqMatrixClose",
             [source._ffi_borrow(), indices, count],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
                 "UInt64Buffer",
                 "uint64",
             ],
@@ -5896,13 +5937,13 @@ def fmpq_matrix_prefix_rows(source: FmpqMatrix, count: int) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_prefix_rows",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixPrefixRows",
             "ffiFmpqMatrixClose",
             [source._ffi_borrow(), count],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
                 "uint64",
             ],
             [None, None],
@@ -5920,13 +5961,13 @@ def fmpq_matrix_select_columns(
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_select_columns",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixSelectColumns",
             "ffiFmpqMatrixClose",
             [source._ffi_borrow(), indices, count],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
                 "UInt64Buffer",
                 "uint64",
             ],
@@ -5946,7 +5987,7 @@ def fmpq_matrix_swap_rows(matrix: FmpqMatrix, first: int, second: int) -> bool:
         "ffiFmpqMatrixSwapRows",
         [matrix._ffi_borrow(), first, second],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "uint64",
             "uint64",
         ],
@@ -5966,7 +6007,7 @@ def fmpq_matrix_swap_columns(matrix: FmpqMatrix, first: int, second: int) -> boo
         "ffiFmpqMatrixSwapColumns",
         [matrix._ffi_borrow(), first, second],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "uint64",
             "uint64",
         ],
@@ -5988,10 +6029,10 @@ def fmpq_matrix_set_block(
         "ffiFmpqMatrixSetBlock",
         [target._ffi_borrow(), target_row, target_column, source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "uint64",
             "uint64",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
         ],
         "bool",
         ["status", [1], None],
@@ -6006,14 +6047,14 @@ def fmpq_matrix_stack(top: FmpqMatrix, bottom: FmpqMatrix) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_stack",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixStack",
             "ffiFmpqMatrixClose",
             [top._ffi_borrow(), bottom._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -6028,14 +6069,14 @@ def fmpq_matrix_augment(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix:
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_augment",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixAugment",
             "ffiFmpqMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -6053,7 +6094,7 @@ def fmpq_matrix_nonzero_count(source: FmpqMatrix) -> int:
         "ffiFmpqMatrixNonzeroCount",
         [source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -6068,13 +6109,13 @@ def fmpq_matrix_echelon_pivots(source: FmpqMatrix) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_echelon_pivots",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixEchelonPivots",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -6092,7 +6133,7 @@ def fmpq_value_numerator(value: FmpqValue) -> int:
         "ffiFmpqValueNumerator",
         [value._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_value"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_value"
         ],
         "Integer",
         ["direct", [], None],
@@ -6110,7 +6151,7 @@ def fmpq_value_denominator(value: FmpqValue) -> int:
         "ffiFmpqValueDenominator",
         [value._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_value"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_value"
         ],
         "Integer",
         ["direct", [], None],
@@ -6125,13 +6166,13 @@ def fmpq_matrix_format(source: FmpqMatrix) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_format",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixFormat",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -6146,13 +6187,13 @@ def fmpq_matrix_serialize(source: FmpqMatrix) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_serialize",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixSerialize",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix"
             ],
             [None],
             "zero_is_error",
@@ -6169,13 +6210,13 @@ def fmpq_matrix_serialize_sequence(
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_serialize_sequence",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixSerializeSequence",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow(), start, stride, count],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
                 "uint64",
                 "uint64",
                 "uint64",
@@ -6195,13 +6236,13 @@ def fmpq_matrix_deserialize(
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpq_matrix_deserialize",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiFmpqMatrixDeserialize",
             "ffiFmpqMatrixClose",
             [source._ffi_borrow(), rows, columns],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
                 "uint64",
                 "uint64",
             ],
@@ -6221,7 +6262,7 @@ def flint_byte_region_length(region: FlintByteRegion) -> int:
         "ffiFlintByteRegionLength",
         [region._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region"
         ],
         "uint64",
         ["direct", [], None],
@@ -6239,7 +6280,7 @@ def flint_byte_region_get(region: FlintByteRegion, index: int) -> int:
         "ffiFlintByteRegionGet",
         [region._ffi_borrow(), index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "uint64",
         ],
         "uint64",
@@ -6255,7 +6296,7 @@ def dirichlet_group(modulus: int) -> DirichletGroup:
     return DirichletGroup(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":dirichlet_group_init",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:dirichlet_group",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:dirichlet_group",
             "@sagemath/sagejs-flint",
             "ffiDirichletGroupCreate",
             "ffiDirichletGroupClose",
@@ -6277,7 +6318,7 @@ def dirichlet_group_size(group: DirichletGroup) -> int:
         "ffiDirichletGroupSize",
         [group._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:dirichlet_group"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:dirichlet_group"
         ],
         "uint64",
         ["direct", [], None],
@@ -6295,7 +6336,7 @@ def dirichlet_group_num_primitive(group: DirichletGroup) -> int:
         "ffiDirichletGroupNumPrimitive",
         [group._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:dirichlet_group"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:dirichlet_group"
         ],
         "uint64",
         ["direct", [], None],
@@ -7467,7 +7508,7 @@ def nmod_matrix_from_entries(
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_from_entries",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixFromEntries",
             "ffiNmodMatrixClose",
@@ -7488,7 +7529,7 @@ def nmod_matrix_random(
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_random",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixRandom",
             "ffiNmodMatrixClose",
@@ -7510,7 +7551,7 @@ def nmod_matrix_nrows(matrix: NmodMatrix) -> int:
         "ffiNmodMatrixNrows",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -7528,7 +7569,7 @@ def nmod_matrix_ncols(matrix: NmodMatrix) -> int:
         "ffiNmodMatrixNcols",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -7546,7 +7587,7 @@ def nmod_matrix_modulus(matrix: NmodMatrix) -> int:
         "ffiNmodMatrixModulus",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -7564,7 +7605,7 @@ def nmod_matrix_entry(matrix: NmodMatrix, row: int, column: int) -> int:
         "ffiNmodMatrixEntry",
         [matrix._ffi_borrow(), row, column],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "uint64",
             "uint64",
         ],
@@ -7586,7 +7627,7 @@ def nmod_matrix_set_entry(
         "ffiNmodMatrixSetEntry",
         [matrix._ffi_borrow(), row, column, value],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "uint64",
             "uint64",
             "uint64",
@@ -7604,13 +7645,13 @@ def nmod_matrix_copy(source: NmodMatrix) -> NmodMatrix:
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_copy",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixCopy",
             "ffiNmodMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
             ],
             [None],
             "zero_is_error",
@@ -7628,8 +7669,8 @@ def nmod_matrix_equal(left: NmodMatrix, right: NmodMatrix) -> bool:
         "ffiNmodMatrixEqual",
         [left._ffi_borrow(), right._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
         ],
         "bool",
         ["direct", [], None],
@@ -7647,7 +7688,7 @@ def nmod_matrix_is_zero(matrix: NmodMatrix) -> bool:
         "ffiNmodMatrixIsZero",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
         ],
         "bool",
         ["direct", [], None],
@@ -7665,7 +7706,7 @@ def nmod_matrix_is_one(matrix: NmodMatrix) -> bool:
         "ffiNmodMatrixIsOne",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
         ],
         "bool",
         ["direct", [], None],
@@ -7683,7 +7724,7 @@ def nmod_matrix_nonzero_count(matrix: NmodMatrix) -> int:
         "ffiNmodMatrixNonzeroCount",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -7698,14 +7739,14 @@ def nmod_matrix_add(left: NmodMatrix, right: NmodMatrix) -> NmodMatrix:
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_add",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixAdd",
             "ffiNmodMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -7720,14 +7761,14 @@ def nmod_matrix_sub(left: NmodMatrix, right: NmodMatrix) -> NmodMatrix:
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_sub",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixSub",
             "ffiNmodMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -7742,13 +7783,13 @@ def nmod_matrix_neg(source: NmodMatrix) -> NmodMatrix:
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_neg",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixNeg",
             "ffiNmodMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
             ],
             [None],
             "zero_is_error",
@@ -7763,13 +7804,13 @@ def nmod_matrix_scalar_mul(source: NmodMatrix, scalar: int) -> NmodMatrix:
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_scalar_mul",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixScalarMul",
             "ffiNmodMatrixClose",
             [source._ffi_borrow(), scalar],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
                 "uint64",
             ],
             [None, None],
@@ -7785,13 +7826,13 @@ def nmod_matrix_transpose(source: NmodMatrix) -> NmodMatrix:
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_transpose",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixTranspose",
             "ffiNmodMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
             ],
             [None],
             "zero_is_error",
@@ -7806,14 +7847,14 @@ def nmod_matrix_mul(left: NmodMatrix, right: NmodMatrix) -> NmodMatrix:
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_mul",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixMul",
             "ffiNmodMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -7828,13 +7869,13 @@ def nmod_matrix_inv(source: NmodMatrix) -> NmodMatrix:
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_inv",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixInv",
             "ffiNmodMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
             ],
             [None],
             "zero_is_error",
@@ -7849,14 +7890,14 @@ def nmod_matrix_solve(left: NmodMatrix, right: NmodMatrix) -> NmodMatrix:
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_solve",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixSolve",
             "ffiNmodMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -7874,7 +7915,7 @@ def nmod_matrix_rank(matrix: NmodMatrix) -> int:
         "ffiNmodMatrixRank",
         [matrix._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -7889,13 +7930,13 @@ def nmod_matrix_rref(source: NmodMatrix) -> NmodMatrix:
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_rref",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixRref",
             "ffiNmodMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
             ],
             [None],
             "zero_is_error",
@@ -7910,13 +7951,13 @@ def nmod_matrix_right_kernel(source: NmodMatrix) -> NmodMatrix:
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_right_kernel",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixRightKernel",
             "ffiNmodMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
             ],
             [None],
             "zero_is_error",
@@ -7934,7 +7975,7 @@ def nmod_matrix_det(source: NmodMatrix) -> int:
         "ffiNmodMatrixDet",
         [source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -7952,7 +7993,7 @@ def nmod_matrix_trace(source: NmodMatrix) -> int:
         "ffiNmodMatrixTrace",
         [source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -7969,13 +8010,13 @@ def nmod_matrix_select_rows(
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_select_rows",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixSelectRows",
             "ffiNmodMatrixClose",
             [source._ffi_borrow(), indices, count],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
                 "UInt64Buffer",
                 "uint64",
             ],
@@ -7994,13 +8035,13 @@ def nmod_matrix_select_columns(
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_select_columns",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixSelectColumns",
             "ffiNmodMatrixClose",
             [source._ffi_borrow(), indices, count],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
                 "UInt64Buffer",
                 "uint64",
             ],
@@ -8022,10 +8063,10 @@ def nmod_matrix_set_block(
         "ffiNmodMatrixSetBlock",
         [target._ffi_borrow(), target_row, target_column, source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "uint64",
             "uint64",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
         ],
         "bool",
         ["status", [1], None],
@@ -8042,13 +8083,13 @@ def nmod_matrix_mul_vector(
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_mul_vector",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixMulVector",
             "ffiFlintByteRegionClose",
             [matrix._ffi_borrow(), vector, length],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
                 "UInt64Buffer",
                 "uint64",
             ],
@@ -8067,7 +8108,7 @@ def nmod_vector_mul_matrix(
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_vector_mul_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiNmodVectorMulMatrix",
             "ffiFlintByteRegionClose",
@@ -8075,7 +8116,7 @@ def nmod_vector_mul_matrix(
             [
                 "UInt64Buffer",
                 "uint64",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             ],
             [None, None, None],
             "zero_is_error",
@@ -8090,14 +8131,14 @@ def nmod_matrix_stack(top: NmodMatrix, bottom: NmodMatrix) -> NmodMatrix:
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_stack",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixStack",
             "ffiNmodMatrixClose",
             [top._ffi_borrow(), bottom._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -8112,14 +8153,14 @@ def nmod_matrix_augment(left: NmodMatrix, right: NmodMatrix) -> NmodMatrix:
     return NmodMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_augment",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixAugment",
             "ffiNmodMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -8137,7 +8178,7 @@ def nmod_matrix_swap_rows(matrix: NmodMatrix, first: int, second: int) -> bool:
         "ffiNmodMatrixSwapRows",
         [matrix._ffi_borrow(), first, second],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "uint64",
             "uint64",
         ],
@@ -8157,7 +8198,7 @@ def nmod_matrix_swap_columns(matrix: NmodMatrix, first: int, second: int) -> boo
         "ffiNmodMatrixSwapColumns",
         [matrix._ffi_borrow(), first, second],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
             "uint64",
             "uint64",
         ],
@@ -8174,13 +8215,13 @@ def nmod_matrix_format(source: NmodMatrix) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_format",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixFormat",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
             ],
             [None],
             "zero_is_error",
@@ -8195,13 +8236,13 @@ def nmod_matrix_serialize(source: NmodMatrix, width: int) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_serialize",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixSerialize",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow(), width],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix",
                 "uint64",
             ],
             [None, None],
@@ -8217,13 +8258,13 @@ def nmod_matrix_charpoly(source: NmodMatrix) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_charpoly",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixCharpoly",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
             ],
             [None],
             "zero_is_error",
@@ -8238,13 +8279,13 @@ def nmod_matrix_minpoly(source: NmodMatrix) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":nmod_matrix_minpoly",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiNmodMatrixMinpoly",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:nmod_matrix"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:nmod_matrix"
             ],
             [None],
             "zero_is_error",
@@ -10923,7 +10964,7 @@ def fq_context(
     return FqContext(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_context",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_context",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_context",
             "@sagemath/sagejs-flint",
             "ffiFqContextCreate",
             "ffiFqContextClose",
@@ -10945,7 +10986,7 @@ def fq_context_characteristic(context: FqContext) -> int:
         "ffiFqContextCharacteristic",
         [context._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_context"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_context"
         ],
         "uint64",
         ["direct", [], None],
@@ -10963,7 +11004,7 @@ def fq_context_degree(context: FqContext) -> int:
         "ffiFqContextDegree",
         [context._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_context"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_context"
         ],
         "uint64",
         ["direct", [], None],
@@ -10980,13 +11021,13 @@ def fq_element(
     return FqElement(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_element",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
             "@sagemath/sagejs-flint",
             "ffiFqElementCreate",
             "ffiFqElementClose",
             [context._ffi_borrow(), coordinates, coordinate_length],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_context",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_context",
                 "UInt64Buffer",
                 "uint64",
             ],
@@ -11003,13 +11044,13 @@ def fq_element_copy(source: FqElement) -> FqElement:
     return FqElement(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_element_copy",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
             "@sagemath/sagejs-flint",
             "ffiFqElementCopy",
             "ffiFqElementClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element"
             ],
             [None],
             "zero_is_error",
@@ -11027,7 +11068,7 @@ def fq_element_extension_degree(element: FqElement) -> int:
         "ffiFqElementExtensionDegree",
         [element._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element"
         ],
         "uint64",
         ["direct", [], None],
@@ -11045,7 +11086,7 @@ def fq_element_coordinate(element: FqElement, basis_index: int) -> int:
         "ffiFqElementCoordinate",
         [element._ffi_borrow(), basis_index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
             "uint64",
         ],
         "uint64",
@@ -11064,8 +11105,8 @@ def fq_element_equal(left: FqElement, right: FqElement) -> bool:
         "ffiFqElementEqual",
         [left._ffi_borrow(), right._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
         ],
         "bool",
         ["direct", [], None],
@@ -11080,14 +11121,14 @@ def fq_element_add(left: FqElement, right: FqElement) -> FqElement:
     return FqElement(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_element_add",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
             "@sagemath/sagejs-flint",
             "ffiFqElementAdd",
             "ffiFqElementClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
             ],
             [None, None],
             "zero_is_error",
@@ -11102,14 +11143,14 @@ def fq_element_sub(left: FqElement, right: FqElement) -> FqElement:
     return FqElement(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_element_sub",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
             "@sagemath/sagejs-flint",
             "ffiFqElementSub",
             "ffiFqElementClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
             ],
             [None, None],
             "zero_is_error",
@@ -11124,14 +11165,14 @@ def fq_element_mul(left: FqElement, right: FqElement) -> FqElement:
     return FqElement(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_element_mul",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
             "@sagemath/sagejs-flint",
             "ffiFqElementMul",
             "ffiFqElementClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
             ],
             [None, None],
             "zero_is_error",
@@ -11146,13 +11187,13 @@ def fq_element_neg(source: FqElement) -> FqElement:
     return FqElement(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_element_neg",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
             "@sagemath/sagejs-flint",
             "ffiFqElementNeg",
             "ffiFqElementClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element"
             ],
             [None],
             "zero_is_error",
@@ -11167,13 +11208,13 @@ def fq_element_inverse(source: FqElement) -> FqElement:
     return FqElement(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_element_inverse",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
             "@sagemath/sagejs-flint",
             "ffiFqElementInverse",
             "ffiFqElementClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element"
             ],
             [None],
             "zero_is_error",
@@ -11188,13 +11229,13 @@ def fq_element_pow(source: FqElement, exponent: int) -> FqElement:
     return FqElement(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_element_pow",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
             "@sagemath/sagejs-flint",
             "ffiFqElementPow",
             "ffiFqElementClose",
             [source._ffi_borrow(), exponent],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element",
                 "Integer",
             ],
             [None, None],
@@ -11213,7 +11254,7 @@ def fq_element_is_zero(source: FqElement) -> bool:
         "ffiFqElementIsZero",
         [source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element"
         ],
         "bool",
         ["direct", [], None],
@@ -11231,7 +11272,7 @@ def fq_element_is_one(source: FqElement) -> bool:
         "ffiFqElementIsOne",
         [source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element"
         ],
         "bool",
         ["direct", [], None],
@@ -11246,13 +11287,13 @@ def fq_element_coordinate_bytes(element: FqElement) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_element_coordinate_bytes",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFqElementCoordinateBytes",
             "ffiFlintByteRegionClose",
             [element._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_element"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_element"
             ],
             [None],
             "zero_is_error",
@@ -11272,13 +11313,13 @@ def fq_polynomial(
     return FqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_polynomial",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFqPolynomialCreate",
             "ffiFqPolynomialClose",
             [context._ffi_borrow(), coordinates, coordinate_length, coefficient_count],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_context",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_context",
                 "UInt64Buffer",
                 "uint64",
                 "uint64",
@@ -11296,13 +11337,13 @@ def fq_polynomial_copy(source: FqPolynomial) -> FqPolynomial:
     return FqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_polynomial_copy",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFqPolynomialCopy",
             "ffiFqPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -11320,7 +11361,7 @@ def fq_polynomial_length(polynomial: FqPolynomial) -> int:
         "ffiFqPolynomialLength",
         [polynomial._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial"
         ],
         "uint64",
         ["direct", [], None],
@@ -11338,7 +11379,7 @@ def fq_polynomial_extension_degree(polynomial: FqPolynomial) -> int:
         "ffiFqPolynomialExtensionDegree",
         [polynomial._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial"
         ],
         "uint64",
         ["direct", [], None],
@@ -11358,7 +11399,7 @@ def fq_polynomial_coordinate(
         "ffiFqPolynomialCoordinate",
         [polynomial._ffi_borrow(), coefficient_index, basis_index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
             "uint64",
             "uint64",
         ],
@@ -11378,8 +11419,8 @@ def fq_polynomial_equal(left: FqPolynomial, right: FqPolynomial) -> bool:
         "ffiFqPolynomialEqual",
         [left._ffi_borrow(), right._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
         ],
         "bool",
         ["direct", [], None],
@@ -11394,14 +11435,14 @@ def fq_polynomial_add(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial:
     return FqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_polynomial_add",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFqPolynomialAdd",
             "ffiFqPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -11416,14 +11457,14 @@ def fq_polynomial_sub(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial:
     return FqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_polynomial_sub",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFqPolynomialSub",
             "ffiFqPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -11438,14 +11479,14 @@ def fq_polynomial_mul(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial:
     return FqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_polynomial_mul",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFqPolynomialMul",
             "ffiFqPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -11460,13 +11501,13 @@ def fq_polynomial_neg(source: FqPolynomial) -> FqPolynomial:
     return FqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_polynomial_neg",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFqPolynomialNeg",
             "ffiFqPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -11481,13 +11522,13 @@ def fq_polynomial_pow(source: FqPolynomial, exponent: int) -> FqPolynomial:
     return FqPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_polynomial_pow",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFqPolynomialPow",
             "ffiFqPolynomialClose",
             [source._ffi_borrow(), exponent],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial",
                 "uint64",
             ],
             [None, None],
@@ -11503,13 +11544,13 @@ def fq_polynomial_coordinate_bytes(polynomial: FqPolynomial) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fq_polynomial_coordinate_bytes",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFqPolynomialCoordinateBytes",
             "ffiFlintByteRegionClose",
             [polynomial._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fq_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fq_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -11524,7 +11565,7 @@ def fmpz_mod_polynomial(modulus: int, length: int) -> FmpzModPolynomial:
     return FmpzModPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialCreate",
             "ffiFmpzModPolynomialClose",
@@ -11548,7 +11589,7 @@ def fmpz_mod_polynomial_set_coefficient(
         "ffiFmpzModPolynomialSetCoefficient",
         [polynomial._ffi_borrow(), index, coefficient],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "uint64",
             "Integer",
         ],
@@ -11568,7 +11609,7 @@ def fmpz_mod_polynomial_seal(polynomial: FmpzModPolynomial) -> bool:
         "ffiFmpzModPolynomialSeal",
         [polynomial._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial"
         ],
         "bool",
         ["status", [1], None],
@@ -11586,7 +11627,7 @@ def fmpz_mod_polynomial_modulus(source: FmpzModPolynomial) -> int:
         "ffiFmpzModPolynomialModulus",
         [source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial"
         ],
         "Integer",
         ["status", [1], None],
@@ -11604,7 +11645,7 @@ def fmpz_mod_polynomial_is_zero(source: FmpzModPolynomial) -> int:
         "ffiFmpzModPolynomialIsZero",
         [source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial"
         ],
         "Integer",
         ["status", [1], None],
@@ -11622,7 +11663,7 @@ def fmpz_mod_polynomial_length(source: FmpzModPolynomial) -> int:
         "ffiFmpzModPolynomialLength",
         [source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial"
         ],
         "Integer",
         ["status", [1], None],
@@ -11640,7 +11681,7 @@ def fmpz_mod_polynomial_entry_count(source: FmpzModPolynomial) -> int:
         "ffiFmpzModPolynomialEntryCount",
         [source._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial"
         ],
         "uint64",
         ["direct", [], None],
@@ -11658,7 +11699,7 @@ def fmpz_mod_polynomial_coefficient(source: FmpzModPolynomial, index: int) -> in
         "ffiFmpzModPolynomialCoefficient",
         [source._ffi_borrow(), index],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "uint64",
         ],
         "Integer",
@@ -11674,13 +11715,13 @@ def fmpz_mod_polynomial_copy(source: FmpzModPolynomial) -> FmpzModPolynomial:
     return FmpzModPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_copy",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialCopy",
             "ffiFmpzModPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -11698,8 +11739,8 @@ def fmpz_mod_polynomial_equal(left: FmpzModPolynomial, right: FmpzModPolynomial)
         "ffiFmpzModPolynomialEqual",
         [left._ffi_borrow(), right._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
         ],
         "Integer",
         ["status", [1], None],
@@ -11716,14 +11757,14 @@ def fmpz_mod_polynomial_add(
     return FmpzModPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_add",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialAdd",
             "ffiFmpzModPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -11740,14 +11781,14 @@ def fmpz_mod_polynomial_sub(
     return FmpzModPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_sub",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialSub",
             "ffiFmpzModPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -11764,14 +11805,14 @@ def fmpz_mod_polynomial_mul(
     return FmpzModPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_mul",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialMul",
             "ffiFmpzModPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -11786,13 +11827,13 @@ def fmpz_mod_polynomial_neg(source: FmpzModPolynomial) -> FmpzModPolynomial:
     return FmpzModPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_neg",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialNeg",
             "ffiFmpzModPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -11809,13 +11850,13 @@ def fmpz_mod_polynomial_pow(
     return FmpzModPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_pow",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialPow",
             "ffiFmpzModPolynomialClose",
             [source._ffi_borrow(), exponent],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
                 "uint64",
             ],
             [None, None],
@@ -11831,13 +11872,13 @@ def fmpz_mod_polynomial_derivative(source: FmpzModPolynomial) -> FmpzModPolynomi
     return FmpzModPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_derivative",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialDerivative",
             "ffiFmpzModPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -11855,7 +11896,7 @@ def fmpz_mod_polynomial_evaluate(source: FmpzModPolynomial, argument: int) -> in
         "ffiFmpzModPolynomialEvaluate",
         [source._ffi_borrow(), argument],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "Integer",
         ],
         "Integer",
@@ -11873,14 +11914,14 @@ def fmpz_mod_polynomial_gcd(
     return FmpzModPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_gcd",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialGcd",
             "ffiFmpzModPolynomialClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -11897,14 +11938,14 @@ def fmpz_mod_polynomial_divrem_resource(
     return FmpzModPolynomialDivisionResult(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_divrem_resource",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_division_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_division_result",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialDivremResource",
             "ffiFmpzModPolynomialDivisionResultClose",
             [dividend._ffi_borrow(), divisor._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -11922,13 +11963,13 @@ def fmpz_mod_polynomial_division_result_quotient(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__
             + ":fmpz_mod_polynomial_division_result_quotient",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialDivisionResultQuotient",
             "ffiFmpzModPolynomialClose",
             [division._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_division_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_division_result"
             ],
             [None],
             "zero_is_error",
@@ -11946,13 +11987,13 @@ def fmpz_mod_polynomial_division_result_remainder(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__
             + ":fmpz_mod_polynomial_division_result_remainder",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialDivisionResultRemainder",
             "ffiFmpzModPolynomialClose",
             [division._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_division_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_division_result"
             ],
             [None],
             "zero_is_error",
@@ -11969,14 +12010,14 @@ def fmpz_mod_polynomial_xgcd_resource(
     return FmpzModPolynomialXgcdResult(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_xgcd_resource",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_xgcd_result",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_xgcd_result",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialXgcdResource",
             "ffiFmpzModPolynomialXgcdResultClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             ],
             [None, None],
             "zero_is_error",
@@ -11993,13 +12034,13 @@ def fmpz_mod_polynomial_xgcd_result_gcd(
     return FmpzModPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_xgcd_result_gcd",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialXgcdResultGcd",
             "ffiFmpzModPolynomialClose",
             [xgcd._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_xgcd_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_xgcd_result"
             ],
             [None],
             "zero_is_error",
@@ -12017,13 +12058,13 @@ def fmpz_mod_polynomial_xgcd_result_left_coefficient(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__
             + ":fmpz_mod_polynomial_xgcd_result_left_coefficient",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialXgcdResultLeftCoefficient",
             "ffiFmpzModPolynomialClose",
             [xgcd._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_xgcd_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_xgcd_result"
             ],
             [None],
             "zero_is_error",
@@ -12041,13 +12082,13 @@ def fmpz_mod_polynomial_xgcd_result_right_coefficient(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__
             + ":fmpz_mod_polynomial_xgcd_result_right_coefficient",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialXgcdResultRightCoefficient",
             "ffiFmpzModPolynomialClose",
             [xgcd._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_xgcd_result"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_xgcd_result"
             ],
             [None],
             "zero_is_error",
@@ -12064,13 +12105,13 @@ def fmpz_mod_polynomial_factor_resource(
     return FmpzModPolynomialFactorization(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_factor_resource",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_factorization",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_factorization",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialFactorResource",
             "ffiFmpzModPolynomialFactorizationClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -12087,13 +12128,13 @@ def fmpz_mod_polynomial_roots_resource(
     return FmpzModPolynomialRoots(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_roots_resource",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial_roots",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial_roots",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialRootsResource",
             "ffiFmpzModPolynomialRootsClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -12108,13 +12149,13 @@ def fmpz_mod_polynomial_format(source: FmpzModPolynomial) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_format",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialFormat",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -12129,13 +12170,13 @@ def fmpz_mod_polynomial_serialize(source: FmpzModPolynomial) -> FlintByteRegion:
     return FlintByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_serialize",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialSerialize",
             "ffiFlintByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial"
             ],
             [None],
             "zero_is_error",
@@ -12150,13 +12191,13 @@ def fmpz_mod_polynomial_deserialize(source: FlintByteRegion) -> FmpzModPolynomia
     return FmpzModPolynomial(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":fmpz_mod_polynomial_deserialize",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_mod_polynomial",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_mod_polynomial",
             "@sagemath/sagejs-flint",
             "ffiFmpzModPolynomialDeserialize",
             "ffiFmpzModPolynomialClose",
             [source._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:byte_region"
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:byte_region"
             ],
             [None],
             "zero_is_error",
@@ -12173,13 +12214,13 @@ def number_field_order_pmaximal(
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":number_field_order_pmaximal",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiNumberFieldOrderPmaximal",
             "ffiFmpqMatrixClose",
             [multiplication_table._ffi_borrow(), prime],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
                 "uint64",
             ],
             [None, None],
@@ -12197,13 +12238,13 @@ def number_field_order_maximal_at_primes(
     return FmpqMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":number_field_order_maximal_at_primes",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpq_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpq_matrix",
             "@sagemath/sagejs-flint",
             "ffiNumberFieldOrderMaximalAtPrimes",
             "ffiFmpqMatrixClose",
             [multiplication_table._ffi_borrow(), primes, prime_count],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
                 "UInt64Buffer",
                 "uint64",
             ],
@@ -12222,14 +12263,14 @@ def number_field_order_from_polynomial_resource(
     return NumberFieldOrderResource(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":number_field_order_from_polynomial_resource",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_order_resource",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_order_resource",
             "@sagemath/sagejs-flint",
             "ffiNumberFieldOrderFromPolynomialResource",
             "ffiNumberFieldOrderResourceClose",
             [polynomial._ffi_borrow(), prime_hints._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -12247,7 +12288,7 @@ def number_field_order_resource_status(resource: NumberFieldOrderResource) -> in
         "ffiNumberFieldOrderResourceStatus",
         [resource._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_order_resource"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_order_resource"
         ],
         "uint64",
         ["direct", [], None],
@@ -12265,7 +12306,7 @@ def number_field_order_resource_degree(resource: NumberFieldOrderResource) -> in
         "ffiNumberFieldOrderResourceDegree",
         [resource._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_order_resource"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_order_resource"
         ],
         "uint64",
         ["direct", [], None],
@@ -12285,7 +12326,7 @@ def number_field_order_resource_supplied_primes(
         "ffiNumberFieldOrderResourceSuppliedPrimes",
         [resource._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_order_resource"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_order_resource"
         ],
         "uint64",
         ["direct", [], None],
@@ -12305,7 +12346,7 @@ def number_field_order_resource_resolved_primes(
         "ffiNumberFieldOrderResourceResolvedPrimes",
         [resource._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_order_resource"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_order_resource"
         ],
         "uint64",
         ["direct", [], None],
@@ -12325,7 +12366,7 @@ def number_field_order_resource_native_primes(
         "ffiNumberFieldOrderResourceNativePrimes",
         [resource._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_order_resource"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_order_resource"
         ],
         "uint64",
         ["direct", [], None],
@@ -12345,7 +12386,7 @@ def number_field_order_resource_unramified_primes(
         "ffiNumberFieldOrderResourceUnramifiedPrimes",
         [resource._ffi_borrow()],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_order_resource"
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_order_resource"
         ],
         "uint64",
         ["direct", [], None],
@@ -12363,14 +12404,14 @@ def number_field_order_with_round2_proof_resource(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__
             + ":number_field_order_with_round2_proof_resource",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_analysis_resource",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_analysis_resource",
             "@sagemath/sagejs-flint",
             "ffiNumberFieldOrderWithRound2ProofResource",
             "ffiNumberFieldAnalysisResourceClose",
             [polynomial._ffi_borrow(), prime_hints._ffi_borrow()],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -12387,13 +12428,13 @@ def number_field_analyze_resource(
     return NumberFieldAnalysisResource(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":number_field_analyze_resource",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_analysis_resource",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_analysis_resource",
             "@sagemath/sagejs-flint",
             "ffiNumberFieldAnalyzeResource",
             "ffiNumberFieldAnalysisResourceClose",
             [polynomial._ffi_borrow(), scale, trial_bound],
             [
-                "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_polynomial",
+                "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_polynomial",
                 "Integer",
                 "uint64",
             ],
@@ -12419,7 +12460,7 @@ def number_field_analysis_resource_project(
         [output, resource._ffi_borrow(), output_length, one],
         [
             "IntegerBuffer",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_analysis_resource",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_analysis_resource",
             "uint64",
             "uint64",
         ],
@@ -12452,7 +12493,7 @@ def number_field_analysis_resource_project_proof(
         [output, resource._ffi_borrow(), output_length, one],
         [
             "IntegerBuffer",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:number_field_analysis_resource",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:number_field_analysis_resource",
             "uint64",
             "uint64",
         ],
@@ -12517,8 +12558,8 @@ def integer_log_sqrt_balls_resource(
         "ffiIntegerLogSqrtBallsResource",
         [output._ffi_borrow(), source._ffi_borrow(), precision],
         [
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
-            "resource:flint@6350057cbe9918d51e5ea241c2f240f968afca062a8518882cfa96d96ff18292:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
+            "resource:flint@bb6ae2b90ba54557416ce664823a6c8b61175c073f348d7592de6cb5106f1f81:fmpz_matrix",
             "uint64",
         ],
         "bool",

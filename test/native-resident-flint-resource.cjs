@@ -132,6 +132,55 @@ for (let round = 0; round < 100; round += 1) {
   }
 });
 
+test("tagged exact helpers compose through borrowed FLINT resources", async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-resource-helper-"));
+  try {
+    const helperPath = join(temporary, "resource-helper.py");
+    writeFileSync(helperPath, String.raw`
+from sagejs.ffi.flint import (
+    FmpzMatrix,
+    fmpz_matrix,
+    fmpz_matrix_entry,
+    fmpz_matrix_set_entry,
+)
+from sagejs.native import NativeExactArena, native, uint64
+
+@native
+def _resource_helper(matrix: FmpzMatrix, value: int) -> int:
+    if not fmpz_matrix_set_entry(matrix, 0, 0, value):
+        return -1
+    return fmpz_matrix_entry(matrix, 0, 0) + value * value
+
+@native
+def resident_resource_helper(
+    value: int,
+    memory_limit: uint64,
+    temporary_limit: uint64,
+) -> int:
+    with NativeExactArena(memory_limit, temporary_limit) as arena:
+        matrix = arena.foreign_resource(fmpz_matrix, 1, 1)
+        return _resource_helper(matrix, value)
+`);
+    const compiled = await compileKernel({
+      sourcePath: helperPath,
+      cacheRoot: join(temporary, "cache"),
+      functions: ["resident_resource_helper"],
+    });
+    runNode(compiled.modulePath, String.raw`
+"use strict";
+const assert = require("node:assert/strict");
+const module = require(process.argv[1]);
+const value = 1n << 80n;
+assert.equal(
+  module.resident_resource_helper(value, 1048576n, 1048576n),
+  value + value * value,
+);
+`);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test("arena foreign-resource ownership counterfeits fail lowering", async () => {
   const header =
     "from sagejs.ffi.flint import FmpzMatrix, fmpz_matrix\n" +
@@ -148,17 +197,27 @@ test("arena foreign-resource ownership counterfeits fail lowering", async () => 
     ),
     /explicitly with NativeExactArena\.foreign_resource/,
   );
+  await lowerSource(
+    header +
+      "def f(n: uint64) -> int:\n" +
+      "    with NativeExactArena(n, n) as arena:\n" +
+      "        value = arena.foreign_resource(fmpz_matrix, 1, 1)\n" +
+      "        alias = value\n" +
+      "        return 0\n",
+    "arena-resource-alias.py",
+  );
   await assert.rejects(
     () => lowerSource(
       header +
         "def f(n: uint64) -> int:\n" +
         "    with NativeExactArena(n, n) as arena:\n" +
         "        value = arena.foreign_resource(fmpz_matrix, 1, 1)\n" +
-        "        alias = value\n" +
+        "        if n > 0:\n" +
+        "            alias = value\n" +
         "        return 0\n",
-      "arena-resource-alias.py",
+      "arena-resource-conditional-alias.py",
     ),
-    /cannot escape through aliases/,
+    /aliases cannot depend on native control flow/,
   );
   await assert.rejects(
     () => lowerSource(

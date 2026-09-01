@@ -1,11 +1,11 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "6a302d34121ee396fe7929ad8dbee061edc7cac0fac9f3caacfa6cf9fc724d7e",
+  "source_sha256": "88cef2493bd387aedbd47bc80153496e360d7627c9375b415dcc6b1e1f26aeec",
   "counts": {
-    "total": 1044,
+    "total": 1046,
     "by_kind": {
-      "declared-ffi-function": 459,
+      "declared-ffi-function": 461,
       "declared-ffi-resource": 34,
       "napi-export": 325,
       "production-kernel": 53,
@@ -16,13 +16,13 @@
       "compiled-source": 53,
       "desktop-only": 47,
       "generated-wasm": 340,
-      "portable-fallback": 559,
+      "portable-fallback": 561,
       "shared-core": 45
     },
     "by_status": {
       "available": 579,
       "desktop-only": 47,
-      "fallback": 418
+      "fallback": 420
     }
   },
   "workflow_aliases": {
@@ -3010,6 +3010,18 @@
       "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
     {
+      "id": "ffi:flint:fmpz_matrix_lll_transform",
+      "family": "flint",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_minpoly",
       "family": "flint",
       "disposition": "portable-fallback",
@@ -3239,6 +3251,18 @@
     },
     {
       "id": "ffi:flint:fmpz_matrix_snf",
+      "family": "flint",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_snf_into",
       "family": "flint",
       "disposition": "portable-fallback",
       "status": "fallback",

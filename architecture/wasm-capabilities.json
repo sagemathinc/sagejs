@@ -5096,6 +5096,26 @@
       "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
     {
+      "id": "ffi:flint:fmpz_matrix_lll_transform",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The caller-owned LLL transform is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_is_one",
       "kind": "declared-ffi-function",
       "family": "flint",
@@ -5566,6 +5586,26 @@
       "status": "fallback",
       "reviewed": true,
       "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_snf_into",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The caller-owned SNF operation is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
       "wasm_declared": false,
       "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },

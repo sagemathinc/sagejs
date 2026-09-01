@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 134,
-    "declared-ffi": 459,
+    "declared-ffi": 461,
     "declared-ffi-resource": 34,
     "napi-export": 325,
     "runtime-intrinsic": 147,
@@ -2534,6 +2534,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpz_matrix_lll_transform",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_lll_transform",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixLllTransform",
+      "symbol": "sagejs_fmpz_matrix_lll_transform",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_minpoly",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -2751,6 +2762,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatrixSnf",
       "symbol": "sagejs_fmpz_matrix_snf",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_snf_into",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_snf_into",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixSnfInto",
+      "symbol": "sagejs_fmpz_matrix_snf_into",
       "disposition": "declared-safe-ffi"
     },
     {

@@ -3960,6 +3960,30 @@ def fmpz_matrix_snf(source: FmpzMatrix) -> FmpzMatrix: ...
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixSnfInto",
+    symbol="sagejs_fmpz_matrix_snf_into",
+    returns=int,
+    abi=[
+        in_("smith", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["smith"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix SNF dimensions or aliases are invalid",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_snf_into(smith: Writable[FmpzMatrix], source: FmpzMatrix) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixHnfTransform",
     symbol="sagejs_fmpz_matrix_hnf_transform",
     returns=int,
@@ -3983,6 +4007,35 @@ def fmpz_matrix_snf(source: FmpzMatrix) -> FmpzMatrix: ...
 )
 def fmpz_matrix_hnf_transform(
     hermite: Writable[FmpzMatrix],
+    transform: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixLllTransform",
+    symbol="sagejs_fmpz_matrix_lll_transform",
+    returns=int,
+    abi=[
+        in_("reduced", sagejs_fmpz_matrix_t),
+        in_("transform", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["reduced", "transform"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix LLL transform dimensions or aliases are invalid",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_lll_transform(
+    reduced: Writable[FmpzMatrix],
     transform: Writable[FmpzMatrix],
     source: FmpzMatrix,
 ) -> bool: ...

@@ -793,6 +793,17 @@ function emitTaggedFunction(fn, functions) {
     `        ${wordName(param.name)} = ` +
       `sagejs_tagged_arg_${param.name}->small;`
   );
+  // Foreign resources have no machine-word ABI.  A dead `if (0)` word body
+  // still has to type-check nonexistent word callees and resource locals in
+  // C, so resource-bearing functions must enter directly through tagged IR.
+  const wordExecution = hasPublicResource
+    ? ""
+    : `    if (${fastGuard})
+    {
+${wordParamCopies.join("\n")}
+${emitWordStatements(fn.body, wordContext, "        ")}
+    }
+`;
   const initializeTags = [
     ...tagInitialization,
     "    sagejs_tagged_initialized = 1;",
@@ -820,11 +831,7 @@ ${Array.from(sites.values(), (resume) =>
   return `${taggedSignature(fn)}
 {
 ${declarations.join("\n")}
-    if (${fastGuard})
-    {
-${wordParamCopies.join("\n")}
-${emitWordStatements(fn.body, wordContext, "        ")}
-    }
+${wordExecution}
     goto sagejs_tagged_entry;
 ${promotionBlock}
 sagejs_tagged_entry:

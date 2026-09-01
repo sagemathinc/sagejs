@@ -2004,8 +2004,8 @@ function assignScalar(targetNode, value, context, operations) {
     expect(
       context,
       targetNode,
-      !context.activeArenaForeignResources.has(value.name),
-      "arena-owned FFI resources cannot escape through aliases",
+      context.controlDepth === 0,
+      "FFI resource aliases cannot depend on native control flow",
     );
     context.resourceAliases.set(
       targetNode.name,

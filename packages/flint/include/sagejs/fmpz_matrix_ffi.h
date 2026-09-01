@@ -8,6 +8,7 @@
 
 #include <flint/flint.h>
 #include <flint/fmpz.h>
+#include <flint/fmpz_lll.h>
 #include <flint/fmpz_mat.h>
 #include <flint/nmod_mat.h>
 
@@ -388,6 +389,19 @@ static inline int sagejs_fmpz_matrix_snf(
     return 1;
 }
 
+/* Basis-only SNF into a caller-owned resource for resident native regions. */
+static inline int sagejs_fmpz_matrix_snf_into(
+    sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t source)
+{
+    if (result == source ||
+        fmpz_mat_nrows(result->value) != fmpz_mat_nrows(source->value) ||
+        fmpz_mat_ncols(result->value) != fmpz_mat_ncols(source->value))
+        return 0;
+    fmpz_mat_snf(result->value, source->value);
+    sagejs_fmpz_matrix_finish_result(result);
+    return 1;
+}
+
 /*
  * Multi-result transforms write into caller-owned matrix resources.  Every
  * fallible precondition is checked before FLINT can mutate an output, so a
@@ -408,6 +422,30 @@ static inline int sagejs_fmpz_matrix_hnf_transform(
         return 0;
     fmpz_mat_hnf_transform(hermite->value, transform->value, source->value);
     sagejs_fmpz_matrix_finish_result(hermite);
+    sagejs_fmpz_matrix_finish_result(transform);
+    return 1;
+}
+
+/* Exact row-LLL into caller-owned resident resources. */
+static inline int sagejs_fmpz_matrix_lll_transform(
+    sagejs_fmpz_matrix_t reduced, sagejs_fmpz_matrix_t transform,
+    const sagejs_fmpz_matrix_t source)
+{
+    const slong rows = fmpz_mat_nrows(source->value);
+    const slong columns = fmpz_mat_ncols(source->value);
+    fmpz_lll_t context;
+    if (reduced == transform || reduced == source || transform == source ||
+        rows <= 0 || columns <= 0 || rows > columns ||
+        fmpz_mat_nrows(reduced->value) != rows ||
+        fmpz_mat_ncols(reduced->value) != columns ||
+        fmpz_mat_nrows(transform->value) != rows ||
+        fmpz_mat_ncols(transform->value) != rows)
+        return 0;
+    fmpz_mat_set(reduced->value, source->value);
+    fmpz_mat_one(transform->value);
+    fmpz_lll_context_init(context, 0.75, 0.5, Z_BASIS, EXACT);
+    fmpz_lll(reduced->value, transform->value, context);
+    sagejs_fmpz_matrix_finish_result(reduced);
     sagejs_fmpz_matrix_finish_result(transform);
     return 1;
 }

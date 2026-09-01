@@ -117,10 +117,12 @@ def _checked_native_values(
             or exact[38] > _CUBIC_ANALYTIC_MAX_VALUES
             or exact[39] != _CUBIC_ANALYTIC_PRECISION
             or exact[47] != 1 << _CUBIC_ANALYTIC_PRECISION
-            or exact[21] < 1
+            or exact[21] < 0
             or exact[21] > _CUBIC_MAX_FACTORS
-            or exact[22] < 1
+            or exact[22] < 0
             or exact[22] > _CUBIC_MAX_GROUPS
+            or (exact[21] == 0 and exact[22] != 0)
+            or (exact[21] != 0 and exact[22] == 0)
             or exact[23] < exact[21]
             or exact[23] > _CUBIC_MAX_RELATIONS
             or exact[40] <= 0
@@ -128,10 +130,13 @@ def _checked_native_values(
             or exact[43] < exact[42]
             or exact[45] < exact[44]
             or exact[45] < 0
-            # `log(2) > 2/3` follows from its positive atanh series.  This
-            # independent rational check is weaker than the native interval
-            # check and therefore cannot turn a decline into acceptance.
-            or exact[45] >= 2 * exact[47] // 3
+            # `log(2) > 842/1215` follows from the first three positive terms
+            # of `2*atanh(1/3) = 2/3 + 2/81 + 2/1215 + ...`.  This independent
+            # rational
+            # check is weaker than the native interval check and therefore
+            # cannot turn a decline into acceptance, while avoiding the
+            # needlessly coarse one-term bound `2/3`.
+            or exact[45] >= 842 * exact[47] // 1215
             or exact[46] < 0
         ):
             return None
@@ -196,7 +201,7 @@ class CertifiedComplexCubicClassNumber:
         return self._values[30]
 
     @property
-    def minkowski_generator_bound(self) -> int:
+    def generator_bound(self) -> int:
         return self._values[20]
 
     @property
@@ -237,7 +242,7 @@ class CertifiedComplexCubicClassNumber:
 
     @property
     def theorem(self) -> str:
-        return "minkowski-generators-plus-belabas-friedman-grh-index-one"
+        return "belabas-diaz-y-diaz-friedman-generators-plus-belabas-friedman-index-one"
 
     def matches(self, field: Any) -> bool:
         """Return whether this live immutable receipt still binds `field`."""
@@ -330,7 +335,7 @@ class CertifiedComplexCubicClassNumber:
             "field_discriminant": self.field_discriminant,
             "equation_order_index": self.equation_order_index,
             "order_basis_denominator": self.order_basis_denominator,
-            "minkowski_generator_bound": self.minkowski_generator_bound,
+            "generator_bound": self.generator_bound,
             "factor_base_size": self.factor_base_size,
             "relation_count": self.relation_count,
             "regulator_interval": list(self.regulator_interval),

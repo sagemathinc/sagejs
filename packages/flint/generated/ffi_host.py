@@ -209,7 +209,9 @@ from sagejs.ffi.flint import (
     fmpz_matrix_hnf as _ffi_fmpz_matrix_hnf,
     fmpz_matrix_hnf_into as _ffi_fmpz_matrix_hnf_into,
     fmpz_matrix_snf as _ffi_fmpz_matrix_snf,
+    fmpz_matrix_snf_into as _ffi_fmpz_matrix_snf_into,
     fmpz_matrix_hnf_transform as _ffi_fmpz_matrix_hnf_transform,
+    fmpz_matrix_lll_transform as _ffi_fmpz_matrix_lll_transform,
     fmpz_matrix_snf_transform as _ffi_fmpz_matrix_snf_transform,
     fmpz_matrix_right_kernel as _ffi_fmpz_matrix_right_kernel,
     fmpz_matrix_charpoly as _ffi_fmpz_matrix_charpoly,
@@ -2320,6 +2322,17 @@ def ffiFmpzMatrixSnf(
 
 
 @native
+def ffiFmpzMatrixSnfInto(
+    smith: FmpzMatrix,
+    source: FmpzMatrix,
+) -> bool:
+    return _ffi_fmpz_matrix_snf_into(
+        smith,
+        source,
+    )
+
+
+@native
 def ffiFmpzMatrixHnfTransform(
     hermite: FmpzMatrix,
     transform: FmpzMatrix,
@@ -2327,6 +2340,19 @@ def ffiFmpzMatrixHnfTransform(
 ) -> bool:
     return _ffi_fmpz_matrix_hnf_transform(
         hermite,
+        transform,
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixLllTransform(
+    reduced: FmpzMatrix,
+    transform: FmpzMatrix,
+    source: FmpzMatrix,
+) -> bool:
+    return _ffi_fmpz_matrix_lll_transform(
+        reduced,
         transform,
         source,
     )

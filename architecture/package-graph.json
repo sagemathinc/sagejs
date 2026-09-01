@@ -68,7 +68,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 1000000,
+      "max_source_bytes": 1050000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.compiler", "sagejs.native", "sagejs.ffi"],
       "files": [
@@ -218,7 +218,7 @@
       "id": "complex-cubic-native-program",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 180000,
+      "max_source_bytes": 300000,
       "depends_on": [
         "core-runtime",
         "native-integration",

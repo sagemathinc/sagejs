@@ -312,6 +312,7 @@ def _packed_gcd(left: int, right: int) -> int:
     return a
 
 
+@native
 def _packed_modular_power(base: int, exponent: int, modulus: int) -> int:
     """Compute one exact modular power without allocating Python integers."""
     answer = 1
@@ -326,6 +327,7 @@ def _packed_modular_power(base: int, exponent: int, modulus: int) -> int:
     return answer
 
 
+@native
 def _packed_miller_rabin_witness(number: int, base: int) -> bool:
     """Return whether `base` proves that the word-sized number is composite."""
     if base % number == 0:
@@ -347,6 +349,7 @@ def _packed_miller_rabin_witness(number: int, base: int) -> bool:
     return True
 
 
+@native
 def _packed_word_prime_is_proven(number: int) -> bool:
     """Deterministically prove primality throughout the unsigned-64-bit range."""
     if number < 2 or number >= 18446744073709551616:

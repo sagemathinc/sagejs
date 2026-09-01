@@ -1,7 +1,6 @@
 ---
 title: "Correctness argument for the native complex-cubic class group"
 ---
-
 # Correctness argument for the native complex-cubic class group
 
 This note records the mathematical contract of
@@ -18,8 +17,9 @@ The exact assumption carried by every successful receipt is
 
 This is the hypothesis in Belabas--Friedman, Theorem 1. All ideal arithmetic,
 relations, Smith normal form, units, and interval endpoints are exact. GRH is
-used only to turn a finite Euler calculation into a rigorous enclosure for the
-Dedekind-zeta residue.
+used in two named places: to certify the field-specific Belabas--Diaz y
+Diaz--Friedman factor-base cutoff, and to turn a finite Euler calculation into
+a rigorous enclosure for the Dedekind-zeta residue.
 
 ## Claim and accepted domain
 
@@ -52,10 +52,8 @@ native call graph. It independently checks:
 - a complete, pairwise-coprime factorization of the absolute equation-order
   discriminant inside the accepted bounded domain;
 - the canonical HNF basis, denominator, equation-order index, and identity
-  $$
-  \operatorname{disc}(\mathbb Z[a])
-    = [\mathcal O : \mathbb Z[a]]^2\operatorname{disc}(\mathcal O);
-  $$
+  $$\operatorname{disc}(\mathbb Z[a])
+    = [\mathcal O : \mathbb Z[a]]^2\operatorname{disc}(\mathcal O);$$
 - integral multiplication in $\mathcal O$; and
 - at every prime whose discriminant exponent can permit a nontrivial index,
   the canonical $p$-radical and a full-rank multiplier-ring fixed-point
@@ -77,18 +75,43 @@ $$
 \frac{8}{9\pi}\sqrt{|D_K|}.
 $$
 
-The program uses the elementary strict bound $\pi > 28/9$, hence
-$8/(9\pi) < 2/7$, and an integer upper bound for $\sqrt{|D_K|}$. Its
-published bound is therefore conservative and contains no floating-point
-approximation.
+The program first computes this unconditional fallback using the elementary
+strict bound $\pi > 28/9$, hence $8/(9\pi) < 2/7$, and an integer upper bound
+for $\sqrt{|D_K|}$. It then searches for a smaller field-specific cutoff $C$
+using the explicit GRH criterion of Belabas--Diaz y Diaz--Friedman. In
+signature $(1,1)$ it accepts $C$ only after outward-rounded interval arithmetic
+proves
 
-The factor base contains every degree-one prime ideal needed up to this bound.
+$$
+c_D+\frac{c_N+2S_B(C)}{\log C}-2S_A(C)<0,
+$$
+
+where
+
+$$
+c_N=4G+\frac{3\pi^2}{2},\qquad
+c_D=\log|D_K|-3\bigl(\gamma+\log(8\pi)\bigr)-\frac\pi2,
+$$
+
+and $S_A(C),S_B(C)$ are the finite prime-ideal-power sums in the theorem. The
+prime splitting data are recomputed in the certified maximal order. Bounds for
+$G$, $\gamma$, $\pi$, and every logarithm are rational or dyadic and rounded in
+the direction that makes the inequality harder to satisfy. If no smaller $C$
+is proved, the program retains the unconditional Minkowski cutoff.
+
+The factor base contains every degree-one prime ideal needed up to the selected
+proved bound.
 This suffices in degree three. An inert degree-three prime ideal is $(p)$ and
 is principal. In splitting type $(1,2)$, the degree-two prime class is the
 inverse of the degree-one prime class because their product is $(p)$.
 Completely split and ramified degree-one primes are represented by all exact
 multiplicative maps $\mathcal O \to \mathbb F_p$. Thus the free group on the
 retained factor base surjects onto $\operatorname{Cl}(\mathcal O)$.
+
+The factor base is allowed to be empty. If every rational prime through the
+selected generator bound is inert, its unique prime ideal is $(p)$ and is
+principal. There are then no nontrivial generators, so the zero-dimensional
+factor-base presentation proves that the class group is trivial.
 
 ### 3. Exact principal relations give an upper group
 
@@ -112,13 +135,29 @@ $$
 
 for a positive integer relation index $r$ and the true class number $h$.
 
+The relation search follows PARI's `small_norm` geometry without trusting its
+output: it LLL-reduces individual prime ideals and then a bounded sequence of
+products $P_0^eP_j$ from a small multiplier sub-factor-base. The products are
+only search devices. Every resulting element is admitted through the exact
+norm and containment checks above. A rational-prime row $(p)$ is recorded only
+when every prime ideal above $p$ is represented; in particular, a retained
+degree-one factor of splitting type $(1,2)$ does not create the false relation
+$(p)=P_1$ when its norm-$p^2$ companion lies outside the selected factor base.
+
 ### 4. The retained element gives an upper regulator
 
 A complex cubic has signature $(1,1)$, unit rank one, and exactly two roots of
 unity: a root of unity maps to a real root of unity under the real embedding,
-so it is $+1$ or $-1$. The program checks an exact non-torsion algebraic integer
-with norm $+1$ or $-1$. It therefore generates a finite-index subgroup of the
-unit lattice. If its rigorously enclosed logarithm is $\widehat R$, then
+so it is $+1$ or $-1$. The program retains the exact principal element behind
+every relation. Zero rows of the exact HNF transform give integral relation
+dependencies; multiplying positive-exponent witnesses and exactly dividing by
+the negative-exponent product reconstructs algebraic units in $\mathcal O$.
+The program also searches its bounded coordinate box by increasing
+coordinate-$\ell_1$ shells. Every candidate on the first populated shell is
+checked to have norm $+1$ or $-1$, and the candidate with the smallest
+rigorously disjoint positive logarithm on that shell is selected. It therefore
+generates a finite-index subgroup of the unit lattice. If its rigorously
+enclosed logarithm is $\widehat R$, then
 
 $$
 \widehat R = qR
@@ -129,7 +168,7 @@ for a positive integer unit index $q$ and the true regulator $R$.
 ### 5. Belabas--Friedman encloses the zeta residue under GRH
 
 Let $\kappa_K$ be the residue of $\zeta_K(s)$ at $s=1$. At the fixed cutoff
-$X=581$, the program computes the required prime-ideal-power terms from the
+$X=997$, the program computes the required prime-ideal-power terms from the
 exact multiplication algebra of the certified maximal order. In particular,
 index primes are not analyzed from the possibly misleading defining
 polynomial.
@@ -193,7 +232,7 @@ defense in depth; it cannot promote a declined native computation.
 ## Receipt, replay, and trusted base
 
 The version-one detached receipt records the polynomial, field discriminant,
-class invariants, unit coordinates, Minkowski bound, factor-base and relation
+class invariants, unit coordinates, selected generator bound, factor-base and relation
 sizes, dyadic regulator/zeta/index intervals, analytic cutoff and precision,
 the theorem name, and the GRH assumption. It is an audit record, not yet a
 standalone proof object: it does not contain all ideal relations or local Euler
@@ -248,6 +287,10 @@ label.
 - Karim Belabas and Eduardo Friedman, “Computing the residue of the Dedekind
   zeta function,” *Mathematics of Computation* 84 (2015), 357--369,
   [arXiv:1305.0035](https://arxiv.org/abs/1305.0035), Theorem 1.
+- Karim Belabas, Francisco Diaz y Diaz, and Eduardo Friedman, “Small
+  generators of the ideal class group,” *Mathematics of Computation* 77
+  (2008), 1185--1197,
+  [author PDF](https://www.math.u-bordeaux.fr/~kbelabas/research/OnBach.pdf).
 - [Certified number-field maximal orders](number-field-maximal-orders.md), for
   the general Round-2 certificate contract.
 - [Number-field class and unit groups](number-field-class-unit-groups.md), for
