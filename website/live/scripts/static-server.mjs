@@ -35,6 +35,7 @@ const EMBED_SUPPORT_MODULES = new Set([
   "runtime-version.json",
   "widget-manager.mjs",
 ]);
+const EMBED_FRAME_PATH = "embed/v1/frame.html";
 
 export function isPublicEmbedResource(relative) {
   return (
@@ -46,12 +47,16 @@ export function isPublicEmbedResource(relative) {
 }
 
 function responseSecurityHeaders(relative) {
-  if (!isPublicEmbedResource(relative)) return securityHeaders;
-  return {
+  const headers = isPublicEmbedResource(relative) ? {
     ...securityHeaders,
     "Access-Control-Allow-Origin": "*",
     "Cross-Origin-Resource-Policy": "cross-origin",
-  };
+  } : { ...securityHeaders };
+  if (relative === EMBED_FRAME_PATH) {
+    headers["Content-Security-Policy"] = securityHeaders["Content-Security-Policy"]
+      .replace("frame-ancestors 'none'", "frame-ancestors *");
+  }
+  return headers;
 }
 
 export function startStaticServer({ directory = root, host = "127.0.0.1", port = 0 } = {}) {

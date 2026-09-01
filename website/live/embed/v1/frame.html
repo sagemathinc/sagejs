@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Embedded Sage.js Cell</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; background: transparent; }
+      body { padding: .25rem; }
+      #configuration-error { margin: 1rem; color: #b42318; font: 16px/1.5 system-ui, sans-serif; }
+    </style>
+    <script type="module" src="./frame.mjs"></script>
+  </head>
+  <body>
+    <main id="sagejs-frame-cell"></main>
+    <p id="configuration-error" role="alert" hidden></p>
+  </body>
+</html>

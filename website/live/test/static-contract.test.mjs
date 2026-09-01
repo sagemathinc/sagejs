@@ -56,6 +56,8 @@ test("Cloudflare policy isolates a deliberately dynamic, credential-free origin"
   assert.match(headers, /\/assets\//);
   assert.match(headers, /Access-Control-Allow-Origin: \*/);
   assert.match(headers, /Cross-Origin-Resource-Policy: cross-origin/);
+  assert.match(headers, /\/embed\/v1\/frame\.html[\s\S]*frame-ancestors \*/);
+  assert.match(headers, /! X-Frame-Options/);
   const privacy = await read("privacy.html");
   assert.match(privacy, /dedicated origin with no authentication cookies/);
   assert.match(privacy, /deliberately permits dynamic evaluation and WebAssembly/);
@@ -97,4 +99,12 @@ test("embeddable cell has a transport-neutral, instance-scoped contract", async 
   const factory = await read("embed/v1/factory-example.mjs");
   assert.match(factory, /createSageCell/);
   assert.match(factory, /@interact/);
+  const frame = await read("embed/v1/frame.mjs");
+  assert.match(frame, /org\.sagejs\.cell-frame\/v1/);
+  assert.match(frame, /event\.source !== window\.parent/);
+  assert.match(frame, /event\.origin !== parentOrigin/);
+  assert.match(frame, /value === "\*"/);
+  assert.match(frame, /MAX_MESSAGE_BYTES = 256 \* 1024/);
+  assert.match(frame, /REQUEST_ID\.test/);
+  assert.doesNotMatch(frame, /postMessage\([^,]+,\s*["']\*["']/);
 });

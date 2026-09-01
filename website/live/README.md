@@ -128,9 +128,34 @@ img-src data: blob: https://app.sagejs.org
 
 The host does not need COOP or COEP for basic execution and standard widgets;
 the component reports `crossOriginIsolated: false` in that mode. The iframe
-transport, shared-session/pooling policy, complete isolated-versus-fallback
-capability table, and Firefox/WebKit matrix remain under implementation. Do
-not yet treat the candidate URL as a frozen compatibility contract.
+transport is also available at `/embed/v1/frame.html` for hosts that want an
+additional CSS and JavaScript boundary. Give it an exact, URL-encoded
+`parentOrigin` and use a cross-origin sandbox that retains origin identity:
+
+```html
+<iframe
+  src="https://app.sagejs.org/embed/v1/frame.html?parentOrigin=https%3A%2F%2Fcourse.example"
+  sandbox="allow-scripts allow-same-origin"
+  title="Sage.js calculation">
+</iframe>
+```
+
+The frame sends and receives structured messages with schema
+`org.sagejs.cell-frame/v1`. It first sends `{type: "ready"}`. The exact parent
+may then send bounded requests with a unique `id`, `type: "request"`, and one
+of `initialize`, `configure`, `set-source`, `run`, `interrupt`, `reset`,
+`snapshot`, or `dispose`. Responses repeat the request id and contain either a
+bounded result summary or a name/message error; mathematical displays and
+widgets remain rendered inside the frame. The frame checks both `event.source`
+and the exact configured origin, rejects wildcard origins, caps messages and
+source at 256 KiB, and does not expose interpreter objects. See
+`frame-example.html` for a complete host.
+
+The dedicated frame response alone permits `frame-ancestors *` and omits
+`X-Frame-Options`; the standalone app and all other pages remain unframeable.
+The shared-session/pooling policy, complete isolated-versus-fallback capability
+table, and Firefox/WebKit matrix remain under implementation. Do not yet treat
+the candidate interfaces as frozen compatibility contracts.
 
 ## Product behavior
 

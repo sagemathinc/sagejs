@@ -32,6 +32,7 @@ const hostServer = http.createServer((_request, response) => {
       `style-src 'unsafe-inline' ${runtimeOrigin}`,
       `font-src ${runtimeOrigin}`,
       `img-src data: blob: ${runtimeOrigin}`,
+      `frame-src ${runtimeOrigin}`,
       "object-src 'none'",
       "base-uri 'none'",
     ].join("; "),
@@ -255,6 +256,59 @@ def powers(n=slider(1, 5, 1, default=2, label='power')):
   await evaluate("window.crossOriginCell.dispose()");
   await waitFor(
     `window.crossOriginCell?.shadowRoot?.querySelector('.status')?.dataset.state === 'disposed'`,
+  );
+
+  await evaluate(`(() => {
+    window.sageFrameMessages = [];
+    window.addEventListener('message', (event) => {
+      if (event.origin === ${JSON.stringify(runtimeOrigin)} &&
+          event.data?.schema === 'org.sagejs.cell-frame/v1') {
+        window.sageFrameMessages.push(event.data);
+      }
+    });
+    const iframe = document.createElement('iframe');
+    iframe.id = 'remote-sage-frame';
+    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+    const url = new URL(${JSON.stringify(`${runtimeOrigin}/embed/v1/frame.html`)});
+    url.searchParams.set('parentOrigin', location.origin);
+    iframe.src = url;
+    document.body.append(iframe);
+  })()`);
+  await waitFor(
+    `window.sageFrameMessages.some((message) => message.type === 'ready' && ` +
+      `message.capabilities?.crossOriginIsolated === false)`,
+  );
+  await evaluate(`document.querySelector('#remote-sage-frame').contentWindow.postMessage({
+    schema: 'org.sagejs.cell-frame/v1',
+    type: 'request',
+    id: 'initialize-1',
+    action: 'initialize',
+    source: '2 + 3',
+    configuration: { editor: false, theme: 'dark' },
+  }, ${JSON.stringify(runtimeOrigin)})`);
+  await waitFor(
+    `window.sageFrameMessages.some((message) => message.type === 'response' && ` +
+      `message.id === 'initialize-1' && message.ok)`,
+  );
+  await evaluate(`document.querySelector('#remote-sage-frame').contentWindow.postMessage({
+    schema: 'org.sagejs.cell-frame/v1',
+    type: 'request',
+    id: 'run-1',
+    action: 'run',
+  }, ${JSON.stringify(runtimeOrigin)})`);
+  await waitFor(
+    `window.sageFrameMessages.some((message) => message.type === 'response' && ` +
+      `message.id === 'run-1' && message.ok && message.result?.repr === '5')`,
+  );
+  await evaluate(`document.querySelector('#remote-sage-frame').contentWindow.postMessage({
+    schema: 'org.sagejs.cell-frame/v1',
+    type: 'request',
+    id: 'dispose-1',
+    action: 'dispose',
+  }, ${JSON.stringify(runtimeOrigin)})`);
+  await waitFor(
+    `window.sageFrameMessages.some((message) => message.type === 'response' && ` +
+      `message.id === 'dispose-1' && message.result?.status === 'disposed')`,
   );
   assert.deepEqual(exceptions, []);
   socket.close();

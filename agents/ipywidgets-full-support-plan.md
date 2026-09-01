@@ -30,9 +30,13 @@ Implementation is active. As of 2026-08-31:
   `@interact` slider in Chromium. An unrelated strict-CSP host also loads the
   public component/runtime without COOP or COEP; a local Blob module bootstrap
   explicitly handles both remote worker levels, and the edge serves only the
-  required credential-free assets with CORS/CORP. The sandboxed iframe,
-  shared-session pooling, complete capability comparison, and broader browser
-  matrix remain open before the `/embed/v1/` interface is declared stable.
+  required credential-free assets with CORS/CORP. A dedicated sandboxable frame
+  is also qualified cross-origin with exact parent source/origin checks,
+  bounded request ids/messages/results, deferred initialization, and a narrow
+  lifecycle protocol; only that document relaxes the global anti-framing
+  headers. Shared-session pooling, the complete capability comparison, and the
+  broader browser matrix remain open before the `/embed/v1/` interfaces are
+  declared stable.
 - P7's kernel-side Sage compatibility layer is implemented and covered by
   executable PREP and Sage differential corpora. Sage-global `@interact`,
   `input_box`, `slider`, `range_slider`, `checkbox`, `selector`,

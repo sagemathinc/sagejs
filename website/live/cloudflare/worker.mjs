@@ -22,6 +22,7 @@ const EMBED_SUPPORT_MODULES = new Set([
   "runtime-version.json",
   "widget-manager.mjs",
 ]);
+const EMBED_FRAME_PATH = "embed/v1/frame.html";
 // Increment this whenever the representation stored in Cache API changes.
 // Cache API entries survive Worker deployments, so a new Worker must never
 // inherit responses produced by an older encoding contract.
@@ -43,6 +44,16 @@ function secureHeaders(headers = new Headers(), logicalPath) {
   if (isPublicEmbedResource(logicalPath ?? "")) {
     headers.set("Access-Control-Allow-Origin", "*");
     headers.set("Cross-Origin-Resource-Policy", "cross-origin");
+  }
+  if (logicalPath === EMBED_FRAME_PATH) {
+    headers.set(
+      "Content-Security-Policy",
+      SECURITY_HEADERS["Content-Security-Policy"].replace(
+        "frame-ancestors 'none'",
+        "frame-ancestors *",
+      ),
+    );
+    headers.delete("X-Frame-Options");
   }
   return headers;
 }
