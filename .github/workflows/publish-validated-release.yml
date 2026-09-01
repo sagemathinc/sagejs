@@ -54,7 +54,12 @@ jobs:
           [[ "$(jq -r .path <<<"$run_metadata")" == ".github/workflows/ci.yml" ]]
           [[ "$(jq -r .event <<<"$run_metadata")" == "push" ]]
           [[ "$(jq -r .status <<<"$run_metadata")" == "completed" ]]
+          [[ "$(jq -r .conclusion <<<"$run_metadata")" == "success" ]]
           source_sha="$(jq -r .head_sha <<<"$run_metadata")"
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG" || {
+            echo "$RELEASE_TAG is not an existing immutable tag" >&2
+            exit 1
+          }
           tag_sha="$(git rev-list -n 1 "$RELEASE_TAG")"
           [[ "$source_sha" == "$tag_sha" ]] || {
             echo "Source run $SOURCE_RUN_ID built $source_sha, but $RELEASE_TAG points at $tag_sha" >&2
@@ -67,7 +72,8 @@ jobs:
             "Linux arm64 native, tests, and SEA" \
             "macOS arm64 native, tests, and SEA" \
             "Windows x64 native, tests, and SEA" \
-            "Sign and notarize macOS arm64 release"
+            "Sign and notarize macOS arm64 release" \
+            "Numerical release qualification gate"
           do
             conclusion="$(jq -r --arg name "$required" \
               '[.jobs[] | select(.name == $name) | .conclusion] | first // "missing"' \
@@ -80,7 +86,14 @@ jobs:
 
           package_version="$(node -p 'require("./package.json").version')"
           case "$RELEASE_TAG" in
-            "v${package_version}"|"v${package_version}+"*) ;;
+            "v${package_version}") ;;
+            "v${package_version}+release."*)
+              recovery="${RELEASE_TAG#v${package_version}+release.}"
+              [[ "$recovery" =~ ^[1-9][0-9]*$ ]] || {
+                echo "Invalid recovery tag $RELEASE_TAG" >&2
+                exit 1
+              }
+              ;;
             *)
               echo "Release tag $RELEASE_TAG does not represent npm version $package_version" >&2
               exit 1
@@ -103,7 +116,15 @@ jobs:
           do
             gh run download "$SOURCE_RUN_ID" --name "$artifact" --dir release
           done
+          gh run download "$SOURCE_RUN_ID" \
+            --name numerical-release-gate --dir build/validated-numerical-gate
           find release -maxdepth 2 -type f -print | sort
+
+      - name: Authenticate the exact numerical release gate
+        run: |
+          pnpm release:qualify:numerics:authenticate -- \
+            --candidate "$(git rev-parse HEAD)" \
+            --gate build/validated-numerical-gate/release-gate.json
 
       - name: Create or update the draft GitHub release
         env:
@@ -129,15 +150,12 @@ jobs:
 
       - name: Publish the platform and public npm packages
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
         run: |
-          [[ -n "$NODE_AUTH_TOKEN" ]] || { echo "Missing NPM_TOKEN" >&2; exit 1; }
-
           publish_package() {
             local archive="$1"
             local tag="$2"
-            local metadata name version published
+            local metadata name version published tags tagged_version
             metadata="$(tar -xOzf "$archive" package/package.json)"
             name="$(node -e 'console.log(JSON.parse(process.argv[1]).name)' "$metadata")"
             version="$(node -e 'console.log(JSON.parse(process.argv[1]).version)' "$metadata")"
@@ -147,11 +165,18 @@ jobs:
                 echo "Unexpected published version for ${name}@${version}: $published" >&2
                 exit 1
               }
-              echo "${name}@${version} is already published; refreshing dist-tag ${tag}"
-              npm dist-tag add "${name}@${version}" "$tag"
+              tags="$(npm view "$name" dist-tags --json)"
+              tagged_version="$(node -e \
+                'console.log(JSON.parse(process.argv[1])[process.argv[2]] ?? "")' \
+                "$tags" "$tag")"
+              [[ "$tagged_version" == "$version" ]] || {
+                echo "${name}@${version} exists but dist-tag ${tag} points at ${tagged_version:-nothing}" >&2
+                exit 1
+              }
+              echo "${name}@${version} is already published with dist-tag ${tag}; skipping"
             else
-              pnpm publish "$archive" \
-                --access public --tag "$tag" --ignore-scripts --no-git-checks
+              npm publish "$archive" \
+                --access public --tag "$tag" --ignore-scripts
             fi
           }
 

@@ -31,6 +31,24 @@ const releaseWorkflow = readFileSync(
   join(root, ".github", "workflows", "ci.yml"),
   "utf8",
 );
+const validatedPublishWorkflow = readFileSync(
+  join(root, ".github", "workflows", "publish-validated-release.yml"),
+  "utf8",
+);
+const browserDeployWorkflow = readFileSync(
+  join(root, ".github", "workflows", "wasm-deploy-cloudflare.yml"),
+  "utf8",
+);
+const numericalGateAuthenticator = readFileSync(
+  join(
+    root,
+    "scripts",
+    "numerical-computing",
+    "qualification",
+    "authenticate-release-gate.cjs",
+  ),
+  "utf8",
+);
 const nativePackages = [
   "native-darwin-arm64",
   "native-linux-arm64",
@@ -81,6 +99,9 @@ for (const name of names) {
 const draftIndex = releaseWorkflow.indexOf(
   "- name: Create or update the draft GitHub release",
 );
+const numericalGateIndex = releaseWorkflow.indexOf(
+  "- name: Require the passing gate for this exact tagged candidate",
+);
 const uploadIndex = releaseWorkflow.indexOf('gh release upload "$TAG"');
 const npmIndex = releaseWorkflow.indexOf(
   "- name: Publish the platform and public npm packages",
@@ -90,6 +111,24 @@ const publishIndex = releaseWorkflow.indexOf(
   "- name: Publish the immutable GitHub release",
 );
 assert.ok(draftIndex >= 0, "release workflow must create a draft release");
+assert.ok(
+  numericalGateIndex >= 0 && numericalGateIndex < draftIndex,
+  "release workflow must authenticate numerical qualification before creating a draft",
+);
+assert.match(
+  releaseWorkflow,
+  /publish-release:[\s\S]*?needs:\n\s+- numerical-release-gate/,
+  "automatic publication must depend on the mandatory numerical release gate",
+);
+assert.match(
+  releaseWorkflow,
+  /release:qualify:numerics:authenticate/,
+  "automatic publication must authenticate the complete numerical evidence inventory",
+);
+assert.ok(
+  !releaseWorkflow.includes("merge-multiple: true"),
+  "release artifacts must be restored by producer name, not merged ambiguously",
+);
 assert.ok(
   releaseWorkflow.indexOf("--draft", draftIndex) > draftIndex,
   "release creation must remain draft-first for immutable repositories",
@@ -118,6 +157,54 @@ assert.ok(
   !releaseWorkflow.includes('pnpm publish "$archive"'),
   "release workflow must not route Trusted Publishing through pnpm",
 );
+
+assert.match(
+  validatedPublishWorkflow,
+  /\.conclusion[\s\S]+success/,
+  "manual publication must reject a merely completed but failed source run",
+);
+assert.match(
+  validatedPublishWorkflow,
+  /Numerical release qualification gate/,
+  "manual publication must require the source run's numerical gate job",
+);
+assert.match(
+  validatedPublishWorkflow,
+  /release:qualify:numerics:authenticate/,
+  "manual publication must authenticate the complete numerical evidence inventory",
+);
+assert.match(
+  validatedPublishWorkflow,
+  /id-token:\s*write/,
+  "manual publication must use npm Trusted Publishing",
+);
+assert.ok(
+  !validatedPublishWorkflow.includes("secrets.NPM_TOKEN") &&
+    !validatedPublishWorkflow.includes('pnpm publish "$archive"'),
+  "manual publication must not retain a token or pnpm publication bypass",
+);
+
+for (const required of [
+  "qualification_run_id:",
+  ".github/workflows/ci.yml",
+  "Numerical release qualification gate",
+  "qualification_sha",
+  "numerical-release-gate",
+  "release:qualify:numerics:authenticate",
+]) {
+  assert.ok(
+    browserDeployWorkflow.includes(required),
+    `browser deployment must authenticate numerical qualification: ${required}`,
+  );
+}
+assert.match(
+  browserDeployWorkflow,
+  /qualification_sha[\s\S]+source_sha/,
+  "browser deployment must bind the numerical gate to its exact Wasm source SHA",
+);
+assert.match(numericalGateAuthenticator, /RELEASE_GATE_SCHEMA/);
+assert.match(numericalGateAuthenticator, /matrix_receipts\?\.length !== 16/);
+assert.match(numericalGateAuthenticator, /supplemental_evidence\?\.length !== 7/);
 
 const tagIndex = process.argv.indexOf("--tag");
 if (tagIndex >= 0) {
