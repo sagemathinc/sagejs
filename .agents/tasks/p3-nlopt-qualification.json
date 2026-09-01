@@ -1,0 +1,54 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p3-nlopt-qualification",
+  "title": "Deterministic NLopt Nelder-Mead qualification",
+  "lane": "numerical-optimization",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generate and promote source-current fail-closed NLopt Nelder-Mead qualification evidence without admitting stale COBYLA evidence",
+  "base_commit": "6d8d0d31477842f9cc5ba5d9eea0d642a3d7dc00",
+  "claims": [
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle-summary.json",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle.py",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/selection-v1.json",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/release/qualification-v1.json",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/promote-qualification.cjs",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/stevengj/nlopt"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Dynamic Sage.js Nelder-Mead over the selected immutable corpus",
+      "Independent qualification receipt validators and adversarial fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

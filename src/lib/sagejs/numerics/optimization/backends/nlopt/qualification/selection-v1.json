@@ -1,0 +1,34 @@
+{
+  "schema": "sagejs.numerical-nlopt-qualification-selection/v1",
+  "method": "nlopt-nelder-mead",
+  "upstream_identity": "NLOPT_LN_NELDERMEAD",
+  "case_ids": [
+    "nelder-rosenbrock-2",
+    "nelder-beale-2",
+    "nelder-nonsmooth-absolute",
+    "nelder-bounded-boundary",
+    "nelder-ill-scaled"
+  ],
+  "evidence_kinds": [
+    "sanitizer",
+    "destructive-wasm",
+    "browser-lifecycle",
+    "public-integration",
+    "resource-corruption",
+    "relocation",
+    "sea"
+  ],
+  "portable_platforms": {
+    "linux-x64": { "os": "linux", "architecture": "x64" },
+    "linux-arm64": { "os": "linux", "architecture": "arm64" },
+    "macos-arm64": { "os": "darwin", "architecture": "arm64" },
+    "windows-x64": { "os": "win32", "architecture": "x64" }
+  },
+  "historical_exclusions": {
+    "nlopt-cobyla": {
+      "status": "excluded",
+      "reason": "Source-bound UBSAN found unresolved pointer-provenance undefined behavior in the selected upstream f2c COBYLA source.",
+      "qualification_rule": "Historical COBYLA oracle, corpus, artifact, or platform evidence is never accepted as current Nelder-Mead qualification evidence."
+    }
+  }
+}
