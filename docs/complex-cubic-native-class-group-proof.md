@@ -187,13 +187,21 @@ therefore influences only which candidates are proposed. Exact norm evaluation,
 smoothness, ideal containment, and the independent proof replay remain the
 correctness authority for every admitted relation.
 
-Multiplier batches are adaptive. The host invokes the same closed native
-program first with no compound multiplier, then with prefixes of one, two, and
-four multipliers. A retry is permitted only when the native diagnostic proves
-that relation rank, unit rank, or the final certified unit-subgroup index is
-still incomplete. Each attempt owns a fresh exact arena and independently
-repeats every mathematical check; no partially trusted relation state crosses
-the boundary. The detached receipt records the successful prefix length.
+Relation compaction retains the class-lattice support plus a bounded tail of
+eighteen redundant witnesses. Those extra rows preserve short unit
+dependencies without making every HNF transform operate on the full collection
+matrix. If the compact dependency lattice still yields no exact unit, the
+program conditionally allocates one uncompressed HNF/LLL/log workspace inside
+the same arena and attempts exact unit reconstruction before declining.
+
+Multiplier batches remain adaptive. The host first invokes the closed native
+program with the zero-multiplier relation regime, then authorizes prefixes of
+one, two, and four multipliers only after the native diagnostic proves that
+relation rank, unit rank, or the final certified unit-subgroup index is still
+incomplete. Each retry owns a fresh exact arena and independently repeats every
+mathematical check; no partially trusted relation state crosses the boundary.
+The detached receipt records the prefix actually used, not merely the maximum
+authorized by the call.
 
 ### 4. The retained element gives an upper regulator
 

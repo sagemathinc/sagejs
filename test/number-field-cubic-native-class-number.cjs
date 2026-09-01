@@ -165,9 +165,9 @@ cases = (
     ("3.1.2856.1", (-21, 9, -1, 1), 7, (7,), 0),
     ("3.1.4027.2", (8, 7, -1, 1), 6, (6,), 0),
     ("3.1.5448.1", (30, -14, -1, 1), 8, (8,), 0),
-    # This field needs PARI's next small_norm regime: a reduced shell in
-    # compound prime ideals exposes the rank-one unit dependency.
-    ("3.1.49096.1", (-126, -6, -1, 1), 9, (9,), 1),
+    # Two additional redundant rows preserve the fundamental-unit dependency
+    # through resident relation compaction, avoiding a multiplier retry.
+    ("3.1.49096.1", (-126, -6, -1, 1), 9, (9,), 0),
     # The sharper elementary Euler-constant enclosure proves PARI's GRH
     # generator cutoff 16.  The exact reduced ellipsoid in the complementary
     # norm-9 ideal then supplies the decisive relation without a restart.

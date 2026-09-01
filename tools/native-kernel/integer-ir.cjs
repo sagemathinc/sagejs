@@ -391,6 +391,7 @@ function createContext(
     initialized: new Set(signature.params.map((param) => param.name)),
     integerConstants,
     controlDepth: 0,
+    loopDepth: 0,
     locals: new Map(),
     nextTemporary: 0,
     params: signature.params,
@@ -2376,8 +2377,8 @@ function lowerArenaAllocation(statement, context) {
   expect(
     context,
     statement,
-    context.controlDepth === arenaState.controlDepth,
-    "NativeExactArena children must be allocated unconditionally in its lexical body",
+    context.loopDepth === arenaState.loopDepth,
+    "NativeExactArena children may be conditional but cannot be allocated repeatedly in a native loop",
   );
   const method = assign.right.expression.property;
   const foreignResource = lowerArenaForeignResourceAllocation(
@@ -2999,6 +3000,7 @@ function lowerStatements(statements, context) {
         const arenaState = {
           children: [],
           controlDepth: context.controlDepth,
+          loopDepth: context.loopDepth,
         };
         context.activeExactArenas.set(owner, arenaState);
         const body = lowerBlock(statement.body, context);
@@ -3189,7 +3191,9 @@ function lowerStatements(statements, context) {
       const before = new Set(context.initialized);
       context.initialized = new Set(before);
       context.controlDepth += 1;
+      context.loopDepth += 1;
       const body = lowerBlock(statement.body, context);
+      context.loopDepth -= 1;
       context.controlDepth -= 1;
       context.initialized = before;
       const operation = {
@@ -3214,7 +3218,9 @@ function lowerStatements(statements, context) {
       const before = new Set(context.initialized);
       context.initialized.add(index);
       context.controlDepth += 1;
+      context.loopDepth += 1;
       const body = lowerBlock(statement.body, context);
+      context.loopDepth -= 1;
       context.controlDepth -= 1;
       context.initialized = before;
       const hoisted = [];

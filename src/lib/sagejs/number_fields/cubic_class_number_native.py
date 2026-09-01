@@ -2715,6 +2715,433 @@ def _cubic_append_reduced_ideal_ellipsoid(
 
 
 @native
+def _cubic_relation_prefix_has_archimedean_unit(
+    workspace: NativeIntegerVector,
+    coefficients: IntegerBuffer,
+    relation_candidates: FmpzMatrix,
+    relation_elements: FmpzMatrix,
+    relation_count: uint64,
+    factor_count: uint64,
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    analytic_scale: int,
+    prefix_matrix: FmpzMatrix,
+    prefix_hnf: FmpzMatrix,
+    prefix_transform: FmpzMatrix,
+    prefix_dependencies: FmpzMatrix,
+    prefix_dependencies_reduced: FmpzMatrix,
+    prefix_dependency_transform: FmpzMatrix,
+    prefix_logs: FmpzMatrix,
+    prefix_unit_combinations: FmpzMatrix,
+    prefix_unit_result: FmpzMatrix,
+) -> int:
+    """Return whether a relation prefix proves a non-torsion exact unit.
+
+    The return value is `1` when the exact unit was reconstructed into
+    `prefix_unit_result`, `0` when the prefix has incomplete relation rank or
+    no reconstructible dependency, and `-1` for an invalid exact computation.
+    The analytic index proof still independently certifies whichever relation
+    set and unit are selected.
+    """
+    if relation_count < factor_count:
+        return 0
+    relation_row: uint64 = 0
+    while relation_row < relation_count:
+        factor_index: uint64 = 0
+        while factor_index < factor_count:
+            if not fmpz_matrix_set_entry(
+                prefix_matrix,
+                relation_row,
+                factor_index,
+                fmpz_matrix_entry(
+                    relation_candidates,
+                    relation_row,
+                    factor_index,
+                ),
+            ):
+                return -1
+            factor_index += 1
+        relation_row += 1
+    if not fmpz_matrix_hnf_transform(
+        prefix_hnf,
+        prefix_transform,
+        prefix_matrix,
+    ):
+        return -1
+    relation_rank: uint64 = 0
+    relation_row = 0
+    while relation_row < relation_count:
+        row_nonzero = False
+        factor_index = 0
+        while factor_index < factor_count:
+            if fmpz_matrix_entry(prefix_hnf, relation_row, factor_index) != 0:
+                row_nonzero = True
+            factor_index += 1
+        if row_nonzero:
+            relation_rank += 1
+        relation_row += 1
+    if relation_rank != factor_count or relation_rank >= relation_count:
+        return 0
+
+    dependency_count: uint64 = relation_count - relation_rank
+    dependency_row: uint64 = 0
+    while dependency_row < dependency_count:
+        relation_index: uint64 = 0
+        while relation_index < relation_count:
+            if not fmpz_matrix_set_entry(
+                prefix_dependencies,
+                dependency_row,
+                relation_index,
+                fmpz_matrix_entry(
+                    prefix_transform,
+                    relation_rank + dependency_row,
+                    relation_index,
+                ),
+            ):
+                return -1
+            relation_index += 1
+        dependency_row += 1
+    if not fmpz_matrix_lll_transform(
+        prefix_dependencies_reduced,
+        prefix_dependency_transform,
+        prefix_dependencies,
+    ):
+        return -1
+
+    coefficient_bits: uint64 = 0
+    dependency_row = 0
+    while dependency_row < dependency_count:
+        relation_index = 0
+        while relation_index < relation_count:
+            candidate_bits = _cubic_bounded_bit_length(
+                fmpz_matrix_entry(
+                    prefix_dependencies_reduced,
+                    dependency_row,
+                    relation_index,
+                ),
+                512,
+            )
+            if candidate_bits > 512:
+                return -1
+            if candidate_bits > coefficient_bits:
+                coefficient_bits = candidate_bits
+            relation_index += 1
+        dependency_row += 1
+    dependency_scale = analytic_scale
+    precision_extra: uint64 = 2 * coefficient_bits + 64
+    precision_index: uint64 = 0
+    while precision_index < precision_extra:
+        dependency_scale *= 2
+        precision_index += 1
+
+    relation_index: uint64 = 0
+    while relation_index < relation_count:
+        witness_log_lower, witness_log_upper = _cubic_real_log_bounds(
+            coefficients,
+            denominator,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            fmpz_matrix_entry(relation_elements, relation_index, 0),
+            fmpz_matrix_entry(relation_elements, relation_index, 1),
+            fmpz_matrix_entry(relation_elements, relation_index, 2),
+            dependency_scale,
+        )
+        if (
+            witness_log_upper < witness_log_lower
+            or not fmpz_matrix_set_entry(
+                prefix_logs,
+                relation_index,
+                0,
+                witness_log_lower,
+            )
+            or not fmpz_matrix_set_entry(
+                prefix_logs,
+                relation_index,
+                1,
+                witness_log_upper,
+            )
+        ):
+            return -1
+        relation_index += 1
+
+    unit_candidate_found = False
+    best_regulator_lower = 0
+    best_regulator_upper = 0
+    dependency_row = 0
+    while dependency_row < dependency_count:
+        dependency_log_lower = 0
+        dependency_log_upper = 0
+        dependency_nonzero = False
+        relation_index = 0
+        while relation_index < relation_count:
+            dependency_exponent = fmpz_matrix_entry(
+                prefix_dependencies_reduced,
+                dependency_row,
+                relation_index,
+            )
+            if dependency_exponent != 0:
+                dependency_nonzero = True
+                witness_log_lower = fmpz_matrix_entry(
+                    prefix_logs,
+                    relation_index,
+                    0,
+                )
+                witness_log_upper = fmpz_matrix_entry(
+                    prefix_logs,
+                    relation_index,
+                    1,
+                )
+                if dependency_exponent > 0:
+                    dependency_log_lower += dependency_exponent * witness_log_lower
+                    dependency_log_upper += dependency_exponent * witness_log_upper
+                else:
+                    dependency_log_lower += dependency_exponent * witness_log_upper
+                    dependency_log_upper += dependency_exponent * witness_log_lower
+            relation_index += 1
+        dependency_orientation = 0
+        dependency_regulator_lower = dependency_log_lower
+        dependency_regulator_upper = dependency_log_upper
+        if dependency_log_lower > 0:
+            dependency_orientation = 1
+        elif dependency_log_upper < 0:
+            dependency_orientation = -1
+            dependency_regulator_lower = -dependency_log_upper
+            dependency_regulator_upper = -dependency_log_lower
+        if dependency_nonzero and dependency_orientation != 0:
+            relation_index = 0
+            while relation_index < relation_count:
+                if not fmpz_matrix_set_entry(
+                    prefix_unit_combinations,
+                    1,
+                    relation_index,
+                    dependency_orientation
+                    * fmpz_matrix_entry(
+                        prefix_dependencies_reduced,
+                        dependency_row,
+                        relation_index,
+                    ),
+                ):
+                    return -1
+                relation_index += 1
+            if not unit_candidate_found:
+                relation_index = 0
+                while relation_index < relation_count:
+                    if not fmpz_matrix_set_entry(
+                        prefix_unit_combinations,
+                        0,
+                        relation_index,
+                        fmpz_matrix_entry(
+                            prefix_unit_combinations,
+                            1,
+                            relation_index,
+                        ),
+                    ):
+                        return -1
+                    relation_index += 1
+                unit_candidate_found = True
+                best_regulator_lower = dependency_regulator_lower
+                best_regulator_upper = dependency_regulator_upper
+            else:
+                candidate_middle = (
+                    dependency_regulator_lower + dependency_regulator_upper
+                )
+                best_middle = best_regulator_lower + best_regulator_upper
+                if candidate_middle < best_middle:
+                    relation_index = 0
+                    while relation_index < relation_count:
+                        saved_exponent = fmpz_matrix_entry(
+                            prefix_unit_combinations,
+                            0,
+                            relation_index,
+                        )
+                        if not fmpz_matrix_set_entry(
+                            prefix_unit_combinations,
+                            0,
+                            relation_index,
+                            fmpz_matrix_entry(
+                                prefix_unit_combinations,
+                                1,
+                                relation_index,
+                            ),
+                        ) or not fmpz_matrix_set_entry(
+                            prefix_unit_combinations,
+                            1,
+                            relation_index,
+                            saved_exponent,
+                        ):
+                            return -1
+                        relation_index += 1
+                    saved_lower = best_regulator_lower
+                    saved_upper = best_regulator_upper
+                    best_regulator_lower = dependency_regulator_lower
+                    best_regulator_upper = dependency_regulator_upper
+                    dependency_regulator_lower = saved_lower
+                    dependency_regulator_upper = saved_upper
+                reduction_step: uint64 = 0
+                reduction_active = True
+                while reduction_active and reduction_step < 1024:
+                    candidate_middle = (
+                        dependency_regulator_lower + dependency_regulator_upper
+                    )
+                    best_middle = best_regulator_lower + best_regulator_upper
+                    reduction_quotient = (
+                        candidate_middle + best_middle // 2
+                    ) // best_middle
+                    if reduction_quotient < 1:
+                        reduction_quotient = 1
+                    remainder_lower = (
+                        dependency_regulator_lower
+                        - reduction_quotient * best_regulator_upper
+                    )
+                    remainder_upper = (
+                        dependency_regulator_upper
+                        - reduction_quotient * best_regulator_lower
+                    )
+                    remainder_orientation = 0
+                    if remainder_lower > 0:
+                        remainder_orientation = 1
+                    elif remainder_upper < 0:
+                        remainder_orientation = -1
+                        saved_lower = remainder_lower
+                        remainder_lower = -remainder_upper
+                        remainder_upper = -saved_lower
+                    if (
+                        remainder_orientation == 0
+                        or remainder_upper >= best_regulator_lower
+                    ):
+                        reduction_active = False
+                    else:
+                        relation_index = 0
+                        while relation_index < relation_count:
+                            best_exponent = fmpz_matrix_entry(
+                                prefix_unit_combinations,
+                                0,
+                                relation_index,
+                            )
+                            candidate_exponent = fmpz_matrix_entry(
+                                prefix_unit_combinations,
+                                1,
+                                relation_index,
+                            )
+                            remainder_exponent = remainder_orientation * (
+                                candidate_exponent - reduction_quotient * best_exponent
+                            )
+                            if not fmpz_matrix_set_entry(
+                                prefix_unit_combinations,
+                                0,
+                                relation_index,
+                                remainder_exponent,
+                            ) or not fmpz_matrix_set_entry(
+                                prefix_unit_combinations,
+                                1,
+                                relation_index,
+                                best_exponent,
+                            ):
+                                return -1
+                            relation_index += 1
+                        dependency_regulator_lower = best_regulator_lower
+                        dependency_regulator_upper = best_regulator_upper
+                        best_regulator_lower = remainder_lower
+                        best_regulator_upper = remainder_upper
+                    reduction_step += 1
+        dependency_row += 1
+    if not unit_candidate_found:
+        return 0
+
+    (
+        reconstruction_status,
+        reconstructed_zero,
+        reconstructed_one,
+        reconstructed_two,
+    ) = _cubic_reconstruct_archimedean_unit(
+        workspace,
+        coefficients,
+        denominator,
+        basis_zero_zero,
+        basis_zero_one,
+        basis_zero_two,
+        basis_one_one,
+        basis_one_two,
+        basis_two_two,
+        relation_elements,
+        prefix_unit_combinations,
+        relation_count,
+        best_regulator_lower,
+        best_regulator_upper,
+        analytic_scale,
+        dependency_scale,
+    )
+    if reconstruction_status != 1:
+        return 0
+    reconstructed_regulator_lower, reconstructed_regulator_upper = (
+        _cubic_regulator_bounds(
+            coefficients,
+            denominator,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            reconstructed_zero,
+            reconstructed_one,
+            reconstructed_two,
+            analytic_scale,
+        )
+    )
+    dependency_scale_quotient = dependency_scale // analytic_scale
+    if (
+        reconstructed_regulator_lower <= 0
+        or reconstructed_regulator_upper < reconstructed_regulator_lower
+        or reconstructed_regulator_lower * dependency_scale_quotient
+        > best_regulator_upper
+        or best_regulator_lower
+        > reconstructed_regulator_upper * dependency_scale_quotient
+        or not fmpz_matrix_set_entry(
+            prefix_unit_result,
+            0,
+            0,
+            reconstructed_zero,
+        )
+        or not fmpz_matrix_set_entry(
+            prefix_unit_result,
+            0,
+            1,
+            reconstructed_one,
+        )
+        or not fmpz_matrix_set_entry(
+            prefix_unit_result,
+            0,
+            2,
+            reconstructed_two,
+        )
+        or not fmpz_matrix_set_entry(
+            prefix_unit_result,
+            0,
+            3,
+            reconstructed_regulator_lower,
+        )
+        or not fmpz_matrix_set_entry(
+            prefix_unit_result,
+            0,
+            4,
+            reconstructed_regulator_upper,
+        )
+    ):
+        return 0
+    return 1
+
+
+@native
 def _cubic_plan_reduced_ideal_shell(
     workspace: NativeIntegerVector,
     embedding_source: FmpzMatrix,
@@ -4269,6 +4696,17 @@ def certified_complex_cubic_class_group_v1(
         or temporary_limit < 1048576
     ):
         return False
+    scheduled_compound_multiplier_limit: uint64 = compound_multiplier_limit
+    # Limit one is the resident prefix probe.  A later host retry with limit
+    # two authorizes the first true multiplier, preserving the old 0,1,2,4
+    # mathematical schedule while avoiding a duplicate setup call when the
+    # prefix unit can be reconstructed directly.
+    if compound_multiplier_limit == 1:
+        scheduled_compound_multiplier_limit = 0
+    elif compound_multiplier_limit == 2:
+        scheduled_compound_multiplier_limit = 1
+    elif compound_multiplier_limit == 3:
+        scheduled_compound_multiplier_limit = 2
     with NativeExactArena(memory_limit, temporary_limit) as arena:
         workspace = arena.integer_vector(_CUBIC_WORKSPACE_LENGTH, 0)
         polynomial = arena.foreign_resource(fmpz_polynomial, 4)
@@ -4937,7 +5375,7 @@ def certified_complex_cubic_class_group_v1(
         while (
             not unit_found
             and compound_multiplier_index < factor_count
-            and compound_multiplier_count < compound_multiplier_limit
+            and compound_multiplier_count < scheduled_compound_multiplier_limit
         ):
             compound_multiplier_base: uint64 = (
                 _FACTOR_OFFSET + _FACTOR_STRIDE * compound_multiplier_index
@@ -5216,15 +5654,10 @@ def certified_complex_cubic_class_group_v1(
                     workspace[factor_base + 9] = adjacent_best_pair + 1
             adjacent_factor_index += 1
 
-        # If the tiny order shell did not already expose a unit, follow
-        # PARI's next deterministic `small_norm` regime: reduce products
-        # `P_0^e * P_j`, where `e` makes the multiplier ideal comparable with
-        # the square of the largest factor-base norm.  Searching only each
-        # prime ideal separately can span the class lattice while leaving all
-        # retained dependencies archimedean-trivial (for example
-        # `3.1.49096.1`).  The product ideals are selection devices only; every
-        # proposed element is still admitted through exact norm factorization
-        # and prime-power containment below.
+        # Retain PARI's compound norm target, but do not construct any product
+        # ideals yet.  The ordinary relation prefix first gets an exact unit-
+        # rank test below; only a rigorously archimedean-trivial prefix pays
+        # for the next `small_norm` stage.
         largest_factor_norm = 1
         compound_factor_index: uint64 = 0
         while compound_factor_index < factor_count:
@@ -5240,92 +5673,6 @@ def certified_complex_cubic_class_group_v1(
                 largest_factor_norm = compound_factor_norm
             compound_factor_index += 1
         compound_norm_target = largest_factor_norm * largest_factor_norm
-        compound_plan_index: uint64 = 0
-        compound_multiplier_index = 0
-        compound_multiplier_count = 0
-        while (
-            not unit_found
-            and compound_multiplier_index < factor_count
-            and compound_multiplier_count < compound_multiplier_limit
-        ):
-            compound_multiplier_base = (
-                _FACTOR_OFFSET + _FACTOR_STRIDE * compound_multiplier_index
-            )
-            if workspace[compound_multiplier_base + 8] == 0:
-                compound_multiplier_norm = 1
-                compound_degree_index = 0
-                while compound_degree_index < workspace[compound_multiplier_base + 2]:
-                    compound_multiplier_norm *= workspace[compound_multiplier_base]
-                    compound_degree_index += 1
-                compound_multiplier_exponent: uint64 = 1
-                compound_power_norm = compound_multiplier_norm
-                while (
-                    compound_power_norm
-                    <= compound_norm_target // compound_multiplier_norm
-                    and compound_multiplier_exponent < 24
-                ):
-                    compound_power_norm *= compound_multiplier_norm
-                    compound_multiplier_exponent += 1
-                compound_source_index = compound_multiplier_index + 1
-                while compound_source_index < factor_count:
-                    compound_source_base = (
-                        _FACTOR_OFFSET + _FACTOR_STRIDE * compound_source_index
-                    )
-                    if workspace[compound_source_base + 8] == 0:
-                        if compound_plan_index >= compound_pair_count:
-                            return False
-                        if not _cubic_compound_prime_ideal_basis(
-                            workspace,
-                            compound_multiplier_index,
-                            compound_source_index,
-                            compound_multiplier_exponent,
-                            _MAP_SCRATCH_OFFSET,
-                        ):
-                            return False
-                        compound_transform_row: uint64 = 3 * compound_plan_index
-                        compound_pair_code = _cubic_plan_reduced_ideal_shell(
-                            workspace,
-                            adjacent_embedding_source,
-                            adjacent_embedding_reduced,
-                            adjacent_embedding_transform,
-                            compound_transforms,
-                            compound_transform_row,
-                            _MAP_SCRATCH_OFFSET,
-                            basis_zero_zero,
-                            basis_zero_one,
-                            basis_zero_two,
-                            basis_one_one,
-                            basis_one_two,
-                            basis_two_two,
-                            adjacent_real_root,
-                            adjacent_complex_real_root,
-                            adjacent_complex_imaginary_root,
-                            analytic_scale,
-                            group_count,
-                        )
-                        if (
-                            compound_pair_code == 0
-                            or not fmpz_matrix_set_entry(
-                                compound_plans,
-                                compound_plan_index,
-                                0,
-                                compound_multiplier_exponent,
-                            )
-                            or not fmpz_matrix_set_entry(
-                                compound_plans,
-                                compound_plan_index,
-                                1,
-                                compound_pair_code,
-                            )
-                        ):
-                            return False
-                        compound_plan_index += 1
-                    compound_source_index += 1
-                compound_multiplier_count += 1
-            compound_multiplier_index += 1
-        if compound_plan_index != compound_pair_count:
-            return False
-
         factor_index: uint64 = 0
         while factor_index < factor_count:
             factor_base: uint64 = _FACTOR_OFFSET + _FACTOR_STRIDE * factor_index
@@ -5612,13 +5959,145 @@ def certified_complex_cubic_class_group_v1(
                         adjacent_direction += 1
             adjacent_factor_index += 1
 
+        # The first adaptive call keeps the ordinary relation set unchanged.
+        # A later authorized retry reaches this point with a nonzero scheduled
+        # multiplier limit.  The compact dependency pipeline below therefore
+        # gets the first opportunity to reconstruct a unit.
+        compound_search_active = (
+            not unit_found and scheduled_compound_multiplier_limit > 0
+        )
+        used_compound_multiplier_limit: uint64 = 0
+        if compound_search_active:
+            used_compound_multiplier_limit = scheduled_compound_multiplier_limit
+
+        # If the exact prefix is archimedean-trivial, follow PARI's next
+        # deterministic `small_norm` regime: reduce products `P_0^e P_j`,
+        # where `e` makes the multiplier ideal comparable with the square of
+        # the largest factor-base norm.  These products remain selection
+        # devices; exact norm factorization and containment admit every row.
+        compound_plan_index: uint64 = 0
+        compound_multiplier_index = 0
+        compound_multiplier_count = 0
+        while (
+            compound_search_active
+            and compound_multiplier_index < factor_count
+            and compound_multiplier_count < scheduled_compound_multiplier_limit
+        ):
+            compound_multiplier_base = (
+                _FACTOR_OFFSET + _FACTOR_STRIDE * compound_multiplier_index
+            )
+            if workspace[compound_multiplier_base + 8] == 0:
+                compound_multiplier_norm = 1
+                compound_degree_index = 0
+                while compound_degree_index < workspace[compound_multiplier_base + 2]:
+                    compound_multiplier_norm *= workspace[compound_multiplier_base]
+                    compound_degree_index += 1
+                compound_multiplier_exponent: uint64 = 1
+                compound_power_norm = compound_multiplier_norm
+                while (
+                    compound_power_norm
+                    <= compound_norm_target // compound_multiplier_norm
+                    and compound_multiplier_exponent < 24
+                ):
+                    compound_power_norm *= compound_multiplier_norm
+                    compound_multiplier_exponent += 1
+                compound_source_index = compound_multiplier_index + 1
+                while compound_source_index < factor_count:
+                    compound_source_base = (
+                        _FACTOR_OFFSET + _FACTOR_STRIDE * compound_source_index
+                    )
+                    if workspace[compound_source_base + 8] == 0:
+                        if compound_plan_index >= compound_pair_count:
+                            return False
+                        if not _cubic_compound_prime_ideal_basis(
+                            workspace,
+                            compound_multiplier_index,
+                            compound_source_index,
+                            compound_multiplier_exponent,
+                            _MAP_SCRATCH_OFFSET,
+                        ):
+                            return False
+                        compound_transform_row: uint64 = 3 * compound_plan_index
+                        compound_pair_code = _cubic_plan_reduced_ideal_shell(
+                            workspace,
+                            adjacent_embedding_source,
+                            adjacent_embedding_reduced,
+                            adjacent_embedding_transform,
+                            compound_transforms,
+                            compound_transform_row,
+                            _MAP_SCRATCH_OFFSET,
+                            basis_zero_zero,
+                            basis_zero_one,
+                            basis_zero_two,
+                            basis_one_one,
+                            basis_one_two,
+                            basis_two_two,
+                            adjacent_real_root,
+                            adjacent_complex_real_root,
+                            adjacent_complex_imaginary_root,
+                            analytic_scale,
+                            group_count,
+                        )
+                        if (
+                            compound_pair_code == 0
+                            or not fmpz_matrix_set_entry(
+                                compound_plans,
+                                compound_plan_index,
+                                0,
+                                compound_multiplier_exponent,
+                            )
+                            or not fmpz_matrix_set_entry(
+                                compound_plans,
+                                compound_plan_index,
+                                1,
+                                compound_pair_code,
+                            )
+                        ):
+                            return False
+                        compound_plan_index += 1
+                    compound_source_index += 1
+                compound_multiplier_count += 1
+            compound_multiplier_index += 1
+        if compound_search_active and compound_plan_index != compound_pair_count:
+            return False
+
+        # The compound planning pass may demand deeper exact prime powers than
+        # the ordinary prefix.  Extend only those already-resident lattices;
+        # no base factor or relation is rebuilt.
+        factor_index = 0
+        while compound_search_active and factor_index < factor_count:
+            factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * factor_index
+            if workspace[factor_base + 8] == 0:
+                planned_valuation = 0
+                group_index = 0
+                while group_index < group_count:
+                    group_base = _GROUP_OFFSET + _GROUP_STRIDE * group_index
+                    if workspace[factor_base + 7] == group_index:
+                        planned_valuation = workspace[group_base + 3]
+                    group_index += 1
+                if planned_valuation > _CUBIC_MAX_POWERS:
+                    planned_valuation = _CUBIC_MAX_POWERS
+                power_base = _POWER_OFFSET + factor_index * _CUBIC_MAX_POWERS * 9
+                power_index = 1
+                while power_index < planned_valuation:
+                    if not _cubic_ideal_product(
+                        workspace,
+                        power_base + 9 * (power_index - 1),
+                        power_base,
+                        power_base + 9 * power_index,
+                    ):
+                        return False
+                    power_index += 1
+                workspace[factor_base + 6] = planned_valuation
+            factor_index += 1
+
         compound_plan_index = 0
         compound_multiplier_index = 0
         compound_multiplier_count = 0
         while (
-            not unit_found
+            compound_search_active
             and compound_multiplier_index < factor_count
-            and compound_multiplier_count < compound_multiplier_limit
+            and compound_multiplier_count < scheduled_compound_multiplier_limit
         ):
             compound_multiplier_base = (
                 _FACTOR_OFFSET + _FACTOR_STRIDE * compound_multiplier_index
@@ -5745,9 +6224,10 @@ def certified_complex_cubic_class_group_v1(
                     compound_source_index += 1
                 compound_multiplier_count += 1
             compound_multiplier_index += 1
-        if compound_plan_index != compound_pair_count:
+        if compound_search_active and compound_plan_index != compound_pair_count:
             return False
 
+        uncompacted_relation_count: uint64 = relation_count
         output[50] = factor_count
         output[51] = group_count
         output[52] = relation_count
@@ -5977,12 +6457,12 @@ def certified_complex_cubic_class_group_v1(
                 incremental_column += 1
             incremental_row += 1
 
-        # Preserve up to sixteen final reduced-ideal witnesses not already in
+        # Preserve up to eighteen final reduced-ideal witnesses not already in
         # the HNF support.  These redundant principal relations are useful for
         # finding a short generator of the rank-one unit lattice.
         compact_tail_start: uint64 = 0
-        if relation_count > 16:
-            compact_tail_start = relation_count - 16
+        if relation_count > 18:
+            compact_tail_start = relation_count - 18
         compact_tail_count: uint64 = 0
         compact_source_row = compact_tail_start
         while compact_source_row < relation_count:
@@ -6428,6 +6908,95 @@ def certified_complex_cubic_class_group_v1(
                         reduction_step += 1
             dependency_row += 1
         output[59] = 434
+        # Compaction is optimized for the class lattice and normally retains
+        # enough redundant rows for the unit lattice as well.  If it does not,
+        # inspect the still-resident uncompressed prefix exactly before asking
+        # the host for a multiplier retry.  Conditional arena children make
+        # this exceptional LLL/log workspace cost-free on the ordinary path.
+        if not unit_found:
+            prefix_matrix = arena.foreign_resource(
+                fmpz_matrix,
+                uncompacted_relation_count,
+                factor_count,
+            )
+            prefix_hnf = arena.foreign_resource(
+                fmpz_matrix,
+                uncompacted_relation_count,
+                factor_count,
+            )
+            prefix_transform = arena.foreign_resource(
+                fmpz_matrix,
+                uncompacted_relation_count,
+                uncompacted_relation_count,
+            )
+            prefix_dependency_rows: uint64 = 1
+            if uncompacted_relation_count > factor_count:
+                prefix_dependency_rows = uncompacted_relation_count - factor_count
+            prefix_dependencies = arena.foreign_resource(
+                fmpz_matrix,
+                prefix_dependency_rows,
+                uncompacted_relation_count,
+            )
+            prefix_dependencies_reduced = arena.foreign_resource(
+                fmpz_matrix,
+                prefix_dependency_rows,
+                uncompacted_relation_count,
+            )
+            prefix_dependency_transform = arena.foreign_resource(
+                fmpz_matrix,
+                prefix_dependency_rows,
+                prefix_dependency_rows,
+            )
+            prefix_logs = arena.foreign_resource(
+                fmpz_matrix,
+                uncompacted_relation_count,
+                2,
+            )
+            prefix_unit_combinations = arena.foreign_resource(
+                fmpz_matrix,
+                2,
+                uncompacted_relation_count,
+            )
+            prefix_unit_result = arena.foreign_resource(
+                fmpz_matrix,
+                1,
+                5,
+            )
+            prefix_unit_status = _cubic_relation_prefix_has_archimedean_unit(
+                workspace,
+                coefficients,
+                relation_candidates,
+                relation_elements,
+                uncompacted_relation_count,
+                factor_count,
+                denominator,
+                basis_zero_zero,
+                basis_zero_one,
+                basis_zero_two,
+                basis_one_one,
+                basis_one_two,
+                basis_two_two,
+                analytic_scale,
+                prefix_matrix,
+                prefix_hnf,
+                prefix_transform,
+                prefix_dependencies,
+                prefix_dependencies_reduced,
+                prefix_dependency_transform,
+                prefix_logs,
+                prefix_unit_combinations,
+                prefix_unit_result,
+            )
+            if prefix_unit_status < 0:
+                return False
+            if prefix_unit_status == 1:
+                unit_zero = fmpz_matrix_entry(prefix_unit_result, 0, 0)
+                unit_one = fmpz_matrix_entry(prefix_unit_result, 0, 1)
+                unit_two = fmpz_matrix_entry(prefix_unit_result, 0, 2)
+                regulator_lower = fmpz_matrix_entry(prefix_unit_result, 0, 3)
+                regulator_upper = fmpz_matrix_entry(prefix_unit_result, 0, 4)
+                unit_found = True
+                dependency_scan_active = False
         if unit_found:
             output[61] = 1
         if not unit_found:
@@ -7112,7 +7681,7 @@ def certified_complex_cubic_class_group_v1(
         while output_index < invariant_count:
             output[3 + output_index] = workspace[_ROW_SCRATCH_OFFSET + output_index]
             output_index += 1
-        output[19] = compound_multiplier_limit
+        output[19] = used_compound_multiplier_limit
         output[20] = generator_bound
         output[21] = factor_count
         output[22] = group_count

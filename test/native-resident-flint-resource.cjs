@@ -158,8 +158,10 @@ def resident_resource_helper(
     temporary_limit: uint64,
 ) -> int:
     with NativeExactArena(memory_limit, temporary_limit) as arena:
-        matrix = arena.foreign_resource(fmpz_matrix, 1, 1)
-        return _resource_helper(matrix, value)
+        if value != 0:
+            matrix = arena.foreign_resource(fmpz_matrix, 1, 1)
+            return _resource_helper(matrix, value)
+        return 0
 `);
     const compiled = await compileKernel({
       sourcePath: helperPath,
@@ -175,6 +177,7 @@ assert.equal(
   module.resident_resource_helper(value, 1048576n, 1048576n),
   value + value * value,
 );
+assert.equal(module.resident_resource_helper(0n, 1048576n, 1048576n), 0n);
 `);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
