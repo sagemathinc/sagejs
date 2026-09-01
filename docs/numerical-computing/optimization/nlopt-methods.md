@@ -61,7 +61,7 @@ cancellation. COBYLA accepts packed vector inequality and equality callbacks;
 equality values are interpreted as `h(x) = 0`, and inequality values as
 `g(x) <= 0`.
 
-The qualified envelope is:
+The low-level foreign-library adapter envelope is:
 
 - `1 <= dimension <= 128`;
 - at most 512 user constraints;
@@ -69,6 +69,34 @@ The qualified envelope is:
 - finite inputs, objective values, constraint values, and tolerances;
 - synchronous callbacks owned by the evaluator worker; and
 - no reentrant solve on one reactor instance.
+
+The public `minimize` contract is intentionally narrower because a positive
+NLopt status is not enough to certify a local minimum. Both explicit methods
+are limited to at most 32 variables, and `nlopt-cobyla` is limited to 64 scalar
+constraints. Public validation recomputes first-order conditions and a dense
+two-scale Hessian on the independently reconstructed feasible tangent space.
+The planner rejects larger requests instead of exposing an execution result
+that the independent validator cannot defend.
+
+Active bounds and nonlinear inequalities require strict complementarity for a
+validated public success. A mathematically valid non-strict active-bound
+minimum therefore remains `indeterminate`; it is not mislabeled as failure or
+silently certified. Nonlinear equality validation requires a full-rank local
+constraint Jacobian and successful scale-aware retraction of independent
+probes. Rank-deficient, nearly dependent, or severely ill-scaled active
+manifolds also remain `indeterminate`. These are deliberate validation-envelope
+limits, not claims about what upstream NLopt can execute.
+
+All objective comparisons are invariant under adding a constant. A reliably
+resolved feasible decrease rejects local minimality regardless of the absolute
+objective level; its small roundoff allowance is derived only from observed
+local variation. Constraint activity and complementarity use binary64-scale
+slack tests rather than caller feasibility tolerances, so a loose tolerance
+cannot turn a nearby improving feasible direction into a certified optimum.
+The dense curvature model's roundoff bound remains conservatively proportional
+to the absolute objective magnitude. Very large additive offsets can therefore
+make an otherwise valid minimum `indeterminate`, but can never turn a sampled
+decrease into a false success.
 
 The packed ABI has layouts for one objective plus its complete gradient, and
 vector constraints plus complete row-major Jacobians. All three batches are

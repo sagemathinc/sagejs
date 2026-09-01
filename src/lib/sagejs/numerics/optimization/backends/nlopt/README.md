@@ -13,6 +13,15 @@ fails with a structured capability error. Public optimization integration must
 independently validate objective finiteness, bounds, feasibility, and any
 claimed local optimality; NLopt's return status is only backend evidence.
 
+The adapter accepts up to 128 variables and 512 scalar constraints, but this is
+not the public validated-minimum envelope. The public router limits both exact
+methods to 32 variables and limits `nlopt-cobyla` to 64 constraints so it can
+construct a dense independent tangent-space curvature model. Active bounds and
+inequalities require strict complementarity; nonlinear equality Jacobians must
+be full rank and locally retractable. Non-strict active sets, rank or retraction
+ambiguity, and ill-scaled finite-difference geometry fail closed as
+`indeterminate` rather than inheriting a positive NLopt status.
+
 The mathematical algorithms are unmodified upstream NLopt C. The handwritten C
 file is a bounded foreign-library adapter: it owns packed memory, callbacks,
 force-stop propagation, allocation accounting, status copying, and cleanup.

@@ -137,7 +137,22 @@ def _orthonormal_normals(gradients: list[list[float]]) -> list[list[float]]:
     for gradient in gradients:
         residual = _project_away_normals(gradient, answer)
         norm = math.sqrt(sum(item * item for item in residual))
-        if norm > 1.0e-10:
+        if norm > math.sqrt(_MACHINE_EPSILON):
+            answer.append([item / norm for item in residual])
+    return answer
+
+
+def _orthonormal_tangents(
+    dimension: int, normals: list[list[float]]
+) -> list[list[float]]:
+    """Build a deterministic orthonormal basis for a normal-space complement."""
+    answer: list[list[float]] = []
+    for coordinate in range(dimension):
+        basis = [0.0 for _ in range(dimension)]
+        basis[coordinate] = 1.0
+        residual = _project_away_normals(basis, normals + answer)
+        norm = math.sqrt(sum(item * item for item in residual))
+        if norm > math.sqrt(_MACHINE_EPSILON):
             answer.append([item / norm for item in residual])
     return answer
 
@@ -460,7 +475,9 @@ def _independent_minimum_curvature(
     minimum_curvature, eigensolver_converged, eigensolver_sweeps = (
         _minimum_symmetric_eigenvalue(richardson)
     )
-    descent_threshold = 128.0 * _MACHINE_EPSILON * sample_scale
+    # A representably lower independently sampled objective is evidence against
+    # local minimality irrespective of an arbitrary additive objective offset.
+    descent_threshold = 0.0
     resolved = eigensolver_converged and abs(minimum_curvature) > curvature_threshold
     return {
         "resolved": resolved,
@@ -825,19 +842,24 @@ def _constrained_minimize_validation(
     active_inequality_records = [
         (item, constraint_value)
         for item, constraint_value in zip(constraints, values, strict=True)
-        if item.kind == "inequality" and constraint_value <= item.tolerance
+        if item.kind == "inequality"
+        and constraint_value
+        <= 256.0 * _MACHINE_EPSILON * max(1.0, abs(constraint_value))
+    ]
+    active_bound_tolerances = [
+        256.0 * _MACHINE_EPSILON * scale for scale in coordinate_scales
     ]
     active_lower = [
         index
         for index, lower_value in enumerate(lower)
         if lower_value is not None
-        and point[index] - float(lower_value) <= bound_tolerances[index]
+        and point[index] - float(lower_value) <= active_bound_tolerances[index]
     ]
     active_upper = [
         index
         for index, upper_value in enumerate(upper)
         if upper_value is not None
-        and float(upper_value) - point[index] <= bound_tolerances[index]
+        and float(upper_value) - point[index] <= active_bound_tolerances[index]
     ]
     normal_count = (
         len(equality_records)
@@ -860,15 +882,19 @@ def _constrained_minimize_validation(
     equality_normals: list[list[float]] = []
     equality_gradients: list[list[float]] = []
     active_normals: list[list[float]] = []
+    active_independent_basis: list[list[float]] = []
+    active_manifold_gradients: list[list[float]] = []
+    active_manifold_records: list[tuple[str, Any]] = []
     active_slacks: list[float] = []
-    active_tolerances: list[float] = []
     kkt_residual = 0.0
     kkt_threshold = max(2.0e-6, float(problem.tolerances["gtol"]) * 20.0)
     kkt_converged = False
     kkt_iterations = 0
     multipliers: list[float] = []
     complementarity_residual = 0.0
-    complementarity_threshold = 1.0e-10
+    complementarity_threshold = 512.0 * _MACHINE_EPSILON
+    strict_complementarity = False
+    strict_multiplier_threshold = 0.0
     constraint_qualification = within_kkt_budget
     descent_direction: list[float] = []
     descent_direction_feasible = False
@@ -897,7 +923,7 @@ def _constrained_minimize_validation(
             equality_normals
         ) == len(equality_gradients)
         for item, constraint_value in active_inequality_records:
-            gradient = _independent_bound_gradient(
+            raw_gradient = _independent_bound_gradient(
                 execution,
                 item.function,
                 point,
@@ -905,19 +931,29 @@ def _constrained_minimize_validation(
                 lower,
                 upper,
             )
-            gradient_norm = math.sqrt(sum(item * item for item in gradient))
+            gradient_norm = math.sqrt(sum(value * value for value in raw_gradient))
             if gradient_norm <= 1.0e-12:
                 constraint_qualification = False
                 continue
-            gradient = [item / gradient_norm for item in gradient]
+            gradient = [value / gradient_norm for value in raw_gradient]
             projected_normal = _project_away_normals(gradient, equality_normals)
             projected_norm = math.sqrt(sum(item * item for item in projected_normal))
-            if projected_norm > 1.0e-12:
+            independence_residual = _project_away_normals(
+                projected_normal, active_independent_basis
+            )
+            independence_norm = math.sqrt(
+                sum(value * value for value in independence_residual)
+            )
+            if projected_norm > 1.0e-12 and independence_norm > 1.0e-10:
                 active_normals.append(
                     [item / projected_norm for item in projected_normal]
                 )
+                active_independent_basis.append(
+                    [item / independence_norm for item in independence_residual]
+                )
+                active_manifold_gradients.append(raw_gradient)
+                active_manifold_records.append(("inequality", item))
                 active_slacks.append(max(0.0, constraint_value))
-                active_tolerances.append(item.tolerance)
         for index in active_lower:
             lower_value = lower[index]
             if lower_value is None:
@@ -926,12 +962,22 @@ def _constrained_minimize_validation(
             normal[index] = 1.0
             projected_normal = _project_away_normals(normal, equality_normals)
             projected_norm = math.sqrt(sum(item * item for item in projected_normal))
-            if projected_norm > 1.0e-12:
+            independence_residual = _project_away_normals(
+                projected_normal, active_independent_basis
+            )
+            independence_norm = math.sqrt(
+                sum(value * value for value in independence_residual)
+            )
+            if projected_norm > 1.0e-12 and independence_norm > 1.0e-10:
                 active_normals.append(
                     [item / projected_norm for item in projected_normal]
                 )
+                active_independent_basis.append(
+                    [item / independence_norm for item in independence_residual]
+                )
+                active_manifold_gradients.append(normal)
+                active_manifold_records.append(("lower", index))
                 active_slacks.append(max(0.0, point[index] - float(lower_value)))
-                active_tolerances.append(bound_tolerances[index])
         for index in active_upper:
             upper_value = upper[index]
             if upper_value is None:
@@ -940,12 +986,22 @@ def _constrained_minimize_validation(
             normal[index] = -1.0
             projected_normal = _project_away_normals(normal, equality_normals)
             projected_norm = math.sqrt(sum(item * item for item in projected_normal))
-            if projected_norm > 1.0e-12:
+            independence_residual = _project_away_normals(
+                projected_normal, active_independent_basis
+            )
+            independence_norm = math.sqrt(
+                sum(value * value for value in independence_residual)
+            )
+            if projected_norm > 1.0e-12 and independence_norm > 1.0e-10:
                 active_normals.append(
                     [item / projected_norm for item in projected_normal]
                 )
+                active_independent_basis.append(
+                    [item / independence_norm for item in independence_residual]
+                )
+                active_manifold_gradients.append(normal)
+                active_manifold_records.append(("upper", index))
                 active_slacks.append(max(0.0, float(upper_value) - point[index]))
-                active_tolerances.append(bound_tolerances[index])
         tangent_gradient = _project_away_normals(objective_gradient, equality_normals)
         residual_vector, multipliers, kkt_converged, kkt_iterations = (
             _nonnegative_kkt_residual(tangent_gradient, active_normals)
@@ -963,7 +1019,11 @@ def _constrained_minimize_validation(
             )
             / gradient_scale
         )
-        complementarity_threshold = max([1.0e-10] + active_tolerances)
+        complementarity_threshold = 512.0 * _MACHINE_EPSILON
+        strict_multiplier_threshold = 1.0e-10 * gradient_scale
+        strict_complementarity = all(
+            multiplier > strict_multiplier_threshold for multiplier in multipliers
+        )
         descent_direction = [-item for item in residual_vector]
         descent_derivative = sum(
             objective_gradient[index] * descent_direction[index]
@@ -995,34 +1055,68 @@ def _constrained_minimize_validation(
         if norm > 1.0e-12:
             directions.insert(0, [item / norm for item in descent_direction])
 
-    def retract_equalities(candidate: list[float]) -> list[float] | None:
-        if len(equality_records) == 0:
+    equality_manifold_records: list[tuple[str, Any]] = [
+        ("equality", item) for item, _ in equality_records
+    ]
+
+    def manifold_residual(
+        record: tuple[str, Any], candidate: list[float]
+    ) -> tuple[float, float]:
+        kind, payload = record
+        if kind in ("equality", "inequality"):
+            value = scalar(execution.call("validation", payload.function, candidate))
+            if kind == "equality":
+                tolerance = max(
+                    512.0 * _MACHINE_EPSILON,
+                    min(payload.tolerance, 1.0e-12),
+                )
+            else:
+                tolerance = 512.0 * _MACHINE_EPSILON * max(1.0, abs(value))
+            return value, tolerance
+        index = int(payload)
+        if kind == "lower":
+            lower_value = lower[index]
+            if lower_value is None:
+                return float("inf"), 0.0
+            return (
+                candidate[index] - float(lower_value),
+                active_bound_tolerances[index],
+            )
+        upper_value = upper[index]
+        if upper_value is None:
+            return float("inf"), 0.0
+        return (
+            float(upper_value) - candidate[index],
+            active_bound_tolerances[index],
+        )
+
+    def retract_to_manifold(
+        candidate: list[float],
+        records: list[tuple[str, Any]],
+        gradients: list[list[float]],
+    ) -> list[float] | None:
+        if len(records) == 0:
             return candidate
-        if len(equality_normals) != len(equality_gradients):
+        normals = _orthonormal_normals(gradients)
+        if len(normals) != len(gradients) or len(records) != len(gradients):
             return None
         answer = list(candidate)
         gram = [
             [
                 sum(
-                    equality_gradients[row][index] * equality_gradients[column][index]
+                    gradients[row][index] * gradients[column][index]
                     for index in range(len(point))
                 )
-                for column in range(len(equality_gradients))
+                for column in range(len(gradients))
             ]
-            for row in range(len(equality_gradients))
+            for row in range(len(gradients))
         ]
-        for _ in range(3):
-            residuals = [
-                scalar(execution.call("validation", item.function, answer))
-                for item, _ in equality_records
-            ]
+        for _ in range(5):
+            residual_records = [manifold_residual(record, answer) for record in records]
+            residuals = [item[0] for item in residual_records]
             if all(
-                abs(residuals[index])
-                <= max(
-                    512.0 * _MACHINE_EPSILON,
-                    min(equality_records[index][0].tolerance, 1.0e-12),
-                )
-                for index in range(len(residuals))
+                abs(value) <= residual_records[index][1]
+                for index, value in enumerate(residuals)
             ):
                 return answer
             coefficients = solve_linear_system(gram, [-item for item in residuals])
@@ -1030,7 +1124,7 @@ def _constrained_minimize_validation(
                 return None
             for index in range(len(answer)):
                 answer[index] += sum(
-                    coefficients[row] * equality_gradients[row][index]
+                    coefficients[row] * gradients[row][index]
                     for row in range(len(coefficients))
                 )
                 lower_value = lower[index]
@@ -1041,17 +1135,22 @@ def _constrained_minimize_validation(
                     answer[index] = min(float(upper_value), answer[index])
         return None
 
+    def retract_equalities(candidate: list[float]) -> list[float] | None:
+        return retract_to_manifold(
+            candidate, equality_manifold_records, equality_gradients
+        )
+
     step = _SECOND_ORDER_STEP * max(1.0, infinity_norm(point))
     feasible_probe_count = 0
     resolved_probe = False
     maximum_local_decrease = 0.0
-    sample_magnitude = max(2.2250738585072014e-308, abs(objective))
+    maximum_local_variation = 0.0
     for direction in directions:
         for sign in (-1.0, 1.0):
             candidate: list[float] | None = None
             candidate_feasible = False
             trial_step = step
-            for _ in range(24):
+            for _ in range(64):
                 trial = [
                     point[index] + sign * trial_step * direction[index]
                     for index in range(len(point))
@@ -1072,11 +1171,7 @@ def _constrained_minimize_validation(
                         )
                         if item.kind == "inequality":
                             candidate_feasible = (
-                                candidate_feasible
-                                and candidate_value
-                                >= -64.0
-                                * _MACHINE_EPSILON
-                                * max(1.0, abs(candidate_value))
+                                candidate_feasible and candidate_value >= 0.0
                             )
                         else:
                             candidate_feasible = candidate_feasible and abs(
@@ -1097,8 +1192,10 @@ def _constrained_minimize_validation(
             candidate_objective = scalar(
                 execution.call("validation", function, candidate)
             )
-            sample_magnitude = max(sample_magnitude, abs(candidate_objective))
             resolved_probe = resolved_probe or candidate_objective != objective
+            maximum_local_variation = max(
+                maximum_local_variation, abs(candidate_objective - objective)
+            )
             maximum_local_decrease = max(
                 maximum_local_decrease, max(0.0, objective - candidate_objective)
             )
@@ -1107,10 +1204,286 @@ def _constrained_minimize_validation(
     probe_resolved = isolated_by_equalities or (
         feasible_probe_count > 0 and resolved_probe
     )
-    local_threshold = 128.0 * _MACHINE_EPSILON * sample_magnitude
+    # The roundoff allowance is tied only to observed local variation, never
+    # to the arbitrary absolute objective level. This remains invariant under
+    # adding a constant while rejecting every reliably resolved decrease.
+    local_threshold = 1024.0 * _MACHINE_EPSILON * maximum_local_variation
     locally_minimal = maximum_local_decrease <= local_threshold and probe_resolved
+    manifold_records = equality_manifold_records + active_manifold_records
+    manifold_gradients = equality_gradients + active_manifold_gradients
+    manifold_normals = _orthonormal_normals(manifold_gradients)
+    tangent_basis = _orthonormal_tangents(len(point), manifold_normals)
+    tangent_dimension = len(tangent_basis)
+    curvature: dict[str, Any] = {
+        "resolved": False,
+        "reason": "first_order_or_poll_failure",
+        "positive": False,
+        "negative": False,
+        "sampled_descent": False,
+        "effective_dimension": tangent_dimension,
+    }
+
+    def independently_feasible(candidate: list[float]) -> bool:
+        for index, coordinate in enumerate(candidate):
+            lower_value = lower[index]
+            upper_value = upper[index]
+            tolerance = active_bound_tolerances[index]
+            if lower_value is not None and coordinate < float(lower_value) - tolerance:
+                return False
+            if upper_value is not None and coordinate > float(upper_value) + tolerance:
+                return False
+        for item in constraints:
+            value = scalar(execution.call("validation", item.function, candidate))
+            if item.kind == "inequality":
+                if value < 0.0:
+                    return False
+            elif abs(value) > max(
+                512.0 * _MACHINE_EPSILON,
+                min(item.tolerance, 1.0e-12),
+            ):
+                return False
+        return True
+
+    if feasible and kkt_stationary and locally_minimal:
+        if len(manifold_normals) != len(manifold_gradients):
+            curvature = {
+                **curvature,
+                "reason": "rank_deficient_active_manifold",
+                "manifold_rank": len(manifold_normals),
+                "manifold_constraint_count": len(manifold_gradients),
+            }
+        elif len(active_normals) != 0 and not strict_complementarity:
+            curvature = {
+                **curvature,
+                "reason": "non_strict_active_constraint",
+                "strict_multiplier_threshold": strict_multiplier_threshold,
+                "multipliers": multipliers,
+            }
+        elif tangent_dimension > _MAX_HESSIAN_DIMENSION:
+            curvature = {
+                **curvature,
+                "reason": "dimension_envelope",
+            }
+        elif tangent_dimension == 0:
+            curvature = {
+                **curvature,
+                "resolved": True,
+                "reason": "strict_first_order_isolated_manifold",
+                "positive": True,
+                "minimum_curvature": 0.0,
+                "threshold": 0.0,
+                "required_evaluations": 0,
+                "manifold_rank": len(manifold_normals),
+            }
+        else:
+            sample_count = 4 * tangent_dimension * tangent_dimension
+            callbacks_per_sample = 1 + len(constraints) + 5 * len(manifold_records)
+            required_curvature_evaluations = (
+                sample_count * callbacks_per_sample
+                + 1
+                + len(constraints)
+                + 5 * len(manifold_records)
+            )
+            remaining_curvature_evaluations = (
+                problem.resource_budget.max_evaluations - execution.evaluations
+            )
+            if required_curvature_evaluations > remaining_curvature_evaluations:
+                curvature = {
+                    **curvature,
+                    "reason": "evaluation_budget",
+                    "required_evaluations": required_curvature_evaluations,
+                    "remaining_evaluations": remaining_curvature_evaluations,
+                }
+            else:
+                center = retract_to_manifold(
+                    list(point), manifold_records, manifold_gradients
+                )
+                if center is None or not independently_feasible(center):
+                    curvature = {
+                        **curvature,
+                        "reason": "manifold_retraction_failed",
+                    }
+                else:
+                    center_objective = scalar(
+                        execution.call("validation", function, center)
+                    )
+                    curvature_sample_scale = max(
+                        2.2250738585072014e-308,
+                        abs(objective),
+                        abs(center_objective),
+                    )
+                    maximum_curvature_decrease = max(0.0, objective - center_objective)
+                    maximum_curvature_variation = abs(objective - center_objective)
+                    curvature_sample_failed = False
+
+                    def sampled_on_manifold(candidate: list[float]) -> float | None:
+                        nonlocal curvature_sample_scale
+                        nonlocal maximum_curvature_decrease
+                        nonlocal maximum_curvature_variation
+                        nonlocal curvature_sample_failed
+                        retracted = retract_to_manifold(
+                            candidate, manifold_records, manifold_gradients
+                        )
+                        if retracted is None or not independently_feasible(retracted):
+                            curvature_sample_failed = True
+                            return None
+                        value = scalar(
+                            execution.call("validation", function, retracted)
+                        )
+                        curvature_sample_scale = max(curvature_sample_scale, abs(value))
+                        maximum_curvature_decrease = max(
+                            maximum_curvature_decrease,
+                            max(0.0, objective - value),
+                        )
+                        maximum_curvature_variation = max(
+                            maximum_curvature_variation,
+                            abs(objective - value),
+                        )
+                        return value
+
+                    def tangent_hessian(
+                        radius: float,
+                    ) -> list[list[float]] | None:
+                        matrix = [
+                            [0.0 for _ in range(tangent_dimension)]
+                            for _ in range(tangent_dimension)
+                        ]
+                        denominator = radius * radius
+                        for row, direction in enumerate(tangent_basis):
+                            left = [
+                                center[index] - radius * direction[index]
+                                for index in range(len(point))
+                            ]
+                            right = [
+                                center[index] + radius * direction[index]
+                                for index in range(len(point))
+                            ]
+                            left_value = sampled_on_manifold(left)
+                            right_value = sampled_on_manifold(right)
+                            if left_value is None or right_value is None:
+                                return None
+                            matrix[row][row] = (
+                                left_value - 2.0 * center_objective + right_value
+                            ) / denominator
+                        for row in range(tangent_dimension):
+                            for column in range(row + 1, tangent_dimension):
+                                values: list[float] = []
+                                for row_sign, column_sign in (
+                                    (1.0, 1.0),
+                                    (1.0, -1.0),
+                                    (-1.0, 1.0),
+                                    (-1.0, -1.0),
+                                ):
+                                    candidate = [
+                                        center[index]
+                                        + radius
+                                        * (
+                                            row_sign * tangent_basis[row][index]
+                                            + column_sign * tangent_basis[column][index]
+                                        )
+                                        for index in range(len(point))
+                                    ]
+                                    value = sampled_on_manifold(candidate)
+                                    if value is None:
+                                        return None
+                                    values.append(value)
+                                mixed = (
+                                    values[0] - values[1] - values[2] + values[3]
+                                ) / (4.0 * denominator)
+                                matrix[row][column] = mixed
+                                matrix[column][row] = mixed
+                        return matrix
+
+                    radius = _SECOND_ORDER_STEP * max(1.0, infinity_norm(point))
+                    coarse = tangent_hessian(radius)
+                    fine = tangent_hessian(0.5 * radius)
+                    if coarse is None or fine is None or curvature_sample_failed:
+                        curvature = {
+                            **curvature,
+                            "reason": "feasible_curvature_probe_failed",
+                            "required_evaluations": required_curvature_evaluations,
+                            "remaining_evaluations": remaining_curvature_evaluations,
+                        }
+                    else:
+                        richardson = [
+                            [
+                                (4.0 * fine[row][column] - coarse[row][column]) / 3.0
+                                for column in range(tangent_dimension)
+                            ]
+                            for row in range(tangent_dimension)
+                        ]
+                        discretization = max(
+                            sum(
+                                abs(fine[row][column] - coarse[row][column]) / 3.0
+                                for column in range(tangent_dimension)
+                            )
+                            for row in range(tangent_dimension)
+                        )
+                        matrix_scale = max(
+                            1.0,
+                            max(sum(abs(item) for item in row) for row in richardson),
+                        )
+                        roundoff = (
+                            256.0
+                            * _MACHINE_EPSILON
+                            * curvature_sample_scale
+                            / ((0.5 * radius) ** 2)
+                        )
+                        curvature_threshold = (
+                            roundoff
+                            + discretization
+                            + max(
+                                float(problem.tolerances["gtol"]) * 20.0,
+                                128.0 * math.sqrt(_MACHINE_EPSILON) * matrix_scale,
+                            )
+                        )
+                        minimum_curvature, eigensolver_converged, sweeps = (
+                            _minimum_symmetric_eigenvalue(richardson)
+                        )
+                        curvature_resolved = (
+                            eigensolver_converged
+                            and abs(minimum_curvature) > curvature_threshold
+                        )
+                        curvature_descent_threshold = (
+                            1024.0 * _MACHINE_EPSILON * maximum_curvature_variation
+                        )
+                        curvature = {
+                            **curvature,
+                            "resolved": curvature_resolved,
+                            "reason": (
+                                "resolved"
+                                if curvature_resolved
+                                else "curvature_indeterminate"
+                            ),
+                            "positive": minimum_curvature > curvature_threshold,
+                            "negative": minimum_curvature < -curvature_threshold,
+                            "sampled_descent": (
+                                maximum_curvature_decrease > curvature_descent_threshold
+                            ),
+                            "maximum_sampled_decrease": maximum_curvature_decrease,
+                            "descent_threshold": curvature_descent_threshold,
+                            "minimum_curvature": minimum_curvature,
+                            "threshold": curvature_threshold,
+                            "required_evaluations": required_curvature_evaluations,
+                            "remaining_evaluations": remaining_curvature_evaluations,
+                            "eigensolver_converged": eigensolver_converged,
+                            "eigensolver_sweeps": sweeps,
+                            "discretization_bound": discretization,
+                            "roundoff_bound": roundoff,
+                            "manifold_rank": len(manifold_normals),
+                        }
+
+    curvature_passed = (
+        bool(curvature.get("resolved"))
+        and bool(curvature.get("positive"))
+        and not bool(curvature.get("sampled_descent"))
+    )
     passed = (
-        feasible and kkt_stationary and locally_minimal and math.isfinite(objective)
+        feasible
+        and kkt_stationary
+        and locally_minimal
+        and curvature_passed
+        and math.isfinite(objective)
     )
     return NumericalValidation(
         "validated_approximate" if passed else "indeterminate",
@@ -1138,6 +1511,8 @@ def _constrained_minimize_validation(
                 "solver_iterations": kkt_iterations,
                 "constraint_qualification": constraint_qualification,
                 "multipliers": multipliers,
+                "strict_complementarity": strict_complementarity,
+                "strict_multiplier_threshold": strict_multiplier_threshold,
                 "complementarity_residual": complementarity_residual,
                 "complementarity_threshold": complementarity_threshold,
                 "objective_gradient": objective_gradient,
@@ -1153,9 +1528,19 @@ def _constrained_minimize_validation(
                 "maximum_sampled_decrease": maximum_local_decrease,
                 "threshold": local_threshold,
             },
+            {
+                "kind": "independent_tangent_space_second_order",
+                "passed": curvature_passed,
+                **curvature,
+            },
             {"kind": "finite_objective", "passed": math.isfinite(objective)},
         ],
-        residual=max(maximum_violation, kkt_residual, complementarity_residual),
+        residual=max(
+            maximum_violation,
+            kkt_residual,
+            complementarity_residual,
+            max(0.0, -float(curvature.get("minimum_curvature", 0.0))),
+        ),
     )
 
 

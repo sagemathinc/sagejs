@@ -45,19 +45,48 @@ def _nlopt_record(method: str) -> dict[str, Any]:
         if method == "nlopt-nelder-mead"
         else ["box_bounds", "scalar_inequality", "scalar_equality"]
     )
+    validation = (
+        [
+            "independent_objective",
+            "independent_feasibility",
+            "independent_projected_gradient_kkt",
+            "independent_feasible_direction_local_minimum",
+            "independent_minimum_curvature",
+        ]
+        if method == "nlopt-nelder-mead"
+        else [
+            "independent_objective",
+            "independent_feasibility",
+            "independent_active_constraint_kkt",
+            "independent_feasible_direction_local_minimum",
+            "independent_tangent_space_second_order",
+        ]
+    )
     return {
         "classification": "extension",
         "backend": "nlopt-mit-wasm",
         "selection": "explicit-only",
         "constraints": constraints,
         "derivatives": ["none"],
-        "validation": [
-            "independent_objective",
-            "independent_feasibility",
-            "independent_feasible_direction_local_minimum",
-        ],
-        "max_dimension": 32 if method == "nlopt-nelder-mead" else MAX_DENSE_DIMENSION,
+        "validation": validation,
+        "max_dimension": 32,
         "max_constraints": 64,
+        "validation_envelope": {
+            "active_bounds": "strict_complementarity_or_indeterminate",
+            "active_nonlinear_constraints": (
+                "strict_complementarity_or_indeterminate"
+                if method == "nlopt-cobyla"
+                else "unsupported"
+            ),
+            "nonlinear_equalities": (
+                "independent_full_rank_local_retraction"
+                if method == "nlopt-cobyla"
+                else "unsupported"
+            ),
+            "reliably_resolved_feasible_decrease": (
+                "constant_shift_invariant_rejection"
+            ),
+        },
         "views": _view_contract(
             "minimize",
             "box_bounds"
@@ -300,6 +329,12 @@ def _method_envelope_error(problem: NumericalProblem, selected: str) -> str | No
     maximum = record.get("max_dimension")
     if isinstance(dimension, int) and isinstance(maximum, int) and dimension > maximum:
         return selected + " exceeds its validated dimension envelope"
+    maximum_constraints = record.get("max_constraints")
+    if (
+        isinstance(maximum_constraints, int)
+        and len(problem.constraints) > maximum_constraints
+    ):
+        return selected + " exceeds its validated constraint envelope"
     bounded = _has_box_bounds(problem)
     constrained = len(problem.constraints) != 0
     if problem.operation == "minimize":
