@@ -24,6 +24,12 @@ let browser = null;
 let page = null;
 let subject = null;
 let initializedCapabilities = [];
+let browserDiagnostics = [];
+
+function diagnostic(message) {
+  browserDiagnostics.push(String(message));
+  if (browserDiagnostics.length > 32) browserDiagnostics.shift();
+}
 
 function browserEngine(contextSubject) {
   return contextSubject.kind === "browser"
@@ -79,7 +85,9 @@ async function listen(root) {
         return;
       }
       const filename = path.resolve(root, relative);
-      if (!filename.startsWith(`${root}${path.sep}`) || !fs.statSync(filename).isFile()) {
+      if (!filename.startsWith(`${root}${path.sep}`) || !fs.existsSync(filename) ||
+          !fs.statSync(filename).isFile()) {
+        diagnostic(`HTTP 404 ${relative}`);
         response.writeHead(404).end("not found");
         return;
       }
@@ -217,6 +225,49 @@ async function runMatlabShapes() {
   return { raw, kernelMs: performance.now() - started };
 }
 
+async function runBrowserMemoryPressure(sample) {
+  const bytes = sample.input.bytes;
+  if (!Number.isSafeInteger(bytes) || bytes < 0 || bytes > 128 * 1024 * 1024) {
+    throw new Error(`invalid browser memory qualification size ${bytes}`);
+  }
+  const source = [
+    "import json",
+    `allocated_bytes = ${bytes}`,
+    "data = bytearray(allocated_bytes)",
+    "touched_pages = 0",
+    "checksum = 0",
+    "for offset in range(0, allocated_bytes, 4096):",
+    "    value = ((offset // 4096) % 251) + 1",
+    "    data[offset] = value",
+    "    checksum += data[offset]",
+    "    touched_pages += 1",
+    `print(${JSON.stringify(internals.marker)} + json.dumps({`,
+    '    "allocated_bytes": allocated_bytes,',
+    '    "touched_pages": touched_pages,',
+    '    "checksum": checksum,',
+    '    "worker_executed": True,',
+    "}, sort_keys=True))",
+  ].join("\n");
+  const started = performance.now();
+  const result = await page.evaluate(async ({ source }) =>
+    globalThis.__sagejsQualificationSession.evaluate(source, { timeout: 180_000 }),
+  { source });
+  const raw = internals.parseEvaluation(result);
+  return {
+    outcome: { kind: "success", code: null },
+    values: {
+      allocated_bytes: raw.allocated_bytes,
+      touched_pages: raw.touched_pages,
+      worker_executed: raw.worker_executed,
+      checksum_nonzero: raw.checksum > 0,
+    },
+    metrics: {
+      phases_ms: { browser_worker_memory_pressure: performance.now() - started },
+      counters: { touched_pages: raw.touched_pages },
+    },
+  };
+}
+
 async function evaluateSample(sample) {
   if (sample.id === "p8-runtime-recovery") return runRuntimeRecovery(sample);
   if (sample.id === "p6-multilingual-parser-fail-closed") return runParserGuards();
@@ -243,6 +294,7 @@ async function close() {
     page = null;
     subject = null;
     initializedCapabilities = [];
+    browserDiagnostics = [];
   }
 }
 
@@ -287,6 +339,8 @@ module.exports = {
       const launched = await launchBrowser(engine);
       browser = launched.browser;
       page = await browser.newPage();
+      page.on("console", (message) => diagnostic(`console ${message.type()}: ${message.text()}`));
+      page.on("pageerror", (error) => diagnostic(`pageerror: ${error?.stack ?? error}`));
       await page.goto(address(server), { waitUntil: "domcontentloaded" });
       await page.evaluate(async () => {
         const { createSage } = await import("/kernel.mjs");
@@ -329,6 +383,7 @@ module.exports = {
         if (requirement === "external:nlopt-wasm") {
           return present.has("sagejs.numerics.optimization");
         }
+        if (requirement === "external:browser-process-tree-memory") return true;
         if (["numerics.teaching.cross_domain", "numerics.lifecycle.repeated"].includes(id)) {
           return domainClosure.every((name) => present.has(name));
         }
@@ -343,13 +398,19 @@ module.exports = {
         : { kind: "worker", name: "sagejs-browser-worker", version: launched.version, engine: null };
       return { subject, capability_ids: initializedCapabilities };
     } catch (error) {
+      const details = browserDiagnostics.length === 0
+        ? "no browser diagnostics"
+        : browserDiagnostics.join(" | ");
       await close();
-      throw error;
+      throw new Error(`${error?.message ?? error}; ${details}`, { cause: error });
     }
   },
 
   async runCase(sample) {
     if (page === null) throw new Error("browser qualification adapter is not initialized");
+    if (["p8-browser-memory-baseline", "p8-browser-memory-pressure"].includes(sample.id)) {
+      return runBrowserMemoryPressure(sample);
+    }
     return internals.normalizeEvaluated(sample, await evaluateSample(sample));
   },
 

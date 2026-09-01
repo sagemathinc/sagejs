@@ -8,14 +8,14 @@
       "platform": "linux-x64",
       "status": "pending",
       "required_evidence": ["address", "undefined", "leak"],
-      "acceptance": "The exact vendored cminpack source and Sage.js host adapter execute success, callback failure, cancellation, allocation failure, and repeated lifecycle workloads under each sanitizer with no finding."
+      "acceptance": "The exact selected cminpack native C component executes successful lmdif/lmder, callback-stop, and repeated lifecycle workloads under ASAN, UBSAN, and LSAN with no finding; the same candidate separately passes the Wasm adapter corruption, cancellation, callback, allocation-failure, and recovery gates. Neither half substitutes for the other."
     },
     {
       "id": "nlopt-native-sanitizers",
       "platform": "linux-x64",
       "status": "pending",
       "required_evidence": ["address", "undefined", "leak"],
-      "acceptance": "The exact vendored NLopt source and Sage.js host adapter execute both qualified algorithms, constraints, callback failure, cancellation, allocation failure, and repeated lifecycle workloads under each sanitizer with no finding."
+      "acceptance": "The exact selected NLopt native C component executes every algorithm retained in the final Wasm artifact, forced-stop, and repeated lifecycle workloads under ASAN, UBSAN, and LSAN with no finding; the same candidate separately passes the Wasm adapter corruption, cancellation, callback, allocation-failure, and recovery gates. COBYLA is not eligible while its upstream f2c indexing triggers object-size UBSAN (NLopt issue 611)."
     },
     {
       "id": "numerical-wasm-destructive-faults",
@@ -29,7 +29,7 @@
       "platform": "linux-x64",
       "status": "pending",
       "required_evidence": ["chromium", "firefox", "webkit", "worker-replacement"],
-      "acceptance": "The qualification collector authenticates operating-system process-tree peak memory for the exact browser executable while running the bounded memory workload; browser-heap counters are supplemental and cannot substitute for process-tree evidence."
+      "acceptance": "For Chromium, Firefox, WebKit, and the Chromium worker-recovery row, the qualification collector authenticates operating-system process-tree peak memory for the exact browser executable. The dedicated baseline/64-MiB touched-worker workload must increase peak RSS by at least 32 MiB; browser-heap counters are supplemental and cannot substitute for process-tree evidence."
     }
   ]
 }

@@ -180,7 +180,9 @@ missing platform rows, and receipt overwrite attempts.
 
 See [cross-platform.md](cross-platform.md) for collection and reporting, and
 [domain-integration.md](domain-integration.md) for the adapter protocol and
-registry-free domain integration.
+registry-free domain integration. See
+[sanitizers-and-browser-memory.md](sanitizers-and-browser-memory.md) for the
+source-bound native sanitizer and real-browser process-tree memory gates.
 
 The first complete product campaign is described in
 [product-campaign.md](product-campaign.md). Its checked-in corpus and Node

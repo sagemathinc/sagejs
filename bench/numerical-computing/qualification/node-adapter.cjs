@@ -49,6 +49,7 @@ const CAPABILITY_MODULE_REQUIREMENTS = Object.freeze({
   "numerics.lifecycle.repeated": "sagejs.numerics",
   "numerics.lifecycle.recovery": "sagejs.numerics",
   "numerics.lifecycle.memory": "sagejs.numerics.statistics",
+  "numerics.lifecycle.browser_process_tree_memory": "external:browser-process-tree-memory",
 });
 
 let session = null;

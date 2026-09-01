@@ -10,6 +10,12 @@ const { capabilityDraft } = require("./prepare-node.cjs");
 const root = path.resolve(__dirname, "..", "..", "..");
 const corpusPath = path.join(root, "bench/numerical-computing/qualification/product.corpus.json");
 const specPath = path.join(root, "bench/numerical-computing/qualification/capabilities/node-capability-spec.json");
+const browserMemoryCorpusPath = path.join(
+  root, "bench/numerical-computing/qualification/browser-memory.corpus.json",
+);
+const browserMemorySpecPath = path.join(
+  root, "bench/numerical-computing/qualification/capabilities/browser-memory-capability-spec.json",
+);
 const matrixDirectory = path.join(root, "bench/numerical-computing/qualification/matrix");
 
 function validateTemplate(template, expectedRows, requiredCapabilities = null) {
@@ -104,6 +110,17 @@ function main() {
     16,
     requiredCapabilities,
   );
+  const browserMemoryCorpus = validateCorpus(readJson(browserMemoryCorpusPath));
+  const browserMemoryDraft = capabilityDraft(
+    readJson(browserMemorySpecPath), browserMemoryCorpus,
+    { kind: "browser", name: "playwright-browser", version: "validation-only", engine: "chromium" },
+  );
+  if (browserMemoryCorpus.cases.length !== 2 ||
+      browserMemoryDraft.capabilities.length !== 1 ||
+      browserMemoryDraft.capabilities[0].id !==
+        "numerics.lifecycle.browser_process_tree_memory") {
+    throw new Error("focused browser memory campaign is incomplete");
+  }
   process.stdout.write(
     `Numerical qualification campaign valid: ${corpus.cases.length} cases, ` +
     `${available.length} available capabilities, ${unavailable.size} future fail-closed capabilities.\n`,

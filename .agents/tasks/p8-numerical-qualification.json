@@ -13,7 +13,8 @@
     "bench/numerical-computing/qualification/",
     "docs/numerical-computing/qualification/",
     "scripts/numerical-computing/qualification/",
-    "test/numerics/evidence/qualification-campaign.cjs"
+    "test/numerics/evidence/qualification-campaign.cjs",
+    "test/numerics/evidence/qualification-supplemental.cjs"
   ],
   "dependencies": [],
   "references": [
