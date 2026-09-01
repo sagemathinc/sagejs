@@ -194,15 +194,17 @@ matrix. If the compact dependency lattice still yields no exact unit, the
 program conditionally allocates one uncompressed HNF/LLL/log workspace inside
 the same arena and attempts exact unit reconstruction before declining.
 
-Relation effort remains adaptive. The host first invokes the closed native
-program with the three largest canonical factor-base ideals and no compound
-multiplier. Only an exact relation-rank, unit-rank, or analytic-index failure
-authorizes a second attempt with every adjacent ideal. Further failures then
-authorize prefixes of one, two, and four compound multipliers. Each retry owns
-a fresh exact arena and independently repeats every mathematical check; no
-partially trusted relation state crosses the boundary. The detached receipt
-records the compound prefix actually used, not merely the effort authorized by
-the call.
+Relation effort remains adaptive. For factor bases of dimension at most $11$,
+the host first invokes the closed native program with the three largest
+canonical factor-base ideals and no compound multiplier. Larger bases start
+with every adjacent ideal because a fixed three-ideal prefix is structurally
+too narrow to justify a duplicate exact setup. Only an exact relation-rank,
+unit-rank, or analytic-index failure authorizes a second attempt with every
+adjacent ideal. Further failures then authorize prefixes of one, two, and four
+compound multipliers. Each retry owns a fresh exact arena and independently
+repeats every mathematical check; no partially trusted relation state crosses
+the boundary. The detached receipt records the compound prefix actually used,
+not merely the effort authorized by the call.
 
 ### 4. The retained element gives an upper regulator
 

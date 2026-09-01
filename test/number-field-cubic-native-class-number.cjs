@@ -188,6 +188,10 @@ cases = (
     # the source-transparent all-ideal adjacent batch already certifies it.
     # This also exercises a 17-ideal resident factor base.
     ("3.1.1737311.1", (289, -42, -1, 1), 8, (2, 2, 2), 0),
+    # A 16-ideal factor base starts with complete adjacent effort rather than
+    # paying for a structurally narrow three-ideal call that cannot certify
+    # this C2-cubed presentation.
+    ("3.1.1802479.1", (-149, 67, 0, 1), 8, (2, 2, 2), 0),
 )
 for index, (label, coefficients, expected_order, expected_invariants, expected_passes) in enumerate(cases):
     polynomial = R(0)
@@ -206,6 +210,10 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label
         assert receipt.relation_count == 29, label
+    if label == "3.1.1802479.1":
+        assert receipt.generator_bound == 41, label
+        assert receipt.factor_base_size == 16, label
+        assert receipt.relation_count == 38, label
     assert receipt.matches(K), label
 print("cubic-native-lmfdb-corpus-ok")
 `);

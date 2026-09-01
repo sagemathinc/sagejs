@@ -52,6 +52,7 @@ _CUBIC_MAX_COMPOUND_PAIRS = 128
 _CUBIC_COMPOUND_MULTIPLIERS = 4
 _CUBIC_MAX_RELATION_EFFORT = 5
 _CUBIC_INITIAL_ADJACENT_IDEALS = 3
+_CUBIC_NARROW_ADJACENT_MAX_FACTORS = 11
 _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES = 500
 _CUBIC_REDUCED_ENUMERATION_MAX_COORDINATE = 32
 _CUBIC_MAX_FACTOR_SEARCH_BOUND = 257
@@ -5368,7 +5369,11 @@ def certified_complex_cubic_class_group_v1(
         adjacent_ideal_count: uint64 = 0
         adjacent_candidate_count: uint64 = 0
         adjacent_factor_cursor: uint64 = 0
-        if relation_effort == 1 and factor_count > _CUBIC_INITIAL_ADJACENT_IDEALS:
+        if (
+            relation_effort == 1
+            and factor_count <= _CUBIC_NARROW_ADJACENT_MAX_FACTORS
+            and factor_count > _CUBIC_INITIAL_ADJACENT_IDEALS
+        ):
             adjacent_factor_cursor = factor_count - _CUBIC_INITIAL_ADJACENT_IDEALS
         while adjacent_factor_cursor < factor_count:
             adjacent_factor_index: uint64 = adjacent_factor_cursor
