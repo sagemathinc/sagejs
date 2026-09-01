@@ -256,6 +256,9 @@ function exactValue(name, context) {
   if (context.storage.borrowedParameters.includes(name)) {
     return `sagejs_arg_${name}`;
   }
+  if (context.liveIntegerVectorParameters?.has(name)) {
+    return `(*sagejs_arg_${name})`;
+  }
   if (context.resourceParameters?.has(name)) return `sagejs_arg_${name}`;
   return cName(name);
 }
@@ -268,6 +271,9 @@ function internalArgument(fn, param) {
   if (isInt64BufferType(param.type)) return `sagejs_int64_buffer ${name}`;
   if (isUInt64BufferType(param.type)) return `sagejs_uint64_buffer ${name}`;
   if (isIntegerBufferType(param.type)) return `sagejs_integer_buffer ${name}`;
+  if (param.type === "NativeIntegerVector") {
+    return `sagejs_native_integer_vector *${name}`;
+  }
   const resource = resourceForFunctionType(fn, param.type);
   if (resource !== undefined) return `${resource.abi_type} ${name}`;
   throw new Error(`unsupported exact native parameter ${param.type}`);
@@ -1282,7 +1288,11 @@ function emitExactOperation(operation, context, indent) {
           : `&${exactValue(result.name, context)}`
       );
     const args = operation.arguments.map((argument) =>
-      exactValue(argument.name, context)
+      argument.type === "NativeIntegerVector"
+        ? context.liveIntegerVectorParameters?.has(argument.name)
+          ? `sagejs_arg_${argument.name}`
+          : `&${exactValue(argument.name, context)}`
+        : exactValue(argument.name, context)
     );
     return [
       `${indent}if (!native_${operation.function}(status, ${outputs.join(", ")}` +
@@ -1570,6 +1580,7 @@ function exactDeclarations(fn) {
   }
   for (const param of fn.params) {
     if (param.type === "Integer") continue;
+    if (param.type === "NativeIntegerVector") continue;
     if (resourceForFunctionType(fn, param.type) !== undefined) continue;
     const type = param.type === "uint64"
       ? "uint64_t"
@@ -1681,6 +1692,11 @@ function exactDeclarations(fn) {
   }
   const context = {
     storage,
+    liveIntegerVectorParameters: new Set(
+      fn.params
+        .filter((param) => param.type === "NativeIntegerVector")
+        .map((param) => param.name),
+    ),
     checkpointCleanupSymbols: fn.checkpointCleanupSymbols || [],
     resourceParameters: new Set(
       fn.params
@@ -3553,6 +3569,10 @@ function exactFunctions(ir) {
   return ir.functions.filter((fn) => fn.kernelKind === "integer");
 }
 
+function hostCallable(fn) {
+  return fn.hostCallable !== false;
+}
+
 function publicCoreSignature(fn, prototype = false) {
   const parameters = [
     "sagejs_native_status *status",
@@ -3649,14 +3669,14 @@ function generatedCoreSymbolAliases(ir, moduleIdentity) {
   if (!/^[a-f0-9]{16}$/.test(moduleIdentity)) {
     throw new TypeError(`invalid generated module identity ${moduleIdentity}`);
   }
-  return ir.functions.map((fn) =>
+  return ir.functions.filter(hostCallable).map((fn) =>
     `#define sagejs_kernel_${fn.name} ` +
       `sagejs_kernel_m_${moduleIdentity}_${fn.name}`
   ).join("\n");
 }
 
 function coreHeader(ir, options = {}) {
-  const functions = ir.functions;
+  const functions = ir.functions.filter(hostCallable);
   const exact = functions.filter((fn) => fn.kernelKind === "integer");
   const floats = functions.filter((fn) => fn.kernelKind === "float64");
   const fields = functions.filter((fn) =>
@@ -3828,6 +3848,7 @@ function generateHostCore(ir, options = {}) {
     };
   });
   const exact = functions.filter((fn) => fn.kernelKind === "integer");
+  const exactEntries = exact.filter(hostCallable);
   const floats = functions.filter((fn) => fn.kernelKind === "float64");
   const fields = functions.filter((fn) =>
     ["real-field", "complex-field"].includes(fn.kernelKind)
@@ -3839,8 +3860,8 @@ function generateHostCore(ir, options = {}) {
     fn.kernelKind === "prime-field-matrix"
   );
   const functionMap = new Map(exact.map((fn) => [fn.name, fn]));
-  const tagged = generateTaggedFunctions(exact);
-  const wordFunctions = exact.filter((fn) =>
+  const tagged = generateTaggedFunctions(exactEntries);
+  const wordFunctions = exactEntries.filter((fn) =>
     ![fn.returnType, ...fn.params.map((param) => param.type)].some((type) =>
       resourceForFunctionType(fn, type) !== undefined
     )
@@ -3872,7 +3893,7 @@ function generateHostCore(ir, options = {}) {
     word.functions,
     tagged.functions,
     ...exact.map((fn) => emitExactInternalFunction(fn, functionMap)),
-    ...exact.map(publicCoreFunction),
+    ...exactEntries.map(publicCoreFunction),
     ...floats.map(emitFloat64CoreFunction),
     ...fields.map(emitFieldCoreFunction),
     primeSources.length > 0 ? generatePrimeSourceSupport() : "",
@@ -3929,15 +3950,18 @@ ${pieces.join("\n\n")}
         ...(exceptionShimInclude(ir) ? ["C++ runtime"] : []),
         ...foreignDependencies(ir),
       ])),
-      functions: functions.map((fn) => fn.name),
-      kernelKinds: Array.from(new Set(functions.map((fn) => fn.kernelKind))),
+      functions: functions.filter(hostCallable).map((fn) => fn.name),
+      kernelKinds: Array.from(new Set(
+        functions.filter(hostCallable).map((fn) => fn.kernelKind),
+      )),
     }),
   };
 }
 
 function generateNodeAdapter(ir) {
-  const functions = ir.functions;
+  const functions = ir.functions.filter(hostCallable);
   const exact = exactFunctions(ir);
+  const exactEntries = exact.filter(hostCallable);
   const usesExactArena = exact.some((fn) =>
     fn.analysis?.liveExactWorkspace?.scopes?.some((scope) =>
       scope.storage === "shared-budget-lexical-exact-arena"
@@ -3953,7 +3977,7 @@ function generateNodeAdapter(ir) {
   const primeFields = functions.filter((fn) =>
     fn.kernelKind === "prime-field-matrix"
   );
-  const publicResources = Array.from(new Map(exact.flatMap((fn) =>
+  const publicResources = Array.from(new Map(exactEntries.flatMap((fn) =>
     [fn.returnType, ...fn.params.map((param) => param.type)].flatMap((type) => {
       const resource = resourceForFunctionType(fn, type);
       return resource === undefined
@@ -4041,7 +4065,7 @@ static int get_precision(
     )
   );
   const wrappers = [
-    ...exact.map(emitExactWrappers),
+    ...exactEntries.map(emitExactWrappers),
     ...floats.map(emitFloat64NodeAdapter),
     ...fields.map(emitFieldNodeAdapter),
     ...primeSources.map(emitPrimeSourceNodeAdapter),

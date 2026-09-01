@@ -26,6 +26,7 @@ const TYPE_ALIASES = new Map([
   ["PrimeFieldDecomposition", "PrimeFieldDecomposition"],
   ["PrimeFieldModulus", "PrimeModulusValue"],
   ["UInt64Buffer", "UInt64Buffer"],
+  ["NativeIntegerVector", "NativeIntegerVector"],
 ]);
 const INT64_BUFFER_TYPES = new Set(["Int64Buffer", "Int64Record"]);
 const EXACT_BUFFER_TYPES = new Set([...INT64_BUFFER_TYPES, "IntegerBuffer"]);
@@ -333,6 +334,7 @@ function isIntegerSignature(signature) {
     signature.params.some(
       (param) => param.type === "Integer" || param.type === "bool" ||
         param.type === "uint64" ||
+        param.type === LIVE_INTEGER_VECTOR_TYPE ||
         param.type === "UInt64Buffer" || EXACT_BUFFER_TYPES.has(param.type),
     )
   );
@@ -400,7 +402,11 @@ function createContext(
     symbolAliases: new Map(),
     usedForeignResources,
     variables,
-    activeIntegerVectors: new Set(),
+    activeIntegerVectors: new Set(
+      signature.params
+        .filter((param) => param.type === LIVE_INTEGER_VECTOR_TYPE)
+        .map((param) => param.name),
+    ),
     activeIntegerMatrices: new Set(),
     activeRecordVectors: new Map(),
     activeBoundedCollections: new Map(),
@@ -1523,7 +1529,9 @@ function lowerCall(node, context, operations) {
         arg,
         context,
         operations,
-        param.type === "uint64" ? "uint64" : undefined,
+        param.type === "uint64" || param.type === LIVE_INTEGER_VECTOR_TYPE
+          ? param.type
+          : undefined,
       );
     }
     const expectedType = signature.params[index].type;
@@ -1589,12 +1597,17 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
         : emitConstant(context, node, operations, value);
     }
     expect(context, node, type !== undefined, `unknown native value ${node.name}`);
-    expect(
-      context,
-      node,
-      !isLiveExactOwnerType(type),
-      "live exact owners cannot be copied, passed, or returned",
-    );
+    if (isLiveExactOwnerType(type)) {
+      expect(
+        context,
+        node,
+        type === LIVE_INTEGER_VECTOR_TYPE && expectedType === type,
+        "live exact owners cannot be copied, passed, or returned; " +
+          "they may only be borrowed by a matching native helper parameter",
+      );
+      liveIntegerVectorName(node, context);
+      return { name, type };
+    }
     expect(
       context,
       node,
@@ -3310,6 +3323,9 @@ function lowerIntegerFunction(
   return {
     name: signature.name,
     decorated,
+    hostCallable: !signature.params.some(
+      (param) => isLiveExactOwnerType(param.type),
+    ),
     kernelKind: "integer",
     sourceTransparent: true,
     params: publicParams,

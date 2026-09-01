@@ -30,7 +30,13 @@ from sagejs.ffi.flint import (
     number_field_analysis_resource_project_proof,
     number_field_analyze_resource,
 )
-from sagejs.native import IntegerBuffer, NativeExactArena, native, uint64
+from sagejs.native import (
+    IntegerBuffer,
+    NativeExactArena,
+    NativeIntegerVector,
+    native,
+    uint64,
+)
 from sagejs.number_fields.field_analysis_resource import (
     _packed_word_prime_is_proven,
     packed_field_analysis_fixed_points_are_valid,
@@ -341,7 +347,7 @@ def _cubic_analysis_fixed_points_are_valid(
 
 @native
 def _cubic_workspace_hnf3(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     base: uint64,
     row_count: uint64,
 ) -> bool:
@@ -433,7 +439,7 @@ def _cubic_workspace_hnf3(
 
 @native
 def _cubic_multiply_coordinates(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     left_zero: int,
     left_one: int,
     left_two: int,
@@ -510,7 +516,7 @@ def _cubic_multiply_coordinates(
 
 @native
 def _cubic_matrix_multiply_coordinates(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     left: FmpzMatrix,
     left_row: uint64,
     right: FmpzMatrix,
@@ -594,7 +600,7 @@ def _cubic_matrix_multiply_coordinates(
 
 @native
 def _cubic_matrix_power_coordinates(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     source: FmpzMatrix,
     source_row: uint64,
     exponent: int,
@@ -652,7 +658,7 @@ def _cubic_matrix_power_coordinates(
 
 @native
 def _cubic_matrix_exact_quotient_coordinates(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     values: FmpzMatrix,
     numerator_row: uint64,
     denominator_row: uint64,
@@ -771,7 +777,7 @@ def _cubic_matrix_exact_quotient_coordinates(
 
 @native
 def _cubic_coordinate_norm(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     zero: int,
     one: int,
     two: int,
@@ -795,7 +801,7 @@ def _cubic_coordinate_norm(
 
 @native
 def _cubic_norm_form_value(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     zero: int,
     one: int,
     two: int,
@@ -820,7 +826,7 @@ def _cubic_norm_form_value(
 
 @native
 def _cubic_ideal_product(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     left_offset: uint64,
     right_offset: uint64,
     output_offset: uint64,
@@ -856,7 +862,7 @@ def _cubic_ideal_product(
 
 @native
 def _cubic_compound_prime_ideal_basis(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     multiplier_factor_index: uint64,
     source_factor_index: uint64,
     multiplier_exponent: uint64,
@@ -893,7 +899,7 @@ def _cubic_compound_prime_ideal_basis(
 
 @native
 def _cubic_lattice_contains(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     basis_offset: uint64,
     zero: int,
     one: int,
@@ -923,7 +929,7 @@ def _cubic_lattice_contains(
 
 @native
 def _cubic_append_smooth_principal_relation(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     relation_matrix: FmpzMatrix,
     relation_elements: FmpzMatrix,
     relation_count: uint64,
@@ -1096,7 +1102,7 @@ def _cubic_append_smooth_principal_relation(
 
 @native
 def _cubic_plan_smooth_norm(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     group_count: uint64,
     norm: int,
 ) -> bool:
@@ -1412,7 +1418,7 @@ def _cubic_log_two_pi_bounds(scale: int) -> tuple[int, int]:
 
 @native
 def _cubic_degree_one_prime_count(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     equation_order_index: int,
     identity_zero: int,
@@ -1609,7 +1615,7 @@ def _cubic_grh_prime_degree_contribution(
 
 @native
 def _cubic_grh_generator_bound_is_certified(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     equation_order_index: int,
     identity_zero: int,
@@ -1791,7 +1797,7 @@ def _cubic_grh_generator_bound_is_certified(
 
 @native
 def _cubic_grh_generator_bound(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     equation_order_index: int,
     identity_zero: int,
@@ -2013,7 +2019,7 @@ def _cubic_regulator_bounds(
 
 @native
 def _cubic_small_unit_probe(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     denominator: int,
     basis_zero_zero: int,
@@ -2269,7 +2275,7 @@ def _cubic_complex_root_approximations(
 @native
 def _cubic_fill_ideal_t2_embedding(
     source: FmpzMatrix,
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     basis_offset: uint64,
     basis_zero_zero: int,
     basis_zero_one: int,
@@ -2334,7 +2340,7 @@ def _cubic_fill_ideal_t2_embedding(
 
 @native
 def _cubic_transformed_ideal_coordinates(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     basis_offset: uint64,
     transforms: FmpzMatrix,
     transform_row_offset: uint64,
@@ -2369,7 +2375,7 @@ def _cubic_transformed_ideal_coordinates(
 
 @native
 def _cubic_plan_reduced_ideal_shell(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     embedding_source: FmpzMatrix,
     embedding_reduced: FmpzMatrix,
     embedding_transform: FmpzMatrix,
@@ -2497,7 +2503,7 @@ def _cubic_plan_reduced_ideal_shell(
 
 @native
 def _cubic_reconstruct_archimedean_unit(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     denominator: int,
     basis_zero_zero: int,
@@ -2849,7 +2855,7 @@ def _cubic_reconstruct_archimedean_unit(
 
 @native
 def _cubic_coordinate_trace(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     coordinate_zero: int,
     coordinate_one: int,
     coordinate_two: int,
@@ -2908,7 +2914,7 @@ def _cubic_floor_fifth_root(value: int) -> int:
 
 @native
 def _cubic_exact_unit_fifth_root(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     denominator: int,
     basis_zero_zero: int,
@@ -3161,7 +3167,7 @@ def _cubic_exact_unit_fifth_root(
 
 @native
 def _cubic_exact_unit_square_root(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     denominator: int,
     basis_zero_zero: int,
@@ -3496,7 +3502,7 @@ def _cubic_bf_tail_bounds(
 
 @native
 def _cubic_bf_finite_bounds(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     values: FmpzMatrix,
     endpoints: FmpzMatrix,
     term_count: uint64,
@@ -3645,7 +3651,7 @@ def _cubic_bf_finite_bounds(
 
 @native
 def _cubic_map_is_multiplicative(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     map_zero: int,
     map_one: int,
     map_two: int,
@@ -3680,7 +3686,7 @@ def _cubic_map_is_multiplicative(
 
 @native
 def _cubic_prime_kernel_basis(
-    workspace: IntegerBuffer,
+    workspace: NativeIntegerVector,
     prime: int,
     map_zero: int,
     map_one: int,
@@ -3727,7 +3733,6 @@ def _cubic_prime_kernel_basis(
 def certified_complex_cubic_class_group_v1(
     output: IntegerBuffer,
     coefficients: IntegerBuffer,
-    workspace: IntegerBuffer,
     analysis_proof: IntegerBuffer,
     verification_polynomial: IntegerBuffer,
     verification_numerator: IntegerBuffer,
@@ -3750,7 +3755,6 @@ def certified_complex_cubic_class_group_v1(
     if (
         len(output) != 64
         or len(coefficients) != 4
-        or len(workspace) != _CUBIC_WORKSPACE_LENGTH
         or len(analysis_proof) != _CUBIC_ANALYSIS_PROOF_CAPACITY
         or len(verification_polynomial) != 4
         or len(verification_numerator) != 9
@@ -3766,6 +3770,7 @@ def certified_complex_cubic_class_group_v1(
     ):
         return False
     with NativeExactArena(memory_limit, temporary_limit) as arena:
+        workspace = arena.integer_vector(_CUBIC_WORKSPACE_LENGTH, 0)
         polynomial = arena.foreign_resource(fmpz_polynomial, 4)
         coefficient_index: uint64 = 0
         while coefficient_index < 4:

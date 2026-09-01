@@ -700,6 +700,7 @@ function localEffects(fn) {
 function bufferWrites(fn, dependencyEffects) {
   const bufferTypes = new Set([
     "IntegerBuffer", "Int64Buffer", "Int64Record", "UInt64Buffer",
+    "NativeIntegerVector",
   ]);
   const aliases = new Map(
     fn.params
@@ -730,6 +731,11 @@ function bufferWrites(fn, dependencyEffects) {
           statement.kind === "integer.buffer.set" ||
           statement.kind === "uint64.buffer.set") {
         for (const root of roots(statement.buffer)) writes.add(root);
+      } else if (statement.kind === "integer.vector.set" ||
+          statement.kind === "integer.vector.addmul" ||
+          statement.kind === "integer.vector.submul" ||
+          statement.kind === "integer.vector.swap") {
+        for (const root of roots(statement.vector)) writes.add(root);
       } else if (statement.kind === "native.call") {
         const effect = dependencyEffects.get(statement.function);
         const callee = effect?.params || [];
@@ -1252,6 +1258,13 @@ function residentCodeQualityAnalysis(fn) {
 }
 
 function backendPolicy(fn, profile, recursive) {
+  if (fn.params.some((param) => param.type === "NativeIntegerVector")) {
+    return {
+      kind: "gmp",
+      reason: "a borrowed resident exact vector stays in its owning GMP arena",
+      requiresExactWorkspace: true,
+    };
+  }
   if (profile.liveExactScopes > 0) {
     return {
       kind: "gmp",

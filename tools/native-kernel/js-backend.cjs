@@ -1244,6 +1244,9 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
 function generateJavaScript(ir, options = {}) {
+  const publicFunctions = ir.functions.filter(
+    (fn) => fn.hostCallable !== false,
+  );
   function emitFloat64Statement(operation, indent, uint64BigInt) {
     if (operation.kind === "uint64.constant") {
       return `${indent}${operation.target} = ${operation.value}` +
@@ -1419,7 +1422,7 @@ function generateJavaScript(ir, options = {}) {
         `${JSON.stringify(fn.analysis.backend)});`;
   }
 
-  const exports = ir.functions.map((fn) => fn.name).join(", ");
+  const exports = publicFunctions.map((fn) => fn.name).join(", ");
   return `"use strict";
 
 const requestedNativeMode = process.env.SAGEJS_NATIVE_MODE || "auto";
@@ -2899,7 +2902,9 @@ function primeFieldNativeCall(name, args) {
 }
 
 ${ir.functions.map((fn) =>
-    fn.kernelKind === "integer"
+    fn.hostCallable === false
+      ? emitExactFallback(fn)
+      : fn.kernelKind === "integer"
       ? emitExactPublicFunction(fn, options.automaticSelections?.[fn.name])
       : fn.kernelKind === "float64"
         ? emitFloat64PublicFunction(fn)

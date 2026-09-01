@@ -1,8 +1,9 @@
 """Fail-closed public adapter for the resident complex-cubic program.
 
 The mathematical algorithm lives in `cubic_class_number_native.py`.  This
-module owns only host marshalling, a small reusable packed workspace, and an
-immutable live certificate.  The certificate can be replayed through the
+module owns only host marshalling, small reusable publication buffers, and an
+immutable live certificate.  The exact computational workspace remains inside
+the native arena.  The certificate can be replayed through the
 ordinary exact cubic implementation, so the accelerated scalar is never the
 only correctness authority.
 """
@@ -22,7 +23,6 @@ from sagejs.number_fields.cubic_class_number_native import (
     _CUBIC_MAX_ORDER_WITNESSES,
     _CUBIC_MAX_RELATIONS,
     _CUBIC_ROUND2_WORKSPACE_LENGTH,
-    _CUBIC_WORKSPACE_LENGTH,
     certified_complex_cubic_class_group_v1,
 )
 
@@ -385,11 +385,6 @@ def certified_complex_cubic_class_number(
                 _CUBIC_OUTPUT_LENGTH,
                 _CUBIC_BUFFER_WORD_CAPACITY,
             )
-            workspace = native_module.kernel_integer_zeros(
-                kernel,
-                _CUBIC_WORKSPACE_LENGTH,
-                _CUBIC_BUFFER_WORD_CAPACITY,
-            )
             analysis_proof = native_module.kernel_integer_zeros(
                 kernel,
                 _CUBIC_ANALYSIS_PROOF_CAPACITY,
@@ -429,7 +424,6 @@ def certified_complex_cubic_class_number(
             _resident_buffers = (
                 kernel,
                 output,
-                workspace,
                 analysis_proof,
                 verification_polynomial,
                 verification_numerator,
@@ -442,7 +436,6 @@ def certified_complex_cubic_class_number(
         (
             _kernel,
             output,
-            workspace,
             analysis_proof,
             verification_polynomial,
             verification_numerator,
@@ -475,7 +468,6 @@ def certified_complex_cubic_class_number(
                 accepted = kernel(
                     output,
                     packed_coefficients,
-                    workspace,
                     analysis_proof,
                     verification_polynomial,
                     verification_numerator,
