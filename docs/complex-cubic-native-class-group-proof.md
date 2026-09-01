@@ -128,7 +128,10 @@ retained factor base surjects onto $\operatorname{Cl}(\mathcal O)$.
 The factor base is allowed to be empty. If every rational prime through the
 selected generator bound is inert, its unique prime ideal is $(p)$ and is
 principal. There are then no nontrivial generators, so the zero-dimensional
-factor-base presentation proves that the class group is trivial.
+factor-base presentation proves that the class group is trivial. The program
+publishes this conclusion immediately: no relation, unit, regulator, or
+analytic-index calculation is part of this proof. Its receipt distinguishes an
+unconditional Minkowski bound from a smaller bound proved under GRH.
 
 ### 3. Exact principal relations give an upper group
 
@@ -316,10 +319,11 @@ defense in depth; it cannot promote a declined native computation.
 
 The version-one detached receipt records the polynomial, field discriminant,
 class invariants, unit coordinates, selected generator bound, factor-base and
-relation sizes, successful compound-multiplier prefix, dyadic
-regulator/zeta/index intervals, analytic cutoff and precision, the theorem
-name, and the GRH assumption. It is an audit record, not yet a standalone proof
-object: it does not contain all ideal relations or local Euler witnesses.
+relation sizes, theorem name, and explicit assumptions. Full relation proofs
+also record the successful compound-multiplier prefix and dyadic analytic
+intervals. Empty-generator-base proofs leave those inapplicable fields zero.
+The receipt is an audit record, not yet a standalone proof object: it does not
+contain all ideal relations or local Euler witnesses.
 
 `receipt.verify()` is intentionally independent of the native program. It
 reconstructs the maximal order, checks the unit norm, and recomputes the class

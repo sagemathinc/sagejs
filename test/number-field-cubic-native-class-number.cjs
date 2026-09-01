@@ -236,6 +236,13 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
         assert receipt.generator_bound == 30, label
         assert receipt.factor_base_size == 11, label
         assert receipt.relation_count == 19, label
+    if label == "3.1.23.1":
+        assert receipt.generator_bound == 2, label
+        assert receipt.factor_base_size == 0, label
+        assert receipt.relation_count == 0, label
+        assert receipt.proof_status == "exact-empty-generator-base-unconditional", label
+        assert receipt.assumptions == (), label
+        assert receipt.theorem == "minkowski-generators-plus-empty-factor-base", label
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label

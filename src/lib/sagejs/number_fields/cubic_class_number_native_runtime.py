@@ -22,6 +22,9 @@ from sagejs.number_fields.cubic_class_number_native import (
     _CUBIC_MAX_GROUPS,
     _CUBIC_MAX_ORDER_WITNESSES,
     _CUBIC_MAX_RELATIONS,
+    _CUBIC_PROOF_ANALYTIC_GRH,
+    _CUBIC_PROOF_EMPTY_GRH,
+    _CUBIC_PROOF_EMPTY_MINKOWSKI,
     _CUBIC_ROUND2_WORKSPACE_LENGTH,
     certified_complex_cubic_class_group_v1,
 )
@@ -102,6 +105,7 @@ def _checked_native_values(
         if product != class_number:
             return None
         equation_discriminant = _cubic_polynomial_discriminant(coefficients)
+        proof_mode = exact[35]
         if (
             exact[19] < 0
             or exact[19] > 4
@@ -112,14 +116,12 @@ def _checked_native_values(
             or exact[33] != exact[21]
             or exact[34] != equation_discriminant
             or exact[28] * exact[29] * exact[29] != equation_discriminant
-            or exact[35] != 1
-            or exact[36] != _CUBIC_ANALYTIC_THRESHOLD
-            or exact[37] < 1
-            or exact[37] > _CUBIC_ANALYTIC_MAX_TERMS
-            or exact[38] < 5
-            or exact[38] > _CUBIC_ANALYTIC_MAX_VALUES
-            or exact[39] != _CUBIC_ANALYTIC_PRECISION
-            or exact[47] != 1 << _CUBIC_ANALYTIC_PRECISION
+            or proof_mode
+            not in (
+                _CUBIC_PROOF_ANALYTIC_GRH,
+                _CUBIC_PROOF_EMPTY_MINKOWSKI,
+                _CUBIC_PROOF_EMPTY_GRH,
+            )
             or exact[21] < 0
             or exact[21] > _CUBIC_MAX_FACTORS
             or exact[22] < 0
@@ -128,19 +130,33 @@ def _checked_native_values(
             or (exact[21] != 0 and exact[22] == 0)
             or exact[23] < exact[21]
             or exact[23] > _CUBIC_MAX_RELATIONS
-            or exact[40] <= 0
-            or exact[41] < exact[40]
-            or exact[43] < exact[42]
-            or exact[45] < exact[44]
-            or exact[45] < 0
-            # `log(2) > 842/1215` follows from the first three positive terms
-            # of `2*atanh(1/3) = 2/3 + 2/81 + 2/1215 + ...`.  This independent
-            # rational
-            # check is weaker than the native interval check and therefore
-            # cannot turn a decline into acceptance, while avoiding the
-            # needlessly coarse one-term bound `2/3`.
-            or exact[45] >= 842 * exact[47] // 1215
-            or exact[46] < 0
+        ):
+            return None
+        if proof_mode == _CUBIC_PROOF_ANALYTIC_GRH:
+            if (
+                exact[36] != _CUBIC_ANALYTIC_THRESHOLD
+                or exact[37] < 1
+                or exact[37] > _CUBIC_ANALYTIC_MAX_TERMS
+                or exact[38] < 5
+                or exact[38] > _CUBIC_ANALYTIC_MAX_VALUES
+                or exact[39] != _CUBIC_ANALYTIC_PRECISION
+                or exact[47] != 1 << _CUBIC_ANALYTIC_PRECISION
+                or exact[40] <= 0
+                or exact[41] < exact[40]
+                or exact[43] < exact[42]
+                or exact[45] < exact[44]
+                or exact[45] < 0
+                or exact[45] >= 842 * exact[47] // 1215
+                or exact[46] < 0
+            ):
+                return None
+        elif (
+            class_number != 1
+            or invariant_count != 0
+            or exact[21] != 0
+            or exact[22] != 0
+            or exact[23] != 0
+            or any(exact[index] != 0 for index in range(36, 50))
         ):
             return None
         return exact
@@ -241,14 +257,24 @@ class CertifiedComplexCubicClassNumber:
 
     @property
     def proof_status(self) -> str:
+        if self._values[35] == _CUBIC_PROOF_EMPTY_MINKOWSKI:
+            return "exact-empty-generator-base-unconditional"
+        if self._values[35] == _CUBIC_PROOF_EMPTY_GRH:
+            return "exact-empty-generator-base-conditional-grh"
         return "exact-relations-conditional-grh"
 
     @property
     def assumptions(self) -> tuple[str, ...]:
+        if self._values[35] == _CUBIC_PROOF_EMPTY_MINKOWSKI:
+            return ()
         return ("GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",)
 
     @property
     def theorem(self) -> str:
+        if self._values[35] == _CUBIC_PROOF_EMPTY_MINKOWSKI:
+            return "minkowski-generators-plus-empty-factor-base"
+        if self._values[35] == _CUBIC_PROOF_EMPTY_GRH:
+            return "belabas-diaz-y-diaz-friedman-generators-plus-empty-factor-base"
         return "belabas-diaz-y-diaz-friedman-generators-plus-belabas-friedman-index-one"
 
     def matches(self, field: Any) -> bool:
