@@ -200,6 +200,15 @@ class NormalizedNewform(sage.Element):
     def certificate(self, prec: Any = None) -> NewformCertificate:
         return NewformCertificate(self, _sturm_precision(self._parent, prec))
 
+    def lseries_input(self, coefficient_bound: Any = None) -> ModularFormLSeriesInput:
+        r"""Return exact arithmetic-normalized input for $L(f,s)$."""
+        bound = (
+            max(1, self._parent.sturm_bound() + 1)
+            if coefficient_bound is None
+            else _nonnegative(coefficient_bound, "coefficient bound")
+        )
+        return ModularFormLSeriesInput(self, bound)
+
     def __repr__(self) -> str:
         return (
             "q + ... (normalized newform of level "
@@ -209,6 +218,105 @@ class NormalizedNewform(sage.Element):
             + ", and coefficient field "
             + str(self._coefficient_field)
             + ")"
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class ModularFormLSeriesInput(sage.Parent):
+    r"""A finite exact prefix for the arithmetic Dirichlet series.
+
+    This records
+
+    $$
+    L(f,s)=\sum_{n\geq1}a_n n^{-s}
+    $$
+
+    without choosing a numerical embedding of the coefficient field.  It is
+    intentionally an exact input object, not a claim that a complex analytic
+    continuation has already been initialized.
+    """
+
+    def __init__(self, form: Any, coefficient_bound: Any) -> None:
+        self._form = form
+        self._coefficient_bound = _nonnegative(coefficient_bound, "coefficient bound")
+        if self._coefficient_bound < 1:
+            raise ValueError("coefficient bound must be at least 1")
+        self._coefficients = runtime.math_tuple(
+            [
+                form.hecke_eigenvalue(index)
+                for index in range(1, self._coefficient_bound + 1)
+            ]
+        )
+        self._verified = self._verify()
+        if not self._verified:
+            raise ArithmeticError("modular-form L-series input verification failed")
+        runtime.object.freeze(self)
+
+    def modular_form(self) -> Any:
+        return self._form
+
+    def conductor(self) -> int:
+        return self._form.level()
+
+    level = conductor
+
+    def weight(self) -> int:
+        return self._form.weight()
+
+    def character(self) -> Any:
+        return self._form.character()
+
+    def coefficient_field(self) -> Any:
+        return self._form.coefficient_field()
+
+    base_ring = coefficient_field
+
+    def coefficient_bound(self) -> int:
+        return self._coefficient_bound
+
+    def coefficient(self, index: Any) -> Any:
+        coefficient_index = _nonnegative(index, "Dirichlet coefficient index")
+        if coefficient_index < 1 or coefficient_index > self._coefficient_bound:
+            raise IndexError("coefficient lies outside the exact L-series prefix")
+        return self._coefficients[coefficient_index - 1]
+
+    __getitem__ = coefficient
+
+    def coefficients(self) -> tuple[Any, ...]:
+        return self._coefficients
+
+    def normalization(self) -> str:
+        return "arithmetic: L(f,s)=sum(a_n*n^(-s), n>=1)"
+
+    def functional_equation_center(self) -> Any:
+        return sage.QQ(self.weight()) / 2
+
+    def verify(self) -> bool:
+        return self._verify()
+
+    def is_verified(self) -> bool:
+        return self._verified
+
+    def _verify(self) -> bool:
+        if len(self._coefficients) != self._coefficient_bound:
+            return False
+        if self._coefficients[0] != self._form.coefficient_field()(1):
+            return False
+        for index in range(1, self._coefficient_bound + 1):
+            if self._coefficients[index - 1] != self._form.hecke_eigenvalue(index):
+                return False
+        return True
+
+    def __repr__(self) -> str:
+        return (
+            "Exact L-series input with "
+            + str(self._coefficient_bound)
+            + " coefficients for a weight "
+            + str(self.weight())
+            + " modular form of conductor "
+            + str(self.conductor())
         )
 
     __str__ = __repr__
@@ -461,6 +569,7 @@ def modular_forms_newforms(space: Any, names: str = "a") -> list[NormalizedNewfo
 
 
 __all__ = [
+    "ModularFormLSeriesInput",
     "NewOldDecompositionCertificate",
     "NewformCertificate",
     "NormalizedNewform",

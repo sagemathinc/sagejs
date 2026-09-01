@@ -665,12 +665,27 @@
         "modular-form-expansions"
       ],
       "modules": [
-        "sagejs.modular_forms.eta_products",
         "sagejs.modular_forms.qexp_algebra"
       ],
       "files": [
-        "src/lib/sagejs/modular_forms/eta_products.py",
         "src/lib/sagejs/modular_forms/qexp_algebra.py"
+      ],
+      "prefixes": []
+    },
+    {
+      "id": "modular-form-eta-products",
+      "layer": 7,
+      "startup": "lazy",
+      "max_source_bytes": 25000,
+      "depends_on": [
+        "core-runtime",
+        "modular-form-qexp-algebra"
+      ],
+      "modules": [
+        "sagejs.modular_forms.eta_products"
+      ],
+      "files": [
+        "src/lib/sagejs/modular_forms/eta_products.py"
       ],
       "prefixes": []
     },
