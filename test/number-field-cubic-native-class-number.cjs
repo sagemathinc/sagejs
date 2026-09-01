@@ -166,7 +166,7 @@ cases = (
     ("3.1.4027.2", (8, 7, -1, 1), 6, (6,), 0),
     ("3.1.5448.1", (30, -14, -1, 1), 8, (8,), 0),
     # The narrow three-ideal prefix leaves analytic index 2. The exact status
-    # authorizes a complete adjacent-ideal retry, which finds the middle
+    # authorizes the four-ideal-and-complements retry, which finds the middle
     # generator above 29 without authorizing a compound multiplier.
     ("3.1.12763.1", (-22, 1, -1, 1), 8, (2, 4), 0),
     # The fundamental unit lies beyond the opportunistic score-9 coordinate
@@ -181,6 +181,11 @@ cases = (
     # generator cutoff 16.  The exact reduced ellipsoid in the complementary
     # norm-9 ideal then supplies the decisive relation without a restart.
     ("3.1.108115.1", (-383, -68, 0, 1), 10, (10,), 0),
+    # PARI's successful small_norm path uses four adjacent ideals. The native
+    # schedule likewise broadens from three to four only after the first exact
+    # presentation has nontrivial analytic index, and obtains PARI's 17-row
+    # presentation of C10 without searching the whole factor base.
+    ("3.1.104072.1", (434, 2, -1, 1), 10, (10,), 0),
     # The defining order has index 4 and a prime discriminant component above
     # one million.  The proof binder must use its deterministic word-prime
     # certificate rather than an arbitrary trial-division cutoff.
@@ -207,6 +212,10 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.108115.1":
         assert receipt.generator_bound == 16, label
         assert receipt.factor_base_size == 9, label
+    if label == "3.1.104072.1":
+        assert receipt.generator_bound == 18, label
+        assert receipt.factor_base_size == 11, label
+        assert receipt.relation_count == 17, label
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label

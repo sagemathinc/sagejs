@@ -50,8 +50,9 @@ _CUBIC_MAX_POWERS = 12
 _CUBIC_MAX_RELATIONS = 1024
 _CUBIC_MAX_COMPOUND_PAIRS = 128
 _CUBIC_COMPOUND_MULTIPLIERS = 4
-_CUBIC_MAX_RELATION_EFFORT = 5
+_CUBIC_MAX_RELATION_EFFORT = 6
 _CUBIC_INITIAL_ADJACENT_IDEALS = 3
+_CUBIC_SECOND_ADJACENT_IDEALS = 4
 _CUBIC_NARROW_ADJACENT_MAX_FACTORS = 11
 _CUBIC_RELATION_REDUNDANCY_TAIL = 6
 _CUBIC_RELATION_RECOVERY_TAIL = 18
@@ -4762,15 +4763,17 @@ def certified_complex_cubic_class_group_v1(
     ):
         return False
     # Relation effort is monotone. The first call uses PARI's narrow
-    # three-adjacent-ideal prefix, the second restores the complete adjacent
-    # set, and only later calls authorize one, two, then four compound
-    # multipliers. Every retry recomputes and authenticates its own exact state.
+    # three-adjacent-ideal prefix. The second adds one adjacent ideal and every
+    # residue-degree-two complement already certified by the factor-base
+    # construction. The third restores the complete adjacent set, and only
+    # later calls authorize one, two, then four compound multipliers. Every
+    # retry recomputes and authenticates its own exact state.
     scheduled_compound_multiplier_limit: uint64 = 0
-    if relation_effort == 3:
+    if relation_effort == 4:
         scheduled_compound_multiplier_limit = 1
-    elif relation_effort == 4:
-        scheduled_compound_multiplier_limit = 2
     elif relation_effort == 5:
+        scheduled_compound_multiplier_limit = 2
+    elif relation_effort == 6:
         scheduled_compound_multiplier_limit = _CUBIC_COMPOUND_MULTIPLIERS
     with NativeExactArena(memory_limit, temporary_limit) as arena:
         workspace = arena.integer_vector(_CUBIC_WORKSPACE_LENGTH, 0)
@@ -5414,32 +5417,37 @@ def certified_complex_cubic_class_group_v1(
         # ideals later; `small_norm` traverses that permutation backward.  The
         # bounded source-transparent analogue first visits the three final
         # factor-base ideals, which have the largest norms in the canonical
-        # ordering. A retry then visits every retained noninert ideal,
-        # including the residue-degree-two complement in a
+        # ordering. The next stage adds one final ideal and every
+        # residue-degree-two complement in a
         # `(1,2)` split.  The latter is essential in `3.1.108115.1`, where
         # PARI's second successful reduced lattice is precisely the ideal of
-        # norm 9. The complete retry prevents a middle generator (the ideal
+        # norm 9. The complete retry then prevents a middle generator (the ideal
         # over 29 in `3.1.12763.1`) from receiving no reduced search at all.
         # Exact rank, unit, and analytic-index failures are the only signals
         # that authorize broader relation effort.
         adjacent_ideal_count: uint64 = 0
         adjacent_candidate_count: uint64 = 0
+        adjacent_prefix_start: uint64 = 0
         adjacent_factor_cursor: uint64 = 0
-        if (
-            relation_effort == 1
-            and factor_count <= _CUBIC_NARROW_ADJACENT_MAX_FACTORS
-            and factor_count > _CUBIC_INITIAL_ADJACENT_IDEALS
-        ):
-            adjacent_factor_cursor = factor_count - _CUBIC_INITIAL_ADJACENT_IDEALS
+        if relation_effort <= 2 and factor_count <= _CUBIC_NARROW_ADJACENT_MAX_FACTORS:
+            adjacent_prefix: uint64 = _CUBIC_INITIAL_ADJACENT_IDEALS
+            if relation_effort == 2:
+                adjacent_prefix = _CUBIC_SECOND_ADJACENT_IDEALS
+            if factor_count > adjacent_prefix:
+                adjacent_prefix_start = factor_count - adjacent_prefix
         while adjacent_factor_cursor < factor_count:
             adjacent_factor_index: uint64 = adjacent_factor_cursor
             adjacent_factor_base: uint64 = (
                 _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
             )
-            workspace[adjacent_factor_base + 9] = 1
-            adjacent_ideal_count += 1
-            if workspace[adjacent_factor_base + 8] == 0:
-                adjacent_candidate_count += 4
+            schedule_adjacent = adjacent_factor_index >= adjacent_prefix_start
+            if relation_effort == 2 and workspace[adjacent_factor_base + 8] == 1:
+                schedule_adjacent = True
+            if schedule_adjacent:
+                workspace[adjacent_factor_base + 9] = 1
+                adjacent_ideal_count += 1
+                if workspace[adjacent_factor_base + 8] == 0:
+                    adjacent_candidate_count += 4
             adjacent_factor_cursor += 1
         compound_pair_count: uint64 = 0
         compound_multiplier_index: uint64 = 0
