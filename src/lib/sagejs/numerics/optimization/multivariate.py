@@ -61,10 +61,11 @@ def minimize_problem(
     """Construct an inspectable local-minimization problem.
 
     Nonlinear constraints use SciPy-shaped scalar mappings with `type` equal
-    to `ineq` (meaning `fun(x) >= 0`) or `eq` (meaning `fun(x) == 0`). They
-    are available only through the explicitly requested `nlopt-cobyla`
-    identity. Box bounds use the explicitly named `projected-bfgs` extension
-    for the ordinary-Python automatic route.
+    to `ineq` (meaning `fun(x) >= 0`) or `eq` (meaning `fun(x) == 0`). No
+    sanitizer-clean portable nonlinear-constraint backend is currently
+    qualified, so nonempty constraints fail explicitly. Box bounds use the
+    explicitly named `projected-bfgs` extension for the ordinary-Python
+    automatic route or explicit `nlopt-nelder-mead` for the NLopt route.
     """
     if not callable(function):
         raise TypeError("objective must be callable")
@@ -96,9 +97,10 @@ def minimize_problem(
         raise ValueError("initial_step entries must be finite and positive")
     bound_record = [[lower[index], upper[index]] for index in range(len(point))]
     requested = method.lower()
-    if len(constraint_specs) != 0 and requested != "nlopt-cobyla":
-        raise ValueError(
-            "nonlinear constraints require the explicit nlopt-cobyla method"
+    if len(constraint_specs) != 0:
+        raise NotImplementedError(
+            "nonlinear constraints are unsupported until a sanitizer-clean "
+            "portable backend is qualified"
         )
     if requested in ("nelder-mead", "bfgs") and any(
         item != [None, None] for item in bound_record
@@ -483,6 +485,7 @@ def _bfgs(
 def _nlopt_minimize(
     execution: Execution,
     method: str,
+    execution_payload: dict[str, Any],
 ) -> tuple[list[float] | None, float | None, int, str, dict[str, Any]]:
     """Execute one exact NLopt identity through the lazy runtime boundary."""
     try:
@@ -517,11 +520,6 @@ def _nlopt_minimize(
     except Exception:
         raise StopExecution("backend_failure", "nlopt_backend_unavailable") from None
 
-    options = runtime.object.create(None)
-
-    def set_option(name: str, value: Any) -> None:
-        runtime.reflect.set(options, name, value)
-
     def objective_callback(candidate: list[float]) -> float:
         return _objective(execution, candidate)
 
@@ -549,59 +547,90 @@ def _nlopt_minimize(
     remaining_elapsed = problem.resource_budget.max_elapsed_ms - execution.elapsed_ms()
     if remaining_elapsed <= 0.0:
         raise StopExecution("maximum_elapsed_time", "elapsed_time_budget")
-    set_option("method", method)
-    set_option("initial", point)
-    set_option("initialStep", step)
-    set_option(
-        "lower",
-        [float("-inf") if value is None else float(value) for value in lower],
-    )
-    set_option(
-        "upper",
-        [float("inf") if value is None else float(value) for value in upper],
-    )
-    set_option("objective", objective_callback)
-    set_option("inequalityCount", len(inequality))
-    set_option("equalityCount", len(equality))
-    if len(inequality) != 0:
-        set_option("inequality", inequality_callback)
-        set_option("inequalityTolerance", [item.tolerance for item in inequality])
-    if len(equality) != 0:
-        set_option("equality", equality_callback)
-        set_option("equalityTolerance", [item.tolerance for item in equality])
-    # NLopt combines its stopping criteria with OR. In one dimension, equal
-    # objective values at opposite simplex vertices can therefore satisfy a
-    # relative function test while the simplex is still far from stationary
-    # (for example, the two sides of a quadratic minimizer). Keep function
-    # tolerance in the independent public validation contract, and use the
-    # parameter tolerance as the backend convergence stop.
-    # Omitting NLopt's optional function-tolerance field selects its documented
-    # disabled value. Do not pass a Python float wrapper across this low-level
-    # JavaScript option boundary merely to spell that default explicitly.
-    set_option("relativeParameterTolerance", float(problem.tolerances["xtol"]))
     # NLopt's derivative-free algorithms expose an evaluation stop, not a
     # portable iteration counter. Use the stricter of the caller's iteration
     # and evaluation budgets rather than silently ignoring either contract.
     backend_evaluation_budget = min(
         remaining_evaluations, problem.resource_budget.max_iterations
     )
-    set_option("maximumEvaluations", backend_evaluation_budget)
-    set_option("maximumCallbacks", backend_evaluation_budget)
-    set_option("maximumElapsedMs", remaining_elapsed)
 
+    evaluations_before_backend = execution.evaluations
     try:
+        options = runtime.object.create(None)
+
+        def set_option(name: str, value: Any) -> None:
+            runtime.reflect.set(options, name, value)
+
+        set_option("method", method)
+        set_option("initial", point)
+        set_option("initialStep", step)
+        set_option(
+            "lower",
+            [float("-inf") if value is None else float(value) for value in lower],
+        )
+        set_option(
+            "upper",
+            [float("inf") if value is None else float(value) for value in upper],
+        )
+        set_option("objective", objective_callback)
+        set_option("inequalityCount", len(inequality))
+        set_option("equalityCount", len(equality))
+        if len(inequality) != 0:
+            set_option("inequality", inequality_callback)
+            set_option("inequalityTolerance", [item.tolerance for item in inequality])
+        if len(equality) != 0:
+            set_option("equality", equality_callback)
+            set_option("equalityTolerance", [item.tolerance for item in equality])
+        # NLopt combines its stopping criteria with OR. In one dimension, equal
+        # objective values at opposite simplex vertices can therefore satisfy a
+        # relative function test while the simplex is still far from stationary
+        # (for example, the two sides of a quadratic minimizer). Keep function
+        # tolerance in the independent public validation contract, and use the
+        # parameter tolerance as the backend convergence stop.
+        # Omitting NLopt's optional function-tolerance field selects its documented
+        # disabled value. Do not pass a Python float wrapper across this low-level
+        # JavaScript option boundary merely to spell that default explicitly.
+        set_option("relativeParameterTolerance", float(problem.tolerances["xtol"]))
+        set_option(
+            "absoluteParameterTolerance",
+            [
+                float(problem.tolerances["xtol"])
+                * max(1.0, abs(point[index]), abs(step[index]))
+                for index in range(len(point))
+            ],
+        )
+        set_option("maximumEvaluations", backend_evaluation_budget)
+        set_option("maximumCallbacks", backend_evaluation_budget)
+        set_option("maximumElapsedMs", remaining_elapsed)
         result = runtime.reflect.apply(solve, backend, [options])
     except (StopExecution, CallbackFailure):
+        # A callback-originated exception proves that the authenticated runtime
+        # entered the external solver. Construction/loader errors do not.
+        execution_payload.update(
+            {"method_identity": method, "backend_identity": "nlopt-mit-wasm"}
+        )
         raise
     except Exception:
         raise StopExecution("backend_failure", "nlopt_backend_error") from None
 
     try:
-        returned_method = str(runtime.reflect.get(result, "method"))
-        returned_backend = str(runtime.reflect.get(result, "backend"))
+        raw_method = runtime.reflect.get(result, "method")
+        raw_backend = runtime.reflect.get(result, "backend")
+        if (
+            runtime.jstype(raw_method) != "string"
+            or runtime.jstype(raw_backend) != "string"
+        ):
+            raise StopExecution("backend_failure", "nlopt_method_identity_mismatch")
+        returned_method = str(raw_method)
+        returned_backend = str(raw_backend)
         if returned_method != method or returned_backend != "nlopt-mit-wasm":
             raise StopExecution("backend_failure", "nlopt_method_identity_mismatch")
-        if not bool(runtime.reflect.get(result, "independentValidationRequired")):
+        raw_validation_required = runtime.reflect.get(
+            result, "independentValidationRequired"
+        )
+        if runtime.jstype(raw_validation_required) != "boolean" or not bool(
+            raw_validation_required
+        ):
             raise StopExecution("backend_failure", "nlopt_validation_contract_missing")
         raw_value = runtime.reflect.get(result, "value")
         value: list[float] | None = None
@@ -611,47 +640,121 @@ def _nlopt_minimize(
                 not math.isfinite(item) for item in value
             ):
                 raise StopExecution("backend_failure", "invalid_nlopt_parameter_vector")
-        backend_status = str(runtime.reflect.get(result, "status"))
-        backend_status_code = int(runtime.reflect.get(result, "backendStatus"))
-        backend_converged = bool(runtime.reflect.get(result, "backendConverged"))
-        backend_evaluations = int(runtime.reflect.get(result, "evaluations"))
-        objective_callbacks = int(runtime.reflect.get(result, "objectiveCallbacks"))
-        inequality_callbacks = int(runtime.reflect.get(result, "inequalityCallbacks"))
-        equality_callbacks = int(runtime.reflect.get(result, "equalityCallbacks"))
-        callback_count = int(runtime.reflect.get(result, "callbackCount"))
-        gradient_callbacks = int(runtime.reflect.get(result, "gradientCallbacks"))
-        jacobian_callbacks = int(runtime.reflect.get(result, "jacobianCallbacks"))
+
+        def exact_integer(name: str, *, nonnegative: bool = False) -> int:
+            raw = runtime.reflect.get(result, name)
+            if runtime.jstype(raw) != "number":
+                raise StopExecution("backend_failure", "invalid_nlopt_counters")
+            numeric = float(raw)
+            integer = int(numeric)
+            if (
+                not math.isfinite(numeric)
+                or numeric != float(integer)
+                or (nonnegative and integer < 0)
+            ):
+                raise StopExecution("backend_failure", "invalid_nlopt_counters")
+            return integer
+
+        raw_status = runtime.reflect.get(result, "status")
+        raw_converged = runtime.reflect.get(result, "backendConverged")
+        raw_iterations = runtime.reflect.get(result, "iterations")
         if (
-            any(
-                count < 0
-                for count in (
-                    backend_evaluations,
-                    objective_callbacks,
-                    inequality_callbacks,
-                    equality_callbacks,
-                    callback_count,
-                    gradient_callbacks,
-                    jacobian_callbacks,
-                )
-            )
-            or gradient_callbacks != 0
-            or jacobian_callbacks != 0
+            runtime.jstype(raw_status) != "string"
+            or runtime.jstype(raw_converged) != "boolean"
         ):
+            raise StopExecution("backend_failure", "invalid_nlopt_termination_contract")
+        if runtime.jstype(raw_iterations) != "undefined":
+            raise StopExecution("backend_failure", "invalid_nlopt_counters")
+        backend_status = str(raw_status)
+        backend_status_code = exact_integer("backendStatus")
+        backend_converged = bool(raw_converged)
+        backend_evaluations = exact_integer("evaluations", nonnegative=True)
+        objective_callbacks = exact_integer("objectiveCallbacks", nonnegative=True)
+        inequality_callbacks = exact_integer("inequalityCallbacks", nonnegative=True)
+        equality_callbacks = exact_integer("equalityCallbacks", nonnegative=True)
+        callback_count = exact_integer("callbackCount", nonnegative=True)
+        gradient_callbacks = exact_integer("gradientCallbacks", nonnegative=True)
+        jacobian_callbacks = exact_integer("jacobianCallbacks", nonnegative=True)
+        expected_statuses = {
+            -5: (
+                "forced_stop",
+                "cancelled",
+                "maximum_callbacks",
+                "maximum_elapsed_time",
+            ),
+            -4: ("roundoff_limited",),
+            -3: ("out_of_memory",),
+            -2: ("invalid_arguments",),
+            -1: ("failure",),
+            1: ("success",),
+            2: ("stop_value_reached",),
+            3: ("function_tolerance_reached",),
+            4: ("parameter_tolerance_reached",),
+            5: ("maximum_evaluations",),
+            6: ("maximum_time",),
+        }
+        expected_backend_statuses = expected_statuses.get(backend_status_code)
+        expected_converged = 1 <= backend_status_code <= 4
+        if (
+            expected_backend_statuses is None
+            or backend_status not in expected_backend_statuses
+            or backend_converged != expected_converged
+            or (backend_converged and value is None)
+        ):
+            raise StopExecution("backend_failure", "invalid_nlopt_termination_contract")
+        public_backend_callbacks = execution.evaluations - evaluations_before_backend
+        host_stopped_before_callback = backend_status in (
+            "cancelled",
+            "maximum_callbacks",
+            "maximum_elapsed_time",
+        )
+        common_counter_error = (
+            gradient_callbacks != 0
+            or jacobian_callbacks != 0
+            or inequality_callbacks != 0
+            or equality_callbacks != 0
+            or backend_evaluations != objective_callbacks
+            or callback_count > backend_evaluation_budget
+        )
+        if host_stopped_before_callback:
+            # The C callback and evaluation counters include the final attempt;
+            # the host accepted-callback/public counters do not when it stops on
+            # cancellation, callback budget, or elapsed time before dispatch.
+            counter_error = (
+                objective_callbacks - callback_count not in (0, 1)
+                or public_backend_callbacks != callback_count
+                or backend_evaluations > backend_evaluation_budget + 1
+            )
+        else:
+            counter_error = (
+                callback_count != objective_callbacks
+                or public_backend_callbacks != objective_callbacks
+                or backend_evaluations > backend_evaluation_budget
+            )
+        if common_counter_error or counter_error:
             raise StopExecution("backend_failure", "invalid_nlopt_counters")
     except StopExecution:
         raise
     except Exception:
         raise StopExecution("backend_failure", "invalid_nlopt_runtime_result") from None
 
+    # Only a fully authenticated result may claim external execution.
+    execution_payload.update(
+        {"method_identity": method, "backend_identity": "nlopt-mit-wasm"}
+    )
     if backend_converged:
         status = "converged"
-    elif backend_status in ("maximum_evaluations", "maximum_callbacks"):
+    elif backend_status_code == 5:
         status = "maximum_evaluations"
-    elif backend_status in ("maximum_time", "maximum_elapsed_time"):
+    elif backend_status_code == 6:
         status = "maximum_elapsed_time"
     elif backend_status == "cancelled":
         status = "cancelled"
-    elif backend_status == "roundoff_limited":
+    elif backend_status == "maximum_callbacks":
+        status = "maximum_evaluations"
+    elif backend_status == "maximum_elapsed_time":
+        status = "maximum_elapsed_time"
+    elif backend_status_code == -4:
         status = "stagnation"
     else:
         status = "backend_failure"
@@ -713,10 +816,11 @@ def solve_minimize_problem(
     reason: str | None = None
     payload: dict[str, Any] = {}
     try:
-        if selected_plan.method in ("nlopt-nelder-mead", "nlopt-cobyla"):
-            value, objective, iterations, status, payload = _nlopt_minimize(
-                execution, selected_plan.method
+        if selected_plan.method == "nlopt-nelder-mead":
+            value, objective, iterations, status, result_payload = _nlopt_minimize(
+                execution, selected_plan.method, payload
             )
+            payload.update(result_payload)
         elif selected_plan.method == "nelder-mead":
             value, objective, iterations, status, payload = _nelder_mead(execution)
         else:
@@ -734,7 +838,7 @@ def solve_minimize_problem(
         diagnostics.append(status_item)
     validation: NumericalValidation
     validation, validation_diagnostics, validation_failure = validate_with_execution(
-        problem, value, execution, status
+        problem, value, execution, status, executed_method=selected_plan.method
     )
     if status == "converged" and validation_failure is not None:
         status, reason = validation_failure
@@ -762,6 +866,11 @@ def solve_minimize_problem(
         force=True,
     )
     payload["objective"] = objective
+    if selected_plan.method == "nlopt-nelder-mead":
+        payload["optimality_claim"] = "heuristic_only"
+        payload["local_optimum_certified"] = False
+        payload["global_optimum_certified"] = False
+        payload["independent_contradiction_checks_passed"] = validation.passed
     if reason is not None:
         payload["stop_reason"] = reason
     return OptimizationResult(

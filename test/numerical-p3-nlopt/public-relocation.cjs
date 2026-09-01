@@ -7,6 +7,7 @@ const { execFileSync, spawnSync } = require("node:child_process");
 const {
   mkdtempSync,
   mkdirSync,
+  readFileSync,
   readdirSync,
   renameSync,
   rmSync,
@@ -79,6 +80,30 @@ test("a packed and relocated npm package executes public NLopt", {
     const installedWasm = join(
       installedRoot, "dist", "numerical", "nlopt-methods.wasm",
     );
+    const originalWasm = readFileSync(installedWasm);
+    const tamperedWasm = Buffer.from(originalWasm);
+    tamperedWasm[Math.floor(tamperedWasm.byteLength / 2)] ^= 1;
+    writeFileSync(installedWasm, tamperedWasm);
+    const tampered = spawnSync(process.execPath, [installed, "--python", "-"], {
+      cwd: consumer,
+      input: [
+        "from sagejs.numerics.optimization import minimize",
+        "answer = minimize(lambda p: (p[0]-2.0)**2, [20.0], method='nlopt-nelder-mead')",
+        "print(answer.status)",
+        "print(answer.success)",
+        "print(answer.domain_payload['stop_reason'])",
+        "",
+      ].join("\n"),
+      encoding: "utf8",
+      env: { ...process.env, SAGEJS_NATIVE_DISABLE: "1" },
+      timeout: 120_000,
+    });
+    assert.equal(tampered.status, 0, tampered.stderr || tampered.stdout);
+    assert.equal(
+      tampered.stdout.trim(),
+      "backend_failure\nFalse\nnlopt_backend_unavailable",
+    );
+    writeFileSync(installedWasm, originalWasm);
     renameSync(installedWasm, `${installedWasm}.missing`);
     const missing = spawnSync(process.execPath, [installed, "--python", "-"], {
       cwd: consumer,

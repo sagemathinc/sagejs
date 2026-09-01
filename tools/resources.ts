@@ -390,6 +390,40 @@ const reservedModuleSegments = new Set([
 const sha1Pattern = /^[a-f0-9]{40}$/;
 const sha256Pattern = /^[a-f0-9]{64}$/;
 
+type WasmArtifactReceipt = {
+  schema?: unknown;
+  algorithm?: unknown;
+  filename?: unknown;
+  bytes?: unknown;
+  sha256?: unknown;
+};
+
+function verifyWasmArtifact(
+  bytes: Uint8Array,
+  receipt: WasmArtifactReceipt,
+  filename: string,
+  label: string,
+): void {
+  if (
+    receipt?.schema !== "sagejs.wasm-artifact-integrity/v1" ||
+    receipt?.algorithm !== "sha256" ||
+    receipt?.filename !== filename ||
+    !Number.isSafeInteger(receipt?.bytes) ||
+    Number(receipt.bytes) <= 0 ||
+    typeof receipt?.sha256 !== "string" ||
+    !sha256Pattern.test(receipt.sha256)
+  ) {
+    throw new Error(`${label} has an invalid packaged artifact receipt`);
+  }
+  if (bytes.byteLength !== receipt.bytes) {
+    throw new Error(`${label} size differs from its packaged artifact receipt`);
+  }
+  const actual = createHash("sha256").update(bytes).digest("hex");
+  if (actual !== receipt.sha256) {
+    throw new Error(`${label} SHA-256 differs from its packaged artifact receipt`);
+  }
+}
+
 function digest(algorithm: "sha1" | "sha256", value: string): string {
   return createHash(algorithm).update(value).digest("hex");
 }
@@ -1107,11 +1141,19 @@ function loadNloptBackend(): unknown {
   if (nloptBackendModule !== undefined) return nloptBackendModule;
   const runtime = require("../numerical/nlopt-backend.cjs") as {
     createNloptBackendSync(bytes: Uint8Array): unknown;
+    nloptArtifactReceipt: WasmArtifactReceipt;
   };
   if (typeof runtime.createNloptBackendSync !== "function") {
     throw new TypeError("the NLopt numerical runtime adapter is invalid");
   }
-  nloptBackendModule = runtime.createNloptBackendSync(nloptBackendArtifact());
+  const bytes = nloptBackendArtifact();
+  verifyWasmArtifact(
+    bytes,
+    runtime.nloptArtifactReceipt,
+    "nlopt-methods.wasm",
+    "NLopt numerical backend",
+  );
+  nloptBackendModule = runtime.createNloptBackendSync(bytes);
   return nloptBackendModule;
 }
 

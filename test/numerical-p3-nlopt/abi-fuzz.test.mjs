@@ -173,28 +173,30 @@ test("raw ABI rejects corrupt and overlapping regions without callbacks", async 
   assert.equal(Number(api.sagejs_nlopt_live_bytes()), 0);
 });
 
-test("every early allocation failure position cleans both methods", async () => {
+test("every early allocation failure position cleans Nelder-Mead", async () => {
   const api = await rawBackend();
-  for (const method of [1, 2]) {
-    for (let failure = 0; failure < 20; failure += 1) {
-      api.sagejs_nlopt_set_allocation_failure_after(-1);
-      const fixture = rawFixture(api, 3);
-      const baseline = api.sagejs_nlopt_live_allocations();
-      api.sagejs_nlopt_set_allocation_failure_after(failure);
-      const status = fixture.solve(method);
-      assert.ok(
-        status === -3 || status > 0,
-        `method ${method}, allocation ${failure}, status ${status}`,
-      );
-      assert.equal(
-        api.sagejs_nlopt_live_allocations(),
-        baseline,
-        `method ${method}, allocation ${failure}`,
-      );
-      api.sagejs_nlopt_set_allocation_failure_after(-1);
-      for (const offset of fixture.offsets.reverse()) api.sagejs_nlopt_free(offset);
-      assert.equal(api.sagejs_nlopt_live_allocations(), 0);
-      assert.equal(Number(api.sagejs_nlopt_live_bytes()), 0);
-    }
+  for (let failure = 0; failure < 20; failure += 1) {
+    api.sagejs_nlopt_set_allocation_failure_after(-1);
+    const fixture = rawFixture(api, 3);
+    const baseline = api.sagejs_nlopt_live_allocations();
+    api.sagejs_nlopt_set_allocation_failure_after(failure);
+    const status = fixture.solve(1);
+    assert.ok(
+      status === -3 || status > 0,
+      `allocation ${failure}, status ${status}`,
+    );
+    assert.equal(
+      api.sagejs_nlopt_live_allocations(),
+      baseline,
+      `allocation ${failure}`,
+    );
+    api.sagejs_nlopt_set_allocation_failure_after(-1);
+    for (const offset of fixture.offsets.reverse()) api.sagejs_nlopt_free(offset);
+    assert.equal(api.sagejs_nlopt_live_allocations(), 0);
+    assert.equal(Number(api.sagejs_nlopt_live_bytes()), 0);
   }
+  const rejected = rawFixture(api, 3);
+  assert.equal(rejected.solve(2), -2001);
+  for (const offset of rejected.offsets.reverse()) api.sagejs_nlopt_free(offset);
+  assert.equal(api.sagejs_nlopt_live_allocations(), 0);
 });

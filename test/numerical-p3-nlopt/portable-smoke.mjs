@@ -12,6 +12,10 @@ const repositoryPackage = resolve(
   "../../src/lib/sagejs/numerics/optimization/backends/nlopt",
 );
 const packageRoot = resolve(process.argv[2] ?? repositoryPackage);
+const productionManifest = JSON.parse(await readFile(
+  resolve(repositoryPackage, "release/production-manifest.json"),
+  "utf8",
+));
 const { createNloptBackend } = await import(
   pathToFileURL(resolve(packageRoot, "index.mjs"))
 );
@@ -27,25 +31,8 @@ const nelderMead = solver.solve({
   relativeParameterTolerance: 1e-9,
   maximumEvaluations: 2000,
 });
-const cobyla = solver.solve({
-  method: "nlopt-cobyla",
-  initial: [0.25, 0.25],
-  initialStep: [0.4, 0.4],
-  objective: ([x, y]) => (x - 1) ** 2 + (y - 1) ** 2,
-  inequalityCount: 1,
-  inequality: ([x, y]) => [x * x + y * y - 1],
-  inequalityTolerance: [2e-7],
-  relativeParameterTolerance: 1e-9,
-  maximumEvaluations: 2000,
-});
 const nelderResidual = Math.hypot(nelderMead.value[0] - 1, nelderMead.value[1] - 1);
-const cobylaViolation = Math.max(
-  0,
-  cobyla.value[0] ** 2 + cobyla.value[1] ** 2 - 1,
-);
-if (nelderResidual > 2e-5 || cobylaViolation > 2e-7 ||
-    Math.abs(cobyla.value[0] - Math.SQRT1_2) > 3e-4 ||
-    solver.inspect().liveAllocations !== 0) {
+if (nelderResidual > 2e-5 || solver.inspect().liveAllocations !== 0) {
   throw new Error("portable NLopt smoke failed independent validation");
 }
 process.stdout.write(`${JSON.stringify({
@@ -56,13 +43,11 @@ process.stdout.write(`${JSON.stringify({
     architecture: process.arch,
   },
   artifact_sha256: createHash("sha256").update(artifact).digest("hex"),
+  public_semantics_bundle_sha256:
+    productionManifest.public_semantics_bundle.sha256,
   nelder_mead: {
     residual: nelderResidual,
     evaluations: nelderMead.evaluations,
-  },
-  cobyla: {
-    maximum_violation: cobylaViolation,
-    evaluations: cobyla.evaluations,
   },
   lifecycle_after: solver.inspect(),
 }, null, 2)}\n`);

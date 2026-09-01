@@ -134,7 +134,6 @@ def native_ge(left, right):
 
 
 def native_get(value, property_name):
-    """Read a JavaScript property, allowing ordinary primitive boxing."""
     return r"%js value[property_name]"
 
 
@@ -630,7 +629,6 @@ def ρσ_dynamic_eval(
 
 
 def register_doc(name, value, metadata=None):
-    """Register a public runtime object and optional DocSpec metadata."""
     registry = reflect.get(global_object, "__sagejs_doc_registry__")
     if registry is undefined:
         registry = []
@@ -645,27 +643,29 @@ def register_doc(name, value, metadata=None):
 
 
 def documentation_registry():
-    """Return public names explicitly registered for documentation."""
     registry = reflect.get(global_object, "__sagejs_doc_registry__")
     if registry is undefined:
         return []
     return registry
 
 
-_numerical_backend_state = {"backend": None}
-_nlopt_backend_state = {"backend": None}
+_numerical_backend_state = {"backend": None, "nlopt": None}
 
 
 def numerical_backend(name="cminpack"):
-    """Return a cached explicit-only numerical backend by exact identity."""
-    if name not in ("cminpack", "nlopt"):
+    if name == "cminpack":
+        key = "backend"
+        suffix = ""
+    elif name == "nlopt":
+        key = "nlopt"
+        suffix = "-nlopt"
+    else:
         raise ValueError("unknown numerical backend")
-    state = _numerical_backend_state if name == "cminpack" else _nlopt_backend_state
-    if state["backend"] is not None:
-        return state["backend"]
-    suffix = "" if name == "cminpack" else "-nlopt"
-    state["backend"] = require_module("@sagemath/sagejs-numerical" + suffix)
-    return state["backend"]
+    if _numerical_backend_state[key] is None:
+        _numerical_backend_state[key] = require_module(
+            "@sagemath/sagejs-numerical" + suffix
+        )
+    return _numerical_backend_state[key]
 
 
 array = Array

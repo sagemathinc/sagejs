@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 "use strict";
 
-const { copyFileSync, existsSync, mkdirSync } = require("node:fs");
+const { createHash } = require("node:crypto");
+const { copyFileSync, existsSync, mkdirSync, readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { buildSync } = require("esbuild");
@@ -28,10 +29,24 @@ function run(script) {
 
 run(join(packageRoot, "scripts/build.cjs"));
 run(join(nloptRoot, "scripts/build.cjs"));
+run(join(nloptRoot, "scripts/verify-release.cjs"));
 
 const artifact = join(nloptRoot, "build/nlopt-methods.wasm");
 if (!existsSync(artifact)) {
   throw new Error("the authenticated NLopt build did not publish nlopt-methods.wasm");
+}
+const manifest = JSON.parse(readFileSync(
+  join(nloptRoot, "release/production-manifest.json"),
+  "utf8",
+));
+const artifactBytes = readFileSync(artifact);
+if (
+  manifest?.artifact?.filename !== "nlopt-methods.wasm" ||
+  manifest?.artifact?.bytes !== artifactBytes.byteLength ||
+  manifest?.artifact?.sha256 !==
+    createHash("sha256").update(artifactBytes).digest("hex")
+) {
+  throw new Error("the NLopt artifact differs from its production manifest");
 }
 mkdirSync(nodeRuntimeDirectory, { recursive: true });
 mkdirSync(browserRuntimeDirectory, { recursive: true });
