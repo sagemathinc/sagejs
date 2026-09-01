@@ -196,8 +196,9 @@ The P8 collectors and release-gate builder are not optional diagnostic tools.
 Release integration must expose one named command and make publication depend
 on its passing exact-candidate output. That wiring must restore all 16 receipt
 files, their capability manifests and ignored artifacts, the supplemental
-evidence, and the four platform-specific hermetic SciPy binding snapshots at
-their authenticated repository-relative paths before aggregation. It must also
+evidence, and all 16 row-specific hermetic SciPy binding snapshots at their
+authenticated repository-relative paths before aggregation. The gate requires
+those documents to collapse to exactly four platform identities. It must also
 provision the standalone CPython/NumPy/SciPy inputs selected by the checked-in
 catalog and set the explicit prefix and provenance variables for each producer
 job. Producer-local compiler, Node, Python, and browser executable paths are
