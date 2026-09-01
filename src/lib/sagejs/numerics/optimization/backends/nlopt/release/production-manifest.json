@@ -19,7 +19,7 @@
     "packages/flint-wasm/evaluator.mjs": "9e992dd85fac8a53681a41a772e8759970154492203f4fe0a5193b5ea67e46e0",
     "packages/flint-wasm/numerical/nlopt-index.mjs": "21d752734022de158af44bc8f8cf9c164a5cd0ab95358c532632573447cbebb3",
     "packages/flint-wasm/numerical/scripts/build-all.cjs": "6aefdb71fa589b773be46926e24c5a8e0c84a1a953ac72a1a99138a419fe014f",
-    "src/baselib/sagejs/runtime.py": "b48880325472073feb9d9d7b3a747deb5cbf66a0a0fde5538444c7f02e21e9fb",
+    "src/baselib/sagejs/runtime.py": "3e5005e5cc5d3c2d2aaf1a170023fce4716e5400f7c071bd5a69a7acbba7823c",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/index.mjs": "e5e4e697cb5b68dd8020a465073c760abcc6668b6f536fbd915b6b5bde0e4315",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/build.cjs": "eda4ebc1033c94d2aad994ceb97e5247e4f49b7b6925806cd3ac860f1c0091dc",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c": "0c876a9606177a26d0c8c8baf09a2f567516de201708397be508e9e46103ba03",
@@ -39,7 +39,7 @@
   },
   "public_semantics_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "9bb49278bdc296af0fc40320187d0e5345a7d695325a5100a6da68861aca2239"
+    "sha256": "943f4b8f83453a0f9efe90887654f6d652188bc060180681d8a8e3ad6c6c948b"
   },
   "qualification_tooling_files": {
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs": "bdc4596a21ce504bb6a99e3b826c88ee9b614bfe46ec3274c95845b4fa6dcbbd",
@@ -85,7 +85,7 @@
   "qualification": {
     "status": "pending_source_current_requalification",
     "reason": "COBYLA was removed after source-bound UBSAN exposed unresolved upstream f2c pointer-provenance undefined behavior; source-current Nelder-Mead receipts must be regenerated after independent audit",
-    "public_semantics_bundle_sha256": "9bb49278bdc296af0fc40320187d0e5345a7d695325a5100a6da68861aca2239",
+    "public_semantics_bundle_sha256": "943f4b8f83453a0f9efe90887654f6d652188bc060180681d8a8e3ad6c6c948b",
     "qualification_tooling_bundle_sha256": "7a2572502ecd17b1b0209172e6b2cce5ce5261fab32e6304bc4616ff41aadff0",
     "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",

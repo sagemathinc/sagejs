@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Generate and promote source-current fail-closed NLopt Nelder-Mead qualification evidence without admitting stale COBYLA evidence",
-  "base_commit": "437a52935d319e85691da59e1e3ba13282c7619f",
+  "base_commit": "4fd758a209a8b66f8817672f0a6b059b2bce47b0",
   "claims": [
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs",
@@ -136,6 +136,66 @@
       "started_at": "2026-09-01T04:46:00.490Z",
       "commit": "2f69103981d757ee603c908efc852354b2bbb6b6",
       "workspace_fingerprint": "14f7d750d0fd75697edc6667256297c62a13232abe412a00f2742bc4da07ffc3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.768,
+      "started_at": "2026-09-01T05:25:35.342Z",
+      "commit": "7f03148aff99bf0a061b1552f906440cd7af1ce5",
+      "workspace_fingerprint": "c141b682e380b2cbd91e6c5e25246282700603352802e71a0f7927bf3d32b676",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.934,
+      "started_at": "2026-09-01T05:25:38.759Z",
+      "commit": "7f03148aff99bf0a061b1552f906440cd7af1ce5",
+      "workspace_fingerprint": "c141b682e380b2cbd91e6c5e25246282700603352802e71a0f7927bf3d32b676",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.204,
+      "started_at": "2026-09-01T05:25:40.326Z",
+      "commit": "7f03148aff99bf0a061b1552f906440cd7af1ce5",
+      "workspace_fingerprint": "c141b682e380b2cbd91e6c5e25246282700603352802e71a0f7927bf3d32b676",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.576,
+      "started_at": "2026-09-01T05:26:27.933Z",
+      "commit": "a88ba3f08f59e5adf851aeb83d85737f3152b308",
+      "workspace_fingerprint": "454f1909cfaeaf33621799086dd86126e927147679d574673830cb23fa2ebc80",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.954,
+      "started_at": "2026-09-01T05:26:31.152Z",
+      "commit": "a88ba3f08f59e5adf851aeb83d85737f3152b308",
+      "workspace_fingerprint": "454f1909cfaeaf33621799086dd86126e927147679d574673830cb23fa2ebc80",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.055,
+      "started_at": "2026-09-01T05:26:32.727Z",
+      "commit": "a88ba3f08f59e5adf851aeb83d85737f3152b308",
+      "workspace_fingerprint": "454f1909cfaeaf33621799086dd86126e927147679d574673830cb23fa2ebc80",
       "platform": "linux-x64"
     }
   ],
