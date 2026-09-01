@@ -72,12 +72,17 @@ function validateBinding(value, expectedSubject = null, { authenticate = true } 
     "browser executable identity",
   );
   const executable = value.executable;
-  if (!path.isAbsolute(executable.path) || !/^[0-9a-f]{64}$/.test(executable.sha256) ||
+  const portableAbsolute = path.isAbsolute(executable.path) ||
+    /^[A-Za-z]:[\\/]/.test(executable.path) || executable.path.startsWith("\\\\");
+  if (!portableAbsolute || !/^[0-9a-f]{64}$/.test(executable.sha256) ||
       !Number.isSafeInteger(executable.bytes) || executable.bytes <= 0 ||
       executable.version !== value.subject.version) {
     throw new Error("browser executable binding has invalid executable identity");
   }
   if (authenticate) {
+    if (!path.isAbsolute(executable.path)) {
+      throw new Error("browser executable path is foreign to this authentication host");
+    }
     const actual = executableIdentity(executable.path, executable.version);
     if (canonicalJson(actual) !== canonicalJson(executable)) {
       throw new Error("browser executable bytes differ from their binding");

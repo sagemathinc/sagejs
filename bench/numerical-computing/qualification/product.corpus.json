@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.numerical-qualification-corpus/v1",
-  "id": "sagejs-numerical-product-v12",
-  "version": 12,
+  "id": "sagejs-numerical-product-v13",
+  "version": 13,
   "domain": "numerical-computing-product",
   "description": "Backend-neutral P0-P8 product cases executed through a real Sage.js artifact and checked independently by the host adapter.",
   "program_phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
@@ -13,7 +13,9 @@
     "packages/flint-wasm/numerical/src",
     "packages/flint-wasm/numerical/sources",
     "packages/flint-wasm/numerical/release",
-    "scripts/package-qualification"
+    "scripts/package-qualification",
+    "scripts/numerical-computing/qualification/scipy-oracle.cjs",
+    "bench/numerical-computing/qualification/scipy-oracle-catalog.json"
   ],
   "cases": [
     {

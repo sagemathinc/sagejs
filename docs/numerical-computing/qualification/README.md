@@ -189,3 +189,22 @@ The first complete product campaign is described in
 adapter exercise the integrated P0-P8 numerical surface through a built
 Sage.js artifact. The checked-in matrix files are templates, not receipts or
 claims that any platform row has been measured.
+
+## Mandatory release wiring
+
+The P8 collectors and release-gate builder are not optional diagnostic tools.
+Release integration must expose one named command and make publication depend
+on its passing exact-candidate output. That wiring must restore all 16 receipt
+files, their capability manifests and ignored artifacts, the supplemental
+evidence, and the four platform-specific hermetic SciPy binding snapshots at
+their authenticated repository-relative paths before aggregation. It must also
+provision the standalone CPython/NumPy/SciPy inputs selected by the checked-in
+catalog and set the explicit prefix and provenance variables for each producer
+job. Producer-local compiler, Node, Python, and browser executable paths are
+recorded and authenticated before and after collection but are not reopened on
+the aggregation host.
+
+Until that package command, release workflow dependency, artifact transport,
+and all non-pending catalog rows exist, this infrastructure deliberately cannot
+produce an eligible release gate. A green ordinary test suite is not a
+substitute for the source-current qualification document.

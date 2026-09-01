@@ -373,7 +373,17 @@ async function evaluate(sample) {
 }
 
 async function close() {
-  if (runtimeContext !== null) runtimeContext.cleanup();
+  let failure = null;
+  try {
+    if (runtimeContext !== null) runtimeContext.cleanup();
+  } catch (error) {
+    failure = error;
+  }
+  try {
+    internals.closeHostOracles();
+  } catch (error) {
+    failure ??= error;
+  }
   runtimeContext = null;
   runPython = null;
   runLanguage = null;
@@ -383,7 +393,7 @@ async function close() {
   runNodeName = null;
   initializedCapabilities = [];
   initializedSubject = null;
-  internals.closeHostOracles();
+  if (failure !== null) throw failure;
 }
 
 module.exports = {
@@ -397,68 +407,68 @@ module.exports = {
     if (scipyOracleArtifact === undefined || !fs.statSync(scipyOracleArtifact.path).isFile()) {
       throw new Error("scipy-oracle-binding must be bound separately");
     }
-    if (context.subject.kind === "npm") {
-      runtimeContext = packageRuntime.prepareFreshInstall({
+    try {
+      if (context.subject.kind === "npm") {
+        runtimeContext = packageRuntime.prepareFreshInstall({
         target: packageRuntime.targetForHost(),
         rootArchive: artifact(context, "npm-root-tarball"),
         platformArchive: artifact(context, "npm-platform-tarball"),
         installStdio: "pipe",
-      });
-      assertSameFile(
-        artifact(context, "cminpack-wasm"),
-        path.join(runtimeContext.installedRoot, "dist", "numerical", "cminpack.wasm"),
-        "fresh npm cminpack resource",
-      );
-      assertSameFile(
-        artifact(context, "nlopt-wasm"),
-        path.join(runtimeContext.installedRoot, "dist", "numerical", "nlopt-methods.wasm"),
-        "fresh npm NLopt resource",
-      );
-      runPython = packageRuntime.runInstalledSourcePython;
-      runLanguage = packageRuntime.runInstalledSourceLanguage;
-      runNode = packageRuntime.runInstalledNode;
-      runPythonName = "runInstalledSourcePython";
-      runLanguageName = "runInstalledSourceLanguage";
-      runNodeName = "runInstalledNode";
-      initializedSubject = {
-        kind: "npm", name: "@sagemath/sagejs", version: runtimeContext.version, engine: null,
-      };
-    } else if (context.subject.kind === "sea") {
-      const expectedResources = {
-        "numerical/cminpack.wasm": fileIdentity(artifact(context, "cminpack-wasm")),
-        "numerical/nlopt-methods.wasm": fileIdentity(artifact(context, "nlopt-wasm")),
-      };
-      runtimeContext = packageRuntime.prepareRelocatedSea({
-        target: packageRuntime.targetForHost(),
-        executable: artifact(context, "sea-executable"),
-      });
-      runPython = packageRuntime.runRelocatedSeaPython;
-      runLanguage = packageRuntime.runRelocatedSeaLanguage;
-      runNode = null;
-      runPythonName = "runRelocatedSeaPython";
-      runLanguageName = "runRelocatedSeaLanguage";
-      runNodeName = null;
-      const versionResult = checkProcess(
-        packageRuntime.runProcess(runtimeContext.executable, ["--version"], { timeout: 30_000 }),
-        "SEA version probe",
-      );
-      const version = `${versionResult.stdout}\n${versionResult.stderr}`
-        .match(/(?:sagejs\s+|v)(\d+\.\d+\.\d+)/i)?.[1];
-      if (version === undefined) throw new Error("SEA version probe returned no semantic version");
-      validateSeaResourceDigests(
-        packageRuntime.runProcess(
-          runtimeContext.executable,
-          ["--qualification-resource-digests"],
-          { timeout: 30_000 },
-        ),
-        expectedResources,
-      );
-      initializedSubject = { kind: "sea", name: "sagejs", version, engine: null };
-    } else {
-      throw new Error(`package adapter refuses subject kind ${context.subject.kind}`);
-    }
-    try {
-      const host = internals.initializeHostOracles(scipyOracleArtifact.path);
+        });
+        assertSameFile(
+          artifact(context, "cminpack-wasm"),
+          path.join(runtimeContext.installedRoot, "dist", "numerical", "cminpack.wasm"),
+          "fresh npm cminpack resource",
+        );
+        assertSameFile(
+          artifact(context, "nlopt-wasm"),
+          path.join(runtimeContext.installedRoot, "dist", "numerical", "nlopt-methods.wasm"),
+          "fresh npm NLopt resource",
+        );
+        runPython = packageRuntime.runInstalledSourcePython;
+        runLanguage = packageRuntime.runInstalledSourceLanguage;
+        runNode = packageRuntime.runInstalledNode;
+        runPythonName = "runInstalledSourcePython";
+        runLanguageName = "runInstalledSourceLanguage";
+        runNodeName = "runInstalledNode";
+        initializedSubject = {
+          kind: "npm", name: "@sagemath/sagejs", version: runtimeContext.version, engine: null,
+        };
+      } else if (context.subject.kind === "sea") {
+        const expectedResources = {
+          "numerical/cminpack.wasm": fileIdentity(artifact(context, "cminpack-wasm")),
+          "numerical/nlopt-methods.wasm": fileIdentity(artifact(context, "nlopt-wasm")),
+        };
+        runtimeContext = packageRuntime.prepareRelocatedSea({
+          target: packageRuntime.targetForHost(),
+          executable: artifact(context, "sea-executable"),
+        });
+        runPython = packageRuntime.runRelocatedSeaPython;
+        runLanguage = packageRuntime.runRelocatedSeaLanguage;
+        runNode = null;
+        runPythonName = "runRelocatedSeaPython";
+        runLanguageName = "runRelocatedSeaLanguage";
+        runNodeName = null;
+        const versionResult = checkProcess(
+          packageRuntime.runProcess(runtimeContext.executable, ["--version"], { timeout: 30_000 }),
+          "SEA version probe",
+        );
+        const version = `${versionResult.stdout}\n${versionResult.stderr}`
+          .match(/(?:sagejs\s+|v)(\d+\.\d+\.\d+)/i)?.[1];
+        if (version === undefined) throw new Error("SEA version probe returned no semantic version");
+        validateSeaResourceDigests(
+          packageRuntime.runProcess(
+            runtimeContext.executable,
+            ["--qualification-resource-digests"],
+            { timeout: 30_000 },
+          ),
+          expectedResources,
+        );
+        initializedSubject = { kind: "sea", name: "sagejs", version, engine: null };
+      } else {
+        throw new Error(`package adapter refuses subject kind ${context.subject.kind}`);
+      }
+      const host = internals.initializeHostOracles(scipyOracleArtifact.path, context.root);
       const probe = checkProcess(runPython(runtimeContext, moduleProbeSource()), "package module probe");
       const present = new Set(internals.parseEvaluation(probe).available);
       initializedCapabilities = context.capabilities
@@ -467,7 +477,14 @@ module.exports = {
         .sort();
       return { subject: initializedSubject, capability_ids: initializedCapabilities };
     } catch (error) {
-      await close();
+      try {
+        await close();
+      } catch (cleanupError) {
+        throw new AggregateError(
+          [error, cleanupError],
+          "package qualification initialization and cleanup both failed",
+        );
+      }
       throw error;
     }
   },

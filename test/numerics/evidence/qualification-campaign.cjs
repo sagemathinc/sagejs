@@ -35,9 +35,18 @@ const campaign = path.join(root, "bench", "numerical-computing", "qualification"
 const corpus = validateCorpus(readJson(path.join(campaign, "product.corpus.json")));
 const spec = readJson(path.join(campaign, "capabilities", "node-capability-spec.json"));
 let cachedScipyOracleBinding = null;
+let scipyOracleUnavailableReason = null;
+
+try {
+  cachedScipyOracleBinding = createScipyOracleBinding();
+} catch (error) {
+  scipyOracleUnavailableReason = error.message;
+}
 
 function writeScipyOracleBinding(directory) {
-  cachedScipyOracleBinding ??= createScipyOracleBinding();
+  if (cachedScipyOracleBinding === null) {
+    throw new Error(`hermetic SciPy oracle is unavailable: ${scipyOracleUnavailableReason}`);
+  }
   const filename = path.join(directory, "scipy-oracle.json");
   fs.writeFileSync(filename, `${JSON.stringify(cachedScipyOracleBinding, null, 2)}\n`);
   return filename;
@@ -173,12 +182,14 @@ const chromium = browserAdapterForProbe._testing.browserExecutable(
   require("playwright-core").chromium,
   "chromium",
 );
-const browserBuilt = chromium !== null &&
+const browserRuntimeBuilt = chromium !== null &&
   fs.existsSync(path.join(browserArtifact, "kernel.mjs")) &&
   fs.existsSync(browserCminpack) && fs.existsSync(browserNlopt);
+const browserBuilt = browserRuntimeBuilt && cachedScipyOracleBinding !== null;
 
 test("browser-worker adapter interrupts, replaces, and reuses the real worker", {
-  skip: browserBuilt ? false : "build packages/flint-wasm and install Chromium for worker qualification",
+  skip: browserBuilt ? false :
+    `build browser artifacts and provision the hermetic SciPy oracle (${scipyOracleUnavailableReason})`,
   timeout: 60_000,
 }, async () => {
   delete require.cache[require.resolve(browserAdapterPath)];
@@ -223,6 +234,26 @@ test("browser-worker adapter interrupts, replaces, and reuses the real worker", 
     assert.equal(observed.values.recovered, true);
     assert.equal(observed.values.runtime_interrupt_observed, true);
     assert(observed.values.independent_residual <= 1e-12);
+    const scipyBindingBytes = fs.readFileSync(scipyBindingPath);
+    fs.writeFileSync(scipyBindingPath, "{}\n");
+    await assert.rejects(adapter.close(), /wrong fields/);
+    assert.equal(adapter.qualificationState().initialized, false);
+    fs.writeFileSync(scipyBindingPath, scipyBindingBytes);
+    const reinitialized = await adapter.initialize({
+      root,
+      backend: draft.backend,
+      subject: draft.subject,
+      artifacts: [
+        { name: "sagejs-browser", path: browserArtifact, sha256: "test-only", bytes: 0 },
+        { name: "browser-dist", path: path.join(browserArtifact, "dist"), sha256: "test-only", bytes: 0 },
+        { name: "cminpack-wasm", path: browserCminpack, sha256: "test-only", bytes: 0 },
+        { name: "nlopt-wasm", path: browserNlopt, sha256: "test-only", bytes: 0 },
+        { name: "browser-executable-binding", path: bindingPath, sha256: "test-only", bytes: 0 },
+        { name: "scipy-oracle-binding", path: scipyBindingPath, sha256: "test-only", bytes: 0 },
+      ],
+      capabilities: draft.capabilities,
+    });
+    assert.equal(reinitialized.subject.engine, "chromium");
   } finally {
     await adapter.close();
     fs.rmSync(bindingDirectory, { recursive: true, force: true });
@@ -232,6 +263,7 @@ test("browser-worker adapter interrupts, replaces, and reuses the real worker", 
 const npmRootArchive = process.env.SAGEJS_QUALIFICATION_NPM_ROOT_TGZ;
 const npmPlatformArchive = process.env.SAGEJS_QUALIFICATION_NPM_PLATFORM_TGZ;
 const npmArtifactsPresent = Boolean(npmRootArchive && npmPlatformArchive &&
+  cachedScipyOracleBinding !== null &&
   fs.existsSync(npmRootArchive) && fs.existsSync(npmPlatformArchive) &&
   fs.existsSync(browserCminpack) && fs.existsSync(browserNlopt));
 
@@ -376,6 +408,7 @@ test("fresh npm receipt measures the live installed Sage.js process tree", {
 
 const seaExecutable = process.env.SAGEJS_QUALIFICATION_SEA_EXECUTABLE;
 const seaArtifactPresent = Boolean(seaExecutable && fs.existsSync(seaExecutable) &&
+  cachedScipyOracleBinding !== null &&
   fs.existsSync(browserCminpack) && fs.existsSync(browserNlopt));
 
 test("relocated SEA receipt measures the live Sage.js process tree", {
@@ -411,11 +444,50 @@ const cminpackWasm = path.join(
   root, "packages", "flint-wasm", "numerical", "build", "cminpack.wasm",
 );
 const nloptWasm = path.join(dist, "numerical", "nlopt-methods.wasm");
-const built = fs.existsSync(path.join(dist, "tools", "kernel.js")) &&
+const runtimeBuilt = fs.existsSync(path.join(dist, "tools", "kernel.js")) &&
   fs.existsSync(cminpackWasm) && fs.existsSync(nloptWasm);
+const built = runtimeBuilt && cachedScipyOracleBinding !== null;
+
+test("Node adapter resets after post-resource oracle initialization failure", {
+  skip: runtimeBuilt ? false : "run pnpm build to exercise adapter initialization cleanup",
+}, async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-node-init-cleanup-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const invalidBinding = path.join(directory, "invalid-scipy.json");
+  fs.writeFileSync(invalidBinding, "{}\n");
+  const adapterPath = path.join(campaign, "node-adapter.cjs");
+  delete require.cache[require.resolve(adapterPath)];
+  const adapter = require(adapterPath);
+  t.after(async () => adapter.close().catch(() => {}));
+  const draft = capabilityDraft(spec, corpus);
+  const context = {
+    root,
+    backend: draft.backend,
+    subject: draft.subject,
+    artifacts: [
+      { name: "sagejs-dist", path: dist, sha256: "test-only", bytes: 0 },
+      { name: "cminpack-wasm", path: cminpackWasm, sha256: "test-only", bytes: 0 },
+      { name: "nlopt-wasm", path: nloptWasm, sha256: "test-only", bytes: 0 },
+      { name: "scipy-oracle-binding", path: invalidBinding, sha256: "test-only", bytes: 0 },
+    ],
+    capabilities: draft.capabilities,
+  };
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await assert.rejects(adapter.initialize(context), /wrong fields/);
+    assert.deepEqual(adapter.qualificationState(), {
+      initialized: false,
+      artifact_root: null,
+      cminpack_initialized: false,
+      nlopt_artifact_initialized: false,
+      scipy_python_initialized: false,
+      capability_ids: [],
+    });
+  }
+});
 
 test("first-party adapter executes Sage.js and independently checks representative domains", {
-  skip: built ? false : "run pnpm build to exercise the artifact adapter",
+  skip: built ? false :
+    `build artifacts and provision the hermetic SciPy oracle (${scipyOracleUnavailableReason})`,
   timeout: 180_000,
 }, async () => {
   const adapterPath = path.join(campaign, "node-adapter.cjs");
@@ -540,7 +612,8 @@ test("first-party adapter executes Sage.js and independently checks representati
 });
 
 test("Node adapter authenticates separately bound numerical resources", {
-  skip: built ? false : "run pnpm build to exercise numerical resource authentication",
+  skip: built ? false :
+    `build artifacts and provision the hermetic SciPy oracle (${scipyOracleUnavailableReason})`,
 }, async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-numerical-auth-"));
   const scipyBindingPath = writeScipyOracleBinding(directory);

@@ -377,7 +377,11 @@ async function close() {
         failure ??= error;
       }
     }
-    internals.closeHostOracles();
+    try {
+      internals.closeHostOracles();
+    } catch (error) {
+      failure ??= error;
+    }
     artifactRoot = null;
     server = null;
     browser = null;
@@ -442,9 +446,9 @@ module.exports = {
         throw new Error(`the bound ${name} differs from the browser runtime resource`);
       }
     }
-    artifactRoot = path.resolve(artifact.path);
-    const engine = browserEngine(context.subject);
     try {
+      artifactRoot = path.resolve(artifact.path);
+      const engine = browserEngine(context.subject);
       server = await listen(artifactRoot);
       const launched = await launchBrowser(engine, executableBinding.executable);
       lastBrowserExecutable = launched.executable;
@@ -458,7 +462,7 @@ module.exports = {
         const { createSage } = await import("/kernel.mjs");
         globalThis.__sagejsQualificationSession = await createSage({ timeout: 180_000 });
       });
-      const host = internals.initializeHostOracles(scipyOracleArtifact.path);
+      const host = internals.initializeHostOracles(scipyOracleArtifact.path, context.root);
       const requirements = internals.capabilityModuleRequirements;
       const moduleNames = [...new Set(Object.values(requirements)
         .filter((name) => !name.startsWith("external:")))].sort();

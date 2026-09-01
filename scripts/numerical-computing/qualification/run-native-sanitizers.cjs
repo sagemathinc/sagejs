@@ -331,6 +331,26 @@ function componentEvidence(compiler, recipe, temporaryRoot) {
   };
 }
 
+function recipeInputBinding(recipe) {
+  return {
+    revision: recipe.revision,
+    lock: recipe.lock,
+    build_report: recipe.build_report,
+    source_closure_sha256: recipe.source_closure_sha256,
+    harness: recipe.harness,
+    artifact: recipe.artifact,
+    source_files: recipe.sources.map((filename) => ({
+      path: normalizedToken(filename, "<no-temporary-input>"),
+      ...fileDigest(filename),
+    })),
+  };
+}
+
+function sameRepository(left, right) {
+  return left.commit === right.commit && left.tree === right.tree &&
+    left.status_sha256 === right.status_sha256 && left.clean === right.clean;
+}
+
 function buildEvidence(options) {
   if (process.platform !== "linux" || process.arch !== "x64") {
     throw new Error(`native sanitizer evidence requires linux-x64, got ${process.platform}-${process.arch}`);
@@ -346,13 +366,28 @@ function buildEvidence(options) {
   };
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-numerical-sanitizers-"));
   try {
-    const components = options.components.map((id) =>
-      componentEvidence(compiler, recipes[id](), temporaryRoot));
+    const selectedRecipes = options.components.map((id) => recipes[id]());
+    const beforeInputs = selectedRecipes.map(recipeInputBinding);
+    const components = selectedRecipes.map((recipe) =>
+      componentEvidence(compiler, recipe, temporaryRoot));
+    const afterCompiler = resolveCompiler(compiler.path);
+    afterCompiler.command = compiler.command;
+    if (canonicalJson(afterCompiler) !== canonicalJson(compiler)) {
+      throw new Error("compiler identity changed while native sanitizer evidence executed");
+    }
+    const afterInputs = options.components.map((id) => recipeInputBinding(recipes[id]()));
+    if (canonicalJson(afterInputs) !== canonicalJson(beforeInputs)) {
+      throw new Error("native sanitizer source/artifact inputs changed while evidence executed");
+    }
+    const afterRepository = repositoryIdentity(root);
+    if (!sameRepository(repository, afterRepository)) {
+      throw new Error("repository identity changed while native sanitizer evidence executed");
+    }
     const core = {
       schema: SCHEMA,
       generated_at: new Date().toISOString(),
       status: components.every((item) => item.status === "passed") ? "passed" : "failed",
-      repository,
+      repository: afterRepository,
       platform: platformIdentity(),
       collector: digestPath(root, COLLECTOR, "native sanitizer collector"),
       compiler,

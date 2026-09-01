@@ -91,3 +91,21 @@ failed worker replacement, or smaller delta fails closed.
 These commands are ready for the final integrated candidate. Checked-in
 templates remain `pending`; development runs are not copied into a release
 matrix after source or artifact bytes change.
+
+## Producer authentication and release aggregation
+
+Supplemental jobs authenticate every external executable and every bound
+source, harness, build report, module, and ignored candidate artifact before
+execution and again after the last operation. Ordinary concurrent rebuilds or
+tool replacement therefore invalidate collection. The immutable evidence
+records the producer-local canonical path, version, byte count, and digest.
+
+The later release-aggregation job must not reopen those producer-local compiler,
+Node, Python, or browser paths: macOS and Windows paths do not exist on the Linux
+aggregator. It validates their recorded identities structurally and cross-binds
+them through uploaded receipts and binding documents. Repository inputs,
+generated build reports, product artifacts, receipts, and manifests are a
+different class: the workflow must upload them and restore their exact
+repository-relative paths so aggregation can hash and authenticate them. This
+division preserves producer-side byte authentication without making a
+split-platform release gate depend on another host's filesystem.

@@ -7,6 +7,7 @@ const os = require("node:os");
 const path = require("node:path");
 
 const {
+  canonicalJson,
   contentId,
   contentDigestPath,
   digestPath,
@@ -115,7 +116,27 @@ function rawFileBinding(relative, label) {
   };
 }
 
+function nodeIdentity() {
+  const filename = fs.realpathSync(process.execPath);
+  return {
+    path: filename,
+    version: process.version,
+    sha256: sha256(fs.readFileSync(filename)),
+    bytes: fs.statSync(filename).size,
+  };
+}
+
+function gateInputBindings(gate) {
+  return {
+    bindings: gate.bindings.map((relative) =>
+      rawFileBinding(relative, `${gate.id} input`)),
+    artifacts: (gate.artifacts ?? []).map((relative) =>
+      rawFileBinding(relative, `${gate.id} candidate artifact`)),
+  };
+}
+
 function runGate(gate, temporary) {
+  const beforeInputs = gateInputBindings(gate);
   const arguments_ = [...gate.arguments];
   let reportPath = null;
   if (gate.report) {
@@ -142,6 +163,10 @@ function runGate(gate, temporary) {
     bytes: fs.statSync(reportPath).size,
     identity: JSON.parse(fs.readFileSync(reportPath, "utf8")).identity,
   };
+  const afterInputs = gateInputBindings(gate);
+  if (canonicalJson(afterInputs) !== canonicalJson(beforeInputs)) {
+    throw new Error(`${gate.id} inputs changed while the gate executed`);
+  }
   return {
     id: gate.id,
     status: "passed",
@@ -154,9 +179,7 @@ function runGate(gate, temporary) {
     stderr_sha256: sha256(result.stderr),
     stdout_bytes: Buffer.byteLength(result.stdout),
     stderr_bytes: Buffer.byteLength(result.stderr),
-    bindings: gate.bindings.map((relative) => rawFileBinding(relative, `${gate.id} input`)),
-    artifacts: (gate.artifacts ?? []).map((relative) =>
-      rawFileBinding(relative, `${gate.id} candidate artifact`)),
+    ...afterInputs,
     report,
   };
 }
@@ -169,12 +192,7 @@ function buildEvidence(options) {
   if (options.requireClean && !before.clean) {
     throw new Error("repository must be clean; --allow-dirty is development-only");
   }
-  const node = {
-    path: fs.realpathSync(process.execPath),
-    version: process.version,
-    sha256: sha256(fs.readFileSync(fs.realpathSync(process.execPath))),
-    bytes: fs.statSync(fs.realpathSync(process.execPath)).size,
-  };
+  const node = nodeIdentity();
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-p8-structural-"));
   let gates;
   try {
@@ -186,6 +204,16 @@ function buildEvidence(options) {
   if (before.commit !== after.commit || before.tree !== after.tree ||
       before.status_sha256 !== after.status_sha256 || before.clean !== after.clean) {
     throw new Error("repository identity changed while structural performance gates executed");
+  }
+  if (canonicalJson(nodeIdentity()) !== canonicalJson(node)) {
+    throw new Error("Node executable changed while structural performance gates executed");
+  }
+  for (let index = 0; index < GATES.length; index += 1) {
+    const rebound = gateInputBindings(GATES[index]);
+    const recorded = { bindings: gates[index].bindings, artifacts: gates[index].artifacts };
+    if (canonicalJson(rebound) !== canonicalJson(recorded)) {
+      throw new Error(`${GATES[index].id} inputs changed after the gate executed`);
+    }
   }
   const core = {
     schema: SCHEMA,

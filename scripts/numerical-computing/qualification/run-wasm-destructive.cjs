@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const {
+  canonicalJson,
   contentId,
   digestPath,
   parseJsonText,
@@ -174,6 +175,53 @@ function validateHarnessOutput(output) {
   };
 }
 
+function nodeIdentity() {
+  const filename = fs.realpathSync(process.execPath);
+  return {
+    path: filename,
+    version: process.version,
+    sha256: sha256(fs.readFileSync(filename)),
+    bytes: fs.statSync(filename).size,
+  };
+}
+
+function runtimeArtifactBindings(expectedContent) {
+  return RUNTIME_ARTIFACTS.map(([name, relative, component]) => {
+    const binding = digestPath(root, relative, `${name} runtime artifact`);
+    const contentSha256 = sha256(fs.readFileSync(path.join(root, binding.path)));
+    if (contentSha256 !== expectedContent.get(component)) {
+      throw new Error(`${name} is not byte-identical to the source-current ${component} build`);
+    }
+    return { name, component, ...binding, content_sha256: contentSha256 };
+  });
+}
+
+function moduleBindings() {
+  return [
+    { name: "cminpack-host", ...digestPath(root, CMINPACK_MODULE, "cminpack host module") },
+    { name: "nlopt-host", ...digestPath(root, NLOPT_MODULE, "NLopt host module") },
+    { name: "browser-runtime-loader", ...digestPath(root, EVALUATOR_MODULE, "browser runtime loader") },
+  ];
+}
+
+function inputBinding(repository, cminpack, nlopt, runtimeArtifacts, harness, modules, node) {
+  const component = (value) => ({
+    build_report: value.build_report,
+    source_closure_sha256: value.source_closure_sha256,
+    artifact: value.artifact,
+    retained_methods: value.retained_methods,
+  });
+  return {
+    repository,
+    cminpack: component(cminpack),
+    nlopt: component(nlopt),
+    runtime_artifacts: runtimeArtifacts,
+    harness,
+    modules,
+    tool: node,
+  };
+}
+
 function buildEvidence(options) {
   if (process.platform !== "linux" || process.arch !== "x64") {
     throw new Error(`destructive Wasm evidence requires linux-x64, got ${process.platform}-${process.arch}`);
@@ -199,26 +247,13 @@ function buildEvidence(options) {
     ["cminpack", cminpack.artifact.content_sha256],
     ["nlopt", nlopt.artifact.content_sha256],
   ]);
-  const runtimeArtifacts = RUNTIME_ARTIFACTS.map(([name, relative, component]) => {
-    const binding = digestPath(root, relative, `${name} runtime artifact`);
-    const contentSha256 = sha256(fs.readFileSync(path.join(root, binding.path)));
-    if (contentSha256 !== expectedContent.get(component)) {
-      throw new Error(`${name} is not byte-identical to the source-current ${component} build`);
-    }
-    return { name, component, ...binding, content_sha256: contentSha256 };
-  });
+  const runtimeArtifacts = runtimeArtifactBindings(expectedContent);
   const harness = digestPath(root, HARNESS, "destructive Wasm harness");
-  const modules = [
-    { name: "cminpack-host", ...digestPath(root, CMINPACK_MODULE, "cminpack host module") },
-    { name: "nlopt-host", ...digestPath(root, NLOPT_MODULE, "NLopt host module") },
-    { name: "browser-runtime-loader", ...digestPath(root, EVALUATOR_MODULE, "browser runtime loader") },
-  ];
-  const node = {
-    path: fs.realpathSync(process.execPath),
-    version: process.version,
-    sha256: sha256(fs.readFileSync(fs.realpathSync(process.execPath))),
-    bytes: fs.statSync(fs.realpathSync(process.execPath)).size,
-  };
+  const modules = moduleBindings();
+  const node = nodeIdentity();
+  const beforeInputs = inputBinding(
+    repository, cminpack, nlopt, runtimeArtifacts, harness, modules, node,
+  );
   const args = [
     path.join(root, harness.path),
     "--cminpack", path.join(root, cminpack.artifact.path),
@@ -250,11 +285,30 @@ function buildEvidence(options) {
   checks["runner-build-report-artifact-mismatch"] = {
     status: "passed", components: ["cminpack", "nlopt"],
   };
+  const afterRepository = repositoryIdentity(root);
+  const afterCminpack = readBuildReport(CMINPACK_REPORT, CMINPACK_ARTIFACT, "cminpack");
+  const afterNlopt = readBuildReport(NLOPT_REPORT, NLOPT_ARTIFACT, "nlopt");
+  const afterExpectedContent = new Map([
+    ["cminpack", afterCminpack.artifact.content_sha256],
+    ["nlopt", afterNlopt.artifact.content_sha256],
+  ]);
+  const afterInputs = inputBinding(
+    afterRepository,
+    afterCminpack,
+    afterNlopt,
+    runtimeArtifactBindings(afterExpectedContent),
+    digestPath(root, HARNESS, "destructive Wasm harness"),
+    moduleBindings(),
+    nodeIdentity(),
+  );
+  if (canonicalJson(afterInputs) !== canonicalJson(beforeInputs)) {
+    throw new Error("destructive Wasm inputs changed while evidence executed");
+  }
   const core = {
     schema: SCHEMA,
     generated_at: new Date().toISOString(),
     status: "passed",
-    repository,
+    repository: afterRepository,
     platform: platformIdentity(),
     collector: digestPath(root, COLLECTOR, "destructive Wasm collector"),
     tool: node,

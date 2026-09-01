@@ -1,0 +1,47 @@
+{
+  "schema": "sagejs.numerical-scipy-oracle-catalog/v1",
+  "id": "sha256:89c7f8b7b04b39f53f727042cfdcb8ffaa8100fed1efff9cba8fe590a0f6ca63",
+  "policy": {
+    "python": "3.14.4",
+    "numpy": "2.5.1",
+    "scipy": "1.18.0"
+  },
+  "platforms": [
+    {
+      "platform": "linux-x64",
+      "status": "pending",
+      "reason": "authenticated standalone CPython archive and NumPy/SciPy wheels have not been selected",
+      "python_executable": null,
+      "site_packages": null,
+      "inputs": null,
+      "prefix": null
+    },
+    {
+      "platform": "linux-arm64",
+      "status": "pending",
+      "reason": "authenticated standalone CPython archive and NumPy/SciPy wheels have not been selected",
+      "python_executable": null,
+      "site_packages": null,
+      "inputs": null,
+      "prefix": null
+    },
+    {
+      "platform": "macos-arm64",
+      "status": "pending",
+      "reason": "authenticated standalone CPython archive and NumPy/SciPy wheels have not been selected",
+      "python_executable": null,
+      "site_packages": null,
+      "inputs": null,
+      "prefix": null
+    },
+    {
+      "platform": "windows-x64",
+      "status": "pending",
+      "reason": "authenticated standalone CPython archive and NumPy/SciPy wheels have not been selected",
+      "python_executable": null,
+      "site_packages": null,
+      "inputs": null,
+      "prefix": null
+    }
+  ]
+}

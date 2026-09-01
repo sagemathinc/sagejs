@@ -63,6 +63,7 @@ let nloptArtifactPath = null;
 let initializedCapabilities = [];
 let scipyPython = null;
 let scipyOracleBindingPath = null;
+let scipyOracleRoot = null;
 
 function milliseconds(started) {
   return Number(process.hrtime.bigint() - started) / 1e6;
@@ -72,27 +73,31 @@ function pythonInput(input) {
   return `input_record = json.loads(${JSON.stringify(JSON.stringify(input))})`;
 }
 
-function initializeScipyOracle(bindingPath) {
-  const binding = readScipyOracleBinding(bindingPath);
+function initializeScipyOracle(bindingPath, root) {
+  const binding = readScipyOracleBinding(bindingPath, { root });
   scipyOracleBindingPath = bindingPath;
+  scipyOracleRoot = root;
   scipyPython = {
-    executable: binding.identity.python.executable.path,
-    importRoots: binding.identity.python.import_roots,
+    executable: path.join(binding.prefix.path, binding.runtime.python.executable_path),
+    sitePackages: path.join(binding.prefix.path, binding.runtime.python.site_packages_path),
+    prefix: binding.prefix.path,
+    environment: binding.runtime.environment,
   };
-  return { scipy: true, identity: binding.identity };
+  return { scipy: true, identity: binding };
 }
 
 function closeScipyOracle() {
   let failure = null;
   if (scipyOracleBindingPath !== null) {
     try {
-      readScipyOracleBinding(scipyOracleBindingPath);
+      readScipyOracleBinding(scipyOracleBindingPath, { root: scipyOracleRoot });
     } catch (error) {
       failure = error;
     }
   }
   scipyPython = null;
   scipyOracleBindingPath = null;
+  scipyOracleRoot = null;
   if (failure !== null) throw failure;
 }
 
@@ -100,14 +105,20 @@ function runScipySource(source, projection) {
   if (scipyPython === null) throw new Error("CPython with NumPy/SciPy is unavailable");
   const program = [
     "import sys",
-    `sys.path[:0] = ${JSON.stringify(scipyPython.importRoots)}`,
+    `sys.path.insert(0, ${JSON.stringify(scipyPython.sitePackages)})`,
     source,
     "import json",
     `print(${JSON.stringify(MARKER)} + json.dumps(${projection}))`,
   ].join("\n");
   const result = spawnSync(scipyPython.executable, [
-    "-I", "-S", "-c", program,
-  ], { encoding: "utf8", timeout: 120_000, maxBuffer: 4 * 1024 * 1024 });
+    "-B", "-I", "-S", "-c", program,
+  ], {
+    cwd: scipyPython.prefix,
+    env: scipyPython.environment,
+    encoding: "utf8",
+    timeout: 120_000,
+    maxBuffer: 4 * 1024 * 1024,
+  });
   if (result.error) throw result.error;
   if (result.status !== 0) {
     throw new Error(`emitted SciPy program failed (${result.status}): ${result.stderr || result.stdout}`);
@@ -2595,8 +2606,8 @@ module.exports = {
     sourceFor,
     parseEvaluation,
     normalizeEvaluated,
-    initializeHostOracles(bindingPath) {
-      return initializeScipyOracle(bindingPath);
+    initializeHostOracles(bindingPath, root) {
+      return initializeScipyOracle(bindingPath, root);
     },
     closeHostOracles() {
       closeScipyOracle();
@@ -2608,7 +2619,8 @@ module.exports = {
     if (session !== null || cminpackBackend !== null || nloptArtifactPath !== null) {
       throw new Error("the qualification adapter is already initialized");
     }
-    const artifact = context.artifacts.find((item) => item.name === "sagejs-dist");
+    try {
+      const artifact = context.artifacts.find((item) => item.name === "sagejs-dist");
     if (artifact === undefined || !fs.statSync(artifact.path).isDirectory()) {
       throw new Error("the sagejs-dist artifact must be a built dist directory");
     }
@@ -2649,8 +2661,7 @@ module.exports = {
     if (scipyOracleArtifact === undefined || !fs.statSync(scipyOracleArtifact.path).isFile()) {
       throw new Error("the scipy-oracle-binding artifact must be bound separately");
     }
-    initializeScipyOracle(scipyOracleArtifact.path);
-    try {
+      initializeScipyOracle(scipyOracleArtifact.path, context.root);
       const { createSage } = require(kernelPath);
       session = await createSage({ mode: "python" });
 
@@ -2694,15 +2705,25 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
         capability_ids: initializedCapabilities,
       };
     } catch (error) {
-      if (session !== null) await session.close();
+      const failures = [error];
+      try {
+        if (session !== null) await session.close();
+      } catch (cleanupError) {
+        failures.push(cleanupError);
+      }
       session = null;
       artifactRoot = null;
       cminpackBackend = null;
       nloptArtifactPath = null;
       try {
         closeScipyOracle();
-      } catch {}
+      } catch (cleanupError) {
+        failures.push(cleanupError);
+      }
       initializedCapabilities = [];
+      if (failures.length > 1) {
+        throw new AggregateError(failures, "Node qualification initialization cleanup failed");
+      }
       throw error;
     }
   },
@@ -2712,13 +2733,23 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
   },
 
   async close() {
-    if (session !== null) await session.close();
+    let failure = null;
+    try {
+      if (session !== null) await session.close();
+    } catch (error) {
+      failure = error;
+    }
     session = null;
     artifactRoot = null;
     cminpackBackend = null;
     nloptArtifactPath = null;
-    closeScipyOracle();
+    try {
+      closeScipyOracle();
+    } catch (error) {
+      failure ??= error;
+    }
     initializedCapabilities = [];
+    if (failure !== null) throw failure;
   },
 
   qualificationState() {

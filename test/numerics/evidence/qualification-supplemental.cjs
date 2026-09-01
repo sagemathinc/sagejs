@@ -50,8 +50,19 @@ const {
   qualificationInternals: supplementalInternals,
   verifyEvidence,
   verifyMatrixBrowserSubjectCoherence,
+  verifyMatrixScipyOracleCoherence,
 } = require(
   "../../../scripts/numerical-computing/qualification/supplemental-report.cjs",
+);
+const {
+  CATALOG_PATH: SCIPY_CATALOG_PATH,
+  CATALOG_SCHEMA: SCIPY_CATALOG_SCHEMA,
+  ORACLE_ENVIRONMENT: SCIPY_ORACLE_ENVIRONMENT,
+  POLICY: SCIPY_POLICY,
+  PROVENANCE_SCHEMA: SCIPY_PROVENANCE_SCHEMA,
+  SCHEMA: SCIPY_BINDING_SCHEMA,
+} = require(
+  "../../../scripts/numerical-computing/qualification/scipy-oracle.cjs",
 );
 const {
   validateHarnessOutput,
@@ -66,6 +77,116 @@ const fileBinding = Object.freeze({ path: "evidence.json", sha256: "b".repeat(64
 
 function identified(core) {
   return { ...core, id: contentId(core) };
+}
+
+function scipyInput(name, kind, version, sourceSuffix = "v1") {
+  return {
+    kind,
+    name,
+    version,
+    filename: `${name}-${version}.artifact`,
+    source: `https://qualification.invalid/${sourceSuffix}/${name}`,
+    sha256: sha256(`${sourceSuffix}:${name}:${version}`),
+    bytes: 100,
+  };
+}
+
+function scipyCatalog(sourceSuffix = "v1") {
+  const inputs = [
+    scipyInput("cpython", "cpython-standalone", SCIPY_POLICY.python, sourceSuffix),
+    scipyInput("numpy", "wheel", SCIPY_POLICY.numpy, sourceSuffix),
+    scipyInput("scipy", "wheel", SCIPY_POLICY.scipy, sourceSuffix),
+  ];
+  return identified({
+    schema: SCIPY_CATALOG_SCHEMA,
+    policy: { ...SCIPY_POLICY },
+    platforms: ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"].map(
+      (platformId, index) => ({
+        platform: platformId,
+        status: "qualified",
+        reason: null,
+        python_executable: platformId === "windows-x64" ? "python.exe" : "bin/python3",
+        site_packages: "lib/site-packages",
+        inputs,
+        prefix: {
+          sha256: sha256(`${sourceSuffix}:${platformId}:prefix`),
+          bytes: 10_000 + index,
+          files: 100 + index,
+          directories: 20 + index,
+        },
+      }),
+    ),
+  });
+}
+
+function scipyBinding(catalog, platformId, { moduleSuffix = "v1" } = {}) {
+  const row = catalog.platforms.find((item) => item.platform === platformId);
+  const prefix = platformId === "windows-x64"
+    ? "C:/qualification/scipy"
+    : `/qualification/${platformId}/scipy`;
+  const provenance = identified({
+    schema: SCIPY_PROVENANCE_SCHEMA,
+    platform: platformId,
+    policy: { ...SCIPY_POLICY },
+    python_executable: row.python_executable,
+    site_packages: row.site_packages,
+    inputs: row.inputs,
+    prefix: row.prefix,
+  });
+  const environment = platformId === "windows-x64" ? {
+    ...SCIPY_ORACLE_ENVIRONMENT,
+    SystemRoot: "C:/Windows",
+    WINDIR: "C:/Windows",
+    TEMP: `${prefix}/.qualification-tmp`,
+    TMP: `${prefix}/.qualification-tmp`,
+    USERPROFILE: prefix,
+  } : {
+    ...SCIPY_ORACLE_ENVIRONMENT,
+    HOME: prefix,
+    TMPDIR: `${prefix}/.qualification-tmp`,
+  };
+  const catalogBytes = Buffer.from(canonicalJson(catalog));
+  return identified({
+    schema: SCIPY_BINDING_SCHEMA,
+    platform: platformId,
+    policy: { ...SCIPY_POLICY },
+    catalog: {
+      path: SCIPY_CATALOG_PATH,
+      sha256: sha256(catalogBytes),
+      bytes: catalogBytes.length,
+      snapshot: catalog,
+    },
+    provenance,
+    prefix: { path: prefix, ...row.prefix },
+    runtime: {
+      environment,
+      python: {
+        version: SCIPY_POLICY.python,
+        implementation: "cpython",
+        executable_path: row.python_executable,
+        executable_sha256: sha256(`${platformId}:python`),
+        executable_bytes: 1000,
+        site_packages_path: row.site_packages,
+        temporary_path: ".qualification-tmp",
+        import_paths: [
+          { path: row.site_packages, kind: "directory" },
+          { path: "lib/python314.zip", kind: "absent" },
+        ],
+      },
+      numpy: {
+        version: SCIPY_POLICY.numpy,
+        module_path: `${row.site_packages}/numpy/__init__.py`,
+        module_sha256: sha256(`${moduleSuffix}:${platformId}:numpy`),
+        module_bytes: 100,
+      },
+      scipy: {
+        version: SCIPY_POLICY.scipy,
+        module_path: `${row.site_packages}/scipy/__init__.py`,
+        module_sha256: sha256(`${moduleSuffix}:${platformId}:scipy`),
+        module_bytes: 100,
+      },
+    },
+  });
 }
 
 function repository(commit = candidate) {
@@ -488,6 +609,78 @@ test("SEA embedded numerical resources require exact bound identities", () => {
   );
 });
 
+test("package adapter cleans and resets after SEA version or resource setup failure", async (t) => {
+  const packageRuntime = require("../../../scripts/package-qualification/runtime.cjs");
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-package-init-cleanup-"));
+  t.after(async () => {
+    await packageAdapter.close().catch(() => {});
+    fs.rmSync(temporary, { recursive: true, force: true });
+  });
+  const executable = path.join(temporary, "sagejs");
+  const cminpack = path.join(temporary, "cminpack.wasm");
+  const nlopt = path.join(temporary, "nlopt.wasm");
+  const scipy = path.join(temporary, "scipy.json");
+  for (const [filename, contents] of [
+    [executable, "executable"], [cminpack, "cminpack"], [nlopt, "nlopt"], [scipy, "{}\n"],
+  ]) fs.writeFileSync(filename, contents);
+  const artifacts = [
+    ["sea-executable", executable], ["cminpack-wasm", cminpack],
+    ["nlopt-wasm", nlopt], ["scipy-oracle-binding", scipy],
+  ].map(([name, filename]) => ({ name, path: filename, sha256: "test", bytes: 1 }));
+  const originalPrepare = packageRuntime.prepareRelocatedSea;
+  const originalRun = packageRuntime.runProcess;
+  let mode = "version";
+  let cleanupDirectory = null;
+  packageRuntime.prepareRelocatedSea = () => {
+    cleanupDirectory = fs.mkdtempSync(path.join(temporary, "runtime-"));
+    return {
+      kind: "relocated-sea",
+      target: "linux-x64",
+      executable,
+      cleanup() {
+        fs.rmSync(cleanupDirectory, { recursive: true, force: true });
+      },
+    };
+  };
+  packageRuntime.runProcess = (_command, args) => {
+    if (args[0] === "--version") {
+      return { status: 0, signal: null, stdout: mode === "version" ? "unknown\n" : "sagejs v1.2.3\n", stderr: "" };
+    }
+    return {
+      status: 0,
+      signal: null,
+      stderr: "",
+      stdout: `${JSON.stringify({
+        schema: "sagejs.sea-qualification-resource-digests/v1",
+        schema_version: 1,
+        platform: { os: process.platform, arch: process.arch },
+        resources: [
+          { name: "numerical/cminpack.wasm", sha256: "0".repeat(64), bytes: 1 },
+          { name: "numerical/nlopt-methods.wasm", sha256: "0".repeat(64), bytes: 1 },
+        ],
+      })}\n`,
+    };
+  };
+  const context = {
+    root: repositoryRoot,
+    subject: { kind: "sea", name: "sagejs", version: "1.2.3", engine: null },
+    artifacts,
+    capabilities: [],
+  };
+  try {
+    await assert.rejects(packageAdapter.initialize(context), /returned no semantic version/);
+    assert.equal(fs.existsSync(cleanupDirectory), false);
+    assert.equal(packageAdapter.qualificationState().initialized, false);
+    mode = "resource";
+    await assert.rejects(packageAdapter.initialize(context), /differs from the bound/);
+    assert.equal(fs.existsSync(cleanupDirectory), false);
+    assert.equal(packageAdapter.qualificationState().initialized, false);
+  } finally {
+    packageRuntime.prepareRelocatedSea = originalPrepare;
+    packageRuntime.runProcess = originalRun;
+  }
+});
+
 test("relocated SEA advertises executable foreign parser guards", () => {
   const available = packageAdapter._testing.foreignFrontendsAvailable;
   assert.equal(available("fresh-npm-install", () => {}), true);
@@ -662,6 +855,7 @@ test("browser memory subjects and executable bytes match full-runtime receipts",
     const artifact = {
       name: "browser-executable-binding",
       ...digestPath(repositoryRoot, path.relative(repositoryRoot, filename), "browser binding"),
+      content_sha256: sha256(fs.readFileSync(filename)),
     };
     return {
       path: `receipt-${index}.json`,
@@ -702,6 +896,120 @@ test("browser memory subjects and executable bytes match full-runtime receipts",
   );
 });
 
+test("all full-runtime receipts bind one source-current hermetic SciPy oracle per platform", (context) => {
+  const temporary = fs.mkdtempSync(path.join(repositoryRoot, "build", "scipy-coherence-test-"));
+  context.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const catalog = scipyCatalog();
+  const artifactFor = (binding, name) => {
+    const filename = path.join(temporary, `${name}.json`);
+    fs.writeFileSync(filename, `${JSON.stringify(binding, null, 2)}\n`);
+    const relative = path.relative(repositoryRoot, filename).split(path.sep).join("/");
+    return {
+      name: "scipy-oracle-binding",
+      ...digestPath(repositoryRoot, relative, "fixture SciPy binding"),
+      content_sha256: sha256(fs.readFileSync(filename)),
+    };
+  };
+  const artifacts = new Map(catalog.platforms.map((row) => [
+    row.platform,
+    artifactFor(scipyBinding(catalog, row.platform), row.platform),
+  ]));
+  const records = fullRuntimeTemplate().rows.map((row) => ({
+    path: `${row.id}.receipt.json`,
+    value: {
+      platform: { id: row.platform },
+      runtime: { subject: { ...row.subject, version: "1" } },
+      artifacts: [artifacts.get(row.platform)],
+    },
+  }));
+  const coherence = verifyMatrixScipyOracleCoherence(records, { expectedCatalog: catalog });
+  assert.equal(coherence.catalog_id, catalog.id);
+  assert.equal(coherence.platform_bindings.length, 4);
+
+  const missing = structuredClone(records);
+  missing[0].value.artifacts = [];
+  assert.throws(
+    () => verifyMatrixScipyOracleCoherence(missing, { expectedCatalog: catalog }),
+    /lacks one SciPy oracle binding/,
+  );
+
+  const missingPlatform = records.filter((record) =>
+    record.value.platform.id !== "windows-x64");
+  assert.throws(
+    () => verifyMatrixScipyOracleCoherence(missingPlatform, { expectedCatalog: catalog }),
+    /lacks one source-current SciPy oracle per platform/,
+  );
+
+  const duplicatePlatform = structuredClone(records);
+  const windows = duplicatePlatform.find((record) =>
+    record.value.platform.id === "windows-x64");
+  windows.value.platform.id = "macos-arm64";
+  windows.value.artifacts = [artifacts.get("macos-arm64")];
+  assert.throws(
+    () => verifyMatrixScipyOracleCoherence(duplicatePlatform, { expectedCatalog: catalog }),
+    /lacks one source-current SciPy oracle per platform|wrong SciPy oracle subject count/,
+  );
+
+  const swapped = structuredClone(records);
+  swapped.find((record) => record.value.platform.id === "linux-x64")
+    .value.artifacts = [artifacts.get("macos-arm64")];
+  assert.throws(
+    () => verifyMatrixScipyOracleCoherence(swapped, { expectedCatalog: catalog }),
+    /uses SciPy oracle for macos-arm64/,
+  );
+
+  const different = structuredClone(records);
+  different.find((record) =>
+    record.value.platform.id === "linux-x64" && record.value.runtime.subject.kind === "npm")
+    .value.artifacts = [artifactFor(
+      scipyBinding(catalog, "linux-x64", { moduleSuffix: "different" }),
+      "linux-x64-different",
+    )];
+  assert.throws(
+    () => verifyMatrixScipyOracleCoherence(different, { expectedCatalog: catalog }),
+    /substitute different SciPy oracles on linux-x64/,
+  );
+
+  const substitutedCatalog = scipyCatalog("substituted");
+  const substituted = structuredClone(records);
+  substituted[0].value.artifacts = [artifactFor(
+    scipyBinding(substitutedCatalog, substituted[0].value.platform.id),
+    "substituted-catalog",
+  )];
+  assert.throws(
+    () => verifyMatrixScipyOracleCoherence(substituted, { expectedCatalog: catalog }),
+    /SciPy catalog is not source-current/,
+  );
+
+  const wrongDigest = structuredClone(records);
+  wrongDigest[0].value.artifacts[0].content_sha256 = "f".repeat(64);
+  assert.throws(
+    () => verifyMatrixScipyOracleCoherence(wrongDigest, { expectedCatalog: catalog }),
+    /content digest does not match source-current bytes/,
+  );
+
+  const foreignPath = structuredClone(records);
+  foreignPath[0].value.artifacts[0].path = "C:\\foreign\\scipy.json";
+  assert.throws(
+    () => verifyMatrixScipyOracleCoherence(foreignPath, { expectedCatalog: catalog }),
+    /must be repository-relative/,
+  );
+
+  const external = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-scipy-coherence-external-"));
+  context.after(() => fs.rmSync(external, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(external, "scipy.json"), "{}\n");
+  const link = path.join(temporary, "escape");
+  fs.symlinkSync(external, link, process.platform === "win32" ? "junction" : "dir");
+  const linked = structuredClone(records);
+  linked[0].value.artifacts[0].path = path.relative(
+    repositoryRoot, path.join(link, "scipy.json"),
+  ).split(path.sep).join("/");
+  assert.throws(
+    () => verifyMatrixScipyOracleCoherence(linked, { expectedCatalog: catalog }),
+    /symbolic-link path component/,
+  );
+});
+
 test("browser matrix adapter rejects executable mutation after launch", (context) => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-browser-mutation-test-"));
   context.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
@@ -722,6 +1030,31 @@ test("matrix receipt identity rejects duplicate verified receipts", () => {
   assert.throws(
     () => supplementalInternals.addUniqueReceiptId(ids, "sha256:first"),
     /duplicate matrix receipt sha256:first/,
+  );
+});
+
+test("historical aggregation validates foreign producer tools without reopening them", () => {
+  const foreign = {
+    path: "C:\\qualification\\node.exe",
+    version: "v26.7.0",
+    sha256: "a".repeat(64),
+    bytes: 42,
+  };
+  assert.deepEqual(
+    supplementalInternals.validateExternalExecutableBinding(foreign, "foreign Node"),
+    foreign,
+  );
+  assert.throws(
+    () => supplementalInternals.validateExternalExecutableBinding(
+      { ...foreign, sha256: "forged" }, "foreign Node",
+    ),
+    /invalid producer-authenticated identity/,
+  );
+  assert.throws(
+    () => supplementalInternals.validateExternalExecutableBinding(
+      { ...foreign, path: "relative/node" }, "foreign Node",
+    ),
+    /invalid producer-authenticated identity/,
   );
 });
 

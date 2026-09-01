@@ -101,16 +101,31 @@ cases, never as the only mathematical evidence.
 
 The `numerics.frontend.scipy_execution` capability uses one pinned oracle
 policy: CPython 3.14.4, NumPy 2.5.1, and SciPy 1.18.0. Preparation records the
-exact Python launcher and target bytes, verifies every declared wheel `RECORD`
-hash and size without following links, and hashes the complete NumPy and SciPy
-package and distribution-metadata closures (including locally generated,
-unhashed bytecode and unlisted files). Probe and emitted programs both run with
-`-I -S` and the same explicit bound import roots, so user site packages and
-`.pth` startup code cannot silently alter the oracle. The adapter authenticates
-the environment at initialization and again after the last case and always
-executes the exact bound launcher. A host without that hash-locked independent
-runtime cannot prepare or satisfy a full campaign row: generated source text or
-version equality alone is deliberately not executable-language evidence.
+exact inputs selected by the checked-in per-platform oracle catalog: a
+standalone CPython distribution and the NumPy and SciPy wheels. A separate
+provisioner must safely normalize those inputs into a link-free, dedicated
+prefix, record the trusted input digests and complete prefix closure, and leave
+an authenticated empty `.qualification-tmp` directory. The collector never
+downloads or trusts an ambient `python` from `PATH`.
+
+Probe and emitted programs both use the exact prefix-relative interpreter with
+`-B -I -S`, explicitly insert only the catalog-bound site-packages directory,
+and run under the recorded minimal locale, timezone, temporary-directory, and
+single-threaded BLAS/OpenMP environment. The complete prefix closure includes
+files and directories, rejects links, junctions, special files, and
+case-colliding paths, and is authenticated before and after the campaign.
+Runtime inspection proves that the executable, `sys.prefix`, `sys.base_prefix`,
+all import paths, NumPy, SciPy, and `tempfile` remain inside that prefix.
+
+Every matrix receipt uploads its complete portable binding snapshot. The
+release aggregator validates that snapshot without reopening producer-local
+paths, binds it to the receipt artifact and the exact source-current catalog,
+and requires Node, npm, SEA, browser, and worker rows on each platform to use
+one identical oracle identity. The checked-in catalog is intentionally
+`pending` until release wiring supplies authenticated standalone archives and
+wheels on all four platforms. While any row is pending, preparation and release
+receipts fail closed; version equality or an ambient local SciPy installation
+is never sufficient evidence.
 
 Every adapter probes the mathematical modules available in its exact artifact
 before returning capability IDs. Missing lazy browser modules therefore make

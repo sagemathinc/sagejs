@@ -10,6 +10,7 @@ const {
   digestBundle,
   digestPath,
   parseJsonText,
+  pretty,
   readJson,
   repositoryPath,
   sha256,
@@ -23,9 +24,15 @@ const {
 const { verifyReceipt } = require("../receipt.cjs");
 const { buildReport } = require("../report.cjs");
 const { renderMatrix } = require("./render-matrix.cjs");
-const { validateBinding: validateBrowserExecutableBinding } = require(
-  "./browser-executable.cjs"
-);
+const {
+  createBinding: createBrowserExecutableBinding,
+  validateBinding: validateBrowserExecutableBinding,
+} = require("./browser-executable.cjs");
+const {
+  CATALOG_PATH: SCIPY_ORACLE_CATALOG_PATH,
+  validateBinding: validateScipyOracleBinding,
+  validateCatalog: validateScipyOracleCatalog,
+} = require("./scipy-oracle.cjs");
 
 const TEMPLATE_SCHEMA = "sagejs.numerical-qualification-supplemental-template/v1";
 const REPORT_SCHEMA_SUPPLEMENTAL = "sagejs.numerical-qualification-supplemental-report/v1";
@@ -105,6 +112,10 @@ function authenticateRepositoryBinding(binding, label, {
   requireContent = false,
 } = {}) {
   assertObject(binding, label);
+  if (typeof binding.path !== "string" || path.isAbsolute(binding.path) ||
+      /^[A-Za-z]:[\\/]/.test(binding.path) || binding.path.startsWith("\\\\")) {
+    throw new Error(`${label} path must be repository-relative on every platform`);
+  }
   if (expectedPath !== null && binding.path !== expectedPath) {
     throw new Error(`${label} does not bind ${expectedPath}`);
   }
@@ -123,17 +134,16 @@ function authenticateRepositoryBinding(binding, label, {
   return current;
 }
 
-function authenticateExternalExecutable(binding, label) {
+function validateExternalExecutableBinding(binding, label) {
   assertObject(binding, label);
-  const exactPath = fs.realpathSync(binding.path);
-  if (exactPath !== binding.path) throw new Error(`${label} path is not canonical`);
-  const status = fs.lstatSync(exactPath);
-  if (!status.isFile() || status.isSymbolicLink()) {
-    throw new Error(`${label} must be a regular executable file`);
-  }
-  const bytes = fs.readFileSync(exactPath);
-  if (binding.sha256 !== sha256(bytes) || binding.bytes !== bytes.length) {
-    throw new Error(`${label} bytes do not match its evidence binding`);
+  const portableAbsolute = typeof binding.path === "string" && (
+    binding.path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(binding.path) ||
+    binding.path.startsWith("\\\\")
+  );
+  if (!portableAbsolute || !/^[0-9a-f]{64}$/.test(binding.sha256 ?? "") ||
+      !Number.isSafeInteger(binding.bytes) || binding.bytes <= 0 ||
+      typeof binding.version !== "string" || binding.version.length === 0) {
+    throw new Error(`${label} has an invalid producer-authenticated identity`);
   }
   return binding;
 }
@@ -180,7 +190,7 @@ function sanitizerClaims(evidence) {
     "scripts/numerical-computing/qualification/run-native-sanitizers.cjs",
     "native sanitizer evidence",
   );
-  authenticateExternalExecutable(evidence.compiler, "native sanitizer compiler");
+  validateExternalExecutableBinding(evidence.compiler, "native sanitizer compiler");
   const result = [];
   const components = new Map((evidence.components ?? []).map((item) => [item.id, item]));
   if (components.size !== 2 || !components.has("cminpack") || !components.has("nlopt")) {
@@ -267,7 +277,7 @@ function destructiveClaims(evidence) {
     "scripts/numerical-computing/qualification/run-wasm-destructive.cjs",
     "destructive Wasm evidence",
   );
-  authenticateExternalExecutable(evidence.tool, "destructive Wasm Node executable");
+  validateExternalExecutableBinding(evidence.tool, "destructive Wasm Node executable");
   authenticateRepositoryBinding(
     evidence.harness,
     "destructive Wasm harness",
@@ -332,7 +342,7 @@ function browserClaims(evidence) {
     "scripts/numerical-computing/qualification/run-browser-memory.cjs",
     "browser memory evidence",
   );
-  authenticateExternalExecutable(evidence.browser_executable, "measured browser executable");
+  validateExternalExecutableBinding(evidence.browser_executable, "measured browser executable");
   if (evidence.status !== "passed" || evidence.scope?.claim !==
       "collector-authenticated-real-browser-process-tree-memory" ||
       evidence.memory?.measurement_scope !== "process_tree" ||
@@ -420,7 +430,7 @@ function structuralPerformanceClaims(evidence) {
     "scripts/numerical-computing/qualification/run-structural-performance.cjs",
     "structural performance evidence",
   );
-  authenticateExternalExecutable(evidence.tool, "structural performance Node executable");
+  validateExternalExecutableBinding(evidence.tool, "structural performance Node executable");
   const expectedGates = new Map([
     ["package-graph-lazy-ownership", {
       arguments: ["scripts/check-package-graph.cjs"],
@@ -900,16 +910,16 @@ function verifyMatrixBrowserSubjectCoherence(
       throw new Error(`matrix receipt ${key} lacks one browser executable binding`);
     }
     const artifact = artifacts[0];
-    authenticateRepositoryBinding(artifact, `${key} browser executable binding`, {
-      expectedPath: artifact.path,
-    });
-    const bindingPath = repositoryPath(
-      repositoryRoot, artifact.path, `${key} browser executable binding`,
-    ).absolute;
-    const binding = validateBrowserExecutableBinding(
-      parseJsonText(fs.readFileSync(bindingPath, "utf8"), `${key} browser executable binding`),
-      subject,
-    );
+    const supplementalExecutable = memorySubjects.get(key)?.executable;
+    const binding = createBrowserExecutableBinding(subject, supplementalExecutable);
+    validateBrowserExecutableBinding(binding, subject, { authenticate: false });
+    const serialized = pretty(binding);
+    if (artifact.content_sha256 !== sha256(serialized) ||
+        artifact.bytes !== Buffer.byteLength(serialized) || artifact.files !== 1) {
+      throw new Error(
+        `browser executable ${key} differs from its full-runtime receipt binding content`,
+      );
+    }
     receiptBindings.set(key, binding.executable);
   }
   if (receiptBindings.size !== expectedKeys.size) {
@@ -961,6 +971,89 @@ function verifyMatrixArtifactCoherence(matrix, supplemental) {
   return true;
 }
 
+function verifyMatrixScipyOracleCoherence(matrixReceiptRecords, {
+  expectedCatalog = null,
+} = {}) {
+  const sourceCatalog = expectedCatalog ?? validateScipyOracleCatalog(
+    readJson(path.join(repositoryRoot, SCIPY_ORACLE_CATALOG_PATH)),
+  );
+  const byPlatform = new Map();
+  const catalogIds = new Set();
+  for (const record of matrixReceiptRecords) {
+    const receipt = record.value;
+    const platformId = receipt.platform?.id;
+    const subject = receipt.runtime?.subject;
+    if (typeof platformId !== "string" || subject === undefined) {
+      throw new Error("matrix receipt lacks platform or runtime subject for SciPy oracle binding");
+    }
+    const artifacts = receipt.artifacts?.filter(
+      (artifact) => artifact.name === "scipy-oracle-binding",
+    );
+    if (artifacts?.length !== 1) {
+      throw new Error(`matrix receipt ${platformId}/${subject.kind} lacks one SciPy oracle binding`);
+    }
+    const artifact = artifacts[0];
+    authenticateRepositoryBinding(
+      artifact,
+      `matrix receipt ${platformId}/${subject.kind} SciPy oracle binding`,
+      { requireContent: true },
+    );
+    const resolved = repositoryPath(
+      repositoryRoot, artifact.path, "matrix SciPy oracle binding snapshot",
+    );
+    const binding = validateScipyOracleBinding(
+      parseJsonText(fs.readFileSync(resolved.absolute, "utf8"), "matrix SciPy oracle binding"),
+      { authenticate: false },
+    );
+    if (binding.platform !== platformId) {
+      throw new Error(
+        `matrix receipt ${platformId}/${subject.kind} uses SciPy oracle for ${binding.platform}`,
+      );
+    }
+    if (canonicalJson(binding.catalog.snapshot) !== canonicalJson(sourceCatalog)) {
+      throw new Error(
+        `matrix receipt ${platformId}/${subject.kind} SciPy catalog is not source-current`,
+      );
+    }
+    catalogIds.add(binding.catalog.snapshot.id);
+    const previous = byPlatform.get(platformId);
+    if (previous !== undefined && canonicalJson(previous.binding) !== canonicalJson(binding)) {
+      throw new Error(`matrix receipts substitute different SciPy oracles on ${platformId}`);
+    }
+    byPlatform.set(platformId, {
+      binding,
+      subjects: [...(previous?.subjects ?? []), {
+        kind: subject.kind,
+        name: subject.name,
+        version: subject.version,
+        engine: subject.engine,
+      }],
+    });
+  }
+  const expectedPlatforms = ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"];
+  if (catalogIds.size !== 1 || byPlatform.size !== expectedPlatforms.length ||
+      expectedPlatforms.some((platformId) => !byPlatform.has(platformId))) {
+    throw new Error("full-runtime matrix lacks one source-current SciPy oracle per platform");
+  }
+  const expectedSubjectCounts = new Map([
+    ["linux-x64", 7], ["linux-arm64", 3], ["macos-arm64", 3], ["windows-x64", 3],
+  ]);
+  for (const [platformId, record] of byPlatform) {
+    if (record.subjects.length !== expectedSubjectCounts.get(platformId)) {
+      throw new Error(`full-runtime matrix has wrong SciPy oracle subject count on ${platformId}`);
+    }
+  }
+  return {
+    catalog_id: [...catalogIds][0],
+    platform_bindings: expectedPlatforms.map((platformId) => ({
+      platform: platformId,
+      binding_id: byPlatform.get(platformId).binding.id,
+      subjects: byPlatform.get(platformId).subjects
+        .sort((left, right) => canonicalJson(left).localeCompare(canonicalJson(right))),
+    })),
+  };
+}
+
 function buildReleaseGate({
   candidate, matrixReportRecord, matrixPolicyRecord, matrixTemplateRecord, matrixReceiptRecords,
   matrixManifestRecords, supplementalTemplateRecord, supplementalEvidenceRecords,
@@ -1001,6 +1094,7 @@ function buildReleaseGate({
     throw new Error("supplemental report is not a passing release report for the candidate");
   }
   verifyMatrixArtifactCoherence(matrix, supplementalReport);
+  const scipyOracleCoherence = verifyMatrixScipyOracleCoherence(matrixReceiptRecords);
   const core = {
     schema: RELEASE_GATE_SCHEMA,
     candidate,
@@ -1053,6 +1147,7 @@ function buildReleaseGate({
       browser_distribution_content_sha256:
         supplementalReport.artifact_coherence.browser_distribution.content_sha256,
     },
+    scipy_oracle_coherence: scipyOracleCoherence,
   };
   return { ...core, id: contentId(core) };
 }
@@ -1074,5 +1169,6 @@ module.exports = {
   verifyMatrixReport,
   verifyMatrixArtifactCoherence,
   verifyMatrixBrowserSubjectCoherence,
-  qualificationInternals: { addUniqueReceiptId },
+  verifyMatrixScipyOracleCoherence,
+  qualificationInternals: { addUniqueReceiptId, validateExternalExecutableBinding },
 };
