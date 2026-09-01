@@ -1,0 +1,581 @@
+{
+  "schema": "sagejs.numerical-native-sanitizer-evidence/v1",
+  "generated_at": "2026-09-01T00:44:42.950Z",
+  "status": "failed",
+  "repository": {
+    "commit": "30b1b9df9f0eb1b2510861a288eb305ca6547565",
+    "tree": "31e65fb20582d45aecce3827b12d281fb73cc633",
+    "clean": true,
+    "status_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "platform": {
+    "id": "linux-x64",
+    "os_platform": "linux",
+    "architecture": "x64",
+    "os_type": "Linux",
+    "os_release": "6.17.0-1022-gcp",
+    "endianness": "LE",
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 16,
+    "total_memory_bytes": 67418701824,
+    "machine_id": "sha256:470ef3c88656b4da18bdb702c843ab14a3f23f0fc8fe5c6ffde0b2fad3dc25de"
+  },
+  "compiler": {
+    "command": "cc",
+    "path": "/usr/bin/x86_64-linux-gnu-gcc-15",
+    "sha256": "b5f1b773a7c733738352000c92a077dc5852a1a2fc6d836b1e411be1e9ec5f88",
+    "version": "x86_64-linux-gnu-gcc-15 (Ubuntu 15.2.0-16ubuntu1) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+  },
+  "scope": {
+    "claim": "native-source-component-sanitizer-evidence",
+    "wasm_sanitized": false,
+    "qualification_rule": "pair with exact-candidate Wasm ABI, corruption, allocation, callback, cancellation, and lifecycle gates"
+  },
+  "components": [
+    {
+      "id": "cminpack",
+      "status": "passed",
+      "revision": "32d343ac33ac297594b5ffac57741e5615b4bb07",
+      "lock": {
+        "path": "packages/flint-wasm/numerical/sources/cminpack-lock.json",
+        "sha256": "87bf0c72cbfb94dae286c44a49da37cc38a082a0f630e316726d867d0cd92e92",
+        "bytes": 1145,
+        "files": 1
+      },
+      "build_report": {
+        "path": "packages/flint-wasm/numerical/build/build-report.json",
+        "sha256": "5eac2d9cc7e635bf78dfbc534929e63ada797b3d2776dde6843563ecfc43457e",
+        "bytes": 7598,
+        "files": 1
+      },
+      "source_closure_sha256": "c1b1788faab2ee4070d66d58fd77a8cf7425dd4a16092c901c1ad3d882f8dc81",
+      "harness": {
+        "path": "bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+        "sha256": "d809c90e6c8e3809b9613486cf80ae496e2e09cac8759edf7af510b379ffc917",
+        "bytes": 2940,
+        "files": 1
+      },
+      "source_files": [
+        {
+          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/dpmpar.c",
+          "sha256": "ef255111dc84d1876faa381df78671fd9e27bcd8f12982457a167bcde7a0c811",
+          "bytes": 6439
+        },
+        {
+          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c",
+          "sha256": "47a6c5f754dbfc02b36ba57f5e552cf06d264aa2d4a5f7e15c99c44f4a4ca2c8",
+          "bytes": 8227
+        },
+        {
+          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/fdjac2.c",
+          "sha256": "fcf1863876e8a6db56d7a2ea6412800d1c83d844466e0f1aef0ad0c3cadd2fc0",
+          "bytes": 3826
+        },
+        {
+          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmdif.c",
+          "sha256": "8c580dbb3ccbce1c660ce72b5120b296accbf9efbd335e4fabdfb6bb61a5ff3a",
+          "bytes": 17370
+        },
+        {
+          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmder.c",
+          "sha256": "d323ec3cd70a88294101daf7e316c35ceee8455e43fded97914c76b2db21304f",
+          "bytes": 17226
+        },
+        {
+          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmpar.c",
+          "sha256": "fc4cbc2b272734f408547f05dd4841b8831f6790b3ef3f95a437215f6a5cc23a",
+          "bytes": 11163
+        },
+        {
+          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrfac.c",
+          "sha256": "42a6e138848606ebe45bee2ad2ed93c268e808f9502bd8dfc6879e6455158bad",
+          "bytes": 10811
+        },
+        {
+          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrsolv.c",
+          "sha256": "72d2819a77c172070d4905b84bcb1f21aac6b9ae0d5138bf7bc343a84fe5dd4b",
+          "bytes": 7343
+        }
+      ],
+      "scope": {
+        "native_component": "locked cminpack lmdif/lmder source selected by the Sage.js Wasm build",
+        "workloads": [
+          "successful-lmdif",
+          "successful-lmder",
+          "callback-stop",
+          "repeated-lifecycle-512"
+        ],
+        "excludes": [
+          "Wasm-linear-memory-boundary",
+          "host-callback-runtime",
+          "artifact-authentication"
+        ],
+        "paired_gate": "test/numerical-p3-backends/abi-fuzz.test.mjs and test/numerical-p3-backends/lm-wasm.test.mjs"
+      },
+      "runs": [
+        {
+          "sanitizer": "address",
+          "status": "passed",
+          "compiler_flags": [
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fno-omit-frame-pointer",
+            "-fno-common",
+            "-Wall",
+            "-Wextra",
+            "-fsanitize=address"
+          ],
+          "environment": {
+            "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1"
+          },
+          "compile": {
+            "command": "/usr/bin/x86_64-linux-gnu-gcc-15",
+            "arguments": [
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fno-common",
+              "-Wall",
+              "-Wextra",
+              "-fsanitize=address",
+              "-DCMINPACK_NO_DLL",
+              "-I",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/include",
+              "-I",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src",
+              "<repository>/bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/dpmpar.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/fdjac2.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmdif.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmder.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmpar.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrfac.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrsolv.c",
+              "-lm",
+              "-o",
+              "<temporary>/cminpack-address"
+            ],
+            "status": 0,
+            "signal": null,
+            "error": null,
+            "stdout": "",
+            "stderr": "/home/user/sagejs-worktrees/p8-numerical-qualification/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:51:34: warning: ‘/*’ within comment [-Wcomment]\n   51 |   correct. cminpack's pure C (src/*.c) is a hand-cleaned-up rewrite of the f2c\n/home/user/sagejs-worktrees/p8-numerical-qualification/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:52:18: warning: ‘/*’ within comment [-Wcomment]\n   52 |   output (src/f2c/*.c): they agree on well-conditioned inputs, but the cleanup\n",
+            "elapsed_ms": 744.088328
+          },
+          "executable_sha256": "bc92fbad0ae171a54e820ee68b016aef047d95c6ac935aa006db893bb2f1ec1f",
+          "execute": {
+            "command": "<temporary>/cminpack-address",
+            "arguments": [],
+            "status": 0,
+            "signal": null,
+            "error": null,
+            "stdout": "",
+            "stderr": "",
+            "elapsed_ms": 11.771829
+          }
+        },
+        {
+          "sanitizer": "undefined",
+          "status": "passed",
+          "compiler_flags": [
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fno-omit-frame-pointer",
+            "-fno-common",
+            "-Wall",
+            "-Wextra",
+            "-fsanitize=undefined"
+          ],
+          "environment": {
+            "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+          },
+          "compile": {
+            "command": "/usr/bin/x86_64-linux-gnu-gcc-15",
+            "arguments": [
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fno-common",
+              "-Wall",
+              "-Wextra",
+              "-fsanitize=undefined",
+              "-DCMINPACK_NO_DLL",
+              "-I",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/include",
+              "-I",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src",
+              "<repository>/bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/dpmpar.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/fdjac2.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmdif.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmder.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmpar.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrfac.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrsolv.c",
+              "-lm",
+              "-o",
+              "<temporary>/cminpack-undefined"
+            ],
+            "status": 0,
+            "signal": null,
+            "error": null,
+            "stdout": "",
+            "stderr": "/home/user/sagejs-worktrees/p8-numerical-qualification/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:51:34: warning: ‘/*’ within comment [-Wcomment]\n   51 |   correct. cminpack's pure C (src/*.c) is a hand-cleaned-up rewrite of the f2c\n/home/user/sagejs-worktrees/p8-numerical-qualification/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:52:18: warning: ‘/*’ within comment [-Wcomment]\n   52 |   output (src/f2c/*.c): they agree on well-conditioned inputs, but the cleanup\n",
+            "elapsed_ms": 1018.186976
+          },
+          "executable_sha256": "ec78666976c297fdfabefe23a64eed368595c8049e642055f5fc15bf123cfe54",
+          "execute": {
+            "command": "<temporary>/cminpack-undefined",
+            "arguments": [],
+            "status": 0,
+            "signal": null,
+            "error": null,
+            "stdout": "",
+            "stderr": "",
+            "elapsed_ms": 4.54885
+          }
+        },
+        {
+          "sanitizer": "leak",
+          "status": "passed",
+          "compiler_flags": [
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fno-omit-frame-pointer",
+            "-fno-common",
+            "-Wall",
+            "-Wextra",
+            "-fsanitize=leak"
+          ],
+          "environment": {
+            "LSAN_OPTIONS": "exitcode=23"
+          },
+          "compile": {
+            "command": "/usr/bin/x86_64-linux-gnu-gcc-15",
+            "arguments": [
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fno-common",
+              "-Wall",
+              "-Wextra",
+              "-fsanitize=leak",
+              "-DCMINPACK_NO_DLL",
+              "-I",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/include",
+              "-I",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src",
+              "<repository>/bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/dpmpar.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/fdjac2.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmdif.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmder.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmpar.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrfac.c",
+              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrsolv.c",
+              "-lm",
+              "-o",
+              "<temporary>/cminpack-leak"
+            ],
+            "status": 0,
+            "signal": null,
+            "error": null,
+            "stdout": "",
+            "stderr": "/home/user/sagejs-worktrees/p8-numerical-qualification/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:51:34: warning: ‘/*’ within comment [-Wcomment]\n   51 |   correct. cminpack's pure C (src/*.c) is a hand-cleaned-up rewrite of the f2c\n/home/user/sagejs-worktrees/p8-numerical-qualification/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:52:18: warning: ‘/*’ within comment [-Wcomment]\n   52 |   output (src/f2c/*.c): they agree on well-conditioned inputs, but the cleanup\n",
+            "elapsed_ms": 596.968861
+          },
+          "executable_sha256": "008a6ebf641a4a00bb1f44e11bb17c237b2bcb0a641dbb5d746a69626f7563b9",
+          "execute": {
+            "command": "<temporary>/cminpack-leak",
+            "arguments": [],
+            "status": 0,
+            "signal": null,
+            "error": null,
+            "stdout": "",
+            "stderr": "",
+            "elapsed_ms": 8.376499
+          }
+        }
+      ]
+    },
+    {
+      "id": "nlopt",
+      "status": "failed",
+      "revision": "6e6593f131ba3a38bc9edbed0a357bc01526e54b",
+      "lock": {
+        "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/source-lock.json",
+        "sha256": "fd5bc8d172aab0f40852e37a69f3c5801c418465f27991b67872d33135e4610d",
+        "bytes": 895,
+        "files": 1
+      },
+      "build_report": {
+        "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/build/build-report.json",
+        "sha256": "b563e16bb2b03219bb7f744d2cf4c344ec7916e0b6cbf81d28e8c26fa36fa30c",
+        "bytes": 5528,
+        "files": 1
+      },
+      "source_closure_sha256": "bcf6395e6ff2a33c9635c21908eeb7b53ccefd5d4ee9492b12c9a086e6a4dd4f",
+      "harness": {
+        "path": "bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
+        "sha256": "0dcc7eaf3a602e73a64147046a2cd22ca2a3abffcd3335f85ca9f840bcc0203d",
+        "bytes": 4501,
+        "files": 1
+      },
+      "source_files": [
+        {
+          "path": "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead/nldrmd.c",
+          "sha256": "f535c71a6710e46a7fa0d3675186eac260f565bda5be8681586b64ed54c07376",
+          "bytes": 10860
+        },
+        {
+          "path": "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla/cobyla.c",
+          "sha256": "7e0de84b9d9e646c1721fe9e5e02979d86c2ec5fbd95cbe6ac507da2ef8dba62",
+          "bytes": 56051
+        },
+        {
+          "path": "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/stop.c",
+          "sha256": "d96262bf61e3ed1169eee98e7b19699939b8c7859b7e8442680cbfdedc90d762",
+          "bytes": 7961
+        },
+        {
+          "path": "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/redblack.c",
+          "sha256": "da5063670df2e2d85615cc072d7ebf877d208c82e2f384427944382f5f4af831",
+          "bytes": 12198
+        },
+        {
+          "path": "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/rescale.c",
+          "sha256": "2681664ccc48d10d17ee2f4553dae62343bd47cd08b3be484496b22ef481abcb",
+          "bytes": 3169
+        }
+      ],
+      "scope": {
+        "native_component": "locked NLopt Nelder-Mead and COBYLA C source selected by the Sage.js Wasm build",
+        "workloads": [
+          "successful-nelder-mead",
+          "forced-stop",
+          "repeated-lifecycle-512",
+          "successful-constrained-cobyla"
+        ],
+        "excludes": [
+          "Wasm-linear-memory-boundary",
+          "host-callback-runtime",
+          "artifact-authentication"
+        ],
+        "paired_gate": "test/numerical-p3-nlopt/abi-fuzz.test.mjs and test/numerical-p3-nlopt/backend.test.mjs"
+      },
+      "runs": [
+        {
+          "sanitizer": "address",
+          "status": "passed",
+          "compiler_flags": [
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fno-omit-frame-pointer",
+            "-fno-common",
+            "-Wall",
+            "-Wextra",
+            "-fsanitize=address"
+          ],
+          "environment": {
+            "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1"
+          },
+          "compile": {
+            "command": "/usr/bin/x86_64-linux-gnu-gcc-15",
+            "arguments": [
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fno-common",
+              "-Wall",
+              "-Wextra",
+              "-fsanitize=address",
+              "-DSAGEJS_NLOPT_HAVE_COBYLA=1",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/config",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/api",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla",
+              "<repository>/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead/nldrmd.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla/cobyla.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/stop.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/redblack.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/rescale.c",
+              "-lm",
+              "-o",
+              "<temporary>/nlopt-address"
+            ],
+            "status": 0,
+            "signal": null,
+            "error": null,
+            "stdout": "",
+            "stderr": "",
+            "elapsed_ms": 1594.102548
+          },
+          "executable_sha256": "f5f1a8b0474a0caf916833489324044926c49f50a4fbea06518f747c591b1df6",
+          "execute": {
+            "command": "<temporary>/nlopt-address",
+            "arguments": [],
+            "status": 0,
+            "signal": null,
+            "error": null,
+            "stdout": "",
+            "stderr": "",
+            "elapsed_ms": 52.259325
+          }
+        },
+        {
+          "sanitizer": "undefined",
+          "status": "failed",
+          "compiler_flags": [
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fno-omit-frame-pointer",
+            "-fno-common",
+            "-Wall",
+            "-Wextra",
+            "-fsanitize=undefined"
+          ],
+          "environment": {
+            "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+          },
+          "compile": {
+            "command": "/usr/bin/x86_64-linux-gnu-gcc-15",
+            "arguments": [
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fno-common",
+              "-Wall",
+              "-Wextra",
+              "-fsanitize=undefined",
+              "-DSAGEJS_NLOPT_HAVE_COBYLA=1",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/config",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/api",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla",
+              "<repository>/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead/nldrmd.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla/cobyla.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/stop.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/redblack.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/rescale.c",
+              "-lm",
+              "-o",
+              "<temporary>/nlopt-undefined"
+            ],
+            "status": 0,
+            "signal": null,
+            "error": null,
+            "stdout": "",
+            "stderr": "",
+            "elapsed_ms": 3345.882184
+          },
+          "executable_sha256": "e5f8e4ce670ee9b80526bef45f7deef83f7c1da87613ed1f2b295b9ad5097f12",
+          "execute": {
+            "command": "<temporary>/nlopt-undefined",
+            "arguments": [],
+            "status": 1,
+            "signal": null,
+            "error": null,
+            "stdout": "",
+            "stderr": "/home/user/sagejs-worktrees/p8-numerical-qualification/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla/cobyla.c:542:30: runtime error: store to address 0x5892c1a03548 with insufficient space for an object of type 'double'\n0x5892c1a03548: note: pointer points here\n 00 00 00 00  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  00 00 00 00\n              ^ \n    #0 0x5892b0f71e8f in cobylb /home/user/sagejs-worktrees/p8-numerical-qualification/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla/cobyla.c:542\n    #1 0x5892b0f71e8f in cobyla /home/user/sagejs-worktrees/p8-numerical-qualification/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla/cobyla.c:437\n    #2 0x5892b0f7cebd in cobyla_minimize /home/user/sagejs-worktrees/p8-numerical-qualification/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla/cobyla.c:254\n    #3 0x5892b0f65f15 in run_cobyla /home/user/sagejs-worktrees/p8-numerical-qualification/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c:121\n    #4 0x5892b0f66080 in main /home/user/sagejs-worktrees/p8-numerical-qualification/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c:141\n    #5 0x7eca68d7e600  (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a600) (BuildId: 90ebd03ae9d9f42b23b4eb82fdf70352cf744198)\n    #6 0x7eca68d7e717 in __libc_start_main (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a717) (BuildId: 90ebd03ae9d9f42b23b4eb82fdf70352cf744198)\n    #7 0x5892b0f652c4 in _start (/tmp/sagejs-numerical-sanitizers-PAuOQv/nlopt-undefined+0x182c4) (BuildId: c97749be25d80b62f09f1441ee2538a4df342e4c)\n\n",
+            "elapsed_ms": 16.870269
+          }
+        },
+        {
+          "sanitizer": "leak",
+          "status": "passed",
+          "compiler_flags": [
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fno-omit-frame-pointer",
+            "-fno-common",
+            "-Wall",
+            "-Wextra",
+            "-fsanitize=leak"
+          ],
+          "environment": {
+            "LSAN_OPTIONS": "exitcode=23"
+          },
+          "compile": {
+            "command": "/usr/bin/x86_64-linux-gnu-gcc-15",
+            "arguments": [
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fno-common",
+              "-Wall",
+              "-Wextra",
+              "-fsanitize=leak",
+              "-DSAGEJS_NLOPT_HAVE_COBYLA=1",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/config",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/api",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead",
+              "-I",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla",
+              "<repository>/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead/nldrmd.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla/cobyla.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/stop.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/redblack.c",
+              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/rescale.c",
+              "-lm",
+              "-o",
+              "<temporary>/nlopt-leak"
+            ],
+            "status": 0,
+            "signal": null,
+            "error": null,
+            "stdout": "",
+            "stderr": "",
+            "elapsed_ms": 1201.789711
+          },
+          "executable_sha256": "d136d72d4564c6aa5fe9f2ebafb1f2f3a2dc47f8a3946d36ece18117323700e5",
+          "execute": {
+            "command": "<temporary>/nlopt-leak",
+            "arguments": [],
+            "status": 0,
+            "signal": null,
+            "error": null,
+            "stdout": "",
+            "stderr": "",
+            "elapsed_ms": 37.077017
+          }
+        }
+      ]
+    }
+  ],
+  "id": "sha256:9ff29d2759e4edcdc21b8f3f95042a97402009f8c3387d6b41856c4757ce9c7f"
+}
