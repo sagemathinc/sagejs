@@ -409,7 +409,6 @@
       "methods": [
         "bfgs",
         "nelder-mead",
-        "nlopt-cobyla",
         "nlopt-nelder-mead",
         "projected-bfgs"
       ],
