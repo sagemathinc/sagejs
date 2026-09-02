@@ -37,8 +37,22 @@ The numerical implementation is supported by backend-neutral correctness
 corpora, metamorphic and failure tests, bounded fuzz and sweep cases, executed
 differential oracles drawn from NumPy, SciPy, and mpmath, plus retained R
 reference source and fixtures. Qualified cminpack integration supplies
-nonlinear least squares. NLopt promotion remains
-conservative and capability-gated until its production evidence is complete.
+nonlinear least squares. NLopt Nelder-Mead is qualified for explicit use by
+four-platform and browser evidence; automatic selection remains disabled, and
+COBYLA remains excluded rather than inheriting evidence from another method.
+
+Two other major application layers are completed in this release:
+
+- Upstream `ipywidgets` and Sage-compatible `@interact` now run through a
+  transport-neutral comm layer in Node, Jupyter, and the browser. Standard
+  controls, rich `Output` contents, plots, binary state, repeated updates,
+  persistent imports, reusable browser cells, and shared or isolated session
+  management are covered by focused lifecycle and upstream-fixture tests.
+- Classical modular forms over the rationals gain a parented exact object
+  layer for integral-weight trivial-character forms on `Gamma0(N)`. Ambient,
+  cusp, Eisenstein, old, and new spaces support immutable coordinates,
+  coercion, membership, arithmetic, q-expansions, SagePack serialization, and
+  certified good- and bad-prime Hecke operators.
 
 Release publication now requires an authenticated numerical evidence gate. It
 binds the exact candidate to Node, npm, SEA, and browser observations; Linux
