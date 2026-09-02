@@ -26,6 +26,22 @@
         "methods": ["bisection", "brent", "newton", "secant"],
         "callback_cost_tiers": ["cheap", "moderate", "expensive"],
         "trace_policies": ["none", "iterations"],
+        "executable_coverage": {
+          "methods": [
+            {"case_id": "p1-root-bisection-cheap", "check_id": "methods-executed", "members": ["bisection"]},
+            {"case_id": "p1-root-brent-cheap", "check_id": "methods-executed", "members": ["brent"]},
+            {"case_id": "p1-root-newton-cheap", "check_id": "methods-executed", "members": ["newton"]},
+            {"case_id": "p1-root-secant-cheap", "check_id": "methods-executed", "members": ["secant"]}
+          ],
+          "callback_cost_tiers": [
+            {"case_id": "p1-root-bisection-cheap", "check_id": "callback-tier-executed", "members": ["cheap"]},
+            {"case_id": "p1-root-bisection-moderate", "check_id": "callback-tier-executed", "members": ["moderate"]},
+            {"case_id": "p1-root-bisection-expensive", "check_id": "callback-tier-executed", "members": ["expensive"]}
+          ],
+          "trace_policies": [
+            {"case_id": "p1-root-bisection-cheap", "check_id": "trace-policies-executed", "members": ["none", "iterations"]}
+          ]
+        },
         "numeric_type": "binary64",
         "comparison_scope": "warm-kernel-solve-time",
         "acceleration": "none-qualified"

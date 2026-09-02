@@ -410,11 +410,17 @@ function normalize(raw, input, elapsedMs) {
     outcome: { kind: "success", code: null },
     values: {
       all_success: allSuccess,
+      callback_cost_tiers_executed: [input.callback_tier],
       callback_tier: input.callback_tier,
       identity_matches: identityMatches,
       max_residual: Math.max(...allRoots.map((value) => Math.abs(value * value - 2))),
       max_root_error: Math.max(...allRoots.map((value) => Math.abs(value - expectedRoot))),
+      methods_executed: [...new Set([
+        ...modes.none.methods,
+        ...modes.iterations.methods,
+      ])].sort(),
       repetitions: input.repetitions,
+      trace_policies_executed: ["none", "iterations"],
       trace_modes_observed: traceModesObserved,
     },
     metrics: {

@@ -25,6 +25,9 @@
         {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "methods-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/methods_executed", "expected": {"literal": ["bisection"]}},
+        {"id": "callback-tier-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/callback_cost_tiers_executed", "expected": {"literal": ["cheap"]}},
+        {"id": "trace-policies-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_policies_executed", "expected": {"literal": ["none", "iterations"]}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
         {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 5000}}
       ],
@@ -43,6 +46,7 @@
         {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "callback-tier-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/callback_cost_tiers_executed", "expected": {"literal": ["moderate"]}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
         {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 5000}}
       ], "measurement": {"warmup": 1, "samples": 5}
@@ -60,6 +64,7 @@
         {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "callback-tier-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/callback_cost_tiers_executed", "expected": {"literal": ["expensive"]}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
         {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 5000}}
       ], "measurement": {"warmup": 1, "samples": 5}
@@ -77,6 +82,7 @@
         {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "methods-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/methods_executed", "expected": {"literal": ["brent"]}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
         {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
       ], "measurement": {"warmup": 1, "samples": 5}
@@ -128,6 +134,7 @@
         {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "methods-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/methods_executed", "expected": {"literal": ["secant"]}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
         {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
       ], "measurement": {"warmup": 1, "samples": 5}
@@ -179,6 +186,7 @@
         {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "methods-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/methods_executed", "expected": {"literal": ["newton"]}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
         {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
       ], "measurement": {"warmup": 1, "samples": 5}
