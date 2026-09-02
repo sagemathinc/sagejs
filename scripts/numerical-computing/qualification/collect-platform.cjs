@@ -96,6 +96,7 @@ function prepareOutput(relative, platform, subjects) {
       .filter((subject) => !subjects.includes(subject))
       .map((subject) => `${platform}-${subject}`),
   );
+  if (!subjects.includes("node")) allowedExisting.add(`${platform}-soak.evidence.json`);
   for (const name of fs.readdirSync(output.absolute)) {
     if (!allowedExisting.has(name)) {
       throw new Error(`output contains foreign or selected row ${name}`);
@@ -178,6 +179,13 @@ function run(options) {
       },
       receiptName: "node.receipt.json",
     });
+    runNode([
+      "scripts/numerical-computing/qualification/run-soak.cjs",
+      "--candidate", options.candidate,
+      "--artifact", DIST,
+      "--profile", "release",
+      "--output", `${output}/${platform}-soak.evidence.json`,
+    ], `collect ${platform} numerical soak`);
   }
 
   for (const kind of ["npm", "sea"].filter((item) => options.subjects.includes(item))) {

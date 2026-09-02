@@ -33,6 +33,12 @@ const {
   validateBinding: validateScipyOracleBinding,
   validateCatalog: validateScipyOracleCatalog,
 } = require("./scipy-oracle.cjs");
+const {
+  PROFILES: SOAK_PROFILES,
+  THRESHOLDS: SOAK_THRESHOLDS,
+  analyseSession: analyseSoakSession,
+  theilSenSlope: soakTheilSenSlope,
+} = require("./run-soak.cjs");
 
 const TEMPLATE_SCHEMA = "sagejs.numerical-qualification-supplemental-template/v1";
 const REPORT_SCHEMA_SUPPLEMENTAL = "sagejs.numerical-qualification-supplemental-report/v1";
@@ -43,6 +49,7 @@ const EVIDENCE_SCHEMAS = new Set([
   "sagejs.numerical-wasm-destructive-evidence/v1",
   "sagejs.numerical-browser-memory-evidence/v1",
   "sagejs.numerical-structural-performance-evidence/v1",
+  "sagejs.numerical-soak-evidence/v1",
 ]);
 const repositoryRoot = path.resolve(__dirname, "..", "..", "..");
 const FULL_RUNTIME_TEMPLATE_PATH = path.join(
@@ -523,13 +530,148 @@ function structuralPerformanceClaims(evidence) {
   return [{ requirement: "startup-package-payload-closure", tokens }];
 }
 
+function numericalSoakClaims(evidence) {
+  authenticateCollector(
+    evidence,
+    "scripts/numerical-computing/qualification/run-soak.cjs",
+    "numerical soak evidence",
+  );
+  validateExternalExecutableBinding(evidence.tool, "numerical soak Node executable");
+  authenticateRepositoryBinding(evidence.harness, "numerical soak harness", {
+    expectedPath: "bench/numerical-computing/qualification/soak/session.cjs",
+  });
+  assertObject(evidence.artifact, "numerical soak artifact");
+  if (evidence.artifact.path !== "dist" ||
+      !/^[0-9a-f]{64}$/.test(evidence.artifact.sha256 ?? "") ||
+      !/^[0-9a-f]{64}$/.test(evidence.artifact.content_sha256 ?? "") ||
+      !Number.isSafeInteger(evidence.artifact.bytes) || evidence.artifact.bytes <= 0 ||
+      !Number.isSafeInteger(evidence.artifact.files) || evidence.artifact.files <= 0) {
+    throw new Error("numerical soak artifact has an invalid producer-authenticated identity");
+  }
+  const platform = evidence.platform?.id;
+  if (!["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"].includes(platform)) {
+    throw new Error(`numerical soak has unsupported platform ${platform}`);
+  }
+  const configuration = evidence.configuration;
+  const totals = evidence.totals;
+  const thresholds = evidence.thresholds;
+  const finite = (value) => typeof value === "number" && Number.isFinite(value);
+  const domains = [
+    "root", "integration", "linear-solve", "scalar-optimization",
+    "explicit-ode", "fft", "descriptive-statistics",
+  ];
+  if (evidence.status !== "passed" || evidence.profile !== "release" ||
+      canonicalJson(configuration) !== canonicalJson(SOAK_PROFILES.release) ||
+      canonicalJson(thresholds) !== canonicalJson(SOAK_THRESHOLDS) ||
+      evidence.scope?.claim !== "source-bound-repeated-fresh-process-numerical-soak" ||
+      evidence.scope?.fresh_process_per_session !== true ||
+      evidence.scope?.cancellation_and_recovery_per_session !== true ||
+      evidence.scope?.garbage_collected_memory_samples !== true ||
+      evidence.scope?.routine_ci !== false || evidence.scope?.bounded !== true ||
+      canonicalJson(evidence.scope?.representative_domains) !== canonicalJson(domains) ||
+      configuration?.sessions < 12 || configuration?.minimum_total_elapsed_ms < 180_000 ||
+      configuration?.minimum_total_operations < 5_376 ||
+      configuration?.session_timeout_ms > 180_000 ||
+      !Number.isSafeInteger(totals?.sessions) || !finite(totals?.elapsed_ms) ||
+      !Number.isSafeInteger(totals?.operations) || !Number.isSafeInteger(totals?.failures) ||
+      !finite(totals?.maximum_error) || !finite(totals?.parent_heap_slope_bytes_per_session) ||
+      !finite(totals?.parent_heap_growth_bytes) ||
+      totals?.sessions !== configuration.sessions || totals?.elapsed_ms < 180_000 ||
+      totals?.operations < 5_376 || totals?.failures !== 0 ||
+      totals?.maximum_error > thresholds?.maximum_numerical_error ||
+      totals?.parent_heap_slope_bytes_per_session >
+        thresholds?.maximum_parent_heap_slope_bytes_per_session ||
+      totals?.parent_heap_growth_bytes > thresholds?.maximum_parent_heap_growth_bytes ||
+      !Array.isArray(evidence.sessions) || evidence.sessions.length !== totals.sessions ||
+      !Array.isArray(evidence.parent_memory_samples) ||
+      evidence.parent_memory_samples.length !== totals.sessions + 1) {
+    throw new Error("numerical soak evidence does not satisfy the release campaign envelope");
+  }
+  for (let index = 0; index < evidence.parent_memory_samples.length; index += 1) {
+    const sample = evidence.parent_memory_samples[index];
+    if (sample?.session !== index || !Number.isSafeInteger(sample.heap_used_bytes)) {
+      throw new Error("numerical soak collector memory samples are invalid");
+    }
+  }
+  const parentStable = evidence.parent_memory_samples.slice(
+    Math.floor(evidence.parent_memory_samples.length / 2),
+  );
+  const recomputedParentSlope = soakTheilSenSlope(
+    parentStable, "session", "heap_used_bytes",
+  );
+  const recomputedParentGrowth = evidence.parent_memory_samples.at(-1).heap_used_bytes -
+    evidence.parent_memory_samples[0].heap_used_bytes;
+  if (totals.parent_heap_slope_bytes_per_session !== recomputedParentSlope ||
+      totals.parent_heap_growth_bytes !== recomputedParentGrowth) {
+    throw new Error("numerical soak collector memory analysis is not reproducible");
+  }
+  for (let index = 0; index < evidence.sessions.length; index += 1) {
+    const session = evidence.sessions[index];
+    let recomputedMemory;
+    try {
+      recomputedMemory = analyseSoakSession({
+        status: "passed",
+        memory_samples: session?.memory_samples,
+      });
+    } catch {
+      throw new Error(`numerical soak session ${index} has invalid memory samples`);
+    }
+    if (session.session !== index || !finite(session.elapsed_ms) ||
+        !Number.isSafeInteger(session.blocks) || session.blocks < 1 ||
+        !Number.isSafeInteger(session.cycles) || session.cycles < 1 ||
+        !Number.isSafeInteger(session.operations) ||
+        !Number.isSafeInteger(session.failures) || !finite(session.maximum_error) ||
+        !finite(session.memory?.heap_slope_bytes_per_operation) ||
+        !finite(session.memory?.rss_slope_bytes_per_operation) ||
+        !finite(session.memory?.heap_growth_bytes) || !finite(session.memory?.rss_growth_bytes) ||
+        !Number.isSafeInteger(session.memory?.peak_rss_bytes) ||
+        canonicalJson(session.memory) !== canonicalJson(recomputedMemory) ||
+        session.elapsed_ms < configuration.minimum_session_elapsed_ms ||
+        session.operations < configuration.minimum_session_operations || session.failures !== 0 ||
+        session.blocks + 1 !== session.memory_samples.length ||
+        session.cycles !== session.blocks * configuration.cycles_per_block ||
+        session.operations !== session.cycles * 7 || session.maximum_error < 0 ||
+        session.maximum_error > thresholds.maximum_numerical_error ||
+        session.recovery?.budget_status !== "maximum_evaluations" ||
+        !Number.isSafeInteger(session.recovery?.budget_evaluations) ||
+        session.recovery?.budget_evaluations < 0 ||
+        session.recovery?.budget_evaluations > 1 ||
+        session.recovery?.cancelled_status !== "cancelled" ||
+        session.recovery?.cancelled_evaluations !== 0 ||
+        session.recovery?.callback_status !== "callback_error" ||
+        session.recovery?.callback_evaluations !== 1 ||
+        session.recovery?.recovered !== true || session.recovery?.recovery_residual > 1e-12 ||
+        session.memory?.heap_slope_bytes_per_operation >
+          thresholds.maximum_heap_slope_bytes_per_operation ||
+        session.memory?.rss_slope_bytes_per_operation >
+          thresholds.maximum_rss_slope_bytes_per_operation ||
+        session.memory?.heap_growth_bytes >
+          thresholds.maximum_heap_growth_bytes_per_session ||
+        session.memory?.rss_growth_bytes >
+          thresholds.maximum_rss_growth_bytes_per_session ||
+        session.memory?.peak_rss_bytes > thresholds.maximum_session_peak_rss_bytes) {
+      throw new Error(`numerical soak session ${index} violates its recorded release threshold`);
+    }
+  }
+  const sessionElapsed = evidence.sessions.reduce((sum, item) => sum + item.elapsed_ms, 0);
+  const sessionOperations = evidence.sessions.reduce((sum, item) => sum + item.operations, 0);
+  const sessionFailures = evidence.sessions.reduce((sum, item) => sum + item.failures, 0);
+  const sessionMaximumError = Math.max(...evidence.sessions.map((item) => item.maximum_error));
+  if (totals.elapsed_ms !== sessionElapsed || totals.operations !== sessionOperations ||
+      totals.failures !== sessionFailures || totals.maximum_error !== sessionMaximumError) {
+    throw new Error("numerical soak aggregate work is not reproducible from its sessions");
+  }
+  return [{ requirement: "four-platform-numerical-soak", tokens: [platform] }];
+}
+
 function verifyEvidence(value, candidate) {
   verifyContentId(value, "supplemental evidence");
   if (!EVIDENCE_SCHEMAS.has(value.schema)) {
     throw new Error(`unsupported supplemental evidence schema ${value.schema}`);
   }
   verifyRepository(value.repository, candidate, `supplemental evidence ${value.id}`);
-  if (value.platform?.id !== "linux-x64") {
+  if (value.schema !== "sagejs.numerical-soak-evidence/v1" &&
+      value.platform?.id !== "linux-x64") {
     throw new Error(`supplemental evidence ${value.id} must be measured on linux-x64`);
   }
   let claims;
@@ -539,8 +681,10 @@ function verifyEvidence(value, candidate) {
     claims = destructiveClaims(value);
   } else if (value.schema === "sagejs.numerical-browser-memory-evidence/v1") {
     claims = browserClaims(value);
-  } else {
+  } else if (value.schema === "sagejs.numerical-structural-performance-evidence/v1") {
     claims = structuralPerformanceClaims(value);
+  } else {
+    claims = numericalSoakClaims(value);
   }
   if (claims.length === 0) throw new Error(`supplemental evidence ${value.id} makes no claim`);
   return { evidence: value, claims };
@@ -1006,9 +1150,50 @@ function supplementalEvidenceIdentity(record) {
       const suffix = subject?.kind === "worker" ? "worker" : subject?.engine;
       return { category: `browser-memory-${suffix}`, schema: value.schema };
     }
+    case "sagejs.numerical-soak-evidence/v1":
+      return { category: `numerical-soak-${value.platform?.id}`, schema: value.schema };
     default:
       throw new Error(`release gate cannot compact foreign evidence schema ${value.schema}`);
   }
+}
+
+function verifyMatrixSoakArtifactCoherence(supplementalEvidenceRecords, matrixReceiptRecords) {
+  const soakArtifacts = new Map();
+  for (const record of supplementalEvidenceRecords) {
+    if (record.value?.schema !== "sagejs.numerical-soak-evidence/v1") continue;
+    const platform = record.value.platform?.id;
+    if (soakArtifacts.has(platform)) {
+      throw new Error(`supplemental numerical soak duplicates ${platform}`);
+    }
+    soakArtifacts.set(platform, record.value.artifact);
+  }
+  const nodeArtifacts = new Map();
+  for (const record of matrixReceiptRecords) {
+    const receipt = record.value;
+    if (receipt.runtime?.subject?.kind !== "node") continue;
+    const platform = receipt.platform?.id;
+    const artifacts = receipt.artifacts?.filter((item) => item.name === "sagejs-dist");
+    if (artifacts?.length !== 1 || nodeArtifacts.has(platform)) {
+      throw new Error(`matrix receipts lack one unique Node dist artifact for ${platform}`);
+    }
+    nodeArtifacts.set(platform, artifacts[0]);
+  }
+  const platforms = ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"];
+  for (const platform of platforms) {
+    const soak = soakArtifacts.get(platform);
+    const node = nodeArtifacts.get(platform);
+    if (soak === undefined || node === undefined) {
+      throw new Error(`numerical soak/Node artifact binding lacks ${platform}`);
+    }
+    const fields = ["path", "sha256", "content_sha256", "bytes", "files"];
+    if (fields.some((field) => soak[field] !== node[field])) {
+      throw new Error(`${platform} numerical soak exercised a different dist than its Node row`);
+    }
+  }
+  if (soakArtifacts.size !== platforms.length || nodeArtifacts.size !== platforms.length) {
+    throw new Error("numerical soak/Node artifact coherence has foreign platform evidence");
+  }
+  return true;
 }
 
 function verifyMatrixScipyOracleCoherence(matrixReceiptRecords, {
@@ -1127,6 +1312,7 @@ function buildReleaseGate({
   verifyMatrixBrowserSubjectCoherence(
     matrix, supplementalEvidenceRecords, matrixReceiptRecords,
   );
+  verifyMatrixSoakArtifactCoherence(supplementalEvidenceRecords, matrixReceiptRecords);
   verifyContentId(supplementalReport, "supplemental report");
   if (supplementalReport.schema !== REPORT_SCHEMA_SUPPLEMENTAL ||
       supplementalReport.mode !== "release" || supplementalReport.candidate !== candidate ||
@@ -1214,5 +1400,6 @@ module.exports = {
   verifyMatrixArtifactCoherence,
   verifyMatrixBrowserSubjectCoherence,
   verifyMatrixScipyOracleCoherence,
+  verifyMatrixSoakArtifactCoherence,
   qualificationInternals: { addUniqueReceiptId, validateExternalExecutableBinding },
 };

@@ -63,6 +63,7 @@ function validateSupplementalTemplate(template) {
     "numerical-wasm-destructive-faults",
     "browser-process-tree-memory",
     "startup-package-payload-closure",
+    "four-platform-numerical-soak",
   ]);
   for (const item of template.requirements) {
     if (!required.delete(item.id)) throw new Error(`unexpected supplemental requirement ${item.id}`);

@@ -72,13 +72,21 @@ nondeterministic repeated observation, missing capability, or incomplete
 sample set therefore fails the receipt.
 
 Every case also records one `P0`-`P8` program phase and a campaign contract.
-Fixed, fault-injection, and long-duration campaigns state their trial count;
+Fixed, fault-injection, and historically named long-duration corpus campaigns
+state their trial count;
 deterministic fuzz campaigns additionally require a nonempty seed and at least
 two trials; metamorphic campaigns require at least two transformations. Fuzz
 and metamorphic are distinct correctness layers. Seeds, trial counts, and
 invariants still need explicit observation checks: campaign metadata by itself
-is not proof that an adapter performed the work. Every non-fixed campaign names
+is not proof that an adapter performed the work or ran for a meaningful
+duration. Every non-fixed campaign names
 the validation check IDs that witness its execution.
+
+Actual long-duration claims use the separate source-bound
+[soak and reliability campaign](soak.md), which enforces minimum elapsed time,
+minimum useful work, repeated fresh processes, recovery, and memory-growth
+criteria on all four supported platforms. Routine CI does not run that release
+campaign.
 
 Available capabilities name every exact corpus case they cover. A capability
 manifest is rejected if it names a case outside the bound corpus. At collection
