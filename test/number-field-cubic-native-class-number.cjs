@@ -106,10 +106,12 @@ test("closed native cubic receipts survive declines and authenticate targets", {
   assert.equal(determinantalPresentation[35], 2);
   const output = runPython(String.raw`
 from sagejs.number_fields.cubic_class_number_native import certified_complex_cubic_class_group_v1
+from sagejs.number_fields.cubic_class_number_native import _CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT
 from sagejs.number_fields.cubic_class_number_native import _CUBIC_DIRECT_MINKOWSKI_MAX_BOUND
 from sagejs.number_fields.cubic_class_number_native_runtime import certified_complex_cubic_class_number
 
 assert _CUBIC_DIRECT_MINKOWSKI_MAX_BOUND == 8
+assert _CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT == 4096
 from sagejs.native import is_compiled
 
 assert is_compiled(certified_complex_cubic_class_group_v1)
@@ -131,6 +133,10 @@ assert certified_complex_cubic_class_number(declined) is None
 cases = (
     ((-55, 9, 0, 1), 5, (5,)),
     ((-4, 3, -1, 1), 2, (2,)),
+    # LMFDB 3.1.685935.1 has regulator about 358.15. The orientation selected
+    # by this native reconstruction has 519-bit integral-basis coordinates,
+    # exercising the bounded large-unit regime rather than the former decline.
+    ((-644, 243, 0, 1), 2, (2,)),
 )
 for index, (coefficients, order, invariants) in enumerate(cases):
     K = field(coefficients, "a" + str(index))
@@ -139,7 +145,7 @@ for index, (coefficients, order, invariants) in enumerate(cases):
     assert receipt.class_number == order
     assert receipt.invariants == invariants
     assert receipt.proof_status == "exact-relations-conditional-grh"
-    if coefficients == (-55, 9, 0, 1):
+    if coefficients in ((-55, 9, 0, 1), (-644, 243, 0, 1)):
         assert receipt.theorem == (
             "belabas-diaz-y-diaz-friedman-generators-plus-"
             "belabas-friedman-index-one"
@@ -154,6 +160,8 @@ for index, (coefficients, order, invariants) in enumerate(cases):
             "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
         )
     assert receipt.matches(K)
+    if coefficients == (-644, 243, 0, 1):
+        assert max(abs(value).bit_length() for value in receipt.unit_coordinates) == 519
     assert K.class_number(proof=False) == order
     detached = receipt.to_dict()
     assert detached["schema"] == "sagejs.number-fields/certified-complex-cubic-native-v2"
@@ -370,4 +378,50 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
 print("cubic-native-lmfdb-corpus-ok")
 `);
   assert.equal(output, "cubic-native-lmfdb-corpus-ok");
+});
+
+test("large-regulator cubic receipts publish exact units across the survey regime", {
+  timeout: 240_000,
+}, () => {
+  const output = runPython(String.raw`
+from sagejs.number_fields.cubic_class_number_native_runtime import certified_complex_cubic_class_number
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+cases = (
+    ("3.1.685935.1", (-644, 243, 0, 1), 2, (2,)),
+    ("3.1.883855.1", (-1120, -180, -1, 1), 2, (2,)),
+    ("3.1.1651783.1", (-700, 156, -1, 1), 2, (2,)),
+    ("3.1.2180292.1", (138, 72, -1, 1), 2, (2,)),
+    ("3.1.2260440.1", (-2350, -285, 0, 1), 2, (2,)),
+    ("3.1.2570180.3", (-3084, 38, 0, 1), 3, (3,)),
+    ("3.1.2844435.1", (16, 89, -1, 1), 2, (2,)),
+    ("3.1.2950084.1", (-1654, 4, -1, 1), 2, (2,)),
+    ("3.1.3047300.1", (-690, -55, 0, 1), 2, (2,)),
+    ("3.1.3305512.1", (-3782, 151, 0, 1), 2, (2,)),
+    ("3.1.4689300.1", (-1890, 525, 0, 1), 3, (3,)),
+    ("3.1.9411631.1", (-5510, -551, 0, 1), 3, (3,)),
+    ("3.1.10851423.3", (-1508, 435, 0, 1), 3, (3,)),
+    ("3.1.11031020.1", (-1913, -85, -1, 1), 3, (3,)),
+    ("3.1.11754639.6", (-1830, 549, 0, 1), 3, (3,)),
+    ("3.1.11838596.2", (12160, -912, -1, 1), 3, (3,)),
+    ("3.1.11856684.1", (-19836, 228, 0, 1), 3, (3,)),
+    ("3.1.12104235.3", (-13013, -858, 0, 1), 3, (3,)),
+    ("3.1.12876435.1", (-2311, -192, 0, 1), 2, (2,)),
+    ("3.1.13374423.1", (-21112, 87, 0, 1), 6, (6,)),
+    ("3.1.13525380.3", (-3762, 297, 0, 1), 3, (3,)),
+)
+for label, coefficients, class_number, invariants in cases:
+    polynomial = sum(coefficient * x**exponent for exponent, coefficient in enumerate(coefficients))
+    K = NumberField(polynomial, "large_" + label.replace(".", "_"))
+    receipt = certified_complex_cubic_class_number(K)
+    assert receipt is not None
+    assert receipt.class_number == class_number
+    assert receipt.invariants == invariants
+    basis = K.maximal_order().basis()
+    unit = sum(coordinate * element for coordinate, element in zip(receipt.unit_coordinates, basis))
+    assert abs(unit.norm()) == 1
+print("cubic-native-large-regulator-survey-ok")
+`, 240_000);
+  assert.equal(output, "cubic-native-large-regulator-survey-ok");
 });

@@ -60,6 +60,10 @@ _CUBIC_RELATION_REDUNDANCY_TAIL = 6
 _CUBIC_RELATION_RECOVERY_TAIL = 18
 _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES = 500
 _CUBIC_REDUCED_ENUMERATION_MAX_COORDINATE = 32
+# Bound binary exponent reconstruction independently of the exact-coordinate
+# publication capacity.  Both envelopes are fixed and fail closed so arena and
+# output storage remain reviewable; exact norm checks remain authoritative.
+_CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT = 4096
 _CUBIC_MAX_FACTOR_SEARCH_BOUND = 257
 _CUBIC_MAX_GRH_BOUND_SEARCH = 4096
 _CUBIC_DIRECT_MINKOWSKI_MAX_BOUND = 8
@@ -3398,7 +3402,10 @@ def _cubic_reconstruct_archimedean_unit(
         return (16, 0, 0, 0)
     log_two_middle = (log_two_lower + log_two_upper) // 2
     two_exponent: uint64 = 0
-    while scaled_regulator >= log_two_middle and two_exponent < 512:
+    while (
+        scaled_regulator >= log_two_middle
+        and two_exponent < _CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT
+    ):
         scaled_regulator -= log_two_middle
         two_exponent += 1
     if scaled_regulator >= log_two_middle:

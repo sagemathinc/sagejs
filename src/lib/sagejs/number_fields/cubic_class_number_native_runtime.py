@@ -18,6 +18,7 @@ from sagejs.number_fields.cubic_class_number_native import (
     _CUBIC_ANALYTIC_PRECISION,
     _CUBIC_ANALYTIC_THRESHOLD,
     _CUBIC_ANALYSIS_PROOF_CAPACITY,
+    _CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT,
     _CUBIC_MAX_FACTORS,
     _CUBIC_MAX_GROUPS,
     _CUBIC_MAX_ORDER_WITNESSES,
@@ -31,7 +32,13 @@ from sagejs.number_fields.cubic_class_number_native import (
 
 
 _CUBIC_OUTPUT_LENGTH = 64
-_CUBIC_BUFFER_WORD_CAPACITY = 8
+# Published exact units can be exponentially larger than their field
+# discriminants.  Keep the bounded public buffers aligned with the closed
+# program's 4096-bit archimedean reconstruction envelope.
+# Exact-coordinate size is not mathematically bounded by the archimedean
+# exponent.  This independent publication envelope is deliberately the same
+# numerical size; a larger coordinate raises OverflowError and declines.
+_CUBIC_BUFFER_WORD_CAPACITY = (_CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT + 63) // 64
 _CUBIC_ARENA_MEMORY_LIMIT = 1_048_576
 _CUBIC_ARENA_TEMPORARY_LIMIT = 2_097_152
 _CUBIC_RELATION_EFFORTS = (1, 2, 3, 4, 5, 6, 7, 8)
