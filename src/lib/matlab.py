@@ -238,6 +238,17 @@ def _array_data(
 ) -> tuple[list[Any], tuple[int, ...]]:
     """Return column-major values and an explicitly bounded MATLAB shape."""
 
+    def matlab_scalar(item: Any) -> Any:
+        # MATLAB numeric literals and ordinary numeric arrays are binary64.
+        # Sage.js represents Python integers with JavaScript BigInt, so an
+        # ndarray's CPython-compatible `tolist()` boundary must be normalized
+        # again before values enter a MATLAB callback.
+        if isinstance(item, bool):
+            return item
+        if isinstance(item, (int, float)):
+            return float(item)
+        return item
+
     data = value.tolist() if hasattr(value, "tolist") else value
     if isinstance(data, (str, bytes, bytearray)) or not isinstance(data, (list, tuple)):
         raise TypeError(name + " must be a finite vector or matrix")
@@ -248,7 +259,7 @@ def _array_data(
         for item in outer
     ]
     if not any(nested):
-        return outer, (len(outer),)
+        return [matlab_scalar(item) for item in outer], (len(outer),)
     if not all(nested):
         raise TypeError(name + " must be rectangular")
     rows = [list(item) for item in outer]
@@ -260,7 +271,11 @@ def _array_data(
     shape = (len(rows), columns)
     if not allow_matrix and shape[0] > 1 and shape[1] > 1:
         raise TypeError(name + " must be a vector, not a matrix")
-    flat = [rows[row][column] for column in range(columns) for row in range(len(rows))]
+    flat = [
+        matlab_scalar(rows[row][column])
+        for column in range(columns)
+        for row in range(len(rows))
+    ]
     return flat, shape
 
 

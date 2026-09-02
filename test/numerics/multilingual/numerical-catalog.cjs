@@ -277,6 +277,12 @@ assert summary["count"] == 4
 regression = wolfram.LinearModelFitData([0, 1, 2], [1, 3, 5])
 assert abs(regression["slope"] - 2) < 1e-12
 assert matlab.arrayfun(lambda value: value*value, [1, 2, 3]) == [1, 4, 9]
+callback_types = []
+matlab.arrayfun(
+    lambda value: callback_types.append(isinstance(value, float)) or value,
+    [1, 2, 3],
+)
+assert callback_types == [True, True, True]
 matrix_sweep = matlab.arrayfun(lambda value: value*value, [[1, 2], [3, 4]])
 assert matrix_sweep.tolist() == [[1, 4], [9, 16]]
 assert wolfram.Map(lambda value: value+1, [1, 2, 3]) == [2, 3, 4]

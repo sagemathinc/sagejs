@@ -325,14 +325,36 @@ print(
         const { createSage } = await import("/kernel.mjs");
         const session = await createSage({ mode: "python" });
         try {
-          const result = await session.evaluate(
+          const python = await session.evaluate(
             "print(isinstance(1.0, float))\\n" +
             "try:\\n" +
             "    1.0 / 0.0\\n" +
             "except Exception as error:\\n" +
             "    print(type(error).__name__)"
           );
-          return { stdout: result.stdout, repr: result.repr };
+          const matlab = await session.evaluate(
+            "%%matlab\\n" +
+            "x=arrayfun(@(x) x^2,[1 2;3 4]); size(x)"
+          );
+          const nlopt = await session.evaluate(
+            "from sagejs.numerics.optimization import minimize\\n" +
+            "answer = minimize(\\n" +
+            "    lambda point: 1.0e9 + point[0], [1.0e-9],\\n" +
+            "    bounds=[[0.0, 1.0]], method='nlopt-nelder-mead',\\n" +
+            "    initial_step=1.0e-12, xtol=1.0e-3,\\n" +
+            "    max_evaluations=10000,\\n" +
+            ")\\n" +
+            "check = next(\\n" +
+            "    item for item in answer.validation.to_dict()['checks']\\n" +
+            "    if item['kind'] == 'strict_active_bound_consistency'\\n" +
+            ")\\n" +
+            "print(answer.success, check['passed'])"
+          );
+          return {
+            python: { stdout: python.stdout, repr: python.repr },
+            matlab: { stdout: matlab.stdout, repr: matlab.repr },
+            nlopt: { stdout: nlopt.stdout, repr: nlopt.repr },
+          };
         } finally {
           await session.close();
         }
@@ -342,8 +364,9 @@ print(
     });
     assert.equal(pythonModeProbe.exceptionDetails, undefined);
     assert.deepEqual(pythonModeProbe.result.value, {
-      stdout: "True\nZeroDivisionError\n",
-      repr: "",
+      python: { stdout: "True\nZeroDivisionError\n", repr: "" },
+      matlab: { stdout: "", repr: "(2, 2)" },
+      nlopt: { stdout: "False False\n", repr: "" },
     });
     const publicExactSubspacesOnly = process.argv.includes(
       "--public-exact-subspaces",
