@@ -3747,7 +3747,7 @@ def ρσ_search_doc(query: Any) -> None:
     ```sage
     sage: search_doc('q-expansion')
     Search results for 'q-expansion':
-        EisensteinSeriesElement.q_expansion -- Return the ...
+        ClassicalModularFormElement.q_expansion -- Return the ...
     ```
 
     This intentionally searches the locally installed Sage.js API.  It does

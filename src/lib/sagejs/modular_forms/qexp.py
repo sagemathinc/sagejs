@@ -577,20 +577,9 @@ class LevelOneBasisCertificate:
 def coerce_level_one_form(value: Any) -> Any:
     if isinstance(value, ExactModularForm):
         return value
-    if _kind(value) != "EisensteinSeriesElement":
-        return None
-    if value.level() != 1 or runtime.reflect.get(value, "_index") != 0:
-        return None
-    weight = value.weight()
-    if weight not in (4, 6, 8, 10, 14):
-        return None
-    _residue, exponent_four, exponent_six = _residual_exponents(weight)
-    return ExactModularForm(
-        value.parent().ambient_space(),
-        ((sage.QQ(1), exponent_four, exponent_six),),
-        value.prec(),
-        "normalized-level-one-eisenstein-series",
-    )
+    if _kind(value) == "ClassicalModularFormElement":
+        return value._as_exact_level_one_form()
+    return None
 
 
 def delta_form(parent: Any = None, prec: Any = 10) -> ExactModularForm:

@@ -378,20 +378,34 @@ Linux arm64, macOS arm64, native Windows x64, and real-browser Chromium.
 - [ ] General `ModularForms(chi,k)` spaces with nebentypus.
 - [ ] Base change to number fields, cyclotomic orders, finite fields, and
   supported $p$-adic rings.
-- [ ] First-class cusp, Eisenstein, oldform, newform, and ambient elements.
-- [ ] Complete Hecke-module methods on modular-form spaces and elements.
+- [x] First-class cusp, Eisenstein, oldform, newform, and ambient elements in
+  the initial integral-weight $\Gamma_0/\QQ$ domain.
+- [x] Exact good- and bad-prime Hecke-module methods on those
+  $\Gamma_0/\QQ$ spaces and elements.
+- [ ] Extend the common element and Hecke contracts to characters and general
+  supported coefficient rings.
+- [x] Exact parented addition, rational scalar arithmetic, products, equality,
+  and lazy extendable $q$-expansions in the initial $\Gamma_0/\QQ$ domain.
 - [ ] Extend the P0B exact expansion algebra from certified basis construction
   into a complete parented modular-form ring interface.
 - [ ] Quotients when holomorphic, derivatives, and general twists beyond the
   P0B domain.
-- [ ] Membership and coordinate recovery from sufficiently precise
-  $q$-expansions.
+- [x] Sturm-certified membership and coordinate recovery from sufficiently
+  precise $q$-expansions in the initial $\Gamma_0/\QQ$ domain.
 - [ ] Graded rings of classical modular forms.
 - [x] Victor Miller bases and efficient level-$1$ arithmetic.
 - [ ] Rankin--Cohen brackets.
 - [ ] CM detection and systematic twist recognition.
 - [ ] General Atkin--Lehner operators and eigenvalues.
 - [ ] Congruence modules and comparison of eigenforms modulo prime ideals.
+
+The first object-layer vertical slice is specified in
+`agents/classical-modular-form-object-layer-plan.md` and documented in
+`docs/classical-modular-form-elements.md`.  Its combined source-freeze bundle
+has SHA-256
+`c471ec32acab41cb5cd66f12b0beb732ea68bc9389b8c8636d820aa21802672b`.
+Characters and coefficient-field scalars are deliberately the next slice,
+not alternate element hierarchies.
 
 ## P1: analytic modular-form functionality
 
