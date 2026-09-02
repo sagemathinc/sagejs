@@ -9,11 +9,13 @@ from ._core import (
 )
 from .least_squares import (
     curve_fit,
+    curve_fit_problem,
     least_squares,
     least_squares_problem,
     linear_fit,
     linear_fit_problem,
     solve_least_squares_problem,
+    solve_curve_fit_problem,
     solve_linear_fit_problem,
 )
 from .multivariate import minimize, minimize_problem, solve_minimize_problem
@@ -37,6 +39,7 @@ __all__ = [
     "OptimizationResult",
     "capabilities",
     "curve_fit",
+    "curve_fit_problem",
     "least_squares",
     "least_squares_problem",
     "linear_fit",
@@ -48,6 +51,7 @@ __all__ = [
     "plan",
     "scalar_minimum_problem",
     "solve_least_squares_problem",
+    "solve_curve_fit_problem",
     "solve_linear_fit_problem",
     "solve_minimize_problem",
     "solve_nonlinear_system",
