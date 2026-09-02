@@ -670,7 +670,7 @@ def least_squares(
     return solve_least_squares_problem(problem, cancel=cancel)
 
 
-def curve_fit(
+def curve_fit_problem(
     model: Callable[[float, list[float]], Any],
     xdata: Sequence[float],
     ydata: Sequence[float],
@@ -678,13 +678,14 @@ def curve_fit(
     *,
     jacobian: Callable[[float, list[float]], Any] | None = None,
     **options: Any,
-) -> OptimizationResult:
-    """Fit a nonlinear scalar model to data with parameter diagnostics.
+) -> NumericalProblem:
+    """Construct a nonlinear scalar-model fitting problem without solving it.
 
     `model(x, parameters)` returns one predicted value. If supplied,
     `jacobian(x, parameters)` returns derivatives with respect to all
-    parameters. The solver batches a whole residual vector at its public
-    callback boundary.
+    parameters. Construction validates and detaches the observations and
+    initial parameters, but does not evaluate either callback. The eventual
+    solver batches a whole residual vector at its public callback boundary.
     """
     if not callable(model):
         raise TypeError("model must be callable")
@@ -724,8 +725,7 @@ def curve_fit(
             ]
 
         jacobian_function = explicit_jacobian
-    cancel = options.pop("cancel", None)
-    problem = least_squares_problem(
+    return least_squares_problem(
         residual_function,
         p0,
         jacobian=jacobian_function,
@@ -733,7 +733,40 @@ def curve_fit(
         _fit_data={"x": x_values, "y": y_values},
         **options,
     )
-    return solve_least_squares_problem(problem, cancel=cancel)
+
+
+def solve_curve_fit_problem(
+    problem: NumericalProblem,
+    *,
+    method: str | None = None,
+    cancel: Callable[[], bool] | None = None,
+) -> OptimizationResult:
+    """Solve and independently validate a canonical curve-fitting problem."""
+    if not isinstance(problem, NumericalProblem) or problem.operation != "curve_fit":
+        raise TypeError("solve_curve_fit_problem requires a curve-fitting problem")
+    return solve_least_squares_problem(problem, method=method, cancel=cancel)
+
+
+def curve_fit(
+    model: Callable[[float, list[float]], Any],
+    xdata: Sequence[float],
+    ydata: Sequence[float],
+    p0: Sequence[float],
+    *,
+    jacobian: Callable[[float, list[float]], Any] | None = None,
+    **options: Any,
+) -> OptimizationResult:
+    """Fit a nonlinear scalar model and return complete validated evidence."""
+    cancel = options.pop("cancel", None)
+    problem = curve_fit_problem(
+        model,
+        xdata,
+        ydata,
+        p0,
+        jacobian=jacobian,
+        **options,
+    )
+    return solve_curve_fit_problem(problem, cancel=cancel)
 
 
 def linear_fit_problem(
