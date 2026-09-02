@@ -710,7 +710,7 @@ test("the representative smoke covers ordinary Python and both lazy backends", (
     truth_levels: [
       "validated_approximate",
       "validated_approximate",
-      "validated_approximate",
+      "heuristic",
     ],
   };
   assert.deepEqual(

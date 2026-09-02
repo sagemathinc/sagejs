@@ -61,7 +61,7 @@ function parseNumericalSmoke(result) {
     truth_levels: [
       "validated_approximate",
       "validated_approximate",
-      "validated_approximate",
+      "heuristic",
     ],
   });
   return payload;
