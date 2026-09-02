@@ -262,7 +262,7 @@ test("mobile simulators consume one canonical source-bound numerical product", (
   );
   assert.match(
     mobile,
-    /node scripts\/numerical-product\.cjs inspect --input "\$SAGEJS_NUMERICAL_PRODUCT_ROOT"/,
+    /node scripts\/numerical-product\.cjs install --input "\$SAGEJS_NUMERICAL_PRODUCT_ROOT"/,
   );
 });
 

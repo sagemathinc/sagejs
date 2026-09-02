@@ -89,8 +89,8 @@ jobs:
         with:
           name: sagejs-mobile-numerical-product
           path: build/authenticated-numerical-product
-      - name: Validate the exact source-bound numerical runtime
-        run: node scripts/numerical-product.cjs inspect --input "$SAGEJS_NUMERICAL_PRODUCT_ROOT"
+      - name: Validate and install the exact source-bound numerical runtime
+        run: node scripts/numerical-product.cjs install --input "$SAGEJS_NUMERICAL_PRODUCT_ROOT"
       - id: toolchain
         run: |
           path="$(node packages/wasm-toolchain/scripts/toolchain.cjs cache-path)"
