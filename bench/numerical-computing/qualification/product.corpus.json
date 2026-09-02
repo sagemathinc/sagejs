@@ -1280,7 +1280,7 @@
       "program_phase": "P8",
       "layer": "conditioned-stress",
       "workload_tier": "substantial-local",
-      "campaign": {"kind": "long-duration", "seed": "fixed-product-cycle-v1", "trials": 64, "evidence_check_ids": ["all-product-repeats-ran"]},
+      "campaign": {"kind": "fixed", "seed": "fixed-product-cycle-v1", "trials": 64, "evidence_check_ids": ["all-product-repeats-ran"]},
       "input": {"operation": "cross-domain-repeated-stability", "trials": 64},
       "required_capabilities": ["numerics.lifecycle.repeated", "numerics.root.scalar", "numerics.integration.quadrature", "numerics.linear.solve", "numerics.spectral.fft", "numerics.statistics.descriptive"],
       "expected": {"outcome": "success", "failure_code": null},

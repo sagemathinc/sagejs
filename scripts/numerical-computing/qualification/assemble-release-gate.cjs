@@ -175,6 +175,15 @@ function expectedEvidence(input) {
   ].map((filename) => requireRegular(filename, "supplemental evidence"));
 }
 
+function expectedSoakEvidence(input) {
+  return PLATFORMS.map(
+    (platform) => requireRegular(
+      `${input}/platform/${platform}/${platform}-soak.evidence.json`,
+      "numerical soak evidence",
+    ),
+  );
+}
+
 function exactInputInventory(input, rows, evidence) {
   const resolved = repositoryPath(root, input, "qualification input inventory");
   const required = new Set([
@@ -288,7 +297,7 @@ function run(options) {
   }
   const input = rejectSymlinks(layout.input);
   const rows = expectedRows(input);
-  const evidence = expectedEvidence(input);
+  const evidence = [...expectedEvidence(input), ...expectedSoakEvidence(input)];
   exactInputInventory(input, rows, evidence);
   const output = cleanOutput(layout.output);
   const policy = `${output}/full-runtime.policy.json`;
@@ -357,6 +366,7 @@ module.exports = {
   CANONICAL_INPUT,
   CANONICAL_OUTPUT,
   expectedEvidence,
+  expectedSoakEvidence,
   expectedRows,
   exactInputInventory,
   main,
