@@ -327,8 +327,10 @@ for mode in ("set", "apply"):
     assert answer.domain_payload["stop_reason"] == "nlopt_backend_error"
     assert "backend_identity" not in answer.domain_payload
     provenance = answer.to_dict()["provenance"]
-    assert provenance["implementation_kind"] == "ordinary_python"
-    assert provenance["source_transparent"]
+    assert "implementation_kind" not in provenance
+    assert not provenance["source_transparent"]
+    assert provenance["execution_binding_status"] == "external_execution_unobserved"
+    assert provenance["planned_execution_target"]["implementation_kind"] == "external_artifact"
     assert "synthetic private" not in str(answer.to_dict())
     assert "synthetic missing" not in str(answer.to_dict())
 print("public NLopt construction/resource normalization passed")
@@ -427,7 +429,10 @@ for mode, reason in (
     assert answer.status == "backend_failure"
     assert answer.domain_payload["stop_reason"] == reason
     assert "backend_identity" not in answer.domain_payload
-    assert answer.to_dict()["provenance"]["implementation_kind"] == "ordinary_python"
+    provenance = answer.to_dict()["provenance"]
+    assert "implementation_kind" not in provenance
+    assert provenance["execution_binding_status"] == "external_execution_unobserved"
+    assert provenance["planned_execution_target"]["implementation_kind"] == "external_artifact"
 print("public NLopt result-contract rejection passed")
 `), "public NLopt result-contract rejection passed");
 });

@@ -137,7 +137,9 @@ answer = minimize(
     method="nlopt-nelder-mead",
 )
 print(answer.status)
-print(answer.to_dict()["provenance"]["implementation_kind"])
+provenance = answer.to_dict()["provenance"]
+print(provenance["execution_binding_status"])
+print("implementation_kind" in provenance)
 print("backend_identity" in answer.domain_payload)
 `, { timeout: 120_000 });
         } finally {
@@ -147,7 +149,7 @@ print("backend_identity" in answer.domain_payload)
       assert.equal(unavailable.stderr, "");
       assert.equal(
         unavailable.stdout,
-        "backend_failure\nordinary_python\nFalse\n",
+        "backend_failure\nexternal_execution_unobserved\nFalse\nFalse\n",
       );
       assert.equal(
         unavailable.instrumentation.routes.some(

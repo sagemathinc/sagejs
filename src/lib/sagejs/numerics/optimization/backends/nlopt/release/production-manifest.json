@@ -32,18 +32,18 @@
     "test/numerical-p3-nlopt/backend.test.mjs": "f5ea7032ff48f0ce56ad8b299b1a289a19ffd83eedb0318310155c5fd6543024",
     "test/numerical-p3-nlopt/browser.mjs": "bc30d8355c73117b620fcfc7929b2aea926cbabe8855c541a27980bb3c04aff3",
     "test/numerical-p3-nlopt/portable-smoke.mjs": "9dee55740dbd4bfad62e911af8dec1945963587c4635a4905489cff7bc8d8813",
-    "test/numerical-p3-nlopt/public-browser.mjs": "fe7fdef04edc4e414380499162e4503a468d802770372cca0e98a418b3361746",
-    "test/numerical-p3-nlopt/public-integration.cjs": "8432367e427c59fe5149685bf77eac14772320ead8fae050427fc28a9135ee1d",
+    "test/numerical-p3-nlopt/public-browser.mjs": "0495e35cd6432e07cb36830add0b154444b7c3d23fc907b10b09272532442026",
+    "test/numerical-p3-nlopt/public-integration.cjs": "48458f651f4f2c5217690f579e023ad8d2c9b89e03bed0ed0810076c4f1fb9b2",
     "test/numerical-p3-nlopt/public-relocation.cjs": "8d8fbbc6284940d1c8b8dd0cc846e1916d1c559f64684e40abc4da7b7a4e2d23",
     "test/numerical-p3-nlopt/public-sea.cjs": "7d580d850ef8cafe16be8b9952d5645c15b1d62d829dec18d19d71b8382429ce",
     "tools/resources.ts": "b18f39c2f247b65152dc92be1945493d39c35dd010cadee84d5d98c4ee4edaa8"
   },
   "public_semantics_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "15f9310d85777084c0a7e13db0de8b2997656161e3b82f0a89322cb6d3fd9026"
+    "sha256": "b7db51fd119771cd19607d281052094513bd3b44308feec9de199cff8713b6d0"
   },
   "qualification_tooling_files": {
-    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs": "bdc4596a21ce504bb6a99e3b826c88ee9b614bfe46ec3274c95845b4fa6dcbbd",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs": "f99aed93937473cd43c6ea7150b641c98230fbbe4c1a4bf8f5a99c90169563c5",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs": "ce0ffab716b77c2b6c272a9883af016b39a767291c0965cd42669f95cb252ed2",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle-summary.json": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle.py": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
@@ -56,7 +56,7 @@
   },
   "qualification_tooling_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "7a2572502ecd17b1b0209172e6b2cce5ce5261fab32e6304bc4616ff41aadff0"
+    "sha256": "230de6626433dcdb84ace28ea3f96a9889cd59c794ef7e3873d7fb8fbc6da716"
   },
   "toolchain": {
     "identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
@@ -86,8 +86,8 @@
   "qualification": {
     "status": "pending_source_current_requalification",
     "reason": "COBYLA was removed after source-bound UBSAN exposed unresolved upstream f2c pointer-provenance undefined behavior; source-current Nelder-Mead receipts must be regenerated after independent audit",
-    "public_semantics_bundle_sha256": "15f9310d85777084c0a7e13db0de8b2997656161e3b82f0a89322cb6d3fd9026",
-    "qualification_tooling_bundle_sha256": "7a2572502ecd17b1b0209172e6b2cce5ce5261fab32e6304bc4616ff41aadff0",
+    "public_semantics_bundle_sha256": "b7db51fd119771cd19607d281052094513bd3b44308feec9de199cff8713b6d0",
+    "qualification_tooling_bundle_sha256": "230de6626433dcdb84ace28ea3f96a9889cd59c794ef7e3873d7fb8fbc6da716",
     "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
     "invalidated_summary": "qualification-v1.json"

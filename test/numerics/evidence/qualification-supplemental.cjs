@@ -72,6 +72,11 @@ const {
 } = require(
   "../../../scripts/numerical-computing/qualification/run-wasm-destructive.cjs",
 );
+const {
+  hasSkippedQualification,
+} = require(
+  "../../../src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs",
+);
 
 const candidate = "a".repeat(40);
 const repositoryRoot = path.resolve(__dirname, "../../..");
@@ -849,6 +854,12 @@ test("destructive Wasm output is independently checked for cleanup and recovery"
     }),
     /lifecycle did not return to zero/,
   );
+});
+
+test("NLopt evidence distinguishes TAP summaries from real skip directives", () => {
+  assert.equal(hasSkippedQualification("# skipped 0\n", ""), false);
+  assert.equal(hasSkippedQualification("ok 1 - exact work\n", "SKIP: none"), true);
+  assert.equal(hasSkippedQualification("ok 1 - optional # SKIP missing browser\n", ""), true);
 });
 
 test("build-report authentication uses raw bytes, distinct from framed path binding", (context) => {

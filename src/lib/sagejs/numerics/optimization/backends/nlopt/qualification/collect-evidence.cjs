@@ -113,10 +113,15 @@ function execute(command, arguments_) {
   if (result.status !== 0 || result.signal !== null) {
     throw new Error(`${command} ${arguments_.join(" ")} failed (${result.status ?? result.signal}):\n${result.stderr}`);
   }
-  if (/(?:#\s*SKIP|\bSKIP:)/i.test(`${result.stdout}\n${result.stderr}`)) {
+  if (hasSkippedQualification(result.stdout, result.stderr)) {
     throw new Error(`${command} ${arguments_.join(" ")} skipped required qualification work`);
   }
   return result;
+}
+
+function hasSkippedQualification(stdout, stderr) {
+  const transcript = `${stdout ?? ""}\n${stderr ?? ""}`;
+  return /#\s*SKIP(?:[ \t]|$)|\bSKIP:/im.test(transcript);
 }
 
 function validatePackagedArtifact(current, filename = path.join(
@@ -299,6 +304,7 @@ if (require.main === module) {
 module.exports = {
   COMMANDS,
   collect,
+  hasSkippedQualification,
   main,
   parseArguments,
   usage,
