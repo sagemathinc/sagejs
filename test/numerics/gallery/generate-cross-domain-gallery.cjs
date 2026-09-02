@@ -88,6 +88,7 @@ function publicManifest(bundle, html) {
         "success-and-failure-narratives",
         "bounded-trace-evidence",
         "manual-animation",
+        "play-pause-step-restart-speed-iteration-controls",
         "static-fallback",
         "plotspec-json-export",
         "plotly-json-export",

@@ -161,7 +161,14 @@ test("every presentation is computed evidence and callback counts stay frozen", 
       assert.equal(presentation.plotly.schema, "plotly-compatible/v1");
       assert.ok(presentation.static_description.length > 40);
       if (!presentation.plot_animation) continue;
-      assert.equal(presentation.plot_animation.controls.autoplay, false);
+      const controls = presentation.plot_animation.controls;
+      assert.equal(controls.autoplay, false);
+      assert.equal(controls.loop, false);
+      for (const name of ["play", "pause", "step", "restart", "speed", "slider"]) {
+        assert.equal(controls[name], true, `${name} control is unavailable`);
+      }
+      assert.deepEqual(controls.speed_multipliers, [0.5, 1, 2]);
+      assert.equal(controls.default_speed, 1);
       assert.ok(presentation.plot_animation.frames.length >= 2);
       for (const frame of presentation.plot_animation.frames) {
         assert.notEqual(frame.metadata.interpolated, true);
@@ -170,6 +177,13 @@ test("every presentation is computed evidence and callback counts stay frozen", 
         presentation.plotly.figure.frames.map((frame) => frame.name),
         presentation.plot_animation.frames.map((frame) => frame.id),
       );
+      const protocol = presentation.plotly.figure.layout.meta
+        .sagejs_animation_controls;
+      assert.equal(protocol.schema, "sagejs.plotting.animation-controls/v1");
+      assert.equal(protocol.computed_frames_only, true);
+      assert.equal(protocol.capabilities.step.route, "host-relative-frame-controller");
+      assert.equal(protocol.capabilities.speed.route, "host-duration-controller");
+      assert.equal(protocol.capabilities.restart.route, "plotly-layout");
     }
   }
   assert.equal(presentations, 17);
@@ -229,6 +243,7 @@ test("static document is a complete accessible lesson before JavaScript", () => 
   assert.equal((html.match(/class="gallery-case /g) || []).length, 18);
   assert.equal((html.match(/<caption>Structured numerical evidence/g) || []).length, 18);
   assert.equal((html.match(/data-gallery-plot=/g) || []).length, 17);
+  assert.equal((html.match(/data-gallery-animation-controls/g) || []).length, 13);
   assert.equal((html.match(/role="img"/g) || []).length, 17);
   assert.match(html, /<noscript>/);
   assert.match(html, /All explanations and result tables are already present/);
@@ -259,7 +274,12 @@ test("PlotSpec, Plotly, and accessible HTML exports are detached and useful", ()
   assert.equal(plotly.frames.length, 32);
   assert.equal(plotly.layout.updatemenus[0].buttons[0].label, "Play");
   assert.equal(plotly.layout.updatemenus[0].buttons[1].label, "Pause");
+  assert.equal(plotly.layout.updatemenus[1].buttons[0].label, "Restart");
   assert.equal(plotly.layout.sliders[0].steps.length, 32);
+  assert.equal(
+    plotly.layout.meta.sagejs_animation_controls.capabilities.step.route,
+    "host-relative-frame-controller",
+  );
   assert.match(html, /^<!doctype html>/);
   assert.doesNotMatch(html, /<script\b/i);
   assert.match(html, /role="img"/);
@@ -357,6 +377,7 @@ test(
       assert.equal(await page.locator(".js-plotly-plot").count(), 17);
       assert.equal(await page.locator(".gallery-story").count(), 9);
       assert.equal(await page.locator(".gallery-case").count(), 18);
+      assert.equal(await page.locator(".gallery-animation-controls").count(), 13);
       assert.equal(
         await page.locator(
           "#plot-optimization-path-rosenbrock-convergence .slider-container",
@@ -367,6 +388,71 @@ test(
         document.documentElement.scrollWidth - window.innerWidth
       );
       assert.ok(overflow <= 1, `mobile page overflows by ${overflow}px`);
+      const controlsSelector =
+        "#case-root-brent-cosine-fixed-point [data-gallery-animation-controls]";
+      const controls = page.locator(controlsSelector);
+      assert.equal(await controls.getAttribute("data-animation-active-index"), "0");
+      assert.equal(await controls.locator("[data-animation-action]").count(), 4);
+      assert.equal(await controls.locator("[data-animation-speed]").inputValue(), "1");
+      await page.evaluate(() => {
+        const original = Plotly.animate.bind(Plotly);
+        globalThis.__sagejsAnimationCalls = [];
+        Plotly.animate = async (...args) => {
+          globalThis.__sagejsAnimationCalls.push(args[1]);
+          return original(...args);
+        };
+      });
+      await controls.locator("[data-animation-action='step']").click();
+      await page.locator(
+        `${controlsSelector}[data-animation-active-index='1']`,
+      ).waitFor();
+      const slider = controls.locator("[data-animation-slider]");
+      await slider.evaluate((element) => {
+        element.value = element.max;
+        element.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      const lastIndex = String(Number(await slider.getAttribute("max")));
+      await page.locator(
+        `${controlsSelector}[data-animation-active-index='${lastIndex}']`,
+      ).waitFor();
+      await controls.locator("[data-animation-action='restart']").click();
+      await page.locator(
+        `${controlsSelector}[data-animation-active-index='0']`,
+      ).waitFor();
+      await controls.locator("[data-animation-speed]").selectOption("2");
+      assert.equal(await controls.getAttribute("data-animation-speed"), "2");
+      await controls.locator("[data-animation-action='play']").click();
+      await page.locator(
+        `${controlsSelector}[data-animation-active-index='${lastIndex}'][data-animation-playing='false']`,
+      ).waitFor({ timeout: 10_000 });
+      await controls.locator("[data-animation-action='restart']").click();
+      await page.locator(
+        `${controlsSelector}[data-animation-active-index='0']`,
+      ).waitFor();
+      await controls.locator("[data-animation-speed]").selectOption("0.5");
+      await controls.locator("[data-animation-action='play']").click();
+      await page.locator(
+        `${controlsSelector}[data-animation-active-index='1']`,
+      ).waitFor();
+      await controls.locator("[data-animation-action='pause']").click();
+      await page.locator(
+        `${controlsSelector}[data-animation-playing='false']`,
+      ).waitFor();
+      const pausedIndex = await controls.getAttribute("data-animation-active-index");
+      await page.waitForTimeout(500);
+      assert.equal(
+        await controls.getAttribute("data-animation-active-index"),
+        pausedIndex,
+      );
+      const calls = await page.evaluate(() => globalThis.__sagejsAnimationCalls);
+      const retained = bundle.stories[0].cases[0].presentation.plot_animation.frames
+        .map((frame) => frame.id);
+      for (const selection of calls) {
+        assert.ok(
+          selection[0] === null || retained.includes(selection[0]),
+          `host selected non-retained frame ${selection}`,
+        );
+      }
       assert.deepEqual(errors, []);
       await page.close();
 
@@ -384,6 +470,28 @@ test(
         await reduced.getAttribute("html", "data-gallery-rendered-count"),
         "17",
       );
+      const reducedControlsSelector =
+        "#case-root-brent-cosine-fixed-point [data-gallery-animation-controls]";
+      const reducedControls = reduced.locator(reducedControlsSelector);
+      assert.equal(
+        await reducedControls.getAttribute("data-animation-reduced-motion"),
+        "true",
+      );
+      assert.equal(
+        await reducedControls.locator("[data-animation-action='play']").isDisabled(),
+        true,
+      );
+      assert.equal(await reducedControls.locator("[data-animation-speed]").isDisabled(), true);
+      assert.equal(await reducedControls.locator("[data-animation-reduced-note]").isVisible(), true);
+      await reducedControls.locator("[data-animation-action='step']").click();
+      await reduced.locator(
+        `${reducedControlsSelector}[data-animation-active-index='1']`,
+      ).waitFor();
+      const nativeLabels = await reduced.evaluate(() =>
+        document.getElementById("plot-root-brent-cosine-fixed-point").layout
+          .updatemenus.flatMap((menu) => menu.buttons.map((button) => button.label))
+      );
+      assert.deepEqual(nativeLabels, ["Pause", "Restart"]);
       await reduced.close();
 
       const context = await browser.newContext({ javaScriptEnabled: false });

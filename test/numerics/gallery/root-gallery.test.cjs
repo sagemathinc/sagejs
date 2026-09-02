@@ -72,6 +72,11 @@ test("public manifest inventories every story and pins deployment resources", ()
     assert.equal(entry.entrypoint, `./index.html#${story.id}`);
     assert.deepEqual(entry.case_ids, story.cases.map((item) => item.id));
     assert.ok(entry.capabilities.includes("fresh-sagejs-example"));
+    assert.ok(
+      entry.capabilities.includes(
+        "play-pause-step-restart-speed-iteration-controls",
+      ),
+    );
   }
 
   const plotly = readFileSync(join(website, "plotly.min.js"));

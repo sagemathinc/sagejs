@@ -81,6 +81,22 @@ a { color: var(--accent); }
 
 .gallery-plot { min-height: 22rem; padding: 1rem; }
 .gallery-plot[data-gallery-rendered="true"] { padding: 0; }
+.gallery-animation-controls {
+  align-items: center;
+  background: color-mix(in srgb, var(--panel) 88%, var(--accent));
+  border-block: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem 1rem;
+  padding: .75rem 1rem;
+}
+.gallery-animation-controls[hidden] { display: none; }
+.animation-transport { display: flex; flex-wrap: wrap; gap: .4rem; }
+.gallery-animation-controls label { align-items: center; display: flex; gap: .4rem; }
+.animation-iteration { flex: 1 1 19rem; }
+.animation-iteration input { flex: 1 1 10rem; }
+.animation-iteration output { min-width: 6rem; }
+.reduced-motion-note { color: var(--muted); flex-basis: 100%; }
 figcaption { color: var(--muted); padding: .75rem 1rem; }
 .gallery-actions { display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem 1rem 1rem; }
 button { cursor: pointer; padding: .55rem .75rem; }

@@ -116,6 +116,11 @@ function assertStableTopology(animation, storyId, caseId) {
   if (animation.controls.autoplay !== false) {
     throw new Error(`${storyId}/${caseId}: gallery animations must not autoplay`);
   }
+  for (const name of ["play", "pause", "step", "restart", "speed", "slider"]) {
+    if (animation.controls[name] !== true) {
+      throw new Error(`${storyId}/${caseId}: missing ${name} animation control`);
+    }
+  }
   for (const frame of animation.frames) {
     const layers = frame.state.value.layers;
     const topology = layers.map(({ id, kind }) => ({ id, kind }));
@@ -148,6 +153,13 @@ function assertPlotly(presentation, storyId, caseId) {
   const plotlyIds = record.figure.frames.map((frame) => frame.name);
   if (stableJson(semanticIds) !== stableJson(plotlyIds)) {
     throw new Error(`${storyId}/${caseId}: Plotly frame identities drifted`);
+  }
+  const protocol = record.figure.layout?.meta?.sagejs_animation_controls;
+  if (protocol?.schema !== "sagejs.plotting.animation-controls/v1") {
+    throw new Error(`${storyId}/${caseId}: missing animation host protocol`);
+  }
+  if (!protocol.computed_frames_only || protocol.autoplay || protocol.loop) {
+    throw new Error(`${storyId}/${caseId}: unsafe animation host protocol`);
   }
 }
 
@@ -323,15 +335,48 @@ function resultEvidenceRows(caseRecord) {
   ).join("");
 }
 
+function animationControlsHtml(presentation) {
+  const animation = presentation?.plot_animation;
+  if (!animation) return "";
+  const controls = animation.controls;
+  const buttons = [
+    ["play", "Play"],
+    ["pause", "Pause"],
+    ["step", "Step"],
+    ["restart", "Restart"],
+  ].filter(([name]) => controls[name]).map(([name, label]) =>
+    `<button type="button" data-animation-action="${name}">${label}</button>`
+  ).join("");
+  const speeds = controls.speed_multipliers.map((speed) =>
+    `<option value="${escapeHtml(speed)}"${speed === controls.default_speed ? " selected" : ""}>${escapeHtml(speed)}×</option>`
+  ).join("");
+  const speed = controls.speed
+    ? `<label>Speed <select data-animation-speed>${speeds}</select></label>`
+    : "";
+  const slider = controls.slider
+    ? `<label class="animation-iteration">Iteration
+        <input data-animation-slider type="range" min="0" max="${animation.frames.length - 1}" step="1" value="0">
+        <output data-animation-frame-label>${escapeHtml(animation.frames[0].label)}</output>
+      </label>`
+    : "";
+  return `<div class="gallery-animation-controls" data-gallery-animation-controls hidden>
+    <div class="animation-transport" role="group" aria-label="Animation playback controls">${buttons}</div>
+    ${speed}${slider}
+    <span class="reduced-motion-note" data-animation-reduced-note hidden>Timed playback is disabled by your reduced-motion preference; Step, Restart, and Iteration remain available.</span>
+  </div>`;
+}
+
 function caseHtml(story, caseRecord) {
   const presentation = caseRecord.presentation;
+  const animationControls = animationControlsHtml(presentation);
   const plot = presentation
     ? `<figure class="gallery-figure">
         <div class="gallery-plot" id="plot-${escapeHtml(story.id)}-${escapeHtml(caseRecord.id)}"
           data-gallery-plot="${escapeHtml(story.id)}:${escapeHtml(caseRecord.id)}"
           role="img" aria-label="${escapeHtml(presentation.static_description)}">
           <p>${escapeHtml(presentation.static_description)}</p>
-        </div>
+        </div>${animationControls ? `
+        ${animationControls}` : ""}
         <figcaption>${escapeHtml(presentation.static_description)}</figcaption>
         <div class="gallery-actions">
           <button type="button" data-export="plotspec" data-story="${escapeHtml(story.id)}" data-case="${escapeHtml(caseRecord.id)}">Export PlotSpec JSON</button>
@@ -425,15 +470,243 @@ function download(documentObject, filename, type, text) {
   URL.revokeObjectURL(anchor.href);
 }
 
-export async function renderPresentation(container, presentation, Plotly) {
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function reducedMotionFigure(figure) {
+  const copy = clone(figure);
+  const menus = copy.layout?.updatemenus;
+  if (Array.isArray(menus)) {
+    for (const menu of menus) {
+      if (Array.isArray(menu.buttons)) {
+        menu.buttons = menu.buttons.filter((button) => button.label !== "Play");
+      }
+    }
+  }
+  const sliders = copy.layout?.sliders;
+  if (Array.isArray(sliders)) {
+    for (const slider of sliders) {
+      for (const step of slider.steps || []) {
+        const options = step.args?.[1];
+        if (options?.frame) options.frame.duration = 0;
+        if (options?.transition) options.transition.duration = 0;
+      }
+    }
+  }
+  return copy;
+}
+
+function animationProtocol(presentation) {
+  const animation = presentation.plot_animation;
+  if (!animation) return null;
+  const protocol = presentation.plotly.figure.layout?.meta
+    ?.sagejs_animation_controls;
+  if (protocol?.schema !== "sagejs.plotting.animation-controls/v1") {
+    throw new Error("animated gallery figure lacks the Sage.js host-control protocol");
+  }
+  if (!protocol.computed_frames_only || protocol.autoplay || protocol.loop) {
+    throw new Error("animation host protocol permits non-evidence playback");
+  }
+  const semanticIds = animation.frames.map((frame) => frame.id);
+  const plotlyIds = presentation.plotly.figure.frames.map((frame) => frame.name);
+  if (
+    stableJson(protocol.frame_ids) !== stableJson(semanticIds) ||
+    stableJson(plotlyIds) !== stableJson(semanticIds)
+  ) {
+    throw new Error("animation host protocol frame identities drifted");
+  }
+  return protocol;
+}
+
+export function attachAnimationControls(
+  container,
+  presentation,
+  Plotly,
+  { prefersReducedMotion = false } = {},
+) {
+  const protocol = animationProtocol(presentation);
+  if (!protocol) return null;
+  if (typeof Plotly.animate !== "function") {
+    throw new Error("Plotly.animate is required for gallery animation controls");
+  }
+  const toolbar = container.parentElement?.querySelector(
+    "[data-gallery-animation-controls]",
+  );
+  if (!toolbar) throw new Error("animation control host is missing");
+  const frameIds = protocol.frame_ids;
+  const frameLabels = protocol.frame_labels;
+  const slider = toolbar.querySelector("[data-animation-slider]");
+  const output = toolbar.querySelector("[data-animation-frame-label]");
+  const speedSelect = toolbar.querySelector("[data-animation-speed]");
+  const note = toolbar.querySelector("[data-animation-reduced-note]");
+  const buttons = Object.fromEntries(
+    [...toolbar.querySelectorAll("[data-animation-action]")].map((button) =>
+      [button.dataset.animationAction, button]
+    ),
+  );
+  let activeIndex = 0;
+  let speed = protocol.default_speed;
+  let playing = false;
+  let playbackToken = 0;
+
+  function updateUi() {
+    if (slider) slider.value = String(activeIndex);
+    if (output) output.value = frameLabels[activeIndex];
+    if (buttons.play) buttons.play.disabled = prefersReducedMotion || playing || activeIndex >= frameIds.length - 1;
+    if (buttons.pause) buttons.pause.disabled = !playing;
+    if (buttons.step) buttons.step.disabled = activeIndex >= frameIds.length - 1;
+    if (buttons.restart) buttons.restart.disabled = activeIndex === 0;
+    if (speedSelect) speedSelect.disabled = prefersReducedMotion;
+    if (note) note.hidden = !prefersReducedMotion;
+    toolbar.dataset.animationActiveIndex = String(activeIndex);
+    toolbar.dataset.animationPlaying = String(playing);
+    toolbar.dataset.animationSpeed = String(speed);
+    toolbar.dataset.animationReducedMotion = String(prefersReducedMotion);
+  }
+
+  function selectIndex(index) {
+    if (!Number.isInteger(index) || index < 0 || index >= frameIds.length) {
+      throw new RangeError(`animation frame index ${index} is out of range`);
+    }
+    activeIndex = index;
+    updateUi();
+  }
+
+  async function animateTo(index, duration) {
+    selectIndex(index);
+    await Plotly.animate(container, [frameIds[index]], {
+      frame: { duration, redraw: protocol.redraw },
+      transition: {
+        duration: duration === 0
+          ? 0
+          : Math.max(0, Math.round(protocol.transition_duration_ms / speed)),
+      },
+      mode: "immediate",
+    });
+  }
+
+  async function pause() {
+    playbackToken += 1;
+    playing = false;
+    updateUi();
+    await Plotly.animate(container, [null], {
+      frame: { duration: 0, redraw: protocol.redraw },
+      transition: { duration: 0 },
+      mode: "immediate",
+    });
+  }
+
+  async function step() {
+    await pause();
+    if (activeIndex < frameIds.length - 1) {
+      await animateTo(activeIndex + 1, 0);
+    }
+  }
+
+  async function restart() {
+    await pause();
+    await animateTo(0, 0);
+  }
+
+  async function play() {
+    if (prefersReducedMotion || playing || activeIndex >= frameIds.length - 1) {
+      return;
+    }
+    const token = playbackToken + 1;
+    playbackToken = token;
+    playing = true;
+    updateUi();
+    while (token === playbackToken && activeIndex < frameIds.length - 1) {
+      const duration = Math.max(
+        1,
+        Math.round(protocol.frame_duration_ms / speed),
+      );
+      await animateTo(activeIndex + 1, duration);
+    }
+    if (token === playbackToken) {
+      playing = false;
+      updateUi();
+    }
+  }
+
+  const actions = { play, pause, step, restart };
+  function invoke(operation) {
+    Promise.resolve(operation()).catch((error) => {
+      toolbar.dataset.animationError = error.message;
+    });
+  }
+  for (const [name, button] of Object.entries(buttons)) {
+    button.addEventListener("click", () => invoke(actions[name]));
+  }
+  if (speedSelect) {
+    speedSelect.addEventListener("change", () => {
+      const candidate = Number(speedSelect.value);
+      if (!protocol.speed_multipliers.includes(candidate)) {
+        toolbar.dataset.animationError = "unsupported animation speed";
+        return;
+      }
+      speed = candidate;
+      updateUi();
+    });
+  }
+  if (slider) {
+    slider.addEventListener("change", () => {
+      const requestedIndex = Number(slider.value);
+      invoke(async () => {
+        await pause();
+        await animateTo(requestedIndex, 0);
+      });
+    });
+  }
+  if (typeof container.on === "function") {
+    container.on("plotly_animated", (event) => {
+      const index = frameIds.indexOf(event?.name);
+      if (index >= 0) selectIndex(index);
+    });
+    container.on("plotly_sliderchange", (event) => {
+      const frameId = event?.step?.args?.[0]?.[0];
+      const index = frameIds.indexOf(frameId);
+      if (index >= 0) selectIndex(index);
+    });
+  }
+  toolbar.hidden = false;
+  updateUi();
+  const controller = {
+    play,
+    pause,
+    step,
+    restart,
+    select: async (index) => {
+      await pause();
+      await animateTo(index, 0);
+    },
+    snapshot: () => ({ activeIndex, speed, playing, prefersReducedMotion }),
+  };
+  container.__sagejsAnimationController = controller;
+  return controller;
+}
+
+export async function renderPresentation(
+  container,
+  presentation,
+  Plotly,
+  { prefersReducedMotion = false } = {},
+) {
   if (!Plotly || typeof Plotly.newPlot !== "function") return false;
-  const figure = presentation.plotly.figure;
+  const sourceFigure = presentation.plotly.figure;
+  const figure = prefersReducedMotion && presentation.plot_animation
+    ? reducedMotionFigure(sourceFigure)
+    : sourceFigure;
   await Plotly.newPlot(container, figure.data, figure.layout, figure.config);
   if (Array.isArray(figure.frames) && figure.frames.length > 0) {
     if (typeof Plotly.addFrames !== "function") {
       throw new Error("Plotly.addFrames is required for gallery animations");
     }
     await Plotly.addFrames(container, figure.frames);
+    attachAnimationControls(container, presentation, Plotly, {
+      prefersReducedMotion,
+    });
   }
   container.dataset.galleryRendered = "true";
   return true;
@@ -444,12 +717,15 @@ export async function hydrateGallery(
   {
     documentObject = globalThis.document,
     Plotly = globalThis.Plotly,
+    matchMedia = globalThis.matchMedia,
   } = {},
 ) {
   assertGalleryBudgets(bundle);
   const started = globalThis.performance.now();
   const rendered = [];
   const renderTimes = [];
+  const prefersReducedMotion = typeof matchMedia === "function" &&
+    matchMedia("(prefers-reduced-motion: reduce)").matches;
   for (const container of documentObject.querySelectorAll("[data-gallery-plot]")) {
     const [storyId, caseId] = container.dataset.galleryPlot.split(":");
     const { caseRecord } = caseById(bundle, storyId, caseId);
@@ -458,6 +734,7 @@ export async function hydrateGallery(
       container,
       caseRecord.presentation,
       Plotly,
+      { prefersReducedMotion },
     ));
     renderTimes.push(globalThis.performance.now() - renderStarted);
   }
