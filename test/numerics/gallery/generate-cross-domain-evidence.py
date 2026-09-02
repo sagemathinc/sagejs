@@ -627,7 +627,17 @@ def root_story() -> dict[str, Any]:
                 jump_presentation,
             ),
         ],
-        "result = find_root(lambda x: math.cos(x)-x, 0, 1, method='brent', trace='evaluations')",
+        """import math
+from sagejs.numerics import find_root
+
+result = find_root(
+    lambda x: math.cos(x) - x,
+    0.0,
+    1.0,
+    method="brent",
+    trace="evaluations",
+)
+result""",
     )
 
 
@@ -689,7 +699,17 @@ def fit_story() -> dict[str, Any]:
                 failed,
             ),
         ],
-        "result = curve_fit(model, xdata, ydata, [1.5, 0.4], trace='iterations')",
+        """import math
+from sagejs.numerics.optimization import curve_fit
+
+xdata = [0.0, 1.0, 2.0, 3.0]
+ydata = [2.0, 1.213061319, 0.735758882, 0.44626032]
+
+def model(x, parameters):
+    return parameters[0] * math.exp(-parameters[1] * x)
+
+result = curve_fit(model, xdata, ydata, [1.5, 0.4], trace="iterations")
+result""",
     )
 
 
@@ -776,7 +796,21 @@ def ode_story() -> dict[str, Any]:
                 limited_presentation,
             ),
         ],
-        "result = solve_ivp(oscillator, (0, 2*pi), [1, 0], trace='iterations')",
+        """import math
+from sagejs.numerics.ode import solve_ivp
+
+def oscillator(_t, state):
+    return [state[1], -state[0]]
+
+result = solve_ivp(
+    oscillator,
+    (0.0, 2.0 * math.pi),
+    [1.0, 0.0],
+    rtol=1e-8,
+    atol=1e-11,
+    trace="iterations",
+)
+result""",
     )
 
 
@@ -838,7 +872,16 @@ def linear_story() -> dict[str, Any]:
                 ),
             ),
         ],
-        "result = solve(A, b, tolerance=2e-17, max_refinement=3, trace='iterations')",
+        """from sagejs.numerics.linear_algebra import solve
+
+A = [
+    [2.7885359691576745, -9.49978489554666, -4.499413632617615],
+    [-5.5357852370235445, 4.729424283280249, 3.533989748458225],
+    [7.843591354096908, -8.261223347411677, -1.561563606294591],
+]
+b = [26.752113888947807, 25.823734998854537, -27.440931113276115]
+result = solve(A, b, tolerance=2e-17, max_refinement=3, trace="iterations")
+result""",
     )
 
 
@@ -911,7 +954,18 @@ def quadrature_story() -> dict[str, Any]:
                 limited_presentation,
             ),
         ],
-        "result = integrate(lambda x: exp(-x*x), -2, 2, trace='iterations')",
+        """import math
+from sagejs.numerics.integration import integrate
+
+result = integrate(
+    lambda x: math.exp(-x * x),
+    -2.0,
+    2.0,
+    absolute_tolerance=1e-10,
+    relative_tolerance=1e-10,
+    trace="iterations",
+)
+result""",
     )
 
 
@@ -986,7 +1040,13 @@ def approximation_story() -> dict[str, Any]:
             ),
             failure,
         ],
-        "result = chebyshev_approximation(runge, [-1, 1], 16, trace='iterations')",
+        """from sagejs.numerics.approximation import chebyshev_approximation
+
+def runge(x):
+    return 1.0 / (1.0 + 25.0 * x * x)
+
+result = chebyshev_approximation(runge, [-1.0, 1.0], 16, trace="iterations")
+result""",
     )
 
 
@@ -1039,7 +1099,11 @@ def spectral_story() -> dict[str, Any]:
                 ),
             ),
         ],
-        "result = symmetric_eigen(A, trace='iterations')",
+        """from sagejs.numerics.spectral import symmetric_eigen
+
+A = [[4.0, 1.0, 0.0], [1.0, 3.0, 0.5], [0.0, 0.5, 1.0]]
+result = symmetric_eigen(A, trace="iterations")
+result""",
     )
 
 
@@ -1119,7 +1183,21 @@ def optimization_story() -> dict[str, Any]:
                 limited_presentation,
             ),
         ],
-        "result = minimize(rosenbrock, [-1.2, 1], method='nelder-mead', trace='iterations')",
+        """from sagejs.numerics.optimization import minimize
+
+def rosenbrock(point):
+    x, y = point
+    return (1.0 - x) ** 2 + 100.0 * (y - x * x) ** 2
+
+result = minimize(
+    rosenbrock,
+    [-1.2, 1.0],
+    method="bfgs",
+    maxiter=200,
+    gtol=1e-5,
+    trace="iterations",
+)
+result""",
     )
 
 
@@ -1178,7 +1256,13 @@ def statistics_story() -> dict[str, Any]:
                 ),
             ),
         ],
-        "result = huber_regression(x, y, trace='iterations')",
+        """from sagejs.numerics.statistics import huber_regression
+
+x = list(range(8))
+y = [1.0 + 2.0 * value for value in x]
+y[-1] = 30.0
+result = huber_regression(x, y, trace="iterations")
+result""",
     )
 
 
@@ -1254,6 +1338,16 @@ def build() -> dict[str, Any]:
         "max_scalars_per_frame": 16_384,
         "max_semantic_animation_bytes": 4_000_000,
         "max_plotly_bytes": 4_000_000,
+        # These are deliberately generous release ceilings rather than
+        # benchmark targets.  They make accidental quadratic rendering or a
+        # hung evidence build fail closed without treating ordinary CI noise
+        # as a product regression.
+        "max_evidence_generation_ms": 180_000,
+        "max_parse_and_budget_validation_ms": 1_000,
+        "max_static_html_generation_ms": 1_000,
+        "max_all_exports_generation_ms": 2_000,
+        "max_browser_hydration_ms": 20_000,
+        "max_single_plot_render_ms": 5_000,
     }
     for story in stories:
         measurements = _measure(story)

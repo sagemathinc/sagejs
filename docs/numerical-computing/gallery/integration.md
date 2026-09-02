@@ -1,26 +1,28 @@
 # Integrating the numerical laboratory
 
-The checked gallery is intentionally self-contained under
-`docs/numerical-computing/gallery/`. This lane does not change shared website
-routing, app navigation, package manifests, or deployment code.
+The checked gallery is authored under `docs/numerical-computing/gallery/` and
+published byte-for-byte under `website/numerical-computing/`. The cross-domain
+generator owns both copies and the public manifest so a website deployment
+cannot silently serve stale numerical evidence.
 
 ## sagejs.org
 
-Publish these four runtime assets under a stable path such as
-`/numerical-computing/laboratory/`:
+GitHub Pages publishes these runtime assets at `/numerical-computing/`:
 
 ```text
 index.html
 gallery.css
 gallery.mjs
 evidence.json
+plotly.min.js
+plotly.LICENSE.txt
+gallery-manifest.json
 ```
 
-Supply the repository-pinned `plotly.js-dist-min` build before the module runs,
-or expose an equivalent pinned Plotly global through the site bundler. Do not
-replace the checked Plotly JSON with CDN-generated figures. A strict content
-security policy needs `script-src` permission for the local Plotly bundle and
-the ES module; no remote network access is required.
+The generator copies the repository-pinned `plotly.js-dist-min` build and its
+license. Its version, byte size, and SHA-256 digest are recorded in the public
+manifest. Do not replace the checked Plotly JSON or local renderer with CDN
+assets; no remote network access is required.
 
 Add one site-navigation link named “Numerical methods laboratory.” The landing
 page already contains all prose, assumptions, failure explanations, and result
@@ -29,10 +31,11 @@ on Plotly.
 
 ## app.sagejs.org
 
-Link each story's `canonical_python` field to an “Open in Sage.js” action. The
-action should copy the source into a fresh numerical cell; it must not claim
-that the checked result came from the new live run. The checked story and the
-new computation have separate provenance.
+Each story's “Open in Sage.js” action is now generated from its complete
+`canonical_python` field using the app's source-only share URL. The source is
+independently executable in a fresh cell. It does not claim that the checked
+result came from the new live run: the checked story and new computation have
+separate provenance.
 
 For an embedded gallery panel:
 

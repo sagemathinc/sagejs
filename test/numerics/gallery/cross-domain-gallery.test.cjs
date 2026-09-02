@@ -81,6 +81,29 @@ test("resource receipts are exact, bounded, and fail closed", () => {
     animated_case_count: 13,
   });
   assert.ok(measurements.bundle_bytes < bundle.budgets.max_bundle_bytes);
+  for (const budget of [
+    "max_evidence_generation_ms",
+    "max_parse_and_budget_validation_ms",
+    "max_static_html_generation_ms",
+    "max_all_exports_generation_ms",
+    "max_browser_hydration_ms",
+    "max_single_plot_render_ms",
+  ]) {
+    assert.ok(Number.isFinite(bundle.budgets[budget]));
+    assert.ok(bundle.budgets[budget] > 0);
+  }
+  assert.equal(
+    renderer.assertTimingBudget(bundle, "max_static_html_generation_ms", 1),
+    1,
+  );
+  assert.throws(
+    () => renderer.assertTimingBudget(
+      bundle,
+      "max_static_html_generation_ms",
+      bundle.budgets.max_static_html_generation_ms + 1,
+    ),
+    /exceeded/,
+  );
   for (const story of bundle.stories) {
     assert.ok(story.measurements.story_bytes <= bundle.budgets.max_story_bytes);
     assert.ok(
@@ -288,14 +311,6 @@ async function galleryServer() {
     }
     response.setHeader("content-type", contentType(filename));
     response.setHeader("cache-control", "no-store");
-    if (filename === htmlPath) {
-      const html = readFileSync(filename, "utf8").replace(
-        "<script type=\"module\">",
-        "<script src=\"/plotly.min.js\"></script><script type=\"module\">",
-      );
-      response.end(html);
-      return;
-    }
     createReadStream(filename).pipe(response);
   });
   await new Promise((resolveListen) =>
@@ -333,6 +348,12 @@ test(
         await page.getAttribute("html", "data-gallery-rendered-count"),
         "17",
       );
+      const timing = await page.evaluate(() => ({
+        hydration: Number(document.documentElement.dataset.galleryHydrationMs),
+        single: Number(document.documentElement.dataset.galleryMaxRenderMs),
+      }));
+      assert.ok(timing.hydration <= bundle.budgets.max_browser_hydration_ms);
+      assert.ok(timing.single <= bundle.budgets.max_single_plot_render_ms);
       assert.equal(await page.locator(".js-plotly-plot").count(), 17);
       assert.equal(await page.locator(".gallery-story").count(), 9);
       assert.equal(await page.locator(".gallery-case").count(), 18);

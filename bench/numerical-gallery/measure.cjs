@@ -88,13 +88,6 @@ async function galleryServer() {
     }
     response.setHeader("content-type", contentType(filename));
     response.setHeader("cache-control", "no-store");
-    if (filename === htmlPath) {
-      response.end(readFileSync(filename, "utf8").replace(
-        "<script type=\"module\">",
-        "<script src=\"/plotly.min.js\"></script><script type=\"module\">",
-      ));
-      return;
-    }
     createReadStream(filename).pipe(response);
   });
   await new Promise((resolveListen) =>
@@ -129,6 +122,10 @@ async function browserMeasurement(chromiumPath) {
         transfer_bytes: navigation.transferSize,
         decoded_body_bytes: navigation.decodedBodySize,
         rendered_figures: Number(document.documentElement.dataset.galleryRenderedCount),
+        hydration_ms: Number(document.documentElement.dataset.galleryHydrationMs),
+        maximum_single_plot_render_ms: Number(
+          document.documentElement.dataset.galleryMaxRenderMs,
+        ),
         plotly_nodes: document.querySelectorAll(".js-plotly-plot").length,
       };
     });
@@ -162,12 +159,27 @@ async function measure() {
 
   const validationStarted = performance.now();
   const bundle = JSON.parse(generated.stdout);
+  renderer.assertTimingBudget(
+    bundle,
+    "max_evidence_generation_ms",
+    generationMs,
+  );
   const validation = renderer.assertGalleryBudgets(bundle, generated.stdout);
   const parseValidateMs = elapsed(validationStarted);
+  renderer.assertTimingBudget(
+    bundle,
+    "max_parse_and_budget_validation_ms",
+    parseValidateMs,
+  );
 
   const htmlStarted = performance.now();
   const html = renderer.buildGalleryDocument(bundle);
   const staticHtmlMs = elapsed(htmlStarted);
+  renderer.assertTimingBudget(
+    bundle,
+    "max_static_html_generation_ms",
+    staticHtmlMs,
+  );
 
   const exportStarted = performance.now();
   let exportBytes = 0;
@@ -188,6 +200,11 @@ async function measure() {
     }
   }
   const exportMs = elapsed(exportStarted);
+  renderer.assertTimingBudget(
+    bundle,
+    "max_all_exports_generation_ms",
+    exportMs,
+  );
   const chromiumPath = discoverChromium();
   const browser = await browserMeasurement(chromiumPath);
   return {
@@ -228,7 +245,7 @@ async function measure() {
       solver_and_visualization_generation: "included in evidence_generation_ms",
       browser_wall_scope: "navigation, evidence fetch/validation, 17 Plotly renders, and frame registration",
       cache_policy: "one cold browser page in a fresh context; no network CDN",
-      claim: "measurement, not a release performance threshold",
+      claim: "release ceilings are enforced; measurements are not optimization targets",
     },
   };
 }
