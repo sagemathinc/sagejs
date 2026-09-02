@@ -152,6 +152,8 @@ test("the detailed root story retains its independent bisection result", () => {
   assert.equal(comparison.reference.value, reference.value);
   assert.equal(comparison.primary.residual, success.result.validation.residual);
   assert.equal(comparison.reference.residual, reference.validation.residual);
+  assert.ok(comparison.primary.callback_calls >= comparison.primary.evaluations);
+  assert.ok(comparison.reference.callback_calls >= comparison.reference.evaluations);
   assert.equal(
     comparison.agreement.absolute_value_difference,
     Math.abs(success.result.value - reference.value),
@@ -160,6 +162,7 @@ test("the detailed root story retains its independent bisection result", () => {
   assert.equal(comparison.agreement.passed, true);
   assert.deepEqual(comparison.execution, {
     independent_runs: true,
+    distinct_callback_instances: true,
     callback_reevaluated_for_presentation: false,
   });
 

@@ -57,8 +57,13 @@ def normalized(result):
     }
     return record
 
+primary_calls = [0]
+def primary_callback(x):
+    primary_calls[0] += 1
+    return math.cos(x) - x
+
 success = find_root(
-    lambda x: math.cos(x) - x,
+    primary_callback,
     0.0,
     1.0,
     method="brent",
@@ -67,7 +72,21 @@ success = find_root(
     max_trace_events=64,
     max_trace_bytes=131072,
 )
-verification = success.verify(method="bisection")
+reference_calls = [0]
+def reference_callback(x):
+    reference_calls[0] += 1
+    return math.cos(x) - x
+
+verification = find_root(
+    reference_callback,
+    0.0,
+    1.0,
+    method="bisection",
+    expression="math.cos(x) - x",
+    trace="evaluations",
+    max_trace_events=64,
+    max_trace_bytes=131072,
+)
 discontinuity = find_root(
     lambda x: -1.0 if x < 0.0 else 1.0,
     -1.0,
@@ -122,6 +141,10 @@ print(json.dumps({
         "newton-two-cycle": normalized(divergence),
     },
     "verification": normalized(verification),
+    "comparison_execution": {
+        "primary_callback_calls": primary_calls[0],
+        "reference_callback_calls": reference_calls[0],
+    },
     "animation": animation.to_dict(),
     "shared_lowering": shared_lowering,
     "shared_figure": shared_figure,
@@ -263,19 +286,20 @@ function resultCase(id, title, kind, question, description, result, expected) {
   };
 }
 
-function methodSummary(result) {
+function methodSummary(result, callbackCalls) {
   return {
     method: result.method,
     value: result.value,
     residual: result.validation.residual,
     iterations: result.iterations,
     evaluations: result.evaluations,
+    callback_calls: callbackCalls,
     validation_passed: result.validation.passed,
     truth_level: result.validation.truth_level,
   };
 }
 
-function referenceComparison(primary, reference) {
+function referenceComparison(primary, reference, execution) {
   const primaryTolerance = primary.reproducibility.problem.tolerances.xtol;
   const referenceTolerance = reference.reproducibility.problem.tolerances.xtol;
   const difference = Math.abs(primary.value - reference.value);
@@ -283,8 +307,8 @@ function referenceComparison(primary, reference) {
   return {
     schema: "sagejs.numerics.reference-comparison/v1",
     claim: "A separately executed bisection solve independently validates its candidate and agrees with Brent within the declared x-tolerance.",
-    primary: methodSummary(primary),
-    reference: methodSummary(reference),
+    primary: methodSummary(primary, execution.primary_callback_calls),
+    reference: methodSummary(reference, execution.reference_callback_calls),
     agreement: {
       absolute_value_difference: difference,
       threshold,
@@ -292,6 +316,7 @@ function referenceComparison(primary, reference) {
     },
     execution: {
       independent_runs: true,
+      distinct_callback_instances: true,
       callback_reevaluated_for_presentation: false,
     },
     reference_result: reference,
@@ -387,6 +412,7 @@ function buildStory() {
   cases[0].reference_comparison = referenceComparison(
     evidence.cases["cosine-fixed-point"],
     evidence.verification,
+    evidence.comparison_execution,
   );
   return {
     schema_version: 1,
