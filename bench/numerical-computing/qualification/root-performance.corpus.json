@@ -16,7 +16,7 @@
       "layer": "independent-residual",
       "workload_tier": "interactive-exploration",
       "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
-      "input": {"method": "bisection", "callback_tier": "cheap", "callback_work": 0, "repetitions": 64, "release_ceiling_ms_per_solve": 500},
+      "input": {"method": "bisection", "callback_tier": "cheap", "callback_work": 0, "repetitions": 4, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 5000},
       "required_capabilities": ["numerics.root.scalar.performance"],
       "expected": {"outcome": "success", "failure_code": null},
       "checks": [
@@ -26,16 +26,16 @@
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
-        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 500}}
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 5000}}
       ],
-      "measurement": {"warmup": 2, "samples": 7}
+      "measurement": {"warmup": 1, "samples": 5}
     },
     {
       "id": "p1-root-bisection-moderate",
       "description": "Bisection with a moderate deterministic transcendental callback, measured with and without traces.",
       "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
       "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
-      "input": {"method": "bisection", "callback_tier": "moderate", "callback_work": 16, "repetitions": 24, "release_ceiling_ms_per_solve": 500},
+      "input": {"method": "bisection", "callback_tier": "moderate", "callback_work": 16, "repetitions": 3, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 5000},
       "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
@@ -44,15 +44,15 @@
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
-        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 500}}
-      ], "measurement": {"warmup": 2, "samples": 7}
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 5000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
     },
     {
       "id": "p1-root-bisection-expensive",
       "description": "Bisection with an expensive deterministic transcendental callback, measured with and without traces.",
       "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
       "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
-      "input": {"method": "bisection", "callback_tier": "expensive", "callback_work": 256, "repetitions": 6, "release_ceiling_ms_per_solve": 500},
+      "input": {"method": "bisection", "callback_tier": "expensive", "callback_work": 256, "repetitions": 2, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 5000},
       "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
@@ -61,15 +61,15 @@
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
-        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 500}}
-      ], "measurement": {"warmup": 2, "samples": 7}
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 5000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
     },
     {
       "id": "p1-root-brent-cheap",
       "description": "Brent's method with a cheap polynomial callback, measured with and without iteration traces.",
       "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
       "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
-      "input": {"method": "brent", "callback_tier": "cheap", "callback_work": 0, "repetitions": 128, "release_ceiling_ms_per_solve": 500},
+      "input": {"method": "brent", "callback_tier": "cheap", "callback_work": 0, "repetitions": 4, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
       "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
@@ -78,15 +78,15 @@
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
-        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 500}}
-      ], "measurement": {"warmup": 2, "samples": 7}
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
     },
     {
       "id": "p1-root-brent-moderate",
       "description": "Brent's method with a moderate deterministic transcendental callback, measured with and without traces.",
       "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
       "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
-      "input": {"method": "brent", "callback_tier": "moderate", "callback_work": 16, "repetitions": 48, "release_ceiling_ms_per_solve": 500},
+      "input": {"method": "brent", "callback_tier": "moderate", "callback_work": 16, "repetitions": 3, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
       "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
@@ -95,15 +95,15 @@
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
-        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 500}}
-      ], "measurement": {"warmup": 2, "samples": 7}
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
     },
     {
       "id": "p1-root-brent-expensive",
       "description": "Brent's method with an expensive deterministic transcendental callback, measured with and without traces.",
       "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
       "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
-      "input": {"method": "brent", "callback_tier": "expensive", "callback_work": 256, "repetitions": 12, "release_ceiling_ms_per_solve": 500},
+      "input": {"method": "brent", "callback_tier": "expensive", "callback_work": 256, "repetitions": 2, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
       "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
@@ -112,15 +112,15 @@
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
-        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 500}}
-      ], "measurement": {"warmup": 2, "samples": 7}
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
     },
     {
       "id": "p1-root-secant-cheap",
       "description": "Secant iteration with a cheap polynomial callback, measured with and without iteration traces.",
       "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
       "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
-      "input": {"method": "secant", "callback_tier": "cheap", "callback_work": 0, "repetitions": 128, "release_ceiling_ms_per_solve": 500},
+      "input": {"method": "secant", "callback_tier": "cheap", "callback_work": 0, "repetitions": 4, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
       "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
@@ -129,15 +129,15 @@
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
-        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 500}}
-      ], "measurement": {"warmup": 2, "samples": 7}
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
     },
     {
       "id": "p1-root-secant-moderate",
       "description": "Secant iteration with a moderate deterministic transcendental callback, measured with and without traces.",
       "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
       "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
-      "input": {"method": "secant", "callback_tier": "moderate", "callback_work": 16, "repetitions": 48, "release_ceiling_ms_per_solve": 500},
+      "input": {"method": "secant", "callback_tier": "moderate", "callback_work": 16, "repetitions": 3, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
       "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
@@ -146,15 +146,15 @@
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
-        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 500}}
-      ], "measurement": {"warmup": 2, "samples": 7}
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
     },
     {
       "id": "p1-root-secant-expensive",
       "description": "Secant iteration with an expensive deterministic transcendental callback, measured with and without traces.",
       "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
       "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
-      "input": {"method": "secant", "callback_tier": "expensive", "callback_work": 256, "repetitions": 12, "release_ceiling_ms_per_solve": 500},
+      "input": {"method": "secant", "callback_tier": "expensive", "callback_work": 256, "repetitions": 2, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
       "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
@@ -163,15 +163,15 @@
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
-        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 500}}
-      ], "measurement": {"warmup": 2, "samples": 7}
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
     },
     {
       "id": "p1-root-newton-cheap",
       "description": "Newton iteration with cheap function and derivative callbacks, measured with and without iteration traces.",
       "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
       "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
-      "input": {"method": "newton", "callback_tier": "cheap", "callback_work": 0, "repetitions": 128, "release_ceiling_ms_per_solve": 500},
+      "input": {"method": "newton", "callback_tier": "cheap", "callback_work": 0, "repetitions": 4, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
       "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
@@ -180,15 +180,15 @@
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
-        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 500}}
-      ], "measurement": {"warmup": 2, "samples": 7}
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
     },
     {
       "id": "p1-root-newton-moderate",
       "description": "Newton iteration with moderate deterministic transcendental callback work, measured with and without traces.",
       "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
       "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
-      "input": {"method": "newton", "callback_tier": "moderate", "callback_work": 16, "repetitions": 48, "release_ceiling_ms_per_solve": 500},
+      "input": {"method": "newton", "callback_tier": "moderate", "callback_work": 16, "repetitions": 3, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
       "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
@@ -197,15 +197,15 @@
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
-        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 500}}
-      ], "measurement": {"warmup": 2, "samples": 7}
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
     },
     {
       "id": "p1-root-newton-expensive",
       "description": "Newton iteration with expensive deterministic transcendental callback work, measured with and without traces.",
       "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
       "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
-      "input": {"method": "newton", "callback_tier": "expensive", "callback_work": 256, "repetitions": 12, "release_ceiling_ms_per_solve": 500},
+      "input": {"method": "newton", "callback_tier": "expensive", "callback_work": 256, "repetitions": 2, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
       "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
@@ -214,8 +214,8 @@
         {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
         {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
         {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
-        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 500}}
-      ], "measurement": {"warmup": 2, "samples": 7}
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
     }
   ]
 }

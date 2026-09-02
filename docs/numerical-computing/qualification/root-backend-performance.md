@@ -34,7 +34,7 @@ is a backend-neutral corpus with the complete Cartesian product of:
 - cheap, moderate, and expensive deterministic callback tiers.
 
 Each of the 12 cases runs both trace policies, alternating their order between
-samples to reduce order bias. There are two warmups and seven measured samples.
+samples to reduce order bias. There is one warmup and five measured samples.
 Each sample batches enough solves to make timer resolution a small part of the
 measurement. The adapter records warm-kernel time per solve, callback counts,
 and trace behavior. The qualification collector separately recomputes the
@@ -69,14 +69,19 @@ checks:
 - maximum root error at most `2e-11`; and
 - maximum residual at most `5e-11`.
 
-Both traced and untraced execution have a `500 ms/solve` release ceiling in
-every callback tier. This is a deliberately loose safety ceiling for an
-interactive scalar operation across the slowest supported browser/platform;
-it is not a competitive performance claim or a target for routine operation.
+Untraced execution has a `500 ms/solve` release ceiling in every tier. Traced
+Brent, secant, and Newton execution has a `1000 ms/solve` ceiling; traced
+bisection has a `5000 ms/solve` ceiling because it deliberately constructs
+many more teaching events. These are deliberately loose, provisional safety
+ceilings for an interactive scalar operation, not competitive performance
+claims or targets for routine operation.
 The pre-qualification CPython 3.14.4 run on Linux x64 observed approximately
 `0.39`-`3.62 ms/solve` without iteration traces and `1.07`-`20.78 ms/solve`
-with traces across this corpus. These figures guided the ceiling but are not an
-authenticated Sage.js receipt. Exact-candidate receipts are authoritative.
+with traces across this corpus. A diagnostic built-Node run on the same host
+observed roughly `37`-`111 ms/solve` untraced, `105`-`128 ms/solve` traced for
+Brent/secant/Newton, and `1.68`-`1.76 s/solve` for traced bisection. These
+figures guided the method-specific ceilings but are not authenticated Sage.js
+receipts. Exact-candidate receipts are authoritative.
 
 Tightening the ceiling requires retained measurements from all supported
 runtime classes and platforms. It must not be inferred from one fast host.

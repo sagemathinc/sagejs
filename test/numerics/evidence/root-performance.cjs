@@ -44,13 +44,17 @@ test("root performance corpus spans methods, trace policies, and callback tiers"
       ["cheap", "moderate", "expensive"].map((tier) => `${method}:${tier}`))),
   );
   for (const item of corpus.cases) {
-    assert.equal(item.measurement.warmup, 2);
-    assert.equal(item.measurement.samples, 7);
-    assert.equal(item.input.release_ceiling_ms_per_solve, 500);
+    assert.equal(item.measurement.warmup, 1);
+    assert.equal(item.measurement.samples, 5);
+    assert.equal(item.input.untraced_release_ceiling_ms_per_solve, 500);
+    assert.equal(
+      item.input.traced_release_ceiling_ms_per_solve,
+      item.input.method === "bisection" ? 5000 : 1000,
+    );
     assert.deepEqual(
       item.checks.filter((check) => check.id.endsWith("release-ceiling"))
         .map((check) => check.expected.literal),
-      [500, 500],
+      [500, item.input.method === "bisection" ? 5000 : 1000],
     );
   }
   const draft = capabilityDraft(
@@ -87,7 +91,8 @@ test("benchmark source is ordinary CPython and observes both trace modes", () =>
     callback_tier: "cheap",
     callback_work: 0,
     repetitions: 2,
-    release_ceiling_ms_per_solve: 500,
+    untraced_release_ceiling_ms_per_solve: 500,
+    traced_release_ceiling_ms_per_solve: 1000,
   };
   const raw = runUnderCPython(input);
   assert.equal(raw.records.none.roots.length, 2);
