@@ -17,6 +17,7 @@ const {
   authenticate,
   authenticatePublicNpmRoot,
   authenticateRebuiltGate,
+  parseArguments: parseAuthenticateArguments,
 } = require("../../../scripts/numerical-computing/qualification/authenticate-release-gate.cjs");
 const {
   CANONICAL_INPUT,
@@ -24,11 +25,18 @@ const {
   exactInputInventory,
   expectedEvidence,
   expectedRows,
+  parseArguments: parseGateArguments,
   requireCanonicalLayout,
 } = require("../../../scripts/numerical-computing/qualification/assemble-release-gate.cjs");
 const {
+  parseArguments: parseBrowserArguments,
+} = require("../../../scripts/numerical-computing/qualification/collect-browser.cjs");
+const {
   parseArguments: parsePlatformArguments,
 } = require("../../../scripts/numerical-computing/qualification/collect-platform.cjs");
+const {
+  options: parseOracleArguments,
+} = require("../../../scripts/numerical-computing/qualification/provision-scipy-oracle.cjs");
 const {
   manifestBoundArtifacts,
 } = require("../../../scripts/numerical-computing/qualification/prepared-artifacts.cjs");
@@ -213,6 +221,53 @@ test("checked-in qualification commands expose fail-closed production entrypoint
     packageJson.scripts["release:qualify:numerics:authenticate"],
     /authenticate-release-gate\.cjs/,
   );
+});
+
+test("documented pnpm argument separators reach every numerical qualification CLI", () => {
+  const candidate = "1".repeat(40);
+  assert.deepEqual(parseOracleArguments([
+    "--", "--artifact-directory", "build/downloads", "--prefix", "build/prefix",
+    "--provenance", "build/provenance.json", "--download",
+  ]), {
+    artifact_directory: "build/downloads",
+    download: true,
+    prefix: "build/prefix",
+    provenance: "build/provenance.json",
+  });
+  assert.deepEqual(parsePlatformArguments([
+    "--", "--candidate", candidate, "--output", "build/output", "--subjects", "node",
+  ]), {
+    candidate,
+    help: false,
+    output: "build/output",
+    subjects: ["node"],
+  });
+  assert.deepEqual(parseBrowserArguments([
+    "--", "--candidate", candidate, "--output", "build/output",
+  ]), {
+    artifact: "packages/flint-wasm",
+    candidate,
+    help: false,
+    output: "build/output",
+  });
+  assert.deepEqual(parseGateArguments([
+    "--", "--candidate", candidate, "--input", CANONICAL_INPUT,
+    "--output", CANONICAL_OUTPUT,
+  ]), {
+    candidate,
+    help: false,
+    input: CANONICAL_INPUT,
+    output: CANONICAL_OUTPUT,
+  });
+  assert.deepEqual(parseAuthenticateArguments([
+    "--", "--candidate", candidate, "--gate", "build/gate.json",
+    "--rebuilt-gate", "build/rebuilt.json",
+  ]), {
+    candidate,
+    gate: "build/gate.json",
+    help: false,
+    rebuilt_gate: "build/rebuilt.json",
+  });
 });
 
 test("qualified Wasm builders fetch the promoted source-candidate ancestry", () => {

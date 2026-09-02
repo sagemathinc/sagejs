@@ -20,6 +20,7 @@ function usage() {
 }
 
 function options(argv) {
+  if (argv[0] === "--") argv = argv.slice(1);
   const value = { download: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];

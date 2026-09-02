@@ -33,6 +33,7 @@ foreign, symlinked, dirty, or wrong-candidate evidence is rejected.
 }
 
 function parseArguments(argv) {
+  if (argv[0] === "--") argv = argv.slice(1);
   if (argv.includes("--help") || argv.includes("-h")) return { help: true };
   const accepted = new Set(["--candidate", "--input", "--output"]);
   const result = {};
