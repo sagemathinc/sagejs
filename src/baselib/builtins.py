@@ -7067,11 +7067,11 @@ def denominator(value: Any) -> Any:
 def _factorial_product(start: Any, stop: Any) -> Any:
     """Return the balanced exact product from `start` through `stop`."""
     if start > stop:
-        return 1
+        return runtime.bigint(1)
     if stop - start <= 32:
-        answer = 1
+        answer = runtime.bigint(1)
         for factor in range(start, stop + 1):
-            answer *= factor
+            answer *= runtime.bigint(factor)
         return answer
     middle = (start + stop) // 2
     return _factorial_product(start, middle) * _factorial_product(middle + 1, stop)
