@@ -25,6 +25,7 @@ const {
   CANONICAL_OUTPUT,
   exactInputInventory,
   expectedEvidence,
+  expectedSoakEvidence,
   expectedRows,
   parseArguments: parseGateArguments,
   requireCanonicalLayout,
@@ -59,6 +60,7 @@ const ci = read(".github/workflows/ci.yml");
 const manual = read(".github/workflows/publish-validated-release.yml");
 const deploy = read(".github/workflows/wasm-deploy-cloudflare.yml");
 const mobile = read(".github/workflows/mobile-simulators.yml");
+const numericalSoakWorkflow = read(".github/workflows/numerical-soak.yml");
 const browserCollector = read(
   "scripts/numerical-computing/qualification/collect-browser.cjs",
 );
@@ -118,13 +120,18 @@ function validGate(candidate) {
     records.sort((left, right) => canonicalJson(left).localeCompare(canonicalJson(right)));
   }
   const supplemental = [
-    ["browser-memory-chromium", "sagejs.numerical-browser-memory-evidence/v1", "memory-browser-chromium/browser-chromium.memory-evidence.json"],
-    ["browser-memory-firefox", "sagejs.numerical-browser-memory-evidence/v1", "memory-browser-firefox/browser-firefox.memory-evidence.json"],
-    ["browser-memory-webkit", "sagejs.numerical-browser-memory-evidence/v1", "memory-browser-webkit/browser-webkit.memory-evidence.json"],
-    ["browser-memory-worker", "sagejs.numerical-browser-memory-evidence/v1", "memory-worker-chromium/worker-chromium.memory-evidence.json"],
-    ["native-sanitizers", "sagejs.numerical-native-sanitizer-evidence/v1", "native-sanitizers.evidence.json"],
-    ["structural-performance", "sagejs.numerical-structural-performance-evidence/v1", "structural-performance.evidence.json"],
-    ["wasm-destructive", "sagejs.numerical-wasm-destructive-evidence/v1", "wasm-destructive.evidence.json"],
+    ["browser-memory-chromium", "sagejs.numerical-browser-memory-evidence/v1", "build/numerical-qualification/browser/supplemental/memory-browser-chromium/browser-chromium.memory-evidence.json"],
+    ["browser-memory-firefox", "sagejs.numerical-browser-memory-evidence/v1", "build/numerical-qualification/browser/supplemental/memory-browser-firefox/browser-firefox.memory-evidence.json"],
+    ["browser-memory-webkit", "sagejs.numerical-browser-memory-evidence/v1", "build/numerical-qualification/browser/supplemental/memory-browser-webkit/browser-webkit.memory-evidence.json"],
+    ["browser-memory-worker", "sagejs.numerical-browser-memory-evidence/v1", "build/numerical-qualification/browser/supplemental/memory-worker-chromium/worker-chromium.memory-evidence.json"],
+    ["native-sanitizers", "sagejs.numerical-native-sanitizer-evidence/v1", "build/numerical-qualification/browser/supplemental/native-sanitizers.evidence.json"],
+    ...["linux-arm64", "linux-x64", "macos-arm64", "windows-x64"].map((platform) => [
+      `numerical-soak-${platform}`,
+      "sagejs.numerical-soak-evidence/v1",
+      `build/numerical-qualification/platform/${platform}/${platform}-soak.evidence.json`,
+    ]),
+    ["structural-performance", "sagejs.numerical-structural-performance-evidence/v1", "build/numerical-qualification/browser/supplemental/structural-performance.evidence.json"],
+    ["wasm-destructive", "sagejs.numerical-wasm-destructive-evidence/v1", "build/numerical-qualification/browser/supplemental/wasm-destructive.evidence.json"],
   ];
   const core = {
     schema: "sagejs.numerical-qualification-release-gate/v1",
@@ -164,13 +171,13 @@ function validGate(candidate) {
     supplemental_report: {
       id: identity("supplemental-report"),
       template_sha256: sha256(canonicalJson(supplementalTemplate)),
-      rows: 5,
+      rows: 6,
       requirement_ids: supplementalTemplate.requirements.map((item) => item.id).sort(),
     },
-    supplemental_evidence: supplemental.map(([category, schema, suffix]) => ({
+    supplemental_evidence: supplemental.map(([category, schema, evidencePath]) => ({
       category,
       schema,
-      path: `build/numerical-qualification/browser/supplemental/${suffix}`,
+      path: evidencePath,
       sha256: sha256(`evidence:${category}`),
       id: identity(`evidence:${category}`),
     })),
@@ -324,6 +331,29 @@ test("mobile simulators consume one canonical source-bound numerical product", (
   );
 });
 
+test("scheduled numerical soak is bounded, cancellable, and absent from routine pushes", () => {
+  assert.match(numericalSoakWorkflow, /schedule:\n\s+- cron: "41 3 \* \* 3"/);
+  assert.match(numericalSoakWorkflow, /workflow_dispatch:/);
+  assert.doesNotMatch(numericalSoakWorkflow, /^\s+(push|pull_request):/m);
+  assert.match(
+    numericalSoakWorkflow,
+    /concurrency:[\s\S]*?cancel-in-progress: true/,
+  );
+  assert.match(
+    numericalSoakWorkflow,
+    /numerical-soak:[\s\S]*?timeout-minutes: 120/,
+  );
+  assert.match(
+    numericalSoakWorkflow,
+    /run-soak\.cjs \\\n[\s\S]*?--candidate "\$\(git rev-parse HEAD\)" \\\n[\s\S]*?--profile scheduled/,
+  );
+  assert.match(numericalSoakWorkflow, /set -o pipefail/);
+  assert.match(
+    numericalSoakWorkflow,
+    /Preserve scheduled soak evidence and diagnostics\n\s+if: always\(\)/,
+  );
+});
+
 test("publisher authentication requires an intact exact gate inventory", () => {
   const candidate = "1".repeat(40);
   const gate = validGate(candidate);
@@ -337,7 +367,10 @@ test("publisher authentication requires an intact exact gate inventory", () => {
     [(value) => { value.capability_manifests[0].extra = true; }, /unexpected field inventory/],
     [(value) => { value.supplemental_evidence[0].category = value.supplemental_evidence[1].category; }, /duplicates|omits/],
     [(value) => { value.supplemental_evidence[0].schema = "foreign"; }, /wrong schema/],
-    [(value) => { value.supplemental_report.requirement_ids.pop(); }, /five requirement/],
+    [(value) => { value.supplemental_evidence.find((item) =>
+      item.category === "numerical-soak-linux-x64").path =
+        "build/numerical-qualification/platform/linux-arm64/linux-arm64-soak.evidence.json"; }, /substitutes/],
+    [(value) => { value.supplemental_report.requirement_ids.pop(); }, /six requirement/],
     [(value) => { value.scipy_oracle_coherence.catalog_id = contentId({ foreign: true }); }, /source-current catalog/],
     [(value) => { value.scipy_oracle_coherence.platform_bindings[0].binding_id =
       value.scipy_oracle_coherence.platform_bindings[1].binding_id; }, /binding IDs must be unique/],
@@ -439,6 +472,10 @@ test("aggregation accepts only the exact producer layout", () => {
         fs.writeFileSync(path.join(row, "capabilities.json"), "{}\n");
         fs.writeFileSync(path.join(row, `${kind}.receipt.json`), "{}\n");
       }
+      fs.writeFileSync(
+        path.join(directory, "platform", platform, `${platform}-soak.evidence.json`),
+        "{}\n",
+      );
     }
     for (const [suffix, receipt] of [
       ["chromium", "browser-chromium.receipt.json"],
@@ -501,10 +538,14 @@ test("aggregation accepts only the exact producer layout", () => {
       bindBrowserArtifact(path.join(supplemental, directoryName), `${stem}.receipt.json`);
     }
     const rows = expectedRows(relative);
-    const evidence = expectedEvidence(relative);
+    const browserEvidence = expectedEvidence(relative);
+    const soakEvidence = expectedSoakEvidence(relative);
+    const evidence = [...browserEvidence, ...soakEvidence];
     assert.equal(rows.length, 16);
-    assert.equal(evidence.length, 7);
-    assert.ok(exactInputInventory(relative, rows, evidence).length > 23);
+    assert.equal(browserEvidence.length, 7);
+    assert.equal(soakEvidence.length, 4);
+    assert.equal(evidence.length, 11);
+    assert.ok(exactInputInventory(relative, rows, evidence).length > 27);
     const foreignDirectory = path.join(directory, "browser", "supplemental", "Foreign");
     fs.mkdirSync(foreignDirectory);
     assert.throws(() => exactInputInventory(relative, rows, evidence), /foreign directory/);
@@ -698,6 +739,9 @@ test("tag CI collects 12 platform and four browser rows before publication", () 
     "run-browser-memory.cjs",
     "run-structural-performance.cjs",
   ]) assert.match(browserCollector, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(platformCollector, /run-soak\.cjs/);
+  assert.match(platformCollector, /"--profile", "release"/);
+  assert.match(gateAssembler, /expectedSoakEvidence/);
   assert.match(
     ci,
     /publish-release:[\s\S]*?needs:\n\s+- numerical-release-gate[\s\S]*?Restore the mandatory numerical release gate/,

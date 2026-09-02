@@ -81,6 +81,10 @@ const EXPECTED_SUPPLEMENTAL = new Map([
     schema: "sagejs.numerical-browser-memory-evidence/v1",
     path: `${INPUT_ROOT}/browser/supplemental/${suffix}`,
   }]),
+  ...EXPECTED_PLATFORMS.map((platform) => [`numerical-soak-${platform}`, {
+    schema: "sagejs.numerical-soak-evidence/v1",
+    path: `${INPUT_ROOT}/platform/${platform}/${platform}-soak.evidence.json`,
+  }]),
 ]);
 
 function usage() {
@@ -91,7 +95,7 @@ function usage() {
 Authenticates the immutable final numerical release-gate document before a
 publisher or deployment consumes it. The rebuilt gate must have been assembled
 from the complete raw evidence artifact in the consuming candidate checkout.
-Exact byte equality makes the raw 16-row and seven-record inventory, rather
+Exact byte equality makes the raw 16-row and eleven-record inventory, rather
 than a recomputable compact content ID alone, the publication trust boundary.
 `;
 }
@@ -218,7 +222,7 @@ function validateSupplementalInventory(value) {
   const requirementIds = supplementalTemplate.requirements.map((item) => item.id).sort();
   if (value.supplemental_report.rows !== requirementIds.length ||
       canonicalJson(value.supplemental_report.requirement_ids) !== canonicalJson(requirementIds)) {
-    throw new Error("supplemental report does not bind the exact five requirement identities");
+    throw new Error("supplemental report does not bind the exact six requirement identities");
   }
   exactInventory(
     value.supplemental_evidence, [...EXPECTED_SUPPLEMENTAL.keys()].sort(), "category",
