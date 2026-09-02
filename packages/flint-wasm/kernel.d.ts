@@ -37,6 +37,7 @@ export interface SageEvaluationOptions {
   filename?: string;
   timeout?: number;
   onOutput?: (text: string) => void;
+  onError?: (text: string) => void;
 }
 
 export interface BrowserSageSessionOptions {
@@ -47,13 +48,26 @@ export interface BrowserSageSessionOptions {
   baselib?: string | URL;
   standardLibrary?: string | URL;
   lazyModules?: string | URL;
+  conwayData?: string | URL;
+  dynamicPrograms?: string | URL;
   flint?: string | URL;
+  algebraic?: string | URL;
+  nativeKernels?: string | URL;
   m4ri?: string | URL;
   numerical?: string | URL;
   numericalNlopt?: string | URL;
   nloptAdapter?: string | URL;
   symbolic?: string | URL;
+  documentation?: string | URL;
   compilerWorker?: string | URL;
+  compilerFrontend?: string | URL;
+  foreignFrontend?: string | URL;
+  treeSitterRuntime?: string | URL;
+  pythonGrammar?: string | URL;
+  sageGrammar?: string | URL;
+  foreignGrammars?: Record<string, string | URL>;
+  capabilityReport?: string | URL;
+  optimizationLevel?: "O0" | "O1" | "O2" | "O3" | "Os";
   onGraphicsSave?: (request: SageGraphicsSaveRequest) => void | Promise<void>;
 }
 
@@ -91,6 +105,17 @@ export class SageSession {
     source: string,
     options?: SageEvaluationOptions,
   ): Promise<SageEvaluationResult>;
+  /**
+   * Evaluate Sage/Python source and return its final expression as detached
+   * JSON-compatible data. Put a multiline expression in a variable and use
+   * that variable as the final physical line.
+   */
+  evaluateJSON(source: string, options?: SageEvaluationOptions): Promise<unknown>;
+  /** Return the installed DocSpec v1 catalog. */
+  documentation(): Promise<{
+    schema_version: 1;
+    entries: Array<Record<string, unknown>>;
+  }>;
   interrupt(): Promise<void>;
   reset(): Promise<void>;
   close(): Promise<void>;

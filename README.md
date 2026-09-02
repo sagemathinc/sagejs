@@ -443,6 +443,16 @@ The first form opens a `wasm: ` prompt. The launcher verifies the production
 receipt and every selected asset before evaluation; a stale or incomplete
 artifact fails closed instead of falling back to native execution.
 
+Node applications can select the same addon-free runtime explicitly:
+
+```js
+import { createSage } from "@sagemath/sagejs/wasm/node";
+
+const sage = await createSage();
+console.log((await sage.evaluate("factor(2026)")).repr);
+await sage.close();
+```
+
 ## Documentation
 
 Sage.js retains public docstrings for `help(f)`, `f?`, Jupyter inspection, and
