@@ -21,7 +21,6 @@ from .model import (
 from .portable import (
     attach_intent,
     callback_record,
-    parse_attached_intent,
     portable_value,
     render_callback,
     render_value,
@@ -29,6 +28,7 @@ from .portable import (
     validated_callback,
 )
 from .registry import OperationAdapter
+from .roundtrip import parse_catalog_source
 
 
 class _Definition:
@@ -754,14 +754,53 @@ def _make_lowerer(definition: _Definition, language: str, source_name: str) -> A
 def _make_emitter(definition: _Definition, language: str) -> Any:
     def emitter(intent: NumericalFrontendIntent) -> str:
         body = _emit_body(definition, intent, language)
-        return attach_intent(body, intent, language)
+        source = attach_intent(body, intent, language)
+        # An advertised emitter is also a checked round-trip capability.  Run
+        # the bounded source parser now so lossy shapes or literals fail at the
+        # outward boundary rather than producing code that cannot substantiate
+        # its canonical intent later.
+        try:
+            _make_parser(definition, language)(source)
+        except UnsupportedFrontendError as error:
+            _unsupported(
+                "unsupported_target",
+                "outward "
+                + language
+                + " code cannot preserve this canonical "
+                + definition.operation.name
+                + " intent",
+                definition,
+                language,
+                details={"round_trip_diagnostic": error.diagnostic.to_dict()},
+            )
+        return source
 
     return emitter
 
 
 def _make_parser(definition: _Definition, language: str) -> Any:
     def parser(source: str) -> NumericalFrontendIntent:
-        return parse_attached_intent(source, language, definition.operation)
+        aliases = definition.aliases.get(language)
+        source_name = definition.operation.name if aliases is None else aliases[0]
+
+        def lower(*arguments: Any, **options: Any) -> NumericalFrontendIntent:
+            return _lower(definition, language, source_name, arguments, options)
+
+        return parse_catalog_source(
+            source,
+            language,
+            definition.operation,
+            operands=definition.operands,
+            callback=definition.callback,
+            callback_shape=(
+                None
+                if definition.callback is None
+                else _callback_shape(definition.operation.name)
+            ),
+            source_name=source_name,
+            lower=lower,
+            emit_body=lambda intent, target: _emit_body(definition, intent, target),
+        )
 
     return parser
 

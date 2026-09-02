@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerical-code-roundtrips",
+  "title": "Executable numerical code round trips",
+  "lane": "numerical-multilingual",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replace template-only numerical code-generation claims with executable canonical semantic round-trip verification for Sage, Python/SciPy, MATLAB, and Wolfram, while classifying unverified outputs fail closed",
+  "base_commit": "fa793b4a422638e82fe678e8be2412fda6082fd8",
+  "claims": [
+    "src/lib/sagejs/numerics/frontends/operations.py",
+    "src/lib/sagejs/numerics/frontends/portable.py",
+    "src/lib/sagejs/numerics/frontends/registry.py",
+    "src/lib/sagejs/numerics/frontends/roundtrip.py",
+    "src/lib/sagejs/numerics/frontends/scalar_root.py",
+    "test/numerics/code-roundtrip/",
+    "docs/numerical-computing/multilingual-roundtrip/"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/numerical-computing-product-plan.md",
+    "docs/numerical-computing/multilingual/support-matrix.json"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Canonical NumericalProblem semantic intent equivalence after emitted-source parse/lowering"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm test:integration",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

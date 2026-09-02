@@ -228,15 +228,13 @@ def callback_record(
                 language=language,
             )
         )
-    bindings = {"callback": callback} if callable(callback) else {}
     if expression is None:
+        bindings = {"callback": callback} if callable(callback) else {}
         return opaque_callback_record(parameters), bindings
+    record: dict[str, JSONValue]
     if isinstance(expression, str):
-        return (
-            expression_record(expression, language=language, parameters=parameters),
-            bindings,
-        )
-    if isinstance(expression, Sequence) and not isinstance(
+        record = expression_record(expression, language=language, parameters=parameters)
+    elif isinstance(expression, Sequence) and not isinstance(
         expression, (bytes, bytearray)
     ):
         records: list[JSONValue] = []
@@ -248,15 +246,40 @@ def callback_record(
             )
         if not records:
             raise ValueError("callback expression vectors must not be empty")
-        return (
-            {
-                "kind": "expression_vector",
-                "parameters": [str(parameter) for parameter in parameters],
-                "items": records,
-            },
-            bindings,
+        record = {
+            "kind": "expression_vector",
+            "parameters": [str(parameter) for parameter in parameters],
+            "items": records,
+        }
+    else:
+        raise TypeError("callback expression must be a string or sequence of strings")
+    binding = callback if callable(callback) else replayable_callback(record)
+    return record, {"callback": binding}
+
+
+def replayable_callback(record: Mapping[str, Any]) -> Any:
+    """Build the bounded callable represented by one portable expression record.
+
+    This is used when checked generated source is parsed back into canonical
+    intent.  It executes only the arithmetic expression IR accepted by
+    `expression_record`; it never evaluates source text.
+    """
+
+    parameters_value = record.get("parameters", [])
+    if not isinstance(parameters_value, Sequence) or isinstance(parameters_value, str):
+        raise TypeError("canonical callback parameters must be a sequence")
+    parameters = [str(item) for item in parameters_value]
+
+    def callback(
+        *arguments: Any,
+        parameters: list[str] = parameters,
+        record: Mapping[str, Any] = record,
+    ) -> Any:
+        return _evaluate_callback_record(
+            record, _callback_bindings(parameters, arguments)
         )
-    raise TypeError("callback expression must be a string or sequence of strings")
+
+    return callback
 
 
 def render_callback(record: Mapping[str, Any], language: str) -> str | list[str]:
@@ -389,6 +412,35 @@ def parse_attached_intent(
     """Validate an emitted body and reconstruct its canonical semantic intent."""
 
     target = canonical_language(language)
+    body, semantic = checked_source_body(source, target, expected)
+    outputs = semantic.get("outputs", ["value"])
+    if not isinstance(outputs, Sequence) or isinstance(outputs, str):
+        _parse_error(target, "numerical intent outputs must be a sequence")
+    return NumericalFrontendIntent(
+        expected,
+        operands=_mapping(semantic.get("operands"), "operands"),
+        options=_mapping(semantic.get("options"), "options"),
+        outputs=[str(output) for output in outputs],
+        source_language=target,
+        source_name=expected.name,
+        classification="translated",
+        source_text=body,
+        metadata={"round_trip": "checked-envelope-v1"},
+    )
+
+
+def checked_source_body(
+    source: str, language: str, expected: OperationRef
+) -> tuple[str, Mapping[str, Any]]:
+    """Authenticate an emitted body and return its recorded semantic cross-check.
+
+    Callers that make a round-trip claim must parse `body` independently and
+    use the returned semantic record only to reject disagreement.  Returning
+    the trailer as intent is retained in `parse_attached_intent` solely for
+    compatibility with callers that explicitly ask for envelope decoding.
+    """
+
+    target = canonical_language(language)
     if (
         len(source.encode("utf-8"))
         > _MAX_EMITTED_SOURCE_BYTES + 2 * _MAX_ENVELOPE_BYTES
@@ -450,20 +502,7 @@ def parse_attached_intent(
                 },
             )
         )
-    outputs = semantic.get("outputs", ["value"])
-    if not isinstance(outputs, Sequence) or isinstance(outputs, str):
-        _parse_error(target, "numerical intent outputs must be a sequence")
-    return NumericalFrontendIntent(
-        operation_ref,
-        operands=_mapping(semantic.get("operands"), "operands"),
-        options=_mapping(semantic.get("options"), "options"),
-        outputs=[str(output) for output in outputs],
-        source_language=target,
-        source_name=expected.name,
-        classification="translated",
-        source_text=source,
-        metadata={"round_trip": "checked-emitted-source-v1"},
-    )
+    return body, semantic
 
 
 def _mapping(value: Any, name: str) -> Mapping[str, Any]:
@@ -503,17 +542,21 @@ def _number(value: float) -> str:
         raise ValueError("cannot emit a nonfinite numerical literal")
     integer = int(value)
     if value == integer and abs(value) < 1.0e16:
-        return str(integer)
+        if value == 0.0 and math.copysign(1.0, value) < 0:
+            return "-0.0"
+        return str(integer) + ".0"
     return repr(value)
 
 
 __all__ = [
     "attach_intent",
     "callback_record",
+    "checked_source_body",
     "parse_attached_intent",
     "portable_value",
     "render_callback",
     "render_value",
+    "replayable_callback",
     "runtime_value",
     "validated_callback",
 ]
