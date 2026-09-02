@@ -1,18 +1,20 @@
-# Integration and diagnostic requests
+# Statistics integration record
 
-This lane intentionally did not edit shared registries, package graphs,
-`pyrightconfig.json`, the parent `sagejs.numerics.__init__`, or central test
-scripts. Integration may make the following narrow changes after review:
+> Historical handoff, resolved during P5 integration.
 
-1. Export the selected statistics names from `sagejs.numerics` while retaining
-   `sagejs.numerics.statistics` as the canonical implementation module.
-2. Delegate statistics entries in `docs/numerical-computing/surface.json` and
-   the shared lazy facade to package-local `capabilities`, `supports`, and
-   `plan`. The package planner covers result operations, quantile/covariance/
-   correlation, and robust losses without callback evaluation or random draws.
-3. Include `test/numerics/statistics/test.cjs` in `pnpm test:numerics`; the nested
-   test metadata already makes it visible to the general integration manifest.
-4. Add `src/lib/sagejs/numerics/statistics/` to strict Pyright coverage after
-   integration resolves any compiler-specific typing findings.
-5. Run `test/numerics/statistics/oracle.R` on an R-equipped qualification host
-   and retain its versioned output as a second executed oracle receipt.
+The statistics package now has live capability registration, lazy package-graph
+ownership, strict Pyright coverage, and test discovery through
+`pnpm test:numerics`. Its canonical public API remains
+`sagejs.numerics.statistics`; selected names were not flattened into the
+parent package merely to satisfy the original lane handoff.
+
+The checked fixtures and product corpus use independent identities, pinned
+SciPy references, distribution identities, metamorphic checks, residuals, and
+failure cases. `test/numerics/statistics/oracle.R` remains a useful secondary
+oracle source for future campaigns; an unexecuted R source is not represented
+as a retained release receipt and is not required to claim the currently
+supported surface.
+
+There is no active shared integration request in this file. New statistics
+claims must extend the package-local capability matrix and executable evidence
+before entering the generated surface.

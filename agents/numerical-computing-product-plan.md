@@ -18,139 +18,91 @@ The existing plotting platform is also a foundation rather than adjacent work:
 - `src/lib/sagejs/plotting/`
 - `docs/sage-compatibility/plotting/`
 
-No implementation work is authorized by this document alone. Each domain must
-still perform its own library survey, correctness study, portability work, and
-performance evaluation before choosing a backend.
+This document records product direction and the evidence required for future
+backend choices. It does not by itself qualify a new backend: each addition
+must still perform its own library survey, correctness study, portability work,
+and performance evaluation.
 
-### Implementation record
+### Implementation and qualification record
 
-The product goal now authorizes implementation. The first integrated milestone
-established the P0 contracts and P1 root architecture on 2026-08-31:
+As of 2026-09-02, P0-P7 are implemented and validated for the published
+supported surface. P8's fail-closed collection, authentication, and release
+workflow are implemented, but this source document makes no final-candidate
+release claim. Such a claim exists only after one frozen commit passes the
+exact 16-row product matrix and seven supplemental records described in
+[`docs/numerical-computing/qualification/`](../docs/numerical-computing/qualification/).
+Candidate SHAs and receipt identities belong in immutable qualification
+artifacts and release notes. Editing them into source after qualification
+would create a different candidate.
 
-- `sagejs.numerics` defines versioned problem, plan, result, validation,
-  diagnostic, resource-budget, trace-policy, event, and bounded-trace objects;
-- `docs/numerical-computing/` publishes their JSON schemas, the exhaustive
-  classified surface, diagnostic ledger, and routine/release evidence policy;
-- bisection, Brent-Dekker, secant, and Newton use ordinary CPython-parseable
-  source and independently recheck residual and bracket invariants;
-- automatic planning is inspectable and does not evaluate the callback;
-- the result supports explanation, independent bisection verification,
-  refinement, PlotSpec visualization, and topology-stable Plotly animation;
-  its frontend wrapper owns four-language code emission;
-- Sage `find_root`, Python `sagejs.numerics.find_root`, MATLAB `fzero`, and
-  Wolfram `FindRoot` are views of the same operation; and
-- focused CPython/Sage.js success, failure, cancellation, trace-budget,
-  schema, and frontend tests pass with strict Python at zero errors.
+The implemented surface is generated from the live public registries. It
+contains 49 capabilities (41 `extension`, 8 `translated`) and 22 frontend
+operations (20 `translated`, 2 `extension`), plus 17 stable diagnostics.
+`pnpm architecture:numerics` rejects registry and classification drift and
+checks 23 browser lazy roots covering 67 public numerical modules. The ledger
+classifies claims that are actually public and implemented; explicit deferred
+and unsupported variants remain in the reviewed domain support matrices rather
+than being manufactured as callable registry entries.
 
-The P0 contract audit then hardened this foundation before release:
+The integrated implementation includes:
 
-- the exhaustive surface is generated from the actual public capability and
-  frontend registries, including all cminpack/NLopt identities and generic
-  bounded sweeps, rather than checked against a second hardcoded name list;
-- frontend adapters expose detached metadata and explicit bindings to their
-  capability operations, so omissions and classification drift fail the
-  architecture gate;
-- implementation targets are separate from digest-bound qualification
-  receipts; an intended browser or platform no longer masquerades as retained
-  release evidence;
-- common plans carry source/artifact/receipt-aware execution targets, common
-  results expose binding status and explicit limitations, and unsupported
-  callback-depth/allocation/memory contracts are classified honestly;
-- outward code is generated only by frontend-wrapped results that retain
-  language intent; canonical domain results remain language-neutral evidence;
-  and
-- npm is a first-class qualification subject instead of an ambiguous `other`
-  runtime; and
-- qualification memory is collector-authenticated and scope-aware: Node policy
-  may require collector-process RSS, while npm, SEA, browser, and worker policy
-  requires sampled process-tree evidence. Adapter telemetry and browser heap
-  estimates cannot satisfy that release gate. Process-tree qualification also
-  requires a descendant observed during every measured sample; synchronous
-  external execution blocks the collector and therefore fails closed instead
-  of manufacturing a boundary-only memory claim.
+- versioned problem, plan, result, validation, diagnostic, resource-budget,
+  trace-policy, event, bounded-trace, provenance, and receipt-binding records;
+- four independently validated scalar-root methods and natural Sage, Python,
+  MATLAB, and Wolfram views over the same operation;
+- interpolation, cubic splines, Chebyshev approximation, finite differences,
+  polynomial roots, and one-dimensional adaptive Gauss-Kronrod quadrature;
+- dense real binary64 factorizations and solves, symmetric and general
+  eigensystems, reduced SVD, FFT, convolution, explicit CSR iterative solves,
+  and one narrowly certified sparse dominant-eigenpair path;
+- transparent scalar and multivariate optimization, nonlinear systems,
+  least-squares, curve fitting, affine fitting, and one explicit-only qualified
+  NLopt Nelder-Mead Wasm reactor;
+- explicit and stiff IVP solvers, dense output, events, invariants, and bounded
+  ODE and generic parameter sweeps;
+- descriptive and inferential statistics, reproducible sampling, regression,
+  robust fitting, and retained validation evidence;
+- a complete reviewed multilingual catalog with 63 supported and 25 explicitly
+  unsupported target-emission cells; and
+- renderer-neutral explanations, PlotSpecs, animations, and checked teaching
+  stories derived only from retained evidence.
 
-A second independent P0 review made the wire contracts executable rather than
-merely illustrative. Problem records now use a single explicit registry of
-callable/data-intent tags, serialize absent derivatives as valid `none`
-records, include constrained problems, and admit the complete ODE hard-budget
-extension. Nested problem state is detached at every accessor so a published
-digest cannot be changed by mutating a returned record. Plans preserve the
-problem's numeric type, results reject cross-problem plans, invalid success
-claims, and negative accounting, and complex-binary64 precision is reported
-honestly. Execution receipts become `receipt_qualified` only when observed
-artifact and receipt digests match the planned qualified target; planned but
-unobserved external work is classified separately. An external backend that
-fails before returning its implementation identity remains unobserved rather
-than being mislabeled as ordinary Python; actual ordinary-Python results retain
-their source-transparent identity. Capability discovery now
-fails closed on unclassified operations, uses one canonical runtime vocabulary,
-and checks the retained diagnostic registry exactly. Memory method and scope
-are a coupled contract, so a browser-heap estimate cannot be relabeled as
-process-tree evidence. Qualification collection now starts from a clean Git
-candidate and rebinds every corpus, source, adapter, artifact, manifest, and
-repository identity after adapter shutdown; persistent input changes or a
-moved/dirty `HEAD` fail closed. This authenticates a stable candidate on a
-trusted first-party collector/adapter/host boundary, not adversarial-host
-execution; stronger proof would require staged read-only inputs or OS
-isolation.
+Primary executable evidence by phase is retained in the repository:
 
-The final fail-closed contract review also made the executable records obey
-their published schemas at construction time. Nonempty plan identifiers,
-strict booleans, finite nonnegative validation estimates, bounded counters,
-problem/result trace-policy identity, and hard trace retention bytes are now
-runtime invariants rather than documentation conventions. Solver termination
-and validated success remain deliberately distinct: a solver may report
-`converged` while independent validation rejects the answer, but a result may
-never claim success for a failure status or failed validation. Domain execution
-accounting checks resource ceilings before incrementing so failure records do
-not serialize impossible `max + 1` counters. Capability normalization rejects
-malformed target arrays and every caller-owned receipt claim, and names CPython
-explicitly for the same-source root methods. Only a verified P8 report may
-overlay receipt qualification, and its platform/runtime envelope must remain a
-subset of the method's declared implementation targets. Matrix rendering now
-derives and emits the required memory scope for every subject kind, and the
-published matrix-report schema constrains the exact receipt summary, bindings,
-case metrics, payload, and authenticated-memory wire format instead of using
-open object placeholders.
+| Phase | Executable evidence |
+| --- | --- |
+| P0 | [`common-contracts.cjs`](../test/numerics/contracts/common-contracts.cjs), [`capability-facade.cjs`](../test/numerics/capability-facade.cjs), and [`check-numerical-surface.cjs`](../scripts/check-numerical-surface.cjs) |
+| P1 | [`numerical-root-laboratory.cjs`](../test/numerical-root-laboratory.cjs) and [`root-gallery.test.cjs`](../test/numerics/gallery/root-gallery.test.cjs) |
+| P2 | The [approximation](../test/numerics/approximation/approximation-laboratory.test.cjs), [polynomial-root](../test/numerics/polynomial-roots/polynomial-roots.test.cjs), [integration](../test/numerics/integration/test.cjs), and [linear-algebra](../test/numerics/linear_algebra/linear-algebra.cjs) laboratories |
+| P3 | [`optimization-laboratory.cjs`](../test/numerics/optimization/optimization-laboratory.cjs) plus the cminpack and NLopt backend suites under [`test/`](../test/) |
+| P4 | The [explicit](../test/numerics/ode/ode-laboratory.cjs), [stiff](../test/numerics/ode/stiff-laboratory.cjs), and [sweep](../test/numerics/ode/ode-sweeps.cjs) ODE laboratories |
+| P5 | The [spectral](../test/numerics/spectral/spectral-laboratory.cjs), [statistics](../test/numerics/statistics/test.cjs), and [bounded-sweep](../test/numerics/sweeps/bounded-sweeps.cjs) tests |
+| P6 | [`numerical-catalog.cjs`](../test/numerics/multilingual/numerical-catalog.cjs) and the machine-readable [support matrix](../docs/numerical-computing/multilingual/support-matrix.json) |
+| P7 | [`cross-domain-gallery.test.cjs`](../test/numerics/gallery/cross-domain-gallery.test.cjs) and the generated [gallery evidence](../docs/numerical-computing/gallery/evidence.json) |
+| P8 | The 65-case [product corpus](../bench/numerical-computing/qualification/product.corpus.json), [campaign tests](../test/numerics/evidence/qualification-campaign.cjs), and [release-workflow tests](../test/numerics/evidence/release-workflow.cjs) |
 
-This proves the shared contracts sufficiently to begin domain-owned parallel
-implementation. P1 is not classified as release-qualified until its browser,
-SEA, four-platform, performance, startup, memory, and payload receipts are
-bound to the final candidate.
+These domains are separate lazy source packages and their integrated modules
+are in the strict CPython/Ruff/Pyright inventory. The backend-neutral product
+corpus contains 65 P0-P8 cases across definition identities, differential
+oracles, independent residuals, conditioned stress, metamorphic properties,
+deterministic fuzz, and failure semantics. The source gallery contains nine
+stories and 18 checked cases. Public deployment is a separate release action
+and must not be inferred from the source artifact.
 
-The second integrated milestone established the same-source numerical
-foundation on 2026-08-31:
+Completion applies to this reviewed supported surface, not every aspirational
+item originally listed below. Explicitly deferred or unsupported areas include
+fixed-point iteration; nullspace and pseudoinverse APIs; multidimensional
+quadrature; nonlinear constraints; Radau, BDF, LSODA, and SUNDIALS integration;
+complex-state, mass-matrix, and DAE ODEs; multidimensional FFTs; full and
+advanced sparse eigensystem and SVD variants; rigorous enclosure arithmetic;
+arbitrary-precision numerical backends; GPU execution; and industrial-scale
+solver guarantees. An available dependency routine never silently promotes
+one of these claims.
 
-- dense real binary64 LU, pivoted and unpivoted Householder QR, Cholesky,
-  solves, full-rank least squares, rank, condition estimates, determinant,
-  inverse, and iterative refinement now have independent backward-error and
-  structural validation;
-- barycentric and piecewise interpolation, cubic splines, Chebyshev
-  approximation, scale-aware finite differences, and one-dimensional adaptive
-  Gauss-Kronrod quadrature now have backend-neutral corpora and independent
-  validation;
-- symmetric and general eigensystems, reduced SVD, FFT, convolution, explicit
-  CSR iterative solves, and one narrowly certified sparse dominant-eigenpair
-  path are implemented with explicit unsupported envelopes;
-- transparent scalar/multivariate optimization, nonlinear systems,
-  least-squares, curve fitting, and affine fitting fail closed when binary64
-  scale prevents independent stationarity or local-minimum checks;
-- descriptive statistics, common probability distributions, reproducible
-  random sampling, Student/chi-square inference, OLS, Theil-Sen, and fixed-loss
-  Huber regression share the canonical problem/plan/result/validation records;
-  and
-- explicit RK4 and adaptive Dormand-Prince 5(4) IVP paths provide bounded
-  traces, dense output, event location, invariant/error evidence, and
-  trajectory/phase/error visualizations.
-
-These domains are separate lazy source packages and all integrated modules are
-in the strict CPython/Ruff/Pyright inventory. Development-host CPython,
-Sage.js, SciPy/NumPy/mpmath, failure, metamorphic, and scale-adversarial tests
-pass. This is deliberately not yet a release claim: numerical polynomial
-roots, a stiff IVP path, bounded parameter sweeps, a production-qualified
-callback-capable optimization Wasm backend, remaining multilingual adapters,
-domain teaching narratives, and P8 browser/SEA/four-platform receipts are
-still open.
+Before release, the exact candidate must complete its four-platform Node, npm,
+SEA, browser/Wasm, callback, portability, performance, memory, payload, and
+artifact-integrity qualification without source changes. Any source change
+creates a new candidate and requires fresh receipts.
 
 ## Product vision
 

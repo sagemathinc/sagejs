@@ -20,11 +20,29 @@
     {"id": "package_local_planning", "status": "implemented", "envelope": "detached capabilities/supports/plan dispatch for every operation using immutable metadata only and no numerical computation"},
     {"id": "complex_hermitian", "status": "unsupported", "reason": "real storage and transpose-only inner-product contract"},
     {"id": "rank_deficient_least_squares", "status": "unsupported", "reason": "requires SVD or complete orthogonal decomposition for an honest minimum-norm contract"},
-    {"id": "nullspace", "status": "unsupported", "reason": "deferred with spectral completion"},
-    {"id": "pseudoinverse", "status": "unsupported", "reason": "deferred with SVD completion"},
-    {"id": "singular_value_decomposition", "status": "unsupported", "reason": "diagnostic singular values do not expose vector claims"},
-    {"id": "eigenproblems", "status": "unsupported", "reason": "P5 spectral slice not implemented in this lane"},
-    {"id": "sparse_linear_algebra", "status": "unsupported", "reason": "P5 sparse slice not implemented in this lane"},
+    {"id": "nullspace", "status": "unsupported", "reason": "the product spectral SVD does not yet expose a qualified nullspace API"},
+    {"id": "pseudoinverse", "status": "unsupported", "reason": "the product spectral SVD does not yet expose a qualified pseudoinverse API"},
+    {
+      "id": "singular_value_decomposition",
+      "status": "unsupported",
+      "scope": "sagejs.numerics.linear_algebra",
+      "provided_elsewhere": "sagejs.numerics.spectral.svd",
+      "reason": "this package's diagnostic singular values do not expose vector claims; the product spectral domain provides independently validated reduced SVD"
+    },
+    {
+      "id": "eigenproblems",
+      "status": "unsupported",
+      "scope": "sagejs.numerics.linear_algebra",
+      "provided_elsewhere": "sagejs.numerics.spectral.eigh and sagejs.numerics.spectral.eig",
+      "reason": "this package does not implement eigenproblems; the product spectral domain provides qualified symmetric and general eigensystems"
+    },
+    {
+      "id": "sparse_linear_algebra",
+      "status": "unsupported",
+      "scope": "sagejs.numerics.linear_algebra",
+      "provided_elsewhere": "sagejs.numerics.spectral.sparse_solve and sagejs.numerics.spectral.sparse_eigen",
+      "reason": "this package does not implement sparse methods; the product spectral domain provides explicitly bounded sparse solve and dominant-eigenpair paths"
+    },
     {"id": "batched_linear_algebra", "status": "unsupported", "reason": "no batch shape or allocation contract"},
     {"id": "arbitrary_precision", "status": "unsupported", "reason": "binary64-only storage contract"},
     {"id": "rigorous_enclosures", "status": "unsupported", "reason": "residual validation is not interval certification"},

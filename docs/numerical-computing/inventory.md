@@ -3,13 +3,27 @@
 This inventory is the P0 baseline for the agent-first numerical laboratory. It
 describes what exists, what is an oracle rather than a runtime dependency, and
 where compatibility syntax ends and canonical Sage.js semantics begin. The
-machine-readable claim ledger is [`surface.json`](surface.json).
+machine-readable implemented-surface ledger is
+[`surface.json`](surface.json). It currently contains 49 implemented
+capabilities and 22 implemented frontend operations.
 
 The ledger is generated from the live public capability and frontend
-registries. `pnpm architecture:numerics` fails when a capability or adapter is
-added, removed, renamed, reclassified, or changes its method/language surface
-without regenerating and reviewing the ledger. There is no independent
-hardcoded “required operations” list that can quietly drift behind the API.
+registries. `pnpm architecture:numerics` fails when an implemented capability
+or adapter is added, removed, renamed, reclassified, or changes its
+method/language surface without regenerating and reviewing the ledger. There
+is no independent hardcoded “required operations” list that can quietly drift
+behind the callable API.
+
+`surface.json` is not a roadmap or a product-wide unsupported-operation ledger:
+the live registries contain callable implemented operations, so the generator
+does not manufacture rows for unavailable APIs. Unsupported methods and
+translation targets are classified in their reviewed domain support matrices
+and in [`multilingual/support-matrix.json`](multilingual/support-matrix.json).
+The qualification corpus and capability specifications provide executable
+product evidence, but there is not yet a checked one-to-one
+surface-row-to-test-case index. Do not claim that every ledger row is
+individually receipt-qualified unless a final candidate's authenticated P8
+artifacts establish that fact.
 
 ## Existing Sage.js runtime
 
@@ -60,6 +74,12 @@ An implementation is not promoted from `unsupported` merely because a backend
 contains a similarly named function. Promotion requires the domain corpus,
 independent mathematical validation, failure semantics, portability evidence,
 and budgets defined in `evidence-policy.json`.
+
+The current explicitly deferred product areas include fixed-point iteration,
+nullspace and pseudoinverse APIs, multidimensional quadrature, nonlinear
+constraints, complex-state and DAE ODEs, multidimensional FFTs, advanced sparse
+eigensystems, rigorous enclosures, arbitrary precision, and GPU execution.
+Their absence from `surface.json` is not an implementation claim.
 
 Implementation targets and receipt qualification are different claims. The
 former records intended platforms and runtimes. The latter is empty unless

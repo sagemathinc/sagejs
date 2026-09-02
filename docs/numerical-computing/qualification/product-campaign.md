@@ -4,7 +4,7 @@ The product campaign turns the P0-P8 plan into executable, source-bound and
 artifact-bound evidence without making a release claim before the release
 hosts run it. Its inputs are:
 
-- `bench/numerical-computing/qualification/product.corpus.json` — 70
+- `bench/numerical-computing/qualification/product.corpus.json` — 65
   backend-neutral cases spanning P0 through P8 and all seven evidence layers;
 - `bench/numerical-computing/qualification/node-adapter.cjs` — a first-party
   adapter which loads `dist/tools/kernel.js`, creates a real Python-mode
