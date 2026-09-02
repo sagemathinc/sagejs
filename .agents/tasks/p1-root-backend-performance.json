@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p1-root-backend-performance",
+  "title": "P1 Root Backend Performance",
+  "lane": "numerical-qualification",
+  "status": "active",
+  "owner": "user",
+  "objective": "Close P1 scalar-root backend and performance acceptance with a representative backend-neutral correctness/benchmark corpus, evidence-backed acceleration decision, honest budgets, and exact-candidate release qualification evidence",
+  "base_commit": "f920b45567bafccab63b3c8bfc34dfa1facd1edc",
+  "claims": [
+    "bench/numerical-computing/qualification/root-performance.corpus.json",
+    "bench/numerical-computing/qualification/root-performance-capability-spec.json",
+    "bench/numerical-computing/qualification/root-performance-adapter.cjs",
+    "scripts/numerical-computing/qualification/collect-root-performance.cjs",
+    "docs/numerical-computing/qualification/root-backend-performance.md",
+    "test/numerics/evidence/root-performance.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "scipy",
+      "residual-validation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs",
+    "node scripts/numerical-computing/qualification/validate-campaign.cjs",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

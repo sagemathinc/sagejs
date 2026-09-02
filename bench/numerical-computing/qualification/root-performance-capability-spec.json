@@ -1,0 +1,35 @@
+{
+  "schema": "sagejs.numerical-node-capability-spec/v1",
+  "backend": {
+    "id": "sagejs-scalar-root-ordinary-source",
+    "version": "roots-v1"
+  },
+  "capabilities": [
+    {
+      "id": "numerics.root.scalar.performance",
+      "case_ids": [
+        "p1-root-bisection-cheap",
+        "p1-root-bisection-expensive",
+        "p1-root-bisection-moderate",
+        "p1-root-brent-cheap",
+        "p1-root-brent-expensive",
+        "p1-root-brent-moderate",
+        "p1-root-newton-cheap",
+        "p1-root-newton-expensive",
+        "p1-root-newton-moderate",
+        "p1-root-secant-cheap",
+        "p1-root-secant-expensive",
+        "p1-root-secant-moderate"
+      ],
+      "envelope": {
+        "backend": "ordinary-python-source-transpiled-by-sagejs",
+        "methods": ["bisection", "brent", "newton", "secant"],
+        "callback_cost_tiers": ["cheap", "moderate", "expensive"],
+        "trace_policies": ["none", "iterations"],
+        "numeric_type": "binary64",
+        "comparison_scope": "warm-kernel-solve-time",
+        "acceleration": "none-qualified"
+      }
+    }
+  ]
+}
