@@ -83,7 +83,7 @@
     },
     {
       "path": "src/lib/sagejs/modular_forms/object_layer.py",
-      "sha256": "20a3c44c51ffe6563e1cbc670c75af13bc7fd8e53097159927ce2abbc984312b"
+      "sha256": "959d3967208d5d48d206b112ee074449f4fed9467447adc8d11823906dbfcf06"
     },
     {
       "path": "src/lib/sagejs/modular_forms/qexp.py",
@@ -95,7 +95,7 @@
     },
     {
       "path": "test/classical-modular-form-elements.cjs",
-      "sha256": "e4d64d58dd1a61fbff882bb41325bcb1fcf4a1dfcf3f91a49b419cf2bd130ee9"
+      "sha256": "adcef467da5f3324abe7842354a82ae4a7c5802da16f24afca10f017044aa557"
     },
     {
       "path": "test/eta-products.cjs",
@@ -134,5 +134,5 @@
       "sha256": "3a1aa87ac379661345abf21612d9050950f228e7cbf0ac46e0bdec2c3c4cdedb"
     }
   ],
-  "bundle_sha256": "5a74ecb294c4dedf2ceb2229b54c715b96759be7b97cbae3c95a875a1edc5e0c"
+  "bundle_sha256": "8c980f7a33f199698e86cae6ba7ff8e91b6df6e3e348c10fc9fcb4b01d18d2fe"
 }

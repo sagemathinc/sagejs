@@ -151,6 +151,17 @@ def _space_q_expansion_basis(
     if cached is not runtime.undefined:
         return list(cached)
 
+    proof_precision = _sturm_precision(space)
+    if precision < proof_precision:
+        certified_basis = _space_q_expansion_basis(
+            space,
+            proof_precision,
+            variable,
+        )
+        result = [series.add_bigoh(precision) for series in certified_basis]
+        cache.set(key, runtime.math_tuple(result))
+        return list(result)
+
     kind = _space_kind(space)
     if kind == "Ambient":
         eisenstein = space.eisenstein_subspace().q_expansion_basis(

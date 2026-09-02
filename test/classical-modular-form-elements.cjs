@@ -70,6 +70,26 @@ test("coordinate recovery uses the full supplied Sturm-certified prefix", async 
   );
 });
 
+test("low display precision truncates a Sturm-certified canonical basis", async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "M = ModularForms(37, 4)",
+    "B = M.basis()",
+    "Q = M.q_expansion_basis()",
+    "print(M.dimension(), len(B), len(Q), M.precision())",
+    "print(all(f.parent() is M for f in B))",
+    "print(all(f.q_expansion().precision_absolute() == M.precision() for f in B))",
+    "print(B[7].q_expansion())",
+    "print(M.coordinates(B[10]))",
+    "print(len(M.basis(3)), M.basis(3)[7].q_expansion())",
+  ].join("\n"));
+  assert.equal(
+    result.stdout.trim(),
+    "11 11 11 6\nTrue\nTrue\nO(q^6)\n(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)\n11 O(q^3)",
+  );
+});
+
 test("good and bad Hecke operators act on parented elements", async (t) => {
   const session = await createSage();
   t.after(() => session.close());
