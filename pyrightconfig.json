@@ -248,6 +248,7 @@
     "src/lib/sagejs/numerics/frontends/operations.py",
     "src/lib/sagejs/numerics/frontends/portable.py",
     "src/lib/sagejs/numerics/frontends/registry.py",
+    "src/lib/sagejs/numerics/frontends/roundtrip.py",
     "src/lib/sagejs/numerics/frontends/scalar_root.py",
     "src/lib/sagejs/numerics/integration/__init__.py",
     "src/lib/sagejs/numerics/integration/adaptive.py",
