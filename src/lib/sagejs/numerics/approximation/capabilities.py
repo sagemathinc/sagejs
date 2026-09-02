@@ -21,6 +21,22 @@ from .splines import plan_spline
 
 CAPABILITY_SCHEMA_VERSION = 1
 
+_IMPLEMENTATION_PLATFORMS = [
+    "linux-x64",
+    "linux-arm64",
+    "macos-arm64",
+    "windows-x64",
+]
+_IMPLEMENTATION_RUNTIMES = ["browser", "cpython", "node", "sea"]
+
+
+def _implementation_targets() -> dict[str, list[str]]:
+    return {
+        "platforms": list(_IMPLEMENTATION_PLATFORMS),
+        "runtimes": list(_IMPLEMENTATION_RUNTIMES),
+    }
+
+
 _OPERATION_RECORDS: dict[str, dict[str, Any]] = {
     "polynomial_interpolation": {
         "classification": "extension",
@@ -31,6 +47,7 @@ _OPERATION_RECORDS: dict[str, dict[str, Any]] = {
         "maximum_validated_nodes": MAX_VALIDATED_BARYCENTRIC_NODES,
         "numeric_types": ["binary64"],
         "platform_support": QUALIFIED_PLATFORM_SUPPORT,
+        "implementation_targets": _implementation_targets(),
     },
     "piecewise_interpolation": {
         "classification": "extension",
@@ -40,6 +57,7 @@ _OPERATION_RECORDS: dict[str, dict[str, Any]] = {
         "validation": ["node_reproduction", "direct_segment_crosscheck"],
         "numeric_types": ["binary64"],
         "platform_support": QUALIFIED_PLATFORM_SUPPORT,
+        "implementation_targets": _implementation_targets(),
     },
     "cubic_spline": {
         "classification": "translated",
@@ -61,6 +79,7 @@ _OPERATION_RECORDS: dict[str, dict[str, Any]] = {
         ],
         "numeric_types": ["binary64"],
         "platform_support": QUALIFIED_PLATFORM_SUPPORT,
+        "implementation_targets": _implementation_targets(),
     },
     "finite_difference_derivative": {
         "classification": "extension",
@@ -79,6 +98,7 @@ _OPERATION_RECORDS: dict[str, dict[str, Any]] = {
         "maximum_stencil_size": MAX_STENCIL_SIZE,
         "numeric_types": ["binary64"],
         "platform_support": QUALIFIED_PLATFORM_SUPPORT,
+        "implementation_targets": _implementation_targets(),
     },
     "polynomial_approximation": {
         "classification": "extension",
@@ -92,6 +112,7 @@ _OPERATION_RECORDS: dict[str, dict[str, Any]] = {
         "maximum_degree": MAX_CHEBYSHEV_DEGREE,
         "numeric_types": ["binary64"],
         "platform_support": QUALIFIED_PLATFORM_SUPPORT,
+        "implementation_targets": _implementation_targets(),
     },
     "polynomial_roots": {
         "classification": "extension",
@@ -107,6 +128,7 @@ _OPERATION_RECORDS: dict[str, dict[str, Any]] = {
         "multiplicity_policy": "numerical_clusters_only_never_certified",
         "numeric_types": ["real-binary64", "complex-binary64"],
         "platform_support": QUALIFIED_PLATFORM_SUPPORT,
+        "implementation_targets": _implementation_targets(),
     },
 }
 

@@ -8,6 +8,7 @@ const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const Ajv2020 = require("ajv/dist/2020").default;
 
 const root = join(__dirname, "..", "..", "..");
 const {
@@ -38,18 +39,39 @@ sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})
   return result.stdout.trim();
 }
 
-function assertClosedSchemaRecord(value, schema, label) {
-  assert.ok(value !== null && typeof value === "object" && !Array.isArray(value),
-    `${label} must be an object`);
-  for (const name of schema.required || []) {
-    assert.ok(Object.hasOwn(value, name), `${label}.${name} is required`);
+function commonSchemaValidators() {
+  const ajv = new Ajv2020({
+    allErrors: true,
+    allowUnionTypes: true,
+    strict: true,
+  });
+  const schemas = {};
+  for (const name of ["diagnostic", "trace", "problem", "plan", "result"]) {
+    const schema = JSON.parse(readFileSync(
+      join(root, "docs/numerical-computing", `${name}.schema.json`),
+      "utf8",
+    ));
+    schemas[name] = schema;
+    ajv.addSchema(schema);
   }
-  if (schema.additionalProperties === false) {
-    for (const name of Object.keys(value)) {
-      assert.ok(Object.hasOwn(schema.properties || {}, name),
-        `${label}.${name} is not declared by the schema`);
-    }
-  }
+  return {
+    schemas,
+    validators: Object.fromEntries(
+      Object.entries(schemas).map(([name, schema]) => [name, ajv.getSchema(schema.$id)]),
+    ),
+  };
+}
+
+function assertSchemaValid(validator, value, label) {
+  assert.equal(
+    validator(value),
+    true,
+    `${label} violates its Draft 2020-12 schema: ${JSON.stringify(validator.errors)}`,
+  );
+}
+
+function assertSchemaInvalid(validator, value, label) {
+  assert.equal(validator(value), false, `${label} unexpectedly passed its schema`);
 }
 
 test("the retained ledger is derived exhaustively from public registries", () => {
@@ -64,6 +86,47 @@ test("the retained ledger is derived exhaustively from public registries", () =>
   misclassified.frontend_operations[0].classification = "unsupported";
   assert.throws(() => validateSurface(misclassified, live), /ledger is stale/);
 
+  const targetless = structuredClone(live);
+  const implemented = targetless.capability_operations.find(
+    (item) => item.status === "implemented",
+  );
+  implemented.implementation_targets = { platforms: [], runtimes: [] };
+  assert.throws(
+    () => validateSurface(targetless, targetless),
+    /implemented capability operation has no targets/,
+  );
+
+  const unsupportedWithMethod = structuredClone(live);
+  const unsupported = unsupportedWithMethod.capability_operations.find(
+    (item) => item.status === "unsupported",
+  );
+  unsupported.methods = ["invented"];
+  assert.throws(
+    () => validateSurface(unsupportedWithMethod, unsupportedWithMethod),
+    /must be classified, methodless, and actionable/,
+  );
+
+  const unsupportedWithoutAlternative = structuredClone(live);
+  delete unsupportedWithoutAlternative.capability_operations.find(
+    (item) => item.status === "unsupported",
+  ).alternative;
+  assert.throws(
+    () => validateSurface(
+      unsupportedWithoutAlternative,
+      unsupportedWithoutAlternative,
+    ),
+    /must be classified, methodless, and actionable/,
+  );
+
+  assert.equal(runPython(String.raw`
+from sagejs.numerics.capabilities import _normalize_method_record
+try:
+    _normalize_method_record({"backend": "ordinary-python"})
+except ValueError as error:
+    assert "nonempty implementation target" in str(error)
+    print("rejected")
+`), "rejected");
+
   const diagnostics = loadLiveDiagnostics();
   validateSupportingDocuments(diagnostics);
   assert.throws(
@@ -73,20 +136,14 @@ test("the retained ledger is derived exhaustively from public registries", () =>
 });
 
 test("problem, result, and trace schemas cover every emitted common record", () => {
-  const problem = JSON.parse(readFileSync(
-    join(root, "docs/numerical-computing/problem.schema.json"), "utf8",
-  ));
-  const result = JSON.parse(readFileSync(
-    join(root, "docs/numerical-computing/result.schema.json"), "utf8",
-  ));
-  const plan = JSON.parse(readFileSync(
-    join(root, "docs/numerical-computing/plan.schema.json"), "utf8",
-  ));
-  const trace = JSON.parse(readFileSync(
-    join(root, "docs/numerical-computing/trace.schema.json"), "utf8",
-  ));
+  const { schemas, validators } = commonSchemaValidators();
+  const { diagnostic, problem, result, plan, trace } = schemas;
   assert.equal(problem.properties.trace_policy.$ref, "trace.schema.json#/$defs/policy");
   assert.equal(trace.$id, "https://sagejs.org/schemas/trace.schema.json");
+  assert.equal(
+    diagnostic.$id,
+    "https://sagejs.org/schemas/diagnostic.schema.json",
+  );
   assert.ok(problem.properties.constraints);
   const runtimeKinds = JSON.parse(runPython(String.raw`
 from sagejs.numerics.model import FUNCTION_RECORD_KINDS
@@ -102,6 +159,11 @@ from sagejs.numerics.model import (
     NumericalPlan, NumericalProblem, NumericalResult, NumericalValidation,
     ResourceBudget,
 )
+from sagejs.numerics.roots import find_root
+from sagejs.numerics.approximation import interpolate
+from sagejs.numerics.integration import integrate
+from sagejs.numerics.linear_algebra import solve
+from sagejs.numerics.diagnostics import NumericalDiagnostic
 from sagejs.numerics.trace import NumericalTrace, TracePolicy
 
 budget = ResourceBudget(
@@ -120,11 +182,14 @@ plan = NumericalPlan(
     backend="ordinary-python",
     reason="schema witness",
     capability={},
+    diagnostics=[NumericalDiagnostic("backend_fallback")],
 )
 trace = NumericalTrace(policy)
 trace.append(
     "finish", iteration=1, evaluation=2, accepted=True,
-    data={"residual": 0.0}, important=True, force=True,
+    data={"residual": 0.0},
+    diagnostics=[NumericalDiagnostic("stagnation")],
+    important=True, force=True,
 )
 validation = NumericalValidation(
     "validated_approximate", True, residual=0.0, error_estimate=0.0
@@ -138,42 +203,74 @@ result = NumericalResult(
     iterations=1,
     evaluations=2,
     trace=trace,
+    diagnostics=[NumericalDiagnostic("backend_fallback")],
 )
+truncated_trace = NumericalTrace(TracePolicy("iterations", max_events=2, max_bytes=2048))
+for index in range(8):
+    truncated_trace.append("iteration", iteration=index, data={"index": index})
+failure = find_root(lambda x: x*x + 1.0, -1.0, 1.0, method="brent")
+representative_results = [
+    interpolate([-1.0, 0.0, 1.0], [1.0, 0.0, 1.0]),
+    integrate(lambda x: x*x, 0.0, 1.0),
+    solve([[3.0, 1.0], [1.0, 2.0]], [7.0, 5.0]),
+]
 print(json.dumps({
     "problem": problem.to_dict(),
     "plan": plan.to_dict(),
     "trace": trace.to_dict(),
     "result": result.to_dict(),
+    "truncated_trace": truncated_trace.to_dict(),
+    "failure": failure.to_dict(),
+    "representative_results": [item.to_dict() for item in representative_results],
 }))
 `));
-  assertClosedSchemaRecord(emitted.problem, problem, "problem");
-  assertClosedSchemaRecord(emitted.plan, plan, "plan");
-  assertClosedSchemaRecord(emitted.trace, trace, "trace");
-  assertClosedSchemaRecord(emitted.result, result, "result");
-  assertClosedSchemaRecord(
-    emitted.problem.resource_budget,
-    problem.$defs.resource_budget,
-    "problem.resource_budget",
+  assertSchemaValid(validators.problem, emitted.problem, "problem");
+  assertSchemaValid(validators.plan, emitted.plan, "plan");
+  assertSchemaValid(validators.trace, emitted.trace, "trace");
+  assertSchemaValid(validators.result, emitted.result, "result");
+  assertSchemaValid(
+    validators.trace,
+    emitted.truncated_trace,
+    "truncated trace",
   );
-  assertClosedSchemaRecord(
-    emitted.trace.policy,
-    trace.$defs.policy,
-    "trace.policy",
+  assertSchemaValid(validators.result, emitted.failure, "root failure result");
+  for (const [index, representative] of emitted.representative_results.entries()) {
+    assertSchemaValid(
+      validators.problem,
+      representative.reproducibility.problem,
+      `representative problem ${index}`,
+    );
+    assertSchemaValid(
+      validators.plan,
+      representative.reproducibility.plan,
+      `representative plan ${index}`,
+    );
+    assertSchemaValid(
+      validators.trace,
+      representative.trace,
+      `representative trace ${index}`,
+    );
+    assertSchemaValid(validators.result, representative, `representative result ${index}`);
+  }
+  assertSchemaValid(
+    validators.diagnostic,
+    emitted.plan.diagnostics[0],
+    "plan.diagnostics[0]",
   );
-  assertClosedSchemaRecord(
-    emitted.trace.events[0],
-    trace.$defs.event,
-    "trace.events[0]",
+  assertSchemaValid(
+    validators.diagnostic,
+    emitted.trace.events[0].diagnostics[0],
+    "trace.events[0].diagnostics[0]",
   );
-  assertClosedSchemaRecord(
-    emitted.result.validation,
-    result.properties.validation,
-    "result.validation",
+  assertSchemaValid(
+    validators.diagnostic,
+    emitted.result.diagnostics[0],
+    "result.diagnostics[0]",
   );
-  assertClosedSchemaRecord(
-    emitted.plan.execution_target,
-    plan.properties.execution_target,
-    "plan.execution_target",
+  assertSchemaValid(
+    validators.diagnostic,
+    emitted.truncated_trace.diagnostics[0],
+    "trace.diagnostics[0]",
   );
   assert.equal(typeof emitted.result.success, "boolean");
   assert.equal(typeof emitted.result.validation.passed, "boolean");
@@ -183,6 +280,26 @@ print(json.dumps({
     problem.$defs.resource_budget.properties.max_trace_events.minimum);
   assert.ok(emitted.problem.resource_budget.max_trace_bytes >=
     problem.$defs.resource_budget.properties.max_trace_bytes.minimum);
+
+  const unknownDiagnostic = structuredClone(emitted.result);
+  unknownDiagnostic.diagnostics[0].code = "invented_diagnostic";
+  assertSchemaInvalid(validators.result, unknownDiagnostic, "unknown diagnostic code");
+
+  const malformedEvent = structuredClone(emitted.trace);
+  malformedEvent.events[0].accepted = "yes";
+  assertSchemaInvalid(validators.trace, malformedEvent, "malformed trace event");
+
+  const contradictoryResult = structuredClone(emitted.result);
+  contradictoryResult.status = "backend_failure";
+  assertSchemaInvalid(
+    validators.result,
+    contradictoryResult,
+    "successful backend failure",
+  );
+
+  const malformedProblem = structuredClone(emitted.problem);
+  malformedProblem.resource_budget.max_iterations = 0;
+  assertSchemaInvalid(validators.problem, malformedProblem, "zero iteration budget");
 });
 
 test("npm is a first-class qualification subject in code and schemas", () => {
@@ -228,12 +345,40 @@ assert "max_validation_evaluations" in ode_budget
 sweep = registry["operation_index"]["sweeps.parameter_sweep"]["capability"]
 assert "max_memory_bytes" in sweep["resource_budgets"]["cooperative"]
 for entry in registry["operation_index"].values():
-    methods = entry["capability"].get("methods", {})
-    if not isinstance(methods, dict):
+    capability = entry["capability"]
+    methods = capability.get("methods", {})
+    surface = capability["surface"]
+    assert isinstance(methods, dict)
+    if surface["status"] == "unsupported":
+        assert surface["classification"] == "unsupported"
+        assert methods == {}
+        assert surface["reason"]
+        assert surface["alternative"]
         continue
+    assert methods
     for method in methods.values():
         targets = method.get("implementation_targets", {})
+        assert targets.get("platforms") or targets.get("runtimes")
         assert not any(str(item).startswith("sagejs-") for item in targets.get("runtimes", []))
+
+for qualified in (
+    "roots.fixed_point_iteration",
+    "integration.composite_quadrature",
+    "integration.multidimensional_integral",
+    "linear_algebra.nullspace",
+    "linear_algebra.pseudoinverse",
+    "optimization.nonlinear_constrained_minimize",
+    "ode.boundary_value_problem",
+    "spectral.digital_filter",
+    "spectral.sparse_singular_value_decomposition",
+    "spectral.window_function",
+):
+    surface = registry["operation_index"][qualified]["capability"]["surface"]
+    assert surface["classification"] == "unsupported"
+    assert surface["status"] == "unsupported"
+    assert surface["methods"] == []
+    assert surface["reason"]
+    assert surface["alternative"]
 
 for method in registry["domains"]["roots"]["operations"]["scalar_root"]["methods"].values():
     assert "cpython" in method["implementation_targets"]["runtimes"]

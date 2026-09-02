@@ -19,6 +19,7 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
+from .._json import materialize_json
 from ..diagnostics import NumericalDiagnostic
 from ..model import (
     NumericalPlan,
@@ -35,6 +36,11 @@ _POSITIVE_INFINITY = float("inf")
 _NEGATIVE_INFINITY = float("-inf")
 _INTERVAL_WORKSPACE_BYTES = 512
 _COMPONENT_WORKSPACE_BYTES = 512
+
+_IMPLEMENTATION_TARGETS = {
+    "platforms": ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"],
+    "runtimes": ["browser", "cpython", "node", "sea"],
+}
 
 _GK21_ABSCISSAE = (
     0.9956571630258081,
@@ -140,6 +146,7 @@ INTEGRATION_CAPABILITY: dict[str, Any] = {
         "rigorous_enclosures",
     ],
     "trace_levels": ["none", "summary", "iterations", "evaluations"],
+    "implementation_targets": _IMPLEMENTATION_TARGETS,
     "hard_budgets": [
         "evaluations",
         "intervals",
@@ -279,13 +286,9 @@ def _endpoint_singularity_record(value: str | Sequence[str]) -> list[str]:
 
 def integration_capabilities() -> dict[str, Any]:
     """Return the detached capability record for this claimed package."""
-    answer: dict[str, Any] = {}
-    for key in INTEGRATION_CAPABILITY:
-        value = INTEGRATION_CAPABILITY[key]
-        if isinstance(value, list):
-            answer[key] = list(value)
-        else:
-            answer[key] = value
+    answer = materialize_json(INTEGRATION_CAPABILITY)
+    if not isinstance(answer, dict):
+        raise TypeError("integration capability must be an object")
     return {"schema_version": 1, "operation": "definite_integral", "capability": answer}
 
 

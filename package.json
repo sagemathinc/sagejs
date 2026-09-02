@@ -429,6 +429,7 @@
     "@sagemath/sagejs-graph": "workspace:*",
     "@sagemath/sagejs-m4ri": "workspace:*",
     "@types/node": "^26.1.1",
+    "ajv": "8.17.1",
     "codemirror": "^6.0.2",
     "esbuild": "0.28.1",
     "prismjs": "1.30.0",

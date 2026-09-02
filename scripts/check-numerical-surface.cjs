@@ -9,6 +9,10 @@ const { spawnSync } = require("node:child_process");
 const root = join(__dirname, "..");
 const surfacePath = join(root, "docs/numerical-computing/surface.json");
 const diagnosticsPath = join(root, "docs/numerical-computing/diagnostics.json");
+const diagnosticSchemaPath = join(
+  root,
+  "docs/numerical-computing/diagnostic.schema.json",
+);
 const classifications = new Set([
   "faithful",
   "translated",
@@ -122,7 +126,7 @@ print(json.dumps(capabilities(), sort_keys=True, separators=(",", ":")))
     if (!contract || !classifications.has(contract.classification)) {
       throw new Error(`live numerical capability ${id} has no surface classification`);
     }
-    return {
+    const operation = {
       id,
       phase: phase(entry.domain),
       classification: contract.classification,
@@ -131,6 +135,11 @@ print(json.dumps(capabilities(), sort_keys=True, separators=(",", ":")))
       implementation_targets: implementationTargets(capability),
       receipt_qualification: receiptQualification(capability),
     };
+    if (contract.status === "unsupported") {
+      operation.reason = contract.reason;
+      operation.alternative = contract.alternative;
+    }
+    return operation;
   }).sort((left, right) => left.id.localeCompare(right.id));
   const frontends = Object.entries(registry.frontend_index).map(([id, entry]) => {
     const operation = entry.operation;
@@ -191,6 +200,21 @@ function validateRows(label, retained, live) {
     if (!new Set(["implemented", "unsupported"]).has(item.status)) {
       throw new Error(`ambiguous ${label} operation status: ${item.id}`);
     }
+    const targets = item.implementation_targets;
+    if (label === "capability" && item.status === "implemented" &&
+        (!targets ||
+          (!Array.isArray(targets.platforms) || targets.platforms.length === 0) &&
+          (!Array.isArray(targets.runtimes) || targets.runtimes.length === 0))) {
+      throw new Error(`implemented ${label} operation has no targets: ${item.id}`);
+    }
+    if (label === "capability" && item.status === "unsupported" &&
+        (item.classification !== "unsupported" || item.methods.length !== 0 ||
+          typeof item.reason !== "string" || item.reason.length === 0 ||
+          typeof item.alternative !== "string" || item.alternative.length === 0)) {
+      throw new Error(
+        `unsupported ${label} operation must be classified, methodless, and actionable: ${item.id}`,
+      );
+    }
   }
   assert.deepEqual(
     retained,
@@ -220,10 +244,18 @@ function validateSupportingDocuments(liveDiagnostics) {
     join(root, "docs/numerical-computing/inventory.md"),
     "utf8",
   );
+  const diagnosticSchema = JSON.parse(
+    readFileSync(diagnosticSchemaPath, "utf8"),
+  );
   assert.deepEqual(
     diagnostics,
     { schema_version: 1, diagnostics: liveDiagnostics },
     "numerical diagnostic ledger is stale; run pnpm architecture:numerics -- --write",
+  );
+  assert.deepEqual(
+    diagnosticSchema?.properties?.code?.enum,
+    liveDiagnostics.map((item) => item.code),
+    "numerical diagnostic schema is stale",
   );
   for (const required of [
     "Existing Sage.js runtime",

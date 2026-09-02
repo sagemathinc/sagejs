@@ -30,6 +30,7 @@ _RUNTIME_ALIASES = {
     "browser-wasm": "browser",
 }
 _CLASSIFICATION_PRIORITY = ("extension", "translated", "faithful")
+_SURFACE_CLASSIFICATIONS = (*_CLASSIFICATION_PRIORITY, "unsupported")
 
 _ROOT_METHODS: dict[str, dict[str, JSONValue]] = {
     "bisection": {
@@ -229,6 +230,91 @@ _DOMAIN_ALIASES = {
     "nonlinear_systems": "optimization",
 }
 
+_DEFERRED_PRODUCT_OPERATIONS: dict[str, dict[str, dict[str, JSONValue]]] = {
+    "roots": {
+        "fixed_point_iteration": {
+            "classification": "unsupported",
+            "status": "unsupported",
+            "methods": {},
+            "reason": "no bounded fixed-point solver with contraction diagnostics is implemented",
+            "alternative": "solve x - g(x) = 0 with a qualified scalar-root method when that reformulation is numerically appropriate",
+        }
+    },
+    "integration": {
+        "composite_quadrature": {
+            "classification": "unsupported",
+            "status": "unsupported",
+            "methods": {},
+            "reason": "no public fixed-partition composite quadrature operation is implemented",
+            "alternative": "use the adaptive definite-integral operation or sum explicitly chosen panels",
+        },
+        "multidimensional_integral": {
+            "classification": "unsupported",
+            "status": "unsupported",
+            "methods": {},
+            "reason": "no bounded multidimensional integration method has been selected",
+            "alternative": "use explicitly budgeted iterated one-dimensional integrals only when the problem justifies that reduction",
+        },
+    },
+    "linear_algebra": {
+        "nullspace": {
+            "classification": "unsupported",
+            "status": "unsupported",
+            "methods": {},
+            "reason": "no validated dense numerical nullspace operation is implemented",
+            "alternative": "inspect the singular-value decomposition or use a qualified external nullspace implementation",
+        },
+        "pseudoinverse": {
+            "classification": "unsupported",
+            "status": "unsupported",
+            "methods": {},
+            "reason": "no validated dense numerical pseudoinverse operation is implemented",
+            "alternative": "use a qualified external pseudoinverse or solve the supported least-squares problem directly",
+        },
+    },
+    "optimization": {
+        "nonlinear_constrained_minimize": {
+            "classification": "unsupported",
+            "status": "unsupported",
+            "methods": {},
+            "reason": "general nonlinear constraints have no qualified portable backend",
+            "alternative": "use bounded minimization for box constraints or a qualified external constrained optimizer",
+        }
+    },
+    "ode": {
+        "boundary_value_problem": {
+            "classification": "unsupported",
+            "status": "unsupported",
+            "methods": {},
+            "reason": "no mature portable boundary-value backend has been integrated",
+            "alternative": "use a qualified external BVP solver or a carefully validated shooting reduction when appropriate",
+        }
+    },
+    "spectral": {
+        "digital_filter": {
+            "classification": "unsupported",
+            "status": "unsupported",
+            "methods": {},
+            "reason": "no public bounded digital-filter operation is implemented",
+            "alternative": "apply the supported convolution operation to an explicitly supplied finite impulse response",
+        },
+        "sparse_singular_value_decomposition": {
+            "classification": "unsupported",
+            "status": "unsupported",
+            "methods": {},
+            "reason": "no validated sparse singular-value method is implemented",
+            "alternative": "use the supported dense reduced SVD within its allocation envelope or a qualified external sparse solver",
+        },
+        "window_function": {
+            "classification": "unsupported",
+            "status": "unsupported",
+            "methods": {},
+            "reason": "no public window-function operation is implemented",
+            "alternative": "supply explicit window coefficients and apply them before the supported Fourier transform",
+        },
+    },
+}
+
 
 def _detached_object(value: Any, description: str) -> dict[str, JSONValue]:
     detached = materialize_json(value)
@@ -251,7 +337,7 @@ def _method_ids(capability: Mapping[str, Any]) -> list[str]:
 
 def _operation_classification(capability: Mapping[str, Any]) -> str:
     declared = capability.get("classification")
-    if isinstance(declared, str) and declared in _CLASSIFICATION_PRIORITY:
+    if isinstance(declared, str) and declared in _SURFACE_CLASSIFICATIONS:
         return declared
     methods = capability.get("methods")
     classifications: set[str] = set()
@@ -415,6 +501,10 @@ def _normalize_method_record(value: Mapping[str, Any]) -> dict[str, JSONValue]:
         )
     normalized_platforms = sorted(set(platforms))
     normalized_runtimes = sorted(set(runtimes))
+    if not normalized_platforms and not normalized_runtimes:
+        raise ValueError(
+            "an implemented numerical method requires a nonempty implementation target"
+        )
     record["implementation_targets"] = materialize_json(
         {
             "platforms": normalized_platforms,
@@ -442,7 +532,28 @@ def _normalize_operation_capability(
     capability: Mapping[str, Any],
 ) -> dict[str, JSONValue]:
     record = _detached_object(capability, "numerical operation capability")
+    status = record.pop("status", "implemented")
+    if status not in ("implemented", "unsupported"):
+        raise ValueError("unknown numerical operation status: " + str(status))
     methods = record.get("methods")
+    if isinstance(methods, list):
+        inherited_targets = record.pop("implementation_targets", None)
+        if not isinstance(inherited_targets, Mapping):
+            raise ValueError(
+                "an implemented numerical operation with method names requires "
+                "implementation targets"
+            )
+        method_template: dict[str, Any] = {
+            "implementation_targets": inherited_targets,
+        }
+        for field in ("backend", "numeric_types", "source_transparent"):
+            if field in record:
+                method_template[field] = record[field]
+        methods = {
+            str(name): dict(method_template)
+            for name in sorted(set(str(name) for name in methods))
+        }
+        record["methods"] = materialize_json(methods)
     if isinstance(methods, dict):
         normalized_methods: dict[str, JSONValue] = {}
         for name, value in sorted(methods.items()):
@@ -452,11 +563,34 @@ def _normalize_operation_capability(
                 )
             normalized_methods[str(name)] = _normalize_method_record(value)
         record["methods"] = normalized_methods
+    classification = _operation_classification(record)
+    if status == "implemented":
+        if not isinstance(record.get("methods"), dict) or not record["methods"]:
+            raise ValueError("an implemented numerical operation requires methods")
+        if classification == "unsupported":
+            raise ValueError("an implemented numerical operation cannot be unsupported")
+    else:
+        if classification != "unsupported":
+            raise ValueError(
+                "an unsupported numerical operation must be classified unsupported"
+            )
+        if not isinstance(record.get("reason"), str) or record["reason"] == "":
+            raise ValueError("an unsupported numerical operation requires a reason")
+        if (
+            not isinstance(record.get("alternative"), str)
+            or record["alternative"] == ""
+        ):
+            raise ValueError(
+                "an unsupported numerical operation requires an alternative"
+            )
     surface: dict[str, JSONValue] = {
-        "classification": _operation_classification(record),
-        "status": "implemented",
+        "classification": classification,
+        "status": status,
         "methods": materialize_json(_method_ids(record)),
     }
+    if status == "unsupported":
+        surface["reason"] = record["reason"]
+        surface["alternative"] = record["alternative"]
     record["surface"] = surface
     return record
 
@@ -468,11 +602,16 @@ def _normalize_domain_document(
     operations = record.get("operations")
     if not isinstance(operations, dict):
         raise TypeError(domain + " capability document has no operations")
+    source_operations = dict(operations)
+    for name, capability in _DEFERRED_PRODUCT_OPERATIONS.get(domain, {}).items():
+        if name in source_operations:
+            raise ValueError(domain + "." + name + " has duplicate product definitions")
+        source_operations[name] = capability
     record["operations"] = {
         str(name): _normalize_operation_capability(value)
         if isinstance(value, Mapping)
         else value
-        for name, value in sorted(operations.items())
+        for name, value in sorted(source_operations.items())
     }
     implementation_claims = record.pop("qualification", None)
     if implementation_claims is not None:
@@ -567,6 +706,24 @@ def _domain_document(domain: str) -> dict[str, JSONValue]:
         from .ode import ode_capabilities
 
         detail = ode_capabilities()
+        raw_targets = detail["implementation_targets"]
+        if not isinstance(raw_targets, Mapping):
+            raise TypeError("ODE capability document has no implementation targets")
+        sweep = _detached_object(
+            detail["parameter_sweeps"], "ODE parameter-sweep capability"
+        )
+        scheduler = sweep.get("scheduler")
+        if not isinstance(scheduler, str) or scheduler == "":
+            raise TypeError("ODE parameter-sweep capability has no scheduler")
+        sweep["methods"] = {
+            scheduler: {
+                "backend": "ordinary-python",
+                "implementation_targets": {
+                    "platforms": raw_targets["platforms"],
+                    "runtimes": raw_targets["runtimes"],
+                },
+            }
+        }
         return _detached_object(
             {
                 "schema_version": detail["schema_version"],
@@ -579,7 +736,7 @@ def _domain_document(domain: str) -> dict[str, JSONValue]:
                         "implementation_targets": detail["implementation_targets"],
                         "limitations": detail["limitations"],
                     },
-                    "parameter_sweep": detail["parameter_sweeps"],
+                    "parameter_sweep": sweep,
                 },
                 "detail": detail,
             },

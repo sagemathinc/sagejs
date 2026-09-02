@@ -9,6 +9,14 @@ from ..model import NumericalPlan, NumericalProblem
 
 CAPABILITY_SCHEMA_VERSION = 1
 
+_IMPLEMENTATION_PLATFORMS = [
+    "linux-x64",
+    "linux-arm64",
+    "macos-arm64",
+    "windows-x64",
+]
+_IMPLEMENTATION_RUNTIMES = ["browser", "cpython", "node", "sea"]
+
 _OPERATIONS: dict[str, dict[str, Any]] = {
     "descriptive_statistics": {
         "default_method": "corrected-two-pass",
@@ -122,6 +130,10 @@ def _operation_record(name: str) -> dict[str, JSONValue]:
             "source_transparent": True,
             "callback_evaluation_during_planning": False,
             "random_draws_during_planning": False,
+            "implementation_targets": {
+                "platforms": list(_IMPLEMENTATION_PLATFORMS),
+                "runtimes": list(_IMPLEMENTATION_RUNTIMES),
+            },
         }
     return {
         "classification": "extension",

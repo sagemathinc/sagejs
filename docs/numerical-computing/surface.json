@@ -18,8 +18,18 @@
         "periodic"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -38,8 +48,18 @@
         "fornberg-forward"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -56,8 +76,18 @@
         "linear"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -74,8 +104,18 @@
         "chebyshev"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -92,8 +132,18 @@
         "barycentric"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -111,6 +161,32 @@
         "laguerre-deflation"
       ],
       "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "integration.composite_quadrature",
+      "phase": "P2",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
         "platforms": [],
         "runtimes": []
       },
@@ -118,7 +194,9 @@
         "platforms": [],
         "runtimes": [],
         "receipt_sha256": []
-      }
+      },
+      "reason": "no public fixed-partition composite quadrature operation is implemented",
+      "alternative": "use the adaptive definite-integral operation or sum explicitly chosen panels"
     },
     {
       "id": "integration.definite_integral",
@@ -129,6 +207,32 @@
         "adaptive_gauss_kronrod"
       ],
       "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "integration.multidimensional_integral",
+      "phase": "P2",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
         "platforms": [],
         "runtimes": []
       },
@@ -136,7 +240,9 @@
         "platforms": [],
         "runtimes": [],
         "receipt_sha256": []
-      }
+      },
+      "reason": "no bounded multidimensional integration method has been selected",
+      "alternative": "use explicitly budgeted iterated one-dimensional integrals only when the problem justifies that reduction"
     },
     {
       "id": "linear_algebra.cholesky_factorization",
@@ -147,8 +253,18 @@
         "cholesky"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -165,8 +281,18 @@
         "one_sided_jacobi"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -183,8 +309,18 @@
         "partial_pivot_lu"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -202,8 +338,18 @@
         "column_pivoted_householder_qr_of_transpose"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -222,8 +368,18 @@
         "partial_pivot_lu"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -240,8 +396,18 @@
         "partial_pivot_lu"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -258,8 +424,18 @@
         "partial_pivot_lu"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -276,6 +452,32 @@
         "one_sided_jacobi"
       ],
       "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "linear_algebra.nullspace",
+      "phase": "P2",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
         "platforms": [],
         "runtimes": []
       },
@@ -283,7 +485,27 @@
         "platforms": [],
         "runtimes": [],
         "receipt_sha256": []
-      }
+      },
+      "reason": "no validated dense numerical nullspace operation is implemented",
+      "alternative": "inspect the singular-value decomposition or use a qualified external nullspace implementation"
+    },
+    {
+      "id": "linear_algebra.pseudoinverse",
+      "phase": "P2",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
+        "platforms": [],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      },
+      "reason": "no validated dense numerical pseudoinverse operation is implemented",
+      "alternative": "use a qualified external pseudoinverse or solve the supported least-squares problem directly"
     },
     {
       "id": "linear_algebra.qr_factorization",
@@ -295,6 +517,32 @@
         "householder_qr"
       ],
       "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "ode.boundary_value_problem",
+      "phase": "P4",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
         "platforms": [],
         "runtimes": []
       },
@@ -302,7 +550,9 @@
         "platforms": [],
         "runtimes": [],
         "receipt_sha256": []
-      }
+      },
+      "reason": "no mature portable boundary-value backend has been integrated",
+      "alternative": "use a qualified external BVP solver or a carefully validated shooting reduction when appropriate"
     },
     {
       "id": "ode.initial_value_problem",
@@ -343,8 +593,18 @@
         "bounded-batch-v1"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -432,6 +692,24 @@
       }
     },
     {
+      "id": "optimization.nonlinear_constrained_minimize",
+      "phase": "P3",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
+        "platforms": [],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      },
+      "reason": "general nonlinear constraints have no qualified portable backend",
+      "alternative": "use bounded minimization for box constraints or a qualified external constrained optimizer"
+    },
+    {
       "id": "optimization.nonlinear_least_squares",
       "phase": "P3",
       "classification": "extension",
@@ -501,6 +779,24 @@
       }
     },
     {
+      "id": "roots.fixed_point_iteration",
+      "phase": "P1",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
+        "platforms": [],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      },
+      "reason": "no bounded fixed-point solver with contraction diagnostics is implemented",
+      "alternative": "solve x - g(x) = 0 with a qualified scalar-root method when that reformulation is numerically appropriate"
+    },
+    {
       "id": "roots.scalar_root",
       "phase": "P1",
       "classification": "translated",
@@ -541,6 +837,32 @@
         "fft"
       ],
       "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "spectral.digital_filter",
+      "phase": "P5",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
         "platforms": [],
         "runtimes": []
       },
@@ -548,7 +870,9 @@
         "platforms": [],
         "runtimes": [],
         "receipt_sha256": []
-      }
+      },
+      "reason": "no public bounded digital-filter operation is implemented",
+      "alternative": "apply the supported convolution operation to an explicitly supplied finite impulse response"
     },
     {
       "id": "spectral.fourier_transform",
@@ -560,8 +884,18 @@
         "radix2_cooley_tukey"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -578,8 +912,18 @@
         "complex_shifted_qr"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -597,8 +941,18 @@
         "radix2_cooley_tukey"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -615,8 +969,18 @@
         "one_sided_jacobi"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -633,8 +997,18 @@
         "power_iteration"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -652,6 +1026,32 @@
         "cg"
       ],
       "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "spectral.sparse_singular_value_decomposition",
+      "phase": "P5",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
         "platforms": [],
         "runtimes": []
       },
@@ -659,7 +1059,9 @@
         "platforms": [],
         "runtimes": [],
         "receipt_sha256": []
-      }
+      },
+      "reason": "no validated sparse singular-value method is implemented",
+      "alternative": "use the supported dense reduced SVD within its allocation envelope or a qualified external sparse solver"
     },
     {
       "id": "spectral.symmetric_eigen",
@@ -670,6 +1072,32 @@
         "cyclic_jacobi"
       ],
       "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "spectral.window_function",
+      "phase": "P5",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
         "platforms": [],
         "runtimes": []
       },
@@ -677,7 +1105,9 @@
         "platforms": [],
         "runtimes": [],
         "receipt_sha256": []
-      }
+      },
+      "reason": "no public window-function operation is implemented",
+      "alternative": "supply explicit window coefficients and apply them before the supported Fourier transform"
     },
     {
       "id": "statistics.cauchy_loss",
@@ -688,8 +1118,18 @@
         "analytic-cauchy"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -706,8 +1146,18 @@
         "scaled-centered-products"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -724,8 +1174,18 @@
         "corrected-two-pass"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -742,8 +1202,18 @@
         "corrected-two-pass"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -763,8 +1233,18 @@
         "analytic-sf"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -781,8 +1261,18 @@
         "analytic-huber"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -799,8 +1289,18 @@
         "huber-irls"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -817,8 +1317,18 @@
         "ordinary-least-squares"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -835,8 +1345,18 @@
         "student-t-pivot"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -853,8 +1373,18 @@
         "one-sample-student-t"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -871,8 +1401,18 @@
         "linear-r-type-7"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -893,8 +1433,18 @@
         "student_t-sampler"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -911,8 +1461,18 @@
         "analytic-soft-l1"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -929,8 +1489,18 @@
         "theil-sen"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],
@@ -948,8 +1518,18 @@
         "welch-two-sample-t"
       ],
       "implementation_targets": {
-        "platforms": [],
-        "runtimes": []
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
       },
       "receipt_qualification": {
         "platforms": [],

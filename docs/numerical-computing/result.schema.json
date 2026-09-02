@@ -24,7 +24,10 @@
         "condition_estimate": {"type": ["number", "null"], "minimum": 0}
       }
     },
-    "diagnostics": {"type": "array"},
+    "diagnostics": {
+      "type": "array",
+      "items": {"$ref": "diagnostic.schema.json"}
+    },
     "method": {"type": "string", "minLength": 1},
     "backend": {"type": "string", "minLength": 1},
     "precision": {
@@ -78,7 +81,10 @@
       "then": {
         "properties": {
           "status": {"enum": ["converged", "exact_root"]},
-          "validation": {"properties": {"passed": {"const": true}}}
+          "validation": {
+            "type": "object",
+            "properties": {"passed": {"const": true}}
+          }
         }
       }
     }
