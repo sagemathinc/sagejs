@@ -837,35 +837,6 @@ def victor_miller_basis(
     return _victor_miller_series_basis(weight, precision, variable, cusp_only)
 
 
-def _modular_symbols_signed_cusp_space(space: Any) -> Any:
-    if not space.is_cuspidal():
-        raise ArithmeticError("space must be cuspidal")
-    if space.sign() != 0:
-        return space
-    cached = space._q_expansion_signed_cusp_space_cache
-    if cached is not None:
-        return cached
-    if space._character is not None:
-        constructor = _global("ModularSymbols")
-        signed_space = constructor(
-            space.character(), space.weight(), 1, space.base_ring()
-        ).cuspidal_submodule()
-    elif space.weight() == 2:
-        signed_space = space.plus_submodule()
-    else:
-        constructor = _global("ModularSymbols")
-        signed_space = constructor(
-            space.level(), space.weight(), 1, sage.QQ
-        ).cuspidal_submodule()
-        if space.dimension() != 2 * signed_space.dimension():
-            raise NotImplementedError(
-                "higher-weight sign-zero q-expansions currently require the full "
-                "cuspidal submodule"
-            )
-    space._q_expansion_signed_cusp_space_cache = signed_space
-    return signed_space
-
-
 def _modular_symbols_precision(space: Any, prec: Any) -> int:
     if prec is None:
         return 8
@@ -879,66 +850,9 @@ def _modular_symbols_q_expansion_data(
     source_space: Any,
     precision: int,
     use_cache: bool = True,
-) -> tuple[Any, Any, Any]:
-    """Return `(signed_space, coefficient_matrix, functional_indices)`."""
-    if use_cache:
-        cached = source_space._q_expansion_data_cache.get(precision)
-        if cached is not runtime.undefined:
-            return cached
-    signed_space = _modular_symbols_signed_cusp_space(source_space)
-    dimension = signed_space.dimension()
-    target_dimension = min(precision - 1, dimension)
-    matrix_constructor = _global("matrix")
-    if target_dimension == 0:
-        result = (
-            signed_space,
-            matrix_constructor(signed_space.base_ring(), 0, precision),
-            runtime.math_tuple([]),
-        )
-        if use_cache:
-            source_space._q_expansion_data_cache.set(precision, result)
-        return result
-
-    hecke_matrices = [signed_space.hecke_matrix(index) for index in range(1, precision)]
-    accumulated_rows: list[Any] = []
-    functional_indices: list[int] = []
-    coefficient_ring = signed_space.base_ring()
-    basis = matrix_constructor(coefficient_ring, 0, precision - 1)
-    order = [0]
-    order.extend(range(dimension - 1, 0, -1))
-    for functional_index in order:
-        rows = [[] for _row in range(dimension)]
-        for operator in hecke_matrices:
-            values = operator.row(functional_index).list()
-            for row_index in range(dimension):
-                rows[row_index].append(values[row_index])
-        accumulated_rows.extend(rows)
-        functional_indices.append(functional_index)
-        basis = (
-            matrix_constructor(coefficient_ring, accumulated_rows)
-            .row_space()
-            .basis_matrix()
-        )
-        if basis.nrows() >= target_dimension:
-            break
-    if basis.nrows() < target_dimension:
-        raise ArithmeticError(
-            "Hecke matrix coefficients did not span the expected cusp-form space"
-        )
-    basis = basis.matrix_from_prefix_rows(target_dimension)
-    coefficient_rows = []
-    for row in basis.rows():
-        coefficient_rows.append([coefficient_ring(0)] + row.list())
-    coefficient_matrix = matrix_constructor(coefficient_ring, coefficient_rows)
-    coefficient_matrix.set_immutable()
-    result = (
-        signed_space,
-        coefficient_matrix,
-        runtime.math_tuple(functional_indices),
-    )
-    if use_cache:
-        source_space._q_expansion_data_cache.set(precision, result)
-    return result
+) -> tuple[Any, Any, Any, Any, Any]:
+    """Return the Hecke-dual basis and its exact modular-symbol lift."""
+    return source_space._q_expansion_data(precision, use_cache)
 
 
 def _series_from_coefficient_matrix(
@@ -1190,10 +1104,12 @@ class ModularSymbolsQExpansionCertificate:
         return self._verified
 
     def verify(self) -> bool:
-        replay_signed, replay, replay_indices = _modular_symbols_q_expansion_data(
-            self._source_space,
-            self._precision,
-            False,
+        replay_signed, replay, replay_indices, _raw, _lift = (
+            _modular_symbols_q_expansion_data(
+                self._source_space,
+                self._precision,
+                False,
+            )
         )
         return (
             replay_signed is self._signed_space
@@ -1234,7 +1150,7 @@ def modular_symbols_q_expansion_basis(
     cached = space._q_expansion_basis_cache.get(cache_key)
     if cached is not runtime.undefined:
         return list(cached)
-    _signed, coefficients, _indices = _modular_symbols_q_expansion_data(
+    _signed, coefficients, _indices, _raw, _lift = _modular_symbols_q_expansion_data(
         space, precision
     )
     basis = _series_from_coefficient_matrix(coefficients, variable)
@@ -1254,7 +1170,7 @@ def modular_symbols_q_expansion_module(
     if algorithm != "modular_symbols":
         raise ValueError("only the exact Hecke-dual q-expansion algorithm is available")
     precision = _modular_symbols_precision(space, prec)
-    _signed, coefficients, _indices = _modular_symbols_q_expansion_data(
+    _signed, coefficients, _indices, _raw, _lift = _modular_symbols_q_expansion_data(
         space, precision
     )
     source_ring = coefficients.base_ring()
@@ -1278,8 +1194,8 @@ def modular_symbols_q_expansion_certificate(
         if prec is None
         else _modular_symbols_precision(space, prec)
     )
-    signed, coefficients, functional_indices = _modular_symbols_q_expansion_data(
-        space, precision
+    signed, coefficients, functional_indices, _raw, _lift = (
+        _modular_symbols_q_expansion_data(space, precision)
     )
     certificate = ModularSymbolsQExpansionCertificate(
         space,

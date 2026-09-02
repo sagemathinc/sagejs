@@ -2089,6 +2089,27 @@ def _default_formula_candidates(
     return candidates
 
 
+def formula_candidate_upper_bound(space: Any, cutoff: Any = None) -> int:
+    """Bound the default formula span without constructing expansions."""
+    if space.base_ring() is not sage.QQ or space.group()._family != "Gamma0":
+        return 0
+    stopping_count = (
+        None if cutoff is None else _nonnegative(cutoff, "formula candidate cutoff")
+    )
+    if stopping_count == 0:
+        return 0
+    level_one_dimension = _global("dimension_cusp_forms")(1, space.weight())
+    count = runtime.number(level_one_dimension) * len(sage.divisors(space.level()))
+    if stopping_count is not None and count >= stopping_count:
+        return stopping_count
+    eta_cutoff = None if stopping_count is None else stopping_count - count
+    count += _eta_products_module().registry_eta_product_candidate_upper_bound(
+        space,
+        eta_cutoff,
+    )
+    return count if stopping_count is None else min(count, stopping_count)
+
+
 def formula_generated_subspace(
     space: Any,
     candidates: Any = None,
@@ -2301,5 +2322,6 @@ __all__ = [
     "certified_modular_form",
     "character_eisenstein_series",
     "formula_generated_subspace",
+    "formula_candidate_upper_bound",
     "q_expansion_algorithm_receipt",
 ]

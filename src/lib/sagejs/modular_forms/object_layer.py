@@ -715,6 +715,60 @@ def _hecke_image_matrix(space: Any, index: int, precision: int) -> Any:
     )
 
 
+def _modular_symbols_qexp_source(space: Any) -> Any:
+    """Return the symbol space underlying this canonical coordinate basis."""
+    kind = _space_kind(space)
+    if kind == "New":
+        return space._modular_symbols_cusp_space()
+    if kind != "Cuspidal":
+        return None
+    if space.level() != 1:
+        dimension = space.dimension()
+        divisors = [runtime.number(value) for value in sage.divisors(space.level())]
+        formula_bound = runtime.number(
+            _global("dimension_cusp_forms")(1, space.weight())
+        ) * len(divisors)
+        if formula_bound < dimension and len(divisors) <= 4:
+            current = [0 for _divisor in divisors]
+            exponent_sum = 2 * space.weight()
+
+            def count_eta_vectors(position: int, remaining: int) -> None:
+                nonlocal formula_bound
+                if formula_bound >= dimension:
+                    return
+                if position == len(divisors) - 1:
+                    current[position] = remaining
+                    left = 0
+                    right = 0
+                    level = space.level()
+                    for vector_index, divisor in enumerate(divisors):
+                        left += divisor * current[vector_index]
+                        right += (level // divisor) * current[vector_index]
+                    if left % 24 == 0 and right % 24 == 0:
+                        formula_bound += 1
+                    return
+                for exponent in range(remaining + 1):
+                    current[position] = exponent
+                    count_eta_vectors(position + 1, remaining - exponent)
+                    if formula_bound >= dimension:
+                        return
+
+            count_eta_vectors(0, exponent_sum)
+            if formula_bound < dimension:
+                return space._modular_symbols_cusp_space()
+        from .qexp_algebra import formula_candidate_upper_bound
+
+        if formula_candidate_upper_bound(space, dimension) < dimension:
+            return space._modular_symbols_cusp_space()
+    receipt = space.q_expansion_algorithm_receipt(
+        "auto",
+        _sturm_precision(space),
+    )
+    if receipt.selected_algorithm() != "modular_symbols":
+        return None
+    return space._modular_symbols_cusp_space()
+
+
 def hecke_matrix(space: Any, index: Any) -> Any:
     """Return the exact matrix of $T_n$ or the appropriate bad-prime action."""
     hecke_index = _positive(index, "Hecke index")
@@ -724,6 +778,11 @@ def hecke_matrix(space: Any, index: Any) -> Any:
     if cached is not runtime.undefined:
         return cached
     precision = _sturm_precision(space)
+    symbol_source = _modular_symbols_qexp_source(space)
+    if symbol_source is not None:
+        answer = symbol_source._q_expansion_hecke_matrix(hecke_index, precision)
+        cache.set(key, answer)
+        return answer
     basis_matrix = _basis_matrix(space, precision)
     image_matrix = _hecke_image_matrix(space, hecke_index, precision)
     if space.dimension() == 0:
