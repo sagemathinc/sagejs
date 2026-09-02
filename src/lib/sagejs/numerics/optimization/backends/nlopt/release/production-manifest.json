@@ -84,12 +84,35 @@
   },
   "selection": "explicit-only",
   "qualification": {
-    "status": "pending_source_current_requalification",
-    "reason": "Independent active-bound validation changed to reject offset-hidden feasible descent; source-current qualification is required.",
+    "status": "qualified",
+    "candidate_commit": "3c0cc72a5e3ed68b9636cb1fbdc5c27ce73a1f6b",
+    "summary_sha256": "1ce95e0113f9efe0b8b5ac035bb3998222bca4a5781cabb5bbc4845e255c6fbe",
+    "summary_bytes": 121709,
     "public_semantics_bundle_sha256": "3aac699b460e5de0ae6a2e6939ea82badb44612846574ecc2e3baa1242867e57",
     "qualification_tooling_bundle_sha256": "230de6626433dcdb84ace28ea3f96a9889cd59c794ef7e3873d7fb8fbc6da716",
     "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+    "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
-    "invalidated_summary": "qualification-v1.json"
+    "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+    "artifact_sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+    "artifact_bytes": 72592,
+    "case_execution_sha256": "a49af472a6637de0fd1b084b0237f68bf28f5a42fa08fdc7566471e6d288b338",
+    "campaign_challenge": "bded9222cebcbf58ae2f2ca4a9b2a6d110a779754ebfc845a80c1b9a70c68a3b",
+    "evidence_receipts_sha256": {
+      "sanitizer": "e3538b818c3fb87aee0864d3567e12bdc4a7c561b08cd5ca8a1ccda695a73ed0",
+      "destructive-wasm": "cab140af19e8a4297ab722871fb5638990b70daa46876df8810b466c6dac90df",
+      "browser-lifecycle": "8a3c36932c445e17ccf57b514cb76f9d0eb078514cf64df51c2c36f704f3911b",
+      "public-integration": "bf1780c1f9f5f47da916c9e47920e349edc8227a8114e730e08d7d5d4c6d6f4e",
+      "resource-corruption": "270fc1c43d54ec68b1dee449d03803a61e5cdeeba96aa9691b27831344dfcb8b",
+      "relocation": "75b4b36227aa717a8c2de6615787207f03bb0aedd77c32b64124df3a5d355c67",
+      "sea": "8610ef77892d09ac6c5881940de375d4bb0166a9b419fe99754846020a6e6bd8"
+    },
+    "portable_receipts_sha256": {
+      "linux-x64": "a49af472a6637de0fd1b084b0237f68bf28f5a42fa08fdc7566471e6d288b338",
+      "linux-arm64": "b429ccf64cc536113256199aefaa27ebd65080a9a1845386ccf6507e8c921adc",
+      "macos-arm64": "bd9a3ad477dfeb51f8820f27a6b95cbec984ee026e7aac597398ac4245c7a79d",
+      "windows-x64": "f4d4b2b412112d0ea2bbe6ba50e3ac02e4122c0d9557a7642b29bc9943d81aec"
+    },
+    "historical_cobyla_status": "excluded-not-qualified"
   }
 }
