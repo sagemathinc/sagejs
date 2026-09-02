@@ -44,10 +44,48 @@
     "node --test test/numerics/evidence/qualification-soak.cjs test/numerics/evidence/qualification-supplemental.cjs",
     "node scripts/numerical-computing/qualification/validate-campaign.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.878,
+      "started_at": "2026-09-02T21:00:06.707Z",
+      "commit": "673e8f6cb7945e70160859471f3cf10138887f93",
+      "workspace_fingerprint": "4e12f61f5a0c78a1f8f368a7873b72efe2068169e48a7a6a707e881a7f37225e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/evidence/qualification-soak.cjs test/numerics/evidence/qualification-supplemental.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.689,
+      "started_at": "2026-09-02T21:00:18.656Z",
+      "commit": "673e8f6cb7945e70160859471f3cf10138887f93",
+      "workspace_fingerprint": "4e12f61f5a0c78a1f8f368a7873b72efe2068169e48a7a6a707e881a7f37225e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/numerical-computing/qualification/validate-campaign.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.079,
+      "started_at": "2026-09-02T21:00:25.435Z",
+      "commit": "673e8f6cb7945e70160859471f3cf10138887f93",
+      "workspace_fingerprint": "4e12f61f5a0c78a1f8f368a7873b72efe2068169e48a7a6a707e881a7f37225e",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented an honest source-bound P8 reliability campaign: bounded fresh Node/Sage.js processes exercise seven numerical domains, validate results independently, force budget/cancellation/callback failures and recovery, and must reach a robust six-sample heap/RSS tail under absolute growth and peak limits. Release collection now emits one authenticated raw-sample receipt per platform and gate assembly requires all four receipts to bind the exact corresponding Node dist artifact. The former 64-cycle corpus case is accurately classified as fixed work, and the profiles/contracts are documented and tested.",
+    "risks": [
+      "The deploy-digest lane concurrently owns authenticate-release-gate.cjs, so this lane intentionally does not add the four new numerical-soak category/path/schema expectations to that authenticator or its release-workflow fixture.",
+      "pnpm architecture:check passes package, numerical, native, Wasm capability/workload/resource, and CoWasm checks, then stops because architecture/optimizer-opportunities.manifest.json is already stale against its source input at base commit 65730b29 (expected 844b26d0..., recorded f1f0f990...)."
+    ],
+    "next_steps": [
+      "In the integration lane, authenticate numerical-soak-{linux-x64,linux-arm64,macos-arm64,windows-x64} at build/numerical-qualification/platform/<platform>/<platform>-soak.evidence.json with schema sagejs.numerical-soak-evidence/v1; update release-workflow fixtures/counts from five requirements/seven supplemental artifacts to six/eleven.",
+      "Add a scheduled workflow that builds once and invokes run-soak.cjs --profile scheduled with cancel-in-progress concurrency, fail-fast behavior, and a hard job timeout; routine push CI must not run the soak.",
+      "Update RELEASE.md to describe collection of the four source-bound soak records, then qualify the release profile concurrently on the persistent four-platform hosts."
+    ]
   }
 }
