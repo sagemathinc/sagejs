@@ -49,6 +49,7 @@ const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 const ci = read(".github/workflows/ci.yml");
 const manual = read(".github/workflows/publish-validated-release.yml");
 const deploy = read(".github/workflows/wasm-deploy-cloudflare.yml");
+const mobile = read(".github/workflows/mobile-simulators.yml");
 const browserCollector = read(
   "scripts/numerical-computing/qualification/collect-browser.cjs",
 );
@@ -242,6 +243,27 @@ test("qualified Wasm builders fetch the promoted source-candidate ancestry", () 
       `${stepName} must retain qualification ancestry`,
     );
   }
+});
+
+test("mobile simulators consume one canonical source-bound numerical product", () => {
+  assert.match(mobile, /numerical-product:\n[\s\S]*?runs-on: ubuntu-24\.04/);
+  assert.match(
+    mobile,
+    /node scripts\/numerical-product\.cjs publish \\\n\s+--output build\/authenticated-numerical-product/,
+  );
+  assert.match(mobile, /iphone-ipad:\n[\s\S]*?needs: numerical-product/);
+  assert.match(
+    mobile,
+    /SAGEJS_NUMERICAL_PRODUCT_ROOT: \$\{\{ github\.workspace \}\}\/build\/authenticated-numerical-product/,
+  );
+  assert.match(
+    mobile,
+    /uses: actions\/download-artifact@v8[\s\S]*?name: sagejs-mobile-numerical-product/,
+  );
+  assert.match(
+    mobile,
+    /node scripts\/numerical-product\.cjs inspect --input "\$SAGEJS_NUMERICAL_PRODUCT_ROOT"/,
+  );
 });
 
 test("publisher authentication requires an intact exact gate inventory", () => {
