@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-frontier-holdout-gate",
+  "title": "Complex cubic frontier holdout gate",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Machine-enforce a content-addressed frontier freeze before loading the exact twenty-field complex-cubic holdout and provide a correctness census path",
+  "base_commit": "66b9980c729c00a6308dc59b8b10812990d47d0b",
+  "claims": [
+    "bench/class-unit-groups/complex-cubic-frontier-holdout.cjs",
+    "bench/class-unit-groups/COMPLEX-CUBIC-FRONTIER.md",
+    "test/complex-cubic-frontier-holdout-gate.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Synthetic content-addressed corpus, census, timing, and holdout fixtures",
+      "Existing complex-cubic Sage.js receipt/replay and direct PARI census protocol"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
