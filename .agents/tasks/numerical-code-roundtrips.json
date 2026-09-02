@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Replace template-only numerical code-generation claims with executable canonical semantic round-trip verification for Sage, Python/SciPy, MATLAB, and Wolfram, while classifying unverified outputs fail closed",
-  "base_commit": "fa793b4a422638e82fe678e8be2412fda6082fd8",
+  "base_commit": "ddb3543d144ac60ecd0ec15a5ae40ca98f0f657f",
   "claims": [
     "src/lib/sagejs/numerics/frontends/operations.py",
     "src/lib/sagejs/numerics/frontends/portable.py",
