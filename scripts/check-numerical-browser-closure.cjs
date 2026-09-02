@@ -10,6 +10,12 @@ const { join, relative, resolve, sep } = require("node:path");
 const { execFileSync } = require("node:child_process");
 
 const DEFAULT_ROOT = resolve(__dirname, "..");
+const SUPPORT_ONLY_SEGMENTS = new Set([
+  "qualification",
+  "release",
+  "scripts",
+  "test",
+]);
 
 function filesBelow(directory) {
   const files = [];
@@ -30,7 +36,9 @@ function numericalModuleName(libraryDirectory, filename) {
     ? name.slice(0, -"/__init__.py".length)
     : name.slice(0, -3);
   const segments = name.split("/");
-  if (segments.some((segment) => segment.startsWith("_"))) return null;
+  if (segments.some((segment) =>
+    segment.startsWith("_") || SUPPORT_ONLY_SEGMENTS.has(segment)
+  )) return null;
   return name.replaceAll("/", ".");
 }
 

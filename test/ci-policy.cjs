@@ -29,8 +29,13 @@ test("expensive native and SEA jobs wait for the routine gate", () => {
     const section = workflow.slice(start, end);
     assert.match(
       section,
-      /needs: routine/,
+      /needs: \[[^\]\n]*\broutine\b[^\]\n]*\]/,
       `${job} must wait for routine validation`,
+    );
+    assert.match(
+      section,
+      /needs: \[[^\]\n]*\bnumerical-product\b[^\]\n]*\]/,
+      `${job} must wait for the authenticated numerical product`,
     );
     assert.match(
       section,

@@ -134,6 +134,12 @@ const POLYNOMIAL_STANDALONE_MODULES = Object.freeze([
   "sagejs.polynomial_algorithms.arbitrary_prime_public",
 ]);
 
+const GROEBNER_STANDALONE_MODULES = Object.freeze([
+  ...POLYNOMIAL_STANDALONE_MODULES,
+  "sagejs.polynomial_algorithms.groebner_contract",
+  "sagejs.polynomial_algorithms.ideal",
+]);
+
 const BASELIB_STANDALONE_MODULES = Object.freeze([
   ...new Set([
     ...BUILTINS_STANDALONE_MODULES,
@@ -175,6 +181,7 @@ module.exports = {
   BASELIB_STANDALONE_CACHE_MODULES,
   BASELIB_STANDALONE_MODULES,
   BUILTINS_STANDALONE_MODULES,
+  GROEBNER_STANDALONE_MODULES,
   MATRIX_STANDALONE_MODULES,
   POLYNOMIAL_STANDALONE_MODULES,
   baselibStandaloneImportPrelude,

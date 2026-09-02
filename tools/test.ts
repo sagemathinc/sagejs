@@ -16,6 +16,7 @@ import { standardLibraryCacheDirectory } from "./resources";
 import {
   BASELIB_STANDALONE_MODULES,
   BUILTINS_STANDALONE_MODULES,
+  GROEBNER_STANDALONE_MODULES,
   POLYNOMIAL_STANDALONE_MODULES,
   baselibStandaloneImportPrelude,
 } from "./standalone-library.cjs";
@@ -71,9 +72,22 @@ export async function createCompilerTestHarness(
     // Keep those dependencies explicit for the affected vertical slices; do
     // not make every unrelated compiler fixture initialize them eagerly.
     const fixture = basename(filename);
+    const polynomialFixture = new Set([
+      "algebra.py",
+      "series.py",
+    ]).has(fixture);
+    const groebnerFixture =
+      fixture.startsWith("groebner-")
+      || fixture === "groebner.py"
+      || fixture === "polynomial.py";
     const standaloneModules = fixture === "matrix.py"
       ? BASELIB_STANDALONE_MODULES
-      : new Set(["algebra.py", "polynomial.py", "series.py"]).has(fixture)
+      : groebnerFixture
+        ? [...new Set([
+          ...BUILTINS_STANDALONE_MODULES,
+          ...GROEBNER_STANDALONE_MODULES,
+        ])]
+      : polynomialFixture
         ? [...new Set([
           ...BUILTINS_STANDALONE_MODULES,
           ...POLYNOMIAL_STANDALONE_MODULES,

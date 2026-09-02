@@ -163,7 +163,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 775000,
+      "max_source_bytes": 780000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -173,6 +173,7 @@
         "src/baselib/number_fields.py",
         "src/baselib/padics.py",
         "src/baselib/polynomial.py",
+        "src/baselib/proof.py",
         "src/baselib/real_complex.py",
         "src/baselib/series.py",
         "src/baselib/zeta_data.py",
@@ -745,12 +746,27 @@
         "modular-form-expansions"
       ],
       "modules": [
-        "sagejs.modular_forms.eta_products",
         "sagejs.modular_forms.qexp_algebra"
       ],
       "files": [
-        "src/lib/sagejs/modular_forms/eta_products.py",
         "src/lib/sagejs/modular_forms/qexp_algebra.py"
+      ],
+      "prefixes": []
+    },
+    {
+      "id": "modular-form-eta-products",
+      "layer": 7,
+      "startup": "lazy",
+      "max_source_bytes": 25000,
+      "depends_on": [
+        "core-runtime",
+        "modular-form-qexp-algebra"
+      ],
+      "modules": [
+        "sagejs.modular_forms.eta_products"
+      ],
+      "files": [
+        "src/lib/sagejs/modular_forms/eta_products.py"
       ],
       "prefixes": []
     },

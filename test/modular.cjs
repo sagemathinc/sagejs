@@ -425,9 +425,12 @@ test("normalized newforms reconstruct exact coefficient fields and LMFDB rows", 
           [
             `f=CuspForms(${rational.level},${rational.weight}).newforms('a')[0]`,
             `g=CuspForms(${quadratic.level},${quadratic.weight}).newforms('a')[0]`,
+            "L=g.lseries_input(8)",
             "[[f[i] for i in [0..7]],f.certificate(8).verify()," +
               "str(g.defining_polynomial()),[g[i].list() for i in [0..7]]," +
-              "g.certificate(8).verify(),g.q_expansion(8)]",
+              "g.certificate(8).verify(),g.q_expansion(8)," +
+              "[L.level(),L.conductor(),L.weight(),L.functional_equation_center()," +
+              "L.coefficient_bound(),L.verify()]]",
           ].join("\n"),
         )
       ).repr,
@@ -435,7 +438,8 @@ test("normalized newforms reconstruct exact coefficient fields and LMFDB rows", 
         "'x^2 + x - 1', [[0, 0], [1, 0], [0, 1], [-1, -2], " +
         "[-1, -1], [0, 2], [-2, 1], [2, 2]], True, " +
         "q + a0*q^2 + (-2*a0 - 1)*q^3 + (-a0 - 1)*q^4 + " +
-        "2*a0*q^5 + (a0 - 2)*q^6 + (2*a0 + 2)*q^7 + O(q^8)]",
+        "2*a0*q^5 + (a0 - 2)*q^6 + (2*a0 + 2)*q^7 + O(q^8), " +
+        "[23, 23, 2, 1, 8, True]]",
     );
   } finally {
     await session.close();

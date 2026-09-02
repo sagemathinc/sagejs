@@ -61,9 +61,9 @@ Inside Sage mode, `version()` reports the human-readable release and target;
 
 ```sage
 sage: version()
-'Sage.js v0.8.0 [linux-x64], Release Date: 2026-09-01'
+'Sage.js v0.8.0 [linux-x64], Release Date: 2026-09-02'
 sage: version(json=True)
-{'schema': 'sagejs.version/v1', 'name': 'Sage.js', 'version': '0.8.0', 'release_date': '2026-09-01', 'platform': 'linux-x64'}
+{'schema': 'sagejs.version/v1', 'name': 'Sage.js', 'version': '0.8.0', 'release_date': '2026-09-02', 'platform': 'linux-x64'}
 ```
 
 - [npm package](https://www.npmjs.com/package/@sagemath/sagejs)
