@@ -107,9 +107,24 @@ try {
     run([], { input: "import numpy\nprint(numpy.arange(3))\n" }),
     "[0 1 2]",
   );
+  const replModuleRoot = join(replCache, "sagejs", "modules");
+  const replVersionCache = join(replModuleRoot, numpyCache.version);
+  // Detached cache maintenance records metadata beside version directories.
+  // Keep it present deterministically: cache-entry checks must never mistake
+  // this root-level control record for compiled module bytecode.
+  const now = Date.now();
+  writeFileSync(
+    join(replModuleRoot, ".sagejs-auto-cleanup.json"),
+    JSON.stringify({
+      schema: "sagejs.module-cache-auto-cleanup/v1",
+      last_attempt_ms: now,
+      next_attempt_ms: now + 60_000,
+      last_status: "test-fixture",
+    }),
+  );
   // Runtime imports maintain their own V8 bytecode cache even when the
   // compiler used a shipped syntax/module artifact for the calling cell.
-  for (const filename of filesBelow(join(replCache, "sagejs", "modules"))) {
+  for (const filename of filesBelow(replVersionCache)) {
     const cached = JSON.parse(readFileSync(filename, "utf8"));
     assert.equal(cached.version, numpyCache.version);
     assert.equal(typeof cached.cachedData, "string");
@@ -195,7 +210,7 @@ try {
     }),
     `True\n${expected}\n17`,
   );
-  const replEntries = filesBelow(join(replCache, "sagejs", "modules"));
+  const replEntries = filesBelow(replVersionCache);
   assert.equal(replEntries.filter((filename) => {
     const entry = JSON.parse(readFileSync(filename, "utf8"));
     return entry.filename === modulePath;
@@ -210,9 +225,7 @@ try {
     "3141592653589793238462643383279",
   );
 
-  const currentCacheFilename = filesBelow(
-    join(replCache, "sagejs", "modules"),
-  ).find((filename) => {
+  const currentCacheFilename = filesBelow(replVersionCache).find((filename) => {
     const cached = JSON.parse(readFileSync(filename, "utf8"));
     return cached.filename === modulePath;
   });
@@ -251,7 +264,7 @@ try {
     "3141592653589793238462643383279",
   );
   const materializedFilename = filesBelow(
-    join(portableReplCache, "sagejs", "modules"),
+    join(portableReplCache, "sagejs", "modules", numpyCache.version),
   ).find((filename) => {
     const cached = JSON.parse(readFileSync(filename, "utf8"));
     return cached.filename === modulePath;
