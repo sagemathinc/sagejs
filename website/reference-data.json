@@ -34978,9 +34978,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 8678,
+        "line": 8701,
         "excerpt": {
-          "start_line": 8666,
+          "start_line": 8689,
           "text": "        return copier()\n    copier = getattr(value, \"copy\", None)\n    if callable(copier):\n        return copier()\n    if isinstance(value, (str, bytes, int, float, complex, tuple, frozenset)):\n        return value\n    try:\n        return type(value)(value)\n    except Exception:\n        raise TypeError(\"object does not support shallow copying\")  # noqa: B904\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
