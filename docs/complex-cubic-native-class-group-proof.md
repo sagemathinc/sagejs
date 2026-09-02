@@ -271,6 +271,53 @@ $$
 
 for a positive integer unit index $q$ and the true regulator $R$.
 
+The relation-dependency reconstruction uses two independent, bounded native
+resource envelopes. A normalized archimedean reconstruction may shift its
+binary exponent by at most $4096$ steps. The public adapter's publication
+buffers separately permit at most $4096$ bits in each exact integral-basis
+coordinate. There is no theorem that bounds the second quantity by the first,
+so exhausting either resource causes a decline. Neither bound is an acceptance
+criterion: a published candidate must still pass the exact norm check, the
+rigorous regulator overlap, and the final index-one argument below.
+
+This distinction matters for LMFDB field `3.1.685935.1`, defined by
+$x^3+243x-644$. Its regulator is approximately $358.1523273$, so the binary
+exponent required by the real embedding is about
+$358.1523273/\log 2=516.7$. The former $512$-step envelope therefore declined
+after relation collection even though the relation lattice and class
+presentation were complete. The enlarged general envelope reconstructs an
+orientation whose exact integral-basis coordinates have maximum bit length
+$519$ and whose norm is checked exactly. Expressed in the same integral-order
+basis, a separate untimed PARI flag-$1$ forensic run yields the inverse
+orientation with maximum coordinate bit length $258$; the timed PARI flag-$0$
+path below omits the unit. Coordinate bit length is basis-dependent, and the
+$519$-bit size is a property of the native-selected orientation, not an
+intrinsic lower bound for a fundamental unit of this field.
+
+An independent trace of PARI $2.17.4$ makes the comparison concrete. For this
+field, PARI's GRH generator bound is $17$, its factor base has $9$ ideals, and
+its relation matrix is $9\times15$: four initial relations followed by eleven
+relations selected among sixty small-norm candidates. Exact HNF gives class
+presentation $W=\operatorname{Mat}(2)$, and the analytic acceptance ratio is
+approximately $0.9933536$. The exact dependency retained by flag $1$ has
+exponents
+
+$$
+(-31,94,23,1,13,59,-120,-4,28,242,15,-158,31,82,-114).
+$$
+
+Replaying that dependency gives the norm-$-1$ inverse unit described above.
+At ordinary precision, flag $0$ instead publishes the same class number and
+regulator from the relation lattice and analytic formula without recovering
+that unit. Relevant PARI source regions are `buch2.c`'s relation HNF,
+regulator/index, `getfu`, and modular-CRT unit reconstruction, together with
+the embedding solve in `alglin1.c`. This trace motivated the reusable rule:
+keep relation dependencies compact, separate binary exponent from mantissa
+precision, recognize integer coordinates only from unique balls, and retain
+exact norm/regulator authentication as the final authority. The current fixed
+envelopes implement the first bounded instance of that rule; larger instances
+still decline rather than inheriting PARI's nonfatal unit omission.
+
 ### 5. Belabas--Friedman encloses the zeta residue under GRH
 
 Let $\kappa_K$ be the residue of $\zeta_K(s)$ at $s=1$. At the fixed cutoff
@@ -354,6 +401,15 @@ group through the ordinary exact implementation, requiring an unconditional
 result for the particular field. External agreement is also tested against a
 versioned LMFDB corpus and PARI/Magma/Hecke oracles, but those comparisons are
 regressions, not premises in the proof above.
+
+The conditional PARI comparison has a further deliberate asymmetry. At its
+usual precision, `bnfinit(P,0)` can accept the class number and regulator from
+its relation lattice and analytic formula while warning that fundamental-unit
+recovery lacks precision and returning no fundamental unit. The Sage.js native
+receipt does not use that escape hatch: every nontrivial relation proof
+publishes exact unit coordinates and authenticates them as described above.
+Consequently agreement of scalar class numbers is a cross-system regression,
+not evidence that both systems produced the same internal certificate.
 
 The current trusted computing base still includes:
 

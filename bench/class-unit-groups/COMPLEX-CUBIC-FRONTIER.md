@@ -44,18 +44,46 @@ node bench/class-unit-groups/run-complex-cubic-frontier.cjs --census \
   --output /data/complex-cubic-frontier-census.json
 ```
 
-The built-in Sage.js and direct-PARI census paths run as 100 isolated 10-field
-processes: every timing stratum is divided into five contiguous selection-rank
-slices. `--census-cpus` permits at most one direct process on each listed
-logical CPU; this shortens only the non-authoritative correctness census.
-Every process records its affinity, is bound to its shard-label digest, and has
-its own explicit timeout, so one difficult 10-field shard remains an explicit
-failed region rather than erasing unrelated regions. External protocol
-adapters retain one serialized full-corpus process because their runtime
-closure is authenticated as a single unit. Retained timing rejects
-`--census-cpus` and remains serialized on `--cpu`. PARI's decreasing `bnf.cyc`
-convention is reversed and validated before comparison with Sage/LMFDB
-divisibility order.
+The built-in Sage.js census runs as 1,000 isolated singleton processes in
+frozen global-rank order. Direct PARI retains the corpus's 20 natural 50-field
+timing strata, since it does not have Sage.js's long-tail verifier behavior.
+`--census-cpus` permits at most one direct process on each listed logical CPU;
+an idle CPU dynamically takes the next shard. This shortens only the
+non-authoritative correctness census. Every process records its affinity and
+is bound to its exact label and generated-program digests. Its own explicit
+timeout can therefore lose at most one Sage.js field.
+
+Successful Sage.js singleton results are published in `OUTPUT.parts` (or the
+explicit `--census-parts-dir`) as atomic, content-addressed checkpoints. A part
+is reusable only after the native receipt has matched the live field and passed
+independent exact recomputation, or after the dynamic fallback presentation has
+verified exactly. The key binds the complete frozen record and corpus, proof
+mode, generated verifier program, source tree, current build receipt,
+executable, thread environment, platform, architecture, CPU pool, and
+partition. Timeouts, malformed responses, disagreements, and proof failures
+are never published. An addressed malformed or conflicting part fails closed;
+the runner never scans arbitrary files in the directory. `--allow-dirty`
+therefore requires `--no-census-parts`.
+
+Every census process also records a digest of its complete response. Before
+timing, the runner reconstructs those responses from the stored observations,
+revalidates every proof branch against the frozen oracle, and recomputes the
+entire census summary. Process intervals carry an execution-epoch digest;
+one-process-per-CPU scheduling is checked within each monotonic-clock epoch,
+while checkpointed processes from unrelated resumed epochs are never compared
+as if their monotonic clocks shared an origin.
+
+This is a resumption mechanism, not retry-history evidence. Only successful
+verified parts enter the eventual census. Abandoned timeout/error attempts are
+outside that checkpoint set and appear only if an operator separately retains
+an incomplete run's output. The retained timing pass is always fresh and reads
+checkpoints only indirectly through the fully revalidated census gate.
+
+External protocol adapters retain one serialized full-corpus process because
+their runtime closure is authenticated as a single unit. Retained timing
+rejects all census-only options and remains serialized on `--cpu`. PARI's
+decreasing `bnf.cyc` convention is reversed and validated before comparison
+with Sage/LMFDB divisibility order.
 
 The direct settings are exact and intentionally asymmetric:
 

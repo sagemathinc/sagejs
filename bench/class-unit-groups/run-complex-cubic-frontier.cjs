@@ -34,8 +34,19 @@ const GP_CENSUS_MARKER = "SAGEJS_COMPLEX_CUBIC_GP_CENSUS|";
 const GP_TIMING_MARKER = "SAGEJS_COMPLEX_CUBIC_GP_TIMING|";
 const MINIMUM_ROOT_NS = 1_200_000_000n;
 const RETAINED_ROUNDS = 11;
-const DIRECT_CENSUS_FIELDS_PER_SHARD = 10;
-const DIRECT_CENSUS_PARTITION = "within-timing-shard-contiguous-ranks-v1";
+const CENSUS_PARTS_SCHEMA = "sagejs.benchmark/complex-cubic-frontier-census-part-v1";
+const DIRECT_CENSUS_PARTITIONS = Object.freeze({
+  sagejs: Object.freeze({
+    partition: "singleton-global-rank-v1",
+    fields_per_shard: 1,
+    shard_count: 1000,
+  }),
+  pari: Object.freeze({
+    partition: "timing-stratum-v1",
+    fields_per_shard: 50,
+    shard_count: 20,
+  }),
+});
 const THREAD_ENV = Object.freeze({
   OPENBLAS_NUM_THREADS: "1",
   OMP_NUM_THREADS: "1",
@@ -64,6 +75,8 @@ Options:
   --boundaries LIST     scalar-prepared,fresh-complete (default: both)
   --cpu N               logical CPU used through taskset on Linux (default: 0)
   --census-cpus LIST    isolated direct census workers (default: --cpu only)
+  --census-parts-dir P  resumable authenticated parts (default: OUTPUT.parts)
+  --no-census-parts     disable checkpoint read/write for exploratory census runs
   --timeout-seconds N   fresh process/system/round timeout (default: 3600)
   --sagejs PATH         Sage.js launcher (default: bin/sagejs)
   --gp PATH             direct GP launcher (default: gp)
@@ -117,6 +130,8 @@ function parseArguments(argv) {
     boundaries: [...BOUNDARIES],
     cpu: 0,
     censusCpus: null,
+    censusPartsDir: null,
+    censusPartsEnabled: true,
     timeoutSeconds: 3600,
     sagejs: process.env.SAGEJS_FRONTIER_EXECUTABLE || path.join(ROOT, "bin/sagejs"),
     gp: process.env.GP_ORACLE || process.env.PARI_ORACLE || "gp",
@@ -137,8 +152,10 @@ function parseArguments(argv) {
     }
     if (argument === "--allow-dirty") { options.allowDirty = true; continue; }
     if (argument === "--dry-run") { options.dryRun = true; continue; }
+    if (argument === "--no-census-parts") { options.censusPartsEnabled = false; continue; }
     if (!["--corpus", "--asset-dir", "--census-file", "--output", "--systems", "--boundaries",
-      "--cpu", "--census-cpus", "--timeout-seconds", "--sagejs", "--gp", "--adapter"].includes(argument)) {
+      "--cpu", "--census-cpus", "--census-parts-dir", "--timeout-seconds", "--sagejs", "--gp",
+      "--adapter"].includes(argument)) {
       throw new Error(`unknown argument: ${argument}`);
     }
     if (index + 1 >= argv.length) throw new Error(`${argument} needs a value`);
@@ -151,6 +168,7 @@ function parseArguments(argv) {
     else if (argument === "--boundaries") options.boundaries = parseList(value, BOUNDARIES, argument);
     else if (argument === "--cpu") options.cpu = positiveInteger(value, argument, { zero: true });
     else if (argument === "--census-cpus") options.censusCpus = cpuList(value, argument);
+    else if (argument === "--census-parts-dir") options.censusPartsDir = path.resolve(value);
     else if (argument === "--timeout-seconds") options.timeoutSeconds = positiveInteger(value, argument);
     else if (argument === "--sagejs") options.sagejs = value;
     else if (argument === "--gp") options.gp = value;
@@ -171,7 +189,22 @@ function parseArguments(argv) {
   if (options.mode === "timing" && options.censusCpus !== null) {
     throw new Error("--census-cpus is only valid with --census");
   }
+  if (options.mode === "timing" && options.censusPartsDir !== null) {
+    throw new Error("--census-parts-dir is only valid with --census");
+  }
+  if (options.mode === "timing" && !options.censusPartsEnabled) {
+    throw new Error("--no-census-parts is only valid with --census");
+  }
+  if (!options.censusPartsEnabled && options.censusPartsDir !== null) {
+    throw new Error("--no-census-parts conflicts with --census-parts-dir");
+  }
   if (options.censusCpus === null) options.censusCpus = [options.cpu];
+  if (options.mode === "census" && options.censusPartsEnabled && options.allowDirty) {
+    throw new Error("resumable census parts require a clean Git worktree");
+  }
+  if (options.mode === "census" && options.censusPartsEnabled && options.censusPartsDir === null) {
+    options.censusPartsDir = `${options.output}.parts`;
+  }
   if (!options.systems.includes("sagejs") || !options.systems.includes("pari")) {
     throw new Error("frontier evidence requires both sagejs and pari");
   }
@@ -283,6 +316,16 @@ function corpusIdentitiesMatch(recorded, current) {
     recorded.identity_sha256 === current.identity_sha256;
 }
 
+function sourceIdentitiesMatchForTiming(recorded, current) {
+  return Boolean(recorded && current && recorded.clean === true && current.clean === true &&
+    recorded.promotion_eligible === true && current.promotion_eligible === true &&
+    recorded.candidate_tree === current.candidate_tree &&
+    recorded.source_closure_sha256 === current.source_closure_sha256 &&
+    recorded.build_receipt?.current === true && current.build_receipt?.current === true &&
+    typeof recorded.build_receipt.sha256 === "string" &&
+    recorded.build_receipt.sha256 === current.build_receipt.sha256);
+}
+
 function toolPlan(options) {
   return options.systems.map((system) => {
     const requested = options.adapters[system] || (system === "sagejs" ? options.sagejs :
@@ -330,17 +373,10 @@ function shardRecords(corpus) {
   return shards;
 }
 
-function directCensusShardRecords(corpus) {
-  const shards = [];
-  for (const records of shardRecords(corpus)) {
-    if (records.length % DIRECT_CENSUS_FIELDS_PER_SHARD !== 0) {
-      throw new Error("direct census partition requires complete fixed-size timing-stratum slices");
-    }
-    for (let start = 0; start < records.length; start += DIRECT_CENSUS_FIELDS_PER_SHARD) {
-      shards.push(records.slice(start, start + DIRECT_CENSUS_FIELDS_PER_SHARD));
-    }
-  }
-  return shards;
+function directCensusShardRecords(corpus, system) {
+  if (system === "sagejs") return corpus.records.map((record) => [record]);
+  if (system === "pari") return shardRecords(corpus);
+  throw new Error(`no direct census partition for ${system}`);
 }
 
 function pythonLiteral(value) {
@@ -351,6 +387,17 @@ function sageCensusSource(records) {
   const fields = records.map((record) => ({ label: record.label, coefficients: record.coefficients }));
   return `import hashlib
 import json
+
+def exact_json(value):
+    if value is None or isinstance(value, (bool, str)):
+        return value
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, (list, tuple)):
+        return [exact_json(entry) for entry in value]
+    if isinstance(value, dict):
+        return {str(key): exact_json(entry) for key, entry in value.items()}
+    raise TypeError("native receipt contains a non-JSON audit value: " + type(value).__name__)
 
 records = json.loads(${pythonLiteral(JSON.stringify(fields))})
 R = PolynomialRing(QQ, "x")
@@ -367,7 +414,7 @@ for record in records:
         if receipt is not None:
             invariants = [str(value) for value in receipt.invariants]
             authenticated = bool(receipt.matches(field))
-            receipt_payload = receipt.to_dict()
+            receipt_payload = exact_json(receipt.to_dict())
             receipt_digest = hashlib.sha256(json.dumps(
                 receipt_payload, sort_keys=True, separators=(",", ":")
             ).encode()).hexdigest()
@@ -541,12 +588,23 @@ function protocolRequest(corpus, mode, system, options = {}) {
     proof: "conditional-grh",
     proof_setting: system === "magma" ? "Proof := \"GRH\"" :
       system === "hecke" ? "class_group(...; GRH=true)" : null,
-    boundaries: options.boundaries ?? [],
-    round: options.round ?? null,
+    boundaries: mode === "timing" ? options.boundaries ?? [] : [],
+    round: mode === "timing" ? options.round ?? null : null,
     minimum_retained_root_nanoseconds: MINIMUM_ROOT_NS.toString(),
     warmups: corpus.warmups,
     shards: shardRecords(corpus),
   };
+}
+
+function externalCensusProgramDigest(tool, corpus) {
+  if (tool.adapter_kind !== "json-protocol" || typeof tool.executable !== "string") {
+    throw new Error(`${tool.system} has no external census program to regenerate`);
+  }
+  const adapterModule = require(tool.executable);
+  if (typeof adapterModule.source !== "function") {
+    throw new Error(`${tool.system} adapter does not expose deterministic source(request)`);
+  }
+  return sha256(adapterModule.source(protocolRequest(corpus, "census", tool.system)));
 }
 
 function parseGpCensus(stdout, records) {
@@ -742,6 +800,234 @@ function recordLabelsDigest(records) {
   return sha256(`${records.map((record) => record.label).join("\n")}\n`);
 }
 
+function directCensusProgramDigest(system, records) {
+  if (system === "sagejs") return sha256(sageCensusSource(records));
+  if (system === "pari") return sha256(pariCensusSource(records));
+  throw new Error(`no direct census source for ${system}`);
+}
+
+function censusPartKey(corpus, tool, source, options, batch) {
+  if (tool.system !== "sagejs" || batch.corpus.records.length !== 1) {
+    throw new Error("authenticated census parts are defined only for Sage.js singleton shards");
+  }
+  if (!source.clean || !source.build_receipt?.current ||
+      typeof source.build_receipt.sha256 !== "string") {
+    throw new Error("authenticated census parts require clean source and a current build receipt");
+  }
+  const record = batch.corpus.records[0];
+  const host = hostIdentity(options.cpu);
+  const key = {
+    system: "sagejs",
+    mode: "census",
+    proof: "conditional-grh",
+    partition: DIRECT_CENSUS_PARTITIONS.sagejs.partition,
+    global_rank: record.selection.global_rank,
+    label: record.label,
+    corpus_identity_sha256: canonicalDigest(portableCorpusIdentity(corpus)),
+    record_sha256: canonicalDigest(record),
+    source_closure_sha256: source.source_closure_sha256,
+    candidate_tree: source.candidate_tree,
+    build_receipt_sha256: source.build_receipt.sha256,
+    adapter_kind: tool.adapter_kind,
+    executable_sha256: tool.executable_sha256,
+    generated_program_sha256: directCensusProgramDigest("sagejs", [record]),
+    thread_environment_sha256: canonicalDigest(THREAD_ENV),
+    platform: host.platform,
+    architecture: host.architecture,
+    direct_cpus: options.censusCpus,
+  };
+  return { key, key_sha256: canonicalDigest(key) };
+}
+
+function censusPartFilename(partsDir, expected) {
+  const rank = String(expected.key.global_rank).padStart(4, "0");
+  return path.join(
+    partsDir,
+    `${rank}-${expected.key.label}-${expected.key_sha256}.json`,
+  );
+}
+
+function compactCanonicalJson(value) {
+  return JSON.stringify(JSON.parse(canonicalJson(value)));
+}
+
+function hasExactKeys(value, keys) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value) &&
+    Object.keys(value).sort().join("\n") === [...keys].sort().join("\n"));
+}
+
+function validateCheckpointObservation(observed, expected) {
+  if (!observed || observed.label !== expected.label ||
+      !["native-pass", "native-decline-fallback-pass"].includes(observed.status) ||
+      observed.discriminant !== expected.discriminant ||
+      observed.class_number !== expected.class_number ||
+      JSON.stringify(observed.class_group_invariants) !==
+        JSON.stringify(expected.class_group_invariants)) {
+    throw new Error(`census checkpoint for ${expected.label} disagrees with the frozen oracle`);
+  }
+  if (observed.status === "native-pass") {
+    const receipt = observed.receipt;
+    if (observed.native_receipt_authenticated !== true ||
+        observed.independent_exact_replay !== true || observed.fallback_verified !== null ||
+        !receipt || typeof receipt !== "object" || Array.isArray(receipt) ||
+        typeof observed.receipt_digest !== "string" ||
+        !/^[0-9a-f]{64}$/.test(observed.receipt_digest) ||
+        observed.receipt_digest !== sha256(compactCanonicalJson(receipt)) ||
+        receipt.schema !== "sagejs.number-fields/certified-complex-cubic-native-v2" ||
+        JSON.stringify(receipt.polynomial_coefficients) !==
+          JSON.stringify(expected.coefficients) ||
+        receipt.field_discriminant !== expected.discriminant ||
+        receipt.equation_order_index !== expected.equation_order_index ||
+        receipt.class_number !== expected.class_number ||
+        JSON.stringify(receipt.invariants) !== JSON.stringify(expected.class_group_invariants) ||
+        receipt.proof_status !== observed.proof_status ||
+        !Array.isArray(receipt.assumptions) ||
+        receipt.assumptions.some((assumption) => typeof assumption !== "string" || !assumption) ||
+        (receipt.proof_status.includes("conditional-grh")
+          ? receipt.assumptions.length === 0
+          : receipt.assumptions.length !== 0) ||
+        typeof receipt.theorem !== "string" || receipt.theorem.length === 0) {
+      throw new Error(`census checkpoint for ${expected.label} has an invalid native proof branch`);
+    }
+  } else if (typeof observed.proof_status !== "string" ||
+      !/^exact(?:-[a-z0-9]+)*-(?:conditional-grh|unconditional)$/.test(observed.proof_status) ||
+      observed.native_receipt_authenticated !== null ||
+      observed.independent_exact_replay !== null || observed.fallback_verified !== true ||
+      observed.receipt !== null || observed.receipt_digest !== null) {
+    throw new Error(`census checkpoint for ${expected.label} has an invalid fallback proof branch`);
+  }
+}
+
+function validateSuccessfulCensusInvocation(invocation, expected, batch, options) {
+  const response = invocation?.response;
+  const processEvidence = invocation?.process;
+  validateAdapterResponse(response, { mode: "census", system: "sagejs" });
+  validateCensusProcessEvidence(processEvidence);
+  const records = response?.payload?.records;
+  if (response.status !== "ok" || !processEvidence || processEvidence.system !== "sagejs" ||
+      processEvidence.mode !== "census" || processEvidence.census_shard !== batch.shard ||
+      processEvidence.status !== "ok" || processEvidence.response_validation_error !== null ||
+      processEvidence.response_sha256 !== canonicalDigest(response) ||
+      processEvidence.record_labels_sha256 !== recordLabelsDigest(batch.corpus.records) ||
+      processEvidence.generated_program_sha256 !== expected.key.generated_program_sha256 ||
+      processEvidence.affinity_logical_cpus?.length !== 1 ||
+      !options.censusCpus.includes(processEvidence.affinity_logical_cpus[0]) ||
+      processEvidence.runtime_identity !== null ||
+      processEvidence.runtime_closure_sha256 !== null ||
+      !Array.isArray(records) || records.length !== 1) {
+    throw new Error(`census checkpoint for shard ${batch.shard} is not a verified success`);
+  }
+  validateCheckpointObservation(records[0], batch.corpus.records[0]);
+  return invocation;
+}
+
+function makeCensusPart(invocation, expected) {
+  const payload = {
+    schema: CENSUS_PARTS_SCHEMA,
+    schema_version: 1,
+    key: expected.key,
+    key_sha256: expected.key_sha256,
+    response: invocation.response,
+    process: invocation.process,
+  };
+  return { ...payload, part_sha256: canonicalDigest(payload) };
+}
+
+function validateCensusPart(part, expected, batch, options) {
+  if (!hasExactKeys(part, [
+    "schema", "schema_version", "key", "key_sha256", "response", "process", "part_sha256",
+  ]) || !hasExactKeys(part.key, Object.keys(expected.key)) ||
+      part.schema !== CENSUS_PARTS_SCHEMA || part.schema_version !== 1 ||
+      part.key_sha256 !== expected.key_sha256 ||
+      canonicalDigest(part.key) !== part.key_sha256 ||
+      canonicalDigest(part.key) !== canonicalDigest(expected.key)) {
+    throw new Error(`malformed or stale census checkpoint for shard ${batch.shard}`);
+  }
+  const { part_sha256: recordedDigest, ...payload } = part;
+  if (typeof recordedDigest !== "string" || canonicalDigest(payload) !== recordedDigest) {
+    throw new Error(`stale census checkpoint digest for shard ${batch.shard}`);
+  }
+  return validateSuccessfulCensusInvocation({
+    response: part.response,
+    process: part.process,
+  }, expected, batch, options);
+}
+
+function readCensusPart(filename, expected, batch, options) {
+  if (!fs.existsSync(filename)) return null;
+  let part;
+  try {
+    part = JSON.parse(fs.readFileSync(filename, "utf8"));
+  } catch (error) {
+    throw new Error(`cannot read census checkpoint ${filename}: ${error.message}`);
+  }
+  return validateCensusPart(part, expected, batch, options);
+}
+
+function fsyncDirectory(directory) {
+  const descriptor = fs.openSync(directory, "r");
+  try {
+    fs.fsyncSync(descriptor);
+  } finally {
+    fs.closeSync(descriptor);
+  }
+}
+
+function publishJsonExclusive(filename, value) {
+  fs.mkdirSync(path.dirname(filename), { recursive: true });
+  const encoded = canonicalJson(value);
+  if (fs.existsSync(filename)) {
+    if (fs.readFileSync(filename, "utf8") !== encoded) {
+      throw new Error(`refusing to overwrite conflicting checkpoint ${filename}`);
+    }
+    return;
+  }
+  const temporary = `${filename}.tmp-${process.pid}-${process.hrtime.bigint()}`;
+  try {
+    const descriptor = fs.openSync(temporary, "wx");
+    try {
+      fs.writeFileSync(descriptor, encoded);
+      fs.fsyncSync(descriptor);
+    } finally {
+      fs.closeSync(descriptor);
+    }
+    try {
+      fs.linkSync(temporary, filename);
+    } catch (error) {
+      if (error.code !== "EEXIST" || fs.readFileSync(filename, "utf8") !== encoded) throw error;
+    }
+    fsyncDirectory(path.dirname(filename));
+  } finally {
+    try {
+      if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
+    } catch {
+      // A stale temporary file is never addressed as a checkpoint.
+    }
+  }
+}
+
+function writeJsonAtomic(filename, value) {
+  fs.mkdirSync(path.dirname(filename), { recursive: true });
+  const temporary = `${filename}.tmp-${process.pid}-${process.hrtime.bigint()}`;
+  try {
+    const descriptor = fs.openSync(temporary, "wx");
+    try {
+      fs.writeFileSync(descriptor, canonicalJson(value));
+      fs.fsyncSync(descriptor);
+    } finally {
+      fs.closeSync(descriptor);
+    }
+    fs.renameSync(temporary, filename);
+    fsyncDirectory(path.dirname(filename));
+  } finally {
+    try {
+      if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
+    } catch {
+      // The addressed output was already published or this orphan is harmless.
+    }
+  }
+}
+
 function validateIdentityArtifact(artifact, label) {
   if (!artifact || typeof artifact !== "object" || Array.isArray(artifact) ||
       typeof artifact.role !== "string" || artifact.role.length === 0 ||
@@ -840,7 +1126,7 @@ function interpretAdapterProcessResult(
       throw new Error(`${tool.system} adapter never emitted the ready marker`);
     }
   } catch (error) {
-    // A malformed direct census shard is a measured failed 10-field region, not
+    // A malformed direct census shard is a measured failed region, not
     // grounds for discarding evidence from every other independent shard.
     // External adapters authenticate one whole-corpus runtime closure, and timing
     // responses are retained evidence roots, so both continue to fail closed.
@@ -894,6 +1180,7 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
   const processEvidence = {
     system: tool.system,
     mode,
+    execution_epoch: options.executionEpoch,
     round: options.round ?? null,
     census_shard: mode === "census" ? options.censusShard ?? null : null,
     record_labels_sha256: mode === "census"
@@ -901,6 +1188,7 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
       : null,
     status: processResult.status,
     response_validation_error: responseValidationError,
+    response_sha256: canonicalDigest(response),
     generated_program_sha256: expectedProgramSha256,
     launched_monotonic_nanoseconds: processResult.launched.toString(),
     ended_monotonic_nanoseconds: processResult.ended.toString(),
@@ -926,7 +1214,7 @@ function censusBatchPlan(corpus, tool) {
   if (tool.status !== "available" || tool.adapter_kind === "json-protocol") {
     return [{ shard: null, corpus }];
   }
-  return directCensusShardRecords(corpus).map((records, shard) => ({
+  return directCensusShardRecords(corpus, tool.system).map((records, shard) => ({
     shard,
     corpus: { ...corpus, records },
   }));
@@ -937,12 +1225,53 @@ async function runBoundedCensusBatches(batches, cpus, invoke) {
     throw new Error("bounded census execution requires at least one logical CPU");
   }
   const results = Array(batches.length);
-  await Promise.all(cpus.slice(0, batches.length).map(async (cpu, worker) => {
-    for (let index = worker; index < batches.length; index += cpus.length) {
+  let nextIndex = 0;
+  await Promise.all(cpus.slice(0, batches.length).map(async (cpu) => {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= batches.length) return;
       results[index] = await invoke(batches[index], cpu);
     }
   }));
   return results;
+}
+
+async function runCensusBatchWithCheckpoint(
+  corpus,
+  tool,
+  source,
+  options,
+  batch,
+  cpu,
+  invoke = invokeAdapter,
+) {
+  const eligible = tool.system === "sagejs" && tool.status === "available" &&
+    tool.adapter_kind === "generated-sagejs-python";
+  const checkpointed = eligible && options.censusPartsEnabled;
+  let expected = null;
+  let filename = null;
+  if (checkpointed) {
+    expected = censusPartKey(corpus, tool, source, options, batch);
+    filename = censusPartFilename(options.censusPartsDir, expected);
+    const invocation = readCensusPart(filename, expected, batch, options);
+    if (invocation !== null) return { batch, invocation, checkpoint: "reused" };
+  }
+  const invocation = await invoke(tool, batch.corpus, "census", {
+    ...options,
+    cpu,
+    censusShard: batch.shard,
+  });
+  if (checkpointed) {
+    try {
+      validateSuccessfulCensusInvocation(invocation, expected, batch, options);
+    } catch {
+      return { batch, invocation, checkpoint: "not-published" };
+    }
+    publishJsonExclusive(filename, makeCensusPart(invocation, expected));
+    return { batch, invocation, checkpoint: "published" };
+  }
+  return { batch, invocation, checkpoint: eligible ? "disabled" : "not-applicable" };
 }
 
 function mergeCensusInvocations(tool, corpus, entries) {
@@ -978,6 +1307,123 @@ function mergeCensusInvocations(tool, corpus, entries) {
   };
 }
 
+const CENSUS_PROCESS_KEYS = Object.freeze([
+  "system", "mode", "execution_epoch", "round", "census_shard", "record_labels_sha256", "status",
+  "response_validation_error", "response_sha256", "generated_program_sha256",
+  "launched_monotonic_nanoseconds", "ended_monotonic_nanoseconds",
+  "launch_to_ready_nanoseconds", "process_wall_nanoseconds", "timeout_seconds",
+  "affinity_logical_cpus", "peak_rss_bytes", "stderr_sha256", "runtime_identity",
+  "runtime_closure_sha256",
+]);
+
+function validateCensusProcessEvidence(processEvidence) {
+  const positiveDecimal = (value) => typeof value === "string" && /^[1-9][0-9]*$/.test(value);
+  const digest = (value) => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+  if (!hasExactKeys(processEvidence, CENSUS_PROCESS_KEYS) ||
+      !SYSTEMS.includes(processEvidence.system) || processEvidence.mode !== "census" ||
+      !digest(processEvidence.execution_epoch) ||
+      processEvidence.round !== null ||
+      !(processEvidence.census_shard === null ||
+        (Number.isSafeInteger(processEvidence.census_shard) &&
+          processEvidence.census_shard >= 0 && processEvidence.census_shard <= 999)) ||
+      !digest(processEvidence.record_labels_sha256) ||
+      !TERMINAL_STATUSES.includes(processEvidence.status) ||
+      !(processEvidence.response_validation_error === null ||
+        typeof processEvidence.response_validation_error === "string") ||
+      !digest(processEvidence.response_sha256) ||
+      !digest(processEvidence.generated_program_sha256) ||
+      !positiveDecimal(processEvidence.launched_monotonic_nanoseconds) ||
+      !positiveDecimal(processEvidence.ended_monotonic_nanoseconds) ||
+      !(processEvidence.launch_to_ready_nanoseconds === null ||
+        positiveDecimal(processEvidence.launch_to_ready_nanoseconds)) ||
+      !positiveDecimal(processEvidence.process_wall_nanoseconds) ||
+      !Number.isSafeInteger(processEvidence.timeout_seconds) ||
+      processEvidence.timeout_seconds < 1 ||
+      !Array.isArray(processEvidence.affinity_logical_cpus) ||
+      processEvidence.affinity_logical_cpus.length !== 1 ||
+      !Number.isSafeInteger(processEvidence.affinity_logical_cpus[0]) ||
+      processEvidence.affinity_logical_cpus[0] < 0 ||
+      !(processEvidence.peak_rss_bytes === null || positiveDecimal(processEvidence.peak_rss_bytes)) ||
+      !digest(processEvidence.stderr_sha256) ||
+      !(processEvidence.runtime_identity === null ||
+        (typeof processEvidence.runtime_identity === "object" &&
+          !Array.isArray(processEvidence.runtime_identity))) ||
+      !(processEvidence.runtime_closure_sha256 === null ||
+        digest(processEvidence.runtime_closure_sha256))) {
+    throw new Error("timing requires schema-valid census process evidence");
+  }
+  const launched = BigInt(processEvidence.launched_monotonic_nanoseconds);
+  const ended = BigInt(processEvidence.ended_monotonic_nanoseconds);
+  const wall = BigInt(processEvidence.process_wall_nanoseconds);
+  if (ended < launched || wall !== ended - launched ||
+      (processEvidence.status === "ok" &&
+        (processEvidence.launch_to_ready_nanoseconds === null ||
+          BigInt(processEvidence.launch_to_ready_nanoseconds) > wall))) {
+    throw new Error("timing requires internally consistent census process clocks");
+  }
+  return processEvidence;
+}
+
+function censusResponseFromObservations(censusByLabel, records, system, runtimeIdentity = null) {
+  const payload = {
+    records: records.map((record) => censusByLabel.get(record.label)?.observations?.[system]),
+  };
+  if (runtimeIdentity !== null) payload.runtime_identity = runtimeIdentity;
+  return {
+    schema: ADAPTER_SCHEMA,
+    mode: "census",
+    system,
+    status: "ok",
+    proof: "conditional-grh",
+    payload,
+  };
+}
+
+function validateCensusContents(census, corpus, tools) {
+  if (!Array.isArray(census.records) || census.records.length !== corpus.records.length) {
+    throw new Error("timing requires exactly the frozen census records");
+  }
+  const censusByLabel = new Map();
+  census.records.forEach((record, index) => {
+    const expected = corpus.records[index];
+    if (!record || record.label !== expected.label || censusByLabel.has(record.label) ||
+        canonicalDigest(record.expected) !== canonicalDigest({
+          discriminant: expected.discriminant,
+          class_number: expected.class_number,
+          class_group_invariants: expected.class_group_invariants,
+          oracle: "LMFDB record with used_grh=false",
+        }) || !record.observations || typeof record.observations !== "object") {
+      throw new Error("timing requires census records in authenticated frozen order");
+    }
+    for (const tool of tools) {
+      const observed = record.observations[tool.system];
+      if (tool.system === "sagejs") {
+        validateCheckpointObservation(observed, expected);
+      } else if (!observed || observed.label !== expected.label || observed.status !== "ok" ||
+          observed.discriminant !== expected.discriminant ||
+          observed.class_number !== expected.class_number ||
+          JSON.stringify(observed.class_group_invariants) !==
+            JSON.stringify(expected.class_group_invariants)) {
+        throw new Error(`${tool.system} census observation disagrees with the frozen oracle`);
+      }
+    }
+    censusByLabel.set(record.label, record);
+  });
+  const responses = tools.map((tool) =>
+    censusResponseFromObservations(censusByLabel, corpus.records, tool.system));
+  const recomputed = combineCensus(corpus, responses);
+  const recordedSummary = {
+    counts: census.summary?.counts,
+    agreement: census.summary?.agreement,
+    coverage_complete: census.summary?.coverage_complete,
+  };
+  if (canonicalDigest(recomputed.records) !== canonicalDigest(census.records) ||
+      canonicalDigest(recomputed.summary) !== canonicalDigest(recordedSummary)) {
+    throw new Error("timing requires a census whose records and summary recompute exactly");
+  }
+  return censusByLabel;
+}
+
 function validateCensusProcessTopology(census, corpus, tools) {
   const processes = census.summary?.processes;
   if (!Array.isArray(processes)) {
@@ -985,26 +1431,65 @@ function validateCensusProcessTopology(census, corpus, tools) {
   }
   const availableTools = tools.filter((tool) => tool.status === "available");
   const execution = census.execution;
-  if (!execution || execution.scheduler !== "static-shard-modulo-cpu-list-v1" ||
+  const checkpointing = execution?.checkpointing;
+  if (!hasExactKeys(execution, [
+    "scheduler", "direct_cpus", "external_cpu", "direct_partitions",
+    "max_live_direct_processes_per_cpu", "timing_authority", "checkpointing",
+  ]) || !hasExactKeys(checkpointing, [
+    "schema", "enabled", "scope", "parts_dir", "reused", "published",
+    "not_published", "disabled",
+  ]) || execution.scheduler !== "dynamic-next-shard-on-idle-cpu-list-v1" ||
       !Array.isArray(execution.direct_cpus) || execution.direct_cpus.length === 0 ||
       new Set(execution.direct_cpus).size !== execution.direct_cpus.length ||
       execution.direct_cpus.some((cpu) => !Number.isSafeInteger(cpu) || cpu < 0) ||
       !Number.isSafeInteger(execution.external_cpu) || execution.external_cpu < 0 ||
-      execution.direct_partition !== DIRECT_CENSUS_PARTITION ||
-      execution.direct_fields_per_shard !== DIRECT_CENSUS_FIELDS_PER_SHARD ||
-      execution.direct_shard_count !== directCensusShardRecords(corpus).length ||
-      execution.max_live_processes_per_cpu !== 1 ||
-      execution.timing_authority !== "none-census-is-non-authoritative") {
+      canonicalDigest(execution.direct_partitions) !== canonicalDigest(DIRECT_CENSUS_PARTITIONS) ||
+      execution.max_live_direct_processes_per_cpu !== 1 ||
+      execution.timing_authority !== "none-census-is-non-authoritative" ||
+      !checkpointing || checkpointing.schema !== CENSUS_PARTS_SCHEMA ||
+      checkpointing.scope !== "verified-sagejs-singletons-only" ||
+      typeof checkpointing.enabled !== "boolean" ||
+      (checkpointing.enabled && (typeof checkpointing.parts_dir !== "string" ||
+        !path.isAbsolute(checkpointing.parts_dir))) ||
+      (!checkpointing.enabled && checkpointing.parts_dir !== null)) {
     throw new Error("timing requires an authenticated census execution topology");
   }
-  const directShards = directCensusShardRecords(corpus);
+  const checkpointCounts = ["reused", "published", "not_published", "disabled"];
+  if (checkpointCounts.some((key) => !Number.isSafeInteger(checkpointing[key]) ||
+      checkpointing[key] < 0) ||
+      (checkpointing.enabled && checkpointing.not_published !== 0) ||
+      (!checkpointing.enabled && checkpointCounts.slice(0, 3)
+        .some((key) => checkpointing[key] !== 0))) {
+    throw new Error("timing requires valid census checkpoint accounting");
+  }
+  const sageTool = availableTools.find((tool) => tool.system === "sagejs");
+  const eligibleSage = sageTool?.adapter_kind === "generated-sagejs-python";
+  const singletonCount = DIRECT_CENSUS_PARTITIONS.sagejs.shard_count;
+  if ((eligibleSage && checkpointing.enabled &&
+        (checkpointing.reused + checkpointing.published !== singletonCount ||
+          checkpointing.not_published !== 0 || checkpointing.disabled !== 0)) ||
+      (eligibleSage && !checkpointing.enabled &&
+        (checkpointing.disabled !== singletonCount || checkpointing.reused !== 0 ||
+          checkpointing.published !== 0 || checkpointing.not_published !== 0)) ||
+      (!eligibleSage && checkpointCounts.some((key) => checkpointing[key] !== 0))) {
+    throw new Error("timing requires exact Sage.js singleton checkpoint accounting");
+  }
   const expectedProcessCount = availableTools.reduce((count, tool) =>
-    count + (tool.adapter_kind === "json-protocol" ? 1 : directShards.length), 0);
+    count + (tool.adapter_kind === "json-protocol"
+      ? 1
+      : directCensusShardRecords(corpus, tool.system).length), 0);
   if (processes.length !== expectedProcessCount || processes.some((process) =>
     !process || process.mode !== "census" ||
     !availableTools.some((tool) => tool.system === process.system))) {
     throw new Error("timing requires exactly the expected census process topology");
   }
+
+  if (!hasExactKeys(census.summary, ["counts", "agreement", "coverage_complete", "processes"])) {
+    throw new Error("timing requires a schema-valid census summary");
+  }
+
+  processes.forEach(validateCensusProcessEvidence);
+  const censusByLabel = validateCensusContents(census, corpus, tools);
 
   const runtimeClosures = new Map();
   for (const tool of availableTools) {
@@ -1018,10 +1503,23 @@ function validateCensusProcessTopology(census, corpus, tools) {
         throw new Error(`timing requires one successful full-corpus ${tool.system} census process`);
       }
       const process = matching[0];
+      const expectedProgram = externalCensusProgramDigest(tool, corpus);
+      if (process.generated_program_sha256 !== expectedProgram) {
+        throw new Error(`${tool.system} census program does not match independent regeneration`);
+      }
+      const expectedResponse = censusResponseFromObservations(
+        censusByLabel,
+        corpus.records,
+        tool.system,
+        process.runtime_identity,
+      );
+      if (process.response_sha256 !== canonicalDigest(expectedResponse)) {
+        throw new Error(`${tool.system} census process is not bound to its observations`);
+      }
       const identity = validateRuntimeIdentity(
         process.runtime_identity,
         tool.system,
-        process.generated_program_sha256,
+        expectedProgram,
       );
       const closure = runtimeClosureDigest(identity);
       if (process.runtime_closure_sha256 !== closure) {
@@ -1031,6 +1529,7 @@ function validateCensusProcessTopology(census, corpus, tools) {
       continue;
     }
 
+    const directShards = directCensusShardRecords(corpus, tool.system);
     if (matching.length !== directShards.length) {
       throw new Error(
         `timing requires exactly ${directShards.length} ${tool.system} census shard processes`,
@@ -1048,30 +1547,37 @@ function validateCensusProcessTopology(census, corpus, tools) {
     }
     for (let shard = 0; shard < directShards.length; shard += 1) {
       const process = byShard.get(shard);
-      const expectedCpu = execution.direct_cpus[shard % execution.direct_cpus.length];
-      const expectedProgram = tool.system === "sagejs"
-        ? sha256(sageCensusSource(directShards[shard]))
-        : sha256(pariCensusSource(directShards[shard]));
+      const expectedProgram = directCensusProgramDigest(tool.system, directShards[shard]);
       if (process?.record_labels_sha256 !== recordLabelsDigest(directShards[shard]) ||
           process.affinity_logical_cpus?.length !== 1 ||
-          process.affinity_logical_cpus[0] !== expectedCpu ||
+          !execution.direct_cpus.includes(process.affinity_logical_cpus[0]) ||
           process.generated_program_sha256 !== expectedProgram) {
         throw new Error(`${tool.system} census shard ${shard} label digest is stale`);
       }
+      const expectedResponse = censusResponseFromObservations(
+        censusByLabel,
+        directShards[shard],
+        tool.system,
+      );
+      if (process.response_sha256 !== canonicalDigest(expectedResponse)) {
+        throw new Error(`${tool.system} census shard ${shard} is not bound to its observations`);
+      }
     }
   }
-  const directProcesses = processes.filter((process) =>
-    availableTools.some((tool) => tool.system === process.system &&
+  const directProcesses = processes.filter((processEvidence) =>
+    availableTools.some((tool) => tool.system === processEvidence.system &&
       tool.adapter_kind !== "json-protocol"));
-  for (const cpu of execution.direct_cpus) {
-    const intervals = directProcesses.filter((process) =>
-      process.affinity_logical_cpus?.[0] === cpu).map((process) => ({
-      start: BigInt(process.launched_monotonic_nanoseconds),
-      end: BigInt(process.ended_monotonic_nanoseconds),
+  const epochs = new Set(directProcesses.map((processEvidence) => processEvidence.execution_epoch));
+  for (const epoch of epochs) for (const cpu of execution.direct_cpus) {
+    const intervals = directProcesses.filter((processEvidence) =>
+      processEvidence.execution_epoch === epoch &&
+      processEvidence.affinity_logical_cpus[0] === cpu).map((processEvidence) => ({
+      start: BigInt(processEvidence.launched_monotonic_nanoseconds),
+      end: BigInt(processEvidence.ended_monotonic_nanoseconds),
     })).sort((left, right) => left.start < right.start ? -1 : left.start > right.start ? 1 : 0);
-    if (intervals.some((interval) => interval.end < interval.start) ||
-        intervals.some((interval, index) => index > 0 && intervals[index - 1].end > interval.start)) {
-      throw new Error(`direct census processes overlap on logical CPU ${cpu}`);
+    if (intervals.some((interval, index) => index > 0 &&
+        intervals[index - 1].end > interval.start)) {
+      throw new Error(`direct census processes overlap within execution epoch on logical CPU ${cpu}`);
     }
   }
   return runtimeClosures;
@@ -1331,20 +1837,17 @@ function selectFrontierCandidate(corpus, census, events) {
 async function runCensus(corpus, tools, source, options) {
   const responses = [];
   const processes = [];
+  const checkpointCounts = { reused: 0, published: 0, not_published: 0, disabled: 0 };
   for (const tool of tools) {
     const batches = censusBatchPlan(corpus, tool);
     const directShards = tool.status === "available" && tool.adapter_kind !== "json-protocol";
     const cpus = directShards ? options.censusCpus : [options.cpu];
-    const entries = await runBoundedCensusBatches(batches, cpus, async (batch, cpu) => {
-      const invocation = await invokeAdapter(tool, batch.corpus, "census", {
-        ...options,
-        cpu,
-        censusShard: batch.shard,
-      });
-      return { batch, invocation };
-    });
+    const entries = await runBoundedCensusBatches(batches, cpus, (batch, cpu) =>
+      runCensusBatchWithCheckpoint(corpus, tool, source, options, batch, cpu));
     for (const entry of entries) {
       if (entry.invocation.process !== null) processes.push(entry.invocation.process);
+      const checkpointKey = entry.checkpoint.replace("-", "_");
+      if (Object.hasOwn(checkpointCounts, checkpointKey)) checkpointCounts[checkpointKey] += 1;
     }
     responses.push(mergeCensusInvocations(tool, corpus, entries));
   }
@@ -1368,14 +1871,19 @@ async function runCensus(corpus, tools, source, options) {
     systems: tools.map((tool) => tool.system),
     tools,
     execution: {
-      scheduler: "static-shard-modulo-cpu-list-v1",
+      scheduler: "dynamic-next-shard-on-idle-cpu-list-v1",
       direct_cpus: options.censusCpus,
       external_cpu: options.cpu,
-      direct_partition: DIRECT_CENSUS_PARTITION,
-      direct_fields_per_shard: DIRECT_CENSUS_FIELDS_PER_SHARD,
-      direct_shard_count: directCensusShardRecords(corpus).length,
-      max_live_processes_per_cpu: 1,
+      direct_partitions: DIRECT_CENSUS_PARTITIONS,
+      max_live_direct_processes_per_cpu: 1,
       timing_authority: "none-census-is-non-authoritative",
+      checkpointing: {
+        schema: CENSUS_PARTS_SCHEMA,
+        enabled: options.censusPartsEnabled,
+        scope: "verified-sagejs-singletons-only",
+        parts_dir: options.censusPartsDir,
+        ...checkpointCounts,
+      },
     },
     records: combined.records,
     summary: { ...combined.summary, processes },
@@ -1386,7 +1894,7 @@ async function runTiming(corpus, census, tools, source, options) {
   const currentCorpusIdentity = corpusIdentity(options.corpus, corpus);
   if (census.schema !== CENSUS_SCHEMA ||
       !corpusIdentitiesMatch(census.corpus, currentCorpusIdentity) ||
-      census.source.candidate_tree !== source.candidate_tree ||
+      !sourceIdentitiesMatchForTiming(census.source, source) ||
       JSON.stringify(census.systems) !== JSON.stringify(tools.map((tool) => tool.system)) ||
       canonicalDigest(census.tools) !== canonicalDigest(tools) ||
       !census.summary.agreement || !census.summary.coverage_complete) {
@@ -1482,6 +1990,13 @@ async function runTiming(corpus, census, tools, source, options) {
 
 async function main(argv = process.argv.slice(2)) {
   const options = parseArguments(argv);
+  options.executionEpoch = sha256([
+    process.pid,
+    Date.now(),
+    process.hrtime.bigint(),
+    Math.random(),
+    os.hostname(),
+  ].join(":"));
   const corpus = loadFrozenSurveyCorpus(options.corpus, options.assetDir);
   const source = sourceIdentity(options.allowDirty);
   const tools = toolPlan(options);
@@ -1495,14 +2010,18 @@ async function main(argv = process.argv.slice(2)) {
     systems: tools,
     cpu: options.cpu,
     census_execution: {
-      scheduler: "static-shard-modulo-cpu-list-v1",
+      scheduler: "dynamic-next-shard-on-idle-cpu-list-v1",
       direct_cpus: options.censusCpus,
       external_cpu: options.cpu,
-      direct_partition: DIRECT_CENSUS_PARTITION,
-      direct_fields_per_shard: DIRECT_CENSUS_FIELDS_PER_SHARD,
-      direct_shard_count: directCensusShardRecords(corpus).length,
-      max_live_processes_per_cpu: 1,
+      direct_partitions: DIRECT_CENSUS_PARTITIONS,
+      max_live_direct_processes_per_cpu: 1,
       timing_authority: "none-census-is-non-authoritative",
+      checkpointing: {
+        schema: CENSUS_PARTS_SCHEMA,
+        enabled: options.censusPartsEnabled,
+        scope: "verified-sagejs-singletons-only",
+        parts_dir: options.censusPartsDir,
+      },
     },
     thread_environment: THREAD_ENV,
     boundaries: options.boundaries,
@@ -1511,7 +2030,7 @@ async function main(argv = process.argv.slice(2)) {
     fields_per_shard: 50,
   };
   if (options.dryRun) {
-    fs.writeFileSync(options.output, canonicalJson(plan));
+    writeJsonAtomic(options.output, plan);
     console.log(canonicalJson(plan));
     return;
   }
@@ -1524,7 +2043,7 @@ async function main(argv = process.argv.slice(2)) {
       source,
       options,
     );
-  fs.writeFileSync(options.output, canonicalJson(evidence));
+  writeJsonAtomic(options.output, evidence);
   console.log(`${options.output}: ${evidence.schema}`);
 }
 
@@ -1536,8 +2055,8 @@ if (require.main === module) {
 }
 
 module.exports = {
-  DIRECT_CENSUS_FIELDS_PER_SHARD,
-  DIRECT_CENSUS_PARTITION,
+  CENSUS_PARTS_SCHEMA,
+  DIRECT_CENSUS_PARTITIONS,
   MINIMUM_ROOT_NS,
   READY_MARKER,
   RESPONSE_MARKER,
@@ -1545,7 +2064,10 @@ module.exports = {
   THREAD_ENV,
   combineCensus,
   censusBatchPlan,
+  censusPartFilename,
+  censusPartKey,
   directCensusShardRecords,
+  externalCensusProgramDigest,
   corpusIdentitiesMatch,
   corpusIdentity,
   interpretAdapterProcessResult,
@@ -1562,16 +2084,21 @@ module.exports = {
   protocolRequest,
   quantile,
   recordLabelsDigest,
+  readCensusPart,
   runFreshProcess,
   runBoundedCensusBatches,
+  runCensusBatchWithCheckpoint,
   sageCensusSource,
   sageTimingSource,
   shardRecords,
   systemOrder,
   timingMetrics,
   summarizeValues,
+  validateCensusPart,
+  validateCheckpointObservation,
   deterministicBootstrap,
   selectFrontierCandidate,
+  sourceIdentitiesMatchForTiming,
   toolPlan,
   runtimeClosureDigest,
   validateCensusProcessTopology,
