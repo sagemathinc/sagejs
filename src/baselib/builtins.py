@@ -5330,10 +5330,16 @@ def ρσ_resolve_module_name(
     idioms such as `try: set; except NameError: ...`.
     """
     if module_namespace is not None and _builtins_has_member(module_namespace, name):
-        # A present-but-undefined live cell is a deleted/uninitialized Python
-        # module binding. Return it so the surrounding unbound check raises
-        # NameError instead of accidentally exposing a same-named JS host.
-        return _builtins_get_member(module_namespace, name)
+        module_value = _builtins_get_member(module_namespace, name)
+        if module_value is not runtime.undefined:
+            return module_value
+        # Reusable cells expose lexical variables through accessors before
+        # executing the cell body.  An undefined accessor is therefore the
+        # representation of a missing module-dictionary entry, not a Python
+        # binding which shadows builtins.  Match CPython's module LOAD_NAME:
+        # an annotated-but-unassigned, not-yet-assigned, or deleted module
+        # name falls through to builtins.  This is what makes both
+        # ``len = len([1])`` and Sage's ``i = CC(i)`` valid at top level.
     if value is not runtime.undefined:
         return value
     if _builtins_has_member(module_builtins, name):
