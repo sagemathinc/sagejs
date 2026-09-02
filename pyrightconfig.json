@@ -191,6 +191,7 @@
     "src/baselib/interacts.py",
     "src/lib/sagejs/interacts/__init__.py",
     "src/lib/sagejs/interacts/controls.py",
+    "src/lib/sagejs/interacts/display.py",
     "src/lib/sagejs/interacts/interact.py",
     "src/lib/sagejs/interacts/widgets.py",
     "src/lib/sage/interacts/__init__.py",

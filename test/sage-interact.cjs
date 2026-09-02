@@ -105,3 +105,33 @@ test("Sage @interact renders and responds to frontend state updates", async (t) 
     "(25, 5)",
   );
 });
+
+test("Sage html and pretty_print publish compatible rich output", async (t) => {
+  const session = await createSage({ mode: "sage" });
+  t.after(() => session.close());
+
+  const evaluated = await session.evaluate(
+    [
+      "heading = html('<h2>Area $x^2$</h2>')",
+      "assert type(heading).__name__ == 'HtmlFragment'",
+      "assert r'\\(x^2\\)' in heading",
+      "pretty_print(heading)",
+      "pretty_print(x^2)",
+    ].join("\n"),
+    { parentId: "sage-pretty-print" },
+  );
+  const htmlEvent = evaluated.events.find(
+    (event) => event.type === "display_data" && event.data?.["text/html"],
+  );
+  assert.ok(htmlEvent, "pretty_print(html(...)) did not publish HTML");
+  assert.match(htmlEvent.data["text/html"], /<h2>Area \\\(x\^2\\\)<\/h2>/);
+  assert.ok(
+    evaluated.events.some(
+      (event) => event.type === "display_data" && event.data?.["text/latex"],
+    ),
+    "pretty_print(symbolic expression) did not publish LaTeX",
+  );
+
+  const direct = await session.evaluate("html(2/3)");
+  assert.match(direct.mimeBundle?.data?.["text/html"] ?? "", /frac\{2\}\{3\}/);
+});

@@ -1,6 +1,97 @@
 import { assertDisplayWithinLimit } from "./resource-policy.mjs";
 
 const WIDGET_VIEW_MIME = "application/vnd.jupyter.widget-view+json";
+const BLOCKED_HTML_ELEMENTS = new Set([
+  "BASE", "BUTTON", "EMBED", "FORM", "IFRAME", "INPUT", "LINK", "META",
+  "OBJECT", "OPTION", "SCRIPT", "SELECT", "STYLE", "SVG", "TEXTAREA",
+]);
+
+function safeHtmlUrl(value, attribute) {
+  const source = String(value ?? "").trim();
+  if (!source || source.startsWith("#")) return true;
+  if (attribute === "src" && /^data:image\/(?:png|jpeg|gif|webp);base64,/i.test(source)) {
+    return true;
+  }
+  try {
+    const protocol = new URL(source, "https://sagejs.invalid/").protocol;
+    return ["http:", "https:", "mailto:"].includes(protocol);
+  } catch {
+    return false;
+  }
+}
+
+function renderEmbeddedMath(root) {
+  const katex = globalThis.katex;
+  const document = root.ownerDocument;
+  if (!katex?.render || !document?.createTreeWalker) return;
+  const showText = document.defaultView?.NodeFilter?.SHOW_TEXT ?? 4;
+  const walker = document.createTreeWalker(root, showText);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  const pattern = /\\\[([\s\S]*?)\\\]|\\\(([\s\S]*?)\\\)|\$\$([\s\S]*?)\$\$|\$([^$\n]+?)\$/g;
+  for (const node of nodes) {
+    const parent = node.parentElement;
+    if (!parent || parent.closest("pre, code, .katex")) continue;
+    const source = node.nodeValue ?? "";
+    pattern.lastIndex = 0;
+    if (!pattern.test(source)) continue;
+    pattern.lastIndex = 0;
+    const fragment = document.createDocumentFragment();
+    let offset = 0;
+    for (const match of source.matchAll(pattern)) {
+      fragment.append(document.createTextNode(source.slice(offset, match.index)));
+      const destination = document.createElement("span");
+      const displayMode = match[1] !== undefined || match[3] !== undefined;
+      const formula = match[1] ?? match[2] ?? match[3] ?? match[4] ?? "";
+      try {
+        katex.render(formula, destination, {
+          displayMode,
+          throwOnError: false,
+          strict: "ignore",
+          trust: false,
+        });
+      } catch {
+        destination.textContent = match[0];
+      }
+      fragment.append(destination);
+      offset = match.index + match[0].length;
+    }
+    fragment.append(document.createTextNode(source.slice(offset)));
+    node.replaceWith(fragment);
+  }
+}
+
+function renderSanitizedHtml(destination, source) {
+  const document = destination.ownerDocument;
+  const template = document.createElement("template");
+  template.innerHTML = String(source ?? "");
+  for (const element of [...template.content.querySelectorAll("*")]) {
+    if (BLOCKED_HTML_ELEMENTS.has(element.tagName)) {
+      element.replaceWith(document.createTextNode(element.textContent ?? ""));
+      continue;
+    }
+    for (const attribute of [...element.attributes]) {
+      const name = attribute.name.toLowerCase();
+      if (
+        name.startsWith("on") ||
+        name === "style" ||
+        name === "srcdoc" ||
+        ((name === "href" || name === "src") && !safeHtmlUrl(attribute.value, name))
+      ) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+    if (element.tagName === "A") {
+      element.setAttribute("rel", "noopener noreferrer");
+      element.setAttribute("target", "_blank");
+    }
+  }
+  const wrapper = document.createElement("div");
+  wrapper.className = "html-output";
+  wrapper.append(template.content);
+  destination.append(wrapper);
+  renderEmbeddedMath(wrapper);
+}
 
 /** Normalize a final evaluation result into the same bundle used by display(). */
 export function evaluationResultBundle(result, { typesetMath = true } = {}) {
@@ -54,6 +145,11 @@ export function createOutputRenderer({
       image.alt = String(metadata?.[mime]?.alt ?? "Generated output");
       image.src = "data:" + mime + ";base64," + String(data[mime]);
       destination.append(image);
+      return;
+    }
+    if ("text/html" in data) {
+      displayWithinLimit({ mime: "text/html", data: data["text/html"] });
+      renderSanitizedHtml(destination, data["text/html"]);
       return;
     }
     const text = "text/plain" in data

@@ -10,6 +10,7 @@ from sagejs.interacts.controls import (
     slider,
     text_control,
 )
+from sagejs.interacts.display import HtmlFragment, html, pretty_print
 from sagejs.interacts.interact import interact, sage_interactive
 
 __all__ = [
@@ -17,7 +18,10 @@ __all__ = [
     "color_selector",
     "input_box",
     "input_grid",
+    "HtmlFragment",
+    "html",
     "interact",
+    "pretty_print",
     "range_slider",
     "sage_interactive",
     "selector",

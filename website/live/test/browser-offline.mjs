@@ -252,6 +252,22 @@ try {
     "pure typeset results should not duplicate the plain representation",
   );
   await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    "pretty_print(html('<h2 id=\\\"sage-html-heading\\\">Area $x^2$</h2>' + " +
+      "'<script>globalThis.__sagejs_html_injection__ = true</script>'))",
+    "document.querySelector('#output #sage-html-heading .katex') !== null",
+  );
+  assert.equal(
+    await evaluate("globalThis.__sagejs_html_injection__"),
+    undefined,
+    "HTML rich output must not execute user-provided scripts",
+  );
+  assert.equal(
+    await evaluate("document.querySelector('#output script')"),
+    null,
+    "HTML rich output must remove executable elements",
+  );
+  await evaluate("document.querySelector('#clear-output').click()");
   await evaluate("document.querySelector('#typeset-math').checked = false");
   await runSource(
     "2/3",
