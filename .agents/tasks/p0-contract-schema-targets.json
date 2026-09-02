@@ -52,10 +52,67 @@
     "pnpm test:numerics",
     "pnpm architecture:check"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/numerics/contracts/common-contracts.cjs test/numerics/capability-facade.cjs test/numerics/approximation/approximation-laboratory.test.cjs test/numerics/integration/test.cjs test/numerics/linear_algebra/linear-algebra.cjs test/numerics/ode/ode-laboratory.cjs test/numerics/spectral/spectral-laboratory.cjs test/numerics/statistics/test.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.828,
+      "started_at": "2026-09-02T21:00:17.927Z",
+      "commit": "bfd35af914af128d9abfca934db648d4492ae9fc",
+      "workspace_fingerprint": "13f0a01551ba7d4c1c34b4b536bb2f82fb665958eff732cf7231bd03afa72dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/contracts/common-contracts.cjs test/numerics/capability-facade.cjs test/numerics/approximation/approximation-laboratory.test.cjs test/numerics/integration/test.cjs test/numerics/linear_algebra/linear-algebra.cjs test/numerics/ode/ode-laboratory.cjs test/numerics/spectral/spectral-laboratory.cjs test/numerics/statistics/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 78.712,
+      "started_at": "2026-09-02T21:10:08.217Z",
+      "commit": "bfd35af914af128d9abfca934db648d4492ae9fc",
+      "workspace_fingerprint": "13f0a01551ba7d4c1c34b4b536bb2f82fb665958eff732cf7231bd03afa72dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.382,
+      "started_at": "2026-09-02T21:11:31.072Z",
+      "commit": "bfd35af914af128d9abfca934db648d4492ae9fc",
+      "workspace_fingerprint": "13f0a01551ba7d4c1c34b4b536bb2f82fb665958eff732cf7231bd03afa72dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.728,
+      "started_at": "2026-09-02T21:12:28.806Z",
+      "commit": "bfd35af914af128d9abfca934db648d4492ae9fc",
+      "workspace_fingerprint": "13f0a01551ba7d4c1c34b4b536bb2f82fb665958eff732cf7231bd03afa72dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:packages",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.679,
+      "started_at": "2026-09-02T21:12:32.704Z",
+      "commit": "bfd35af914af128d9abfca934db648d4492ae9fc",
+      "workspace_fingerprint": "13f0a01551ba7d4c1c34b4b536bb2f82fb665958eff732cf7231bd03afa72dad",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added an enforceable NumericalDiagnostic schema referenced by plans, results, and traces; replaced shape-only assertions with strict Draft 2020-12 validation of real and malformed records; normalized all 49 implemented public operations to nonempty implementation targets while keeping receipt qualification separate; and added ten actionable, methodless unsupported product-ledger records.",
+    "risks": [
+      "Implementation targets express supported code paths, not four-platform receipt qualification; receipt_qualification intentionally remains empty until P8 evidence is bound.",
+      "The aggregate architecture check requires regenerating the global optimizer-opportunity manifest after any Python source change; that generated narrative artifact is integration-owned and deliberately not edited in this lane."
+    ],
+    "next_steps": [
+      "Cherry-pick the implementation commit into the integration branch.",
+      "Regenerate the optimizer-opportunity artifacts on the integrated source tree, then run the aggregate architecture and numerical suites there."
+    ]
   }
 }
