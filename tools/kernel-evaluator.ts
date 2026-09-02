@@ -1257,6 +1257,7 @@ export function createKernelEvaluator({
     documentation(): DocumentationCatalog {
       return documentationCatalogFromRegistry(
         Reflect.get(globalThis, "__sagejs_doc_registry__"),
+        { includeNumericalFlagships: true },
       );
     },
 

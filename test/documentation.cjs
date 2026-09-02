@@ -160,3 +160,14 @@ test("DocSpec accepts an explicit signature for generated reference data", () =>
   ]);
   assert.equal(catalog.entries[0].signature, "order() -> int");
 });
+
+test("DocSpec adds lazy numerical flagships only when explicitly requested", () => {
+  const isolated = documentationCatalogFromRegistry([]);
+  assert.deepEqual(isolated.entries, []);
+
+  const publicCatalog = documentationCatalogFromRegistry([], {
+    includeNumericalFlagships: true,
+  });
+  assert.ok(publicCatalog.entries.some((entry) => entry.name === "curve_fit"));
+  assert.ok(publicCatalog.entries.some((entry) => entry.name === "find_root"));
+});
