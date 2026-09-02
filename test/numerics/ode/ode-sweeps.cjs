@@ -56,7 +56,7 @@ from sagejs.numerics.ode import (
     plan_ode_parameter_sweep,
     run_ode_parameter_sweep,
 )
-from sagejs.numerics.sweeps import SweepBudget
+from sagejs.numerics.sweeps import SweepBudget, SweepConcurrencyUnsupportedError
 
 IS_SAGEJS = sys.version == "Sage.js"
 
@@ -109,6 +109,26 @@ assert planned.item_count == 3
 assert planned.requested_concurrency == 3
 assert planned.effective_concurrency == (1 if IS_SAGEJS else 3)
 assert all(planned.quota(index)["evaluations"] >= 2 for index in range(3))
+
+if IS_SAGEJS:
+    try:
+        plan_ode_parameter_sweep(
+            parameters,
+            budget=budget,
+            concurrency=3,
+            concurrency_fallback="error",
+        )
+        raise AssertionError("unsupported Sage.js concurrency must fail closed")
+    except SweepConcurrencyUnsupportedError:
+        pass
+else:
+    strict_concurrency = plan_ode_parameter_sweep(
+        parameters,
+        budget=budget,
+        concurrency=3,
+        concurrency_fallback="error",
+    )
+    assert strict_concurrency.effective_concurrency == 3
 
 sequential = run_ode_parameter_sweep(
     parameters,

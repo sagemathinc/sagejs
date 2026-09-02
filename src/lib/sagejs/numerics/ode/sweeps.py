@@ -132,6 +132,7 @@ def plan_ode_parameter_sweep(
     problem_factory_record: Mapping[str, Any] | None = None,
     executor_record: Mapping[str, Any] | None = None,
     has_batch_executor: bool = False,
+    concurrency_fallback: str = "sequential",
 ) -> SweepPlan:
     """Return a zero-callback ODE sweep dispatch plan."""
     plan = plan_parameter_sweep(
@@ -144,6 +145,7 @@ def plan_ode_parameter_sweep(
         callback_record=_factory_record(problem_factory_record),
         executor_record=executor_record,
         has_batch_executor=has_batch_executor,
+        concurrency_fallback=concurrency_fallback,
     )
     for index in range(plan.item_count):
         if plan.quota(index)["evaluations"] < 2:
@@ -167,6 +169,7 @@ def run_ode_parameter_sweep(
     problem_factory_record: Mapping[str, Any] | None = None,
     executor_record: Mapping[str, Any] | None = None,
     cancel_record: Mapping[str, Any] | None = None,
+    concurrency_fallback: str = "sequential",
 ) -> SweepResult:
     """Construct, solve, and account for one `OdeProblem` per parameter.
 
@@ -188,6 +191,7 @@ def run_ode_parameter_sweep(
         problem_factory_record=problem_factory_record,
         executor_record=executor_record,
         has_batch_executor=batch_executor is not None,
+        concurrency_fallback=concurrency_fallback,
     )
 
     def evaluate(parameter: JSONValue, context: SweepItemContext) -> JSONValue:
@@ -266,6 +270,7 @@ def run_ode_parameter_sweep(
         callback_record=_factory_record(problem_factory_record),
         executor_record=executor_record,
         cancel_record=cancel_record,
+        concurrency_fallback=concurrency_fallback,
     )
 
 
