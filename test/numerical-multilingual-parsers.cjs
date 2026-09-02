@@ -246,7 +246,7 @@ test("representative multilingual programs reach canonical runtime operations", 
     );
     assert.equal(
       matlabSweep.repr.replace(/\s+/g, ""),
-      "array([[1,4][9,16]])",
+      "array([[1.,4.][9.,16.]])",
     );
 
     await assert.rejects(
