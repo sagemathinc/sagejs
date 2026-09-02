@@ -133,6 +133,57 @@ Range = wolfram_range
 Table = table
 
 
+def call_named(
+    source_name: str,
+    emitted_name: str,
+    namespace: Any,
+    *arguments: Any,
+) -> Any:
+    """Call a live Wolfram symbol or report an explicit unsupported boundary."""
+
+    if emitted_name not in namespace:
+        raise UnsupportedFrontendError(
+            FrontendDiagnostic(
+                "unsupported_operation",
+                "unknown Wolfram function '" + source_name + "'",
+                language="wolfram",
+                details={
+                    "surface": "natural-parser",
+                    "source_name": source_name,
+                    "resolution": "unbound",
+                },
+            )
+        )
+    value = namespace[emitted_name]
+    if not callable(value):
+        raise TypeError("Wolfram function '" + source_name + "' is not callable")
+    return value(*arguments)
+
+
+def validate_callback_names(
+    function: Any, requirements_json: str, namespace: Any
+) -> Any:
+    """Validate dynamic callback dependencies before a solver can catch them."""
+
+    import json
+
+    for source_name, emitted_name in json.loads(requirements_json):
+        if emitted_name not in namespace:
+            raise UnsupportedFrontendError(
+                FrontendDiagnostic(
+                    "unsupported_operation",
+                    "unknown Wolfram function '" + source_name + "'",
+                    language="wolfram",
+                    details={
+                        "surface": "natural-parser",
+                        "source_name": source_name,
+                        "resolution": "unbound",
+                    },
+                )
+            )
+    return function
+
+
 class WolframFindRootResult:
     """Natural Wolfram rule display backed by a structured numerical result."""
 

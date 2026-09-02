@@ -66,10 +66,40 @@ test("MATLAB numerical syntax fails closed before unqualified runtime calls", as
       (error) => {
         assert.equal(error.name, "MatlabSyntaxError");
         assert.match(error.message, /numerical syntax is not supported/);
+        assert.equal(error.diagnostic.code, "unsupported_operation");
+        assert.equal(error.diagnostic.language, "matlab");
+        assert.equal(error.diagnostic.details.source_name, name);
+        assert.equal(error.diagnostic.details.surface, "natural-vendor-alias");
         return true;
       },
     );
   }
+
+  const unresolvedCall = frontend.lower("mystery([1 2 3])", {
+    captureResult: true,
+  });
+  assert.match(
+    unresolvedCall.source,
+    /_matlab\.call_or_index_named\("mystery", globals\(\)/,
+  );
+  assert.doesNotMatch(unresolvedCall.source, /call_or_index\(mystery/);
+
+  const unresolvedHandle = frontend.lower("@mystery", {
+    captureResult: true,
+  });
+  assert.match(
+    unresolvedHandle.source,
+    /_matlab\.named_handle\("mystery", globals\(\)\)/,
+  );
+
+  const unresolvedCallback = frontend.lower(
+    "fzero(@(x) mystery(x),[0 1])",
+    { captureResult: true },
+  );
+  assert.match(
+    unresolvedCallback.source,
+    /_matlab\.validate_callback_names\(\(lambda x: .*\), \["mystery"\], globals\(\)\)/,
+  );
 });
 
 test("Wolfram numerical heads lower only when argument semantics are preserved", async () => {
@@ -129,7 +159,7 @@ test("Wolfram numerical syntax fails closed outside qualified slices", async () 
     ],
     [
       "NIntegrate[Sin[x,1],{x,0,1}]",
-      "NIntegrate expressions require supported unary numerical functions",
+      "NIntegrate expressions require unary Sin",
     ],
     [
       "NIntegrate[x,{x,0,1.*^9999}]",
@@ -147,11 +177,33 @@ test("Wolfram numerical syntax fails closed outside qualified slices", async () 
         assert.match(error.message, new RegExp(diagnostic.replace(/[{}]/g, "\\$&")));
         assert.equal(error.line, 1);
         assert.ok(error.column >= 1);
+        if (/numerical syntax is not supported/.test(diagnostic)) {
+          assert.equal(error.diagnostic.code, "unsupported_operation");
+          assert.equal(error.diagnostic.language, "wolfram");
+          assert.equal(
+            error.diagnostic.details.surface,
+            "natural-vendor-alias",
+          );
+        }
         return true;
       },
       source,
     );
   }
+  const unresolved = frontend.lower("Mystery[1]", { captureResult: true });
+  assert.match(
+    unresolved.source,
+    /_wolfram\.call_named\("Mystery", "Mystery", globals\(\), 1\)/,
+  );
+  const unresolvedRoot = frontend.lower(
+    "FindRoot[Mystery[x],{x,0,1}]",
+    { captureResult: true },
+  );
+  assert.match(
+    unresolvedRoot.source,
+    /_wolfram\.validate_callback_names\(\(lambda x:/,
+  );
+  assert.match(unresolvedRoot.source, /Mystery/);
 });
 
 test("representative multilingual programs reach canonical runtime operations", {
@@ -159,6 +211,51 @@ test("representative multilingual programs reach canonical runtime operations", 
 }, async () => {
   const session = await createSage();
   try {
+    const sageRoot = await session.evaluate("(x^2-2).find_root(1,2)");
+    closeTo(Number(sageRoot.repr), Math.sqrt(2));
+
+    const pythonRoot = await session.evaluate(
+      [
+        "from sagejs.numerics.roots import find_root",
+        "find_root(lambda x: x*x - 2.0, 1.0, 2.0).value",
+      ].join("\n"),
+      { language: "python" },
+    );
+    closeTo(Number(pythonRoot.repr), Math.sqrt(2));
+
+    const matlabUserFunction = await session.evaluate(
+      "square = @(x) x^2; square(3)",
+      { language: "matlab" },
+    );
+    closeTo(Number(matlabUserFunction.repr), 9);
+
+    const wolframUserFunction = await session.evaluate(
+      "SageJSSquare[x_] := x^2\nSageJSSquare[3]",
+      { language: "wolfram" },
+    );
+    closeTo(Number(wolframUserFunction.repr), 9);
+
+    await assert.rejects(
+      session.evaluate("mystery([1 2 3])", { language: "matlab" }),
+      /unknown MATLAB call or index target 'mystery'.*unsupported_operation/,
+    );
+    await assert.rejects(
+      session.evaluate("fzero(@(x) mystery(x),[0 1])", {
+        language: "matlab",
+      }),
+      /unknown MATLAB callback function 'mystery'.*unsupported_operation/,
+    );
+    await assert.rejects(
+      session.evaluate("Mystery[1]", { language: "wolfram" }),
+      /unknown Wolfram function 'Mystery'.*unsupported_operation/,
+    );
+    await assert.rejects(
+      session.evaluate("FindRoot[Mystery[x],{x,0,1}]", {
+        language: "wolfram",
+      }),
+      /unknown Wolfram function 'Mystery'.*unsupported_operation/,
+    );
+
     const matlabSolve = await session.evaluate(
       "linsolve([3 1;1 2],[9;8])",
       { language: "matlab" },
@@ -266,6 +363,12 @@ test("representative multilingual programs reach canonical runtime operations", 
     );
     closeTo(Number(matlabIntegral.repr), 1 / 3);
 
+    const matlabRoot = await session.evaluate(
+      "fzero(@(x) x^2-2,[1 2])",
+      { language: "matlab" },
+    );
+    closeTo(Number(matlabRoot.repr), Math.sqrt(2));
+
     const wolframSolve = await session.evaluate(
       "LinearSolve[{{3,1},{1,2}},{9,8}]",
       { language: "wolfram" },
@@ -284,6 +387,22 @@ test("representative multilingual programs reach canonical runtime operations", 
       { language: "wolfram" },
     );
     closeTo(Number(wolframIntegral.repr), 1 / 3);
+
+    const wolframRoot = await session.evaluate(
+      "FindRoot[Cos[x]-x,{x,0,1}]",
+      { language: "wolfram" },
+    );
+    const rootMatch = wolframRoot.repr.match(/-> ([^}]+)/);
+    assert.ok(rootMatch, wolframRoot.repr);
+    closeTo(Number(rootMatch[1]), 0.7390851332151607);
+
+    const wolframDefinedRoot = await session.evaluate(
+      "SageJSObjective[x_] := Cos[x]-x\nFindRoot[SageJSObjective[x],{x,0,1}]",
+      { language: "wolfram" },
+    );
+    const definedRootMatch = wolframDefinedRoot.repr.match(/-> ([^}]+)/);
+    assert.ok(definedRootMatch, wolframDefinedRoot.repr);
+    closeTo(Number(definedRootMatch[1]), 0.7390851332151607);
 
   } finally {
     await session.close();

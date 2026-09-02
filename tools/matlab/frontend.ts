@@ -6,7 +6,9 @@ import {
   SourceSpan,
 } from "../foreign/tree-sitter";
 import {
+  foreignFrontendDiagnostic,
   ForeignFrontend,
+  ForeignFrontendDiagnostic,
   ForeignLowering,
   ForeignLowerOptions,
 } from "../foreign/types";
@@ -27,17 +29,25 @@ export class MatlabSyntaxError extends SyntaxError {
   readonly line: number;
   readonly column: number;
   readonly incomplete: boolean;
+  readonly diagnostic: ForeignFrontendDiagnostic;
 
   constructor(
     message: string,
     span: SourceSpan,
     incomplete = false,
+    diagnostic?: ForeignFrontendDiagnostic,
   ) {
     super(message);
     this.name = "MatlabSyntaxError";
     this.line = span.start.line;
     this.column = span.start.column;
     this.incomplete = incomplete;
+    this.diagnostic = diagnostic ?? foreignFrontendDiagnostic(
+      "matlab",
+      "parse_failure",
+      message,
+      { source_span: span },
+    );
   }
 
   override toString(): string {
@@ -300,6 +310,8 @@ class AstBuilder {
 }
 
 class SageLowerer {
+  private callbackRequirements: Set<string> | undefined;
+  private localNames = new Set<string>();
   private readonly directFunctions: Record<string, string> = {
     arrayfun: "_matlab.arrayfun",
     class: "_matlab.class_name",
@@ -360,6 +372,61 @@ class SageLowerer {
     "ttest",
     "ttest2",
   ]);
+
+  private unsupportedNumerical(
+    name: string,
+    span: SourceSpan,
+    surface: "call" | "handle",
+  ): never {
+    const message = surface === "call"
+      ? `${name} numerical syntax is not supported by the Sage.js MATLAB frontend`
+      : `${name} numerical handles are not supported by the Sage.js MATLAB frontend`;
+    throw new MatlabSyntaxError(
+      message,
+      span,
+      false,
+      foreignFrontendDiagnostic(
+        "matlab",
+        "unsupported_operation",
+        message,
+        {
+          surface: "natural-vendor-alias",
+          source_name: name,
+          source_span: span,
+        },
+      ),
+    );
+  }
+
+  private withLocalNames<T>(names: string[], lower: () => T): T {
+    const previous = this.localNames;
+    this.localNames = new Set([...previous, ...names]);
+    try {
+      return lower();
+    } finally {
+      this.localNames = previous;
+    }
+  }
+
+  private callback(expression: MatlabExpression & { kind: "lambda" }): string {
+    const previousRequirements = this.callbackRequirements;
+    const requirements = new Set<string>();
+    this.callbackRequirements = requirements;
+    let body: string;
+    try {
+      body = this.withLocalNames(
+        expression.parameters,
+        () => this.expression(expression.body),
+      );
+    } finally {
+      this.callbackRequirements = previousRequirements;
+    }
+    const callback = `(lambda ${expression.parameters.join(", ")}: ${body})`;
+    if (requirements.size === 0) return callback;
+    return `_matlab.validate_callback_names(${callback}, ${
+      JSON.stringify([...requirements])
+    }, globals())`;
+  }
   program(program: MatlabProgram, captureResult = false): string {
     const lastIndex = program.body.length - 1;
     const lines = [
@@ -466,10 +533,7 @@ class SageLowerer {
     }
     const name = expression.callee.name;
     if (this.unsupportedNumericalFunctions.has(name)) {
-      throw new MatlabSyntaxError(
-        `${name} numerical syntax is not supported by the Sage.js MATLAB frontend`,
-        expression.span,
-      );
+      return this.unsupportedNumerical(name, expression.span, "call");
     }
     const direct = this.directFunctions[name];
     if (direct) {
@@ -477,7 +541,16 @@ class SageLowerer {
         expression.arguments.map((argument) => this.expression(argument)).join(", ")
       })`;
     }
-    return `_matlab.call_or_index(${name}${
+    if (this.localNames.has(name)) {
+      return `_matlab.call_or_index(${name}${
+        expression.arguments.length ? ", " : ""
+      }${
+        expression.arguments.map((argument) => this.expression(argument))
+          .join(", ")
+      })`;
+    }
+    this.callbackRequirements?.add(name);
+    return `_matlab.call_or_index_named(${JSON.stringify(name)}, globals()${
       expression.arguments.length ? ", " : ""
     }${
       expression.arguments.map((argument) => this.expression(argument))
@@ -582,18 +655,17 @@ class SageLowerer {
       case "binary":
         return this.binary(expression);
       case "lambda":
-        return `(lambda ${expression.parameters.join(", ")}: ${
-          this.expression(expression.body)
-        })`;
+        return this.callback(expression);
       case "handle": {
         if (this.unsupportedNumericalFunctions.has(expression.name)) {
-          throw new MatlabSyntaxError(
-            `${expression.name} numerical handles are not supported by the Sage.js MATLAB frontend`,
+          return this.unsupportedNumerical(
+            expression.name,
             expression.span,
+            "handle",
           );
         }
         const direct = this.directFunctions[expression.name];
-        return direct ?? expression.name;
+        return direct ?? `_matlab.named_handle(${JSON.stringify(expression.name)}, globals())`;
       }
     }
   }

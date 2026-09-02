@@ -712,6 +712,48 @@ def call_or_index(value: Any, *items: Any) -> Any:
     return _select_nested(value.tolist(), selectors)
 
 
+def _named_value(name: str, namespace: Any, surface: str) -> Any:
+    """Resolve a live MATLAB name or report the unsupported boundary."""
+
+    if name not in namespace:
+        raise UnsupportedFrontendError(
+            FrontendDiagnostic(
+                "unsupported_operation",
+                "unknown MATLAB " + surface + " '" + name + "'",
+                language="matlab",
+                details={
+                    "surface": "natural-parser",
+                    "source_name": name,
+                    "resolution": "unbound",
+                },
+            )
+        )
+    return namespace[name]
+
+
+def call_or_index_named(name: str, namespace: Any, *items: Any) -> Any:
+    """Call or index a live name, failing closed when it is unresolved."""
+
+    return call_or_index(_named_value(name, namespace, "call or index target"), *items)
+
+
+def named_handle(name: str, namespace: Any) -> Any:
+    """Return a live function handle or a structured unsupported diagnostic."""
+
+    value = _named_value(name, namespace, "function handle")
+    if not callable(value):
+        raise TypeError("MATLAB function handle '" + name + "' is not callable")
+    return value
+
+
+def validate_callback_names(function: Any, names: Any, namespace: Any) -> Any:
+    """Validate dynamic callback dependencies before a solver can catch them."""
+
+    for name in names:
+        _named_value(name, namespace, "callback function")
+    return function
+
+
 def set_index(
     value: Any,
     new_value: Any,

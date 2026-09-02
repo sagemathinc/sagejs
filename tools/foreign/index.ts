@@ -9,7 +9,11 @@ import {
   ForeignSyntaxError,
 } from "./types";
 
-export type { ForeignFrontend, ForeignLanguage } from "./types";
+export type {
+  ForeignFrontend,
+  ForeignFrontendDiagnostic,
+  ForeignLanguage,
+} from "./types";
 
 export interface LanguageFlags {
   magma?: boolean;
