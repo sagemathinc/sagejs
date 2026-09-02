@@ -522,7 +522,7 @@ function parseGpCensus(stdout, records) {
     const [label, discriminant, classNumber, invariantsText] = line.slice(GP_CENSUS_MARKER.length).split("|");
     byLabel.set(label, {
       label, status: "ok", discriminant, class_number: classNumber,
-      class_group_invariants: JSON.parse(invariantsText).map(String),
+      class_group_invariants: normalizePariInvariants(JSON.parse(invariantsText)),
       proof_status: "exact-relations-conditional-grh",
     });
   }
@@ -535,6 +535,19 @@ function parseGpCensus(stdout, records) {
   };
 }
 
+function normalizePariInvariants(values) {
+  if (!Array.isArray(values)) throw new Error("PARI class-group invariants are malformed");
+  const normalized = values.map(String).reverse();
+  let previous = 1n;
+  for (const value of normalized) {
+    if (!/^[1-9][0-9]*$/.test(value) || BigInt(value) < 2n || BigInt(value) % previous !== 0n) {
+      throw new Error("PARI class-group invariants are not divisibility ordered");
+    }
+    previous = BigInt(value);
+  }
+  return normalized;
+}
+
 function parseGpTiming(stdout, corpus, boundaries, round) {
   const events = [];
   for (const line of stdout.split(/\r?\n/)) {
@@ -542,7 +555,8 @@ function parseGpTiming(stdout, corpus, boundaries, round) {
     const [boundary, shardText, iterationsText, rootNs, answersText, perFieldText] =
       line.slice(GP_TIMING_MARKER.length).split("|");
     const answers = JSON.parse(answersText).map(([classNumber, invariants]) => ({
-      class_number: String(classNumber), class_group_invariants: invariants.map(String),
+      class_number: String(classNumber),
+      class_group_invariants: normalizePariInvariants(invariants),
     }));
     const iterations = Number(iterationsText);
     events.push({
@@ -690,6 +704,10 @@ function responseFromStdout(stdout) {
   return JSON.parse(line.slice(RESPONSE_MARKER.length));
 }
 
+function recordLabelsDigest(records) {
+  return sha256(`${records.map((record) => record.label).join("\n")}\n`);
+}
+
 function validateIdentityArtifact(artifact, label) {
   if (!artifact || typeof artifact !== "object" || Array.isArray(artifact) ||
       typeof artifact.role !== "string" || artifact.role.length === 0 ||
@@ -755,6 +773,54 @@ function validateRuntimeIdentity(identity, system, expectedProgramSha256 = null)
   return identity;
 }
 
+function interpretAdapterProcessResult(
+  tool,
+  corpus,
+  mode,
+  options,
+  processResult,
+  expectedProgramSha256,
+) {
+  let response;
+  let runtimeIdentity = null;
+  let responseValidationError = null;
+  try {
+    if (processResult.status !== "ok") {
+      response = {
+        schema: ADAPTER_SCHEMA, mode, system: tool.system, status: processResult.status,
+        proof: "conditional-grh", payload: null,
+      };
+    } else if (tool.system === "pari" && tool.adapter_kind !== "json-protocol") {
+      response = mode === "census" ? parseGpCensus(processResult.stdout, corpus.records) :
+        parseGpTiming(processResult.stdout, corpus, options.boundaries, options.round);
+    } else response = responseFromStdout(processResult.stdout);
+    validateAdapterResponse(response, { mode, system: tool.system });
+    runtimeIdentity = response.status === "ok" && tool.adapter_kind === "json-protocol"
+      ? validateRuntimeIdentity(
+        response.payload?.runtime_identity,
+        tool.system,
+        expectedProgramSha256,
+      )
+      : null;
+    if (processResult.status === "ok" && processResult.ready === null) {
+      throw new Error(`${tool.system} adapter never emitted the ready marker`);
+    }
+  } catch (error) {
+    // A malformed direct census shard is a measured failed 50-field region, not
+    // grounds for discarding evidence from every other independent shard.
+    // External adapters authenticate one whole-corpus runtime closure, and timing
+    // responses are retained evidence roots, so both continue to fail closed.
+    if (mode !== "census" || tool.adapter_kind === "json-protocol") throw error;
+    responseValidationError = error instanceof Error ? error.message : String(error);
+    response = {
+      schema: ADAPTER_SCHEMA, mode, system: tool.system, status: "error",
+      proof: "conditional-grh", payload: null,
+    };
+    validateAdapterResponse(response, { mode, system: tool.system });
+  }
+  return { response, runtimeIdentity, responseValidationError };
+}
+
 async function invokeAdapter(tool, corpus, mode, options = {}) {
   if (tool.status !== "available") {
     return { response: {
@@ -787,32 +853,19 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
     throw new Error(`${tool.system} requires --adapter ${tool.system}=PATH`);
   }
   const processResult = await runFreshProcess(pinnedSpec(tool.executable, args, input, options));
-  let response;
-  if (processResult.status !== "ok") {
-    response = {
-      schema: ADAPTER_SCHEMA, mode, system: tool.system, status: processResult.status,
-      proof: "conditional-grh", payload: null,
-    };
-  } else if (tool.system === "pari" && tool.adapter_kind !== "json-protocol") {
-    response = mode === "census" ? parseGpCensus(processResult.stdout, corpus.records) :
-      parseGpTiming(processResult.stdout, corpus, options.boundaries, options.round);
-  } else response = responseFromStdout(processResult.stdout);
-  validateAdapterResponse(response, { mode, system: tool.system });
-  const runtimeIdentity = response.status === "ok" && tool.adapter_kind === "json-protocol"
-    ? validateRuntimeIdentity(
-      response.payload?.runtime_identity,
-      tool.system,
-      expectedProgramSha256,
-    )
-    : null;
-  if (processResult.status === "ok" && processResult.ready === null) {
-    throw new Error(`${tool.system} adapter never emitted the ready marker`);
-  }
+  const { response, runtimeIdentity, responseValidationError } = interpretAdapterProcessResult(
+    tool, corpus, mode, options, processResult, expectedProgramSha256,
+  );
   const processEvidence = {
     system: tool.system,
     mode,
     round: options.round ?? null,
+    census_shard: mode === "census" ? options.censusShard ?? null : null,
+    record_labels_sha256: mode === "census"
+      ? recordLabelsDigest(corpus.records)
+      : null,
     status: processResult.status,
+    response_validation_error: responseValidationError,
     launch_to_ready_nanoseconds: processResult.ready === null ? null :
       (processResult.ready - processResult.launched).toString(),
     process_wall_nanoseconds: (processResult.ended - processResult.launched).toString(),
@@ -829,6 +882,105 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
       : runtimeClosureDigest(runtimeIdentity),
   };
   return { response, process: processEvidence };
+}
+
+function censusBatchPlan(corpus, tool) {
+  if (tool.status !== "available" || tool.adapter_kind === "json-protocol") {
+    return [{ shard: null, corpus }];
+  }
+  return shardRecords(corpus).map((records, shard) => ({
+    shard,
+    corpus: { ...corpus, records },
+  }));
+}
+
+function mergeCensusInvocations(tool, corpus, entries) {
+  const records = [];
+  for (const entry of entries) {
+    const expected = entry.batch.corpus.records;
+    const response = entry.invocation.response;
+    if (response.status === "ok") {
+      if (!response.payload || !Array.isArray(response.payload.records) ||
+          response.payload.records.length !== expected.length) {
+        throw new Error(`${tool.system} census shard emitted the wrong record count`);
+      }
+      records.push(...response.payload.records);
+      continue;
+    }
+    const status = response.status === "unavailable" ? "comparator-unavailable" : response.status;
+    records.push(...expected.map((record) => ({
+      label: record.label,
+      status,
+      reason: `${tool.system} census process ${response.status}`,
+    })));
+  }
+  if (records.length !== corpus.records.length) {
+    throw new Error(`${tool.system} census shards do not cover the frozen corpus`);
+  }
+  return {
+    schema: ADAPTER_SCHEMA,
+    mode: "census",
+    system: tool.system,
+    status: "ok",
+    proof: "conditional-grh",
+    payload: { records },
+  };
+}
+
+function validateCensusProcessTopology(census, corpus, tools) {
+  const processes = census.summary?.processes;
+  if (!Array.isArray(processes)) {
+    throw new Error("timing requires authenticated census process evidence");
+  }
+  const availableTools = tools.filter((tool) => tool.status === "available");
+  const expectedProcessCount = availableTools.reduce((count, tool) =>
+    count + (tool.adapter_kind === "json-protocol" ? 1 : 20), 0);
+  if (processes.length !== expectedProcessCount || processes.some((process) =>
+    !process || process.mode !== "census" ||
+    !availableTools.some((tool) => tool.system === process.system))) {
+    throw new Error("timing requires exactly the expected census process topology");
+  }
+
+  const runtimeClosures = new Map();
+  const shards = shardRecords(corpus);
+  for (const tool of availableTools) {
+    const matching = processes.filter((process) => process.system === tool.system);
+    if (tool.adapter_kind === "json-protocol") {
+      if (matching.length !== 1 || matching[0].census_shard !== null ||
+          matching[0].status !== "ok" || matching[0].response_validation_error != null ||
+          matching[0].record_labels_sha256 !== recordLabelsDigest(corpus.records)) {
+        throw new Error(`timing requires one successful full-corpus ${tool.system} census process`);
+      }
+      const process = matching[0];
+      const identity = validateRuntimeIdentity(process.runtime_identity, tool.system);
+      const closure = runtimeClosureDigest(identity);
+      if (process.runtime_closure_sha256 !== closure) {
+        throw new Error(`${tool.system} census runtime closure digest is stale`);
+      }
+      runtimeClosures.set(tool.system, closure);
+      continue;
+    }
+
+    if (matching.length !== 20) {
+      throw new Error(`timing requires exactly 20 ${tool.system} census shard processes`);
+    }
+    const byShard = new Map();
+    for (const process of matching) {
+      if (!Number.isSafeInteger(process.census_shard) || process.census_shard < 0 ||
+          process.census_shard >= 20 || byShard.has(process.census_shard) ||
+          process.status !== "ok" || process.response_validation_error != null ||
+          process.runtime_identity !== null || process.runtime_closure_sha256 !== null) {
+        throw new Error(`${tool.system} census shard process topology is invalid`);
+      }
+      byShard.set(process.census_shard, process);
+    }
+    for (let shard = 0; shard < 20; shard += 1) {
+      if (byShard.get(shard)?.record_labels_sha256 !== recordLabelsDigest(shards[shard])) {
+        throw new Error(`${tool.system} census shard ${shard} label digest is stale`);
+      }
+    }
+  }
+  return runtimeClosures;
 }
 
 function combineCensus(corpus, responses) {
@@ -864,7 +1016,7 @@ function combineCensus(corpus, responses) {
       };
       observations[response.system] = observed;
       if (response.system === "sagejs" && CENSUS_STATUSES.includes(observed.status)) status = observed.status;
-      if (observed.status === "unavailable") unavailable = true;
+      if (["unavailable", "comparator-unavailable"].includes(observed.status)) unavailable = true;
       if (observed.status === "timeout") timedOut = true;
       if (observed.status === "error") status = "error";
       if (observed.discriminant && observed.discriminant !== expected.discriminant) {
@@ -1083,9 +1235,21 @@ function selectFrontierCandidate(corpus, census, events) {
 }
 
 async function runCensus(corpus, tools, source, options) {
-  const invocations = [];
-  for (const tool of tools) invocations.push(await invokeAdapter(tool, corpus, "census", options));
-  const combined = combineCensus(corpus, invocations.map((entry) => entry.response));
+  const responses = [];
+  const processes = [];
+  for (const tool of tools) {
+    const entries = [];
+    for (const batch of censusBatchPlan(corpus, tool)) {
+      const invocation = await invokeAdapter(tool, batch.corpus, "census", {
+        ...options,
+        censusShard: batch.shard,
+      });
+      entries.push({ batch, invocation });
+      if (invocation.process !== null) processes.push(invocation.process);
+    }
+    responses.push(mergeCensusInvocations(tool, corpus, entries));
+  }
+  const combined = combineCensus(corpus, responses);
   return {
     schema: CENSUS_SCHEMA,
     schema_version: 1,
@@ -1104,7 +1268,7 @@ async function runCensus(corpus, tools, source, options) {
     },
     systems: tools.map((tool) => tool.system),
     records: combined.records,
-    summary: { ...combined.summary, processes: invocations.map((entry) => entry.process) },
+    summary: { ...combined.summary, processes },
   };
 }
 
@@ -1117,21 +1281,7 @@ async function runTiming(corpus, census, tools, source, options) {
       !census.summary.agreement || !census.summary.coverage_complete) {
     throw new Error("timing requires a complete agreeing census for the identical corpus and source tree");
   }
-  const censusRuntimeClosures = new Map();
-  for (const tool of tools.filter((entry) => entry.adapter_kind === "json-protocol")) {
-    const matchingProcesses = (census.summary.processes || []).filter((process) =>
-      process?.system === tool.system && process.mode === "census");
-    if (matchingProcesses.length !== 1) {
-      throw new Error(`timing requires exactly one ${tool.system} census runtime identity`);
-    }
-    const process = matchingProcesses[0];
-    const identity = validateRuntimeIdentity(process.runtime_identity, tool.system);
-    const closure = runtimeClosureDigest(identity);
-    if (process.runtime_closure_sha256 !== closure) {
-      throw new Error(`${tool.system} census runtime closure digest is stale`);
-    }
-    censusRuntimeClosures.set(tool.system, closure);
-  }
+  const censusRuntimeClosures = validateCensusProcessTopology(census, corpus, tools);
   const events = [];
   const processes = [];
   for (let round = 0; round < RETAINED_ROUNDS; round += 1) {
@@ -1270,10 +1420,14 @@ module.exports = {
   RETAINED_ROUNDS,
   THREAD_ENV,
   combineCensus,
+  censusBatchPlan,
   corpusIdentitiesMatch,
   corpusIdentity,
+  interpretAdapterProcessResult,
   invokeAdapter,
   makeTimingEvent,
+  mergeCensusInvocations,
+  normalizePariInvariants,
   pariCensusSource,
   pariTimingSource,
   portableCorpusIdentity,
@@ -1282,6 +1436,7 @@ module.exports = {
   parseGpTiming,
   protocolRequest,
   quantile,
+  recordLabelsDigest,
   runFreshProcess,
   sageCensusSource,
   sageTimingSource,
@@ -1293,5 +1448,6 @@ module.exports = {
   selectFrontierCandidate,
   toolPlan,
   runtimeClosureDigest,
+  validateCensusProcessTopology,
   validateRuntimeIdentity,
 };

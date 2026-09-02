@@ -22,12 +22,18 @@ const frozen = require("../bench/optimization-engine/complex-cubic-frontier-corp
 const {
   MINIMUM_ROOT_NS,
   READY_MARKER,
+  censusBatchPlan,
   combineCensus,
   corpusIdentitiesMatch,
   corpusIdentity,
+  interpretAdapterProcessResult,
   makeTimingEvent,
+  mergeCensusInvocations,
+  normalizePariInvariants,
+  parseGpCensus,
   pariCensusSource,
   pariTimingSource,
+  recordLabelsDigest,
   runFreshProcess,
   runtimeClosureDigest,
   sageCensusSource,
@@ -35,6 +41,7 @@ const {
   systemOrder,
   selectFrontierCandidate,
   timingMetrics,
+  validateCensusProcessTopology,
   validateRuntimeIdentity,
 } = require("../bench/class-unit-groups/run-complex-cubic-frontier.cjs");
 
@@ -160,6 +167,133 @@ test("direct GP sources pin flag-zero conditional and explicit full certificatio
   assert.doesNotMatch(timing, /bnfinit\([^\n]*,1\)/);
   assert.match(timing, /root=getwalltime\(\)/);
   assert.match(timing, /ret\[1\]\*1000000<17/);
+});
+
+test("direct PARI invariant factors are normalized to Sage divisibility order", () => {
+  assert.deepEqual(normalizePariInvariants([12, 6, 2]), ["2", "6", "12"]);
+  assert.deepEqual(normalizePariInvariants([]), []);
+  assert.throws(() => normalizePariInvariants([2, 6]), /not divisibility ordered/);
+  const record = corpusFixture().records[0];
+  const response = parseGpCensus(
+    `SAGEJS_COMPLEX_CUBIC_GP_CENSUS|${record.label}|${record.discriminant}|8|[4,2]\n`,
+    [record],
+  );
+  assert.deepEqual(response.payload.records[0].class_group_invariants, ["2", "4"]);
+});
+
+test("census runs direct systems in isolated complete shards", () => {
+  const corpus = corpusFixture();
+  const tool = {
+    system: "sagejs", status: "available", adapter_kind: "generated-sagejs-python",
+  };
+  const batches = censusBatchPlan(corpus, tool);
+  assert.equal(batches.length, 20);
+  assert.deepEqual(batches.map((batch) => batch.shard),
+    Array.from({ length: 20 }, (_, index) => index));
+  assert.ok(batches.every((batch) => batch.corpus.records.length === 50));
+
+  const entries = batches.map((batch) => ({
+    batch,
+    invocation: {
+      response: batch.shard === 7
+        ? {
+          schema: ADAPTER_SCHEMA, mode: "census", system: "sagejs",
+          status: "timeout", proof: "conditional-grh", payload: null,
+        }
+        : {
+          schema: ADAPTER_SCHEMA, mode: "census", system: "sagejs",
+          status: "ok", proof: "conditional-grh",
+          payload: { records: batch.corpus.records.map((record) => ({
+            label: record.label, status: "native-pass",
+          })) },
+        },
+    },
+  }));
+  const merged = mergeCensusInvocations(tool, corpus, entries);
+  assert.equal(merged.payload.records.length, 1000);
+  assert.equal(merged.payload.records.filter((record) => record.status === "timeout").length, 50);
+  assert.equal(censusBatchPlan(corpus, { ...tool, adapter_kind: "json-protocol" }).length, 1);
+
+  const unavailableTool = { ...tool, system: "magma", status: "unavailable" };
+  const unavailableBatch = censusBatchPlan(corpus, unavailableTool)[0];
+  const unavailable = mergeCensusInvocations(unavailableTool, corpus, [{
+    batch: unavailableBatch,
+    invocation: { response: {
+      schema: ADAPTER_SCHEMA, mode: "census", system: "magma",
+      status: "unavailable", proof: "conditional-grh", payload: null,
+    } },
+  }]);
+  const combined = combineCensus(corpus, [merged, unavailable]);
+  assert.equal(combined.summary.coverage_complete, false);
+  assert.equal(combined.records[0].status, "comparator-unavailable");
+});
+
+test("a malformed direct census shard becomes an explicit failed region", () => {
+  const corpus = { ...corpusFixture(), records: corpusFixture().records.slice(0, 50) };
+  const tool = { system: "pari", adapter_kind: "generated-direct-gp" };
+  const malformed = interpretAdapterProcessResult(tool, corpus, "census", {}, {
+    status: "ok",
+    stdout: `${READY_MARKER}\nSAGEJS_COMPLEX_CUBIC_GP_CENSUS|bad|bad|bad|not-json\n`,
+    ready: 1n,
+  }, null);
+  assert.equal(malformed.response.status, "error");
+  assert.match(malformed.responseValidationError, /JSON/);
+
+  const record = corpus.records[0];
+  const missingReady = interpretAdapterProcessResult(
+    tool,
+    { ...corpus, records: [record] },
+    "census",
+    {},
+    {
+      status: "ok",
+      stdout: `SAGEJS_COMPLEX_CUBIC_GP_CENSUS|${record.label}|${record.discriminant}|1|[]\n`,
+      ready: null,
+    },
+    null,
+  );
+  assert.equal(missingReady.response.status, "error");
+  assert.match(missingReady.responseValidationError, /never emitted the ready marker/);
+  assert.throws(() => interpretAdapterProcessResult(tool, corpus, "timing", {
+    boundaries: ["scalar-prepared"], round: 0,
+  }, {
+    status: "ok", ready: 1n,
+    stdout: "SAGEJS_COMPLEX_CUBIC_GP_TIMING|bad|bad|bad|bad|not-json|not-json\n",
+  }, null));
+});
+
+test("timing authenticates every direct census shard and label digest", () => {
+  const corpus = corpusFixture();
+  const tool = {
+    system: "sagejs", status: "available", adapter_kind: "generated-sagejs-python",
+  };
+  const processes = censusBatchPlan(corpus, tool).map((batch) => ({
+    system: tool.system,
+    mode: "census",
+    census_shard: batch.shard,
+    record_labels_sha256: recordLabelsDigest(batch.corpus.records),
+    status: "ok",
+    response_validation_error: null,
+    runtime_identity: null,
+    runtime_closure_sha256: null,
+  }));
+  const census = { summary: { processes } };
+  assert.equal(validateCensusProcessTopology(census, corpus, [tool]).size, 0);
+
+  const omitted = structuredClone(census);
+  omitted.summary.processes.pop();
+  assert.throws(() => validateCensusProcessTopology(omitted, corpus, [tool]),
+    /exactly the expected census process topology/);
+
+  const duplicate = structuredClone(census);
+  duplicate.summary.processes[19].census_shard = 18;
+  assert.throws(() => validateCensusProcessTopology(duplicate, corpus, [tool]),
+    /topology is invalid/);
+
+  const stale = structuredClone(census);
+  stale.summary.processes[7].record_labels_sha256 = "0".repeat(64);
+  assert.throws(() => validateCensusProcessTopology(stale, corpus, [tool]),
+    /label digest is stale/);
 });
 
 test("Sage sources classify and replay outside timing and use contiguous roots", () => {

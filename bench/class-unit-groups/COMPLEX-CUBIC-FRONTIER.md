@@ -44,6 +44,14 @@ node bench/class-unit-groups/run-complex-cubic-frontier.cjs --census \
   --output /data/complex-cubic-frontier-census.json
 ```
 
+The built-in Sage.js and direct-PARI census paths run as 20 isolated
+50-field processes. Every process is bound to its shard-label digest and has
+its own explicit timeout, so one difficult shard remains an explicit failed
+region rather than erasing already completed regions. External protocol
+adapters retain one full-corpus process because their runtime closure is
+authenticated as a single unit. PARI's decreasing `bnf.cyc` convention is
+reversed and validated before comparison with Sage/LMFDB divisibility order.
+
 The direct settings are exact and intentionally asymmetric:
 
 - Sage.js calls `K.class_number(proof=False)`.
