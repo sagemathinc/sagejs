@@ -168,6 +168,61 @@ def _encoded_materialized_bytes(value: JSONValue) -> int:
     return len(_canonical_materialized_json(value).encode("utf-8"))
 
 
+def _json_pointer(value: JSONValue, pointer: str, name: str) -> JSONValue:
+    """Select one retained JSON value using an RFC 6901 pointer."""
+    if not isinstance(pointer, str):
+        raise TypeError(name + " must be a JSON pointer string")
+    if pointer == "":
+        return value
+    if not pointer.startswith("/"):
+        raise ValueError(name + " must be empty or start with '/'")
+    current = value
+    for raw_token in pointer[1:].split("/"):
+        for offset, character in enumerate(raw_token):
+            if character == "~" and (
+                offset + 1 == len(raw_token) or raw_token[offset + 1] not in "01"
+            ):
+                raise ValueError(name + " contains an invalid JSON pointer escape")
+        token = raw_token.replace("~1", "/").replace("~0", "~")
+        if isinstance(current, dict):
+            if token not in current:
+                raise KeyError(name + " does not resolve at '" + token + "'")
+            current = current[token]
+        elif isinstance(current, list):
+            if token == "" or not token.isdigit():
+                raise KeyError(name + " has a non-index array token '" + token + "'")
+            index = int(token)
+            if index >= len(current):
+                raise IndexError(name + " array index is out of range")
+            current = current[index]
+        else:
+            raise KeyError(name + " traverses a scalar at '" + token + "'")
+    return current
+
+
+def _finite_number(value: Any, name: str) -> float:
+    """Return one finite plotting coordinate without accepting booleans."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError(name + " must select a number")
+    answer = float(value)
+    if answer != answer or answer in (float("inf"), -float("inf")):
+        raise ValueError(name + " must select a finite number")
+    return answer
+
+
+def _bounded_progress_counts(item_count: int, max_frames: int) -> list[int]:
+    """Select exact completed-item prefixes, including zero and the endpoint."""
+    if max_frames < 2:
+        raise ValueError("max_frames must be at least 2")
+    if max_frames > 256:
+        raise ValueError("max_frames must not exceed 256")
+    count = item_count + 1
+    if count <= max_frames:
+        return list(range(count))
+    indices = [(index * item_count) // (max_frames - 1) for index in range(max_frames)]
+    return list(dict.fromkeys(indices))
+
+
 def _quota(total: int, count: int, index: int) -> int:
     """Return the stable equal-share credit for item `index`."""
     if count == 0:
@@ -762,6 +817,489 @@ class SweepResult:
 
     def to_json(self) -> str:
         return _canonical_materialized_json(self.to_dict())
+
+    def explanation(self) -> dict[str, JSONValue]:
+        """Return a detached explanation assembled only from retained evidence.
+
+        A generic sweep cannot claim that an arbitrary callback result is
+        mathematically validated.  When an item contains a standard numerical
+        result record, its independent validation status and truth level are
+        reported explicitly.  Other successful values remain classified as
+        completed but unvalidated by this presentation layer.
+        """
+        record = self.to_dict()
+        counts = record["counts"]
+        measurements = record["measurements"]
+        if not isinstance(counts, dict) or not isinstance(measurements, dict):
+            raise TypeError("sweep result has malformed aggregate evidence")
+        status_counts: dict[str, int] = {}
+        failures: list[JSONValue] = []
+        validations: list[JSONValue] = []
+        validated = 0
+        validation_failed = 0
+        completed_unvalidated = 0
+        for item in self._items:
+            item_record = item.to_dict()
+            status_counts[item.status] = status_counts.get(item.status, 0) + 1
+            nested = item_record.get("value")
+            validation: Any = None
+            nested_status: Any = None
+            nested_success: Any = None
+            if isinstance(nested, dict):
+                validation = nested.get("validation")
+                nested_status = nested.get("status")
+                nested_success = nested.get("success")
+            if isinstance(validation, dict):
+                passed = validation.get("passed") is True
+                validated += 1 if passed else 0
+                validation_failed += 0 if passed else 1
+                validations.append(
+                    {
+                        "index": item.index,
+                        "passed": passed,
+                        "truth_level": validation.get("truth_level"),
+                        "residual": validation.get("residual"),
+                        "nested_status": nested_status,
+                        "nested_success": nested_success,
+                    }
+                )
+            elif item.success:
+                completed_unvalidated += 1
+            if not item.success:
+                failures.append(
+                    {
+                        "index": item.index,
+                        "parameter": item_record["parameter"],
+                        "status": item.status,
+                        "error": item_record["error"],
+                    }
+                )
+        plan_record = self._plan.to_dict()
+        fallback_reason = plan_record["fallback_reason"]
+        limitations = [
+            "Sweep success means every scheduled item completed; generic callback values have no implied mathematical validation.",
+            "The scheduler's memory and cancellation limits are cooperative inside live callbacks.",
+            "Presentation reads retained finite JSON only and cannot recover values suppressed by failed items.",
+        ]
+        if fallback_reason is not None:
+            limitations.append(str(fallback_reason))
+        interpretation = [
+            str(counts["completed"])
+            + " of "
+            + str(counts["planned"])
+            + " planned items ran; "
+            + str(counts["failed"])
+            + " failed and "
+            + str(counts["skipped"])
+            + " were skipped.",
+            str(validated)
+            + " nested numerical result"
+            + ("" if validated == 1 else "s")
+            + " retained passing independent validation evidence.",
+        ]
+        if validation_failed:
+            interpretation.append(
+                str(validation_failed)
+                + " nested numerical result"
+                + ("" if validation_failed == 1 else "s")
+                + " retained non-passing validation evidence."
+            )
+        if completed_unvalidated:
+            interpretation.append(
+                str(completed_unvalidated)
+                + " completed callback value"
+                + ("" if completed_unvalidated == 1 else "s")
+                + " had no standard nested validation record."
+            )
+        return materialize_object(
+            {
+                "schema_version": SWEEP_SCHEMA_VERSION,
+                "kind": "sweep-explanation",
+                "operation": "parameter_sweep",
+                "headline": "bounded deterministic parameter sweep",
+                "outcome": {
+                    "success": self.success,
+                    "status": self._status,
+                    "counts": materialize_object(counts, "$.sweep.counts"),
+                    "item_status_counts": status_counts,
+                },
+                "execution": {
+                    "scheduler": SWEEP_SCHEDULER,
+                    "mode": self._plan.mode,
+                    "requested_concurrency": self._plan.requested_concurrency,
+                    "effective_concurrency": self._plan.effective_concurrency,
+                    "fallback_reason": fallback_reason,
+                },
+                "evidence": {
+                    "plan_digest": self._plan.digest,
+                    "nested_validations": validations,
+                    "validated_item_count": validated,
+                    "validation_failed_item_count": validation_failed,
+                    "completed_unvalidated_item_count": completed_unvalidated,
+                    "failures": failures,
+                    "measurements": materialize_object(
+                        measurements, "$.sweep.measurements"
+                    ),
+                },
+                "interpretation": interpretation,
+                "limitations": limitations,
+                "provenance": {
+                    "source": "retained SweepResult records",
+                    "computed_evidence_only": True,
+                    "callback_reevaluated": False,
+                },
+            },
+            "$.sweep.explanation",
+        )
+
+    def explain(self) -> str:
+        """Render a compact human explanation of the retained sweep evidence."""
+        explanation = self.explanation()
+        outcome = explanation["outcome"]
+        execution = explanation["execution"]
+        evidence = explanation["evidence"]
+        if not isinstance(outcome, dict):
+            raise TypeError("sweep explanation outcome is malformed")
+        if not isinstance(execution, dict):
+            raise TypeError("sweep explanation execution is malformed")
+        if not isinstance(evidence, dict):
+            raise TypeError("sweep explanation evidence is malformed")
+        counts = outcome["counts"]
+        measurements = evidence["measurements"]
+        if not isinstance(counts, dict) or not isinstance(measurements, dict):
+            raise TypeError("sweep explanation evidence is malformed")
+        lines = [
+            str(explanation["headline"]),
+            "status: " + str(outcome["status"]),
+            "items: "
+            + str(counts["completed"])
+            + "/"
+            + str(counts["planned"])
+            + " ran; "
+            + str(counts["failed"])
+            + " failed; "
+            + str(counts["skipped"])
+            + " skipped",
+            "concurrency: requested "
+            + str(execution["requested_concurrency"])
+            + ", effective "
+            + str(execution["effective_concurrency"]),
+            "resources: "
+            + str(measurements["evaluations"])
+            + " evaluations; "
+            + str(measurements["trace_events"])
+            + " retained trace events; "
+            + str(measurements["result_bytes"])
+            + " result bytes",
+            "nested validation: "
+            + str(evidence["validated_item_count"])
+            + " passed; "
+            + str(evidence["validation_failed_item_count"])
+            + " did not pass; "
+            + str(evidence["completed_unvalidated_item_count"])
+            + " completed values were not standard numerical results",
+        ]
+        fallback_reason = execution["fallback_reason"]
+        if fallback_reason is not None:
+            lines.append("executor fallback: " + str(fallback_reason))
+        failures = evidence["failures"]
+        if isinstance(failures, list):
+            for failure in failures:
+                if isinstance(failure, dict):
+                    lines.append(
+                        "item "
+                        + str(failure["index"])
+                        + " failed with "
+                        + str(failure["status"])
+                    )
+        lines.append(
+            "presentation: retained result evidence only; no callback was replayed"
+        )
+        return "\n".join(lines)
+
+    def _presentation_points(
+        self,
+        *,
+        x_path: str,
+        y_path: str,
+        through: int | None = None,
+    ) -> tuple[list[float], list[float], list[int]]:
+        """Extract an exact prefix of validated presentation coordinates."""
+        stop = len(self._items) if through is None else through
+        if isinstance(stop, bool) or not isinstance(stop, int):
+            raise TypeError("presentation prefix must be an integer")
+        if stop < 0 or stop > len(self._items):
+            raise IndexError("presentation prefix is out of range")
+        x_values: list[float] = []
+        y_values: list[float] = []
+        source_indices: list[int] = []
+        for item in self._items[:stop]:
+            if not item.success:
+                continue
+            record = item.to_dict()
+            x_values.append(
+                _finite_number(
+                    _json_pointer(record, x_path, "x_path"),
+                    "x_path for successful item " + str(item.index),
+                )
+            )
+            y_values.append(
+                _finite_number(
+                    _json_pointer(record, y_path, "y_path"),
+                    "y_path for successful item " + str(item.index),
+                )
+            )
+            source_indices.append(item.index)
+        return x_values, y_values, source_indices
+
+    def _plot_spec(
+        self,
+        *,
+        x_path: str,
+        y_path: str,
+        x_label: str,
+        y_label: str,
+        through: int | None,
+    ) -> Any:
+        plotting = __import__(
+            "sagejs.plotting",
+            fromlist=["PlotSpec", "Provenance", "make_layer"],
+        )
+        x_values, y_values, source_indices = self._presentation_points(
+            x_path=x_path, y_path=y_path, through=through
+        )
+        stop = len(self._items) if through is None else through
+        complete = stop == len(self._items)
+        failed_indices = [item.index for item in self._items[:stop] if not item.success]
+        description = (
+            "Parameter sweep retained "
+            + str(len(x_values))
+            + " successful numeric point"
+            + ("" if len(x_values) == 1 else "s")
+            + " from "
+            + str(stop)
+            + " processed item"
+            + ("" if stop == 1 else "s")
+            + ". "
+            + str(len(failed_indices))
+            + " processed item"
+            + ("" if len(failed_indices) == 1 else "s")
+            + " failed and remain"
+            + ("s" if len(failed_indices) == 1 else "")
+            + " in the structured explanation, not as invented plot coordinates."
+        )
+        layers = [
+            plotting.make_layer(
+                "line",
+                {"x": x_values, "y": y_values},
+                ordinal=0,
+                namespace="numerical-sweep",
+                source_intent={
+                    "operation": "parameter_sweep",
+                    "role": "successful-retained-values",
+                },
+                style={"color": "#3366cc", "width": 2},
+                legend={"label": "successfully completed items", "show": True},
+                metadata={"source_item_indices": source_indices},
+            ),
+            plotting.make_layer(
+                "point",
+                {"x": x_values, "y": y_values},
+                ordinal=1,
+                namespace="numerical-sweep",
+                source_intent={
+                    "operation": "parameter_sweep",
+                    "role": "successful-retained-values",
+                },
+                style={"color": "#dd8452", "size": 8},
+                legend={"label": "computed sweep endpoints", "show": True},
+                metadata={"source_item_indices": source_indices},
+            ),
+        ]
+        return plotting.PlotSpec(
+            2,
+            layers,
+            axes_or_scene={
+                "xaxis": {"title": {"text": x_label}},
+                "yaxis": {"title": {"text": y_label}},
+            },
+            viewport={"responsive": True},
+            annotations=[{"kind": "alt_text", "text": description}],
+            provenance=plotting.Provenance(
+                "sagejs.numerics.sweeps",
+                constructor="SweepResult.to_plot_spec",
+                metadata={
+                    "plan_digest": self._plan.digest,
+                    "x_path": x_path,
+                    "y_path": y_path,
+                    "processed_items": stop,
+                    "complete_sweep": complete,
+                    "source_item_indices": source_indices,
+                    "failed_item_indices": failed_indices,
+                    "computed_evidence_only": True,
+                    "callback_reevaluated": False,
+                },
+            ),
+        )
+
+    def to_plot_spec(
+        self,
+        *,
+        x_path: str = "/parameter",
+        y_path: str = "/value",
+        x_label: str = "parameter",
+        y_label: str = "retained value",
+    ) -> Any:
+        """Plot numeric successful items selected from retained JSON records.
+
+        `x_path` and `y_path` are RFC 6901 pointers relative to each item
+        record.  Declarative selectors make it impossible for visualization to
+        invoke the original evaluator. Failed items remain in `explanation()`
+        and plot provenance; they are not assigned a fabricated y-coordinate.
+        """
+        if not isinstance(x_label, str) or x_label == "":
+            raise TypeError("x_label must be a nonempty string")
+        if not isinstance(y_label, str) or y_label == "":
+            raise TypeError("y_label must be a nonempty string")
+        x_values, _, _ = self._presentation_points(x_path=x_path, y_path=y_path)
+        if len(x_values) == 0:
+            raise ValueError("the sweep has no successful numeric presentation points")
+        return self._plot_spec(
+            x_path=x_path,
+            y_path=y_path,
+            x_label=x_label,
+            y_label=y_label,
+            through=None,
+        )
+
+    def plot(
+        self,
+        *,
+        x_path: str = "/parameter",
+        y_path: str = "/value",
+        x_label: str = "parameter",
+        y_label: str = "retained value",
+    ) -> Any:
+        """Alias for `to_plot_spec`."""
+        return self.to_plot_spec(
+            x_path=x_path,
+            y_path=y_path,
+            x_label=x_label,
+            y_label=y_label,
+        )
+
+    def to_animation(
+        self,
+        *,
+        x_path: str = "/parameter",
+        y_path: str = "/value",
+        x_label: str = "parameter",
+        y_label: str = "retained value",
+        max_frames: int = 32,
+        frame_duration_ms: int = 450,
+    ) -> Any:
+        """Animate exact completed-item prefixes without replay or interpolation."""
+        if not isinstance(x_label, str) or x_label == "":
+            raise TypeError("x_label must be a nonempty string")
+        if not isinstance(y_label, str) or y_label == "":
+            raise TypeError("y_label must be a nonempty string")
+        plotting = __import__(
+            "sagejs.plotting",
+            fromlist=[
+                "AnimationControls",
+                "AnimationFrame",
+                "AnimationResourceLimits",
+                "AnimationTiming",
+                "PlotAnimation",
+                "stable_frame_id",
+            ],
+        )
+        # Validate the complete final selection before constructing any frames.
+        final_x, _, _ = self._presentation_points(x_path=x_path, y_path=y_path)
+        if len(final_x) == 0:
+            raise ValueError("the sweep has no successful numeric presentation points")
+        selected_counts = _bounded_progress_counts(len(self._items), max_frames)
+        frames = []
+        for frame_index, processed in enumerate(selected_counts):
+            current = None if processed == 0 else self._items[processed - 1]
+            frames.append(
+                plotting.AnimationFrame(
+                    plotting.stable_frame_id(frame_index),
+                    self._plot_spec(
+                        x_path=x_path,
+                        y_path=y_path,
+                        x_label=x_label,
+                        y_label=y_label,
+                        through=processed,
+                    ),
+                    label=(
+                        "start"
+                        if processed == 0
+                        else str(processed) + " / " + str(len(self._items))
+                    ),
+                    metadata={
+                        "processed_items": processed,
+                        "source_item_index": None if current is None else current.index,
+                        "source_item_status": None
+                        if current is None
+                        else current.status,
+                        "source_item_success": None
+                        if current is None
+                        else current.success,
+                        "interpolated": False,
+                    },
+                )
+            )
+        return plotting.PlotAnimation(
+            frames,
+            timing=plotting.AnimationTiming(
+                frame_duration_ms=frame_duration_ms,
+                transition_duration_ms=0,
+            ),
+            controls=plotting.AnimationControls(
+                slider_prefix="Processed items: ",
+                autoplay=False,
+                loop=False,
+            ),
+            limits=plotting.AnimationResourceLimits(
+                max_frames=max_frames,
+                max_layers_per_frame=2,
+                max_total_samples=max(32, 4 * len(final_x) * len(frames)),
+                max_payload_bytes=4_000_000,
+                max_duration_ms=max_frames * frame_duration_ms,
+            ),
+            metadata={
+                "source": "retained SweepResult item prefixes",
+                "plan_digest": self._plan.digest,
+                "source_item_count": len(self._items),
+                "selected_completed_item_counts": selected_counts,
+                "gallery_decimated": len(selected_counts) < len(self._items) + 1,
+                "decimation_policy": "deterministic evenly spaced exact prefixes",
+                "interpolation": "none",
+                "computed_evidence_only": True,
+                "callback_reevaluated": False,
+            },
+        )
+
+    def animate(
+        self,
+        *,
+        x_path: str = "/parameter",
+        y_path: str = "/value",
+        x_label: str = "parameter",
+        y_label: str = "retained value",
+        max_frames: int = 32,
+        frame_duration_ms: int = 450,
+    ) -> Any:
+        """Alias for `to_animation`."""
+        return self.to_animation(
+            x_path=x_path,
+            y_path=y_path,
+            x_label=x_label,
+            y_label=y_label,
+            max_frames=max_frames,
+            frame_duration_ms=frame_duration_ms,
+        )
 
 
 def plan_parameter_sweep(
