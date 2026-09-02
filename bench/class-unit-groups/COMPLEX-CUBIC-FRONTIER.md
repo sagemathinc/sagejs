@@ -40,17 +40,21 @@ Run the census before measuring anything:
 node bench/class-unit-groups/run-complex-cubic-frontier.cjs --census \
   --corpus bench/optimization-engine/complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json \
   --asset-dir /data/complex-cubic-frontier-v1 \
-  --systems sagejs,pari --cpu 2 \
+  --systems sagejs,pari --cpu 2 --census-cpus 0,1,2,3 \
   --output /data/complex-cubic-frontier-census.json
 ```
 
-The built-in Sage.js and direct-PARI census paths run as 20 isolated
-50-field processes. Every process is bound to its shard-label digest and has
+The built-in Sage.js and direct-PARI census paths run as 20 isolated 50-field
+processes. `--census-cpus` permits at most one direct process on each listed
+logical CPU; this shortens only the non-authoritative correctness census.
+Every process records its affinity, is bound to its shard-label digest, and has
 its own explicit timeout, so one difficult shard remains an explicit failed
 region rather than erasing already completed regions. External protocol
-adapters retain one full-corpus process because their runtime closure is
-authenticated as a single unit. PARI's decreasing `bnf.cyc` convention is
-reversed and validated before comparison with Sage/LMFDB divisibility order.
+adapters retain one serialized full-corpus process because their runtime
+closure is authenticated as a single unit. Retained timing rejects
+`--census-cpus` and remains serialized on `--cpu`. PARI's decreasing `bnf.cyc`
+convention is reversed and validated before comparison with Sage/LMFDB
+divisibility order.
 
 The direct settings are exact and intentionally asymmetric:
 

@@ -61,6 +61,7 @@ Options:
   --systems LIST        comma-separated systems (default: sagejs,pari)
   --boundaries LIST     scalar-prepared,fresh-complete (default: both)
   --cpu N               logical CPU used through taskset on Linux (default: 0)
+  --census-cpus LIST    isolated direct census workers (default: --cpu only)
   --timeout-seconds N   fresh process/system/round timeout (default: 3600)
   --sagejs PATH         Sage.js launcher (default: bin/sagejs)
   --gp PATH             direct GP launcher (default: gp)
@@ -91,6 +92,18 @@ function positiveInteger(value, label, { zero = false } = {}) {
   return result;
 }
 
+function cpuList(value, label) {
+  const entries = String(value).split(",").map((entry) => entry.trim()).filter(Boolean);
+  if (entries.some((entry) => !/^(0|[1-9]\d*)$/.test(entry))) {
+    throw new Error(`${label} must use canonical nonnegative integer CPU numbers`);
+  }
+  const result = entries.map((entry) => positiveInteger(entry, label, { zero: true }));
+  if (result.length === 0 || new Set(result).size !== result.length) {
+    throw new Error(`${label} must be a nonempty list of unique logical CPUs`);
+  }
+  return result;
+}
+
 function parseArguments(argv) {
   const options = {
     mode: null,
@@ -101,6 +114,7 @@ function parseArguments(argv) {
     systems: ["sagejs", "pari"],
     boundaries: [...BOUNDARIES],
     cpu: 0,
+    censusCpus: null,
     timeoutSeconds: 3600,
     sagejs: process.env.SAGEJS_FRONTIER_EXECUTABLE || path.join(ROOT, "bin/sagejs"),
     gp: process.env.GP_ORACLE || process.env.PARI_ORACLE || "gp",
@@ -122,7 +136,7 @@ function parseArguments(argv) {
     if (argument === "--allow-dirty") { options.allowDirty = true; continue; }
     if (argument === "--dry-run") { options.dryRun = true; continue; }
     if (!["--corpus", "--asset-dir", "--census-file", "--output", "--systems", "--boundaries",
-      "--cpu", "--timeout-seconds", "--sagejs", "--gp", "--adapter"].includes(argument)) {
+      "--cpu", "--census-cpus", "--timeout-seconds", "--sagejs", "--gp", "--adapter"].includes(argument)) {
       throw new Error(`unknown argument: ${argument}`);
     }
     if (index + 1 >= argv.length) throw new Error(`${argument} needs a value`);
@@ -134,6 +148,7 @@ function parseArguments(argv) {
     else if (argument === "--systems") options.systems = parseList(value, SYSTEMS, argument);
     else if (argument === "--boundaries") options.boundaries = parseList(value, BOUNDARIES, argument);
     else if (argument === "--cpu") options.cpu = positiveInteger(value, argument, { zero: true });
+    else if (argument === "--census-cpus") options.censusCpus = cpuList(value, argument);
     else if (argument === "--timeout-seconds") options.timeoutSeconds = positiveInteger(value, argument);
     else if (argument === "--sagejs") options.sagejs = value;
     else if (argument === "--gp") options.gp = value;
@@ -151,6 +166,10 @@ function parseArguments(argv) {
   if (options.mode === "timing" && !options.censusFile) {
     throw new Error("--timing requires --census-file");
   }
+  if (options.mode === "timing" && options.censusCpus !== null) {
+    throw new Error("--census-cpus is only valid with --census");
+  }
+  if (options.censusCpus === null) options.censusCpus = [options.cpu];
   if (!options.systems.includes("sagejs") || !options.systems.includes("pari")) {
     throw new Error("frontier evidence requires both sagejs and pari");
   }
@@ -852,6 +871,7 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
   } else {
     throw new Error(`${tool.system} requires --adapter ${tool.system}=PATH`);
   }
+  if (expectedProgramSha256 === null) expectedProgramSha256 = sha256(input);
   const processResult = await runFreshProcess(pinnedSpec(tool.executable, args, input, options));
   const { response, runtimeIdentity, responseValidationError } = interpretAdapterProcessResult(
     tool, corpus, mode, options, processResult, expectedProgramSha256,
@@ -866,6 +886,9 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
       : null,
     status: processResult.status,
     response_validation_error: responseValidationError,
+    generated_program_sha256: expectedProgramSha256,
+    launched_monotonic_nanoseconds: processResult.launched.toString(),
+    ended_monotonic_nanoseconds: processResult.ended.toString(),
     launch_to_ready_nanoseconds: processResult.ready === null ? null :
       (processResult.ready - processResult.launched).toString(),
     process_wall_nanoseconds: (processResult.ended - processResult.launched).toString(),
@@ -892,6 +915,19 @@ function censusBatchPlan(corpus, tool) {
     shard,
     corpus: { ...corpus, records },
   }));
+}
+
+async function runBoundedCensusBatches(batches, cpus, invoke) {
+  if (!Array.isArray(cpus) || cpus.length === 0) {
+    throw new Error("bounded census execution requires at least one logical CPU");
+  }
+  const results = Array(batches.length);
+  await Promise.all(cpus.slice(0, batches.length).map(async (cpu, worker) => {
+    for (let index = worker; index < batches.length; index += cpus.length) {
+      results[index] = await invoke(batches[index], cpu);
+    }
+  }));
+  return results;
 }
 
 function mergeCensusInvocations(tool, corpus, entries) {
@@ -933,6 +969,16 @@ function validateCensusProcessTopology(census, corpus, tools) {
     throw new Error("timing requires authenticated census process evidence");
   }
   const availableTools = tools.filter((tool) => tool.status === "available");
+  const execution = census.execution;
+  if (!execution || execution.scheduler !== "static-shard-modulo-cpu-list-v1" ||
+      !Array.isArray(execution.direct_cpus) || execution.direct_cpus.length === 0 ||
+      new Set(execution.direct_cpus).size !== execution.direct_cpus.length ||
+      execution.direct_cpus.some((cpu) => !Number.isSafeInteger(cpu) || cpu < 0) ||
+      !Number.isSafeInteger(execution.external_cpu) || execution.external_cpu < 0 ||
+      execution.max_live_processes_per_cpu !== 1 ||
+      execution.timing_authority !== "none-census-is-non-authoritative") {
+    throw new Error("timing requires an authenticated census execution topology");
+  }
   const expectedProcessCount = availableTools.reduce((count, tool) =>
     count + (tool.adapter_kind === "json-protocol" ? 1 : 20), 0);
   if (processes.length !== expectedProcessCount || processes.some((process) =>
@@ -948,11 +994,17 @@ function validateCensusProcessTopology(census, corpus, tools) {
     if (tool.adapter_kind === "json-protocol") {
       if (matching.length !== 1 || matching[0].census_shard !== null ||
           matching[0].status !== "ok" || matching[0].response_validation_error != null ||
-          matching[0].record_labels_sha256 !== recordLabelsDigest(corpus.records)) {
+          matching[0].record_labels_sha256 !== recordLabelsDigest(corpus.records) ||
+          matching[0].affinity_logical_cpus?.length !== 1 ||
+          matching[0].affinity_logical_cpus[0] !== execution.external_cpu) {
         throw new Error(`timing requires one successful full-corpus ${tool.system} census process`);
       }
       const process = matching[0];
-      const identity = validateRuntimeIdentity(process.runtime_identity, tool.system);
+      const identity = validateRuntimeIdentity(
+        process.runtime_identity,
+        tool.system,
+        process.generated_program_sha256,
+      );
       const closure = runtimeClosureDigest(identity);
       if (process.runtime_closure_sha256 !== closure) {
         throw new Error(`${tool.system} census runtime closure digest is stale`);
@@ -975,9 +1027,31 @@ function validateCensusProcessTopology(census, corpus, tools) {
       byShard.set(process.census_shard, process);
     }
     for (let shard = 0; shard < 20; shard += 1) {
-      if (byShard.get(shard)?.record_labels_sha256 !== recordLabelsDigest(shards[shard])) {
+      const process = byShard.get(shard);
+      const expectedCpu = execution.direct_cpus[shard % execution.direct_cpus.length];
+      const expectedProgram = tool.system === "sagejs"
+        ? sha256(sageCensusSource(shards[shard]))
+        : sha256(pariCensusSource(shards[shard]));
+      if (process?.record_labels_sha256 !== recordLabelsDigest(shards[shard]) ||
+          process.affinity_logical_cpus?.length !== 1 ||
+          process.affinity_logical_cpus[0] !== expectedCpu ||
+          process.generated_program_sha256 !== expectedProgram) {
         throw new Error(`${tool.system} census shard ${shard} label digest is stale`);
       }
+    }
+  }
+  const directProcesses = processes.filter((process) =>
+    availableTools.some((tool) => tool.system === process.system &&
+      tool.adapter_kind !== "json-protocol"));
+  for (const cpu of execution.direct_cpus) {
+    const intervals = directProcesses.filter((process) =>
+      process.affinity_logical_cpus?.[0] === cpu).map((process) => ({
+      start: BigInt(process.launched_monotonic_nanoseconds),
+      end: BigInt(process.ended_monotonic_nanoseconds),
+    })).sort((left, right) => left.start < right.start ? -1 : left.start > right.start ? 1 : 0);
+    if (intervals.some((interval) => interval.end < interval.start) ||
+        intervals.some((interval, index) => index > 0 && intervals[index - 1].end > interval.start)) {
+      throw new Error(`direct census processes overlap on logical CPU ${cpu}`);
     }
   }
   return runtimeClosures;
@@ -1238,14 +1312,19 @@ async function runCensus(corpus, tools, source, options) {
   const responses = [];
   const processes = [];
   for (const tool of tools) {
-    const entries = [];
-    for (const batch of censusBatchPlan(corpus, tool)) {
+    const batches = censusBatchPlan(corpus, tool);
+    const directShards = tool.status === "available" && tool.adapter_kind !== "json-protocol";
+    const cpus = directShards ? options.censusCpus : [options.cpu];
+    const entries = await runBoundedCensusBatches(batches, cpus, async (batch, cpu) => {
       const invocation = await invokeAdapter(tool, batch.corpus, "census", {
         ...options,
+        cpu,
         censusShard: batch.shard,
       });
-      entries.push({ batch, invocation });
-      if (invocation.process !== null) processes.push(invocation.process);
+      return { batch, invocation };
+    });
+    for (const entry of entries) {
+      if (entry.invocation.process !== null) processes.push(entry.invocation.process);
     }
     responses.push(mergeCensusInvocations(tool, corpus, entries));
   }
@@ -1267,6 +1346,14 @@ async function runCensus(corpus, tools, source, options) {
       receipt_carrier: "live-authenticated-with-independent-exact-recomputation",
     },
     systems: tools.map((tool) => tool.system),
+    tools,
+    execution: {
+      scheduler: "static-shard-modulo-cpu-list-v1",
+      direct_cpus: options.censusCpus,
+      external_cpu: options.cpu,
+      max_live_processes_per_cpu: 1,
+      timing_authority: "none-census-is-non-authoritative",
+    },
     records: combined.records,
     summary: { ...combined.summary, processes },
   };
@@ -1278,6 +1365,7 @@ async function runTiming(corpus, census, tools, source, options) {
       !corpusIdentitiesMatch(census.corpus, currentCorpusIdentity) ||
       census.source.candidate_tree !== source.candidate_tree ||
       JSON.stringify(census.systems) !== JSON.stringify(tools.map((tool) => tool.system)) ||
+      canonicalDigest(census.tools) !== canonicalDigest(tools) ||
       !census.summary.agreement || !census.summary.coverage_complete) {
     throw new Error("timing requires a complete agreeing census for the identical corpus and source tree");
   }
@@ -1374,6 +1462,7 @@ async function main(argv = process.argv.slice(2)) {
   const corpus = loadFrozenSurveyCorpus(options.corpus, options.assetDir);
   const source = sourceIdentity(options.allowDirty);
   const tools = toolPlan(options);
+  for (const cpu of options.censusCpus) hostIdentity(cpu);
   const plan = {
     schema: "sagejs.benchmark/complex-cubic-frontier-plan-v1",
     mode: options.mode,
@@ -1382,6 +1471,13 @@ async function main(argv = process.argv.slice(2)) {
     host: hostIdentity(options.cpu),
     systems: tools,
     cpu: options.cpu,
+    census_execution: {
+      scheduler: "static-shard-modulo-cpu-list-v1",
+      direct_cpus: options.censusCpus,
+      external_cpu: options.cpu,
+      max_live_processes_per_cpu: 1,
+      timing_authority: "none-census-is-non-authoritative",
+    },
     thread_environment: THREAD_ENV,
     boundaries: options.boundaries,
     retained_rounds: 11,
@@ -1438,6 +1534,7 @@ module.exports = {
   quantile,
   recordLabelsDigest,
   runFreshProcess,
+  runBoundedCensusBatches,
   sageCensusSource,
   sageTimingSource,
   shardRecords,
