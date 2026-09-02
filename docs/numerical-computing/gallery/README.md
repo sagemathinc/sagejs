@@ -16,7 +16,10 @@ explanation layer for the current numerical product:
   integration boundary. [`public-surface-gaps.md`](public-surface-gaps.md)
   records the result/presentation gaps exposed without bypassing them.
 
-The gallery covers scalar roots, nonlinear fitting, ODE adaptivity, linear
+The gallery is published at
+[`website/numerical-computing/`](../../../website/numerical-computing/) from
+the same generator; CI rejects drift between the checked evidence and public
+assets. It covers scalar roots, nonlinear fitting, ODE adaptivity, linear
 refinement, adaptive quadrature, polynomial approximation, eigensystems,
 local optimization, and robust regression. Every story contains both normal
 success and a mathematically instructive failure. The failure category is not
@@ -34,9 +37,11 @@ node bench/numerical-gallery/measure.cjs
 
 The checked bundle is capped at 8 MB, each story at 1.5 MB, and every
 animation at 32 retained frames. Current source is substantially below those
-ceilings. The benchmark separately reports solver/presentation generation,
-JSON validation, export generation, and a real Chromium render of all seventeen
-visual presentations.
+ceilings. Generation, validation, static export, whole-page hydration, and
+individual Plotly render times also have generous fail-closed release ceilings
+in `evidence.json`. They catch hangs and algorithmic regressions without being
+used as performance targets. The benchmark separately reports every phase and
+a real Chromium render of all seventeen visual presentations.
 
 ## Evidence and replay contract
 
@@ -64,21 +69,6 @@ and candidates without inferring a smooth curve. Both semantic and Plotly
 exports retain `computed_evidence_only` and `callback_reevaluated: false`
 metadata, and focused tests freeze callback counts across presentation.
 
-## Original root vertical slice
-
-This directory defines the data contract for interactive numerical stories.
-The deployable, dependency-free gallery is in
-`website/numerical-computing/`. Its checked story records are generated from
-the real `NumericalResult`, `NumericalTrace`, and `PlotAnimation` objects.
-
-The manifest is deliberately small. A later domain contributes one story JSON
-document and one manifest entry; it does not need to fork the renderer. The
-story schema standardizes learning objectives, method assumptions, exact
-language examples, success and failure cases, evidence-selected actions,
-PlotSpec/Plotly metadata, accessibility, and payload measurements. A domain
-may add new diagnostic codes through `narrative_catalog.diagnostics` without
-adding status-string parsing to the browser.
-
 ## Evidence rules
 
 - Human narratives are selected from `success`, diagnostic code, or status in
@@ -99,29 +89,12 @@ adding status-string parsing to the browser.
   The gallery refuses over-budget or stale evidence instead of silently
   trimming it.
 
-## Generate and validate
-
-Regenerate the deterministic root fixture after the numerical contracts
-change:
-
-```sh
-node test/numerics/gallery/generate-root-story.cjs --write
-```
-
-Check fixture freshness and all static/browser contracts:
-
-```sh
-node --test test/numerics/gallery/root-gallery.test.cjs
-```
+Every `canonical_python` program includes its imports, data, and callback
+definitions. The corresponding “Open in Sage.js” URL encodes precisely that
+source in the live app's documented source-only share format. Focused tests
+decode every link and execute every program after a fresh kernel reset.
 
 Set `SAGEJS_CHROMIUM_PATH` if Chromium is installed outside the standard
-locations. Browser absence skips only the live rendering observation; schema,
-fixtures, narrative selection, accessibility markup, export, and budget tests
-remain mandatory.
-
-## Integration boundary
-
-The new subtree intentionally does not edit shared website routing or package
-scripts. Integration should link `/numerical-computing/` from the shared site
-navigation and register the focused Node test in the repository's chosen test
-discovery path if directory tests are not picked up automatically.
+locations. Browser absence skips only the live rendering observations; schema,
+fixtures, executable examples, accessibility markup, export, and non-browser
+budget tests remain mandatory.

@@ -19,6 +19,36 @@ export function stableJson(value) {
   return JSON.stringify(canonical(value));
 }
 
+export function assertTimingBudget(bundle, budgetName, observedMilliseconds) {
+  const limit = bundle?.budgets?.[budgetName];
+  if (!Number.isFinite(limit) || limit <= 0) {
+    throw new Error(`gallery timing budget ${budgetName} is missing`);
+  }
+  if (!Number.isFinite(observedMilliseconds) || observedMilliseconds < 0) {
+    throw new TypeError(`${budgetName} observation must be finite and nonnegative`);
+  }
+  if (observedMilliseconds > limit) {
+    throw new RangeError(
+      `${budgetName} exceeded: ${observedMilliseconds.toFixed(3)}ms > ${limit}ms`,
+    );
+  }
+  return observedMilliseconds;
+}
+
+export function encodeSharedSource(source) {
+  const encoded = new TextEncoder().encode(String(source));
+  let binary = "";
+  for (const byte of encoded) binary += String.fromCharCode(byte);
+  return btoa(binary)
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/, "");
+}
+
+export function openInSageUrl(source) {
+  return `https://app.sagejs.org/#code=${encodeSharedSource(source)}`;
+}
+
 export function getPointer(value, pointer) {
   if (pointer === "") return value;
   if (typeof pointer !== "string" || !pointer.startsWith("/")) {
@@ -324,12 +354,14 @@ function caseHtml(story, caseRecord) {
 }
 
 export function buildAccessibleStoryHtml(story) {
+  const openUrl = openInSageUrl(story.canonical_python);
   return `<section class="gallery-story" id="${escapeHtml(story.id)}">
     <header><p class="domain">${escapeHtml(story.domain)} · ${escapeHtml(story.operation)}</p>
       <h2>${escapeHtml(story.title)}</h2><p>${escapeHtml(story.summary)}</p></header>
     <div class="story-columns"><section><h3>Learning objectives</h3><ul>${story.learning_objectives.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>
       <section><h3>Method assumptions</h3><ul>${story.method_assumptions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section></div>
-    <details><summary>Canonical Python</summary><pre><code>${escapeHtml(story.canonical_python)}</code></pre></details>
+    <details><summary>Complete Sage.js example</summary><pre><code>${escapeHtml(story.canonical_python)}</code></pre>
+      <p><a class="open-in-sage" href="${escapeHtml(openUrl)}" target="_blank" rel="noopener">Open in Sage.js</a> — starts a fresh browser worksheet containing this self-contained example.</p></details>
     ${story.cases.map((item) => caseHtml(story, item)).join("")}
   </section>`;
 }
@@ -341,13 +373,15 @@ export function buildGalleryDocument(bundle) {
   const body = bundle.stories.map(buildAccessibleStoryHtml).join("");
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Nine interactive Sage.js numerical lessons with checked results, failures, traces, plots, and animations.">
 <title>Sage.js numerical methods laboratory</title><link rel="stylesheet" href="./gallery.css"></head>
-<body><header class="hero"><p class="eyebrow">Sage.js numerical computing</p><h1>Evidence, not solver theater</h1>
+<body><header class="hero"><p class="site-links"><a href="../">Sage.js dashboard</a> · <a href="https://app.sagejs.org/">Run Sage.js</a> · <a href="../reference.html">Reference</a></p><p class="eyebrow">Sage.js numerical computing</p><h1>Evidence, not solver theater</h1>
 <p>Nine bounded lessons replay retained numerical evidence. Every success and failure remains fully readable without JavaScript or animation.</p></header>
 <nav aria-label="Numerical gallery stories"><h2>Stories</h2><ol>${navigation}</ol></nav>
 <main>${body}</main>
 <noscript><p class="noscript">JavaScript is off. All explanations and result tables are already present; interactive Plotly views and JSON downloads are optional enhancements.</p></noscript>
 <footer><p>Animations never autoplay, never re-evaluate a mathematical callback, and never interpolate an uncomputed solver state.</p></footer>
+<script src="./plotly.min.js"></script>
 <script type="module">import { loadAndHydrate } from "./gallery.mjs"; loadAndHydrate().catch((error) => { document.documentElement.dataset.galleryError = error.message; });</script>
 </body></html>\n`;
 }
@@ -413,15 +447,19 @@ export async function hydrateGallery(
   } = {},
 ) {
   assertGalleryBudgets(bundle);
+  const started = globalThis.performance.now();
   const rendered = [];
+  const renderTimes = [];
   for (const container of documentObject.querySelectorAll("[data-gallery-plot]")) {
     const [storyId, caseId] = container.dataset.galleryPlot.split(":");
     const { caseRecord } = caseById(bundle, storyId, caseId);
+    const renderStarted = globalThis.performance.now();
     rendered.push(await renderPresentation(
       container,
       caseRecord.presentation,
       Plotly,
     ));
+    renderTimes.push(globalThis.performance.now() - renderStarted);
   }
   for (const button of documentObject.querySelectorAll("[data-export]")) {
     button.addEventListener("click", () => {
@@ -437,6 +475,22 @@ export async function hydrateGallery(
       }
     });
   }
+  const hydrationMilliseconds = globalThis.performance.now() - started;
+  const maximumRenderMilliseconds = Math.max(0, ...renderTimes);
+  assertTimingBudget(
+    bundle,
+    "max_browser_hydration_ms",
+    hydrationMilliseconds,
+  );
+  assertTimingBudget(
+    bundle,
+    "max_single_plot_render_ms",
+    maximumRenderMilliseconds,
+  );
+  documentObject.documentElement.dataset.galleryHydrationMs =
+    hydrationMilliseconds.toFixed(3);
+  documentObject.documentElement.dataset.galleryMaxRenderMs =
+    maximumRenderMilliseconds.toFixed(3);
   documentObject.documentElement.dataset.galleryReady = "true";
   documentObject.documentElement.dataset.galleryRenderedCount = String(
     rendered.filter(Boolean).length,

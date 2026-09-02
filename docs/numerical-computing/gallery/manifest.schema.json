@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sagejs.org/schemas/numerical-gallery-manifest-v1.json",
-  "title": "Sage.js numerical teaching gallery manifest",
+  "$id": "https://sagejs.org/schemas/numerical-gallery-manifest-v2.json",
+  "title": "Sage.js public numerical teaching gallery manifest",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -9,17 +9,71 @@
     "kind",
     "title",
     "description",
-    "story_schema",
+    "entrypoint",
+    "evidence",
+    "renderer",
+    "stylesheet",
+    "plotly",
     "budgets",
+    "deployment_budgets",
+    "measurements",
+    "story_order",
     "stories"
   ],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"const": 2},
     "kind": {"const": "sagejs-numerical-gallery"},
     "title": {"type": "string", "minLength": 1},
     "description": {"type": "string", "minLength": 1},
-    "story_schema": {"type": "string", "minLength": 1},
-    "budgets": {"$ref": "#/$defs/budgets"},
+    "entrypoint": {"type": "string", "minLength": 1},
+    "evidence": {"type": "string", "minLength": 1},
+    "renderer": {"type": "string", "minLength": 1},
+    "stylesheet": {"type": "string", "minLength": 1},
+    "plotly": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["href", "package", "version", "license", "bytes", "sha256"],
+      "properties": {
+        "href": {"type": "string", "minLength": 1},
+        "package": {"const": "plotly.js-dist-min"},
+        "version": {"type": "string", "minLength": 1},
+        "license": {"type": "string", "minLength": 1},
+        "bytes": {"$ref": "#/$defs/positive_integer"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "budgets": {"$ref": "cross-domain.schema.json#/$defs/budgets"},
+    "deployment_budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_plotly_distribution_bytes", "max_gallery_runtime_bytes"],
+      "properties": {
+        "max_plotly_distribution_bytes": {"$ref": "#/$defs/positive_integer"},
+        "max_gallery_runtime_bytes": {"$ref": "#/$defs/positive_integer"}
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "story_count",
+        "case_count",
+        "animated_case_count",
+        "gallery_runtime_bytes"
+      ],
+      "properties": {
+        "story_count": {"$ref": "#/$defs/positive_integer"},
+        "case_count": {"$ref": "#/$defs/positive_integer"},
+        "animated_case_count": {"$ref": "#/$defs/positive_integer"},
+        "gallery_runtime_bytes": {"$ref": "#/$defs/positive_integer"}
+      }
+    },
+    "story_order": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/id"}
+    },
     "stories": {
       "type": "array",
       "minItems": 1,
@@ -28,26 +82,7 @@
   },
   "$defs": {
     "positive_integer": {"type": "integer", "minimum": 1},
-    "budgets": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "max_story_bytes",
-        "max_trace_events_per_result",
-        "max_trace_payload_bytes_per_result",
-        "max_animation_frames",
-        "max_samples_per_frame",
-        "max_animation_payload_bytes"
-      ],
-      "properties": {
-        "max_story_bytes": {"$ref": "#/$defs/positive_integer"},
-        "max_trace_events_per_result": {"$ref": "#/$defs/positive_integer"},
-        "max_trace_payload_bytes_per_result": {"$ref": "#/$defs/positive_integer"},
-        "max_animation_frames": {"$ref": "#/$defs/positive_integer"},
-        "max_samples_per_frame": {"$ref": "#/$defs/positive_integer"},
-        "max_animation_payload_bytes": {"$ref": "#/$defs/positive_integer"}
-      }
-    },
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
     "story_entry": {
       "type": "object",
       "additionalProperties": false,
@@ -57,27 +92,26 @@
         "domain",
         "operation",
         "status",
-        "href",
         "entrypoint",
         "case_ids",
         "capabilities"
       ],
       "properties": {
-        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "id": {"$ref": "#/$defs/id"},
         "title": {"type": "string", "minLength": 1},
         "domain": {"type": "string", "minLength": 1},
         "operation": {"type": "string", "minLength": 1},
-        "status": {"enum": ["complete", "preview", "planned"]},
-        "href": {"type": "string", "minLength": 1},
+        "status": {"const": "complete"},
         "entrypoint": {"type": "string", "minLength": 1},
         "case_ids": {
           "type": "array",
-          "minItems": 1,
-          "items": {"type": "string", "minLength": 1},
+          "minItems": 2,
+          "items": {"$ref": "#/$defs/id"},
           "uniqueItems": true
         },
         "capabilities": {
           "type": "array",
+          "minItems": 1,
           "items": {"type": "string", "minLength": 1},
           "uniqueItems": true
         }

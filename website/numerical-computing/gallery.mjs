@@ -1,61 +1,68 @@
-const SVG_NS = "http://www.w3.org/2000/svg";
+const BUNDLE_SCHEMA = "sagejs.numerics.gallery.bundle/v1";
+const STORY_SCHEMA = "sagejs.numerics.gallery.story/v1";
 
-export function getPointer(record, pointer) {
-  if (pointer === "") return record;
-  if (!pointer.startsWith("/")) throw new TypeError(`invalid JSON pointer: ${pointer}`);
-  return pointer.slice(1).split("/").reduce((value, rawPart) => {
-    const part = rawPart.replaceAll("~1", "/").replaceAll("~0", "~");
-    if (value === null || value === undefined || !(part in Object(value))) {
-      throw new Error(`missing narrative evidence at ${pointer}`);
-    }
-    return value[part];
-  }, record);
+function bytes(value) {
+  return new TextEncoder().encode(value).byteLength;
 }
 
-export function diagnosticCodes(result) {
-  return (result.diagnostics || []).map((diagnostic) => diagnostic.code);
-}
-
-export function buildCaseNarrative(story, caseRecord) {
-  const { result } = caseRecord;
-  let source = "status";
-  let key = result.status;
-  let rule;
-  if (result.success === true && result.validation?.passed === true) {
-    source = "success";
-    key = "success";
-    rule = story.narrative_catalog.success;
-  } else {
-    for (const code of diagnosticCodes(result)) {
-      if (story.narrative_catalog.diagnostics[code]) {
-        source = "diagnostic";
-        key = code;
-        rule = story.narrative_catalog.diagnostics[code];
-        break;
-      }
-    }
-    rule ||= story.narrative_catalog.status_fallbacks[result.status];
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.keys(value).sort().map((key) => [key, canonical(value[key])]),
+    );
   }
-  if (!rule) {
-    throw new Error(`no evidence narrative for case ${caseRecord.id}: ${result.status}`);
-  }
-  return {
-    source,
-    key,
-    heading: rule.heading,
-    explanation: rule.explanation,
-    action: rule.action,
-    evidence: rule.evidence.map((pointer) => ({
-      pointer,
-      value: getPointer(caseRecord, pointer),
-    })),
-  };
+  return value;
 }
 
-function utf8Bytes(value) {
-  return new TextEncoder().encode(
-    typeof value === "string" ? value : JSON.stringify(value),
-  ).byteLength;
+export function stableJson(value) {
+  return JSON.stringify(canonical(value));
+}
+
+export function assertTimingBudget(bundle, budgetName, observedMilliseconds) {
+  const limit = bundle?.budgets?.[budgetName];
+  if (!Number.isFinite(limit) || limit <= 0) {
+    throw new Error(`gallery timing budget ${budgetName} is missing`);
+  }
+  if (!Number.isFinite(observedMilliseconds) || observedMilliseconds < 0) {
+    throw new TypeError(`${budgetName} observation must be finite and nonnegative`);
+  }
+  if (observedMilliseconds > limit) {
+    throw new RangeError(
+      `${budgetName} exceeded: ${observedMilliseconds.toFixed(3)}ms > ${limit}ms`,
+    );
+  }
+  return observedMilliseconds;
+}
+
+export function encodeSharedSource(source) {
+  const encoded = new TextEncoder().encode(String(source));
+  let binary = "";
+  for (const byte of encoded) binary += String.fromCharCode(byte);
+  return btoa(binary)
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/, "");
+}
+
+export function openInSageUrl(source) {
+  return `https://app.sagejs.org/#code=${encodeSharedSource(source)}`;
+}
+
+export function getPointer(value, pointer) {
+  if (pointer === "") return value;
+  if (typeof pointer !== "string" || !pointer.startsWith("/")) {
+    throw new TypeError("gallery evidence pointers must be JSON pointers");
+  }
+  let current = value;
+  for (const encoded of pointer.slice(1).split("/")) {
+    const key = encoded.replaceAll("~1", "/").replaceAll("~0", "~");
+    if (current === null || typeof current !== "object" || !(key in current)) {
+      throw new Error(`missing gallery evidence ${pointer}`);
+    }
+    current = current[key];
+  }
+  return current;
 }
 
 function scalarCount(value) {
@@ -68,126 +75,223 @@ function scalarCount(value) {
       0,
     );
   }
-  return value === undefined ? 0 : 1;
+  return 1;
 }
 
-function tracedResults(story) {
-  return story.cases.flatMap((caseRecord) => {
-    const records = [{ id: `${caseRecord.id}:result`, value: caseRecord.result }];
-    if (caseRecord.verification) {
-      records.push({
-        id: `${caseRecord.id}:verification`,
-        value: caseRecord.verification,
-      });
-    }
-    return records;
-  });
-}
-
-export function assertStoryBudgets(manifest, story, serializedStory) {
-  const budget = manifest.budgets;
-  const storyBytes = utf8Bytes(serializedStory ?? story);
-  if (storyBytes > budget.max_story_bytes) {
-    throw new RangeError(
-      `story payload ${storyBytes} exceeds max_story_bytes=${budget.max_story_bytes}`,
-    );
-  }
-  const recordedTraces = new Map();
-  for (const measurement of story.visualization.budget_measurements.trace_records) {
-    if (recordedTraces.has(measurement.id)) {
-      throw new Error(`duplicate trace payload measurement for ${measurement.id}`);
-    }
-    recordedTraces.set(measurement.id, measurement);
-  }
-  const traceMeasurements = [];
-  for (const record of tracedResults(story)) {
-    const trace = record.value.trace;
-    const traceBytes = utf8Bytes(trace);
-    if (trace.retained_events > budget.max_trace_events_per_result ||
-        trace.events.length > budget.max_trace_events_per_result) {
-      throw new RangeError(
-        `${record.id} trace exceeds max_trace_events_per_result=${budget.max_trace_events_per_result}`,
-      );
-    }
-    if (traceBytes > budget.max_trace_payload_bytes_per_result) {
-      throw new RangeError(
-        `${record.id} trace payload ${traceBytes} exceeds max_trace_payload_bytes_per_result=${budget.max_trace_payload_bytes_per_result}`,
-      );
-    }
-    const recorded = recordedTraces.get(record.id);
-    if (!recorded || recorded.retained_events !== trace.retained_events ||
-        recorded.payload_bytes !== traceBytes) {
-      throw new Error(`trace payload measurement is stale for ${record.id}`);
-    }
-    traceMeasurements.push({
-      id: record.id,
-      retained_events: trace.retained_events,
-      payload_bytes: traceBytes,
-    });
-    recordedTraces.delete(record.id);
-  }
-  if (recordedTraces.size > 0) {
-    throw new Error(
-      `trace payload measurement has no result: ${[...recordedTraces.keys()].join(", ")}`,
-    );
-  }
-  const animation = story.visualization.plot_spec_animation;
-  if (animation.frames.length > budget.max_animation_frames) {
-    throw new RangeError(
-      `animation exceeds max_animation_frames=${budget.max_animation_frames}`,
-    );
-  }
-  let maxSamples = 0;
-  for (const frame of animation.frames) {
-    const samples = frame.state.value.layers.reduce(
-      (total, layer) => total + scalarCount(layer.data),
-      0,
-    );
-    maxSamples = Math.max(maxSamples, samples);
-    if (samples > budget.max_samples_per_frame) {
-      throw new RangeError(
-        `${frame.id} has ${samples} samples, exceeding max_samples_per_frame=${budget.max_samples_per_frame}`,
-      );
-    }
-  }
-  const measurements = story.visualization.budget_measurements;
-  if (measurements.frames !== animation.frames.length ||
-      measurements.max_samples_per_frame !== maxSamples) {
-    throw new Error("animation frame or sample measurements are stale");
-  }
-  const semanticBytes = utf8Bytes(animation);
-  const plotlyBytes = utf8Bytes(story.visualization.plotly.figure);
-  if (semanticBytes !== measurements.semantic_payload_bytes ||
-      plotlyBytes !== measurements.plotly_payload_bytes) {
-    throw new Error("animation payload measurements are stale");
-  }
-  if (semanticBytes > budget.max_animation_payload_bytes ||
-      plotlyBytes > budget.max_animation_payload_bytes) {
-    throw new RangeError(
-      `animation payload exceeds max_animation_payload_bytes=${budget.max_animation_payload_bytes}`,
-    );
-  }
+function traceMeasurement(result) {
   return {
-    story_bytes: storyBytes,
-    trace_records: traceMeasurements,
-    semantic_animation_bytes: semanticBytes,
-    plotly_animation_bytes: plotlyBytes,
+    events: result.trace.retained_events,
+    payload: bytes(JSON.stringify(result.trace)),
   };
 }
 
-export function formatNumber(value) {
-  if (value === null || value === undefined) return "—";
-  if (typeof value !== "number") return String(value);
-  if (!Number.isFinite(value)) return String(value);
-  const absolute = Math.abs(value);
-  if (value !== 0 && (absolute < 1e-5 || absolute >= 1e6)) {
-    return value.toExponential(5);
+function presentationMeasurements(presentation) {
+  if (!presentation) {
+    return { frames: 0, scalars: 0, semantic: 0, plotly: 0 };
   }
-  return value.toLocaleString("en-US", { maximumSignificantDigits: 9 });
+  const animation = presentation.plot_animation;
+  let frames = 0;
+  let scalars = 0;
+  let semantic = 0;
+  if (animation) {
+    frames = animation.frames.length;
+    semantic = bytes(JSON.stringify(animation));
+    for (const frame of animation.frames) {
+      scalars = Math.max(scalars, scalarCount(frame));
+    }
+  }
+  return {
+    frames,
+    scalars,
+    semantic,
+    plotly: bytes(JSON.stringify(presentation.plotly)),
+  };
 }
 
-function iterationEvents(result) {
-  return result.trace.events.filter((event) => event.kind === "iteration");
+function assertStableTopology(animation, storyId, caseId) {
+  const baseline = animation.topology.layers;
+  if (!Array.isArray(baseline) || baseline.length === 0) {
+    throw new Error(`${storyId}/${caseId}: missing animation topology`);
+  }
+  if (animation.controls.autoplay !== false) {
+    throw new Error(`${storyId}/${caseId}: gallery animations must not autoplay`);
+  }
+  for (const frame of animation.frames) {
+    const layers = frame.state.value.layers;
+    const topology = layers.map(({ id, kind }) => ({ id, kind }));
+    if (stableJson(topology) !== stableJson(baseline)) {
+      throw new Error(`${storyId}/${caseId}: unstable animation topology`);
+    }
+    if (frame.metadata?.interpolated === true) {
+      throw new Error(`${storyId}/${caseId}: fabricated interpolated frame`);
+    }
+  }
+}
+
+function assertPlotly(presentation, storyId, caseId) {
+  const record = presentation.plotly;
+  if (record.schema !== "plotly-compatible/v1") {
+    throw new Error(`${storyId}/${caseId}: unknown Plotly export schema`);
+  }
+  if (!record.figure || !Array.isArray(record.figure.data)) {
+    throw new Error(`${storyId}/${caseId}: invalid Plotly figure`);
+  }
+  const animation = presentation.plot_animation;
+  if (!animation) return;
+  if (!Array.isArray(record.figure.frames)) {
+    throw new Error(`${storyId}/${caseId}: Plotly animation has no frames`);
+  }
+  if (record.figure.frames.length !== animation.frames.length) {
+    throw new Error(`${storyId}/${caseId}: semantic/Plotly frame mismatch`);
+  }
+  const semanticIds = animation.frames.map((frame) => frame.id);
+  const plotlyIds = record.figure.frames.map((frame) => frame.name);
+  if (stableJson(semanticIds) !== stableJson(plotlyIds)) {
+    throw new Error(`${storyId}/${caseId}: Plotly frame identities drifted`);
+  }
+}
+
+export function assertGalleryBudgets(bundle, serialized = undefined) {
+  if (!bundle || bundle.schema !== BUNDLE_SCHEMA) {
+    throw new Error("unknown numerical gallery bundle schema");
+  }
+  if (!Array.isArray(bundle.stories) || bundle.stories.length === 0) {
+    throw new Error("the numerical gallery must contain stories");
+  }
+  const actualBundleBytes = serialized === undefined
+    ? bundle.measurements.bundle_bytes
+    : bytes(serialized);
+  if (
+    serialized !== undefined &&
+    actualBundleBytes !== bundle.measurements.bundle_bytes
+  ) {
+    throw new Error("gallery bundle byte measurement is stale");
+  }
+  if (actualBundleBytes > bundle.budgets.max_bundle_bytes) {
+    throw new Error("gallery exceeds max_bundle_bytes");
+  }
+  const ids = new Set();
+  const observedOrder = [];
+  let caseCount = 0;
+  let animatedCaseCount = 0;
+  for (const story of bundle.stories) {
+    if (story.schema !== STORY_SCHEMA) {
+      throw new Error(`${story.id}: unknown gallery story schema`);
+    }
+    if (ids.has(story.id)) throw new Error(`duplicate gallery story ${story.id}`);
+    ids.add(story.id);
+    observedOrder.push(story.id);
+    if (story.cases.length < 2) {
+      throw new Error(`${story.id}: stories require success and failure cases`);
+    }
+    const kinds = new Set(story.cases.map((item) => item.kind));
+    if (!kinds.has("success") || !kinds.has("failure")) {
+      throw new Error(`${story.id}: success and failure stories are both required`);
+    }
+    const actualStoryBytes = bytes(stableJson(story));
+    // Python deliberately preserves distinctions such as 1.0 versus 1 in the
+    // checked artifact. JavaScript's JSON.stringify canonicalizes both to 1,
+    // so its reconstruction can be smaller but must never be larger than the
+    // source-side byte receipt.
+    if (actualStoryBytes > story.measurements.story_bytes) {
+      throw new Error(`${story.id}: story byte receipt understates the payload`);
+    }
+    if (actualStoryBytes > bundle.budgets.max_story_bytes) {
+      throw new Error(`${story.id}: story exceeds max_story_bytes`);
+    }
+    const observed = {
+      traceEvents: 0,
+      traceBytes: 0,
+      frames: 0,
+      scalars: 0,
+      semantic: 0,
+      plotly: 0,
+    };
+    for (const caseRecord of story.cases) {
+      caseCount += 1;
+      if (!caseRecord.static_description || !caseRecord.question) {
+        throw new Error(`${story.id}/${caseRecord.id}: missing static lesson`);
+      }
+      for (const pointer of caseRecord.evidence) getPointer(caseRecord, pointer);
+      const trace = traceMeasurement(caseRecord.result);
+      observed.traceEvents = Math.max(observed.traceEvents, trace.events);
+      observed.traceBytes = Math.max(observed.traceBytes, trace.payload);
+      if (trace.events > bundle.budgets.max_trace_events_per_result) {
+        throw new Error(`${story.id}/${caseRecord.id}: max_trace_events_per_result`);
+      }
+      if (trace.payload > bundle.budgets.max_trace_bytes_per_result) {
+        throw new Error(`${story.id}/${caseRecord.id}: max_trace_bytes_per_result`);
+      }
+      const presentation = caseRecord.presentation;
+      if (!presentation) continue;
+      if (!presentation.computed_evidence_only) {
+        throw new Error(`${story.id}/${caseRecord.id}: non-evidence presentation`);
+      }
+      if (presentation.callback_reevaluated) {
+        throw new Error(`${story.id}/${caseRecord.id}: callback was reevaluated`);
+      }
+      if (
+        presentation.callback_count_before !== presentation.callback_count_after
+      ) {
+        throw new Error(`${story.id}/${caseRecord.id}: callback count changed`);
+      }
+      const measured = presentationMeasurements(presentation);
+      observed.frames = Math.max(observed.frames, measured.frames);
+      observed.scalars = Math.max(observed.scalars, measured.scalars);
+      observed.semantic = Math.max(observed.semantic, measured.semantic);
+      observed.plotly = Math.max(observed.plotly, measured.plotly);
+      if (presentation.plot_animation) {
+        animatedCaseCount += 1;
+        assertStableTopology(presentation.plot_animation, story.id, caseRecord.id);
+      }
+      assertPlotly(presentation, story.id, caseRecord.id);
+    }
+    const expected = story.measurements;
+    const fields = [
+      ["max_trace_events", observed.traceEvents],
+      ["max_trace_bytes", observed.traceBytes],
+      ["max_animation_frames", observed.frames],
+      ["max_frame_scalars", observed.scalars],
+      ["max_semantic_animation_bytes", observed.semantic],
+      ["max_plotly_bytes", observed.plotly],
+    ];
+    for (const [field, value] of fields) {
+      const byteReceipt = field.includes("bytes");
+      if (
+        (byteReceipt && value > expected[field]) ||
+        (!byteReceipt && expected[field] !== value)
+      ) {
+        throw new Error(`${story.id}: ${field} measurement is stale`);
+      }
+    }
+    if (observed.frames > bundle.budgets.max_animation_frames) {
+      throw new Error(`${story.id}: max_animation_frames`);
+    }
+    if (observed.scalars > bundle.budgets.max_scalars_per_frame) {
+      throw new Error(`${story.id}: max_scalars_per_frame`);
+    }
+    if (observed.semantic > bundle.budgets.max_semantic_animation_bytes) {
+      throw new Error(`${story.id}: max_semantic_animation_bytes`);
+    }
+    if (observed.plotly > bundle.budgets.max_plotly_bytes) {
+      throw new Error(`${story.id}: max_plotly_bytes`);
+    }
+  }
+  if (stableJson(observedOrder) !== stableJson(bundle.story_order)) {
+    throw new Error("gallery story order is stale");
+  }
+  if (caseCount !== bundle.measurements.case_count) {
+    throw new Error("gallery case count is stale");
+  }
+  if (animatedCaseCount !== bundle.measurements.animated_case_count) {
+    throw new Error("gallery animated case count is stale");
+  }
+  return {
+    bundle_bytes: actualBundleBytes,
+    story_count: bundle.stories.length,
+    case_count: caseCount,
+    animated_case_count: animatedCaseCount,
+  };
 }
 
 function escapeHtml(value) {
@@ -199,425 +303,206 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
-function plotGeometry(frame) {
-  const layers = frame.state.value.layers;
-  const finitePoints = layers.flatMap((layer) =>
-    (layer.data?.x || []).map((x, index) => [x, layer.data?.y?.[index]])
-      .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y)),
-  );
-  if (finitePoints.length === 0) {
-    throw new Error("root animation frame has no finite retained evidence");
-  }
-  const xs = finitePoints.map(([x]) => x);
-  const ys = finitePoints.map(([, y]) => y);
-  let xMin = Math.min(...xs);
-  let xMax = Math.max(...xs);
-  if (xMin === xMax) {
-    const padding = Math.max(Math.abs(xMin) * 0.1, 1);
-    xMin -= padding;
-    xMax += padding;
-  }
-  const yMinRaw = Math.min(0, ...ys);
-  const yMaxRaw = Math.max(0, ...ys);
-  const yPadding = Math.max((yMaxRaw - yMinRaw) * 0.08, 0.05);
-  const yMin = yMinRaw - yPadding;
-  const yMax = yMaxRaw + yPadding;
-  const width = 760;
-  const height = 400;
-  const left = 62;
-  const right = 22;
-  const top = 24;
-  const bottom = 52;
-  const plotWidth = width - left - right;
-  const plotHeight = height - top - bottom;
-  const sx = (x) => left + ((x - xMin) / (xMax - xMin)) * plotWidth;
-  const sy = (y) => top + ((yMax - y) / (yMax - yMin)) * plotHeight;
-  return { layers, sx, sy, width, height, left, right, top, bottom, xMin, xMax, yMin, yMax };
-}
-
-function markerMarkup(layer, geometry) {
-  const points = layer.data.x.map((x, index) => [x, layer.data.y[index]])
-    .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
-  return points.map(([x, y]) => {
-    const cx = geometry.sx(x);
-    const cy = geometry.sy(y);
-    if (layer.source_intent?.role === "candidate") {
-      const size = 7;
-      return `<polygon points="${cx},${cy - size} ${cx + size},${cy} ${cx},${cy + size} ${cx - size},${cy}" class="plot-candidate"><title>candidate x=${escapeHtml(formatNumber(x))}, residual=${escapeHtml(formatNumber(Math.abs(y)))}</title></polygon>`;
-    }
-    const role = layer.source_intent?.role || "retained evidence";
-    return `<circle cx="${cx}" cy="${cy}" r="5" class="plot-evaluation"><title>${escapeHtml(role)} x=${escapeHtml(formatNumber(x))}, y=${escapeHtml(formatNumber(y))}</title></circle>`;
-  }).join("");
-}
-
-function bracketMarkup(layer, geometry) {
-  const points = layer.data.x.map((x, index) => [x, layer.data.y[index]])
-    .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
-  if (points.length < 2) return "";
-  const [[x0, y0], [x1, y1]] = points;
-  const endpoints = points.slice(0, 2).map(([x, y]) =>
-    `<circle cx="${geometry.sx(x)}" cy="${geometry.sy(y)}" r="6" class="plot-bracket"><title>retained bracket endpoint x=${escapeHtml(formatNumber(x))}</title></circle>`,
+function resultEvidenceRows(caseRecord) {
+  const result = caseRecord.result;
+  const rows = [
+    ["Status", result.status],
+    ["Success", String(result.success)],
+    ["Method", result.method],
+    ["Backend", result.backend],
+    ["Validation", `${result.validation.truth_level}; passed=${result.validation.passed}`],
+    ["Iterations", result.iterations],
+    ["Evaluations", result.evaluations],
+    [
+      "Diagnostics",
+      result.diagnostics.map((item) => item.code).join(", ") || "none",
+    ],
+  ];
+  return rows.map(([key, value]) =>
+    `<tr><th scope="row">${escapeHtml(key)}</th><td>${escapeHtml(value)}</td></tr>`
   ).join("");
-  return `<line x1="${geometry.sx(x0)}" y1="${geometry.sy(y0)}" x2="${geometry.sx(x1)}" y2="${geometry.sy(y1)}" class="plot-bracket-line"/>${endpoints}`;
 }
 
-export function svgMarkup(frame, description) {
-  const geometry = plotGeometry(frame);
-  const brackets = geometry.layers
-    .filter((layer) => layer.source_intent?.role === "bracket")
-    .map((layer) => bracketMarkup(layer, geometry))
-    .join("");
-  const markers = geometry.layers
-    .filter((layer) => layer.kind === "point" && layer.source_intent?.role !== "bracket")
-    .map((layer) => markerMarkup(layer, geometry))
-    .join("");
-  const zeroY = geometry.sy(0);
-  const title = "Brent root-finding iteration";
-  return `<svg viewBox="0 0 ${geometry.width} ${geometry.height}" role="img" aria-labelledby="export-plot-title export-plot-desc" xmlns="${SVG_NS}"><title id="export-plot-title">${title}</title><desc id="export-plot-desc">${escapeHtml(description)}</desc><rect width="100%" height="100%" class="plot-background"/><line x1="${geometry.left}" y1="${zeroY}" x2="${geometry.width - geometry.right}" y2="${zeroY}" class="plot-axis"/><line x1="${geometry.left}" y1="${geometry.top}" x2="${geometry.left}" y2="${geometry.height - geometry.bottom}" class="plot-axis"/>${brackets}${markers}<text x="${geometry.width / 2}" y="${geometry.height - 12}" class="plot-label">x</text><text x="18" y="${geometry.height / 2}" transform="rotate(-90 18 ${geometry.height / 2})" class="plot-label">retained value</text><text x="${geometry.left}" y="${geometry.height - 30}" class="plot-tick">${formatNumber(geometry.xMin)}</text><text x="${geometry.width - geometry.right}" y="${geometry.height - 30}" text-anchor="end" class="plot-tick">${formatNumber(geometry.xMax)}</text></svg>`;
+function caseHtml(story, caseRecord) {
+  const presentation = caseRecord.presentation;
+  const plot = presentation
+    ? `<figure class="gallery-figure">
+        <div class="gallery-plot" id="plot-${escapeHtml(story.id)}-${escapeHtml(caseRecord.id)}"
+          data-gallery-plot="${escapeHtml(story.id)}:${escapeHtml(caseRecord.id)}"
+          role="img" aria-label="${escapeHtml(presentation.static_description)}">
+          <p>${escapeHtml(presentation.static_description)}</p>
+        </div>
+        <figcaption>${escapeHtml(presentation.static_description)}</figcaption>
+        <div class="gallery-actions">
+          <button type="button" data-export="plotspec" data-story="${escapeHtml(story.id)}" data-case="${escapeHtml(caseRecord.id)}">Export PlotSpec JSON</button>
+          <button type="button" data-export="plotly" data-story="${escapeHtml(story.id)}" data-case="${escapeHtml(caseRecord.id)}">Export Plotly JSON</button>
+          <button type="button" data-export="html" data-story="${escapeHtml(story.id)}" data-case="${escapeHtml(caseRecord.id)}">Export accessible HTML</button>
+        </div>
+      </figure>`
+    : `<p class="no-animation">No animation is shown: this result did not retain a complete visual state. The structured failure evidence below remains the lesson.</p>`;
+  return `<article class="gallery-case gallery-case-${escapeHtml(caseRecord.kind)}" id="case-${escapeHtml(story.id)}-${escapeHtml(caseRecord.id)}">
+    <p class="case-kind">${escapeHtml(caseRecord.kind)}</p>
+    <h3>${escapeHtml(caseRecord.title)}</h3>
+    <p class="question">${escapeHtml(caseRecord.question)}</p>
+    <p>${escapeHtml(caseRecord.static_description)}</p>
+    ${plot}
+    <div class="table-scroll"><table>
+      <caption>Structured numerical evidence for ${escapeHtml(caseRecord.title)}</caption>
+      <tbody>${resultEvidenceRows(caseRecord)}</tbody>
+    </table></div>
+  </article>`;
 }
 
-function traceTableMarkup(result) {
-  const rows = iterationEvents(result).map((event) => {
-    const data = event.data;
-    const bracket = Array.isArray(data.bracket)
-      ? `[${formatNumber(data.bracket[0])}, ${formatNumber(data.bracket[1])}]`
-      : "—";
-    return `<tr><th scope="row">${event.iteration}</th><td>${escapeHtml(data.step_kind || data.derivative_kind || "—")}</td><td>${escapeHtml(formatNumber(data.candidate))}</td><td>${escapeHtml(formatNumber(data.residual))}</td><td>${escapeHtml(bracket)}</td><td>${escapeHtml(formatNumber(data.bracket_width ?? data.step))}</td></tr>`;
-  }).join("");
-  return `<table><caption>Every retained iteration from the bounded semantic trace.</caption><thead><tr><th scope="col">Iteration</th><th scope="col">Step</th><th scope="col">Candidate</th><th scope="col">Residual</th><th scope="col">Bracket</th><th scope="col">Width or step</th></tr></thead><tbody>${rows}</tbody></table>`;
+export function buildAccessibleStoryHtml(story) {
+  const openUrl = openInSageUrl(story.canonical_python);
+  return `<section class="gallery-story" id="${escapeHtml(story.id)}">
+    <header><p class="domain">${escapeHtml(story.domain)} · ${escapeHtml(story.operation)}</p>
+      <h2>${escapeHtml(story.title)}</h2><p>${escapeHtml(story.summary)}</p></header>
+    <div class="story-columns"><section><h3>Learning objectives</h3><ul>${story.learning_objectives.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>
+      <section><h3>Method assumptions</h3><ul>${story.method_assumptions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section></div>
+    <details><summary>Complete Sage.js example</summary><pre><code>${escapeHtml(story.canonical_python)}</code></pre>
+      <p><a class="open-in-sage" href="${escapeHtml(openUrl)}" target="_blank" rel="noopener">Open in Sage.js</a> — starts a fresh browser worksheet containing this self-contained example.</p></details>
+    ${story.cases.map((item) => caseHtml(story, item)).join("")}
+  </section>`;
 }
 
-export function buildAccessibleExportHtml(story, frameIndex = 0) {
-  const successCase = story.cases.find(
-    (caseRecord) => caseRecord.id === story.visualization.case_id,
-  );
-  const frames = story.visualization.plot_spec_animation.frames;
-  const boundedIndex = Math.max(0, Math.min(frames.length - 1, frameIndex));
+export function buildGalleryDocument(bundle) {
+  const navigation = bundle.stories.map((story) =>
+    `<li><a href="#${escapeHtml(story.id)}">${escapeHtml(story.title)}</a></li>`
+  ).join("");
+  const body = bundle.stories.map(buildAccessibleStoryHtml).join("");
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(story.title)} — static export</title><style>body{font:16px/1.55 system-ui,sans-serif;color:#17241f;max-width:70rem;margin:2rem auto;padding:0 1rem}svg{width:100%;height:auto;border:1px solid #bbc8c2}.plot-background{fill:#fbfaf5}.plot-axis{stroke:#66736e;stroke-width:1}.plot-bracket-line{stroke:#a33b20;stroke-width:5}.plot-bracket{fill:#fff;stroke:#a33b20;stroke-width:3}.plot-evaluation{fill:#275d89;stroke:#fff;stroke-width:1.5}.plot-candidate{fill:#1d704f;stroke:#fff;stroke-width:2}.plot-label,.plot-tick{font-family:system-ui,sans-serif;fill:#24332d;font-size:14px}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:.5rem;border:1px solid #ccd6d1;text-align:left}caption{text-align:left;font-weight:700;margin:.75rem 0}@media(prefers-color-scheme:dark){body{color:#e7eee9;background:#16201c}.plot-background{fill:#1d2924}.plot-axis,.plot-label,.plot-tick{stroke:#9dafaa;fill:#dce7e1}th,td{border-color:#506159}}</style></head><body><main><h1>${escapeHtml(story.title)}</h1><p>${escapeHtml(successCase.static_description)}</p><figure>${svgMarkup(frames[boundedIndex], story.accessibility.static_plot_description)}<figcaption>${escapeHtml(story.accessibility.static_plot_description)}</figcaption></figure>${traceTableMarkup(successCase.result)}<h2>Validation</h2><pre>${escapeHtml(JSON.stringify(successCase.result.validation, null, 2))}</pre></main></body></html>`;
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Nine interactive Sage.js numerical lessons with checked results, failures, traces, plots, and animations.">
+<title>Sage.js numerical methods laboratory</title><link rel="stylesheet" href="./gallery.css"></head>
+<body><header class="hero"><p class="site-links"><a href="../">Sage.js dashboard</a> · <a href="https://app.sagejs.org/">Run Sage.js</a> · <a href="../reference.html">Reference</a></p><p class="eyebrow">Sage.js numerical computing</p><h1>Evidence, not solver theater</h1>
+<p>Nine bounded lessons replay retained numerical evidence. Every success and failure remains fully readable without JavaScript or animation.</p></header>
+<nav aria-label="Numerical gallery stories"><h2>Stories</h2><ol>${navigation}</ol></nav>
+<main>${body}</main>
+<noscript><p class="noscript">JavaScript is off. All explanations and result tables are already present; interactive Plotly views and JSON downloads are optional enhancements.</p></noscript>
+<footer><p>Animations never autoplay, never re-evaluate a mathematical callback, and never interpolate an uncomputed solver state.</p></footer>
+<script src="./plotly.min.js"></script>
+<script type="module">import { loadAndHydrate } from "./gallery.mjs"; loadAndHydrate().catch((error) => { document.documentElement.dataset.galleryError = error.message; });</script>
+</body></html>\n`;
 }
 
-export function buildPlotlyExport(story) {
-  return `${JSON.stringify(story.visualization.plotly.figure, null, 2)}\n`;
+export function caseById(bundle, storyId, caseId) {
+  const story = bundle.stories.find((item) => item.id === storyId);
+  if (!story) throw new Error(`unknown gallery story ${storyId}`);
+  const caseRecord = story.cases.find((item) => item.id === caseId);
+  if (!caseRecord) throw new Error(`unknown gallery case ${storyId}/${caseId}`);
+  return { story, caseRecord };
 }
 
-export function buildPlotSpecExport(story) {
-  return `${JSON.stringify(story.visualization.plot_spec_animation, null, 2)}\n`;
+export function buildPlotSpecExport(bundle, storyId, caseId) {
+  const { caseRecord } = caseById(bundle, storyId, caseId);
+  if (!caseRecord.presentation) throw new Error("case has no PlotSpec presentation");
+  const value = caseRecord.presentation.plot_animation ||
+    caseRecord.presentation.plot_spec;
+  return `${JSON.stringify(value, null, 2)}\n`;
 }
 
-function svgElement(tag, attributes = {}, text) {
-  const node = document.createElementNS(SVG_NS, tag);
-  for (const [name, value] of Object.entries(attributes)) {
-    node.setAttribute(name, String(value));
-  }
-  if (text !== undefined) node.textContent = text;
-  return node;
+export function buildPlotlyExport(bundle, storyId, caseId) {
+  const { caseRecord } = caseById(bundle, storyId, caseId);
+  if (!caseRecord.presentation) throw new Error("case has no Plotly presentation");
+  return `${JSON.stringify(caseRecord.presentation.plotly.figure, null, 2)}\n`;
 }
 
-function renderSvg(svg, frame, description) {
-  const geometry = plotGeometry(frame);
-  svg.replaceChildren();
-  svg.setAttribute("viewBox", `0 0 ${geometry.width} ${geometry.height}`);
-  svg.setAttribute("role", "img");
-  svg.setAttribute("aria-labelledby", "root-plot-title root-plot-description");
-  svg.append(
-    svgElement("title", { id: "root-plot-title" }, "Brent root-finding iteration"),
-    svgElement("desc", { id: "root-plot-description" }, description),
-    svgElement("rect", { width: "100%", height: "100%", class: "plot-background" }),
-    svgElement("line", {
-      x1: geometry.left,
-      y1: geometry.sy(0),
-      x2: geometry.width - geometry.right,
-      y2: geometry.sy(0),
-      class: "plot-axis",
-    }),
-    svgElement("line", {
-      x1: geometry.left,
-      y1: geometry.top,
-      x2: geometry.left,
-      y2: geometry.height - geometry.bottom,
-      class: "plot-axis",
-    }),
-  );
-  for (const layer of geometry.layers.filter(
-    (entry) => entry.source_intent?.role === "bracket",
-  )) {
-    const points = layer.data.x.map((x, index) => [x, layer.data.y[index]])
-      .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
-    if (points.length < 2) continue;
-    const [[x0, y0], [x1, y1]] = points;
-    svg.append(svgElement("line", {
-      x1: geometry.sx(x0),
-      y1: geometry.sy(y0),
-      x2: geometry.sx(x1),
-      y2: geometry.sy(y1),
-      class: "plot-bracket-line",
-    }));
-    for (const [x, y] of points.slice(0, 2)) {
-      const marker = svgElement("circle", {
-        cx: geometry.sx(x), cy: geometry.sy(y), r: 6, class: "plot-bracket",
-      });
-      marker.append(svgElement("title", {}, `retained bracket endpoint x=${formatNumber(x)}`));
-      svg.append(marker);
-    }
-  }
-  for (const layer of geometry.layers.filter(
-    (entry) => entry.kind === "point" && entry.source_intent?.role !== "bracket",
-  )) {
-    layer.data.x.forEach((x, index) => {
-      const y = layer.data.y[index];
-      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-      const cx = geometry.sx(x);
-      const cy = geometry.sy(y);
-      const role = layer.source_intent?.role;
-      const marker = role === "candidate"
-        ? svgElement("polygon", {
-          points: `${cx},${cy - 7} ${cx + 7},${cy} ${cx},${cy + 7} ${cx - 7},${cy}`,
-          class: "plot-candidate",
-        })
-        : svgElement("circle", { cx, cy, r: 5, class: "plot-evaluation" });
-      marker.append(svgElement(
-        "title",
-        {},
-        `${role} x=${formatNumber(x)}, f(x)=${formatNumber(y)}`,
-      ));
-      svg.append(marker);
-    });
-  }
-  svg.append(
-    svgElement("text", {
-      x: geometry.width / 2,
-      y: geometry.height - 12,
-      class: "plot-label",
-    }, "x"),
-    svgElement("text", {
-      x: 18,
-      y: geometry.height / 2,
-      transform: `rotate(-90 18 ${geometry.height / 2})`,
-      class: "plot-label",
-    }, "f(x)"),
-    svgElement("text", {
-      x: geometry.left,
-      y: geometry.height - 30,
-      class: "plot-tick",
-    }, formatNumber(geometry.xMin)),
-    svgElement("text", {
-      x: geometry.width - geometry.right,
-      y: geometry.height - 30,
-      "text-anchor": "end",
-      class: "plot-tick",
-    }, formatNumber(geometry.xMax)),
-  );
+export function buildAccessibleExportHtml(bundle, storyId, caseId) {
+  const { story, caseRecord } = caseById(bundle, storyId, caseId);
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(caseRecord.title)}</title></head><body><main><h1>${escapeHtml(story.title)}</h1>${caseHtml(story, caseRecord)}</main></body></html>\n`;
 }
 
-function renderTraceTable(result, tableBody) {
-  tableBody.replaceChildren();
-  for (const event of iterationEvents(result)) {
-    const row = document.createElement("tr");
-    const heading = document.createElement("th");
-    heading.scope = "row";
-    heading.textContent = String(event.iteration);
-    row.append(heading);
-    const data = event.data;
-    const values = [
-      data.step_kind || data.derivative_kind || "—",
-      formatNumber(data.candidate),
-      formatNumber(data.residual),
-      Array.isArray(data.bracket)
-        ? `[${formatNumber(data.bracket[0])}, ${formatNumber(data.bracket[1])}]`
-        : "—",
-      formatNumber(data.bracket_width ?? data.step),
-    ];
-    for (const value of values) {
-      const cell = document.createElement("td");
-      cell.textContent = value;
-      row.append(cell);
-    }
-    tableBody.append(row);
-  }
-}
-
-function downloadText(filename, mimeType, text) {
-  const url = URL.createObjectURL(new Blob([text], { type: mimeType }));
-  const anchor = document.createElement("a");
-  anchor.href = url;
+function download(documentObject, filename, type, text) {
+  const anchor = documentObject.createElement("a");
+  const blob = new Blob([text], { type });
+  anchor.href = URL.createObjectURL(blob);
   anchor.download = filename;
+  anchor.hidden = true;
+  documentObject.body.append(anchor);
   anchor.click();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  anchor.remove();
+  URL.revokeObjectURL(anchor.href);
 }
 
-function setupExamples(story) {
-  const buttons = [...document.querySelectorAll("[data-language]")];
-  const code = document.querySelector("#language-source");
-  const note = document.querySelector("#language-result-shape");
-  function select(language) {
-    const example = story.language_examples[language];
-    code.textContent = example.source;
-    note.textContent = `${example.classification} · ${example.result_shape}`;
-    for (const button of buttons) {
-      const active = button.dataset.language === language;
-      button.setAttribute("aria-selected", String(active));
-      button.tabIndex = active ? 0 : -1;
+export async function renderPresentation(container, presentation, Plotly) {
+  if (!Plotly || typeof Plotly.newPlot !== "function") return false;
+  const figure = presentation.plotly.figure;
+  await Plotly.newPlot(container, figure.data, figure.layout, figure.config);
+  if (Array.isArray(figure.frames) && figure.frames.length > 0) {
+    if (typeof Plotly.addFrames !== "function") {
+      throw new Error("Plotly.addFrames is required for gallery animations");
     }
+    await Plotly.addFrames(container, figure.frames);
   }
-  for (const button of buttons) {
-    button.addEventListener("click", () => select(button.dataset.language));
-  }
-  select("python");
+  container.dataset.galleryRendered = "true";
+  return true;
 }
 
-function setupCaseExplorer(story) {
-  const buttons = [...document.querySelectorAll("[data-case]")];
-  const heading = document.querySelector("#narrative-heading");
-  const explanation = document.querySelector("#narrative-explanation");
-  const action = document.querySelector("#narrative-action");
-  const evidenceList = document.querySelector("#narrative-evidence");
-  const status = document.querySelector("#case-status");
-  function select(caseId) {
-    const caseRecord = story.cases.find((item) => item.id === caseId);
-    const narrative = buildCaseNarrative(story, caseRecord);
-    heading.textContent = narrative.heading;
-    explanation.textContent = narrative.explanation;
-    action.textContent = narrative.action;
-    evidenceList.replaceChildren();
-    for (const item of narrative.evidence) {
-      const row = document.createElement("li");
-      const pointer = document.createElement("code");
-      pointer.textContent = item.pointer;
-      const value = document.createElement("span");
-      const serialized = typeof item.value === "object"
-        ? JSON.stringify(item.value)
-        : formatNumber(item.value);
-      value.textContent = serialized.length > 180
-        ? `${serialized.slice(0, 177)}…`
-        : serialized;
-      row.append(pointer, value);
-      evidenceList.append(row);
-    }
-    status.textContent = `${caseRecord.title}: ${caseRecord.result.status}; validation ${caseRecord.result.validation.passed ? "passed" : "did not pass"}.`;
-    for (const button of buttons) {
-      const active = button.dataset.case === caseId;
-      button.setAttribute("aria-pressed", String(active));
-    }
+export async function hydrateGallery(
+  bundle,
+  {
+    documentObject = globalThis.document,
+    Plotly = globalThis.Plotly,
+  } = {},
+) {
+  assertGalleryBudgets(bundle);
+  const started = globalThis.performance.now();
+  const rendered = [];
+  const renderTimes = [];
+  for (const container of documentObject.querySelectorAll("[data-gallery-plot]")) {
+    const [storyId, caseId] = container.dataset.galleryPlot.split(":");
+    const { caseRecord } = caseById(bundle, storyId, caseId);
+    const renderStarted = globalThis.performance.now();
+    rendered.push(await renderPresentation(
+      container,
+      caseRecord.presentation,
+      Plotly,
+    ));
+    renderTimes.push(globalThis.performance.now() - renderStarted);
   }
-  for (const button of buttons) {
-    button.addEventListener("click", () => select(button.dataset.case));
-  }
-  select("cosine-fixed-point");
-}
-
-function setupAnimation(story) {
-  const frames = story.visualization.plot_spec_animation.frames;
-  const svg = document.querySelector("#root-plot");
-  const slider = document.querySelector("#iteration-slider");
-  const frameOutput = document.querySelector("#frame-output");
-  const playButton = document.querySelector("#play-animation");
-  const pauseButton = document.querySelector("#pause-animation");
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  let current = 0;
-  let timer;
-  slider.max = String(frames.length - 1);
-  slider.disabled = false;
-  pauseButton.disabled = false;
-  function stop() {
-    if (timer !== undefined) window.clearInterval(timer);
-    timer = undefined;
-    playButton.setAttribute("aria-pressed", "false");
-  }
-  function show(index) {
-    current = Math.max(0, Math.min(frames.length - 1, Number(index)));
-    slider.value = String(current);
-    const traceData = frames[current].metadata.trace_data;
-    const step = traceData.step_kind || "iteration";
-    frameOutput.textContent = `Iteration ${current + 1} of ${frames.length}: ${step}; candidate ${formatNumber(traceData.candidate)}; residual ${formatNumber(traceData.residual)}.`;
-    renderSvg(svg, frames[current], story.accessibility.static_plot_description);
-  }
-  function updateMotionPolicy() {
-    if (reducedMotion.matches) {
-      stop();
-      playButton.disabled = true;
-      playButton.title = "Timed playback is disabled by your reduced-motion preference. Use the iteration slider.";
-    } else {
-      playButton.disabled = false;
-      playButton.removeAttribute("title");
-    }
-  }
-  playButton.addEventListener("click", () => {
-    if (reducedMotion.matches || timer !== undefined) return;
-    playButton.setAttribute("aria-pressed", "true");
-    timer = window.setInterval(() => {
-      if (current >= frames.length - 1) {
-        stop();
-        return;
+  for (const button of documentObject.querySelectorAll("[data-export]")) {
+    button.addEventListener("click", () => {
+      const kind = button.dataset.export;
+      const storyId = button.dataset.story;
+      const caseId = button.dataset.case;
+      if (kind === "plotspec") {
+        download(documentObject, `${storyId}-${caseId}-plotspec.json`, "application/json", buildPlotSpecExport(bundle, storyId, caseId));
+      } else if (kind === "plotly") {
+        download(documentObject, `${storyId}-${caseId}-plotly.json`, "application/json", buildPlotlyExport(bundle, storyId, caseId));
+      } else {
+        download(documentObject, `${storyId}-${caseId}.html`, "text/html", buildAccessibleExportHtml(bundle, storyId, caseId));
       }
-      show(current + 1);
-    }, story.visualization.plot_spec_animation.timing.frame_duration_ms);
-  });
-  pauseButton.addEventListener("click", stop);
-  slider.addEventListener("input", () => {
-    stop();
-    show(slider.value);
-  });
-  reducedMotion.addEventListener?.("change", updateMotionPolicy);
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) stop();
-  });
-  updateMotionPolicy();
-  show(0);
-  return { show, stop };
-}
-
-export async function initializeGallery() {
-  const state = document.querySelector("#gallery-state");
-  try {
-    const manifestResponse = await fetch("./gallery-manifest.json");
-    if (!manifestResponse.ok) throw new Error(`manifest HTTP ${manifestResponse.status}`);
-    const manifest = await manifestResponse.json();
-    const storyEntry = manifest.stories.find((entry) => entry.id === "root-finding");
-    if (!storyEntry) throw new Error("root-finding story is not in the manifest");
-    const storyResponse = await fetch(storyEntry.href);
-    if (!storyResponse.ok) throw new Error(`story HTTP ${storyResponse.status}`);
-    const storyText = await storyResponse.text();
-    const story = JSON.parse(storyText);
-    const measurements = assertStoryBudgets(manifest, story, storyText);
-    setupExamples(story);
-    setupCaseExplorer(story);
-    setupAnimation(story);
-    const successCase = story.cases.find((entry) => entry.id === "cosine-fixed-point");
-    renderTraceTable(successCase.result, document.querySelector("#trace-body"));
-    document.querySelector("#story-bytes").textContent =
-      `${measurements.story_bytes.toLocaleString("en-US")} bytes`;
-    document.querySelector("#semantic-bytes").textContent =
-      `${measurements.semantic_animation_bytes.toLocaleString("en-US")} bytes`;
-    document.querySelector("#plotly-bytes").textContent =
-      `${measurements.plotly_animation_bytes.toLocaleString("en-US")} bytes`;
-    const plotSpecExport = document.querySelector("#export-plotspec");
-    const plotlyExport = document.querySelector("#export-plotly");
-    const htmlExport = document.querySelector("#export-html");
-    plotSpecExport.disabled = false;
-    plotlyExport.disabled = false;
-    htmlExport.disabled = false;
-    plotSpecExport.addEventListener("click", () => {
-      downloadText("sagejs-root-finding.plotspec.json", "application/json", buildPlotSpecExport(story));
     });
-    plotlyExport.addEventListener("click", () => {
-      downloadText("sagejs-root-finding.plotly.json", "application/json", buildPlotlyExport(story));
-    });
-    htmlExport.addEventListener("click", () => {
-      downloadText(
-        "sagejs-root-finding-static.html",
-        "text/html",
-        buildAccessibleExportHtml(story, Number(document.querySelector("#iteration-slider").value)),
-      );
-    });
-    document.documentElement.dataset.gallery = "ready";
-    state.textContent = "Interactive evidence loaded. The static article remains the fallback.";
-  } catch (error) {
-    document.documentElement.dataset.gallery = "static";
-    state.textContent = `Interactive evidence unavailable: ${error.message}. The complete static story and trace remain below.`;
   }
+  const hydrationMilliseconds = globalThis.performance.now() - started;
+  const maximumRenderMilliseconds = Math.max(0, ...renderTimes);
+  assertTimingBudget(
+    bundle,
+    "max_browser_hydration_ms",
+    hydrationMilliseconds,
+  );
+  assertTimingBudget(
+    bundle,
+    "max_single_plot_render_ms",
+    maximumRenderMilliseconds,
+  );
+  documentObject.documentElement.dataset.galleryHydrationMs =
+    hydrationMilliseconds.toFixed(3);
+  documentObject.documentElement.dataset.galleryMaxRenderMs =
+    maximumRenderMilliseconds.toFixed(3);
+  documentObject.documentElement.dataset.galleryReady = "true";
+  documentObject.documentElement.dataset.galleryRenderedCount = String(
+    rendered.filter(Boolean).length,
+  );
+  return rendered;
 }
 
-if (typeof window !== "undefined" && typeof document !== "undefined") {
-  initializeGallery();
+export async function loadAndHydrate({ url = "./evidence.json", ...options } = {}) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`gallery evidence fetch failed: ${response.status}`);
+  const text = await response.text();
+  const bundle = JSON.parse(text);
+  assertGalleryBudgets(bundle, text);
+  return hydrateGallery(bundle, options);
 }

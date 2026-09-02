@@ -43,7 +43,13 @@
         "max_animation_frames",
         "max_scalars_per_frame",
         "max_semantic_animation_bytes",
-        "max_plotly_bytes"
+        "max_plotly_bytes",
+        "max_evidence_generation_ms",
+        "max_parse_and_budget_validation_ms",
+        "max_static_html_generation_ms",
+        "max_all_exports_generation_ms",
+        "max_browser_hydration_ms",
+        "max_single_plot_render_ms"
       ],
       "properties": {
         "max_bundle_bytes": {"$ref": "#/$defs/positive"},
@@ -53,7 +59,13 @@
         "max_animation_frames": {"$ref": "#/$defs/positive"},
         "max_scalars_per_frame": {"$ref": "#/$defs/positive"},
         "max_semantic_animation_bytes": {"$ref": "#/$defs/positive"},
-        "max_plotly_bytes": {"$ref": "#/$defs/positive"}
+        "max_plotly_bytes": {"$ref": "#/$defs/positive"},
+        "max_evidence_generation_ms": {"$ref": "#/$defs/positive"},
+        "max_parse_and_budget_validation_ms": {"$ref": "#/$defs/positive"},
+        "max_static_html_generation_ms": {"$ref": "#/$defs/positive"},
+        "max_all_exports_generation_ms": {"$ref": "#/$defs/positive"},
+        "max_browser_hydration_ms": {"$ref": "#/$defs/positive"},
+        "max_single_plot_render_ms": {"$ref": "#/$defs/positive"}
       }
     },
     "story": {

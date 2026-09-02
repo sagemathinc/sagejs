@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Nine interactive Sage.js numerical lessons with checked results, failures, traces, plots, and animations.">
 <title>Sage.js numerical methods laboratory</title><link rel="stylesheet" href="./gallery.css"></head>
-<body><header class="hero"><p class="eyebrow">Sage.js numerical computing</p><h1>Evidence, not solver theater</h1>
+<body><header class="hero"><p class="site-links"><a href="../">Sage.js dashboard</a> · <a href="https://app.sagejs.org/">Run Sage.js</a> · <a href="../reference.html">Reference</a></p><p class="eyebrow">Sage.js numerical computing</p><h1>Evidence, not solver theater</h1>
 <p>Nine bounded lessons replay retained numerical evidence. Every success and failure remains fully readable without JavaScript or animation.</p></header>
 <nav aria-label="Numerical gallery stories"><h2>Stories</h2><ol><li><a href="#root-brent">A sign change is evidence, not the answer</a></li><li><a href="#nonlinear-fit">A fitted curve is more than a parameter vector</a></li><li><a href="#ode-adaptivity">Adaptive steps should preserve the mathematics you care about</a></li><li><a href="#linear-refinement">A solution is credible only with a scale-aware residual</a></li><li><a href="#adaptive-quadrature">An error estimate is a budget allocation record</a></li><li><a href="#runge-approximation">Representation stability and approximation quality are different</a></li><li><a href="#spectral-conditioning">Eigenvalues can be available when an eigenbasis is not trustworthy</a></li><li><a href="#optimization-path">A path explains both convergence and a budget stop</a></li><li><a href="#robust-regression">Robust fitting shows which observations lost influence</a></li></ol></nav>
 <main><section class="gallery-story" id="root-brent">
@@ -9,7 +10,18 @@
       <h2>A sign change is evidence, not the answer</h2><p>Brent rapidly solves cos(x)=x, while the same stopping rule is rejected on a discontinuity by independent residual validation.</p></header>
     <div class="story-columns"><section><h3>Learning objectives</h3><ul><li>Read a shrinking bracket from retained solver evidence.</li><li>Separate a solver stopping status from independent mathematical validation.</li></ul></section>
       <section><h3>Method assumptions</h3><ul><li>Brent requires a finite sign-changing bracket.</li><li>The bracket-to-root implication requires continuity.</li></ul></section></div>
-    <details><summary>Canonical Python</summary><pre><code>result = find_root(lambda x: math.cos(x)-x, 0, 1, method=&#39;brent&#39;, trace=&#39;evaluations&#39;)</code></pre></details>
+    <details><summary>Complete Sage.js example</summary><pre><code>import math
+from sagejs.numerics import find_root
+
+result = find_root(
+    lambda x: math.cos(x) - x,
+    0.0,
+    1.0,
+    method=&quot;brent&quot;,
+    trace=&quot;evaluations&quot;,
+)
+result</code></pre>
+      <p><a class="open-in-sage" href="https://app.sagejs.org/#code=aW1wb3J0IG1hdGgKZnJvbSBzYWdlanMubnVtZXJpY3MgaW1wb3J0IGZpbmRfcm9vdAoKcmVzdWx0ID0gZmluZF9yb290KAogICAgbGFtYmRhIHg6IG1hdGguY29zKHgpIC0geCwKICAgIDAuMCwKICAgIDEuMCwKICAgIG1ldGhvZD0iYnJlbnQiLAogICAgdHJhY2U9ImV2YWx1YXRpb25zIiwKKQpyZXN1bHQ" target="_blank" rel="noopener">Open in Sage.js</a> — starts a fresh browser worksheet containing this self-contained example.</p></details>
     <article class="gallery-case gallery-case-success" id="case-root-brent-cosine-fixed-point">
     <p class="case-kind">success</p>
     <h3>Convergence of cos(x)=x</h3>
@@ -60,7 +72,18 @@
       <h2>A fitted curve is more than a parameter vector</h2><p>Damped Gauss-Newton retains observations, evolving fitted values, residuals, and independent stationarity evidence.</p></header>
     <div class="story-columns"><section><h3>Learning objectives</h3><ul><li>Inspect residual sticks as the parameter estimate changes.</li><li>Treat callback-domain failures as structured outcomes rather than fitted parameters.</li></ul></section>
       <section><h3>Method assumptions</h3><ul><li>Residuals and finite-difference perturbations must stay in the model domain.</li><li>A small residual does not by itself certify parameter identifiability.</li></ul></section></div>
-    <details><summary>Canonical Python</summary><pre><code>result = curve_fit(model, xdata, ydata, [1.5, 0.4], trace=&#39;iterations&#39;)</code></pre></details>
+    <details><summary>Complete Sage.js example</summary><pre><code>import math
+from sagejs.numerics.optimization import curve_fit
+
+xdata = [0.0, 1.0, 2.0, 3.0]
+ydata = [2.0, 1.213061319, 0.735758882, 0.44626032]
+
+def model(x, parameters):
+    return parameters[0] * math.exp(-parameters[1] * x)
+
+result = curve_fit(model, xdata, ydata, [1.5, 0.4], trace=&quot;iterations&quot;)
+result</code></pre>
+      <p><a class="open-in-sage" href="https://app.sagejs.org/#code=aW1wb3J0IG1hdGgKZnJvbSBzYWdlanMubnVtZXJpY3Mub3B0aW1pemF0aW9uIGltcG9ydCBjdXJ2ZV9maXQKCnhkYXRhID0gWzAuMCwgMS4wLCAyLjAsIDMuMF0KeWRhdGEgPSBbMi4wLCAxLjIxMzA2MTMxOSwgMC43MzU3NTg4ODIsIDAuNDQ2MjYwMzJdCgpkZWYgbW9kZWwoeCwgcGFyYW1ldGVycyk6CiAgICByZXR1cm4gcGFyYW1ldGVyc1swXSAqIG1hdGguZXhwKC1wYXJhbWV0ZXJzWzFdICogeCkKCnJlc3VsdCA9IGN1cnZlX2ZpdChtb2RlbCwgeGRhdGEsIHlkYXRhLCBbMS41LCAwLjRdLCB0cmFjZT0iaXRlcmF0aW9ucyIpCnJlc3VsdA" target="_blank" rel="noopener">Open in Sage.js</a> — starts a fresh browser worksheet containing this self-contained example.</p></details>
     <article class="gallery-case gallery-case-success" id="case-nonlinear-fit-exponential-decay">
     <p class="case-kind">success</p>
     <h3>Recover an exponential decay law</h3>
@@ -99,7 +122,22 @@
       <h2>Adaptive steps should preserve the mathematics you care about</h2><p>A harmonic oscillator closes its phase curve and passes sampled invariant/reference checks; an explicit method honestly exhausts its budget on a stiff tracker.</p></header>
     <div class="story-columns"><section><h3>Learning objectives</h3><ul><li>Relate adaptive trajectory points to independent invariant checks.</li><li>Recognize stiffness from repeated work and a bounded failure status.</li></ul></section>
       <section><h3>Method assumptions</h3><ul><li>Local error estimates are not global error bounds.</li><li>Explicit RK methods can be inappropriate even for smooth stiff equations.</li></ul></section></div>
-    <details><summary>Canonical Python</summary><pre><code>result = solve_ivp(oscillator, (0, 2*pi), [1, 0], trace=&#39;iterations&#39;)</code></pre></details>
+    <details><summary>Complete Sage.js example</summary><pre><code>import math
+from sagejs.numerics.ode import solve_ivp
+
+def oscillator(_t, state):
+    return [state[1], -state[0]]
+
+result = solve_ivp(
+    oscillator,
+    (0.0, 2.0 * math.pi),
+    [1.0, 0.0],
+    rtol=1e-8,
+    atol=1e-11,
+    trace=&quot;iterations&quot;,
+)
+result</code></pre>
+      <p><a class="open-in-sage" href="https://app.sagejs.org/#code=aW1wb3J0IG1hdGgKZnJvbSBzYWdlanMubnVtZXJpY3Mub2RlIGltcG9ydCBzb2x2ZV9pdnAKCmRlZiBvc2NpbGxhdG9yKF90LCBzdGF0ZSk6CiAgICByZXR1cm4gW3N0YXRlWzFdLCAtc3RhdGVbMF1dCgpyZXN1bHQgPSBzb2x2ZV9pdnAoCiAgICBvc2NpbGxhdG9yLAogICAgKDAuMCwgMi4wICogbWF0aC5waSksCiAgICBbMS4wLCAwLjBdLAogICAgcnRvbD0xZS04LAogICAgYXRvbD0xZS0xMSwKICAgIHRyYWNlPSJpdGVyYXRpb25zIiwKKQpyZXN1bHQ" target="_blank" rel="noopener">Open in Sage.js</a> — starts a fresh browser worksheet containing this self-contained example.</p></details>
     <article class="gallery-case gallery-case-success" id="case-ode-adaptivity-harmonic-oscillator">
     <p class="case-kind">success</p>
     <h3>One orbit of a harmonic oscillator</h3>
@@ -150,7 +188,17 @@
       <h2>A solution is credible only with a scale-aware residual</h2><p>Iterative refinement records improving backward error, while a singular system produces an explicit diagnostic instead of a spurious vector.</p></header>
     <div class="story-columns"><section><h3>Learning objectives</h3><ul><li>Read normwise backward error rather than raw residual alone.</li><li>Distinguish singularity from an ordinary convergence failure.</li></ul></section>
       <section><h3>Method assumptions</h3><ul><li>Binary64 residuals must be interpreted relative to matrix and solution scale.</li><li>A singular coefficient matrix does not define a unique solution.</li></ul></section></div>
-    <details><summary>Canonical Python</summary><pre><code>result = solve(A, b, tolerance=2e-17, max_refinement=3, trace=&#39;iterations&#39;)</code></pre></details>
+    <details><summary>Complete Sage.js example</summary><pre><code>from sagejs.numerics.linear_algebra import solve
+
+A = [
+    [2.7885359691576745, -9.49978489554666, -4.499413632617615],
+    [-5.5357852370235445, 4.729424283280249, 3.533989748458225],
+    [7.843591354096908, -8.261223347411677, -1.561563606294591],
+]
+b = [26.752113888947807, 25.823734998854537, -27.440931113276115]
+result = solve(A, b, tolerance=2e-17, max_refinement=3, trace=&quot;iterations&quot;)
+result</code></pre>
+      <p><a class="open-in-sage" href="https://app.sagejs.org/#code=ZnJvbSBzYWdlanMubnVtZXJpY3MubGluZWFyX2FsZ2VicmEgaW1wb3J0IHNvbHZlCgpBID0gWwogICAgWzIuNzg4NTM1OTY5MTU3Njc0NSwgLTkuNDk5Nzg0ODk1NTQ2NjYsIC00LjQ5OTQxMzYzMjYxNzYxNV0sCiAgICBbLTUuNTM1Nzg1MjM3MDIzNTQ0NSwgNC43Mjk0MjQyODMyODAyNDksIDMuNTMzOTg5NzQ4NDU4MjI1XSwKICAgIFs3Ljg0MzU5MTM1NDA5NjkwOCwgLTguMjYxMjIzMzQ3NDExNjc3LCAtMS41NjE1NjM2MDYyOTQ1OTFdLApdCmIgPSBbMjYuNzUyMTEzODg4OTQ3ODA3LCAyNS44MjM3MzQ5OTg4NTQ1MzcsIC0yNy40NDA5MzExMTMyNzYxMTVdCnJlc3VsdCA9IHNvbHZlKEEsIGIsIHRvbGVyYW5jZT0yZS0xNywgbWF4X3JlZmluZW1lbnQ9MywgdHJhY2U9Iml0ZXJhdGlvbnMiKQpyZXN1bHQ" target="_blank" rel="noopener">Open in Sage.js</a> — starts a fresh browser worksheet containing this self-contained example.</p></details>
     <article class="gallery-case gallery-case-success" id="case-linear-refinement-iterative-refinement">
     <p class="case-kind">success</p>
     <h3>Refinement improves backward error</h3>
@@ -201,7 +249,19 @@
       <h2>An error estimate is a budget allocation record</h2><p>Adaptive Gauss-Kronrod exposes the retained interval partition and local error allocation; an evaluation ceiling suppresses an unvalidated partial estimate.</p></header>
     <div class="story-columns"><section><h3>Learning objectives</h3><ul><li>See where an adaptive integrator spends its evaluations.</li><li>Understand why an incomplete partition is not a public integral value.</li></ul></section>
       <section><h3>Method assumptions</h3><ul><li>The integrand must be finite on every evaluated point.</li><li>The reported error is an estimator under the method&#39;s smoothness assumptions.</li></ul></section></div>
-    <details><summary>Canonical Python</summary><pre><code>result = integrate(lambda x: exp(-x*x), -2, 2, trace=&#39;iterations&#39;)</code></pre></details>
+    <details><summary>Complete Sage.js example</summary><pre><code>import math
+from sagejs.numerics.integration import integrate
+
+result = integrate(
+    lambda x: math.exp(-x * x),
+    -2.0,
+    2.0,
+    absolute_tolerance=1e-10,
+    relative_tolerance=1e-10,
+    trace=&quot;iterations&quot;,
+)
+result</code></pre>
+      <p><a class="open-in-sage" href="https://app.sagejs.org/#code=aW1wb3J0IG1hdGgKZnJvbSBzYWdlanMubnVtZXJpY3MuaW50ZWdyYXRpb24gaW1wb3J0IGludGVncmF0ZQoKcmVzdWx0ID0gaW50ZWdyYXRlKAogICAgbGFtYmRhIHg6IG1hdGguZXhwKC14ICogeCksCiAgICAtMi4wLAogICAgMi4wLAogICAgYWJzb2x1dGVfdG9sZXJhbmNlPTFlLTEwLAogICAgcmVsYXRpdmVfdG9sZXJhbmNlPTFlLTEwLAogICAgdHJhY2U9Iml0ZXJhdGlvbnMiLAopCnJlc3VsdA" target="_blank" rel="noopener">Open in Sage.js</a> — starts a fresh browser worksheet containing this self-contained example.</p></details>
     <article class="gallery-case gallery-case-success" id="case-adaptive-quadrature-gaussian-area">
     <p class="case-kind">success</p>
     <h3>Allocate work around a Gaussian peak</h3>
@@ -252,7 +312,14 @@
       <h2>Representation stability and approximation quality are different</h2><p>Chebyshev nodes control Runge oscillation; equispaced interpolation can be represented stably and still be a poor approximation between nodes.</p></header>
     <div class="story-columns"><section><h3>Learning objectives</h3><ul><li>Separate stable evaluation from a good approximation design.</li><li>Compare retained construction stages without inventing intermediate polynomials.</li></ul></section>
       <section><h3>Method assumptions</h3><ul><li>Validation at construction nodes does not bound between-node error.</li><li>The deterministic grid metric is evidence, not a rigorous supremum norm.</li></ul></section></div>
-    <details><summary>Canonical Python</summary><pre><code>result = chebyshev_approximation(runge, [-1, 1], 16, trace=&#39;iterations&#39;)</code></pre></details>
+    <details><summary>Complete Sage.js example</summary><pre><code>from sagejs.numerics.approximation import chebyshev_approximation
+
+def runge(x):
+    return 1.0 / (1.0 + 25.0 * x * x)
+
+result = chebyshev_approximation(runge, [-1.0, 1.0], 16, trace=&quot;iterations&quot;)
+result</code></pre>
+      <p><a class="open-in-sage" href="https://app.sagejs.org/#code=ZnJvbSBzYWdlanMubnVtZXJpY3MuYXBwcm94aW1hdGlvbiBpbXBvcnQgY2hlYnlzaGV2X2FwcHJveGltYXRpb24KCmRlZiBydW5nZSh4KToKICAgIHJldHVybiAxLjAgLyAoMS4wICsgMjUuMCAqIHggKiB4KQoKcmVzdWx0ID0gY2hlYnlzaGV2X2FwcHJveGltYXRpb24ocnVuZ2UsIFstMS4wLCAxLjBdLCAxNiwgdHJhY2U9Iml0ZXJhdGlvbnMiKQpyZXN1bHQ" target="_blank" rel="noopener">Open in Sage.js</a> — starts a fresh browser worksheet containing this self-contained example.</p></details>
     <article class="gallery-case gallery-case-success" id="case-runge-approximation-runge-chebyshev">
     <p class="case-kind">success</p>
     <h3>Chebyshev nodes tame endpoint oscillation</h3>
@@ -303,7 +370,12 @@
       <h2>Eigenvalues can be available when an eigenbasis is not trustworthy</h2><p>Hermitian Jacobi iterations expose decreasing off-diagonal mass; a nearly defective general matrix fails the eigenbasis conditioning gate.</p></header>
     <div class="story-columns"><section><h3>Learning objectives</h3><ul><li>Read convergence evidence for a Hermitian eigensystem.</li><li>Recognize why a numerically singular eigenvector basis must be withheld.</li></ul></section>
       <section><h3>Method assumptions</h3><ul><li>The successful path requires a finite Hermitian matrix.</li><li>A clustered nonnormal spectrum can make eigenvectors arbitrarily sensitive.</li></ul></section></div>
-    <details><summary>Canonical Python</summary><pre><code>result = symmetric_eigen(A, trace=&#39;iterations&#39;)</code></pre></details>
+    <details><summary>Complete Sage.js example</summary><pre><code>from sagejs.numerics.spectral import symmetric_eigen
+
+A = [[4.0, 1.0, 0.0], [1.0, 3.0, 0.5], [0.0, 0.5, 1.0]]
+result = symmetric_eigen(A, trace=&quot;iterations&quot;)
+result</code></pre>
+      <p><a class="open-in-sage" href="https://app.sagejs.org/#code=ZnJvbSBzYWdlanMubnVtZXJpY3Muc3BlY3RyYWwgaW1wb3J0IHN5bW1ldHJpY19laWdlbgoKQSA9IFtbNC4wLCAxLjAsIDAuMF0sIFsxLjAsIDMuMCwgMC41XSwgWzAuMCwgMC41LCAxLjBdXQpyZXN1bHQgPSBzeW1tZXRyaWNfZWlnZW4oQSwgdHJhY2U9Iml0ZXJhdGlvbnMiKQpyZXN1bHQ" target="_blank" rel="noopener">Open in Sage.js</a> — starts a fresh browser worksheet containing this self-contained example.</p></details>
     <article class="gallery-case gallery-case-success" id="case-spectral-conditioning-hermitian-jacobi">
     <p class="case-kind">success</p>
     <h3>Off-diagonal mass decreases</h3>
@@ -354,7 +426,22 @@
       <h2>A path explains both convergence and a budget stop</h2><p>Nelder-Mead retains accepted simplex summaries on Rosenbrock&#39;s valley; the same problem with two iterations stops explicitly instead of claiming the best point is optimal.</p></header>
     <div class="story-columns"><section><h3>Learning objectives</h3><ul><li>Follow a derivative-free path through a curved valley.</li><li>Distinguish a useful incumbent from a validated optimum.</li></ul></section>
       <section><h3>Method assumptions</h3><ul><li>Nelder-Mead is local and supplies no global optimality proof.</li><li>A maximum-iteration status must not be relabeled as convergence.</li></ul></section></div>
-    <details><summary>Canonical Python</summary><pre><code>result = minimize(rosenbrock, [-1.2, 1], method=&#39;nelder-mead&#39;, trace=&#39;iterations&#39;)</code></pre></details>
+    <details><summary>Complete Sage.js example</summary><pre><code>from sagejs.numerics.optimization import minimize
+
+def rosenbrock(point):
+    x, y = point
+    return (1.0 - x) ** 2 + 100.0 * (y - x * x) ** 2
+
+result = minimize(
+    rosenbrock,
+    [-1.2, 1.0],
+    method=&quot;bfgs&quot;,
+    maxiter=200,
+    gtol=1e-5,
+    trace=&quot;iterations&quot;,
+)
+result</code></pre>
+      <p><a class="open-in-sage" href="https://app.sagejs.org/#code=ZnJvbSBzYWdlanMubnVtZXJpY3Mub3B0aW1pemF0aW9uIGltcG9ydCBtaW5pbWl6ZQoKZGVmIHJvc2VuYnJvY2socG9pbnQpOgogICAgeCwgeSA9IHBvaW50CiAgICByZXR1cm4gKDEuMCAtIHgpICoqIDIgKyAxMDAuMCAqICh5IC0geCAqIHgpICoqIDIKCnJlc3VsdCA9IG1pbmltaXplKAogICAgcm9zZW5icm9jaywKICAgIFstMS4yLCAxLjBdLAogICAgbWV0aG9kPSJiZmdzIiwKICAgIG1heGl0ZXI9MjAwLAogICAgZ3RvbD0xZS01LAogICAgdHJhY2U9Iml0ZXJhdGlvbnMiLAopCnJlc3VsdA" target="_blank" rel="noopener">Open in Sage.js</a> — starts a fresh browser worksheet containing this self-contained example.</p></details>
     <article class="gallery-case gallery-case-success" id="case-optimization-path-rosenbrock-convergence">
     <p class="case-kind">success</p>
     <h3>Traverse Rosenbrock&#39;s curved valley</h3>
@@ -405,7 +492,14 @@
       <h2>Robust fitting shows which observations lost influence</h2><p>Huber regression retains weights and parameter progress for one outlier; a translated large-offset regression is rejected when independent validation cannot support its coefficients.</p></header>
     <div class="story-columns"><section><h3>Learning objectives</h3><ul><li>Connect robust weights to visible outlier influence.</li><li>Treat a finite coefficient vector as provisional until scale-aware validation passes.</li></ul></section>
       <section><h3>Method assumptions</h3><ul><li>Robust fitting changes the loss; it does not identify data errors automatically.</li><li>Binary64 regression with large offsets can lose information through cancellation.</li></ul></section></div>
-    <details><summary>Canonical Python</summary><pre><code>result = huber_regression(x, y, trace=&#39;iterations&#39;)</code></pre></details>
+    <details><summary>Complete Sage.js example</summary><pre><code>from sagejs.numerics.statistics import huber_regression
+
+x = list(range(8))
+y = [1.0 + 2.0 * value for value in x]
+y[-1] = 30.0
+result = huber_regression(x, y, trace=&quot;iterations&quot;)
+result</code></pre>
+      <p><a class="open-in-sage" href="https://app.sagejs.org/#code=ZnJvbSBzYWdlanMubnVtZXJpY3Muc3RhdGlzdGljcyBpbXBvcnQgaHViZXJfcmVncmVzc2lvbgoKeCA9IGxpc3QocmFuZ2UoOCkpCnkgPSBbMS4wICsgMi4wICogdmFsdWUgZm9yIHZhbHVlIGluIHhdCnlbLTFdID0gMzAuMApyZXN1bHQgPSBodWJlcl9yZWdyZXNzaW9uKHgsIHksIHRyYWNlPSJpdGVyYXRpb25zIikKcmVzdWx0" target="_blank" rel="noopener">Open in Sage.js</a> — starts a fresh browser worksheet containing this self-contained example.</p></details>
     <article class="gallery-case gallery-case-success" id="case-robust-regression-huber-outlier">
     <p class="case-kind">success</p>
     <h3>Downweight one extreme observation</h3>
@@ -454,5 +548,6 @@
   </section></main>
 <noscript><p class="noscript">JavaScript is off. All explanations and result tables are already present; interactive Plotly views and JSON downloads are optional enhancements.</p></noscript>
 <footer><p>Animations never autoplay, never re-evaluate a mathematical callback, and never interpolate an uncomputed solver state.</p></footer>
+<script src="./plotly.min.js"></script>
 <script type="module">import { loadAndHydrate } from "./gallery.mjs"; loadAndHydrate().catch((error) => { document.documentElement.dataset.galleryError = error.message; });</script>
 </body></html>
