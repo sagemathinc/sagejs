@@ -723,6 +723,72 @@ function loadAsset(asset, assetDirectory) {
   return records;
 }
 
+function validateSurveyRecords(records, manifest) {
+  if (!Array.isArray(records) || records.length !== manifest.counts.smoke + manifest.counts.tune) {
+    fail(`survey must contain exactly ${manifest.counts.smoke + manifest.counts.tune} records`);
+  }
+  const labels = new Set();
+  const controls = new Map();
+  const ranks = new Map(manifest.strata.map((stratum) => [stratum, new Map()]));
+  let previous = null;
+  for (const record of records) {
+    validateRecord(record);
+    if (labels.has(record.label)) fail(`survey contains duplicate record ${record.label}`);
+    labels.add(record.label);
+    if (previous !== null && compareRecords(previous, record) >= 0) {
+      fail("survey records must retain canonical source order");
+    }
+    previous = record;
+    if (record.selection.role === "smoke") {
+      const expectedRank = manifest.controls.indexOf(record.label) + 1;
+      if (expectedRank < 1 || record.selection.stratum !== "fixed-complex-controls" ||
+          record.selection.selection_rank !== expectedRank) {
+        fail(`${record.label}: invalid survey control metadata`);
+      }
+      controls.set(record.label, record);
+      continue;
+    }
+    if (record.selection.role !== "tune") {
+      fail(`${record.label}: survey asset contains forbidden role ${record.selection.role}`);
+    }
+    const discriminant = discriminantBand(record.discriminant_absolute);
+    const classId = classBand(record.class_number, record.class_group);
+    const stratum = `${discriminant}:${classId}`;
+    const rank = record.selection.selection_rank;
+    if (discriminant === null || record.selection.stratum !== stratum ||
+        rank < 1 || rank > manifest.counts.tune_per_stratum || !ranks.has(stratum)) {
+      fail(`${record.label}: invalid survey stratum or rank`);
+    }
+    if (ranks.get(stratum).has(rank)) fail(`${stratum}: duplicate survey rank ${rank}`);
+    ranks.get(stratum).set(rank, record);
+  }
+  if (controls.size !== manifest.controls.length ||
+      manifest.controls.some((label) => !controls.has(label))) {
+    fail("survey does not contain every fixed control exactly once");
+  }
+  for (const [stratum, selected] of ranks) {
+    if (selected.size !== manifest.counts.tune_per_stratum ||
+        Array.from(
+          { length: manifest.counts.tune_per_stratum },
+          (_, index) => index + 1,
+        ).some((rank) => !selected.has(rank))) {
+      fail(`${stratum}: survey must contain every tuning rank exactly once`);
+    }
+  }
+  return records;
+}
+
+function loadSurveyAsset(
+  manifest,
+  assetDirectory,
+  expectedExcludedDigest = EXPECTED_EXCLUDED_LABELS_SHA256,
+) {
+  validateManifestShape(manifest, expectedExcludedDigest);
+  const surveyAsset = manifest.release.assets[0];
+  if (surveyAsset.role !== "survey") fail("first release asset is not the survey");
+  return validateSurveyRecords(loadAsset(surveyAsset, assetDirectory), manifest);
+}
+
 function validateManifestShape(
   manifest,
   expectedExcludedDigest = EXPECTED_EXCLUDED_LABELS_SHA256,
@@ -910,14 +976,18 @@ function emitBundle(bundle, outputDirectory) {
   }
 }
 
-function readManifest(filename) {
-  const source = fs.readFileSync(filename, "utf8");
+function parseManifestBytes(bytes, filename) {
+  const source = Buffer.isBuffer(bytes) ? bytes.toString("utf8") : String(bytes);
   const manifest = JSON.parse(source);
   if (source !== `${canonicalJson(manifest)}\n`) fail("manifest file is not canonical JSON");
   if (path.basename(filename) !== manifestFilename(manifest)) {
     fail("manifest filename does not match its content identity");
   }
   return manifest;
+}
+
+function readManifest(filename) {
+  return parseManifestBytes(fs.readFileSync(filename), filename);
 }
 
 function replayBundle(manifest, records) {
@@ -1089,12 +1159,14 @@ module.exports = {
   expectedStrata,
   labelsSha256,
   loadAsset,
+  loadSurveyAsset,
   main,
   manifestFilename,
   manifestIdentity,
   normalizeSql,
   parseArguments,
   parseExcludedLabelsBytes,
+  parseManifestBytes,
   queryRows,
   readExcludedLabels,
   readManifest,
@@ -1110,4 +1182,5 @@ module.exports = {
   validateCorpusRecords,
   validateManifestShape,
   validateRecord,
+  validateSurveyRecords,
 };

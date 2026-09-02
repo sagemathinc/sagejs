@@ -143,6 +143,73 @@ test("bundle assets and manifest have deterministic independent identities", () 
   );
 });
 
+test("survey-only loading succeeds while the holdout is physically absent", () => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-cubic-survey-only-"));
+  try {
+    const bundle = corpus.buildBundle(syntheticRecords(), {
+      excludedLabels: EXCLUDED,
+      expectedExcludedDigest: EXCLUDED_DIGEST,
+      capturedAt: CAPTURED_AT,
+    });
+    const survey = bundle.assets.survey;
+    fs.writeFileSync(path.join(temporary, survey.descriptor.filename), survey.gzip);
+    assert.equal(
+      fs.existsSync(path.join(temporary, bundle.assets.holdout.descriptor.filename)),
+      false,
+    );
+    const loaded = corpus.loadSurveyAsset(
+      bundle.manifest,
+      temporary,
+      EXCLUDED_DIGEST,
+    );
+    assert.equal(loaded.length, 1012);
+    assert.equal(loaded.filter((record) => record.selection.role === "tune").length, 1000);
+    assert.equal(loaded.some((record) => record.selection.role === "holdout"), false);
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test("survey validation rejects role, control, rank, and stratum drift", () => {
+  const bundle = corpus.buildBundle(syntheticRecords(), {
+    excludedLabels: EXCLUDED,
+    expectedExcludedDigest: EXCLUDED_DIGEST,
+    capturedAt: CAPTURED_AT,
+  });
+  const survey = bundle.records.filter((record) => record.selection.role !== "holdout");
+
+  const wrongRole = structuredClone(survey);
+  wrongRole.find((record) => record.selection.role === "tune").selection.role = "holdout";
+  assert.throws(
+    () => corpus.validateSurveyRecords(wrongRole, bundle.manifest),
+    /forbidden role/u,
+  );
+
+  const missingControl = survey.filter((record) => record.label !== corpus.CONTROL_LABELS[0]);
+  assert.throws(
+    () => corpus.validateSurveyRecords(missingControl, bundle.manifest),
+    /exactly 1012/u,
+  );
+
+  const duplicateRank = structuredClone(survey);
+  const sameStratum = duplicateRank.filter((record) =>
+    record.selection.role === "tune" &&
+    record.selection.stratum === corpus.expectedStrata()[0]);
+  sameStratum[1].selection.selection_rank = sameStratum[0].selection.selection_rank;
+  assert.throws(
+    () => corpus.validateSurveyRecords(duplicateRank, bundle.manifest),
+    /duplicate survey rank/u,
+  );
+
+  const wrongStratum = structuredClone(survey);
+  wrongStratum.find((record) => record.selection.role === "tune").selection.stratum =
+    corpus.expectedStrata()[1];
+  assert.throws(
+    () => corpus.validateSurveyRecords(wrongStratum, bundle.manifest),
+    /invalid survey stratum or rank/u,
+  );
+});
+
 test("emitted corpus validates offline and fails closed on logical or physical drift", () => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-cubic-frontier-"));
   try {

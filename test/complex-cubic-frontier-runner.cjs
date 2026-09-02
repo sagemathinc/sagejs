@@ -16,12 +16,15 @@ const {
   validateCorpus,
 } = require("../bench/class-unit-groups/complex-cubic-frontier-schema.cjs");
 const {
-  buildCorpus,
-} = require("../bench/class-unit-groups/generate-complex-cubic-frontier-corpus.cjs");
+  projectSurvey,
+} = require("../bench/class-unit-groups/load-complex-cubic-frontier-survey.cjs");
+const frozen = require("../bench/optimization-engine/complex-cubic-frontier-corpus.cjs");
 const {
   MINIMUM_ROOT_NS,
   READY_MARKER,
   combineCensus,
+  corpusIdentitiesMatch,
+  corpusIdentity,
   makeTimingEvent,
   pariCensusSource,
   pariTimingSource,
@@ -35,49 +38,103 @@ const {
 
 const root = path.resolve(__dirname, "..");
 
-function sourceRows(count = 80) {
-  return Array.from({ length: count }, (_, index) => {
-    const absolute = 101 + index;
-    return {
-      label: `3.1.${absolute}.${index + 1}`,
-      degree: 3,
-      r2: 1,
-      disc_sign: -1,
-      disc_abs: String(absolute),
-      coeffs: [String(-2 - index), "0", "1", "1"],
-      class_number: "1",
-      class_group: [],
-      index: index % 7 === 0 ? "2" : "1",
-      num_ram: index % 3,
-      used_grh: false,
-    };
-  });
+function sourceRecord(label, selection, classNumber, classGroup) {
+  const discriminant = label.split(".")[2];
+  return {
+    selection,
+    label,
+    degree: 3,
+    coefficients: ["1", "0", "-1", "1"],
+    disc_sign: -1,
+    discriminant_absolute: discriminant,
+    r2: 1,
+    unit_rank: 1,
+    discriminant_radical: discriminant,
+    equation_order_index: "1",
+    monogenic: 1,
+    galois_transitive_group: 2,
+    galois_label: "3T2",
+    ramified_prime_count: 1,
+    class_number: classNumber,
+    class_group: classGroup,
+    regulator: "1.25",
+    torsion_order: 2,
+    used_grh: false,
+    narrow_class_number: classNumber,
+    narrow_class_group: classGroup,
+    unit_signature_rank: 1,
+  };
 }
+
+function groupFor(stratum) {
+  if (stratum.endsWith("h0-trivial")) return ["1", []];
+  if (stratum.endsWith("h1-cyclic-2-4")) return ["2", ["2"]];
+  if (stratum.endsWith("h2-cyclic-5-16")) return ["5", ["5"]];
+  if (stratum.endsWith("h3-cyclic-ge-17")) return ["17", ["17"]];
+  return ["4", ["2", "2"]];
+}
+
+let cachedCorpus;
 
 function corpusFixture() {
-  return buildCorpus({ records: sourceRows() }, {
-    fieldCount: 40,
-    snapshot: "unit-test-snapshot",
-    selectionQuery: "SELECT unit_test",
-    createdAt: "2026-09-02T00:00:00.000Z",
-    priorLabels: ["3.1.101.1"],
-    priorSources: [{ path: "unit-test", sha256: "0".repeat(64) }],
+  if (cachedCorpus) return cachedCorpus;
+  const survey = frozen.CONTROL_LABELS.map((label, index) => sourceRecord(label, {
+    role: "smoke",
+    stratum: "fixed-complex-controls",
+    selection_rank: index + 1,
+  }, "1", []));
+  frozen.expectedStrata().forEach((stratum, shard) => {
+    const band = frozen.DISCRIMINANT_BANDS[Math.floor(shard / frozen.CLASS_BANDS.length)];
+    const [classNumber, classGroup] = groupFor(stratum);
+    for (let rank = 1; rank <= 50; rank += 1) {
+      const discriminant = band.lowerExclusive + BigInt(100 * rank + shard + 1);
+      survey.push(sourceRecord(`3.1.${discriminant}.${shard + 1}`, {
+        role: "tune", stratum, selection_rank: rank,
+      }, classNumber, classGroup));
+    }
   });
+  survey.sort(frozen.compareRecords);
+  const manifest = {
+    schema: frozen.MANIFEST_SCHEMA,
+    id: `sha256:${"1".repeat(64)}`,
+    controls: [...frozen.CONTROL_LABELS],
+    strata: frozen.expectedStrata(),
+    counts: {
+      total: 1412, smoke: 12, tune: 1000, holdout: 400, strata: 20,
+      tune_per_stratum: 50, holdout_per_stratum: 20,
+    },
+    snapshot: {
+      captured_at: "2026-09-02T00:00:00.000Z",
+      selection_seed: frozen.SELECTION_SEED,
+    },
+    exclusions: {
+      count: 1, labels_sha256: "2".repeat(64), derivation: { roots: ["unit-test"] },
+    },
+    checksums: { selection_sql_sha256: "3".repeat(64) },
+    release: { assets: [{
+      role: "survey", filename: "survey.jsonl.gz", gzip_sha256: "4".repeat(64),
+      records_sha256: "5".repeat(64), labels_sha256: "6".repeat(64),
+    }] },
+  };
+  cachedCorpus = projectSurvey(manifest, survey, {
+    manifestFilename: "manifest.json",
+    manifestFileSha256: "7".repeat(64),
+  });
+  return cachedCorpus;
 }
 
-test("stratified corpus selection is deterministic, disjoint, and authenticated", () => {
+test("frozen survey projection is deterministic, disjoint, and authenticated", () => {
   const first = corpusFixture();
   const second = corpusFixture();
   assert.deepEqual(first, second);
-  validateCorpus(first, { expectedCount: 40 });
-  assert.equal(first.records.length, 40);
-  assert.equal(first.warmups.length, 3);
-  assert(!first.records.some((record) => record.label === "3.1.101.1"));
-  assert.equal(new Set([...first.records, ...first.warmups].map((record) => record.label)).size, 43);
+  validateCorpus(first);
+  assert.equal(first.records.length, 1000);
+  assert.equal(first.warmups.length, 12);
+  assert.equal(new Set([...first.records, ...first.warmups].map((record) => record.label)).size, 1012);
   assert.equal(first.digests.records_sha256, canonicalDigest(first.records));
   const counts = Array(20).fill(0);
   first.records.forEach((record) => { counts[record.selection.shard] += 1; });
-  assert.deepEqual(counts, Array(20).fill(2));
+  assert.deepEqual(counts, Array(20).fill(50));
 });
 
 test("direct GP sources pin flag-zero conditional and explicit full certification", () => {
@@ -212,6 +269,31 @@ test("adapter responses and retained events fail closed", () => {
   assert.equal(timedOut.summary.coverage_complete, false);
 });
 
+test("timing identity binds the manifest and physical survey asset", () => {
+  const corpus = corpusFixture();
+  const current = corpusIdentity("/one/manifest.json", corpus);
+  const relocated = corpusIdentity("/another/manifest.json", corpus);
+  assert.equal(corpusIdentitiesMatch(current, relocated), true);
+
+  for (const key of [
+    "manifest_id",
+    "manifest_file_sha256",
+    "survey_asset_filename",
+    "survey_asset_gzip_sha256",
+    "survey_asset_records_sha256",
+    "labels_sha256",
+    "records_sha256",
+    "record_count",
+  ]) {
+    const changed = structuredClone(current);
+    changed[key] = typeof changed[key] === "number" ? changed[key] + 1 : `changed-${changed[key]}`;
+    assert.equal(corpusIdentitiesMatch(changed, current), false, key);
+  }
+  const forgedDigest = structuredClone(current);
+  forgedDigest.manifest_id = `sha256:${"8".repeat(64)}`;
+  assert.equal(corpusIdentitiesMatch(forgedDigest, current), false);
+});
+
 test("metrics retain absolute round totals and paired shard/field summaries", () => {
   const corpus = corpusFixture();
   const census = { records: corpus.records.map((record) => ({
@@ -260,8 +342,12 @@ test("machine schemas are valid JSON and pin the production cardinalities", () =
     "bench/class-unit-groups/complex-cubic-frontier-corpus.schema.json")));
   const evidenceSchema = JSON.parse(fs.readFileSync(path.join(root,
     "bench/class-unit-groups/complex-cubic-frontier-evidence.schema.json")));
+  assert.equal(corpusSchema.properties.schema.const,
+    "sagejs.benchmark/complex-cubic-frontier-survey-view-v1");
   assert.equal(corpusSchema.properties.records.minItems, 1000);
   assert.equal(corpusSchema.properties.records.maxItems, 1000);
+  assert.equal(corpusSchema.properties.warmups.minItems, 12);
+  assert.equal(corpusSchema.properties.warmups.maxItems, 12);
   assert.equal(corpusSchema.properties.selection_policy.properties.shard_count.const, 20);
   assert.equal(evidenceSchema.$defs.timingEvent.properties.root_source.const,
     "one-contiguous-monotonic-timer");

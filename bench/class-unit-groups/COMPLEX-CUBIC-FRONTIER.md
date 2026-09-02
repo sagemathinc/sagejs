@@ -7,30 +7,30 @@ its own oracle, and a timeout limit is never substituted for an observation.
 
 ## Frozen corpus
 
-Export the required LMFDB columns to an offline JSON file, then construct the
-corpus from that file. The generator performs no network access.
+The runner consumes the content-addressed manifest committed at
+`bench/optimization-engine/complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json`
+and the manifest's `survey` release asset. It validates the manifest, reads
+only `release.assets[0]`, authenticates both the compressed bytes and canonical
+logical records, and never resolves or opens the `holdout` asset.
 
 ```bash
-node bench/class-unit-groups/generate-complex-cubic-frontier-corpus.cjs \
-  --input /data/lmfdb-complex-cubics.json \
-  --exclude test/fixtures/number-field-lmfdb-cubic-100.json \
-  --exclude /data/prior-cubic-frontier-corpus.json \
-  --snapshot lmfdb-2026-09-02 \
-  --output /data/complex-cubic-frontier-1000.json
+gh release download optimization-corpus-complex-cubic-v1 \
+  --pattern 'complex-cubic-frontier-survey-*.jsonl.gz' \
+  --dir /data/complex-cubic-frontier-v1
 ```
 
 Eligible records have degree $3$, signature $(1,1)$, negative discriminant of
-absolute value at most $10^8$, and `used_grh=false`. Previously exposed labels
-are removed before sampling. The remaining fields are stratified by six
-discriminant bands, five class-group bands, equation-order index $1$ versus
-larger index, and at most one versus multiple ramified primes. Within a stratum
-the order is the MD5 rank of `label || seed`; a deterministic round robin over
-MD5-ranked strata chooses 1,003 fields. The first 1,000 become 20
-shards of 50 and the final three are fixed, excluded warm fields. The corpus
-stores exact SQL, snapshot, source, label, record, and exclusion digests. The
-production CLI requires the audited 1,815-label exposure union with SHA-256
+absolute value between $10^4$ and $10^8$, and `used_grh=false`. Previously
+exposed labels were removed before sampling. The survey contains 50 tuning
+fields in each of four discriminant bands crossed with five class-group bands,
+plus 12 fixed controls. The runner projects tuning rows rank-major across the
+manifest's 20 strata: shard $s$ is exactly stratum $s$, and every shard has 50
+fields. All 12 controls are excluded warmups. The manifest stores the exact SQL,
+LMFDB snapshot, source, label, record, and exclusion digests. It binds the
+audited 1,815-label exposure union with SHA-256
 `3aaa2fd01a009d87d40f9f21a83db42b00f3f578827e2ae36d3e0025bdf610d8`;
-tests may exercise the pure selector at smaller cardinality.
+the projected 1,000-row runner view has record digest
+`14ecb29ebef8f30ef1de9c7ef0241a24187d8412bcceef97ae41447e5bc43cfa`.
 
 ## Pass A: census and classification
 
@@ -38,7 +38,8 @@ Run the census before measuring anything:
 
 ```bash
 node bench/class-unit-groups/run-complex-cubic-frontier.cjs --census \
-  --corpus /data/complex-cubic-frontier-1000.json \
+  --corpus bench/optimization-engine/complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json \
+  --asset-dir /data/complex-cubic-frontier-v1 \
   --systems sagejs,pari --cpu 2 \
   --output /data/complex-cubic-frontier-census.json
 ```
@@ -72,7 +73,8 @@ is accepted:
 
 ```bash
 node bench/class-unit-groups/run-complex-cubic-frontier.cjs --timing \
-  --corpus /data/complex-cubic-frontier-1000.json \
+  --corpus bench/optimization-engine/complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json \
+  --asset-dir /data/complex-cubic-frontier-v1 \
   --census-file /data/complex-cubic-frontier-census.json \
   --systems sagejs,pari --cpu 2 \
   --output /data/complex-cubic-frontier-timing.json
@@ -81,7 +83,7 @@ node bench/class-unit-groups/run-complex-cubic-frontier.cjs --timing \
 There are 11 retained rounds. Every system/round has a fresh process pinned to
 one recorded logical CPU, with all common thread environments set to one. The
 system order rotates by round, so no position occurs more than one extra time.
-Exactly three excluded fields warm the implementation. For each of 20 shards,
+Exactly 12 excluded control fields warm the implementation. For each of 20 shards,
 the process doubles repetitions until a discarded contiguous root lasts at
 least 1.2 seconds, then measures a separate retained root with the calibrated
 count. Launch-to-ready time, complete process wall time, stderr digest, and

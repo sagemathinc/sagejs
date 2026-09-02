@@ -48,55 +48,62 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema", "schema_version", "created_at", "source", "selection_policy",
+    "schema", "schema_version", "created_at", "manifest", "survey_asset", "selection_policy",
     "prior_exposure", "warmups", "records", "digests"
   ],
   "properties": {
-    "schema": { "const": "sagejs.benchmark/complex-cubic-frontier-corpus-v1" },
+    "schema": { "const": "sagejs.benchmark/complex-cubic-frontier-survey-view-v1" },
     "schema_version": { "const": 1 },
     "created_at": { "type": "string", "format": "date-time" },
-    "source": {
+    "manifest": {
       "type": "object", "additionalProperties": false,
-      "required": ["kind", "snapshot", "selection_query", "selection_query_sha256", "input_records_sha256"],
+      "required": ["schema", "id", "filename", "file_sha256", "selection_query_sha256"],
       "properties": {
-        "kind": { "const": "lmfdb-number-fields" },
-        "snapshot": { "type": "string", "minLength": 1 },
-        "selection_query": { "type": "string", "minLength": 1 },
-        "selection_query_sha256": { "$ref": "#/$defs/digest" },
-        "input_records_sha256": { "$ref": "#/$defs/digest" }
+        "schema": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "filename": { "type": "string", "minLength": 1 },
+        "file_sha256": { "$ref": "#/$defs/digest" },
+        "selection_query_sha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "survey_asset": {
+      "type": "object", "additionalProperties": false,
+      "required": ["role", "filename", "gzip_sha256", "records_sha256", "labels_sha256"],
+      "properties": {
+        "role": { "const": "survey" },
+        "filename": { "type": "string", "minLength": 1 },
+        "gzip_sha256": { "$ref": "#/$defs/digest" },
+        "records_sha256": { "$ref": "#/$defs/digest" },
+        "labels_sha256": { "$ref": "#/$defs/digest" }
       }
     },
     "selection_policy": {
       "type": "object", "additionalProperties": false,
       "required": [
         "seed", "field_count", "warmup_count", "shard_count", "fields_per_shard",
-        "discriminant_bands", "class_group_bands", "equation_order_index_bands",
-        "ramified_prime_count_bands", "within_stratum_order", "global_selection"
+        "strata", "tune_per_stratum", "projection"
       ],
       "properties": {
-        "seed": { "const": "sagejs-complex-cubic-frontier-2026-09-v1" },
+        "seed": { "const": ":sagejs-complex-cubic-frontier-1412-v1" },
         "field_count": { "const": 1000 },
-        "warmup_count": { "const": 3 },
+        "warmup_count": { "const": 12 },
         "shard_count": { "const": 20 },
         "fields_per_shard": { "const": 50 },
-        "discriminant_bands": { "type": "array", "minItems": 6, "maxItems": 6, "items": { "type": "string" } },
-        "class_group_bands": { "type": "array", "minItems": 5, "maxItems": 5, "items": { "type": "string" } },
-        "equation_order_index_bands": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "string" } },
-        "ramified_prime_count_bands": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "string" } },
-        "within_stratum_order": { "type": "string", "minLength": 1 },
-        "global_selection": { "type": "string", "minLength": 1 }
+        "strata": { "type": "array", "minItems": 20, "maxItems": 20, "uniqueItems": true, "items": { "type": "string" } },
+        "tune_per_stratum": { "const": 50 },
+        "projection": { "const": "rank-major over manifest strata; one stratum per shard" }
       }
     },
     "prior_exposure": {
       "type": "object", "additionalProperties": false,
-      "required": ["record_count", "labels_sha256", "sources"],
+      "required": ["record_count", "labels_sha256", "derivation"],
       "properties": {
         "record_count": { "type": "integer", "minimum": 0 },
         "labels_sha256": { "$ref": "#/$defs/digest" },
-        "sources": { "type": "array", "items": { "type": "object" } }
+        "derivation": { "type": "object" }
       }
     },
-    "warmups": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "$ref": "#/$defs/field" } },
+    "warmups": { "type": "array", "minItems": 12, "maxItems": 12, "items": { "$ref": "#/$defs/field" } },
     "records": { "type": "array", "minItems": 1000, "maxItems": 1000, "items": { "$ref": "#/$defs/field" } },
     "digests": {
       "type": "object", "additionalProperties": false,

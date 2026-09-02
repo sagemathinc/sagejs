@@ -2,11 +2,11 @@
 
 const crypto = require("node:crypto");
 
-const CORPUS_SCHEMA = "sagejs.benchmark/complex-cubic-frontier-corpus-v1";
+const CORPUS_SCHEMA = "sagejs.benchmark/complex-cubic-frontier-survey-view-v1";
 const CENSUS_SCHEMA = "sagejs.benchmark/complex-cubic-frontier-census-v1";
 const TIMING_SCHEMA = "sagejs.benchmark/complex-cubic-frontier-timing-v1";
 const ADAPTER_SCHEMA = "sagejs.benchmark/complex-cubic-frontier-adapter-v1";
-const SEED = "sagejs-complex-cubic-frontier-2026-09-v1";
+const SEED = ":sagejs-complex-cubic-frontier-1412-v1";
 const PRIOR_EXPOSURE_LABELS_SHA256 =
   "3aaa2fd01a009d87d40f9f21a83db42b00f3f578827e2ae36d3e0025bdf610d8";
 const SYSTEMS = Object.freeze(["sagejs", "pari", "magma", "hecke"]);
@@ -167,64 +167,101 @@ function validateField(record, label) {
 
 function validateCorpus(corpus, options = {}) {
   exactKeys(corpus, [
-    "schema", "schema_version", "created_at", "source", "selection_policy",
-    "prior_exposure", "warmups", "records", "digests",
+    "schema", "schema_version", "created_at", "manifest", "survey_asset",
+    "selection_policy", "prior_exposure", "warmups", "records", "digests",
   ], "corpus");
   if (corpus.schema !== CORPUS_SCHEMA || corpus.schema_version !== 1) {
     fail("corpus.schema", "is unsupported");
   }
-  exactKeys(corpus.source, ["kind", "snapshot", "selection_query", "selection_query_sha256",
-    "input_records_sha256"], "corpus.source");
-  if (corpus.source.kind !== "lmfdb-number-fields") fail("corpus.source.kind", "is unsupported");
-  nonempty(corpus.source.snapshot, "corpus.source.snapshot");
-  nonempty(corpus.source.selection_query, "corpus.source.selection_query");
-  digest(corpus.source.selection_query_sha256, "corpus.source.selection_query_sha256");
-  if (sha256(corpus.source.selection_query) !== corpus.source.selection_query_sha256) {
-    fail("corpus.source.selection_query_sha256", "does not authenticate selection_query");
+  if (typeof corpus.created_at !== "string" || Number.isNaN(Date.parse(corpus.created_at))) {
+    fail("corpus.created_at", "must be an ISO timestamp");
   }
-  digest(corpus.source.input_records_sha256, "corpus.source.input_records_sha256");
+  exactKeys(corpus.manifest, [
+    "schema", "id", "filename", "file_sha256", "selection_query_sha256",
+  ], "corpus.manifest");
+  nonempty(corpus.manifest.schema, "corpus.manifest.schema");
+  if (typeof corpus.manifest.id !== "string" || !/^sha256:[0-9a-f]{64}$/.test(corpus.manifest.id)) {
+    fail("corpus.manifest.id", "must be a content-addressed manifest identity");
+  }
+  nonempty(corpus.manifest.filename, "corpus.manifest.filename");
+  digest(corpus.manifest.file_sha256, "corpus.manifest.file_sha256");
+  digest(corpus.manifest.selection_query_sha256, "corpus.manifest.selection_query_sha256");
+  exactKeys(corpus.survey_asset, [
+    "role", "filename", "gzip_sha256", "records_sha256", "labels_sha256",
+  ], "corpus.survey_asset");
+  if (corpus.survey_asset.role !== "survey") fail("corpus.survey_asset.role", "must be survey");
+  nonempty(corpus.survey_asset.filename, "corpus.survey_asset.filename");
+  for (const key of ["gzip_sha256", "records_sha256", "labels_sha256"]) {
+    digest(corpus.survey_asset[key], `corpus.survey_asset.${key}`);
+  }
   exactKeys(corpus.selection_policy, [
     "seed", "field_count", "warmup_count", "shard_count", "fields_per_shard",
-    "discriminant_bands", "class_group_bands", "equation_order_index_bands",
-    "ramified_prime_count_bands", "within_stratum_order", "global_selection",
+    "strata", "tune_per_stratum", "projection",
   ], "corpus.selection_policy");
   if (corpus.selection_policy.seed !== SEED) fail("corpus.selection_policy.seed", "is not pinned");
   const expectedCount = options.expectedCount ?? 1000;
+  const expectedWarmupCount = options.expectedWarmupCount ?? 12;
+  const expectedShardCount = options.expectedShardCount ?? 20;
+  const expectedFieldsPerShard = options.expectedFieldsPerShard ?? 50;
   if (corpus.selection_policy.field_count !== expectedCount) {
     fail("corpus.selection_policy.field_count", `must be ${expectedCount}`);
   }
-  if (corpus.selection_policy.warmup_count !== 3 || corpus.selection_policy.shard_count !== 20 ||
-      corpus.selection_policy.fields_per_shard !== 50) {
-    fail("corpus.selection_policy", "must declare 3 warmups and 20 shards of 50");
+  if (corpus.selection_policy.warmup_count !== expectedWarmupCount ||
+      corpus.selection_policy.shard_count !== expectedShardCount ||
+      corpus.selection_policy.fields_per_shard !== expectedFieldsPerShard ||
+      corpus.selection_policy.tune_per_stratum !== expectedFieldsPerShard) {
+    fail("corpus.selection_policy", "has inconsistent survey dimensions");
   }
-  exactKeys(corpus.prior_exposure, ["record_count", "labels_sha256", "sources"],
+  if (!Array.isArray(corpus.selection_policy.strata) ||
+      corpus.selection_policy.strata.length !== expectedShardCount ||
+      new Set(corpus.selection_policy.strata).size !== expectedShardCount) {
+    fail("corpus.selection_policy.strata", "must identify each timing shard once");
+  }
+  if (corpus.selection_policy.projection !==
+      "rank-major over manifest strata; one stratum per shard") {
+    fail("corpus.selection_policy.projection", "is unsupported");
+  }
+  exactKeys(corpus.prior_exposure, ["record_count", "labels_sha256", "derivation"],
     "corpus.prior_exposure");
   safeInteger(corpus.prior_exposure.record_count, "corpus.prior_exposure.record_count");
   digest(corpus.prior_exposure.labels_sha256, "corpus.prior_exposure.labels_sha256");
-  if (!Array.isArray(corpus.prior_exposure.sources)) fail("corpus.prior_exposure.sources", "must be an array");
+  if (corpus.prior_exposure.derivation === null ||
+      typeof corpus.prior_exposure.derivation !== "object" ||
+      Array.isArray(corpus.prior_exposure.derivation)) {
+    fail("corpus.prior_exposure.derivation", "must be an object");
+  }
   if (!Array.isArray(corpus.records) || corpus.records.length !== expectedCount) {
     fail("corpus.records", `must contain exactly ${expectedCount} fields`);
   }
-  if (!Array.isArray(corpus.warmups) || corpus.warmups.length !== 3) {
-    fail("corpus.warmups", "must contain exactly three excluded fields");
+  if (!Array.isArray(corpus.warmups) || corpus.warmups.length !== expectedWarmupCount) {
+    fail("corpus.warmups", `must contain exactly ${expectedWarmupCount} excluded fields`);
   }
   const labels = new Set();
   for (const [index, record] of corpus.records.entries()) {
     validateField(record, `corpus.records[${index}]`);
     if (record.selection.global_rank !== index + 1) fail(`corpus.records[${index}]`, "wrong global rank");
-    if (record.selection.shard !== index % 20) fail(`corpus.records[${index}]`, "wrong shard");
+    if (record.selection.shard !== index % expectedShardCount ||
+        record.selection.stratum !== corpus.selection_policy.strata[record.selection.shard] ||
+        record.selection.stratum_rank !== Math.floor(index / expectedShardCount) + 1) {
+      fail(`corpus.records[${index}]`, "wrong rank-major shard projection");
+    }
     if (labels.has(record.label)) fail("corpus.records", "contains duplicate labels");
     labels.add(record.label);
   }
   for (const [index, record] of corpus.warmups.entries()) {
     validateField(record, `corpus.warmups[${index}]`);
+    if (record.selection.global_rank !== expectedCount + index + 1) {
+      fail(`corpus.warmups[${index}]`, "wrong excluded warmup rank");
+    }
     if (labels.has(record.label)) fail("corpus.warmups", "must be excluded from retained records");
     labels.add(record.label);
   }
-  if (expectedCount === 1000) {
-    const counts = Array(20).fill(0);
+  if (expectedCount === expectedShardCount * expectedFieldsPerShard) {
+    const counts = Array(expectedShardCount).fill(0);
     corpus.records.forEach((record) => { counts[record.selection.shard] += 1; });
-    if (counts.some((count) => count !== 50)) fail("corpus.records", "must define 20 shards of 50");
+    if (counts.some((count) => count !== expectedFieldsPerShard)) {
+      fail("corpus.records", "does not evenly populate the timing shards");
+    }
   }
   exactKeys(corpus.digests, ["labels_sha256", "records_sha256", "warmup_labels_sha256"],
     "corpus.digests");

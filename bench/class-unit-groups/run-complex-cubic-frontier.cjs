@@ -19,9 +19,11 @@ const {
   canonicalJson,
   sha256,
   validateAdapterResponse,
-  validateCorpus,
   validateTimingEvent,
 } = require("./complex-cubic-frontier-schema.cjs");
+const {
+  loadFrozenSurveyCorpus,
+} = require("./load-complex-cubic-frontier-survey.cjs");
 
 const ROOT = path.resolve(__dirname, "../..");
 const READY_MARKER = "SAGEJS_COMPLEX_CUBIC_FRONTIER_READY";
@@ -52,6 +54,8 @@ Required for --timing:
   --census-file PATH    accepted census from the identical corpus and source tree
 
 Options:
+  --corpus PATH        committed content-addressed corpus manifest
+  --asset-dir PATH     directory containing the survey asset (default: manifest directory)
   --systems LIST        comma-separated systems (default: sagejs,pari)
   --boundaries LIST     scalar-prepared,fresh-complete (default: both)
   --cpu N               logical CPU used through taskset on Linux (default: 0)
@@ -89,6 +93,7 @@ function parseArguments(argv) {
   const options = {
     mode: null,
     corpus: null,
+    assetDir: null,
     censusFile: null,
     output: null,
     systems: ["sagejs", "pari"],
@@ -114,13 +119,14 @@ function parseArguments(argv) {
     }
     if (argument === "--allow-dirty") { options.allowDirty = true; continue; }
     if (argument === "--dry-run") { options.dryRun = true; continue; }
-    if (!["--corpus", "--census-file", "--output", "--systems", "--boundaries",
+    if (!["--corpus", "--asset-dir", "--census-file", "--output", "--systems", "--boundaries",
       "--cpu", "--timeout-seconds", "--sagejs", "--gp", "--adapter"].includes(argument)) {
       throw new Error(`unknown argument: ${argument}`);
     }
     if (index + 1 >= argv.length) throw new Error(`${argument} needs a value`);
     const value = argv[(index += 1)];
     if (argument === "--corpus") options.corpus = path.resolve(value);
+    else if (argument === "--asset-dir") options.assetDir = path.resolve(value);
     else if (argument === "--census-file") options.censusFile = path.resolve(value);
     else if (argument === "--output") options.output = path.resolve(value);
     else if (argument === "--systems") options.systems = parseList(value, SYSTEMS, argument);
@@ -207,14 +213,51 @@ function hostIdentity(cpu) {
   };
 }
 
-function corpusIdentity(filename, corpus) {
+const PORTABLE_CORPUS_IDENTITY_KEYS = Object.freeze([
+  "manifest_id",
+  "manifest_file_sha256",
+  "survey_asset_filename",
+  "survey_asset_gzip_sha256",
+  "survey_asset_records_sha256",
+  "labels_sha256",
+  "records_sha256",
+  "record_count",
+]);
+
+function portableCorpusIdentity(corpus) {
   return {
-    path: filename,
-    file_sha256: sha256(fs.readFileSync(filename)),
+    manifest_id: corpus.manifest.id,
+    manifest_file_sha256: corpus.manifest.file_sha256,
+    survey_asset_filename: corpus.survey_asset.filename,
+    survey_asset_gzip_sha256: corpus.survey_asset.gzip_sha256,
+    survey_asset_records_sha256: corpus.survey_asset.records_sha256,
     labels_sha256: corpus.digests.labels_sha256,
     records_sha256: corpus.digests.records_sha256,
     record_count: corpus.records.length,
   };
+}
+
+function corpusIdentity(filename, corpus) {
+  const portable = portableCorpusIdentity(corpus);
+  return {
+    manifest_path: filename,
+    ...portable,
+    identity_sha256: canonicalDigest(portable),
+  };
+}
+
+function corpusIdentitiesMatch(recorded, current) {
+  if (!recorded || !current || typeof recorded !== "object" || typeof current !== "object") {
+    return false;
+  }
+  const project = (identity) => Object.fromEntries(
+    PORTABLE_CORPUS_IDENTITY_KEYS.map((key) => [key, identity[key]]),
+  );
+  const recordedPortable = project(recorded);
+  const currentPortable = project(current);
+  return recorded.identity_sha256 === canonicalDigest(recordedPortable) &&
+    current.identity_sha256 === canonicalDigest(currentPortable) &&
+    recorded.identity_sha256 === current.identity_sha256;
 }
 
 function toolPlan(options) {
@@ -968,7 +1011,9 @@ async function runCensus(corpus, tools, source, options) {
 }
 
 async function runTiming(corpus, census, tools, source, options) {
-  if (census.schema !== CENSUS_SCHEMA || census.corpus.records_sha256 !== corpus.digests.records_sha256 ||
+  const currentCorpusIdentity = corpusIdentity(options.corpus, corpus);
+  if (census.schema !== CENSUS_SCHEMA ||
+      !corpusIdentitiesMatch(census.corpus, currentCorpusIdentity) ||
       census.source.candidate_tree !== source.candidate_tree ||
       JSON.stringify(census.systems) !== JSON.stringify(tools.map((tool) => tool.system)) ||
       !census.summary.agreement || !census.summary.coverage_complete) {
@@ -1017,7 +1062,7 @@ async function runTiming(corpus, census, tools, source, options) {
     schema: TIMING_SCHEMA,
     schema_version: 1,
     recorded_at: new Date().toISOString(),
-    corpus: corpusIdentity(options.corpus, corpus),
+    corpus: currentCorpusIdentity,
     census: { path: options.censusFile, sha256: sha256(fs.readFileSync(options.censusFile)) },
     source,
     host: hostIdentity(options.cpu),
@@ -1025,7 +1070,7 @@ async function runTiming(corpus, census, tools, source, options) {
       retained_rounds: 11,
       shard_count: 20,
       fields_per_shard: 50,
-      excluded_warmup_fields: 3,
+      excluded_warmup_fields: corpus.warmups.length,
       calibration: "discarded doubling until each shard root is at least 1.2 seconds",
       minimum_retained_root_nanoseconds: MINIMUM_ROOT_NS.toString(),
       process_scope: "one fresh pinned single-threaded process per system and round",
@@ -1059,7 +1104,7 @@ async function runTiming(corpus, census, tools, source, options) {
 
 async function main(argv = process.argv.slice(2)) {
   const options = parseArguments(argv);
-  const corpus = validateCorpus(JSON.parse(fs.readFileSync(options.corpus, "utf8")));
+  const corpus = loadFrozenSurveyCorpus(options.corpus, options.assetDir);
   const source = sourceIdentity(options.allowDirty);
   const tools = toolPlan(options);
   const plan = {
@@ -1108,10 +1153,13 @@ module.exports = {
   RETAINED_ROUNDS,
   THREAD_ENV,
   combineCensus,
+  corpusIdentitiesMatch,
+  corpusIdentity,
   invokeAdapter,
   makeTimingEvent,
   pariCensusSource,
   pariTimingSource,
+  portableCorpusIdentity,
   parseArguments,
   parseGpCensus,
   parseGpTiming,
