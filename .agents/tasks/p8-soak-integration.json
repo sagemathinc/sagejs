@@ -35,7 +35,38 @@
     "node --test test/numerics/evidence/release-workflow.cjs",
     "node --test test/numerics/evidence/qualification-soak.cjs test/numerics/evidence/qualification-supplemental.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.322,
+      "started_at": "2026-09-02T21:18:26.768Z",
+      "commit": "d224e3fa24634d159d75b969328220da585e8f25",
+      "workspace_fingerprint": "0869237f6986737149b3bd00bea4713feef66f76e22b0b7bdd4c94345f2ed5bc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/evidence/release-workflow.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.324,
+      "started_at": "2026-09-02T21:18:35.612Z",
+      "commit": "d224e3fa24634d159d75b969328220da585e8f25",
+      "workspace_fingerprint": "0869237f6986737149b3bd00bea4713feef66f76e22b0b7bdd4c94345f2ed5bc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/evidence/qualification-soak.cjs test/numerics/evidence/qualification-supplemental.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.214,
+      "started_at": "2026-09-02T21:18:40.685Z",
+      "commit": "d224e3fa24634d159d75b969328220da585e8f25",
+      "workspace_fingerprint": "0869237f6986737149b3bd00bea4713feef66f76e22b0b7bdd4c94345f2ed5bc",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "Authenticated the four platform-local numerical soak categories and their exact paths/schema, updated the release-gate fixture to six requirements and eleven raw supplemental records, and added a Wednesday scheduled/manual Linux x64 campaign. The scheduled job builds source-current numerical Wasm, runs only the bounded scheduled profile, cancels superseded runs, has a 120-minute hard timeout, preserves diagnostics, and has no push or pull-request trigger.",
     "risks": [
