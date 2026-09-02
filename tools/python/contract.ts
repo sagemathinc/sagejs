@@ -36,6 +36,10 @@ NATIVE_CLASSES.ArrayBuffer = { static: staticNames("isView", "transfer") };
 NATIVE_CLASSES.Promise = { static: staticNames("all", "race", "reject", "resolve") };
 
 export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
+  // Qualification fault-injection needs the module-owned cache itself, not a
+  // captured copy. Keep this private boundary source-transparent so installed
+  // package compilation behaves exactly like the repository compiler.
+  _numerical_backends: 'ρσ_modules["sagejs.runtime"]._numerical_backends',
   array: "Array",
   arraylike: "ρσ_arraylike",
   bigint: "BigInt",
