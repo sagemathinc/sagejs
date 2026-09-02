@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.numerical-qualification-corpus/v1",
-  "id": "sagejs-numerical-product-v13",
-  "version": 13,
+  "id": "sagejs-numerical-product-v14",
+  "version": 14,
   "domain": "numerical-computing-product",
   "description": "Backend-neutral P0-P8 product cases executed through a real Sage.js artifact and checked independently by the host adapter.",
   "program_phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
@@ -71,6 +71,24 @@
       "measurement": {"warmup": 0, "samples": 2}
     },
     {
+      "id": "p1-root-method-family",
+      "description": "Every claimed scalar-root method solves the same smooth equation and is independently residual-checked.",
+      "program_phase": "P1",
+      "layer": "differential-oracle",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "root-method-family", "methods": ["bisection", "brent", "newton", "secant"], "lower": 0, "upper": 1},
+      "required_capabilities": ["numerics.root.scalar"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "root-method-errors", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_independent_residual", "expected": {"literal": 1e-10}},
+        {"id": "root-methods-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/executed_methods", "expected": {"literal": ["bisection", "brent", "newton", "secant"]}},
+        {"id": "root-method-successes", "evidence": "validation", "kind": "deep-equal", "actual": "/values/successes", "expected": {"literal": 4}},
+        {"id": "root-method-validations", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validated", "expected": {"literal": 4}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
       "id": "p1-root-translation",
       "description": "Translating a scalar equation translates all computed roots by the same amount.",
       "program_phase": "P1",
@@ -99,7 +117,8 @@
       "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "interpolation-definition", "evidence": "correctness", "kind": "approximate", "actual": "/values/result", "expected": {"literal": 3.25}, "absolute_tolerance": 1e-13, "relative_tolerance": 1e-13},
-        {"id": "lagrange-oracle", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_error", "expected": {"literal": 1e-13}}
+        {"id": "lagrange-oracle", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_error", "expected": {"literal": 1e-13}},
+        {"id": "interpolation-method-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/executed_methods", "expected": {"literal": ["barycentric"]}}
       ],
       "measurement": {"warmup": 1, "samples": 2}
     },
@@ -122,6 +141,26 @@
       "measurement": {"warmup": 1, "samples": 2}
     },
     {
+      "id": "p2-spline-boundary-families",
+      "description": "Every claimed cubic-spline boundary family satisfies interpolation and its independently checked endpoint equations.",
+      "program_phase": "P2",
+      "layer": "independent-residual",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "spline-boundary-families", "boundary_families": ["not-a-knot", "natural", "clamped", "periodic", "mixed-explicit"]},
+      "required_capabilities": ["numerics.approximation.splines"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "spline-boundary-node-reproduction", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_node_error", "expected": {"literal": 2e-12}},
+        {"id": "spline-boundary-equations", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_boundary_residual", "expected": {"literal": 5e-10}},
+        {"id": "spline-boundaries-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/executed_boundary_families", "expected": {"literal": ["not-a-knot", "natural", "clamped", "periodic", "mixed-explicit"]}},
+        {"id": "spline-methods-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/executed_methods", "expected": {"literal": ["not-a-knot", "explicit", "periodic"]}},
+        {"id": "spline-boundary-successes", "evidence": "validation", "kind": "deep-equal", "actual": "/values/successes", "expected": {"literal": 5}},
+        {"id": "spline-boundary-validations", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validated", "expected": {"literal": 5}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
       "id": "p2-finite-difference-sine",
       "description": "A planned fourth-order finite difference agrees with the analytic derivative of sine.",
       "program_phase": "P2",
@@ -139,6 +178,24 @@
       "measurement": {"warmup": 1, "samples": 2}
     },
     {
+      "id": "p2-finite-difference-method-family",
+      "description": "Central, forward, and backward Fornberg stencils all differentiate exp with an independent analytic oracle.",
+      "program_phase": "P2",
+      "layer": "differential-oracle",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "finite-difference-method-family", "methods": ["fornberg-central", "fornberg-forward", "fornberg-backward"], "point": 0.375},
+      "required_capabilities": ["numerics.approximation.finite_difference"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "finite-difference-method-errors", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_independent_error", "expected": {"literal": 3e-7}},
+        {"id": "finite-difference-methods-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/executed_methods", "expected": {"literal": ["fornberg-central", "fornberg-forward", "fornberg-backward"]}},
+        {"id": "finite-difference-method-successes", "evidence": "validation", "kind": "deep-equal", "actual": "/values/successes", "expected": {"literal": 3}},
+        {"id": "finite-difference-method-validations", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validated", "expected": {"literal": 3}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
       "id": "p2-chebyshev-exponential",
       "description": "A degree-14 Chebyshev series approximates exp and its derivative at independent points while retaining its honest heuristic classification.",
       "program_phase": "P2",
@@ -152,7 +209,8 @@
         {"id": "chebyshev-exponential-value", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_value_error", "expected": {"literal": 3e-12}},
         {"id": "chebyshev-exponential-derivative", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_derivative_error", "expected": {"literal": 3e-10}},
         {"id": "chebyshev-public-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
-        {"id": "chebyshev-honest-truth-level", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_kind", "expected": {"literal": "heuristic"}}
+        {"id": "chebyshev-honest-truth-level", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_kind", "expected": {"literal": "heuristic"}},
+        {"id": "chebyshev-method-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/executed_methods", "expected": {"literal": ["chebyshev"]}}
       ],
       "measurement": {"warmup": 1, "samples": 2}
     },
@@ -169,7 +227,8 @@
       "checks": [
         {"id": "polynomial-root-matching", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-10}},
         {"id": "polynomial-independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_normalized_residual", "expected": {"literal": 2e-12}},
-        {"id": "polynomial-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+        {"id": "polynomial-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}},
+        {"id": "polynomial-root-method-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/executed_methods", "expected": {"literal": ["aberth-ehrlich"]}}
       ],
       "measurement": {"warmup": 1, "samples": 2}
     },
@@ -203,7 +262,26 @@
       "checks": [
         {"id": "integral-oracle", "evidence": "correctness", "kind": "approximate", "actual": "/values/result", "expected": {"literal": 2}, "absolute_tolerance": 2e-11, "relative_tolerance": 2e-11},
         {"id": "integral-independent-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_error", "expected": {"literal": 2e-11}},
-        {"id": "integral-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+        {"id": "integral-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}},
+        {"id": "quadrature-method-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/executed_methods", "expected": {"literal": ["adaptive_gauss_kronrod"]}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p2-linear-method-family",
+      "description": "Explicit LU, QR, and Cholesky direct solves all satisfy an independently computed residual on a positive-definite system.",
+      "program_phase": "P2",
+      "layer": "independent-residual",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "linear-method-family", "methods": ["lu", "qr", "cholesky"], "matrix": [[4, 1], [1, 3]], "rhs": [9, 7]},
+      "required_capabilities": ["numerics.linear.solve"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "linear-method-residuals", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_independent_residual", "expected": {"literal": 2e-13}},
+        {"id": "linear-methods-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/executed_methods", "expected": {"literal": ["lu", "qr", "cholesky"]}},
+        {"id": "linear-method-successes", "evidence": "validation", "kind": "deep-equal", "actual": "/values/successes", "expected": {"literal": 3}},
+        {"id": "linear-method-validations", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validated", "expected": {"literal": 3}}
       ],
       "measurement": {"warmup": 1, "samples": 2}
     },
@@ -270,7 +348,9 @@
         {"id": "qr-reconstruction", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_reconstruction_error", "expected": {"literal": 1e-12}},
         {"id": "qr-orthogonality", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_orthogonality_error", "expected": {"literal": 1e-12}},
         {"id": "qr-public-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
-        {"id": "qr-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+        {"id": "qr-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}},
+        {"id": "qr-method-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/executed_methods", "expected": {"literal": ["householder_qr"]}},
+        {"id": "qr-validations-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/executed_validations", "expected": {"literal": ["reconstruction", "orthogonality"]}}
       ],
       "measurement": {"warmup": 1, "samples": 2}
     },
@@ -288,7 +368,9 @@
         {"id": "cholesky-reconstruction", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_reconstruction_error", "expected": {"literal": 1e-12}},
         {"id": "cholesky-lower-shape", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_upper_triangle_leak", "expected": {"literal": 0}},
         {"id": "cholesky-public-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
-        {"id": "cholesky-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+        {"id": "cholesky-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}},
+        {"id": "cholesky-method-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/executed_methods", "expected": {"literal": ["cholesky"]}},
+        {"id": "cholesky-validations-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/executed_validations", "expected": {"literal": ["triangular-structure"]}}
       ],
       "measurement": {"warmup": 1, "samples": 2}
     },

@@ -13,6 +13,7 @@ const { readJson } = require("../../../scripts/numerical-computing/common.cjs");
 const { validateCorpus } = require("../../../scripts/numerical-computing/contracts.cjs");
 const {
   capabilityDraft,
+  validateExecutableEnvelopeCoverage,
 } = require("../../../scripts/numerical-computing/qualification/prepare-node.cjs");
 const {
   renderMatrix,
@@ -96,6 +97,7 @@ test("product corpus covers every P0-P8 phase, evidence layer, and integrated do
 });
 
 test("capability specification exactly covers cases and future slices fail closed", () => {
+  validateExecutableEnvelopeCoverage(spec, corpus);
   const draft = capabilityDraft(spec, corpus);
   const available = draft.capabilities.filter((item) => item.status === "available");
   const covered = new Set(available.flatMap((item) => item.case_ids));
@@ -109,6 +111,40 @@ test("capability specification exactly covers cases and future slices fail close
     assert.deepEqual(item.case_ids, []);
     assert.match(item.reason, /reserved/);
   }
+});
+
+test("early-product envelope members require bound executable validation cases", () => {
+  const widened = structuredClone(spec);
+  widened.capabilities.find((item) => item.id === "numerics.root.scalar")
+    .envelope.methods.push("unexercised-root-method");
+  assert.throws(
+    () => validateExecutableEnvelopeCoverage(widened, corpus),
+    /executable coverage differs from its envelope/,
+  );
+
+  const unbound = structuredClone(spec);
+  unbound.capabilities.find((item) => item.id === "numerics.linear.solve")
+    .envelope.executable_coverage.methods[0].case_id = "p2-linear-qr-factorization";
+  assert.throws(
+    () => validateExecutableEnvelopeCoverage(unbound, corpus),
+    /names unbound case|does not require covered capability/,
+  );
+
+  const unchecked = structuredClone(spec);
+  unchecked.capabilities.find((item) => item.id === "numerics.approximation.splines")
+    .envelope.executable_coverage.boundary_families[0].check_id = "spline-public-success";
+  assert.throws(
+    () => validateExecutableEnvelopeCoverage(unchecked, corpus),
+    /must validate the executed member set/,
+  );
+
+  const unvalidated = structuredClone(spec);
+  unvalidated.capabilities.find((item) => item.id === "numerics.linear.factorizations")
+    .envelope.independent_validation.push("condition-estimate");
+  assert.throws(
+    () => validateExecutableEnvelopeCoverage(unvalidated, corpus),
+    /executable coverage differs from its envelope/,
+  );
 });
 
 test("matrix templates enumerate native and runtime rows without fake evidence", () => {

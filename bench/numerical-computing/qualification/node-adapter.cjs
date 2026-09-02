@@ -159,6 +159,25 @@ output_record = {
     "validation_passed": answer.validation.passed,
     "evaluations": answer.evaluations,
 }`,
+    "p1-root-method-family": String.raw`
+from sagejs.numerics import find_root
+records = []
+for method in input_record["methods"]:
+    options = {"method": method}
+    if method == "newton":
+        options["derivative"] = lambda x: -math.sin(x) - 1.0
+    answer = find_root(
+        lambda x: math.cos(x) - x,
+        input_record["lower"], input_record["upper"], **options,
+    )
+    records.append({
+        "requested_method": method,
+        "executed_method": answer.method,
+        "value": answer.value,
+        "success": answer.success,
+        "validation_passed": answer.validation.passed,
+    })
+output_record = {"records": records}`,
     "p1-root-invalid-bracket": String.raw`
 from sagejs.numerics import find_root
 answer = find_root(
@@ -187,6 +206,7 @@ from sagejs.numerics.approximation import interpolate
 answer = interpolate(input_record["nodes"], input_record["values"])
 output_record = {
     "value": answer.evaluate(input_record["point"]),
+    "method": answer.method,
     "success": answer.success,
     "validation_passed": answer.validation.passed,
 }`,
@@ -202,6 +222,48 @@ output_record = {
     "status": answer.status,
     "validation_passed": answer.validation.passed,
 }`,
+    "p2-spline-boundary-families": String.raw`
+from sagejs.numerics.approximation import cubic_spline
+cubic_nodes = [0.0, 0.3, 0.9, 1.4, 2.0]
+cubic_values = [x**3 - 2.0*x + 1.0 for x in cubic_nodes]
+cubic_points = [0.2, 0.7, 1.3, 1.8]
+periodic_nodes = [0.0, math.pi/2.0, math.pi, 3.0*math.pi/2.0, 2.0*math.pi]
+periodic_values = [0.0, 1.0, 0.0, -1.0, 0.0]
+records = []
+for family in input_record["boundary_families"]:
+    if family == "periodic":
+        nodes = periodic_nodes
+        values = periodic_values
+        boundary = "periodic"
+        points = [math.pi/4.0, 3.0*math.pi/4.0, 5.0*math.pi/4.0]
+    else:
+        nodes = cubic_nodes
+        values = cubic_values
+        points = cubic_points
+        if family == "clamped":
+            boundary = (-2.0, 10.0)
+        elif family == "mixed-explicit":
+            boundary = ((2, 0.0), (1, 10.0))
+        else:
+            boundary = family
+    answer = cubic_spline(nodes, values, boundary=boundary)
+    records.append({
+        "family": family,
+        "method": answer.method,
+        "nodes": nodes,
+        "node_values": [answer.evaluate(x) for x in nodes],
+        "expected_node_values": values,
+        "coefficients": answer.value["coefficients"],
+        "points": points,
+        "point_values": [answer.evaluate(x) for x in points],
+        "left_first": answer.evaluate(nodes[0], 1),
+        "right_first": answer.evaluate(nodes[-1], 1),
+        "left_second": answer.evaluate(nodes[0], 2),
+        "right_second": answer.evaluate(nodes[-1], 2),
+        "success": answer.success,
+        "validation_passed": answer.validation.passed,
+    })
+output_record = {"records": records}`,
     "p2-finite-difference-sine": String.raw`
 from sagejs.numerics.approximation import finite_difference
 x = input_record["point"]
@@ -214,17 +276,41 @@ answer = finite_difference(
 )
 output_record = {
     "value": answer.evaluate(0),
+    "method": answer.method,
     "success": answer.success,
     "status": answer.status,
     "validation_passed": answer.validation.passed,
     "evaluations": answer.evaluations,
 }`,
+    "p2-finite-difference-method-family": String.raw`
+from sagejs.numerics.approximation import finite_difference
+records = []
+for method in input_record["methods"]:
+    stencil = method[len("fornberg-"):]
+    answer = finite_difference(
+        math.exp,
+        input_record["point"],
+        derivative_order=1,
+        accuracy_order=4,
+        stencil=stencil,
+        derivative=math.exp,
+        rtol=2.0e-6,
+    )
+    records.append({
+        "requested_method": method,
+        "executed_method": answer.method,
+        "value": answer.evaluate(0),
+        "success": answer.success,
+        "validation_passed": answer.validation.passed,
+    })
+output_record = {"records": records}`,
     "p2-chebyshev-exponential": String.raw`
 from sagejs.numerics.approximation import chebyshev_approximation
 answer = chebyshev_approximation(math.exp, [-1.0, 1.0], input_record["degree"])
 output_record = {
     "values": [answer.evaluate(x) for x in input_record["points"]],
     "derivatives": [answer.evaluate(x, 1) for x in input_record["points"]],
+    "method": answer.method,
     "success": answer.success,
     "status": answer.status,
     "validation_kind": answer.validation.truth_level,
@@ -234,6 +320,7 @@ from sagejs.numerics.approximation import polynomial_roots
 answer = polynomial_roots(input_record["coefficients"], trace="iterations")
 output_record = {
     "roots": [[root.real, root.imag] for root in answer.roots],
+    "method": answer.method,
     "status": answer.status,
     "validation_passed": answer.validation.passed,
     "diagnostic_codes": [item.code for item in answer.diagnostics],
@@ -243,6 +330,7 @@ from sagejs.numerics.approximation import polynomial_roots
 answer = polynomial_roots(input_record["coefficients"], trace="iterations")
 output_record = {
     "roots": [[root.real, root.imag] for root in answer.roots],
+    "method": answer.method,
     "status": answer.status,
     "validation_passed": answer.validation.passed,
     "diagnostic_codes": [item.code for item in answer.diagnostics],
@@ -252,6 +340,7 @@ from sagejs.numerics.integration import integrate
 answer = integrate(math.sin, input_record["lower"], input_record["upper"])
 output_record = {
     "value": answer.value,
+    "method": answer.method,
     "status": answer.status,
     "validation_passed": answer.validation.passed,
     "evaluations": answer.evaluations,
@@ -264,6 +353,19 @@ output_record = {
     "status": answer.status,
     "validation_passed": answer.validation.passed,
 }`,
+    "p2-linear-method-family": String.raw`
+from sagejs.numerics.linear_algebra import solve
+records = []
+for method in input_record["methods"]:
+    answer = solve(input_record["matrix"], input_record["rhs"], method=method)
+    records.append({
+        "requested_method": method,
+        "executed_method": answer.method,
+        "value": answer.value,
+        "success": answer.success,
+        "validation_passed": answer.validation.passed,
+    })
+output_record = {"records": records}`,
     "p2-linear-scale-stress": String.raw`
 from sagejs.numerics.linear_algebra import solve
 scale = input_record["scale"]
@@ -284,6 +386,7 @@ factorization = answer.factorization
 output_record = {
     "q": factorization.q().to_rows(),
     "r": factorization.r().to_rows(),
+    "method": answer.method,
     "success": answer.success,
     "status": answer.status,
     "validation_passed": answer.validation.passed,
@@ -293,6 +396,7 @@ from sagejs.numerics.linear_algebra import cholesky
 answer = cholesky(input_record["matrix"])
 output_record = {
     "lower": answer.factorization.lower().to_rows(),
+    "method": answer.method,
     "success": answer.success,
     "status": answer.status,
     "validation_passed": answer.validation.passed,
@@ -1773,6 +1877,15 @@ async function normalizeEvaluated(sample, evaluated) {
         validation_passed: raw.validation_passed,
       }, kernelMs, { evaluations: raw.evaluations });
       break;
+    case "p1-root-method-family":
+      observation = success({
+        executed_methods: raw.records.map((record) => record.executed_method),
+        max_independent_residual: Math.max(...raw.records.map((record) =>
+          Math.abs(Math.cos(record.value) - record.value))),
+        successes: raw.records.filter((record) => record.success).length,
+        validated: raw.records.filter((record) => record.validation_passed).length,
+      }, kernelMs, { methods: raw.records.length });
+      break;
     case "p1-root-invalid-bracket":
       observation = failure("root.invalid-bracket", {
         solver_status: raw.status,
@@ -1796,6 +1909,7 @@ async function normalizeEvaluated(sample, evaluated) {
       observation = success({
         result: raw.value,
         independent_error: Math.abs(raw.value - oracle),
+        executed_methods: [raw.method],
       }, kernelMs);
       break;
     }
@@ -1812,6 +1926,64 @@ async function normalizeEvaluated(sample, evaluated) {
       }, kernelMs, { evaluation_points: input.points.length });
       break;
     }
+    case "p2-spline-boundary-families": {
+      let maxNodeError = 0;
+      let maxBoundaryResidual = 0;
+      for (const record of raw.records) {
+        for (let index = 0; index < record.node_values.length; index += 1) {
+          maxNodeError = Math.max(
+            maxNodeError,
+            Math.abs(record.node_values[index] - record.expected_node_values[index]),
+          );
+        }
+        if (record.family === "not-a-knot") {
+          const coefficients = record.coefficients;
+          maxBoundaryResidual = Math.max(
+            maxBoundaryResidual,
+            Math.abs(6 * coefficients[0][3] - 6 * coefficients[1][3]),
+            Math.abs(
+              6 * coefficients[coefficients.length - 2][3] -
+              6 * coefficients[coefficients.length - 1][3]
+            ),
+          );
+        } else if (record.family === "natural") {
+          maxBoundaryResidual = Math.max(
+            maxBoundaryResidual,
+            Math.abs(record.left_second),
+            Math.abs(record.right_second),
+          );
+        } else if (record.family === "clamped") {
+          maxBoundaryResidual = Math.max(
+            maxBoundaryResidual,
+            Math.abs(record.left_first + 2),
+            Math.abs(record.right_first - 10),
+          );
+        } else if (record.family === "periodic") {
+          maxBoundaryResidual = Math.max(
+            maxBoundaryResidual,
+            Math.abs(record.left_first - record.right_first),
+            Math.abs(record.left_second - record.right_second),
+          );
+        } else if (record.family === "mixed-explicit") {
+          maxBoundaryResidual = Math.max(
+            maxBoundaryResidual,
+            Math.abs(record.left_second),
+            Math.abs(record.right_first - 10),
+          );
+        } else {
+          throw new Error(`unknown qualified spline boundary ${record.family}`);
+        }
+      }
+      observation = success({
+        max_node_error: maxNodeError,
+        max_boundary_residual: maxBoundaryResidual,
+        executed_boundary_families: raw.records.map((record) => record.family),
+        executed_methods: [...new Set(raw.records.map((record) => record.method))],
+        successes: raw.records.filter((record) => record.success).length,
+        validated: raw.records.filter((record) => record.validation_passed).length,
+      }, kernelMs, { boundary_families: raw.records.length });
+      break;
+    }
     case "p2-finite-difference-sine":
       observation = success({
         result: raw.value,
@@ -1819,6 +1991,15 @@ async function normalizeEvaluated(sample, evaluated) {
         public_success: raw.success,
         validation_passed: raw.validation_passed,
       }, kernelMs, { evaluations: raw.evaluations });
+      break;
+    case "p2-finite-difference-method-family":
+      observation = success({
+        executed_methods: raw.records.map((record) => record.executed_method),
+        max_independent_error: Math.max(...raw.records.map((record) =>
+          Math.abs(record.value - Math.exp(input.point)))),
+        successes: raw.records.filter((record) => record.success).length,
+        validated: raw.records.filter((record) => record.validation_passed).length,
+      }, kernelMs, { methods: raw.records.length });
       break;
     case "p2-chebyshev-exponential": {
       const valueErrors = raw.values.map((value, index) =>
@@ -1830,6 +2011,7 @@ async function normalizeEvaluated(sample, evaluated) {
         max_derivative_error: Math.max(...derivativeErrors),
         public_success: raw.success,
         validation_kind: raw.validation_kind,
+        executed_methods: [raw.method],
       }, kernelMs, { evaluation_points: input.points.length });
       break;
     }
@@ -1843,6 +2025,7 @@ async function normalizeEvaluated(sample, evaluated) {
         ),
         validation_passed: raw.validation_passed,
         ill_conditioned_reported: raw.diagnostic_codes.includes("ill_conditioned"),
+        executed_methods: [raw.method],
       }, kernelMs, { roots: roots.length });
       break;
     }
@@ -1851,8 +2034,32 @@ async function normalizeEvaluated(sample, evaluated) {
         result: raw.value,
         independent_error: Math.abs(raw.value - 2),
         validation_passed: raw.validation_passed,
+        executed_methods: [raw.method],
       }, kernelMs, { evaluations: raw.evaluations });
       break;
+    case "p2-linear-method-family": {
+      let maximumResidual = 0;
+      for (const record of raw.records) {
+        for (let row = 0; row < input.matrix.length; row += 1) {
+          const image = input.matrix[row].reduce(
+            (sum, value, column) => sum + value * record.value[column], 0,
+          );
+          maximumResidual = Math.max(maximumResidual, Math.abs(image - input.rhs[row]));
+        }
+      }
+      const internalToPublic = {
+        partial_pivot_lu: "lu",
+        column_pivoted_householder_qr: "qr",
+        cholesky: "cholesky",
+      };
+      observation = success({
+        max_independent_residual: maximumResidual,
+        executed_methods: raw.records.map((record) => internalToPublic[record.executed_method]),
+        successes: raw.records.filter((record) => record.success).length,
+        validated: raw.records.filter((record) => record.validation_passed).length,
+      }, kernelMs, { methods: raw.records.length });
+      break;
+    }
     case "p2-linear-solve": {
       const residual = input.matrix.map((row, index) =>
         Math.abs(row.reduce((sum, value, column) => sum + value * raw.value[column], 0) - input.rhs[index]));
@@ -1902,6 +2109,8 @@ async function normalizeEvaluated(sample, evaluated) {
         max_orthogonality_error: orthogonality,
         public_success: raw.success,
         validation_passed: raw.validation_passed,
+        executed_methods: [raw.method],
+        executed_validations: ["reconstruction", "orthogonality"],
       }, kernelMs);
       break;
     }
@@ -1923,6 +2132,8 @@ async function normalizeEvaluated(sample, evaluated) {
         max_upper_triangle_leak: upperLeak,
         public_success: raw.success,
         validation_passed: raw.validation_passed,
+        executed_methods: [raw.method],
+        executed_validations: ["triangular-structure"],
       }, kernelMs);
       break;
     }
