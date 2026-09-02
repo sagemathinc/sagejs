@@ -58,7 +58,7 @@ def parse_catalog_source(
             )
             arguments.append(None)
         else:
-            arguments.append(_ValueParser(value_source, target).parse())
+            arguments.append(_parse_operand(value_source, target, name))
     options: dict[str, Any] = {"source_text": source}
     if expression is not None:
         options["expression"] = expression
@@ -78,6 +78,18 @@ def parse_catalog_source(
             "parsed program semantics disagree with the attached cross-check",
         )
     return reconstructed
+
+
+def _parse_operand(source: str, language: str, name: str) -> Any:
+    value_source = source
+    matlab_column = language == "matlab" and name == "right"
+    if matlab_column and value_source.endswith(".'"):
+        value_source = value_source[:-2].rstrip()
+        value = _ValueParser(value_source, language).parse()
+        if not isinstance(value, list) or any(isinstance(item, list) for item in value):
+            _failure(language, "emitted right-hand-side transpose is not a vector")
+        return value
+    return _ValueParser(value_source, language).parse()
 
 
 def _assignment_lines(body: str, language: str) -> dict[str, str]:

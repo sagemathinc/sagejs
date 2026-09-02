@@ -82,6 +82,11 @@ assert executed_cells == expected_cells
 # bodies while retaining the original semantic record: both must still fail.
 linear = registry.lower("sage", "solve", [[3, 1], [1, 2]], [9, 8])
 source = registry.emit(linear, "sage")
+assert "right = [9, 8].';" in registry.emit(linear, "matlab")
+least_squares = registry.lower(
+    "matlab", "lsqminnorm", [[1, 0], [0, 1], [1, 1]], [1, 2, 3]
+)
+assert "right = [1, 2, 3].';" in registry.emit(least_squares, "matlab")
 body, payload = source.rsplit("\n# sagejs-intent-v1:", 1)
 envelope = json.loads(base64.urlsafe_b64decode(payload.encode("ascii")))
 

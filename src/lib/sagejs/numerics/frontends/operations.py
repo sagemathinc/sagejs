@@ -1076,7 +1076,14 @@ def _emit_matlab(definition: _Definition, values: Mapping[str, Any]) -> str:
     lines = []
     for operand in definition.operands:
         if operand != definition.callback:
-            lines.append(_assignment(operand, values[operand], "matlab") + ";")
+            assignment = _assignment(operand, values[operand], "matlab")
+            if operand == "right" and _is_flat_sequence(values[operand]):
+                # MATLAB interprets `[a, b]` as a row vector, while both `A \\ b`
+                # and `lsqminnorm(A, b)` require a column with one entry per row.
+                # Use the nonconjugating transpose so complex right-hand sides
+                # preserve their mathematical values.
+                assignment += ".'"
+            lines.append(assignment + ";")
     if definition.callback is not None:
         lines.append(
             definition.callback
@@ -1111,6 +1118,16 @@ def _emit_matlab(definition: _Definition, values: Mapping[str, Any]) -> str:
     }
     lines.append("result = " + calls[name] + ";")
     return "\n".join(lines)
+
+
+def _is_flat_sequence(value: Any) -> bool:
+    return isinstance(value, Sequence) and not isinstance(
+        value, (str, bytes, bytearray)
+    ) and all(
+        not isinstance(item, Sequence)
+        or isinstance(item, (str, bytes, bytearray))
+        for item in value
+    )
 
 
 def _emit_wolfram(definition: _Definition, values: Mapping[str, Any]) -> str:
