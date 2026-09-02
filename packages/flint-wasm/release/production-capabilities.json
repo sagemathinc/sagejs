@@ -248,6 +248,7 @@
         "ffi:flint:fq_polynomial_sub",
         "ffi:flint:integer_log_sqrt_balls_packed",
         "ffi:flint:integer_log_sqrt_balls_resource",
+        "ffi:flint:positive_rational_log_balls_resource",
         "ffi:flint:native_exact_workspace",
         "ffi:flint:native_exact_workspace_borrow",
         "ffi:flint:native_exact_workspace_borrow_addmul",

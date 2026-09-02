@@ -27,11 +27,13 @@ from sagejs.ffi.flint import (
     number_field_analysis_resource_project,
     number_field_analysis_resource_project_proof,
     number_field_analyze_resource,
+    positive_rational_log_balls_resource,
 )
 from sagejs.native import (
     IntegerBuffer,
     NativeExactArena,
     NativeIntegerVector,
+    checked_uint64,
     native,
     uint64,
 )
@@ -1217,7 +1219,6 @@ def _cubic_atanh_log_bounds(
     return (1, 0)
 
 
-@native
 def _cubic_log_positive_rational_bounds(
     numerator: int,
     denominator: int,
@@ -1254,24 +1255,62 @@ def _cubic_log_positive_rational_bounds(
     )
 
 
+def _cubic_arb_log_positive_rational_bounds(
+    numerators: FmpzMatrix,
+    denominators: FmpzMatrix,
+    endpoints: FmpzMatrix,
+    numerator: int,
+    denominator: int,
+    precision: uint64,
+) -> tuple[int, int]:
+    """Return outward dyadic bounds for one exact positive rational log."""
+    if numerator <= 0 or denominator <= 0:
+        return (1, 0)
+    numerators[0, 0] = numerator
+    denominators[0, 0] = denominator
+    one: uint64 = 1
+    if not positive_rational_log_balls_resource(
+        endpoints,
+        numerators,
+        denominators,
+        one,
+        precision,
+    ):
+        return (1, 0)
+    lower = endpoints[0, 0]
+    upper = endpoints[1, 0]
+    if upper < lower:
+        return (1, 0)
+    return (lower, upper)
+
+
 @native
 def _cubic_log_interval_bounds(
+    numerators: FmpzMatrix,
+    denominators: FmpzMatrix,
+    endpoints: FmpzMatrix,
     lower_numerator: int,
     upper_numerator: int,
     denominator: int,
-    scale: int,
+    precision: uint64,
 ) -> tuple[int, int]:
     if lower_numerator <= 0 or upper_numerator < lower_numerator:
         return (1, 0)
-    lower_bound, ignored_upper = _cubic_log_positive_rational_bounds(
+    lower_bound, ignored_upper = _cubic_arb_log_positive_rational_bounds(
+        numerators,
+        denominators,
+        endpoints,
         lower_numerator,
         denominator,
-        scale,
+        precision,
     )
-    ignored_lower, upper_bound = _cubic_log_positive_rational_bounds(
+    ignored_lower, upper_bound = _cubic_arb_log_positive_rational_bounds(
+        numerators,
+        denominators,
+        endpoints,
         upper_numerator,
         denominator,
-        scale,
+        precision,
     )
     if ignored_upper < lower_bound or upper_bound < ignored_lower:
         return (1, 0)
@@ -1321,7 +1360,13 @@ def _cubic_arctan_reciprocal_bounds(
 
 
 @native
-def _cubic_log_two_pi_bounds(scale: int) -> tuple[int, int]:
+def _cubic_log_two_pi_bounds(
+    numerators: FmpzMatrix,
+    denominators: FmpzMatrix,
+    endpoints: FmpzMatrix,
+    scale: int,
+    precision: uint64,
+) -> tuple[int, int]:
     atan_five_lower, atan_five_upper = _cubic_arctan_reciprocal_bounds(
         5,
         scale,
@@ -1333,12 +1378,22 @@ def _cubic_log_two_pi_bounds(scale: int) -> tuple[int, int]:
     pi_lower = 16 * atan_five_lower - 4 * atan_239_upper
     pi_upper = 16 * atan_five_upper - 4 * atan_239_lower
     log_pi_lower, log_pi_upper = _cubic_log_interval_bounds(
+        numerators,
+        denominators,
+        endpoints,
         pi_lower,
         pi_upper,
         scale,
-        scale,
+        precision,
     )
-    log_two_lower, log_two_upper = _cubic_atanh_log_bounds(1, 3, scale)
+    log_two_lower, log_two_upper = _cubic_arb_log_positive_rational_bounds(
+        numerators,
+        denominators,
+        endpoints,
+        2,
+        1,
+        precision,
+    )
     if log_pi_upper < log_pi_lower or log_two_upper < log_two_lower:
         return (1, 0)
     return (
@@ -1456,6 +1511,7 @@ def _cubic_degree_one_prime_count(
 
 @native
 def _cubic_grh_prime_degree_contribution(
+    transcendental_endpoints: FmpzMatrix,
     prime: int,
     residue_degree: uint64,
     bound: int,
@@ -1477,26 +1533,26 @@ def _cubic_grh_prime_degree_contribution(
     if maximum_power == 0:
         return (0, 0)
 
-    log_prime_lower, log_prime_upper = _cubic_log_positive_rational_bounds(
-        prime,
-        1,
-        scale,
-    )
+    endpoint_offset: uint64 = checked_uint64(4 * prime)
+    log_prime_lower = transcendental_endpoints[endpoint_offset, 0]
+    log_prime_upper = transcendental_endpoints[endpoint_offset + 1, 0]
     if log_prime_upper < log_prime_lower:
         return (-1, -1)
     log_norm_lower = residue_degree * log_prime_lower
     log_norm_upper = residue_degree * log_prime_upper
 
-    # `q = norm^(-1/2)`.  If `s=floor(scale*sqrt(norm))`, then
-    # `scale/(s+1) < 1/sqrt(norm) <= scale/s`; turn this into a
-    # conservative interval at the common dyadic scale.
-    root_floor = _cubic_floor_sqrt(norm * scale * scale)
-    if root_floor <= 0:
+    # The shared Arb batch encloses `scale*sqrt(norm)` exactly outwards.
+    # Reciprocal monotonicity then gives a rigorous interval for
+    # `scale/sqrt(norm)` without constructing `norm*scale^2` in GMP.
+    root_offset: uint64 = checked_uint64(4 * norm)
+    root_lower = transcendental_endpoints[root_offset + 2, 0]
+    root_upper = transcendental_endpoints[root_offset + 3, 0]
+    if root_lower <= 0 or root_upper < root_lower:
         return (-1, -1)
-    q_lower = (scale * scale) // (root_floor + 1)
+    q_lower = (scale * scale) // root_upper
     q_upper = _cubic_dyadic_ceiling_quotient(
         scale * scale,
-        root_floor,
+        root_lower,
     )
     q_power_lower = q_lower
     q_power_upper = q_upper
@@ -1544,6 +1600,10 @@ def _cubic_grh_prime_degree_contribution(
 
 
 def _cubic_grh_generator_bound_is_certified(
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
+    transcendental_endpoints: FmpzMatrix,
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     equation_order_index: int,
@@ -1553,22 +1613,16 @@ def _cubic_grh_generator_bound_is_certified(
     absolute_discriminant: int,
     bound: int,
     scale: int,
+    precision: uint64,
 ) -> bool:
     """Certify the explicit GRH class-group generator inequality."""
     if bound < 2 or absolute_discriminant < 2 or scale <= 0:
         return False
-    log_bound_lower, log_bound_upper = _cubic_log_positive_rational_bounds(
-        bound,
-        1,
-        scale,
-    )
-    log_discriminant_lower, log_discriminant_upper = (
-        _cubic_log_positive_rational_bounds(
-            absolute_discriminant,
-            1,
-            scale,
-        )
-    )
+    bound_offset: uint64 = checked_uint64(4 * bound)
+    log_bound_lower = transcendental_endpoints[bound_offset, 0]
+    log_bound_upper = transcendental_endpoints[bound_offset + 1, 0]
+    log_discriminant_lower = transcendental_endpoints[0, 0]
+    log_discriminant_upper = transcendental_endpoints[1, 0]
     atan_five_lower, atan_five_upper = _cubic_arctan_reciprocal_bounds(
         5,
         scale,
@@ -1580,10 +1634,13 @@ def _cubic_grh_generator_bound_is_certified(
     pi_lower = 16 * atan_five_lower - 4 * atan_239_upper
     pi_upper = 16 * atan_five_upper - 4 * atan_239_lower
     log_eight_pi_lower, log_eight_pi_upper = _cubic_log_interval_bounds(
+        log_numerators,
+        log_denominators,
+        log_endpoints,
         8 * pi_lower,
         8 * pi_upper,
         scale,
-        scale,
+        precision,
     )
     if (
         log_bound_upper < log_bound_lower
@@ -1630,11 +1687,8 @@ def _cubic_grh_generator_bound_is_certified(
     while harmonic_index <= 32:
         harmonic_lower += scale // harmonic_index
         harmonic_index += 1
-    log_thirty_two_lower, log_thirty_two_upper = _cubic_log_positive_rational_bounds(
-        32,
-        1,
-        scale,
-    )
+    log_thirty_two_lower = transcendental_endpoints[128, 0]
+    log_thirty_two_upper = transcendental_endpoints[129, 0]
     gamma_lower = (
         harmonic_lower
         - log_thirty_two_upper
@@ -1707,6 +1761,7 @@ def _cubic_grh_generator_bound_is_certified(
                 if degree_count > 0:
                     contribution_sa_lower, contribution_sb_upper = (
                         _cubic_grh_prime_degree_contribution(
+                            transcendental_endpoints,
                             prime,
                             residue_degree,
                             bound,
@@ -1733,6 +1788,10 @@ def _cubic_grh_generator_bound_is_certified(
 
 
 def _cubic_grh_generator_bound(
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
+    transcendental_endpoints: FmpzMatrix,
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     equation_order_index: int,
@@ -1742,6 +1801,7 @@ def _cubic_grh_generator_bound(
     absolute_discriminant: int,
     unconditional_bound: int,
     scale: int,
+    precision: uint64,
 ) -> int:
     """Return a certified GRH cutoff no larger than the fallback bound."""
     if unconditional_bound <= 2:
@@ -1749,6 +1809,10 @@ def _cubic_grh_generator_bound(
     low = 1
     high = 2
     while high < unconditional_bound and not _cubic_grh_generator_bound_is_certified(
+        log_numerators,
+        log_denominators,
+        log_endpoints,
+        transcendental_endpoints,
         workspace,
         coefficients,
         equation_order_index,
@@ -1758,12 +1822,17 @@ def _cubic_grh_generator_bound(
         absolute_discriminant,
         high,
         scale,
+        precision,
     ):
         low = high
         high *= 2
         if high > unconditional_bound:
             high = unconditional_bound
     if not _cubic_grh_generator_bound_is_certified(
+        log_numerators,
+        log_denominators,
+        log_endpoints,
+        transcendental_endpoints,
         workspace,
         coefficients,
         equation_order_index,
@@ -1773,11 +1842,16 @@ def _cubic_grh_generator_bound(
         absolute_discriminant,
         high,
         scale,
+        precision,
     ):
         return unconditional_bound
     while high - low > 1:
         middle = (low + high) // 2
         if _cubic_grh_generator_bound_is_certified(
+            log_numerators,
+            log_denominators,
+            log_endpoints,
+            transcendental_endpoints,
             workspace,
             coefficients,
             equation_order_index,
@@ -1787,6 +1861,7 @@ def _cubic_grh_generator_bound(
             absolute_discriminant,
             middle,
             scale,
+            precision,
         ):
             high = middle
         else:
@@ -1811,6 +1886,9 @@ def _cubic_scaled_polynomial_value(
 
 @native
 def _cubic_real_log_bounds(
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
     coefficients: IntegerBuffer,
     denominator: int,
     basis_zero_zero: int,
@@ -1823,6 +1901,7 @@ def _cubic_real_log_bounds(
     element_one: int,
     element_two: int,
     scale: int,
+    precision: uint64,
 ) -> tuple[int, int]:
     """Enclose the signed real-place log absolute value of one element."""
     root_bound = 1
@@ -1906,16 +1985,22 @@ def _cubic_real_log_bounds(
     else:
         return (1, 0)
     logarithm_lower, logarithm_upper = _cubic_log_interval_bounds(
+        log_numerators,
+        log_denominators,
+        log_endpoints,
         absolute_lower,
         absolute_upper,
         denominator * scale,
-        scale,
+        precision,
     )
     return (logarithm_lower, logarithm_upper)
 
 
 @native
 def _cubic_regulator_bounds(
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
     coefficients: IntegerBuffer,
     denominator: int,
     basis_zero_zero: int,
@@ -1928,9 +2013,13 @@ def _cubic_regulator_bounds(
     unit_one: int,
     unit_two: int,
     scale: int,
+    precision: uint64,
 ) -> tuple[int, int]:
     """Enclose the positive regulator of one authenticated cubic unit."""
     logarithm_lower, logarithm_upper = _cubic_real_log_bounds(
+        log_numerators,
+        log_denominators,
+        log_endpoints,
         coefficients,
         denominator,
         basis_zero_zero,
@@ -1943,6 +2032,7 @@ def _cubic_regulator_bounds(
         unit_one,
         unit_two,
         scale,
+        precision,
     )
     if logarithm_upper < logarithm_lower:
         return (1, 0)
@@ -1954,6 +2044,9 @@ def _cubic_regulator_bounds(
 
 
 def _cubic_small_unit_probe(
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     denominator: int,
@@ -1967,6 +2060,7 @@ def _cubic_small_unit_probe(
     identity_one: int,
     identity_two: int,
     scale: int,
+    precision: uint64,
 ) -> tuple[int, int, int, int, int, int]:
     """Return the best unit on the first cheap populated L1 shell, if any."""
     unit_box = _CUBIC_SMALL_UNIT_SCORE_LIMIT
@@ -2029,6 +2123,9 @@ def _cubic_small_unit_probe(
                                     candidate_regulator_lower,
                                     candidate_regulator_upper,
                                 ) = _cubic_regulator_bounds(
+                                    log_numerators,
+                                    log_denominators,
+                                    log_endpoints,
                                     coefficients,
                                     denominator,
                                     basis_zero_zero,
@@ -2041,6 +2138,7 @@ def _cubic_small_unit_probe(
                                     candidate_one,
                                     candidate_two,
                                     scale,
+                                    precision,
                                 )
                                 if (
                                     candidate_regulator_lower > 0
@@ -2666,6 +2764,9 @@ def _cubic_copy_relation_support_tail(
 
 
 def _cubic_relation_prefix_has_archimedean_unit(
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     relation_candidates: FmpzMatrix,
@@ -2680,6 +2781,7 @@ def _cubic_relation_prefix_has_archimedean_unit(
     basis_one_two: int,
     basis_two_two: int,
     analytic_scale: int,
+    analytic_precision: uint64,
     prefix_matrix: FmpzMatrix,
     prefix_hnf: FmpzMatrix,
     prefix_transform: FmpzMatrix,
@@ -2768,10 +2870,14 @@ def _cubic_relation_prefix_has_archimedean_unit(
     while precision_index < precision_extra:
         dependency_scale *= 2
         precision_index += 1
+    dependency_precision: uint64 = analytic_precision + precision_extra
 
     relation_index: uint64 = 0
     while relation_index < relation_count:
         witness_log_lower, witness_log_upper = _cubic_real_log_bounds(
+            log_numerators,
+            log_denominators,
+            log_endpoints,
             coefficients,
             denominator,
             basis_zero_zero,
@@ -2784,6 +2890,7 @@ def _cubic_relation_prefix_has_archimedean_unit(
             relation_elements[relation_index, 1],
             relation_elements[relation_index, 2],
             dependency_scale,
+            dependency_precision,
         )
         if witness_log_upper < witness_log_lower:
             return -1
@@ -2946,6 +3053,9 @@ def _cubic_relation_prefix_has_archimedean_unit(
         return 0
     reconstructed_regulator_lower, reconstructed_regulator_upper = (
         _cubic_regulator_bounds(
+            log_numerators,
+            log_denominators,
+            log_endpoints,
             coefficients,
             denominator,
             basis_zero_zero,
@@ -2958,6 +3068,7 @@ def _cubic_relation_prefix_has_archimedean_unit(
             reconstructed_one,
             reconstructed_two,
             analytic_scale,
+            analytic_precision,
         )
     )
     dependency_scale_quotient = dependency_scale // analytic_scale
@@ -4840,6 +4951,9 @@ def certified_complex_cubic_class_group_v1(
         while analytic_bit < _CUBIC_ANALYTIC_PRECISION:
             analytic_scale *= 2
             analytic_bit += 1
+        log_numerators = arena.foreign_resource(fmpz_matrix, 1, one_column)
+        log_denominators = arena.foreign_resource(fmpz_matrix, 1, one_column)
+        log_endpoints = arena.foreign_resource(fmpz_matrix, 2, one_column)
 
         sqrt_discriminant = _cubic_ceil_sqrt(absolute_discriminant)
         if sqrt_discriminant < 1:
@@ -4851,10 +4965,39 @@ def certified_complex_cubic_class_group_v1(
             or minkowski_generator_bound > _CUBIC_MAX_GRH_BOUND_SEARCH
         ):
             return False
+        bdf_value_limit = minkowski_generator_bound
+        if bdf_value_limit < 32:
+            bdf_value_limit = 32
+        bdf_value_count: uint64 = checked_uint64(bdf_value_limit + 1)
+        bdf_values = arena.foreign_resource(
+            fmpz_matrix,
+            bdf_value_count,
+            one_column,
+        )
+        bdf_endpoints = arena.foreign_resource(
+            fmpz_matrix,
+            4 * bdf_value_count,
+            one_column,
+        )
+        bdf_values[0, 0] = absolute_discriminant
+        bdf_value_index: uint64 = 1
+        while bdf_value_index < bdf_value_count:
+            bdf_values[bdf_value_index, 0] = bdf_value_index
+            bdf_value_index += 1
+        if not integer_log_sqrt_balls_resource(
+            bdf_endpoints,
+            bdf_values,
+            _CUBIC_ANALYTIC_PRECISION,
+        ):
+            return False
         generator_bound = minkowski_generator_bound
         use_grh_generator_base = False
         if minkowski_generator_bound > _CUBIC_DIRECT_MINKOWSKI_MAX_BOUND:
             grh_generator_bound = _cubic_grh_generator_bound(
+                log_numerators,
+                log_denominators,
+                log_endpoints,
+                bdf_endpoints,
                 workspace,
                 coefficients,
                 equation_order_index,
@@ -4864,6 +5007,7 @@ def certified_complex_cubic_class_group_v1(
                 absolute_discriminant,
                 minkowski_generator_bound,
                 analytic_scale,
+                _CUBIC_ANALYTIC_PRECISION,
             )
             if grh_generator_bound < minkowski_generator_bound:
                 generator_bound = grh_generator_bound
@@ -5179,6 +5323,9 @@ def certified_complex_cubic_class_group_v1(
             regulator_lower,
             regulator_upper,
         ) = _cubic_small_unit_probe(
+            log_numerators,
+            log_denominators,
+            log_endpoints,
             workspace,
             coefficients,
             denominator,
@@ -5192,6 +5339,7 @@ def certified_complex_cubic_class_group_v1(
             identity_one,
             identity_two,
             analytic_scale,
+            _CUBIC_ANALYTIC_PRECISION,
         )
         unit_found = small_unit_status == 1
         unit_box = 9
@@ -6525,6 +6673,9 @@ def certified_complex_cubic_class_group_v1(
         while dependency_precision_index < dependency_precision_extra:
             dependency_log_scale *= 2
             dependency_precision_index += 1
+        dependency_log_precision: uint64 = (
+            _CUBIC_ANALYTIC_PRECISION + dependency_precision_extra
+        )
         relation_logs = arena.foreign_resource(
             fmpz_matrix,
             relation_count,
@@ -6537,6 +6688,9 @@ def certified_complex_cubic_class_group_v1(
                     witness_log_lower,
                     witness_log_upper,
                 ) = _cubic_real_log_bounds(
+                    log_numerators,
+                    log_denominators,
+                    log_endpoints,
                     coefficients,
                     denominator,
                     basis_zero_zero,
@@ -6549,6 +6703,7 @@ def certified_complex_cubic_class_group_v1(
                     dependency_relation_elements[relation_index, 1],
                     dependency_relation_elements[relation_index, 2],
                     dependency_log_scale,
+                    dependency_log_precision,
                 )
                 if witness_log_upper < witness_log_lower:
                     return False
@@ -6770,6 +6925,9 @@ def certified_complex_cubic_class_group_v1(
                 5,
             )
             prefix_unit_status = _cubic_relation_prefix_has_archimedean_unit(
+                log_numerators,
+                log_denominators,
+                log_endpoints,
                 workspace,
                 coefficients,
                 recovery_relation_matrix,
@@ -6784,6 +6942,7 @@ def certified_complex_cubic_class_group_v1(
                 basis_one_two,
                 basis_two_two,
                 analytic_scale,
+                _CUBIC_ANALYTIC_PRECISION,
                 prefix_matrix,
                 prefix_hnf,
                 prefix_transform,
@@ -6846,6 +7005,9 @@ def certified_complex_cubic_class_group_v1(
                     reconstructed_regulator_lower,
                     reconstructed_regulator_upper,
                 ) = _cubic_regulator_bounds(
+                    log_numerators,
+                    log_denominators,
+                    log_endpoints,
                     coefficients,
                     denominator,
                     basis_zero_zero,
@@ -6858,6 +7020,7 @@ def certified_complex_cubic_class_group_v1(
                     reconstructed_one,
                     reconstructed_two,
                     analytic_scale,
+                    _CUBIC_ANALYTIC_PRECISION,
                 )
                 if (
                     reconstructed_regulator_lower > 0
@@ -7267,12 +7430,21 @@ def certified_complex_cubic_class_group_v1(
         zeta_lower = finite_lower - tail_upper
         zeta_upper = finite_upper + tail_upper
         log_regulator_lower, log_regulator_upper = _cubic_log_interval_bounds(
+            log_numerators,
+            log_denominators,
+            log_endpoints,
             regulator_lower,
             regulator_upper,
             analytic_scale,
-            analytic_scale,
+            analytic_precision,
         )
-        log_two_pi_lower, log_two_pi_upper = _cubic_log_two_pi_bounds(analytic_scale)
+        log_two_pi_lower, log_two_pi_upper = _cubic_log_two_pi_bounds(
+            log_numerators,
+            log_denominators,
+            log_endpoints,
+            analytic_scale,
+            analytic_precision,
+        )
         log_discriminant_lower = analytic_endpoints[12, 0]
         log_discriminant_upper = analytic_endpoints[13, 0]
         log_class_lower = analytic_endpoints[16, 0]
@@ -7303,10 +7475,13 @@ def certified_complex_cubic_class_group_v1(
         )
         index_log_lower = algebraic_lower - zeta_upper
         index_log_upper = algebraic_upper - zeta_lower
-        log_two_lower, log_two_upper = _cubic_atanh_log_bounds(
+        log_two_lower, log_two_upper = _cubic_arb_log_positive_rational_bounds(
+            log_numerators,
+            log_denominators,
+            log_endpoints,
+            2,
             1,
-            3,
-            analytic_scale,
+            analytic_precision,
         )
         saturation_attempts: uint64 = 0
         saturation_search_active = (
@@ -7370,6 +7545,9 @@ def certified_complex_cubic_class_group_v1(
                     saturation_regulator_lower,
                     saturation_regulator_upper,
                 ) = _cubic_regulator_bounds(
+                    log_numerators,
+                    log_denominators,
+                    log_endpoints,
                     coefficients,
                     denominator,
                     basis_zero_zero,
@@ -7382,6 +7560,7 @@ def certified_complex_cubic_class_group_v1(
                     saturation_root_one,
                     saturation_root_two,
                     analytic_scale,
+                    analytic_precision,
                 )
                 if (
                     saturation_regulator_lower <= 0
@@ -7396,10 +7575,13 @@ def certified_complex_cubic_class_group_v1(
                 regulator_lower = saturation_regulator_lower
                 regulator_upper = saturation_regulator_upper
                 log_regulator_lower, log_regulator_upper = _cubic_log_interval_bounds(
+                    log_numerators,
+                    log_denominators,
+                    log_endpoints,
                     regulator_lower,
                     regulator_upper,
                     analytic_scale,
-                    analytic_scale,
+                    analytic_precision,
                 )
                 if log_regulator_upper < log_regulator_lower:
                     return False

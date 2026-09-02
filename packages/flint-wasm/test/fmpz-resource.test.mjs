@@ -130,6 +130,56 @@ test("runs a generated dense integer matrix resource slice", () => {
   assert.equal(liveResources(), 0n);
 });
 
+test("outward rational logarithm balls execute through the Wasm resource boundary", () => {
+  assert.equal(liveResources(), 0n);
+  const numerators = flint.ffiFmpzMatrixCreate(3n, 1n);
+  const denominators = flint.ffiFmpzMatrixCreate(3n, 1n);
+  const endpoints = flint.ffiFmpzMatrixCreate(6n, 1n);
+  try {
+    for (const [row, numerator, denominator] of [
+      [0n, 1n, 1n],
+      [1n, 2n, 1n],
+      [2n, 1n, 3n],
+    ]) {
+      flint.ffiFmpzMatrixSetEntry(numerators, row, 0n, numerator);
+      flint.ffiFmpzMatrixSetEntry(denominators, row, 0n, denominator);
+    }
+    assert.equal(
+      flint.ffiPositiveRationalLogBallsResource(
+        endpoints,
+        numerators,
+        denominators,
+        3n,
+        96n,
+      ),
+      true,
+    );
+    assert.equal(flint.ffiFmpzMatrixEntry(endpoints, 0n, 0n), 0n);
+    assert.equal(flint.ffiFmpzMatrixEntry(endpoints, 1n, 0n), 0n);
+    const positiveLower = flint.ffiFmpzMatrixEntry(endpoints, 2n, 0n);
+    const positiveUpper = flint.ffiFmpzMatrixEntry(endpoints, 3n, 0n);
+    const negativeLower = flint.ffiFmpzMatrixEntry(endpoints, 4n, 0n);
+    const negativeUpper = flint.ffiFmpzMatrixEntry(endpoints, 5n, 0n);
+    assert.ok(0n < positiveLower && positiveLower <= positiveUpper);
+    assert.ok(negativeLower <= negativeUpper && negativeUpper < 0n);
+    assert.throws(
+      () => flint.ffiPositiveRationalLogBallsResource(
+        numerators,
+        numerators,
+        denominators,
+        3n,
+        96n,
+      ),
+      /aliases/,
+    );
+  } finally {
+    close(endpoints, flint.ffiFmpzMatrixClose);
+    close(denominators, flint.ffiFmpzMatrixClose);
+    close(numerators, flint.ffiFmpzMatrixClose);
+  }
+  assert.equal(liveResources(), 0n);
+});
+
 test("generated finalizers release dense integer matrix resources", {
   skip: typeof globalThis.gc === "function"
     ? false

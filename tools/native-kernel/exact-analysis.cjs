@@ -24,6 +24,7 @@ function operationInputs(operation) {
     case "integer.abs":
     case "integer.truth":
     case "integer.round_sqrt":
+    case "uint64.from_integer_checked":
     case "bool.not":
     case "uint64.truth":
     case "value.discard":
@@ -584,6 +585,9 @@ function localEffects(fn) {
           isUint64Shift(operation.operation)) {
         mayRaise.add("OverflowError");
       }
+      if (operation.kind === "uint64.from_integer_checked") {
+        mayRaise.add("OverflowError");
+      }
       if (operation.kind === "integer.round_sqrt") {
         mayRaise.add("ValueError");
         mayRaise.add("OverflowError");
@@ -1016,6 +1020,9 @@ function taggedIntegerProof(fn, effects) {
     operation(operation) {
       if (operation.kind.startsWith("integer.")) {
         operations.add(operation.kind.replace("integer.", "tagged-"));
+      }
+      if (operation.kind === "uint64.from_integer_checked") {
+        operations.add("tagged-to_uint64_checked");
       }
       if (operation.kind === "native.call") operations.add("direct-tagged-call");
       if (operation.kind === "ffi.call" ||

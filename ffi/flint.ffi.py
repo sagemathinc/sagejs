@@ -11368,3 +11368,39 @@ def integer_log_sqrt_balls_resource(
     source: FmpzMatrix,
     precision: uint64,
 ) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiPositiveRationalLogBallsResource",
+    symbol="sagejs_flint_positive_rational_log_balls_resource",
+    returns=int,
+    abi=[
+        in_("output", sagejs_fmpz_matrix_t),
+        in_("numerators", sagejs_fmpz_matrix_t),
+        in_("denominators", sagejs_fmpz_matrix_t),
+        in_("count", uint64_t),
+        in_("precision", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message=(
+            "FLINT resident positive-rational logarithm batch dimensions, "
+            "aliases, or entries are invalid"
+        ),
+    ),
+    wasm=True,
+)
+def positive_rational_log_balls_resource(
+    output: Writable[FmpzMatrix],
+    numerators: FmpzMatrix,
+    denominators: FmpzMatrix,
+    count: uint64,
+    precision: uint64,
+) -> bool: ...

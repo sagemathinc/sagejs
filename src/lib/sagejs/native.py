@@ -70,6 +70,20 @@ PrimeFieldModulus: TypeAlias = int
 _warned_fallback_sources: set[str] = set()
 
 
+def checked_uint64(value: int) -> uint64:
+    """Return `value` as an unsigned 64-bit integer.
+
+    This explicit conversion is useful in source-transparent native programs
+    when an exact computation determines a resident shape or loop bound.  The
+    dynamic fallback and compiled program both raise `OverflowError` unless
+    `value` is in `0 <= value < 2^64`.
+    """
+    exact = int(value)
+    if exact < 0 or exact >= (1 << 64):
+        raise OverflowError("integer is outside unsigned 64-bit")
+    return exact
+
+
 class _NativeExactBudget:
     """Shared deterministic semantic-memory budget for portable exact owners."""
 
@@ -1609,6 +1623,7 @@ __all__ = [
     "RationalBuffer",
     "UInt64Buffer",
     "uint64",
+    "checked_uint64",
     "float64_buffer",
     "float64_record",
     "float64_zeros",

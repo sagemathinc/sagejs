@@ -4625,6 +4625,30 @@
       "public_explanation": "The resident rigorous logarithm and square-root endpoint operation is available in the receipt-authenticated production WebAssembly artifact, with the same-source exact fallback retained."
     },
     {
+      "id": "ffi:flint:positive_rational_log_balls_resource",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential",
+        "complex-cubic-native-class-group-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The reviewed resident Arb routine accepts exact positive fmpz numerator/denominator pairs and publishes only finite, ordered outward dyadic logarithm endpoints through the shared Wasm-capable FLINT resource adapter.",
+      "wasm_declared": true,
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Rigorous logarithm endpoints for resident exact positive rationals are available in the receipt-authenticated production WebAssembly artifact, with the ordinary source proof path retained as an independent oracle."
+    },
+    {
       "id": "ffi:flint:fmpz_mat_mul",
       "kind": "declared-ffi-function",
       "family": "flint",

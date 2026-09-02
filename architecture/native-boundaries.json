@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 134,
-    "declared-ffi": 461,
+    "declared-ffi": 462,
     "declared-ffi-resource": 34,
     "napi-export": 325,
     "runtime-intrinsic": 147,
@@ -5193,6 +5193,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiNumberFieldOrderWithRound2ProofResource",
       "symbol": "sagejs_number_field_order_with_round2_proof_resource",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:positive_rational_log_balls_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "positive_rational_log_balls_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiPositiveRationalLogBallsResource",
+      "symbol": "sagejs_flint_positive_rational_log_balls_resource",
       "disposition": "declared-safe-ffi"
     },
     {

@@ -1,11 +1,11 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "88cef2493bd387aedbd47bc80153496e360d7627c9375b415dcc6b1e1f26aeec",
+  "source_sha256": "997a617e8f4a62554859bcf17a5e7db1b1c6aac27c2189374dd3339e0f7c467e",
   "counts": {
-    "total": 1046,
+    "total": 1047,
     "by_kind": {
-      "declared-ffi-function": 461,
+      "declared-ffi-function": 462,
       "declared-ffi-resource": 34,
       "napi-export": 325,
       "production-kernel": 53,
@@ -15,12 +15,12 @@
     "by_disposition": {
       "compiled-source": 53,
       "desktop-only": 47,
-      "generated-wasm": 340,
+      "generated-wasm": 341,
       "portable-fallback": 561,
       "shared-core": 45
     },
     "by_status": {
-      "available": 579,
+      "available": 580,
       "desktop-only": 47,
       "fallback": 420
     }
@@ -5912,6 +5912,18 @@
         "sagejs.ffi.flint"
       ],
       "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:positive_rational_log_balls_resource",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Rigorous logarithm endpoints for resident exact positive rationals are available in the receipt-authenticated production WebAssembly artifact, with the ordinary source proof path retained as an independent oracle."
     },
     {
       "id": "ffi:igraph:canonical_permutation",

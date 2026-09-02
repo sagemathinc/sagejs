@@ -1414,6 +1414,29 @@ function lowerCall(node, context, operations) {
     return { name: target, type: "uint64" };
   }
 
+  if (name === "checked_uint64") {
+    expect(
+      context,
+      node,
+      args.length === 1 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "checked_uint64() requires one positional argument",
+    );
+    const source = coerceInteger(
+      lowerExpression(args[0], context, operations),
+      context,
+      args[0],
+      operations,
+    );
+    const target = temporary(context, node, "uint64");
+    operations.push({
+      kind: "uint64.from_integer_checked",
+      target,
+      source: source.name,
+    });
+    return { name: target, type: "uint64" };
+  }
+
   if (name === "int64_record") {
     expect(
       context,

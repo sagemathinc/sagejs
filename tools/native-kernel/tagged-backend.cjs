@@ -383,6 +383,17 @@ function emitTaggedOperation(operation, context, indent) {
     return `${indent}sagejs_tagged_set_uint64(${target}, ` +
       `${taggedValue(operation.source, context)});`;
   }
+  if (operation.kind === "uint64.from_integer_checked") {
+    return [
+      `${indent}if (!sagejs_tagged_to_uint64(` +
+        `${taggedValue(operation.source, context)}, &${target}))`,
+      `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"integer is outside unsigned 64-bit");`,
+      `${indent}    goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.neg" || operation.kind === "integer.abs") {
     return `${indent}sagejs_tagged_${operation.kind.slice(8)}(${target}, ` +
       `${taggedValue(operation.source, context)});`;

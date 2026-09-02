@@ -228,6 +228,19 @@ function emitOperation(operation, locals, indent) {
       `${nativeValue(locals.get(operation.target))}, ` +
       `${cName(operation.source)});`;
   }
+  if (operation.kind === "uint64.from_integer_checked") {
+    return [
+      `${indent}if (!mpz_to_uint64(` +
+        `${nativeValue(locals.get(operation.source))}, ` +
+        `&${nativeValue(locals.get(operation.target))}))`,
+      `${indent}{`,
+      statusFailure(
+        "range", "integer is outside unsigned 64-bit", `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "real.pow_uint") {
     return `${indent}mpfr_pow_ui(` +
       `${nativeValue(locals.get(operation.target))}, ` +
@@ -1072,6 +1085,18 @@ function emitExactOperation(operation, context, indent) {
   if (operation.kind === "integer.from_uint64") {
     return `${indent}set_mpz_uint64(${target}, ` +
       `${exactValue(operation.source, context)});`;
+  }
+  if (operation.kind === "uint64.from_integer_checked") {
+    return [
+      `${indent}if (!mpz_to_uint64(` +
+        `${exactValue(operation.source, context)}, &${target}))`,
+      `${indent}{`,
+      statusFailure(
+        "range", "integer is outside unsigned 64-bit", `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+    ].join("\n");
   }
   if (operation.kind === "integer.neg") {
     return `${indent}mpz_neg(${target}, ` +
