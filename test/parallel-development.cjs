@@ -1408,6 +1408,24 @@ test("destructive provisioning rejects symlinked ancestors and preserves sentine
   }
 });
 
+test("native snapshots exclude transient Python bytecode caches", () => {
+  const { directory, workspace } = nativeCacheFixture();
+  try {
+    const baseline = snapshot(workspace, ["source"]);
+    const cache = join(workspace, "source", "__pycache__");
+    mkdirSync(cache);
+    writeFileSync(join(cache, "helper.cpython-314.pyc"), "first bytecode\n");
+    assert.deepEqual(snapshot(workspace, ["source"]), baseline);
+    writeFileSync(join(cache, "helper.cpython-314.pyc"), "changed bytecode\n");
+    writeFileSync(join(workspace, "source", "orphan.pyo"), "optimized bytecode\n");
+    assert.deepEqual(snapshot(workspace, ["source"]), baseline);
+    writeFileSync(join(workspace, "source", "input.c"), "changed source\n");
+    assert.notDeepEqual(snapshot(workspace, ["source"]), baseline);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("declared input leaves reject symlinks before building or publishing", () => {
   const { directory, workspace, cacheRoot } = nativeCacheFixture();
   const counter = { count: 0 };
@@ -1944,7 +1962,12 @@ test("ownerless native cache locks are recovered promptly", () => {
     });
     assert.equal(result.status, "built");
     assert.equal(counter.count, 1);
-    assert.ok(Date.now() - started < 1000);
+    // Windows verifies process identity by starting PowerShell.  Recovery is
+    // still immediate (there is no stale-lock wait), but that host boundary
+    // is materially slower when the test runner has several active files.
+    const recoveryBudgetMilliseconds =
+      process.platform === "win32" ? 5000 : 1000;
+    assert.ok(Date.now() - started < recoveryBudgetMilliseconds);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -2018,7 +2041,10 @@ test("native cache heartbeat advances during a synchronous build", {
       heartbeatMilliseconds: 20,
       build(current) {
         const before = readFileSync(join(lock, "heartbeat"), "utf8");
-        Atomics.wait(pause, 0, 0, 250);
+        // Native Windows obtains a process-birth identity through PowerShell;
+        // allow that helper to initialize before requiring its first beat.
+        const heartbeatWait = process.platform === "win32" ? 2000 : 250;
+        Atomics.wait(pause, 0, 0, heartbeatWait);
         const after = readFileSync(join(lock, "heartbeat"), "utf8");
         assert.notEqual(after, before);
         buildNativeCacheFixture({ count: 0 })(current);

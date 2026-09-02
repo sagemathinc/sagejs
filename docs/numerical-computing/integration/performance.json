@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-31",
+  "host": {
+    "platform": "linux-x64",
+    "kernel": "Linux 6.17.0-1022-gcp",
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 16,
+    "node": "26.7.0",
+    "v8": "14.6.202.34-node.28"
+  },
+  "command": "node bench/numerics/integration/benchmark.cjs",
+  "method": "same-source adaptive Gauss-Kronrod with independent two-panel GL8 validation",
+  "tolerance": {
+    "absolute": 1e-10,
+    "relative": 1e-10
+  },
+  "sample_policy": {
+    "repetitions": 25,
+    "warmup": "first repetition retained",
+    "statistics": ["minimum", "median"]
+  },
+  "workloads": [
+    {
+      "id": "smooth",
+      "evaluations": 211,
+      "cpython_ms": {"minimum": 0.7599600357934833, "median": 0.7821499602869153},
+      "sagejs_dynamic_ms": {"minimum": 55.86957931518555, "median": 58.934926986694336}
+    },
+    {
+      "id": "known_cusp",
+      "evaluations": 74,
+      "cpython_ms": {"minimum": 0.42405002750456333, "median": 0.45022997073829174},
+      "sagejs_dynamic_ms": {"minimum": 35.00199317932129, "median": 35.94970703125}
+    },
+    {
+      "id": "positive_infinite_exponential",
+      "evaluations": 215,
+      "cpython_ms": {"minimum": 0.7502000080421567, "median": 0.7699399720877409},
+      "sagejs_dynamic_ms": {"minimum": 55.33480644226074, "median": 57.929039001464844}
+    }
+  ],
+  "interpretation": "Baseline only. Both runtimes execute the same Python source, tolerance, callback workload, embedded rules, and independent validator. No native or Wasm acceleration claim is made.",
+  "release_evidence": false
+}

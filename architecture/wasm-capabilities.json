@@ -33,6 +33,28 @@
           "packages/flint-wasm/test/resource-browser-smoke.mjs"
         ]
       },
+      "cminpack-public-differential": {
+        "differential": true,
+        "paths": [
+          "test/numerical-p3-backends/browser-lm.mjs",
+          "test/numerical-p3-backends/lm-wasm.test.mjs",
+          "test/numerical-p3-backends/public-browser.mjs",
+          "test/numerical-p3-backends/public-integration.cjs",
+          "test/numerical-p3-backends/public-relocation.cjs",
+          "test/numerical-p3-backends/public-sea.cjs"
+        ]
+      },
+      "nlopt-public-differential": {
+        "differential": true,
+        "paths": [
+          "bench/numerical-p3-nlopt/scipy_oracle.py",
+          "test/numerical-p3-nlopt/backend.test.mjs",
+          "test/numerical-p3-nlopt/browser.mjs",
+          "test/numerical-p3-nlopt/public-browser.mjs",
+          "test/numerical-p3-nlopt/public-integration.cjs",
+          "test/numerical-p3-nlopt/public-relocation.cjs"
+        ]
+      },
       "finite-field-boundary-benchmark": {
         "differential": true,
         "paths": [
@@ -481,6 +503,16 @@
         "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",
         "family": "multivariate-polynomials",
         "source": "packages/flint/src/multivariate_wasm_core.c"
+      },
+      {
+        "id": "wasm-library:cminpack:least-squares-explicit",
+        "family": "numerical",
+        "source": "packages/flint-wasm/numerical/src/cminpack-adapter.c"
+      },
+      {
+        "id": "wasm-library:nlopt:derivative-free-explicit",
+        "family": "numerical",
+        "source": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c"
       }
     ],
     "production_manifests": [
@@ -15534,6 +15566,25 @@
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:mpolyTerms",
+      "kind": "napi-export",
+      "family": "multivariate",
+      "source": "packages/flint/src/multivariate.c",
+      "disposition": "portable-fallback",
+      "fallback": "canonical-sparse-polynomial-terms",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "tests": [
+        "native-public-fallback-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The native adapter extracts canonical FLINT terms; browser execution reads the equivalent canonical ordered sparse representation without a Wasm boundary crossing.",
+      "public_explanation": "Exact ordered sparse multivariate terms are available in native and browser runtimes."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:mpolyToString",
       "kind": "napi-export",
       "family": "multivariate",
@@ -21578,6 +21629,65 @@
       },
       "public_explanation": "Bounded genus-2 local-polynomial batches use portable smalljac and ffpoly inside the authenticated FLINT Wasm artifact; genus 3 remains unavailable.",
       "shared_core": "packages/flint-wasm/src/curves/smalljac-coefficients.c"
+    },
+    {
+      "id": "wasm-library:cminpack:least-squares-explicit",
+      "family": "numerical",
+      "source": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-python-damped-gauss-newton-for-automatic-selection; explicit-requests-fail-closed",
+      "wasm_module": "cminpack",
+      "public_consumers": [
+        "sagejs.numerics.optimization.least_squares",
+        "sagejs.numerics.optimization.curve_fit"
+      ],
+      "tests": [
+        "cminpack-public-differential"
+      ],
+      "review_note": "The separately lazy 72,149-byte reactor executes exact cminpack lmdif/lmder identities through one packed synchronous callback and recomputes public validation independently.",
+      "kind": "specialist-capability",
+      "reviewed": true,
+      "availability_evidence": {
+        "path": "packages/flint-wasm/numerical/release/qualification-v1.json"
+      },
+      "public_explanation": "Explicit nonlinear least-squares requests can use authenticated cminpack lmdif or lmder in Node, browsers, and SEA; automatic planning remains on the ordinary-Python method.",
+      "shared_core": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "resource_limits": {
+        "maximum_parameters": 256,
+        "maximum_residuals": 16384,
+        "maximum_workspace_bytes": 67108864,
+        "maximum_memory_bytes": 134217728
+      }
+    },
+    {
+      "id": "wasm-library:nlopt:derivative-free-explicit",
+      "family": "numerical",
+      "source": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-python-methods-for-automatic-selection; explicit-requests-fail-closed",
+      "wasm_module": "nlopt",
+      "public_consumers": [
+        "sagejs.numerics.optimization.minimize"
+      ],
+      "tests": [
+        "nlopt-public-differential"
+      ],
+      "review_note": "The separately lazy 72,592-byte reactor executes exact NLopt Nelder-Mead through one packed synchronous callback; source/license closure excludes Luksan and the sanitizer-rejected COBYLA source. Public success is explicitly heuristic after independent finiteness, feasibility, stationarity-consistency, and bounded contradiction probes; no local or global optimum is certified.",
+      "kind": "specialist-capability",
+      "reviewed": true,
+      "availability_evidence": {
+        "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/release/qualification-v1.json"
+      },
+      "public_explanation": "Explicit derivative-free minimization can use authenticated NLopt Nelder-Mead in Node, browsers, and SEA. Automatic planning remains on ordinary Python, nonlinear constraints are unsupported pending a sanitizer-clean backend, and an unavailable or contradictory NLopt result fails closed.",
+      "shared_core": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "resource_limits": {
+        "maximum_parameters": 128,
+        "maximum_constraints": 0,
+        "maximum_workspace_bytes": 67108864,
+        "maximum_memory_bytes": 134217728
+      }
     },
     {
       "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",

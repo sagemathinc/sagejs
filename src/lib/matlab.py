@@ -3,10 +3,24 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import sagejs.runtime as runtime
+from sagejs.numerics.frontends import (
+    FrontendDiagnostic,
+    UnsupportedFrontendError,
+    matlab_fzero_intent,
+)
+from sagejs.numerics.frontends import (
+    create_frontend_registry as _create_numerical_registry,
+)
+from sagejs.numerics.frontends import (
+    emit_code as _emit_numerical_code,
+)
+from sagejs.numerics.frontends import (
+    execute_scalar_root_intent as _execute_numerical_intent,
+)
 
 ALL = object()
 
@@ -98,7 +112,9 @@ def rdivide(left: Any, right: Any) -> Any:
 
 
 def mldivide(left: Any, right: Any) -> Any:
-    raise NotImplementedError("MATLAB matrix left division is not implemented")
+    """Execute MATLAB left division through the validated dense solver."""
+
+    return numerical_value("mldivide", left, right)
 
 
 def ldivide(left: Any, right: Any) -> Any:
@@ -126,6 +142,446 @@ def mpower(value: Any, exponent: int) -> Any:
 
 def power(left: Any, right: Any) -> Any:
     return left**right
+
+
+def fzero_intent(
+    function: Any,
+    initial: Any,
+    options: Any = None,
+    *,
+    expression: str | None = None,
+    variable: str = "x",
+    source_text: str | None = None,
+) -> Any:
+    """Return canonical intent for a natural MATLAB `fzero` request.
+
+    The regular parser calls this path without `expression`, retaining the live
+    callback as an intentionally non-replayable binding. Tooling can provide
+    the original anonymous-function body to enable outward code generation.
+    """
+
+    settings = {} if options is None else dict(options)
+    return matlab_fzero_intent(
+        function,
+        initial,
+        settings,
+        expression=expression,
+        variable=variable,
+        source_text=source_text,
+    )
+
+
+def fzero_result(function: Any, initial: Any, options: Any = None) -> Any:
+    """Return the structured result underlying MATLAB-compatible `fzero`."""
+
+    return _execute_numerical_intent(fzero_intent(function, initial, options))
+
+
+def fzero(function: Any, initial: Any, options: Any = None) -> float:
+    """Return MATLAB's scalar view of the shared structured root solver."""
+    result = fzero_result(function, initial, options)
+    if not result.success:
+        raise RuntimeError("fzero failed: " + result.status)
+    return float(result.value)
+
+
+def numerical_code(intent: Any, language: str) -> str:
+    """Emit canonical numerical intent as Sage, SciPy, MATLAB, or Wolfram."""
+
+    return _emit_numerical_code(intent, language)
+
+
+def numerical_intent(name: str, *arguments: Any, **options: Any) -> Any:
+    """Lower a supported MATLAB numerical call to canonical intent."""
+
+    return _create_numerical_registry().lower("matlab", name, *arguments, **options)
+
+
+def numerical_result(name: str, *arguments: Any, **options: Any) -> Any:
+    """Execute a MATLAB numerical call and retain all structured evidence."""
+
+    registry = _create_numerical_registry()
+    return registry.execute(registry.lower("matlab", name, *arguments, **options))
+
+
+def numerical_value(name: str, *arguments: Any, **options: Any) -> Any:
+    """Return the conventional MATLAB value view of a structured result."""
+
+    result = numerical_result(name, *arguments, **options)
+    _require_numerical_success(name, result)
+    return result.value if hasattr(result, "value") else result
+
+
+def _require_numerical_success(name: str, result: Any) -> None:
+    """Reject failed iterates before projecting a MATLAB-style short result."""
+
+    if hasattr(result, "success") and not result.success:
+        status = result.status if hasattr(result, "status") else "failed"
+        raise RuntimeError(name + " failed: " + str(status))
+
+
+def _unsupported_vendor_numerical(name: str, reason: str) -> Any:
+    """Fail closed when a MATLAB spelling does not preserve MATLAB semantics."""
+
+    raise UnsupportedFrontendError(
+        FrontendDiagnostic(
+            "unsupported_operation",
+            name + " is not yet qualified for the Sage.js MATLAB surface: " + reason,
+            language="matlab",
+            details={"surface": "natural-vendor-alias", "source_name": name},
+        )
+    )
+
+
+def _array_data(
+    value: Any, name: str, *, allow_matrix: bool
+) -> tuple[list[Any], tuple[int, ...]]:
+    """Return column-major values and an explicitly bounded MATLAB shape."""
+
+    data = value.tolist() if hasattr(value, "tolist") else value
+    if isinstance(data, (str, bytes, bytearray)) or not isinstance(data, (list, tuple)):
+        raise TypeError(name + " must be a finite vector or matrix")
+    outer = list(data)
+    nested = [
+        isinstance(item, (list, tuple))
+        and not isinstance(item, (str, bytes, bytearray))
+        for item in outer
+    ]
+    if not any(nested):
+        return outer, (len(outer),)
+    if not all(nested):
+        raise TypeError(name + " must be rectangular")
+    rows = [list(item) for item in outer]
+    columns = len(rows[0]) if rows else 0
+    if any(len(row) != columns for row in rows):
+        raise TypeError(name + " must be rectangular")
+    if any(isinstance(item, (list, tuple)) for row in rows for item in row):
+        raise TypeError(name + " supports at most two dimensions")
+    shape = (len(rows), columns)
+    if not allow_matrix and shape[0] > 1 and shape[1] > 1:
+        raise TypeError(name + " must be a vector, not a matrix")
+    flat = [rows[row][column] for column in range(columns) for row in range(len(rows))]
+    return flat, shape
+
+
+def _restore_array(values: Any, shape: tuple[int, ...]) -> Any:
+    items = list(values)
+    expected = 1
+    for dimension in shape:
+        expected *= dimension
+    if len(items) != expected:
+        raise RuntimeError("MATLAB numerical adapter changed the array element count")
+    if len(shape) == 1:
+        return items
+    rows, columns = shape
+    matrix = [[None for _column in range(columns)] for _row in range(rows)]
+    index = 0
+    for column in range(columns):
+        for row in range(rows):
+            matrix[row][column] = items[index]
+            index += 1
+    return np.array(matrix)
+
+
+def _vector_data(value: Any, name: str) -> tuple[list[Any], tuple[int, ...]]:
+    return _array_data(value, name, allow_matrix=False)
+
+
+def _column_vector_data(value: Any, name: str) -> list[Any]:
+    values, shape = _vector_data(value, name)
+    if len(shape) == 2 and shape[0] == 1 and shape[1] > 1:
+        raise TypeError(name + " must be a column vector")
+    return values
+
+
+def _column_array(values: Any, name: str) -> Any:
+    """Project a canonical vector to a MATLAB `n`-by-1 array."""
+
+    items, _shape = _vector_data(values, name)
+    return np.array([[item] for item in items])
+
+
+def _callback_vector_data(value: Any, name: str) -> list[Any]:
+    data = value.tolist() if hasattr(value, "tolist") else value
+    if not isinstance(data, (list, tuple)):
+        if isinstance(data, (str, bytes, bytearray, dict)):
+            raise TypeError(name + " must return a numeric scalar or vector")
+        return [data]
+    values, _shape = _vector_data(data, name)
+    return values
+
+
+def _shaped_callback(
+    function: Any,
+    shape: tuple[int, ...],
+    name: str,
+    *,
+    vector_result: bool,
+) -> Callable[[Any], Any]:
+    """Adapt a flat canonical callback boundary to a MATLAB vector shape."""
+
+    if not callable(function):
+        raise TypeError(name + " must be callable")
+
+    def callback(values: Any) -> Any:
+        result = function(_restore_array(values, shape))
+        if not vector_result:
+            return result
+        return _callback_vector_data(result, name + " result")
+
+    return callback
+
+
+def _convolution_shape(
+    left: tuple[int, ...], right: tuple[int, ...], length: int
+) -> tuple[int, ...]:
+    if len(left) == 1 and len(right) == 1:
+        return (length,)
+    if len(left) == 2 and left[0] == 1 and len(right) == 2 and right[0] == 1:
+        return (1, length)
+    return (length, 1)
+
+
+def linsolve(matrix: Any, right: Any, **options: Any) -> Any:
+    values = _column_vector_data(right, "linsolve right side")
+    return _column_array(
+        numerical_value("linsolve", matrix, values, **options),
+        "linsolve result",
+    )
+
+
+def lsqminnorm(matrix: Any, right: Any, **options: Any) -> Any:
+    values = _column_vector_data(right, "lsqminnorm right side")
+    return _column_array(
+        numerical_value("lsqminnorm", matrix, values, **options),
+        "lsqminnorm result",
+    )
+
+
+def eig_result(matrix: Any, **options: Any) -> Any:
+    del matrix, options
+    return _unsupported_vendor_numerical(
+        "eig", "complex decoding and eigenvector orientation are not preserved"
+    )
+
+
+def eig(matrix: Any, **options: Any) -> Any:
+    del matrix, options
+    return _unsupported_vendor_numerical(
+        "eig", "complex decoding and eigenvector orientation are not preserved"
+    )
+
+
+def svd_result(matrix: Any, **options: Any) -> Any:
+    return numerical_result("svd", matrix, **options)
+
+
+def svd(matrix: Any, **options: Any) -> Any:
+    """Return MATLAB's one-output singular-value view."""
+
+    result = svd_result(matrix, **options)
+    _require_numerical_success("svd", result)
+    value = result.value
+    return _column_array(value["singular_values"], "svd singular values")
+
+
+def fft_result(samples: Any, **options: Any) -> Any:
+    del samples, options
+    return _unsupported_vendor_numerical(
+        "fft", "complex values are not yet projected as MATLAB complex arrays"
+    )
+
+
+def fft(samples: Any, **options: Any) -> Any:
+    del samples, options
+    return _unsupported_vendor_numerical(
+        "fft", "complex values are not yet projected as MATLAB complex arrays"
+    )
+
+
+def conv_result(left: Any, right: Any, **options: Any) -> Any:
+    left_values, _left_shape = _vector_data(left, "conv left operand")
+    right_values, _right_shape = _vector_data(right, "conv right operand")
+    return numerical_result("conv", left_values, right_values, **options)
+
+
+def conv(left: Any, right: Any, **options: Any) -> Any:
+    left_values, left_shape = _vector_data(left, "conv left operand")
+    right_values, right_shape = _vector_data(right, "conv right operand")
+    result = numerical_result("conv", left_values, right_values, **options)
+    _require_numerical_success("conv", result)
+    return _restore_array(
+        result.value,
+        _convolution_shape(left_shape, right_shape, len(result.value)),
+    )
+
+
+class MatlabInterpolant:
+    """Callable MATLAB-style view over a validated approximation result."""
+
+    def __init__(self, numerical_result: Any) -> None:
+        self.numerical_result = numerical_result
+
+    def __call__(self, value: Any) -> Any:
+        return self.numerical_result.evaluate(value)
+
+    def to_dict(self) -> Any:
+        return self.numerical_result.to_dict()
+
+
+def gridded_interpolant(nodes: Any, values: Any, **options: Any) -> Any:
+    del nodes, values, options
+    return _unsupported_vendor_numerical(
+        "griddedInterpolant", "default method and extrapolation semantics differ"
+    )
+
+
+def spline(nodes: Any, values: Any, **options: Any) -> Any:
+    del nodes, values, options
+    return _unsupported_vendor_numerical(
+        "spline", "endpoint and returned-form semantics are not yet qualified"
+    )
+
+
+def integral_result(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
+    return numerical_result("integral", function, lower, upper, **options)
+
+
+def integral(function: Any, lower: Any, upper: Any, **options: Any) -> float:
+    result = integral_result(function, lower, upper, **options)
+    if not result.success:
+        raise RuntimeError("integral failed: " + result.status)
+    return float(result.value)
+
+
+def fminbnd(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
+    return numerical_value("fminbnd", function, lower, upper, **options)
+
+
+def fminsearch(function: Any, initial: Any, **options: Any) -> Any:
+    values, shape = _vector_data(initial, "fminsearch initial point")
+    return _restore_array(
+        numerical_value(
+            "fminsearch",
+            _shaped_callback(
+                function,
+                shape,
+                "fminsearch objective",
+                vector_result=False,
+            ),
+            values,
+            **options,
+        ),
+        shape,
+    )
+
+
+def fsolve(function: Any, initial: Any, **options: Any) -> Any:
+    values, shape = _vector_data(initial, "fsolve initial point")
+    return _restore_array(
+        numerical_value(
+            "fsolve",
+            _shaped_callback(
+                function,
+                shape,
+                "fsolve callback",
+                vector_result=True,
+            ),
+            values,
+            **options,
+        ),
+        shape,
+    )
+
+
+def lsqnonlin(residuals: Any, initial: Any, **options: Any) -> Any:
+    values, shape = _vector_data(initial, "lsqnonlin initial point")
+    return _restore_array(
+        numerical_value(
+            "lsqnonlin",
+            _shaped_callback(
+                residuals,
+                shape,
+                "lsqnonlin residual callback",
+                vector_result=True,
+            ),
+            values,
+            **options,
+        ),
+        shape,
+    )
+
+
+def polyfit(xdata: Any, ydata: Any, degree: int = 1, **options: Any) -> Any:
+    if degree != 1:
+        raise NotImplementedError(
+            "the validated MATLAB polyfit frontend currently supports degree 1"
+        )
+    x_values, _x_shape = _vector_data(xdata, "polyfit x data")
+    y_values, _y_shape = _vector_data(ydata, "polyfit y data")
+    return numerical_value("polyfit", x_values, y_values, **options)
+
+
+class MatlabOdeSolution:
+    """MATLAB-style solution structure retaining canonical ODE evidence."""
+
+    def __init__(self, numerical_result: Any) -> None:
+        self.numerical_result = numerical_result
+        self.x = list(numerical_result.trajectory.times)
+        states = numerical_result.trajectory.states
+        self.y = [
+            [state[index] for state in states]
+            for index in range(len(states[0]) if states else 0)
+        ]
+
+    def to_dict(self) -> Any:
+        return {
+            "x": list(self.x),
+            "y": [list(row) for row in self.y],
+            "numerical_result": self.numerical_result.to_dict(),
+        }
+
+
+def ode45(function: Any, t_span: Any, y0: Any, **options: Any) -> MatlabOdeSolution:
+    times, _time_shape = _vector_data(t_span, "ode45 time span")
+    state, _state_shape = _vector_data(y0, "ode45 initial state")
+    result = numerical_result("ode45", function, times, state, **options)
+    _require_numerical_success("ode45", result)
+    return MatlabOdeSolution(result)
+
+
+def sagejs_describe(data: Any, **options: Any) -> Any:
+    values, _shape = _vector_data(data, "sagejs_describe data")
+    return numerical_value("sagejs_describe", values, **options)
+
+
+def ttest(data: Any, population_mean: Any = 0, **options: Any) -> Any:
+    del data, population_mean, options
+    return _unsupported_vendor_numerical(
+        "ttest", "MATLAB's one-output hypothesis decision is not preserved"
+    )
+
+
+def ttest2(first: Any, second: Any, **options: Any) -> Any:
+    del first, second, options
+    return _unsupported_vendor_numerical(
+        "ttest2", "MATLAB defaults and one-output hypothesis decision are not preserved"
+    )
+
+
+def fitlm(x: Any, y: Any, **options: Any) -> Any:
+    del x, y, options
+    return _unsupported_vendor_numerical(
+        "fitlm", "MATLAB's model object and default inference are not preserved"
+    )
+
+
+def arrayfun(function: Any, parameters: Any, **options: Any) -> Any:
+    """Apply one callback through the deterministic bounded sweep contract."""
+
+    values, shape = _array_data(parameters, "arrayfun input", allow_matrix=True)
+    result = numerical_value("arrayfun", function, values, **options)
+    return _restore_array(result, shape)
 
 
 def _integer_index(value: Any) -> int:

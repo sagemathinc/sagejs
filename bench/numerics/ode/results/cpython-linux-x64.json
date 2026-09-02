@@ -1,0 +1,88 @@
+{
+  "cold_import": {
+    "median_ms": 34.903088002465665,
+    "minimum_ms": 33.519326942041516,
+    "p90_ms": 35.713157965801656,
+    "samples": 5,
+    "scope": "fresh CPython process plus import; no solve"
+  },
+  "host": {
+    "cpu": "AMD EPYC 7B13 virtual CPU",
+    "machine": "x86_64",
+    "node": "not-measured",
+    "platform": "linux",
+    "python": "3.14.4"
+  },
+  "method": {
+    "implementation": "ordinary CPython source",
+    "memory": "CPython tracemalloc around one complete solve and result materialization",
+    "solver": "Dormand-Prince RK45",
+    "timed_repetitions": 7,
+    "warmup_solves": 1
+  },
+  "schema_version": 1,
+  "scipy_oracle_timing": {
+    "available": true,
+    "final_state": [2.7182818754207005],
+    "median_ms": 0.4096300108358264,
+    "nfev": 50,
+    "scope": "same RK45 classroom equation/tolerances in the SciPy/NumPy runtime; not a browser timing",
+    "version": "1.18.0"
+  },
+  "workloads": {
+    "instant_classroom": {
+      "accepted_steps": 8,
+      "memory": {
+        "accepted_points": 9,
+        "dense_segments": 8,
+        "serialized_result_bytes": 10428,
+        "traced_current_delta_bytes": 18117,
+        "traced_peak_delta_bytes": 23968
+      },
+      "rejected_steps": 0,
+      "rhs_evaluations": 50,
+      "timing": {
+        "median_ms": 0.9462710004299879,
+        "minimum_ms": 0.9254300966858864,
+        "p90_ms": 1.0037289466708899,
+        "samples": 7
+      }
+    },
+    "interactive_exploration": {
+      "accepted_steps": 981,
+      "memory": {
+        "accepted_points": 982,
+        "dense_segments": 981,
+        "serialized_result_bytes": 438080,
+        "traced_current_delta_bytes": 1339717,
+        "traced_peak_delta_bytes": 2195028
+      },
+      "rejected_steps": 116,
+      "rhs_evaluations": 6584,
+      "timing": {
+        "median_ms": 65.28307497501373,
+        "minimum_ms": 64.3807960441336,
+        "p90_ms": 66.51843502186239,
+        "samples": 7
+      }
+    },
+    "substantial_local": {
+      "accepted_steps": 251,
+      "memory": {
+        "accepted_points": 252,
+        "dense_segments": 251,
+        "serialized_result_bytes": 1279005,
+        "traced_current_delta_bytes": 2839973,
+        "traced_peak_delta_bytes": 4078028
+      },
+      "rejected_steps": 0,
+      "rhs_evaluations": 1508,
+      "timing": {
+        "median_ms": 129.56788099836558,
+        "minimum_ms": 127.23306193947792,
+        "p90_ms": 130.71868102997541,
+        "samples": 7
+      }
+    }
+  }
+}

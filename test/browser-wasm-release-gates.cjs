@@ -141,6 +141,26 @@ test("release CI shards performance and reuses only authenticated native cache e
   assert.match(workflow, /name: Browser release gates/);
 });
 
+test("routine browser CI cannot omit exhaustive numerical domain coverage", () => {
+  const root = path.join(__dirname, "..");
+  const workflow = fs.readFileSync(
+    path.join(root, ".github", "workflows", "wasm-routine.yml"),
+    "utf8",
+  );
+  const packageDocument = JSON.parse(
+    fs.readFileSync(path.join(root, "packages", "flint-wasm", "package.json")),
+  );
+  assert.equal(
+    packageDocument.scripts["test:browser:numerics"],
+    "node test/numerical-domains-browser.mjs",
+  );
+  assert.match(
+    workflow,
+    /pnpm --dir packages\/flint-wasm test:browser:numerics/,
+    "routine Chromium CI must import and exercise every public numerical domain",
+  );
+});
+
 test("grammar modules inherit the authenticated bounded Tree-sitter memory", () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-wasm-imported-memory-"));
   const provider = Buffer.from([

@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "domain": "linear_algebra",
+  "numeric_type": "binary64",
+  "implementation": "ordinary_python_same_source",
+  "operations": [
+    {"id": "linear_solve", "status": "implemented", "envelope": "finite real square, full numerical rank, vector or matrix right side"},
+    {"id": "least_squares", "status": "implemented", "envelope": "finite real rectangular, full column rank when tall or full row rank when wide"},
+    {"id": "lu_factorization", "status": "implemented", "envelope": "finite real rectangular, partial row pivoting, A=P*L*U"},
+    {"id": "qr_factorization", "status": "implemented", "envelope": "finite real rectangular, reduced/complete Householder, optional column pivoting"},
+    {"id": "cholesky_factorization", "status": "implemented", "envelope": "finite real symmetric positive definite"},
+    {"id": "matrix_rank", "status": "implemented", "envelope": "heuristic binary64 numerical rank from converged Jacobi singular values"},
+    {"id": "condition_number_2", "status": "implemented", "envelope": "heuristic finite real 2-norm condition estimate"},
+    {"id": "determinant", "status": "implemented", "envelope": "explicit request, finite real square, sign/log evidence retained"},
+    {"id": "matrix_inverse", "status": "implemented", "envelope": "explicit request, finite real square, full numerical rank"},
+    {"id": "iterative_refinement", "status": "implemented", "envelope": "accepted-step refinement with retained direct factors"},
+    {"id": "structured_explanation", "status": "implemented", "envelope": "JSON-safe method, outcome, independent validation, conditioning, factor summary, trace coverage, and repair guidance"},
+    {"id": "plotspec_visualization", "status": "implemented", "envelope": "accessible static factorization, conditioning, convergence, and validation evidence"},
+    {"id": "trace_animation", "status": "implemented", "envelope": "topology-stable factorization or convergence animation derived only from retained bounded semantic trace events"},
+    {"id": "package_local_planning", "status": "implemented", "envelope": "detached capabilities/supports/plan dispatch for every operation using immutable metadata only and no numerical computation"},
+    {"id": "complex_hermitian", "status": "unsupported", "reason": "real storage and transpose-only inner-product contract"},
+    {"id": "rank_deficient_least_squares", "status": "unsupported", "reason": "requires SVD or complete orthogonal decomposition for an honest minimum-norm contract"},
+    {"id": "nullspace", "status": "unsupported", "reason": "deferred with spectral completion"},
+    {"id": "pseudoinverse", "status": "unsupported", "reason": "deferred with SVD completion"},
+    {"id": "singular_value_decomposition", "status": "unsupported", "reason": "diagnostic singular values do not expose vector claims"},
+    {"id": "eigenproblems", "status": "unsupported", "reason": "P5 spectral slice not implemented in this lane"},
+    {"id": "sparse_linear_algebra", "status": "unsupported", "reason": "P5 sparse slice not implemented in this lane"},
+    {"id": "batched_linear_algebra", "status": "unsupported", "reason": "no batch shape or allocation contract"},
+    {"id": "arbitrary_precision", "status": "unsupported", "reason": "binary64-only storage contract"},
+    {"id": "rigorous_enclosures", "status": "unsupported", "reason": "residual validation is not interval certification"},
+    {"id": "accelerated_backend", "status": "unsupported", "reason": "no mature portable backend selected by this reference lane"}
+  ],
+  "validated_platforms": ["linux-x64"],
+  "target_platforms_pending_receipts": ["browser", "linux-arm64", "macos-arm64", "windows-x64"],
+  "evidence": {
+    "corpus": "test/numerics/linear_algebra/corpus.json",
+    "visualization_examples": "docs/numerical-computing/linear-algebra/visualization-examples.json",
+    "development_oracle": "test/numerics/linear_algebra/numpy-oracle.py",
+    "differential_oracle": "executable fixed NumPy references, closed-form identities, and independent residual/row-space checks",
+    "runtime_differential": ["cpython-linux-x64", "sagejs-linux-x64"],
+    "benchmark": "bench/numerics/linear_algebra/benchmark.py"
+  }
+}

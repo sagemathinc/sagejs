@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/numerical-result-v1.json",
+  "title": "Sage.js NumericalResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "problem_digest", "success", "status", "value", "validation", "diagnostics", "method", "backend", "precision", "iterations", "evaluations", "elapsed_ms", "measurements", "trace", "provenance", "limitations", "reproducibility", "domain_payload"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "problem_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "success": {"type": "boolean"},
+    "status": {"enum": ["converged", "exact_root", "invalid_bracket", "maximum_iterations", "maximum_evaluations", "maximum_elapsed_time", "zero_derivative", "nonfinite_evaluation", "cancelled", "callback_error", "stagnation", "validation_failed", "invalid_problem", "backend_failure"]},
+    "value": {},
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["truth_level", "passed", "checks", "residual", "error_estimate", "condition_estimate"],
+      "properties": {
+        "truth_level": {"enum": ["exact", "rigorous", "validated_approximate", "heuristic", "indeterminate"]},
+        "passed": {"type": "boolean"},
+        "checks": {"type": "array"},
+        "residual": {"type": ["number", "null"], "minimum": 0},
+        "error_estimate": {"type": ["number", "null"], "minimum": 0},
+        "condition_estimate": {"type": ["number", "null"], "minimum": 0}
+      }
+    },
+    "diagnostics": {"type": "array"},
+    "method": {"type": "string", "minLength": 1},
+    "backend": {"type": "string", "minLength": 1},
+    "precision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "bits"],
+      "properties": {
+        "kind": {"type": "string", "minLength": 1},
+        "bits": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "integer", "minimum": 1}
+          ]
+        }
+      }
+    },
+    "iterations": {"type": "integer", "minimum": 0},
+    "evaluations": {"type": "integer", "minimum": 0},
+    "elapsed_ms": {"type": "number", "minimum": 0},
+    "measurements": {"type": "object"},
+    "trace": {"$ref": "trace.schema.json"},
+    "provenance": {
+      "type": "object",
+      "required": ["planned_execution_target", "source_digest", "artifact_sha256", "qualification_receipt_sha256", "execution_binding_status"],
+      "properties": {
+        "planned_execution_target": {"type": "object"},
+        "source_digest": {"$ref": "#/$defs/optional_sha256"},
+        "artifact_sha256": {"$ref": "#/$defs/optional_sha256"},
+        "qualification_receipt_sha256": {"$ref": "#/$defs/optional_sha256"},
+        "execution_binding_status": {"enum": ["source_transparent_or_unobserved", "source_transparent", "source_digest_bound", "external_execution_unobserved", "external_artifact_unbound", "artifact_digest_bound", "receipt_qualified"]}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "detail"],
+        "properties": {
+          "code": {"type": "string", "minLength": 1},
+          "detail": {}
+        }
+      }
+    },
+    "reproducibility": {"type": "object"},
+    "domain_payload": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"success": {"const": true}}},
+      "then": {
+        "properties": {
+          "status": {"enum": ["converged", "exact_root"]},
+          "validation": {"properties": {"passed": {"const": true}}}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "optional_sha256": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      ]
+    }
+  }
+}

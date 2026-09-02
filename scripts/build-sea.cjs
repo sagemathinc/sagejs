@@ -22,6 +22,13 @@ const {
   BUILTINS_STANDALONE_MODULES,
   MATRIX_STANDALONE_MODULES,
 } = require("../tools/standalone-library.cjs");
+const {
+  resolveNumericalRuntimeCapability,
+} = require("./numerical-product.cjs");
+const {
+  currentBuildIdentity,
+  inspectBuildReceipt,
+} = require("./build-receipt.cjs");
 
 const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
@@ -72,6 +79,18 @@ const productionPackAddon = join(
   "native-kernels",
   "pack",
   "sagejs_native_kernel_pack.node",
+);
+const numericalBackendArtifact = join(
+  root,
+  "dist",
+  "numerical",
+  "cminpack.wasm",
+);
+const nloptBackendArtifact = join(
+  root,
+  "dist",
+  "numerical",
+  "nlopt-methods.wasm",
 );
 
 const embeddedStandaloneLibraryBanner = `globalThis.__sagejs_embedded_standalone_library__ = ${JSON.stringify(
@@ -527,6 +546,10 @@ function buildExecutable(name, withFlint, seaNode) {
       "tree-sitter-wolfram.wasm",
     ),
   };
+  if (numericalRuntime.available) {
+    assets["numerical/cminpack.wasm"] = numericalBackendArtifact;
+    assets["numerical/nlopt-methods.wasm"] = nloptBackendArtifact;
+  }
   if (withFlint) {
     assets["native/sagejs_flint.node"] = flintAddon;
     assets["native/sagejs_flint_ffi.node"] = flintFfiAddon;
@@ -566,6 +589,25 @@ function buildExecutable(name, withFlint, seaNode) {
   }
   console.log(
     `Built ${relative(root, output)} (${withFlint ? "with native mathematics" : "Python runtime"})`,
+  );
+}
+
+const numericalProvider = currentBuildIdentity(root).numericalRuntimeProvider;
+const numericalRuntime = resolveNumericalRuntimeCapability({
+  root,
+  providerAvailable: numericalProvider.available,
+  scope: "sea",
+});
+const sourceBuildReceipt = inspectBuildReceipt(root);
+if (!sourceBuildReceipt.current) {
+  throw new Error(
+    `SEA inputs are not bound to a current build receipt: ${sourceBuildReceipt.reason}`,
+  );
+}
+if (!numericalRuntime.available) {
+  process.stdout.write(
+    "Building an optional-capability SEA without cminpack or NLopt reactors; " +
+      "prepare the Wasm toolchain or configure SAGEJS_NUMERICAL_PRODUCT_ROOT to include them.\n",
   );
 }
 

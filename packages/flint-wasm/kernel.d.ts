@@ -47,6 +47,9 @@ export interface BrowserSageSessionOptions {
   lazyModules?: string | URL;
   flint?: string | URL;
   m4ri?: string | URL;
+  numerical?: string | URL;
+  numericalNlopt?: string | URL;
+  nloptAdapter?: string | URL;
   symbolic?: string | URL;
   compilerWorker?: string | URL;
   onGraphicsSave?: (request: SageGraphicsSaveRequest) => void | Promise<void>;

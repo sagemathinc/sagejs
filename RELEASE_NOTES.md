@@ -1,41 +1,53 @@
-# Sage.js 0.6.0
+# Sage.js 0.8.0
 
-Sage.js 0.6.0 is an **early alpha release** for developers and researchers who
-want to experiment with portable research mathematics in native executables,
-Node.js, Jupyter, and the browser. Missing functionality, incompatible API
-changes, and rough edges remain expected; installation reports and mathematical
-bug reports are especially valuable.
+Sage.js 0.8.0 is an **early alpha release** for developers, educators, agents,
+and researchers who want a portable numerical and exact-mathematics system in
+native executables, Node.js, Jupyter, and the browser. Missing functionality,
+incompatible API changes, and rough edges remain expected; installation,
+portability, and mathematical bug reports are especially valuable.
 
-This release extends four substantial mathematical systems:
+This release introduces an agent-first numerical computing laboratory built
+around shared semantics rather than separate language-specific wrappers:
 
-- Brandt modules now include integral ideal-class and component-group
-  arithmetic, exact rank-four lattices, batched Hecke operators, sparse Mestre
-  graphs, and replayable certificates checked against independent data.
-- Modular-symbol spaces reconstruct exact cusp-form q-expansions over rational
-  and cyclotomic coefficient fields. Composite levels, bad-prime operators,
-  all signs, saturated integral modules, old/new decompositions, character
-  Eisenstein series, and replayable Sturm certificates are supported.
-- Cubic class-group computations gain a resident exact relation/HNF engine,
-  authenticated presentation replay, reusable relation workspaces, and
-  conservative dynamic fallbacks. Automatic native HNF selection is restricted
-  to the exact matrix-shape and coefficient-bit envelope covered by release
-  evidence; every out-of-envelope matrix fails closed to the ordinary exact
-  backend.
-- Undergraduate mathematics and browser worksheets add broader calculus and
-  symbolic compatibility, piecewise functions, discrete mathematics, linear
-  codes, improved matrix operations, numeric-data 3D plots, and richer live
-  examples.
+- A common problem, plan, result, diagnostic, capability, provenance,
+  explanation, and bounded-trace model makes solver choices and conclusions
+  inspectable. Results distinguish exact, independently validated approximate,
+  heuristic, and indeterminate claims instead of trusting a backend success
+  flag.
+- The supported method families now include scalar and system root finding,
+  approximation, dense linear algebra, adaptive quadrature, optimization and
+  fitting, explicit and stiff ordinary differential equations, polynomial
+  roots, FFT and spectral methods, descriptive statistics and regression, and
+  deterministic parameter sweeps.
+- Supported Sage, Python/SciPy, MATLAB, and Wolfram operations lower to the same
+  numerical contracts. Scalar-root source parsing is qualified in all four
+  languages; the broader catalog classifies code-emission targets separately
+  and rejects unsupported translations explicitly. Results can emit stable
+  JSON, explanations, PlotSpec/Plotly figures, and bounded animations without
+  coupling visualization to solver kernels.
+- Interactive lessons and a cross-domain teaching gallery expose both success
+  and failure behavior, including convergence traces, adaptive step choices,
+  conditioning, validation residuals, and resource-budget diagnostics.
+- Numerical modules remain ordinary CPython-parseable strict Python. Browser
+  and Node runtimes load domains lazily, use explicit capability planning, and
+  retain correct dynamic fallbacks when a compiled resource is unavailable or
+  outside its validated envelope.
 
-The sparse modular-form kernels use the same source-transparent native and Wasm
-compiler path with ordinary-Python fallbacks. Their outputs were checked against
-Sage semantics, Magma transcripts, modular-symbol Sturm certificates, historical
-psage data, and pinned LMFDB records. Browser release gates compile all 284
-production Wasm kernels and exercise exact public computations in Chromium.
+The numerical implementation is supported by backend-neutral correctness
+corpora, metamorphic and failure tests, bounded fuzz and sweep cases, executed
+differential oracles drawn from NumPy, SciPy, and mpmath, plus retained R
+reference source and fixtures. Qualified cminpack integration supplies
+nonlinear least squares. NLopt promotion remains
+conservative and capability-gated until its production evidence is complete.
 
-Packaging and runtime improvements include a lazy boundary for specialized
-extension-field root splitting, bounded fail-fast coefficient-prefix tests, and
-updated startup and browser payload guardrails. The supported release platforms
-remain:
+Release publication now requires an authenticated numerical evidence gate. It
+binds the exact candidate to Node, npm, SEA, and browser observations; Linux
+x86_64, Linux arm64, macOS arm64, and native Windows x64; hermetic oracle
+inputs; memory, startup, payload, and performance measurements; and raw
+producer artifacts. The tagged workflow reconstructs that gate twice and
+requires canonical byte identity before GitHub, npm, or Cloudflare publication.
+
+The supported release platforms remain:
 
 - macOS arm64, signed with Apple Developer ID and notarized by Apple;
 - Linux x86_64 and arm64;
@@ -43,13 +55,13 @@ remain:
 
 Every downloadable archive has a SHA-256 checksum. Windows Authenticode
 provisioning may still be incomplete, so the Windows executables may be
-unsigned. The release workflow records the signing mode used, and Windows
-SmartScreen may show an unrecognized-app warning for unsigned artifacts.
+unsigned. The release records the signing mode used, and Windows SmartScreen
+may show an unrecognized-app warning for unsigned artifacts.
 
 Install the command line globally:
 
 ```sh
-npm install -g @sagemath/sagejs@0.6.0
+npm install -g @sagemath/sagejs@0.8.0
 ```
 
 Or embed Sage.js in a Node application:
@@ -62,7 +74,7 @@ pnpm add @sagemath/sagejs
 import { createSage } from "@sagemath/sagejs";
 
 const sage = await createSage();
-console.log((await sage.evaluate("factor(370309)")).repr);
+console.log((await sage.evaluate("find_root(cos(x) - x, 0, 1)")).repr);
 await sage.close();
 ```
 
@@ -73,6 +85,7 @@ available:
 curl -fsSL https://sagejs.org/install.sh | sh
 ```
 
-Try Sage.js without installing anything at <https://app.sagejs.org/>. Please
+Try Sage.js without installing anything at <https://app.sagejs.org/> and open
+the numerical laboratory at <https://sagejs.org/numerical-computing/>. Please
 report installation problems and mathematical bugs at
 <https://github.com/sagemathinc/sagejs/issues>.

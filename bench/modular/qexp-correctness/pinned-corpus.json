@@ -1,9 +1,10 @@
 {
-  "schema": "sagejs.modular-qexp-pinned-corpus.v1",
+  "schema": "sagejs.modular-qexp-pinned-corpus.v2",
   "canonical_matrix_encoding": "Rows separated by semicolons; exact coefficients in each row separated by commas; rational numbers in reduced a/b form.",
   "oracles": {
     "sagemath": "10.9.post1",
-    "magma": "2.18-5"
+    "magma": "2.18-5",
+    "pari": "2.17.1"
   },
   "trivial_character": [
     {
@@ -71,22 +72,107 @@
     "dimension": 1,
     "basis_sha256": "7a9b1c3b7c290b50bb83f78ab6ca01e2a713248e110b0e70a9fa630c6906eee8"
   },
-  "old_new": {
-    "id": "level22-weight2-entirely-old",
-    "level": 22,
-    "weight": 2,
-    "precision": 16,
-    "ambient_dimension": 2,
-    "old_dimension": 2,
-    "new_dimension": 0,
-    "ambient_sha256": "e4bcfe889947ab2ea8284cf2d1ceb5daf7663695d2f4967dfdf1b80988d51c5b",
-    "old_sha256": "e4bcfe889947ab2ea8284cf2d1ceb5daf7663695d2f4967dfdf1b80988d51c5b"
-  },
+  "old_new": [
+    {
+      "id": "level37-weight2-prime",
+      "shape": "p",
+      "level": 37,
+      "weight": 2,
+      "precision": 12,
+      "sturm_bound": 8,
+      "ambient_dimension": 2,
+      "old_dimension": 0,
+      "new_dimension": 2,
+      "ambient_sha256": "602c5014ba32cdf292f49c1461d5c01f95908bd00f22d61854613aed9b72d4cd",
+      "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "new_sha256": "602c5014ba32cdf292f49c1461d5c01f95908bd00f22d61854613aed9b72d4cd",
+      "hecke_characteristic_polynomials": {
+        "2": "x^2 + 2*x",
+        "3": "x^2 + 2*x - 3"
+      }
+    },
+    {
+      "id": "level121-weight2-prime-square",
+      "shape": "p^2",
+      "level": 121,
+      "weight": 2,
+      "precision": 25,
+      "sturm_bound": 23,
+      "ambient_dimension": 6,
+      "old_dimension": 2,
+      "new_dimension": 4,
+      "ambient_sha256": "a06c965b8c0311321a6647631a4655290c947353deefd1910d216a42fda2ee13",
+      "old_sha256": "b98d46b1cdc6d6877cfa565dd3f6f6473764159c7466173fab9fa1f3fbe081c8",
+      "new_sha256": "2da19188001130e1d8d840caa351916e4b95b3188f315e3db7c540334844f9bf",
+      "hecke_characteristic_polynomials": {
+        "2": "x^6 + 2*x^5 - 5*x^4 - 10*x^3 + 4*x^2 + 8*x",
+        "3": "x^6 - 6*x^4 - 4*x^3 + 9*x^2 + 12*x + 4"
+      }
+    },
+    {
+      "id": "level33-weight2-two-prime",
+      "shape": "pq",
+      "level": 33,
+      "weight": 2,
+      "precision": 16,
+      "sturm_bound": 9,
+      "ambient_dimension": 3,
+      "old_dimension": 2,
+      "new_dimension": 1,
+      "ambient_sha256": "35c7b1b5c261004d725f9c8c1b33b6969b3ac304604e9b8e98c25fe76ef838f8",
+      "old_sha256": "1ed31f8504566fc3daf9972dac0758d72b42ea595dcc97a519873cb5a2c24907",
+      "new_sha256": "330368fa1c135221543a268e2acf6de04d1b7079ee055aa00a0282e43a5bc4dd",
+      "hecke_characteristic_polynomials": {
+        "2": "x^3 + 3*x^2 - 4",
+        "3": "x^3 + 2*x^2 + 4*x + 3"
+      }
+    },
+    {
+      "id": "level66-weight2-several-degeneracy-sources",
+      "shape": "2*3*11",
+      "level": 66,
+      "weight": 2,
+      "precision": 28,
+      "sturm_bound": 25,
+      "ambient_dimension": 9,
+      "old_dimension": 6,
+      "new_dimension": 3,
+      "ambient_sha256": "1a4b14ebe49f8c899dcb696e6966004882edc27aba796dbf781212e63c86c930",
+      "old_sha256": "5277797da32e2174ee4829543cc17d8bc78a71be27ae32fcf93f9e52e43c14f4",
+      "new_sha256": "cd4247ef8725fd8b642f212328f7e62859c5047e36e12e1be92920aa3f12b8c3",
+      "hecke_characteristic_polynomials": {
+        "2": "x^9 + 2*x^8 + 2*x^7 + x^5 - 2*x^4 - 8*x^3 - 8*x^2 + 4*x + 8",
+        "3": "x^9 + 3*x^8 + 7*x^7 + 7*x^6 - 2*x^5 - 14*x^4 - 21*x^3 - 5*x^2 + 15*x + 9"
+      }
+    },
+    {
+      "id": "level22-weight2-bad-prime-separation",
+      "shape": "pq-repeated-anemic",
+      "level": 22,
+      "weight": 2,
+      "precision": 16,
+      "sturm_bound": 7,
+      "ambient_dimension": 2,
+      "old_dimension": 2,
+      "new_dimension": 0,
+      "ambient_sha256": "e4bcfe889947ab2ea8284cf2d1ceb5daf7663695d2f4967dfdf1b80988d51c5b",
+      "old_sha256": "e4bcfe889947ab2ea8284cf2d1ceb5daf7663695d2f4967dfdf1b80988d51c5b",
+      "new_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "hecke_characteristic_polynomials": {
+        "2": "x^2 + 2*x + 2",
+        "3": "x^2 + 2*x + 1"
+      },
+      "certificate": "T_3 has the repeated anemic eigenvalue -1, while bad-prime U_2 has irreducible characteristic polynomial x^2 + 2*x + 2."
+    }
+  ],
   "coefficient_field": {
     "id": "level23-weight2-quadratic-newform",
     "level": 23,
     "weight": 2,
+    "precision": 12,
+    "sturm_bound": 5,
     "field_degree": 2,
+    "basis_sha256": "68639c6a5c8e9bfbc00d7628fa7e58ed4e38fc71daf848af4efb904f9defe3d5",
     "defining_polynomial": "x^2 + x - 1",
     "coefficient_minpolys": {
       "2": "x^2 + x - 1",
@@ -103,6 +189,32 @@
       "7": "x^2 - 2*x - 4",
       "11": "x^2 + 6*x + 4",
       "13": "x^2 - 6*x + 9"
+    }
+  },
+  "higher_coefficient_field": {
+    "id": "level41-weight2-cubic-newform",
+    "level": 41,
+    "weight": 2,
+    "precision": 16,
+    "sturm_bound": 8,
+    "field_degree": 3,
+    "basis_sha256": "338cd1b2dc33185aeea8a4de249a631e1a8c3c34e0c31edcdfb743668031d593",
+    "defining_polynomial": "x^3 + x^2 - 5*x - 1",
+    "coefficient_minpolys": {
+      "2": "x^3 + x^2 - 5*x - 1",
+      "3": "x^3 - 4*x + 2",
+      "5": "x^3 + 2*x^2 - 4*x - 4",
+      "7": "x^3 - 6*x^2 + 8*x - 2",
+      "11": "x^3 - 2*x^2 - 20*x + 50",
+      "13": "x^3 + 2*x^2 - 12*x - 8"
+    },
+    "hecke_characteristic_polynomials": {
+      "2": "x^3 + x^2 - 5*x - 1",
+      "3": "x^3 - 4*x + 2",
+      "5": "x^3 + 2*x^2 - 4*x - 4",
+      "7": "x^3 - 6*x^2 + 8*x - 2",
+      "11": "x^3 - 2*x^2 - 20*x + 50",
+      "13": "x^3 + 2*x^2 - 12*x - 8"
     }
   },
   "beyond_sturm_recurrences": [

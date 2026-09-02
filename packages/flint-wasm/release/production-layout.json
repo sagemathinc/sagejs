@@ -24,6 +24,28 @@
       }
     },
     {
+      "id": "cminpack",
+      "ownershipDomain": "cminpack-levenberg-marquardt",
+      "artifact": "cminpack.wasm",
+      "eager": false,
+      "memory": {
+        "pageBytes": 65536,
+        "initialPages": 32,
+        "maximumPages": 2048
+      }
+    },
+    {
+      "id": "nlopt",
+      "ownershipDomain": "nlopt-mit-derivative-free",
+      "artifact": "nlopt-methods.wasm",
+      "eager": false,
+      "memory": {
+        "pageBytes": 65536,
+        "initialPages": 32,
+        "maximumPages": 2048
+      }
+    },
+    {
       "id": "algebraic",
       "ownershipDomain": "flint-gmp-mpfr-arb-algebraic",
       "artifact": "flint-algebraic.wasm",
@@ -113,8 +135,8 @@
           "web-tree-sitter.wasm"
         ],
         "maximumCompressedDelta": {
-          "gzipBytes": 14000000,
-          "brotliBytes": 7800000
+          "gzipBytes": 16600000,
+          "brotliBytes": 9200000
         }
       },
       {
@@ -151,6 +173,26 @@
         "maximumCompressedDelta": {
           "gzipBytes": 75000,
           "brotliBytes": 60000
+        }
+      },
+      {
+        "id": "cminpack",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": ["cminpack.wasm", "numerical-backend.mjs"],
+        "maximumCompressedDelta": {
+          "gzipBytes": 35000,
+          "brotliBytes": 30000
+        }
+      },
+      {
+        "id": "nlopt",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": ["nlopt-backend.mjs", "nlopt-methods.wasm"],
+        "maximumCompressedDelta": {
+          "gzipBytes": 55000,
+          "brotliBytes": 45000
         }
       },
       {
@@ -195,13 +237,35 @@
         "kind": "specialist",
         "dependencies": ["eager-core"],
         "assets": [
+          "katex/fonts/KaTeX_AMS-Regular.woff2",
+          "katex/fonts/KaTeX_Caligraphic-Bold.woff2",
+          "katex/fonts/KaTeX_Caligraphic-Regular.woff2",
+          "katex/fonts/KaTeX_Fraktur-Bold.woff2",
+          "katex/fonts/KaTeX_Fraktur-Regular.woff2",
+          "katex/fonts/KaTeX_Main-Bold.woff2",
+          "katex/fonts/KaTeX_Main-BoldItalic.woff2",
+          "katex/fonts/KaTeX_Main-Italic.woff2",
+          "katex/fonts/KaTeX_Main-Regular.woff2",
+          "katex/fonts/KaTeX_Math-BoldItalic.woff2",
+          "katex/fonts/KaTeX_Math-Italic.woff2",
+          "katex/fonts/KaTeX_SansSerif-Bold.woff2",
+          "katex/fonts/KaTeX_SansSerif-Italic.woff2",
+          "katex/fonts/KaTeX_SansSerif-Regular.woff2",
+          "katex/fonts/KaTeX_Script-Regular.woff2",
+          "katex/fonts/KaTeX_Size1-Regular.woff2",
+          "katex/fonts/KaTeX_Size2-Regular.woff2",
+          "katex/fonts/KaTeX_Size3-Regular.woff2",
+          "katex/fonts/KaTeX_Size4-Regular.woff2",
+          "katex/fonts/KaTeX_Typewriter-Regular.woff2",
+          "katex/katex.min.css",
+          "katex/katex.min.js",
           "plotly.min.js",
           "runtime/plotly-renderer.d.ts",
           "runtime/plotly-renderer.mjs"
         ],
         "maximumCompressedDelta": {
-          "gzipBytes": 1600000,
-          "brotliBytes": 1250000
+          "gzipBytes": 2000000,
+          "brotliBytes": 1650000
         }
       },
       {
@@ -268,7 +332,31 @@
     "wasi-runtime.mjs",
     "ffi-production-closure.json",
     "hyperelliptic-auto-receipt-policy.json",
+    "katex/fonts/KaTeX_AMS-Regular.woff2",
+    "katex/fonts/KaTeX_Caligraphic-Bold.woff2",
+    "katex/fonts/KaTeX_Caligraphic-Regular.woff2",
+    "katex/fonts/KaTeX_Fraktur-Bold.woff2",
+    "katex/fonts/KaTeX_Fraktur-Regular.woff2",
+    "katex/fonts/KaTeX_Main-Bold.woff2",
+    "katex/fonts/KaTeX_Main-BoldItalic.woff2",
+    "katex/fonts/KaTeX_Main-Italic.woff2",
+    "katex/fonts/KaTeX_Main-Regular.woff2",
+    "katex/fonts/KaTeX_Math-BoldItalic.woff2",
+    "katex/fonts/KaTeX_Math-Italic.woff2",
+    "katex/fonts/KaTeX_SansSerif-Bold.woff2",
+    "katex/fonts/KaTeX_SansSerif-Italic.woff2",
+    "katex/fonts/KaTeX_SansSerif-Regular.woff2",
+    "katex/fonts/KaTeX_Script-Regular.woff2",
+    "katex/fonts/KaTeX_Size1-Regular.woff2",
+    "katex/fonts/KaTeX_Size2-Regular.woff2",
+    "katex/fonts/KaTeX_Size3-Regular.woff2",
+    "katex/fonts/KaTeX_Size4-Regular.woff2",
+    "katex/fonts/KaTeX_Typewriter-Regular.woff2",
+    "katex/katex.min.css",
+    "katex/katex.min.js",
     "native-kernels/index.json",
+    "nlopt-backend.mjs",
+    "numerical-backend.mjs",
     "numpy-ts.mjs",
     "kernel-flint-resource-backend.mjs",
     "wasm-pack-loader.mjs",

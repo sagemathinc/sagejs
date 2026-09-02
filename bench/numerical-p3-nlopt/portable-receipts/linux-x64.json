@@ -1,0 +1,24 @@
+{
+  "schema": "sagejs.numerical-nlopt-portable-smoke/v1",
+  "runtime": {
+    "node": "v26.7.0",
+    "platform": "linux",
+    "architecture": "x64"
+  },
+  "artifact_sha256": "2d248aaa49c9482ab0afabaff1a9358a106b4deae23a9c2f8df033d75fa37c0f",
+  "nelder_mead": {
+    "residual": 2.5188629768348626e-9,
+    "evaluations": 214
+  },
+  "cobyla": {
+    "maximum_violation": 2.220446049250313e-16,
+    "evaluations": 102
+  },
+  "lifecycle_after": {
+    "activeContexts": 0,
+    "activeHandle": 0,
+    "liveAllocations": 0,
+    "liveBytes": 0,
+    "memoryBytes": 2097152
+  }
+}

@@ -28,6 +28,7 @@ import { installNodeGraphicsSaveHook } from "./graphics-export";
 import { runRuntimeBootstrap } from "./runtime-bootstrap";
 import { createPythonCompilerFrontend } from "./python/compiler-frontend";
 import { formatOptimizationExplanation } from "./python/optimizer";
+import { runForeignInspectionCli } from "./foreign/inspect";
 import {
   baselibStandaloneImportPrelude,
   standaloneRuntimeRequirePrelude,
@@ -108,10 +109,23 @@ export default async function Compile({
     optimization_disable?: string;
     optimization_require?: string;
     explain_optimizations?: boolean;
+    inspect_foreign?: boolean;
+    language?: string;
+    source?: string;
+    inspect_usage_error?: string;
   };
   src_path: string;
   lib_path: string;
 }): Promise<void> {
+  if (argv.inspect_foreign) {
+    await runForeignInspectionCli({
+      files: argv.files,
+      language: argv.language,
+      source: argv.source,
+      usageError: argv.inspect_usage_error,
+    });
+    return;
+  }
   const PyLang = createCompiler();
   const pythonFrontend = await createPythonCompilerFrontend(
     PyLang,

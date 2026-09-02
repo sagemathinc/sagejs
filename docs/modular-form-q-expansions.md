@@ -483,16 +483,66 @@ explicit proper-subspace error. The same call at level $2$, weight $12$
 returns the full two-dimensional formula basis. Callers may also pass their
 own certified candidate list to `formula_subspace(candidates, prec)`.
 
+### Certified Hecke action on formula subspaces
+
+`CertifiedFormulaSubspace` computes $T_n$ directly from the construction
+trees of its exact formula candidates. It replays those trees at the larger
+precision required by
+
+$$
+a_m(T_n f)=\sum_{d\mid(m,n)}\chi(d)d^{k-1}a_{mn/d^2}(f),
+$$
+
+then proves the result through the Sturm bound against the independently
+constructed modular-symbol ambient space. A stable span returns an exact
+matrix; an unstable span returns a particular escaping basis vector:
+
+```sage
+sage: F = CuspForms(2, 12).formula_subspace(prec=8)
+sage: F.hecke_matrix(2).charpoly()
+x^2 + 24*x + 2048
+sage: F.hecke_action_certificate(2).verify()
+True
+sage: P = CuspForms(23, 2).formula_subspace(prec=12)
+sage: P.is_hecke_stable(2), P.hecke_obstruction(2)
+(False, Hecke-stability obstruction: T_2 sends formula basis vector 0 outside the certified span)
+```
+
+Exact decomposition uses good-prime operators first. Passing
+`anemic=False` also uses bad-prime $U_p$ operators. This matters for repeated
+oldform eigensystems: in the full level-$22$, weight-$2$ formula span, $T_3$
+is scalar but $U_2$ separates a quadratic packet.
+
+```sage
+sage: G = CuspForms(22, 2).formula_subspace(prec=8)
+sage: G.hecke_matrix(3).charpoly(), G.hecke_matrix(2).charpoly()
+(x^2 + 2*x + 1, x^2 + 2*x + 2)
+sage: [(V.dimension(), V.is_simple()) for V in G.decomposition(anemic=True)]
+[(2, False)]
+sage: [(V.dimension(), V.is_simple()) for V in G.decomposition(anemic=False)]
+[(2, True)]
+sage: e = G.eigenforms(names="a")[0]
+sage: e.defining_polynomial(), e.certificate().verify()
+(x^2 + 2*x + 2, True)
+```
+
+The restriction is intentionally fail-closed: `hecke_matrix(n)` raises when
+the certified span is not stable. It never projects an escaping image back
+into the formula span.
+
 ### Pinned differential correctness corpus
 
 `bench/modular/qexp-correctness/pinned-corpus.json` records canonical exact
-row-space hashes and invariants independently reproduced by SageMath and
-Magma. It includes level $1$, levels $2$, $6$, and $37$, a nontrivial quadratic
-character modulo $7$, an entirely old space at level $22$, and the quadratic
-coefficient field of a level-$23$ newform. Both full and proper formula spans
-are covered. The level-$2$ and level-$6$ rows independently reconstruct the
-eta-product directions with SageMath's Euler product, while Magma supplies the
-ambient cusp spaces. The corpus also checks coefficients beyond the Sturm
+row-space hashes and invariants independently reproduced by SageMath, Magma,
+and PARI. It includes level $1$, formula spans at levels $2$, $6$, and $37$,
+a nontrivial quadratic character modulo $7$, old/new decompositions at
+$p$, $p^2$, $pq$, and a level with several degeneracy sources, bad-prime
+separation at level $22$, and quadratic and cubic coefficient fields at
+levels $23$ and $41$. Both full and proper formula spans are covered. Every
+rational basis hash contains the complete coefficient matrix through a
+precision strictly beyond the relevant Sturm bound. The level-$2$ and
+level-$6$ rows independently reconstruct the eta-product directions with
+SageMath's Euler product. The corpus also checks coefficients beyond the Sturm
 bound using
 
 $$
@@ -509,8 +559,8 @@ node bench/modular/qexp-correctness/sagejs-corpus.cjs
 
 The oracle runner fails on any exact coefficient, dimension, character,
 old/new, coefficient-field, or Hecke-polynomial disagreement. The committed
-corpus describes the exact canonical encoding and pins the SageMath and Magma
-versions; it does not use Sage.js output as an oracle.
+corpus describes the exact canonical encoding and pins the SageMath, Magma,
+and PARI versions; it does not use Sage.js output as an oracle.
 
 The reproducible resident benchmark is
 `pnpm bench:modular:qexp-algebra`. It times product, $V_2$, and bounded

@@ -258,6 +258,36 @@ class AstBuilder {
           span: sourceSpan(node),
         };
       }
+      case "lambda": {
+        const body = node.childForFieldName("expression");
+        if (!body) return this.unsupported(node);
+        const argumentsNode = node.namedChildren.find((child) =>
+          child.type === "arguments"
+        );
+        const parameters = (argumentsNode?.namedChildren ?? []).map(
+          (parameter, index) =>
+            parameter.type === "identifier"
+              ? this.text(parameter)
+              : `_ignored_${index}`,
+        );
+        return {
+          kind: "lambda",
+          parameters,
+          body: this.expression(body),
+          span: sourceSpan(node),
+        };
+      }
+      case "handle_operator": {
+        const identifiers = node.namedChildren.filter((child) =>
+          child.type === "identifier"
+        );
+        if (identifiers.length === 0) return this.unsupported(node);
+        return {
+          kind: "handle",
+          name: identifiers.map((identifier) => this.text(identifier)).join("."),
+          span: sourceSpan(node),
+        };
+      }
       case "parenthesis": {
         const child = node.namedChildren[0];
         if (!child) return this.unsupported(node);
@@ -271,23 +301,37 @@ class AstBuilder {
 
 class SageLowerer {
   private readonly directFunctions: Record<string, string> = {
+    arrayfun: "_matlab.arrayfun",
     class: "_matlab.class_name",
+    conv: "_matlab.conv",
     cos: "_np.cos",
     disp: "print",
     exp: "_np.exp",
+    fminbnd: "_matlab.fminbnd",
+    fminsearch: "_matlab.fminsearch",
+    fsolve: "_matlab.fsolve",
+    integral: "_matlab.integral",
     linspace: "_np.linspace",
+    linsolve: "_matlab.linsolve",
     log: "_np.log",
+    lsqminnorm: "_matlab.lsqminnorm",
+    lsqnonlin: "_matlab.lsqnonlin",
     numel: "_matlab.numel",
+    ode45: "_matlab.ode45",
     ones: "_np.ones",
+    polyfit: "_matlab.polyfit",
+    sagejs_describe: "_matlab.sagejs_describe",
     sin: "_np.sin",
     size: "_matlab.size",
     sqrt: "_np.sqrt",
     sum: "_np.sum",
+    svd: "_matlab.svd",
     tan: "_np.tan",
     zeros: "_np.zeros",
     axes: "_matlab.axes",
     delete: "_matlab.delete",
     figure: "_matlab.figure",
+    fzero: "_matlab.fzero",
     gca: "_matlab.gca",
     gcf: "_matlab.gcf",
     get: "_matlab.get",
@@ -307,7 +351,15 @@ class SageLowerer {
     ylabel: "_matlab.ylabel",
     ylim: "_matlab.ylim",
   };
-
+  private readonly unsupportedNumericalFunctions = new Set([
+    "eig",
+    "fft",
+    "fitlm",
+    "griddedInterpolant",
+    "spline",
+    "ttest",
+    "ttest2",
+  ]);
   program(program: MatlabProgram, captureResult = false): string {
     const lastIndex = program.body.length - 1;
     const lines = [
@@ -413,11 +465,16 @@ class SageLowerer {
       })`;
     }
     const name = expression.callee.name;
+    if (this.unsupportedNumericalFunctions.has(name)) {
+      throw new MatlabSyntaxError(
+        `${name} numerical syntax is not supported by the Sage.js MATLAB frontend`,
+        expression.span,
+      );
+    }
     const direct = this.directFunctions[name];
     if (direct) {
       return `${direct}(${
-        expression.arguments.map((argument) => this.expression(argument))
-          .join(", ")
+        expression.arguments.map((argument) => this.expression(argument)).join(", ")
       })`;
     }
     return `_matlab.call_or_index(${name}${
@@ -524,6 +581,20 @@ class SageLowerer {
       }
       case "binary":
         return this.binary(expression);
+      case "lambda":
+        return `(lambda ${expression.parameters.join(", ")}: ${
+          this.expression(expression.body)
+        })`;
+      case "handle": {
+        if (this.unsupportedNumericalFunctions.has(expression.name)) {
+          throw new MatlabSyntaxError(
+            `${expression.name} numerical handles are not supported by the Sage.js MATLAB frontend`,
+            expression.span,
+          );
+        }
+        const direct = this.directFunctions[expression.name];
+        return direct ?? expression.name;
+      }
     }
   }
 }

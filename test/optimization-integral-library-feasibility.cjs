@@ -6,6 +6,7 @@ const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 const sourcePath = join(
@@ -39,10 +40,11 @@ function run(args, options = {}) {
 
 test("feasibility source is ordinary Python with guards before effects", () => {
   const source = readFileSync(sourcePath, "utf8");
-  const parse = spawnSync("python3", ["-c", [
+  const parse = spawnSync(pythonExecutable(), ["-c", [
     "import ast, pathlib, sys",
     "ast.parse(pathlib.Path(sys.argv[1]).read_text())",
   ].join("\n"), sourcePath], { encoding: "utf8" });
+  if (parse.error) throw parse.error;
   assert.equal(parse.status, 0, parse.stderr);
 
   assert.match(source, /MAX_BLOCK_PRIME = 65_537/);

@@ -1404,6 +1404,117 @@ napi_value sagejs_mpoly_univariate_coefficients(
     return result;
 }
 
+napi_value sagejs_mpoly_terms(napi_env env, napi_callback_info info)
+{
+    napi_value args[1], result, term, coefficient, exponents_array;
+    napi_value numerator, denominator, exponent;
+    sagejs_mpoly_value *value;
+    slong index, variable, length;
+    ulong *exponents = NULL;
+    fmpz_t integer;
+    fmpq_t rational;
+
+    if (!require_arguments(env, info, 1, args) ||
+        (value = unwrap_value(env, args[0])) == NULL)
+        return NULL;
+    if (value->context->kind == SAGEJS_MPOLY_FQ_NMOD)
+    {
+        napi_throw_type_error(env, NULL,
+            "sparse terms are not yet available over extension fields");
+        return NULL;
+    }
+    if (value->context->kind == SAGEJS_MPOLY_ZZ)
+        length = fmpz_mpoly_length(value->value.zz, value->context->value.zz);
+    else if (value->context->kind == SAGEJS_MPOLY_QQ)
+        length = fmpq_mpoly_length(value->value.qq, value->context->value.qq);
+    else
+        length = nmod_mpoly_length(value->value.nmod, value->context->value.nmod);
+    if ((ulong) length > UINT32_MAX || (ulong) value->context->nvars > UINT32_MAX)
+    {
+        napi_throw_range_error(env, NULL, "polynomial is too large to export");
+        return NULL;
+    }
+    if (!check_napi(env,
+            napi_create_array_with_length(env, (size_t) length, &result)))
+        return NULL;
+    exponents = malloc((size_t) value->context->nvars * sizeof(ulong));
+    if (exponents == NULL)
+    {
+        napi_throw_error(env, NULL, "unable to allocate exponent vector");
+        return NULL;
+    }
+    fmpz_init(integer);
+    fmpq_init(rational);
+    for (index = 0; index < length; index++)
+    {
+        if (value->context->kind == SAGEJS_MPOLY_ZZ)
+        {
+            fmpz_mpoly_get_term_coeff_fmpz(
+                integer, value->value.zz, index, value->context->value.zz);
+            fmpz_mpoly_get_term_exp_ui(
+                exponents, value->value.zz, index, value->context->value.zz);
+            coefficient = fmpz_to_bigint(env, integer);
+        }
+        else if (value->context->kind == SAGEJS_MPOLY_QQ)
+        {
+            fmpq_mpoly_get_term_coeff_fmpq(
+                rational, value->value.qq, index, value->context->value.qq);
+            fmpq_mpoly_get_term_exp_ui(
+                exponents, value->value.qq, index, value->context->value.qq);
+            numerator = fmpz_to_bigint(env, fmpq_numref(rational));
+            denominator = fmpz_to_bigint(env, fmpq_denref(rational));
+            if (numerator == NULL || denominator == NULL ||
+                !check_napi(env, napi_create_object(env, &coefficient)) ||
+                !check_napi(env, napi_set_named_property(
+                    env, coefficient, "numerator", numerator)) ||
+                !check_napi(env, napi_set_named_property(
+                    env, coefficient, "denominator", denominator)))
+                coefficient = NULL;
+        }
+        else
+        {
+            ulong raw = nmod_mpoly_get_term_coeff_ui(
+                value->value.nmod, index, value->context->value.nmod);
+            nmod_mpoly_get_term_exp_ui(
+                exponents, value->value.nmod, index,
+                value->context->value.nmod);
+            coefficient = NULL;
+            if (!check_napi(env,
+                    napi_create_bigint_uint64(env, (uint64_t) raw, &coefficient)))
+                coefficient = NULL;
+        }
+        if (coefficient == NULL ||
+            !check_napi(env, napi_create_array_with_length(
+                env, (size_t) value->context->nvars, &exponents_array)))
+            goto fail;
+        for (variable = 0; variable < value->context->nvars; variable++)
+        {
+            exponent = NULL;
+            if (!check_napi(env, napi_create_bigint_uint64(
+                    env, (uint64_t) exponents[variable], &exponent)) ||
+                !check_napi(env, napi_set_element(env, exponents_array,
+                    (uint32_t) variable, exponent)))
+                goto fail;
+        }
+        if (!check_napi(env, napi_create_array_with_length(env, 2, &term)) ||
+            !check_napi(env, napi_set_element(env, term, 0, coefficient)) ||
+            !check_napi(env, napi_set_element(env, term, 1, exponents_array)) ||
+            !check_napi(env,
+                napi_set_element(env, result, (uint32_t) index, term)))
+            goto fail;
+    }
+    fmpz_clear(integer);
+    fmpq_clear(rational);
+    free(exponents);
+    return result;
+
+fail:
+    fmpz_clear(integer);
+    fmpq_clear(rational);
+    free(exponents);
+    return NULL;
+}
+
 static napi_value integer_property(napi_env env, napi_callback_info info,
     int property)
 {

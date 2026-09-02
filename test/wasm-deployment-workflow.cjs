@@ -14,6 +14,7 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
 
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /source_run_id:/);
+  assert.match(workflow, /qualification_run_id:/);
   assert.match(workflow, /- preview\n\s+- production/);
   assert.doesNotMatch(workflow, /pull_request_target:/);
   assert.match(workflow, /\.github\/workflows\/wasm-release\.yml/);
@@ -25,13 +26,13 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
     "Clean reproducibility build b",
     "reproducibility",
     "Browser release gates",
-    "Public parity (chromium)",
-    "Public parity (firefox)",
-    "Public parity (webkit)",
+    "Numerical release qualification gate",
   ]) assert.match(workflow, new RegExp(gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
-  assert.match(workflow, /if \[\[ "\$release_gate" == "missing" \]\]/);
-  assert.match(workflow, /elif \[\[ "\$release_gate" != "success" \]\]/);
+  assert.match(workflow, /if \[\[ "\$release_gate" != "success" \]\]/);
+  assert.doesNotMatch(workflow, /Required legacy release job/);
+  assert.match(workflow, /qualification_sha[\s\S]+source_sha/);
+  assert.match(workflow, /numerical-release-gate/);
 
   assert.match(workflow, /ref: \$\{\{ steps\.source\.outputs\.sha \}\}/);
   assert.match(workflow, /ref: \$\{\{ github\.sha \}\}/);

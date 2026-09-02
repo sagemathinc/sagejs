@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en" data-gallery="loading">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="An evidence-first Sage.js lesson about root finding, method assumptions, convergence, and instructive failures." />
+    <title>A root is more than a crossing · Sage.js numerical methods</title>
+    <link rel="stylesheet" href="./gallery.css" />
+    <script type="module" src="./gallery.mjs"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#root-finding">Skip to the root-finding story</a>
+    <header class="site-header">
+      <a class="brand" href="../index.html" aria-label="Sage.js home">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span>Sage.js</span>
+      </a>
+      <nav aria-label="Numerical story sections">
+        <a href="../index.html">Dashboard</a>
+        <a href="../reference.html">Reference</a>
+        <a href="#assumptions">Assumptions</a>
+        <a href="#trace">Trace</a>
+        <a href="#failures">Failures</a>
+        <a href="#languages">Languages</a>
+      </nav>
+    </header>
+
+    <main id="root-finding">
+      <section class="hero page-grid" aria-labelledby="story-title">
+        <div class="hero-copy">
+          <p class="eyebrow">Numerical methods · story 01</p>
+          <h1 id="story-title">A root is more than<br />a crossing.</h1>
+          <p class="lede">
+            Follow Brent’s method to the fixed point of cosine, verify the
+            answer independently, and then watch three failures reveal the
+            assumptions a tidy final number can hide.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#trace">Follow the six iterations</a>
+            <a class="button secondary" href="#failures">Why methods fail</a>
+          </div>
+        </div>
+        <aside class="result-card" aria-labelledby="result-card-title">
+          <p class="card-label" id="result-card-title">Validated result</p>
+          <output class="root-value">0.7390851332151559</output>
+          <p><code>cos(x) − x = 0</code> on <code>[0, 1]</code></p>
+          <dl class="metric-grid">
+            <div><dt>method</dt><dd>Brent</dd></div>
+            <div><dt>iterations</dt><dd>6</dd></div>
+            <div><dt>evaluations</dt><dd>8</dd></div>
+            <div><dt>residual</dt><dd>7.99×10<sup>−15</sup></dd></div>
+          </dl>
+          <p class="evidence-chip"><span aria-hidden="true">✓</span> independently validated</p>
+        </aside>
+      </section>
+
+      <p id="gallery-state" class="load-state" role="status" aria-live="polite">
+        Loading bounded interactive evidence. The complete static story is already available below.
+      </p>
+      <noscript><p class="load-state">JavaScript is off. The plot stays on its first retained iteration; every value, explanation, failure, and language example remains available in this page.</p></noscript>
+
+      <section class="lesson-intro page-grid" aria-labelledby="question-title">
+        <div>
+          <p class="eyebrow">The question</p>
+          <h2 id="question-title">Where does cosine meet the diagonal?</h2>
+        </div>
+        <div class="prose">
+          <p>
+            Rewrite <code>cos(x) = x</code> as <code>f(x) = cos(x) − x = 0</code>.
+            The endpoint values have opposite signs, and the function is
+            continuous on <code>[0, 1]</code>. That gives a bracketed method the
+            fact it needs: at least one root lies inside.
+          </p>
+          <p>
+            Automatic planning chooses Brent’s method: it attempts secant and
+            inverse-quadratic steps for speed, while retaining a bisection
+            safeguard. Planning does not call the function; execution and
+            independent validation remain separate records.
+          </p>
+        </div>
+      </section>
+
+      <section id="assumptions" class="section page-wrap" aria-labelledby="assumptions-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Choose with intent</p>
+            <h2 id="assumptions-title">Methods are promises with premises.</h2>
+          </div>
+          <p>The fast method is useful only inside the mathematical situation it assumes.</p>
+        </div>
+        <div class="method-grid">
+          <article class="method-card bracketed">
+            <div class="method-index">01</div>
+            <h3>Bisection</h3>
+            <p class="method-kind">Bracketed · derivative-free</p>
+            <h4>Needs</h4>
+            <p>A finite interval, continuity, and opposite endpoint signs (or an endpoint root).</p>
+            <h4>Promises</h4>
+            <p>Preserves the bracket and halves its width every iteration.</p>
+            <p class="warning"><strong>Watch:</strong> a jump can preserve signs without containing a zero.</p>
+          </article>
+          <article class="method-card selected">
+            <div class="method-index">02</div>
+            <h3>Brent</h3>
+            <p class="method-kind">Bracketed hybrid · selected</p>
+            <h4>Needs</h4>
+            <p>The same finite, continuous, sign-changing interval as bisection.</p>
+            <h4>Promises</h4>
+            <p>Tries faster interpolating steps and falls back to bracket-preserving steps.</p>
+            <p class="warning"><strong>Watch:</strong> bracket shrinkage alone does not validate a residual.</p>
+          </article>
+          <article class="method-card open-method">
+            <div class="method-index">03</div>
+            <h3>Secant</h3>
+            <p class="method-kind">Open · derivative-free</p>
+            <h4>Needs</h4>
+            <p>Two distinct estimates and distinct finite function values near a smooth root.</p>
+            <h4>Promises</h4>
+            <p>Often converges faster than bisection near a simple root.</p>
+            <p class="warning"><strong>Watch:</strong> no bracket is preserved; stagnation and wrong-root convergence are possible.</p>
+          </article>
+          <article class="method-card open-method">
+            <div class="method-index">04</div>
+            <h3>Newton</h3>
+            <p class="method-kind">Open · derivative-based</p>
+            <h4>Needs</h4>
+            <p>A useful starting basin, differentiability, and a nonzero reliable derivative near the root.</p>
+            <h4>Promises</h4>
+            <p>Local quadratic convergence for a simple root under the usual hypotheses.</p>
+            <p class="warning"><strong>Watch:</strong> cycles, zero derivatives, and divergent steps are normal failure modes.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="trace" class="section trace-section" aria-labelledby="trace-title">
+        <div class="page-wrap">
+          <div class="section-heading light-heading">
+            <div>
+              <p class="eyebrow">The successful computation</p>
+              <h2 id="trace-title">Watch the evidence accumulate.</h2>
+            </div>
+            <p>Blue circles are retained callback evaluations, the orange segment is the bracket, and the green diamond is the candidate. Nothing is sampled again for presentation.</p>
+          </div>
+          <div class="plot-layout">
+            <figure class="plot-card">
+              <svg id="root-plot" viewBox="0 0 760 400" role="img" aria-labelledby="root-plot-title root-plot-description">
+                <title id="root-plot-title">First retained Brent iteration for cos(x) minus x</title>
+                <desc id="root-plot-description">Three blue circles show the function values actually retained at x equals 0, 1, and 0.685 during the first Brent iteration. An orange segment on y equals zero marks the retained sign-changing bracket from 0 to 0.685, and a green diamond marks the retained candidate. No curve is inferred and the callback is not evaluated again. The table below gives every retained iteration.</desc>
+                <rect width="100%" height="100%" class="plot-background" />
+                <line x1="62" y1="235" x2="738" y2="235" class="plot-axis" />
+                <line x1="62" y1="24" x2="62" y2="348" class="plot-axis" />
+                <line x1="62" y1="235" x2="525" y2="235" class="plot-bracket-line" />
+                <circle cx="62" cy="40" r="5" class="plot-evaluation"><title>retained evaluation f(0) = 1</title></circle>
+                <circle cx="738" cy="325" r="5" class="plot-evaluation"><title>retained evaluation f(1) = -0.459697694</title></circle>
+                <circle cx="525" cy="217" r="5" class="plot-evaluation"><title>retained evaluation f(0.685073357) = 0.0892992765</title></circle>
+                <circle cx="62" cy="235" r="6" class="plot-bracket"><title>retained left bracket endpoint x=0</title></circle>
+                <circle cx="525" cy="235" r="6" class="plot-bracket"><title>retained right bracket endpoint x=0.685073357</title></circle>
+                <polygon points="525,210 532,217 525,224 518,217" class="plot-candidate"><title>retained candidate x=0.685073357</title></polygon>
+                <text x="380" y="388" class="plot-label">x</text>
+                <text x="18" y="200" transform="rotate(-90 18 200)" class="plot-label">f(x)</text>
+                <text x="62" y="370" class="plot-tick">0</text>
+                <text x="738" y="370" text-anchor="end" class="plot-tick">1</text>
+              </svg>
+              <figcaption>
+                <strong>Static description.</strong> The three plotted values
+                were computed by the solver. Playback reveals additional retained
+                evaluations and updates the bracket and candidate; it never draws
+                an inferred curve or invokes the callback again.
+              </figcaption>
+            </figure>
+            <aside class="iteration-panel" aria-labelledby="iteration-panel-title">
+              <p class="card-label" id="iteration-panel-title">Retained state</p>
+              <output id="frame-output" aria-live="polite">Iteration 1 of 6: secant; candidate 0.685073357; residual 0.0892993.</output>
+              <div class="animation-controls" aria-label="Root-finding animation controls">
+                <button id="play-animation" type="button" aria-pressed="false" disabled>Play</button>
+                <button id="pause-animation" type="button" disabled>Pause</button>
+              </div>
+              <label for="iteration-slider">Choose an iteration</label>
+              <input id="iteration-slider" type="range" min="0" max="5" value="0" step="1" disabled />
+              <p class="fine-print">Playback never starts automatically. Reduced-motion preference disables timed playback while keeping this slider available.</p>
+              <div class="legend" aria-label="Plot legend">
+                <span><i class="legend-circle" aria-hidden="true"></i> retained evaluation</span>
+                <span><i class="legend-line" aria-hidden="true"></i> bracket</span>
+                <span><i class="legend-diamond" aria-hidden="true"></i> candidate</span>
+              </div>
+            </aside>
+          </div>
+
+          <div class="trace-table-wrap">
+            <table class="trace-table">
+              <caption>Every retained Brent iteration. Values come from semantic <code>iteration</code> events, not from plotted pixels.</caption>
+              <thead><tr><th scope="col">Iteration</th><th scope="col">Step</th><th scope="col">Candidate</th><th scope="col">Residual</th><th scope="col">Bracket</th><th scope="col">Width</th></tr></thead>
+              <tbody id="trace-body">
+                <tr><th scope="row">1</th><td>secant</td><td>0.685073357</td><td>0.0892992765</td><td>[0, 0.685073357]</td><td>0.685073357</td></tr>
+                <tr><th scope="row">2</th><td>secant</td><td>0.736298998</td><td>0.00466003904</td><td>[0.736298998, 1]</td><td>0.263701002</td></tr>
+                <tr><th scope="row">3</th><td>inverse quadratic</td><td>0.739091058</td><td>9.91628175e−6</td><td>[0.739091058, 1]</td><td>0.260908942</td></tr>
+                <tr><th scope="row">4</th><td>secant</td><td>0.73908513</td><td>6.10932915e−9</td><td>[0.736298998, 0.73908513]</td><td>0.00278613195</td></tr>
+                <tr><th scope="row">5</th><td>secant</td><td>0.739085133</td><td>7.99360578e−15</td><td>[0.739085133, 0.739091058]</td><td>5.92507021e−6</td></tr>
+                <tr><th scope="row">6</th><td>inverse quadratic</td><td>0.739085133</td><td>1.66677783e−12</td><td>[0.739085133, 0.739091058]</td><td>5.92506921e−6</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="validation-grid">
+            <article>
+              <p class="card-label">Solver report</p>
+              <h3><code>converged</code></h3>
+              <p>Brent’s stopping rule fired after 6 iterations and 8 evaluations.</p>
+            </article>
+            <article>
+              <p class="card-label">Independent checks</p>
+              <h3><code>validated_approximate</code></h3>
+              <p>Finite residual: pass · residual threshold: pass · final bracket invariant: pass.</p>
+            </article>
+            <article>
+              <p class="card-label">Reference method</p>
+              <h3>Bisection agrees</h3>
+              <p><code>0.7390851332147577</code> after 40 iterations, with residual <code>6.74×10⁻¹³</code>.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="failures" class="section page-wrap" aria-labelledby="failures-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Why this failed</p>
+            <h2 id="failures-title">A useful gallery includes bad endings.</h2>
+          </div>
+          <p>Select a case. The explanation and next action are chosen from result booleans, status codes, validation checks, and diagnostics.</p>
+        </div>
+        <div class="case-picker" aria-label="Choose a root-finding case">
+          <button type="button" data-case="cosine-fixed-point" aria-pressed="true"><span>01</span>Normal success</button>
+          <button type="button" data-case="jump-discontinuity" aria-pressed="false"><span>02</span>Discontinuity</button>
+          <button type="button" data-case="invalid-bracket" aria-pressed="false"><span>03</span>Invalid bracket</button>
+          <button type="button" data-case="newton-two-cycle" aria-pressed="false"><span>04</span>Newton cycle</button>
+        </div>
+        <article class="narrative-card" aria-labelledby="narrative-heading">
+          <div>
+            <p class="card-label">Evidence-selected diagnosis</p>
+            <h3 id="narrative-heading">The solver claim survived independent checks.</h3>
+            <p id="narrative-explanation">The result is successful only because solver termination and every recorded validation check passed.</p>
+            <p class="action"><strong>Respond:</strong> <span id="narrative-action">Use the residual and bracket error estimate at the precision your downstream calculation needs; refine if that tolerance is insufficient.</span></p>
+            <p id="case-status" class="visually-hidden" aria-live="polite">Normal success: cos(x) = x: converged; validation passed.</p>
+          </div>
+          <div class="evidence-panel">
+            <p class="card-label">Cited structured fields</p>
+            <ul id="narrative-evidence">
+              <li><code>/result/status</code><span>converged</span></li>
+              <li><code>/result/success</code><span>true</span></li>
+              <li><code>/result/validation/passed</code><span>true</span></li>
+              <li><code>/result/validation/residual</code><span>7.993605777301127e−15</span></li>
+            </ul>
+          </div>
+        </article>
+
+        <div class="failure-grid" aria-label="Static failure accounts">
+          <article>
+            <p class="failure-code">validation_failed</p>
+            <h3>A shrinking bracket surrounds a jump.</h3>
+            <p>For <code>−1 if x &lt; 0 else 1</code>, Brent reports <code>converged</code> near zero. Yet the residual is exactly <code>1</code>, so independent validation sets <code>success = false</code>. Continuity—not a sign change alone—was the missing premise.</p>
+            <p><strong>Action:</strong> inspect the function around the candidate. A tighter x tolerance cannot make this residual smaller.</p>
+          </article>
+          <article>
+            <p class="failure-code">invalid_bracket</p>
+            <h3>Both endpoints have the same sign.</h3>
+            <p>For <code>x² + 1</code> on <code>[−1, 1]</code>, Brent stops after two evaluations. It returns no candidate, and the mathematical conclusion remains indeterminate.</p>
+            <p><strong>Action:</strong> sample or plot first; choose opposite-sign endpoints on a continuous interval. Same signs do not generally prove there are no roots elsewhere.</p>
+          </article>
+          <article>
+            <p class="failure-code">maximum_iterations</p>
+            <h3>Newton alternates: 0, 1, 0, 1.</h3>
+            <p>For <code>x³ − 2x + 2</code> from <code>x₀ = 0</code>, a valid derivative still leads to a two-cycle. The bounded run ends after 8 iterations with residual <code>2</code>.</p>
+            <p><strong>Action:</strong> inspect the trace. If continuity and a sign-changing bracket are available, switch to Brent; otherwise improve the start or the model.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="languages" class="section language-section" aria-labelledby="languages-title">
+        <div class="page-wrap">
+          <div class="section-heading light-heading">
+            <div>
+              <p class="eyebrow">One operation, four frontends</p>
+              <h2 id="languages-title">Use the language that tells your story.</h2>
+            </div>
+            <p>The syntax and outward result shape stay natural; all four lower to the same canonical scalar-root operation.</p>
+          </div>
+          <div class="code-tabs" role="tablist" aria-label="Language example">
+            <button role="tab" data-language="sage" aria-selected="false" tabindex="-1">Sage</button>
+            <button role="tab" data-language="python" aria-selected="true">Python</button>
+            <button role="tab" data-language="matlab" aria-selected="false" tabindex="-1">MATLAB</button>
+            <button role="tab" data-language="wolfram" aria-selected="false" tabindex="-1">Wolfram</button>
+          </div>
+          <div class="code-panel" role="tabpanel">
+            <pre><code id="language-source">import math
+from sagejs.numerics import find_root
+result = find_root(lambda x: math.cos(x) - x, 0.0, 1.0,
+    method="brent", trace="iterations")</code></pre>
+            <p id="language-result-shape">canonical · Rich NumericalResult with result, validation, diagnostics, and trace.</p>
+          </div>
+          <details class="all-examples">
+            <summary>Read all examples without the tab interface</summary>
+            <div class="all-example-grid">
+              <article><h3>Sage</h3><pre><code>from sagejs.numerics import find_root as numerical_find_root
+result = numerical_find_root(lambda x: cos(x) - x, 0.0, 1.0,
+    method="brent", trace="iterations")</code></pre></article>
+              <article><h3>Python</h3><pre><code>import math
+from sagejs.numerics import find_root
+result = find_root(lambda x: math.cos(x) - x, 0.0, 1.0,
+    method="brent", trace="iterations")</code></pre></article>
+              <article><h3>MATLAB</h3><pre><code>result = fzero(@(x) cos(x) - x, [0 1]);</code></pre></article>
+              <article><h3>Wolfram Language</h3><pre><code>result = FindRoot[Cos[x] == x, {x, 0, 1}]</code></pre></article>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="section page-wrap" aria-labelledby="takeaway-title">
+        <div class="takeaway">
+          <p class="eyebrow">The durable lesson</p>
+          <h2 id="takeaway-title">Stopping is an event. Success is a claim with evidence.</h2>
+          <p>A method can stop because its interval is narrow, its step is tiny, its budget is empty, or its derivative is unusable. Sage.js records that event, then separately asks whether the candidate is finite, its residual meets the declared threshold, and any promised bracket invariant still holds.</p>
+        </div>
+        <div class="export-card">
+          <p class="card-label">Take the evidence with you</p>
+          <h3>Export a replay or a reading copy.</h3>
+          <p>PlotSpec JSON preserves the semantic source; Plotly JSON preserves a portable replay with stable frame and trace identifiers. The standalone HTML is static, script-free, screen-reader-labeled, and includes the full trace table.</p>
+          <div class="export-actions">
+            <button id="export-plotspec" type="button" disabled>Download PlotSpec JSON</button>
+            <button id="export-plotly" type="button" disabled>Download Plotly JSON</button>
+            <button id="export-html" type="button" disabled>Download accessible HTML</button>
+          </div>
+          <dl class="payload-list">
+            <div><dt>story payload</dt><dd id="story-bytes">≤ 300,000 bytes</dd></div>
+            <div><dt>semantic animation</dt><dd id="semantic-bytes">≤ 125,000 bytes</dd></div>
+            <div><dt>Plotly animation</dt><dd id="plotly-bytes">≤ 125,000 bytes</dd></div>
+            <div><dt>largest trace</dt><dd>≤ 32,768 bytes / 64 events</dd></div>
+            <div><dt>frames / samples</dt><dd>6 / 264 per frame</dd></div>
+          </dl>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="page-wrap footer-grid">
+        <p><strong>Sage.js numerical methods gallery</strong><br />Ordinary Python algorithms · structured validation · bounded semantic traces</p>
+        <p><a href="../../docs/numerical-computing/gallery/README.md">Gallery evidence contract</a> · <a href="https://github.com/sagemathinc/sagejs">Source</a></p>
+      </div>
+    </footer>
+  </body>
+</html>

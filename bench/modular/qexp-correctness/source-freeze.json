@@ -1,0 +1,118 @@
+{
+  "schema": "sagejs.modular-qexp-source-freeze.v1",
+  "scope": "Exact integral- and half-integral-weight q-expansions, certified formulas, eta products, old/new and eigenpacket reconstruction, and certified formula Hecke action",
+  "required_checks": [
+    "Routine gate (Linux x64)",
+    "Platform smoke (linux-arm64)",
+    "Platform smoke (macos-arm64)",
+    "Platform smoke (windows-x64)",
+    "Sage.js WebAssembly routine parity / chromium-parity"
+  ],
+  "files": [
+    {
+      "path": "architecture/package-graph.json",
+      "sha256": "76fc34d3b024449cf607dc3836e50b306a4f8ee02faa988653f02fa8ef02ff0b"
+    },
+    {
+      "path": "bench/modular/qexp-correctness/README.md",
+      "sha256": "b41be85d26aeb5299420ed5371d2fe9fcc7c41138f8f459b02b675cd7d3a6862"
+    },
+    {
+      "path": "bench/modular/qexp-correctness/magma-oracle.m",
+      "sha256": "c363369d6c97f94661fb7ac42a1a1a6c70f515b4c298f62da092e8d7b3859941"
+    },
+    {
+      "path": "bench/modular/qexp-correctness/pari-oracle.py",
+      "sha256": "4d527a62f5a026ea0060c87069bbbcb9eb0eedd4654d2229f1d20e8f144b8d9a"
+    },
+    {
+      "path": "bench/modular/qexp-correctness/pinned-corpus.json",
+      "sha256": "78bd8476940a3ab20d8e781a507c4fe9482dbffe807472fa24442df6ffeb0030"
+    },
+    {
+      "path": "bench/modular/qexp-correctness/run-oracles.cjs",
+      "sha256": "0adcb798b302c8869af5ec46a5d6e0da2a025ea2d35a46fb8b1bd04f9f50bacd"
+    },
+    {
+      "path": "bench/modular/qexp-correctness/sage-oracle.py",
+      "sha256": "cd3893cb21db6eb7dbda81ea73aa10d7e1b5251b49e915cf567d49868db5974d"
+    },
+    {
+      "path": "bench/modular/qexp-correctness/sagejs-corpus.cjs",
+      "sha256": "d4722ba5920b89166f8e02d0c15baa1b4a573265e20f6eb69ea75cbcaebbd428"
+    },
+    {
+      "path": "bench/modular/qexp-correctness/source-freeze.cjs",
+      "sha256": "d1e2baa957f2b23341a74b897c499ecdf5ca50555327e14e36aa4739548171d7"
+    },
+    {
+      "path": "docs/index.md",
+      "sha256": "8a12f3be00cca2e4ad985fbc70d8ef305c3b42cb026f48be24cd15fb2712638d"
+    },
+    {
+      "path": "docs/modular-form-q-expansions.md",
+      "sha256": "a19a2c6b155ce3330f7273b3fcfbed234f2a64385d97e7f2c9000d8799ac8bf2"
+    },
+    {
+      "path": "docs/modular-forms-tour.md",
+      "sha256": "08f0f3710863889e2e31a57a9af7b1eaa0038ba315b5265870ad202caf9ac098"
+    },
+    {
+      "path": "src/baselib/modular.py",
+      "sha256": "3f4d502c65afe56b8c2a4ef870759ce45da45cdc5550156958ed4b7fcd1adb96"
+    },
+    {
+      "path": "src/lib/sagejs/modular_forms/__init__.py",
+      "sha256": "9fca9f37147f5a14dd357a7b358f5eccd83d5bcd3af3c2e591b074edbc7fc5a8"
+    },
+    {
+      "path": "src/lib/sagejs/modular_forms/eta_products.py",
+      "sha256": "ea6ad705e086eb7a8e559fa62b127e8867216bef997d8795168235a80ead4eba"
+    },
+    {
+      "path": "src/lib/sagejs/modular_forms/half_integral.py",
+      "sha256": "2931df7fe2ebaa92cf58e235fe87e607198c40d6eb349d1c09c69f9faffbb935"
+    },
+    {
+      "path": "src/lib/sagejs/modular_forms/newforms.py",
+      "sha256": "659cd3d6ba049d1e6f7ebdb668f4bbf12a1e27774bec4e27f2e9d5c107d593f9"
+    },
+    {
+      "path": "src/lib/sagejs/modular_forms/qexp.py",
+      "sha256": "b3efa0f9c6a34ffb1c4d20e7a72ef7017c4792f573b7245e755639263b7550b6"
+    },
+    {
+      "path": "src/lib/sagejs/modular_forms/qexp_algebra.py",
+      "sha256": "cbd0772590e7f90b4aa39e68728c0e29c7f074befdaf89627f68853f825f36e1"
+    },
+    {
+      "path": "test/eta-products.cjs",
+      "sha256": "c3d7213b24dc2c59ac8edcc66738d73f1571ee645360dff52c6f247444f7cbe6"
+    },
+    {
+      "path": "test/formula-hecke.cjs",
+      "sha256": "4ea9b49583c1599ae539ba9f2b5989f21866d7578ca02458b0c797bb1408515c"
+    },
+    {
+      "path": "test/half-integral-modular-forms.cjs",
+      "sha256": "d304976c4f5727e099c3f2cc667689e15d2dce472879a8c51c972c74752f67b0"
+    },
+    {
+      "path": "test/modular-qexp-source-freeze.cjs",
+      "sha256": "98a2b090a106f8b9ff539f693082293dad588e6f7d2d10395c056e325553a41c"
+    },
+    {
+      "path": "test/modular.cjs",
+      "sha256": "1931afe1daabe5814b7891967a742a030023982a2579588a154b6e0a40a2cb59"
+    },
+    {
+      "path": "test/qexp-algebra.cjs",
+      "sha256": "114f2dacda52d5a268b6da1032b8b284608dfe11c517f0ae56cd2afb93c7ccc0"
+    },
+    {
+      "path": "test/qexp-p0-correctness.cjs",
+      "sha256": "8c3772414120829e410eaf0647a689d100109fae717241294c42fffa539c85c4"
+    }
+  ],
+  "bundle_sha256": "c845923485ff8dc6ba412a6ca1eb682eb726a0974847e9aad54478728ca0b2bf"
+}

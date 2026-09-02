@@ -11,6 +11,10 @@
 
 # globals: ρσ_register_optimizer_intrinsic
 
+from operator import index as _index
+
+import sagejs.runtime as runtime
+
 # NOTE: this is only meant to aid those porting lots of Python code into pylang.
 # If you're writing a new pylang application, in most cases you probably want to
 # use JavaScript's Math module directly instead
@@ -22,6 +26,19 @@ e = Math.E
 ########################################
 # Number-theoretic and representation functions
 ########################################
+def _factorial_product(start, stop):
+    """Return the balanced exact product from `start` through `stop`."""
+    if start > stop:
+        return 1
+    if stop - start <= 32:
+        answer = 1
+        for value in range(start, stop + 1):
+            answer *= value
+        return answer
+    middle = (start + stop) // 2
+    return _factorial_product(start, middle) * _factorial_product(middle + 1, stop)
+
+
 def ceil(x):
     return Math.ceil(x)
 
@@ -42,28 +59,19 @@ def fabs(x):
 
 
 def factorial(x):
-    if Math.abs(int(x)) is not x:
-        raise ValueError("factorial() only accepts integral values")
-    factorial.cache = []
-
-    if x <= 12:
-        # normal javascript integer
-        def r(n):
-            if n is 0 or n is 1:
-                return 1
-            if not factorial.cache[n]:
-                factorial.cache[n] = r(n - 1) * n
-            return factorial.cache[n]
-    else:
-        # use BigInt to avoid overflow
-        def r(n):
-            if n is 0 or n is 1:
-                return BigInt(1)
-            if not factorial.cache[n]:
-                factorial.cache[n] = r(n - 1) * BigInt(n)
-            return factorial.cache[n]
-
-    return r(x)
+    integer = _index(x)
+    if integer < 0:
+        raise ValueError("factorial() not defined for negative values")
+    if integer > 4294967295:
+        raise OverflowError("factorial() argument is too large")
+    backend = runtime.optional_flint_backend()
+    if backend is not None:
+        native_factorial = runtime.reflect.get(backend, "factorial")
+        if runtime.jstype(native_factorial) == "function":
+            return runtime.normalize_integer(
+                runtime.reflect.apply(native_factorial, backend, [integer])
+            )
+    return runtime.normalize_integer(_factorial_product(2, integer))
 
 
 def floor(x):

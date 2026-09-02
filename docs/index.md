@@ -33,6 +33,7 @@ Start with:
 - [Split even-degree hyperelliptic Jacobians](hyperelliptic-even-degree-jacobians.md)
 - [Exploring elliptic-curve L-series](elliptic-curve-lseries.md)
 - [Exact modular-form q-expansion bases](modular-form-q-expansions.md)
+- [A guided tour from modular-form spaces to L-series input](modular-forms-tour.md)
 - [Half-integral-weight modular forms](half-integral-modular-forms.md)
 - [Brandt modules over the rational numbers](brandt-modules.md)
 - [Mestre's method of graphs and sparse modular forms](mestre-method-of-graphs.md)

@@ -167,6 +167,21 @@ const serializationOutput = path.join(
   "serialization.mjs",
 );
 const plotlyOutput = path.join(outputDirectory, "plotly.min.js");
+const katexDistribution = path.dirname(
+  require.resolve("katex/dist/katex.min.js"),
+);
+const katexOutputDirectory = path.join(outputDirectory, "katex");
+const katexFontNames = fs
+  .readdirSync(path.join(katexDistribution, "fonts"))
+  .filter((name) => name.endsWith(".woff2"))
+  .sort();
+const katexSourceFiles = [
+  path.join(katexDistribution, "katex.min.js"),
+  path.join(katexDistribution, "katex.min.css"),
+  ...katexFontNames.map((name) =>
+    path.join(katexDistribution, "fonts", name),
+  ),
+];
 const capabilityApiOutput = path.join(outputDirectory, "wasm-capability-api.mjs");
 const capabilityReportOutput = path.join(outputDirectory, "wasm-capabilities-report.json");
 const autoReceiptPolicySource = path.join(
@@ -354,6 +369,19 @@ requirePath(
 );
 
 fs.mkdirSync(outputDirectory, { recursive: true });
+if (process.env.SAGEJS_NUMERICAL_PRODUCT_ROOT) {
+  const { installNumericalProduct } = require(
+    path.join(repositoryRoot, "scripts/numerical-product.cjs")
+  );
+  installNumericalProduct({
+    root: repositoryRoot,
+    inputDirectory: process.env.SAGEJS_NUMERICAL_PRODUCT_ROOT,
+  });
+} else {
+  run(process.execPath, [
+    path.join(packageRoot, "numerical", "scripts", "build-all.cjs"),
+  ]);
+}
 // Earlier builds copied these source modules beside the bundled runtime. They
 // are no longer served or receipted; remove them explicitly when resuming a
 // package build so the physical dist directory is as clean as its manifest.
@@ -998,6 +1026,27 @@ fs.copyFileSync(
   plotlyOutput,
 );
 const plotlySource = require.resolve("plotly.js-dist-min/plotly.min.js");
+fs.mkdirSync(path.join(katexOutputDirectory, "fonts"), { recursive: true });
+fs.copyFileSync(
+  path.join(katexDistribution, "katex.min.js"),
+  path.join(katexOutputDirectory, "katex.min.js"),
+);
+const katexCss = fs
+  .readFileSync(path.join(katexDistribution, "katex.min.css"), "utf8")
+  .replace(
+    /,url\(fonts\/[^)]*\.woff\) format\("woff"\),url\(fonts\/[^)]*\.ttf\) format\("truetype"\)/g,
+    "",
+  );
+if (katexCss.includes('format("woff")') || katexCss.includes('format("truetype")')) {
+  throw new Error("KaTeX CSS contains an unexpected non-WOFF2 font source");
+}
+fs.writeFileSync(path.join(katexOutputDirectory, "katex.min.css"), katexCss);
+for (const name of katexFontNames) {
+  fs.copyFileSync(
+    path.join(katexDistribution, "fonts", name),
+    path.join(katexOutputDirectory, "fonts", name),
+  );
+}
 const wasmPackLoaderSource = path.join(
   repositoryRoot,
   "tools",
@@ -1086,9 +1135,11 @@ const receipt = writeProductionReceipt({
     ...dynamicProgramInputs,
     lazyModuleGenerator,
     lazyModuleConfig,
+    path.join(repositoryRoot, "scripts", "numerical-product.cjs"),
     conwayDataSource,
     kernelCoverageSource,
     plotlySource,
+    ...katexSourceFiles,
     wasmPackLoaderSource,
     flintDeclaration.filename,
     flintDeclaration.sourceFilename,

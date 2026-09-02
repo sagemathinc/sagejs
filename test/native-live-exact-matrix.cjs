@@ -18,6 +18,7 @@ const {
 } = require("../tools/native-kernel/c-backend.cjs");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const sourcePath = resolve(__dirname, "../bench/native_live_exact_matrix.py");
 
@@ -32,7 +33,7 @@ function runCompiledWitness(modulePath, source) {
 }
 
 test("the ordinary CPython matrix source remains the exact oracle", () => {
-  const result = spawnSync("python3", ["-c", String.raw`
+  const result = spawnSync(pythonExecutable(), ["-c", String.raw`
 import importlib.util, runpy, sys, types
 package = types.ModuleType("sagejs")
 package.__path__ = []
@@ -70,6 +71,7 @@ else:
     env: process.env,
     timeout: 120_000,
   });
+  if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 

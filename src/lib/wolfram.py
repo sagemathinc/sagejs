@@ -5,6 +5,20 @@ from typing import Any, Callable
 
 import sagejs as sage
 import sagejs.runtime as runtime
+from sagejs.numerics.frontends import (
+    FrontendDiagnostic,
+    UnsupportedFrontendError,
+    wolfram_find_root_intent,
+)
+from sagejs.numerics.frontends import (
+    create_frontend_registry as _create_numerical_registry,
+)
+from sagejs.numerics.frontends import (
+    emit_code as _emit_numerical_code,
+)
+from sagejs.numerics.frontends import (
+    execute_scalar_root_intent as _execute_numerical_intent,
+)
 
 
 def _runtime_type_name(value: Any) -> str:
@@ -117,6 +131,287 @@ Length = length
 Prime = prime
 Range = wolfram_range
 Table = table
+
+
+class WolframFindRootResult:
+    """Natural Wolfram rule display backed by a structured numerical result."""
+
+    def __init__(self, variable: str, numerical_result: Any, intent: Any) -> None:
+        self.variable = variable
+        self.numerical_result = numerical_result
+        self.frontend_intent = intent
+
+    @property
+    def value(self) -> Any:
+        return self.numerical_result.value
+
+    def to_dict(self) -> Any:
+        return {
+            "rule": {"variable": self.variable, "value": self.value},
+            "numerical_result": self.numerical_result.to_dict(),
+            "frontend_intent": self.frontend_intent.to_dict(),
+        }
+
+    def __repr__(self) -> str:
+        return "{" + self.variable + " -> " + repr(self.value) + "}"
+
+
+def find_root_intent(
+    function: Any,
+    variable: str,
+    initial: Any,
+    options: Any = None,
+    *,
+    expression: str | None = None,
+    source_text: str | None = None,
+) -> Any:
+    """Return canonical intent for a natural Wolfram `FindRoot` request."""
+
+    settings = {} if options is None else dict(options)
+    return wolfram_find_root_intent(
+        function,
+        variable,
+        initial,
+        settings,
+        expression=expression,
+        source_text=source_text,
+    )
+
+
+def find_root(
+    function: Any,
+    variable: str,
+    initial: Any,
+    options: Any = None,
+) -> WolframFindRootResult:
+    """Lower Wolfram `FindRoot` to the canonical scalar-root operation."""
+
+    intent = find_root_intent(function, variable, initial, options)
+    result = _execute_numerical_intent(intent)
+    return WolframFindRootResult(variable, result, intent)
+
+
+FindRoot = find_root
+FindRootIntent = find_root_intent
+
+
+def numerical_code(intent: Any, language: str) -> str:
+    """Emit canonical numerical intent as Sage, SciPy, MATLAB, or Wolfram."""
+
+    return _emit_numerical_code(intent, language)
+
+
+def numerical_intent(name: str, *arguments: Any, **options: Any) -> Any:
+    """Lower a supported Wolfram numerical call to canonical intent."""
+
+    return _create_numerical_registry().lower("wolfram", name, *arguments, **options)
+
+
+def numerical_result(name: str, *arguments: Any, **options: Any) -> Any:
+    """Execute a Wolfram numerical call and retain all structured evidence."""
+
+    registry = _create_numerical_registry()
+    return registry.execute(registry.lower("wolfram", name, *arguments, **options))
+
+
+def numerical_value(name: str, *arguments: Any, **options: Any) -> Any:
+    """Return the conventional Wolfram value view of a structured result."""
+
+    result = numerical_result(name, *arguments, **options)
+    _require_numerical_success(name, result)
+    return result.value if hasattr(result, "value") else result
+
+
+def _require_numerical_success(name: str, result: Any) -> None:
+    """Reject failed iterates before projecting a Wolfram-style short result."""
+
+    if hasattr(result, "success") and not result.success:
+        status = result.status if hasattr(result, "status") else "failed"
+        raise RuntimeError(name + " failed: " + str(status))
+
+
+def _unsupported_vendor_numerical(name: str, reason: str) -> Any:
+    """Fail closed when a Wolfram spelling does not preserve Wolfram semantics."""
+
+    raise UnsupportedFrontendError(
+        FrontendDiagnostic(
+            "unsupported_operation",
+            name + " is not yet qualified for the Sage.js Wolfram surface: " + reason,
+            language="wolfram",
+            details={"surface": "natural-vendor-alias", "source_name": name},
+        )
+    )
+
+
+def linear_solve(matrix: Any, right: Any, **options: Any) -> Any:
+    return numerical_value("LinearSolve", matrix, right, **options)
+
+
+def least_squares(matrix: Any, right: Any, **options: Any) -> Any:
+    return numerical_value("LeastSquares", matrix, right, **options)
+
+
+def eigensystem(matrix: Any, **options: Any) -> Any:
+    del matrix, options
+    return _unsupported_vendor_numerical(
+        "Eigensystem", "complex decoding, ordering, and vector orientation differ"
+    )
+
+
+def general_eigensystem(matrix: Any, **options: Any) -> Any:
+    del matrix, options
+    return _unsupported_vendor_numerical(
+        "GeneralEigensystem",
+        "complex decoding, ordering, and vector orientation differ",
+    )
+
+
+def singular_value_decomposition(matrix: Any, **options: Any) -> Any:
+    del matrix, options
+    return _unsupported_vendor_numerical(
+        "SingularValueDecomposition", "factor orientation and result form differ"
+    )
+
+
+def fourier(samples: Any, **options: Any) -> Any:
+    del samples, options
+    return _unsupported_vendor_numerical(
+        "Fourier", "default normalization and complex projection differ"
+    )
+
+
+def list_convolve(left: Any, right: Any, **options: Any) -> Any:
+    del left, right, options
+    return _unsupported_vendor_numerical(
+        "ListConvolve", "padding and origin conventions are not preserved"
+    )
+
+
+class WolframInterpolatingFunction:
+    """Callable Wolfram-style view over a validated approximation result."""
+
+    def __init__(self, numerical_result: Any) -> None:
+        self.numerical_result = numerical_result
+
+    def __call__(self, value: Any) -> Any:
+        return self.numerical_result.evaluate(value)
+
+    def to_dict(self) -> Any:
+        return self.numerical_result.to_dict()
+
+
+def interpolation(nodes: Any, values: Any, **options: Any) -> Any:
+    del nodes, values, options
+    return _unsupported_vendor_numerical(
+        "Interpolation", "interpolation defaults and returned function semantics differ"
+    )
+
+
+def cubic_spline_interpolation(nodes: Any, values: Any, **options: Any) -> Any:
+    del nodes, values, options
+    return _unsupported_vendor_numerical(
+        "CubicSplineInterpolation", "endpoint and returned function semantics differ"
+    )
+
+
+def n_integrate(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
+    result = numerical_result("NIntegrate", function, lower, upper, **options)
+    if not result.success:
+        raise RuntimeError("NIntegrate failed: " + result.status)
+    return result.value
+
+
+def n_minimize_scalar(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
+    del function, lower, upper, options
+    return _unsupported_vendor_numerical(
+        "NMinimizeScalar", "this is not a faithful natural Wolfram result convention"
+    )
+
+
+def find_minimum(function: Any, initial: Any, **options: Any) -> Any:
+    del function, initial, options
+    return _unsupported_vendor_numerical(
+        "FindMinimum",
+        "source variables, constraints, and rule results are not preserved",
+    )
+
+
+def find_root_system(function: Any, initial: Any, **options: Any) -> Any:
+    del function, initial, options
+    return _unsupported_vendor_numerical(
+        "FindRootSystem", "equation and rule-result semantics are not preserved"
+    )
+
+
+def nonlinear_least_squares(residuals: Any, initial: Any, **options: Any) -> Any:
+    del residuals, initial, options
+    return _unsupported_vendor_numerical(
+        "NonlinearLeastSquares", "model and parameter-rule semantics are not preserved"
+    )
+
+
+def linear_model_fit(x: Any, y: Any, **options: Any) -> Any:
+    return numerical_value("LinearModelFitData", x, y, **options)
+
+
+class WolframNDSolveValue:
+    """Callable trajectory view retaining canonical ODE evidence."""
+
+    def __init__(self, numerical_result: Any) -> None:
+        self.numerical_result = numerical_result
+
+    def __call__(self, value: Any) -> Any:
+        return self.numerical_result.trajectory(value)
+
+    def to_dict(self) -> Any:
+        return self.numerical_result.to_dict()
+
+
+def nd_solve_value(function: Any, t_span: Any, y0: Any, **options: Any) -> Any:
+    del function, t_span, y0, options
+    return _unsupported_vendor_numerical(
+        "NDSolveValue", "equation, event, and interpolating-function semantics differ"
+    )
+
+
+def sagejs_describe(data: Any, **options: Any) -> Any:
+    return numerical_value("SageJSDescribe", data, **options)
+
+
+def one_sample_t_test(data: Any, population_mean: Any = 0, **options: Any) -> Any:
+    return numerical_value("OneSampleTTest", data, population_mean, **options)
+
+
+def two_sample_t_test(first: Any, second: Any, **options: Any) -> Any:
+    return numerical_value("TwoSampleTTest", first, second, **options)
+
+
+def map_numerical(function: Any, parameters: Any, **options: Any) -> Any:
+    """Map a callback through the deterministic bounded sweep contract."""
+
+    return numerical_value("Map", function, parameters, **options)
+
+
+LinearSolve = linear_solve
+LeastSquares = least_squares
+Eigensystem = eigensystem
+GeneralEigensystem = general_eigensystem
+SingularValueDecomposition = singular_value_decomposition
+Fourier = fourier
+ListConvolve = list_convolve
+Interpolation = interpolation
+CubicSplineInterpolation = cubic_spline_interpolation
+NIntegrate = n_integrate
+NMinimizeScalar = n_minimize_scalar
+FindMinimum = find_minimum
+FindRootSystem = find_root_system
+NonlinearLeastSquares = nonlinear_least_squares
+LinearModelFitData = linear_model_fit
+NDSolveValue = nd_solve_value
+SageJSDescribe = sagejs_describe
+OneSampleTTest = one_sample_t_test
+TwoSampleTTest = two_sample_t_test
+Map = map_numerical
 
 
 class _GraphicsDirective:
@@ -335,7 +630,9 @@ def _translate_options(
                 "severity": "warning",
                 "phase": "options",
                 "layer_ids": [],
-                "message": "A frontend option could not be represented and was ignored.",
+                "message": (
+                    "A frontend option could not be represented and was ignored."
+                ),
                 "suggested_repairs": [
                     "Use the suggested Plotly-native alternative when available."
                 ],

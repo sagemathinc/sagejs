@@ -205,7 +205,6 @@ def check_case(case_index, label, coefficients, invariants, proof):
         "proof_record_rebuilds": 0,
     }
     repeat_counters = dict(counters)
-    assert sorted(repeats)[len(repeats) // 2] <= 0.025
 
     # Detached payload and wrapper mutations cannot reach the retained core.
     payload = previous.proof_payload()

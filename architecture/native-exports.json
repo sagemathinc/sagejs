@@ -3,7 +3,7 @@
   "policy": "architecture/native-export-policy.json",
   "counts": {
     "declared-ffi": 7,
-    "migrate-to-declared-ffi": 216,
+    "migrate-to-declared-ffi": 217,
     "migrate-to-typed-python": 34,
     "retain-differential-oracle": 6,
     "retain-host-adapter": 35,
@@ -2557,6 +2557,7 @@
         "src/baselib/polynomial.py",
         "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
         "src/lib/sagejs/number_fields/prime_ideals.py",
+        "src/lib/sagejs/polynomial_algorithms/ideal.py",
         "test/ffi.cjs"
       ],
       "declared_ffi": null
@@ -2592,8 +2593,9 @@
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/builtins.py",
-        "src/lib/sagejs/hyperelliptic_curves/lseries.py"
+        "src/lib/math.py",
+        "src/lib/sagejs/hyperelliptic_curves/lseries.py",
+        "test/math-factorial.cjs"
       ],
       "declared_ffi": null
     },
@@ -5141,6 +5143,7 @@
       "consumers": [
         "packages/flint-wasm/dynamic-compiler.mjs",
         "packages/flint-wasm/node-cli.mjs",
+        "packages/flint-wasm/numerical/scripts/build.cjs",
         "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs",
         "packages/flint-wasm/scripts/build.cjs",
         "packages/flint-wasm/scripts/production-receipt.cjs",
@@ -7189,7 +7192,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 1456,
+        "line": 1567,
         "lines": 2,
         "sha256": "8d18a783d45c9b4290432acae5c5b2fe43020eedce257f528ec47b26ac63cc0c",
         "calls": [
@@ -7374,7 +7377,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 2051,
+        "line": 2162,
         "lines": 78,
         "sha256": "71def36cf37d854032cba7718ec374433ca9370ff19cfef8db3854c72b5ee3e4",
         "calls": [
@@ -7411,7 +7414,7 @@
       ],
       "consumers": [
         "packages/flint/test/test.cjs",
-        "src/baselib/polynomial.py"
+        "src/lib/sagejs/polynomial_algorithms/ideal.py"
       ],
       "declared_ffi": null
     },
@@ -7425,7 +7428,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 2020,
+        "line": 2131,
         "lines": 30,
         "sha256": "391384ce6e1e2b4451d2ced106a0a8766db24c5ce6640765e79c2ca98f1be018",
         "calls": [
@@ -7455,7 +7458,7 @@
         "packages/flint-wasm/test/groebner-browser-smoke.mjs",
         "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/msolve-groebner.cjs",
-        "src/baselib/polynomial.py"
+        "src/lib/sagejs/polynomial_algorithms/ideal.py"
       ],
       "declared_ffi": null
     },
@@ -7533,7 +7536,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 1461,
+        "line": 1572,
         "lines": 30,
         "sha256": "88a6e841b33423a86509734b01181d263997637cdbf2ff44d69f91cfb92bb9e4",
         "calls": [
@@ -7562,7 +7565,8 @@
       ],
       "consumers": [
         "packages/flint/test/msolve-groebner.cjs",
-        "src/baselib/polynomial.py"
+        "src/baselib/polynomial.py",
+        "src/lib/sagejs/polynomial_algorithms/ideal.py"
       ],
       "declared_ffi": null
     },
@@ -7576,7 +7580,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 1454,
+        "line": 1565,
         "lines": 2,
         "sha256": "ac7107559514328f69395dc5bafd59456da2680066d320815aa3ce030dce4ded",
         "calls": [
@@ -7729,7 +7733,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 2130,
+        "line": 2241,
         "lines": 102,
         "sha256": "3d650c766771f3f33e9420e02f0e3ce443e6845695c3b361e62632bdc8008bce",
         "calls": [
@@ -7858,6 +7862,66 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:mpolyTerms",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyTerms",
+      "callback": "sagejs_mpoly_terms",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/multivariate.c",
+        "line": 1407,
+        "lines": 110,
+        "sha256": "fd6ca1cb569a53381e8df1b3138178db837ce3141582c39ccf061643529a8538",
+        "calls": [
+          "check_napi",
+          "fmpq_clear",
+          "fmpq_denref",
+          "fmpq_init",
+          "fmpq_mpoly_get_term_coeff_fmpq",
+          "fmpq_mpoly_get_term_exp_ui",
+          "fmpq_mpoly_length",
+          "fmpq_numref",
+          "fmpz_clear",
+          "fmpz_init",
+          "fmpz_mpoly_get_term_coeff_fmpz",
+          "fmpz_mpoly_get_term_exp_ui",
+          "fmpz_mpoly_length",
+          "fmpz_to_bigint",
+          "free",
+          "malloc",
+          "napi_create_array_with_length",
+          "napi_create_bigint_uint64",
+          "napi_create_object",
+          "napi_set_element",
+          "napi_set_named_property",
+          "napi_throw_error",
+          "napi_throw_range_error",
+          "napi_throw_type_error",
+          "nmod_mpoly_get_term_coeff_ui",
+          "nmod_mpoly_get_term_exp_ui",
+          "nmod_mpoly_length",
+          "require_arguments",
+          "unwrap_value"
+        ]
+      },
+      "family": "multivariate",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Multivariate polynomial operations adapt mature FLINT and Groebner implementations through native resources.",
+      "fallback": "Strict Python polynomial objects preserve public semantics when the native capability is absent.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:mpolyToString",
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyToString",
@@ -7915,7 +7979,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 1458,
+        "line": 1569,
         "lines": 2,
         "sha256": "7b0f9b039551dc29847dbb08055437453316e5400cbbea3420586469900c520d",
         "calls": [
@@ -13128,6 +13192,7 @@
       "consumers": [
         "bench/hyperelliptic/cross-platform/run.cjs",
         "packages/flint-wasm/lazy-modules.mjs",
+        "packages/flint-wasm/numerical/qualification/run.mjs",
         "packages/flint-wasm/test/node-kernel.test.mjs",
         "packages/flint-wasm/test/optimizer-machine-domains-browser.mjs",
         "packages/flint/scripts/build-deps.cjs",

@@ -262,12 +262,6 @@ function callableSpec(callable: unknown): CallableSpec {
   const nameValue = Reflect.get(callable, "__name__");
   const source = Function.prototype.toString.call(callable);
   const moduleGlobals = Reflect.get(callable, "__sagejs_module_globals__") ?? {};
-  const bindings = referencedBindings(
-    callable as (...args: unknown[]) => unknown,
-    source,
-    new Set([callable]),
-    moduleGlobals,
-  );
   const publishInModule =
     typeof moduleValue === "string" &&
     typeof nameValue === "string" &&
@@ -275,6 +269,18 @@ function callableSpec(callable: unknown): CallableSpec {
         callableGlobals(callable as (...args: unknown[]) => unknown),
         nameValue,
       ) === callable;
+  // Fixed baselib callables are already present in every task runtime. Once
+  // the parent has proved exact live-module identity, do not recursively copy
+  // their large generated dependency graph across the worker boundary.
+  const bindings =
+    publishInModule && moduleValue.startsWith("sagejs._baselib.")
+      ? {}
+      : referencedBindings(
+          callable as (...args: unknown[]) => unknown,
+          source,
+          new Set([callable]),
+          moduleGlobals,
+        );
   return {
     module: typeof moduleValue === "string" ? moduleValue : undefined,
     name: typeof nameValue === "string" ? nameValue : undefined,
