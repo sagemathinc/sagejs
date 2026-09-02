@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p6-external-target-evidence",
+  "title": "External MATLAB and Wolfram target evidence",
+  "lane": "numerical-multilingual",
+  "status": "active",
+  "owner": "user",
+  "objective": "Audit and correct every advertised MATLAB and Wolfram numerical emitter, add target-aware syntax and semantics evidence, and classify self-roundtrip versus external execution honestly",
+  "base_commit": "f7babecff1655cb4ed2595f44fb370b65e2b75ff",
+  "claims": [
+    "src/lib/sagejs/numerics/frontends/operations.py",
+    "src/lib/sagejs/numerics/frontends/roundtrip.py",
+    "src/lib/sagejs/numerics/frontends/scalar_root.py",
+    "test/numerics/code-roundtrip/",
+    "docs/numerical-computing/multilingual-roundtrip/",
+    "docs/numerical-computing/multilingual/support-matrix.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "tested-capability",
+    "oracles": [
+      "vendored Tree-sitter MATLAB and Wolfram grammar validation",
+      "official target-language reference fixtures",
+      "Sage.js canonical intent self-roundtrip through the shared backend"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm test:integration",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

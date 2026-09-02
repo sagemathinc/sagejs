@@ -75,7 +75,7 @@ for source_language, name, arguments, options in cases:
         assert result.frontend_intent.digest == intent.digest
         executed_cells += 1
 
-assert expected_cells == 63
+assert expected_cells == 62
 assert executed_cells == expected_cells
 
 # Prove that the trailer is not trusted as semantics. Re-sign two edited Sage
@@ -140,15 +140,15 @@ for value in (1.0, -0.0):
         )
         assert parsed.digest == floating.digest
 
-print("63 emitted numerical programs parsed and executed")
+print("62 emitted numerical programs self-round-tripped through Sage.js")
 `;
 
-test("all advertised outward programs genuinely parse and execute", () => {
+test("all advertised outward programs self-round-trip through Sage.js", () => {
   const executable = process.env.PYTHON ||
     (process.platform === "win32" ? "python" : "python3");
   assert.equal(
     run(executable, ["-I", "-c", witness]),
-    "63 emitted numerical programs parsed and executed",
+    "62 emitted numerical programs self-round-tripped through Sage.js",
   );
 });
 
@@ -163,7 +163,7 @@ test("the public audit partitions every operation/language cell", () => {
     ),
     "utf8",
   ));
-  assert.equal(ledger.schema_version, 1);
+  assert.equal(ledger.schema_version, 2);
   assert.deepEqual(ledger.languages, [
     "sage",
     "python-scipy",
@@ -174,14 +174,15 @@ test("the public audit partitions every operation/language cell", () => {
   let roundTrips = 0;
   for (const operation of ledger.operations) {
     const cells = [
-      ...operation.executable_round_trip,
+      ...operation.sagejs_self_round_trip,
       ...operation.output_only,
       ...operation.unsupported,
     ];
     assert.deepEqual([...cells].sort(), [...ledger.languages].sort());
     assert.equal(new Set(cells).size, ledger.languages.length);
     assert.deepEqual(operation.output_only, []);
-    roundTrips += operation.executable_round_trip.length;
+    roundTrips += operation.sagejs_self_round_trip.length;
   }
-  assert.equal(roundTrips, 63);
+  assert.equal(roundTrips, 62);
+  assert.deepEqual(ledger.proof.external_runtime_execution, []);
 });
