@@ -6,6 +6,13 @@ from typing import Any
 
 import sagejs.runtime as runtime
 
+_internal_symbol_class = runtime.reflect.get(runtime.global_object, "Symbol")
+_INTERNAL_CALLABLE_ALLOCATION_KEY = runtime.reflect.apply(
+    runtime.reflect.get(_internal_symbol_class, "for"),
+    runtime.undefined,
+    ["sagejs.python.callable-instance-allocation"],
+)
+
 
 def _internal_type_is(actual: Any, expected: str) -> bool:
     return runtime.strict_equal(actual, expected)
@@ -536,18 +543,48 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
                     function_member,
                 ),
             )
-        bind_methods = _internal_get_member(target_class.prototype, "__bind_methods__")
-        if _internal_type_is(runtime.jstype(bind_methods), "function"):
-            runtime.reflect.apply(bind_methods, callable_instance, [])
-        initializer = _internal_get_member(target_class.prototype, "__init__")
-        if _internal_type_is(runtime.jstype(initializer), "function"):
-            if _internal_get_member(initializer, "__python_descriptor__") is True:
-                initializer_args = [callable_instance]
-                for argument in call_args:
-                    initializer_args.append(argument)
-                runtime.reflect.apply(initializer, runtime.undefined, initializer_args)
+
+        # Run the real generated class constructor so callable instances have
+        # exactly the same ``__new__``/``__init__`` lifecycle as ordinary
+        # instances.  ``object.__new__`` normally allocates a plain object,
+        # which cannot subsequently become callable.  Publish this prepared
+        # function under a private Symbol while custom ``__new__`` executes;
+        # object.__new__ consumes it only when asked to allocate this exact
+        # class.  The Symbol is restored in ``finally`` so nested construction
+        # (including recursive construction of the same class) remains safe.
+        previous_allocation = runtime.object.getOwnPropertyDescriptor(
+            wrapper,
+            _INTERNAL_CALLABLE_ALLOCATION_KEY,
+        )
+        runtime.object.defineProperty(
+            wrapper,
+            _INTERNAL_CALLABLE_ALLOCATION_KEY,
+            {
+                "configurable": True,
+                "value": callable_instance,
+                "writable": True,
+            },
+        )
+        try:
+            constructed = runtime.reflect.apply(
+                target_class,
+                callable_instance,
+                call_args,
+            )
+        finally:
+            if previous_allocation is runtime.undefined:
+                runtime.reflect.deleteProperty(
+                    wrapper,
+                    _INTERNAL_CALLABLE_ALLOCATION_KEY,
+                )
             else:
-                runtime.reflect.apply(initializer, callable_instance, call_args)
+                runtime.object.defineProperty(
+                    wrapper,
+                    _INTERNAL_CALLABLE_ALLOCATION_KEY,
+                    previous_allocation,
+                )
+        if constructed is not callable_instance:
+            return constructed
         if (
             runtime.strict_equal(
                 _internal_get_member(callable_instance, "__sagejs_sequence_proxy__"),
@@ -733,12 +770,59 @@ def _internal_owns_function_value(receiver: Any, target_function: Any) -> bool:
     return False
 
 
+def _internal_class_instance_function(receiver: Any, target_function: Any) -> bool:
+    """Return whether a class lookup found an ordinary instance method.
+
+    A class object participates in two descriptor searches: methods in its own
+    MRO are unbound instance methods, while methods in its metaclass MRO bind
+    the class object.  JavaScript supplies the same property receiver for both
+    cases, so identify the former from the authoritative Python MRO.
+    """
+    if (
+        receiver is None
+        or receiver is runtime.undefined
+        or not _internal_has_own(receiver, "__bases__")
+    ):
+        return False
+    method = _internal_get_member(target_function, "__func__")
+    if method is runtime.undefined:
+        method = target_function
+    mro = _internal_get_member(receiver, "__mro__")
+    if not runtime.array.isArray(mro):
+        return False
+    for candidate in mro:
+        prototype = runtime.reflect.get(candidate, "prototype")
+        if prototype is runtime.undefined:
+            continue
+        for property_name in runtime.object.getOwnPropertyNames(prototype):
+            descriptor = runtime.object.getOwnPropertyDescriptor(
+                prototype,
+                property_name,
+            )
+            if (
+                descriptor is not runtime.undefined
+                and runtime.reflect.get(descriptor, "value") is method
+            ):
+                return True
+    return False
+
+
 def ρσ_interpolate_kwargs(
     receiver: Any,
     target_function: Any,
     supplied_args: Any,
 ) -> Any:
-    if _internal_owns_function_value(receiver, target_function):
+    if (
+        _internal_class_instance_function(receiver, target_function)
+        and _internal_get_member(target_function, "__self__") is runtime.undefined
+    ):
+        # Accessing ``Class.method`` applies the function descriptor but does
+        # not bind an instance.  The explicit first argument in calls such as
+        # ``Base.__init__(self, **kwargs)`` must therefore remain first rather
+        # than having the class injected ahead of it as a JavaScript receiver.
+        # A classmethod has an explicit ``__self__`` and remains bound.
+        receiver = runtime.undefined
+    elif _internal_owns_function_value(receiver, target_function):
         receiver = runtime.undefined
     if (
         not _internal_type_is(runtime.jstype(target_function), "function")
@@ -750,6 +834,14 @@ def ρσ_interpolate_kwargs(
             runtime.undefined,
             [target_function, "__call__"],
         )
+    elif _internal_has_own(target_function, "__bases__"):
+        # A class obtained through ``obj.factory`` is a callable value, not a
+        # function descriptor.  The simple-call lowering already removes the
+        # JavaScript property receiver with ``ρσ_resolve_callable``; preserve
+        # the same Python rule for the keyword/star-argument path.  Traitlets
+        # relies on this when an Instance trait calls ``self.klass(*args,
+        # **kwargs)`` to construct a dynamic default.
+        receiver = runtime.undefined
     elif (
         not _internal_get_member(target_function, "__argnames__")
         and not _internal_get_member(target_function, "__kwonly__")
@@ -837,6 +929,11 @@ def ρσ_interpolate_kwargs_legacy(
     supplied_args: Any,
 ) -> Any:
     if (
+        _internal_class_instance_function(receiver, target_function)
+        and _internal_get_member(target_function, "__self__") is runtime.undefined
+    ):
+        receiver = runtime.undefined
+    elif (
         not _internal_type_is(runtime.jstype(target_function), "function")
         or _internal_get_member(target_function, "__sagejs_callable_instance__") is True
     ):
@@ -846,6 +943,8 @@ def ρσ_interpolate_kwargs_legacy(
             runtime.undefined,
             [target_function, "__call__"],
         )
+    elif _internal_has_own(target_function, "__bases__"):
+        receiver = runtime.undefined
     elif (
         not _internal_get_member(target_function, "__argnames__")
         and _internal_get_member(target_function, "__sagejs_callable_instance_class__")

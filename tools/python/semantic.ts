@@ -48,6 +48,18 @@ export class PythonAstSemanticAnalyzer {
     const pythonBindings = new Set<string>(
       toplevel.python_scope_bindings ?? [],
     );
+    let hasStarImport = false;
+    this.walk(toplevel.body, (node) => {
+      if (
+        node instanceof this.compiler.AST_Import && node.star ||
+        node instanceof this.compiler.AST_Imports &&
+          (node.imports ?? []).some((entry) => entry.star)
+      ) {
+        hasStarImport = true;
+      }
+      return false;
+    });
+    toplevel.python_star_import = hasStarImport;
     const shellExports = (toplevel.exports ?? []).map((symbol) => symbol.name);
     this.analyzeNestedScopes(toplevel.body, []);
     const topAssignments = this.scanLocalNames(toplevel.body, false);

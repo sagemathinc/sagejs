@@ -366,6 +366,14 @@ export default async function Repl(
       importDirs,
       moduleCacheDir,
     );
+    if (options.sage) {
+      Reflect.set(
+        globalThis,
+        "__sagejs_parse_sage__",
+        (source: string, parserOptions: Record<string, any>) =>
+          pythonFrontend!.parse(source, parserOptions),
+      );
+    }
     runInThisContext('var __name__ = "__main__"; show_js=false;');
     contextInitialized = true;
   }

@@ -5947,7 +5947,7 @@ class Matrix(sage.Element):
         return nonzero / (self.nrows() * self.ncols())
 
     def is_sparse(self) -> bool:
-        return False
+        return bool(self._parent._sparse)
 
     def rref(self, algorithm: Any = None) -> Matrix:
         if algorithm not in [None, "m4ri", "fflas", "flint", "modp"]:
@@ -9373,7 +9373,8 @@ def matrix(*args: Any, **options: Any) -> Matrix:
     ```
     """
     sparse_value = runtime.reflect.get(options, "sparse")
-    sparse = False if sparse_value is runtime.undefined else bool(sparse_value)
+    sparse_specified = sparse_value is not runtime.undefined
+    sparse = False if not sparse_specified else bool(sparse_value)
     runtime.reflect.deleteProperty(options, "sparse")
     if len(runtime.object.keys(options)):
         raise TypeError("unsupported matrix() option")
@@ -9386,8 +9387,14 @@ def matrix(*args: Any, **options: Any) -> Matrix:
     if len(values) == 1:
         if isinstance(values[0], Matrix):
             source = values[0]
-            return source if base is None else source.change_ring(base)
-        if base is not None and runtime.is_exact_integer(values[0]):
+            if not sparse_specified:
+                return source if base is None else source.change_ring(base)
+            rows = source.nrows()
+            cols = source.ncols()
+            entries = source.list()
+            if base is None:
+                base = source.base_ring()
+        elif base is not None and runtime.is_exact_integer(values[0]):
             rows = int(values[0])
             cols = rows
             entries = [0 for _ in range(rows * cols)]
@@ -9677,7 +9684,11 @@ def zero_matrix(
     return MatrixSpace(base, rows, cols)(0)
 
 
-def identity_matrix(base: sage.Parent, size: int) -> Matrix:
+def identity_matrix(base: Any, size: int | None = None) -> Matrix:
+    """Return an identity matrix, defaulting to `ZZ` when only size is given."""
+    if size is None:
+        size = int(base)
+        base = sage.ZZ
     base = _canonical_base(base)
     size = int(size)
     if size < 0:

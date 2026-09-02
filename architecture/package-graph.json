@@ -44,7 +44,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 832000,
+      "max_source_bytes": 850000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -55,6 +55,7 @@
         "src/baselib/containers.py",
         "src/baselib/errors.py",
         "src/baselib/internal.py",
+        "src/baselib/interacts.py",
         "src/baselib/itertools.py",
         "src/baselib/runtime_primitives.py",
         "src/baselib/sagejs_bootstrap.py",
@@ -782,7 +783,7 @@
       "modules": [
         "_dummy_thread", "_thread", "abc", "aes", "annotationlib", "argparse", "array", "ast", "atexit", "base64", "bdb", "bisect", "calendar", "cmath", "codecs", "collections", "colorsys", "contextlib", "copy", "decimal",
         "csv", "dataclasses", "datetime", "elementmaker", "encodings", "enum", "errno", "fnmatch", "functools", "gc",
-        "genericpath", "gettext", "glob", "gzip", "hashlib", "heapq", "html", "inspect", "itertools", "linecache", "locale", "logging", "marshal",
+        "genericpath", "gettext", "glob", "gzip", "hashlib", "heapq", "html", "inspect", "itertools", "linecache", "locale", "logging", "marshal", "mimetypes",
         "http", "importlib", "io", "js", "json", "keyword", "math", "multiprocessing", "ntpath", "numbers",
         "operator", "os", "pathlib", "pdb", "pickle", "platform", "posixpath", "pprint", "pythonize", "random",
         "re", "reprlib", "sage", "sagejs_serialization", "shlex", "shutil", "socket", "string",
@@ -798,7 +799,7 @@
         "src/lib/fnmatch.py", "src/lib/functools.py", "src/lib/gc.py",
         "src/lib/genericpath.py", "src/lib/gettext.py", "src/lib/glob.py",
         "src/lib/gzip.py", "src/lib/hashlib.py", "src/lib/heapq.py",
-        "src/lib/inspect.py", "src/lib/io.py", "src/lib/itertools.py", "src/lib/js.py", "src/lib/json.py", "src/lib/keyword.py", "src/lib/linecache.py", "src/lib/locale.py", "src/lib/marshal.py", "src/lib/math.py",
+        "src/lib/inspect.py", "src/lib/io.py", "src/lib/itertools.py", "src/lib/js.py", "src/lib/json.py", "src/lib/keyword.py", "src/lib/linecache.py", "src/lib/locale.py", "src/lib/marshal.py", "src/lib/math.py", "src/lib/mimetypes.py",
         "src/lib/multiprocessing.py", "src/lib/ntpath.py", "src/lib/numbers.py", "src/lib/operator.py",
         "src/lib/os.py", "src/lib/pathlib.py", "src/lib/pdb.py", "src/lib/pickle.py", "src/lib/platform.py", "src/lib/posixpath.py", "src/lib/pprint.py",
         "src/lib/pythonize.py", "src/lib/random.py", "src/lib/re.py", "src/lib/reprlib.py",
@@ -814,13 +815,19 @@
     },
     {
       "id": "widget-runtime",
-      "layer": 2,
+      "layer": 5,
       "startup": "lazy",
       "max_source_bytes": 1200000,
-      "depends_on": ["core-runtime", "python-stdlib"],
-      "modules": ["IPython", "comm", "traitlets"],
-      "files": [],
-      "prefixes": ["src/lib/IPython/", "src/lib/comm/", "src/lib/sagejs/widgets/", "src/lib/traitlets/"]
+      "depends_on": ["core-runtime", "python-stdlib", "numeric-compat"],
+      "modules": ["IPython", "comm", "ipywidgets", "sage.interacts", "traitlets"],
+      "files": [
+        "src/lib/sage/interacts/__init__.py",
+        "src/lib/sage/interacts/all.py",
+        "src/lib/sage/interacts/calculus.py",
+        "src/lib/sage/interacts/library.py",
+        "src/lib/sage/interacts/statistics.py"
+      ],
+      "prefixes": ["src/lib/IPython/", "src/lib/comm/", "src/lib/ipywidgets/", "src/lib/sagejs/interacts/", "src/lib/sagejs/widgets/", "src/lib/traitlets/"]
     },
     {
       "id": "numeric-compat",

@@ -1219,7 +1219,10 @@ test("hygienic star imports stay inside the Python module", async () => {
   const frontend = await createPythonCompilerFrontend(compiler, "python");
   try {
     const ast = frontend.parse(
-      "from exported_names import *\n",
+      "from exported_names import *\n" +
+        "observed = exported_value\n" +
+        "def read_later():\n" +
+        "    return exported_value\n",
       { ...parserOptions, module_id: "star_consumer" },
     );
     const output = new compiler.OutputStream(outputOptions);
@@ -1230,6 +1233,11 @@ test("hygienic star imports stay inside the Python module", async () => {
       /\u03c1\u03c3_modules\["star_consumer"\]\[\u03c1\u03c3_star_name\] =/,
     );
     assert.doesNotMatch(javascript, /globalThis\[\u03c1\u03c3_star_name\]/);
+    assert.equal(ast.python_star_import, true);
+    assert.match(
+      javascript,
+      /\u03c1\u03c3_resolve_module_name\(void 0,\s*"exported_value",\s*\u03c1\u03c3_modules\["star_consumer"\]/,
+    );
   } finally {
     frontend.close();
   }

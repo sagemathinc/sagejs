@@ -300,6 +300,7 @@ self.onmessage = async ({ data }) => {
       dynamicCompiler = createBrowserDynamicCompiler(
         nextCompiler,
         nextDynamicFrontend,
+        nextFrontend,
       );
     } else if (data.type === "compile") {
       if (!compiler) {

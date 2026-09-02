@@ -965,6 +965,7 @@ def generate_code():
         check_unbound = False
         class_namespace = None
         module_name_fallback = False
+        star_import_fallback = False
         module_scope = None
         assignment_target = output.assignment_target or is_assignment_target()
         if is_node_type(self, AST_SymbolRef) and (
@@ -1049,6 +1050,20 @@ def generate_code():
                     if is_node_type(candidate, AST_Toplevel):
                         module_scope = candidate
                         break
+            if (
+                module_scope
+                and module_scope.python_star_import
+                and self.python_identifier
+                and not python_binding
+                and not assignment_target
+                and not class_namespace
+            ):
+                # A star import's bindings are only known after evaluating
+                # the source module's live `__all__` or namespace. Resolve
+                # later module globals through the receiving module before
+                # builtins, without publishing them on `globalThis`.
+                module_name_fallback = True
+                star_import_fallback = True
         if class_namespace:
             output.print("(")
             class_namespace.name.print(output)
@@ -1076,7 +1091,9 @@ def generate_code():
             output.print("ρσ_check_unbound(")
         if module_name_fallback:
             output.print("ρσ_resolve_module_name(")
-        if (
+        if star_import_fallback:
+            output.print("void 0")
+        elif (
             output.options.reuse_main_module
             and check_unbound
             and self.python_identifier

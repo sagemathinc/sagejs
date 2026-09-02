@@ -148,7 +148,7 @@ export class SageSession {
         return;
       }
       if (data.type === "ready") {
-        if (data.protocol !== 2) {
+        if (data.protocol !== 3) {
           this.readyReject(
             new Error(`unsupported Sage.js worker protocol ${data.protocol}`),
           );
@@ -166,6 +166,16 @@ export class SageSession {
         return;
       }
 
+      if (data.type === "output-event") {
+        this.pending.get(data.id)?.onEvent?.(data.event);
+        this.emit("output", data.event, { requestId: data.id });
+        return;
+      }
+      if (data.type === "comm-event") {
+        this.pending.get(data.id)?.onComm?.(data.event);
+        this.emit("comm", data.event, { requestId: data.id });
+        return;
+      }
       const pending = this.pending.get(data.id);
       if (!pending) return;
       if (data.type === "stdout") {
@@ -185,6 +195,10 @@ export class SageSession {
       this.pending.delete(data.id);
       if (pending.timer) clearTimeout(pending.timer);
       if (data.ok) {
+        if (pending.kind !== "evaluate") {
+          pending.resolve(data.result);
+          return;
+        }
         const { saveRequests = [], ...result } = data.result;
         void (async () => {
           if (saveRequests.length && !this.onGraphicsSave) {
@@ -222,7 +236,7 @@ export class SageSession {
     worker.postMessage(
       {
         type: "initialize",
-        protocol: 2,
+        protocol: 3,
         compiler: this.resources.compiler,
         baselib: this.resources.baselib,
         standardLibrary: this.resources.standardLibrary,
@@ -268,6 +282,8 @@ export class SageSession {
       timeout,
       onOutput,
       onError,
+      onEvent,
+      onComm,
     } = {},
   ) {
     if (this.closed) throw new SageSessionClosedError();
@@ -287,10 +303,13 @@ export class SageSession {
 
     return new Promise((resolve, reject) => {
       const pending = {
+        kind: "evaluate",
         output: "",
         errorOutput: "",
         onOutput,
         onError,
+        onEvent,
+        onComm,
         resolve,
         reject,
       };
@@ -310,12 +329,47 @@ export class SageSession {
         id,
         source,
         filename,
+        parentId: `browser-${id}`,
       });
     });
   }
 
   eval(source, options) {
     return this.evaluate(source, options);
+  }
+
+  async request(
+    type,
+    fields = {},
+    { onOutput, onError, onEvent, onComm } = {},
+  ) {
+    if (this.closed) throw new SageSessionClosedError();
+    await this.ready();
+    const channel = this.channel;
+    if (!channel) throw new SageSessionClosedError();
+    const id = ++this.nextId;
+    return new Promise((resolve, reject) => {
+      this.pending.set(id, {
+        kind: type,
+        output: "",
+        errorOutput: "",
+        onOutput,
+        onError,
+        onEvent,
+        onComm,
+        resolve,
+        reject,
+      });
+      channel.postMessage({ type, id, ...fields });
+    });
+  }
+
+  comm(event, handlers) {
+    return this.request("comm", { event }, handlers);
+  }
+
+  commInfo(targetName) {
+    return this.request("commInfo", { targetName });
   }
 
   async replaceWorker(error, waitForReady = true) {

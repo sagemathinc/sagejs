@@ -6311,11 +6311,12 @@ def show(
     **options: Any,
 ) -> Any:
     r"""
-    Return `value` for rich display, combining graphics when requested.
+    Display `value`, combining graphics when requested.
 
-    Multiple graphics are added before display.  Notebook kernels render the
-    returned semantic object using Plotly-compatible HTML/data, without
-    requiring a Jupyter extension.
+    Multiple graphics are added before display. Notebook and browser kernels
+    publish the semantic object through their rich-display channel; text-only
+    processes print its ordinary representation. This also works from inside
+    callbacks, where returning the object would otherwise discard it.
     """
 
     answer = value
@@ -6323,7 +6324,16 @@ def show(
         answer = answer + other
     if len(options) and hasattr(answer, "set_extra_kwds"):
         answer.set_extra_kwds(options)
-    return answer
+    publish = runtime.reflect.get(runtime.global_object, "__sagejs_display_publish__")
+    if runtime.jstype(publish) == "function":
+        runtime.reflect.apply(
+            publish,
+            runtime.undefined,
+            [answer, None, False],
+        )
+    else:
+        print(answer)
+    return None
 
 
 def list_plot(

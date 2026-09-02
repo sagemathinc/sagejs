@@ -80,6 +80,11 @@ export interface SageEvaluationResult {
   durationMs: number;
   /** Optional rich representation of the final value. */
   display?: SageDisplayData;
+  /** Standard Python/Jupyter MIME bundle for the final expression. */
+  mimeBundle?: {
+    data: Record<string, unknown>;
+    metadata: Record<string, unknown>;
+  };
   events: SageOutputEvent[];
   commEvents: SageCommEvent[];
   /** Compiler-verified static optimizer decisions for this evaluation. */
