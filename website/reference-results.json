@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 216,
+    "pass": 213,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -161,7 +161,7 @@
       "actual": "True\n"
     },
     {
-      "id": "src/baselib/modular.py#fcae88bf1b380c12-e3b0c44298fc1c14~2",
+      "id": "src/baselib/modular.py#fcae88bf1b380c12-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
@@ -174,21 +174,6 @@
       "id": "src/baselib/modular.py#a58cba3a14881509-ad57366865126e55",
       "status": "pass",
       "actual": "100\n"
-    },
-    {
-      "id": "src/baselib/modular.py#fcae88bf1b380c12-e3b0c44298fc1c14",
-      "status": "pass",
-      "actual": ""
-    },
-    {
-      "id": "src/baselib/modular.py#8399bc92cd631c46-e3b0c44298fc1c14",
-      "status": "pass",
-      "actual": ""
-    },
-    {
-      "id": "src/baselib/modular.py#337f75dac4f3b63e-a51e5fc544a1400b",
-      "status": "pass",
-      "actual": "1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)\n"
     },
     {
       "id": "src/baselib/elliptic_curves.py#d74ccc1fa7a76510-e3b0c44298fc1c14~2",
