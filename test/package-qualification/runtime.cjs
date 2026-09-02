@@ -757,3 +757,42 @@ test("the installed Node hook is isolated, machine-readable, and stdin-safe", ()
     /unsupported qualification language/,
   );
 });
+
+test(
+  "relocated SEA language witnesses can emit their lowered Sage source",
+  { skip: process.platform === "win32" },
+  () => {
+    const temporary = mkdtempSync(join(tmpdir(), "sagejs-relocated-sea-language-"));
+    try {
+      const executable = join(temporary, "mock-sea");
+      writeFileSync(
+        executable,
+        [
+          "#!/usr/bin/env node",
+          '"use strict";',
+          'const { readFileSync } = require("node:fs");',
+          "const args = process.argv.slice(2);",
+          "process.stdout.write(JSON.stringify({",
+          "  args: args.slice(0, -1),",
+          '  source: readFileSync(args.at(-1), "utf8"),',
+          "}));",
+          "",
+        ].join("\n"),
+      );
+      chmodSync(executable, 0o755);
+      const result = runRelocatedSeaLanguage(
+        { directory: temporary, executable },
+        "integral(@(x) x^2,0,1)",
+        "matlab",
+        { emitSage: true },
+      );
+      assert.equal(result.status, 0, result.stderr);
+      assert.deepEqual(JSON.parse(result.stdout), {
+        args: ["--emit-sage", "--matlab"],
+        source: "integral(@(x) x^2,0,1)",
+      });
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  },
+);

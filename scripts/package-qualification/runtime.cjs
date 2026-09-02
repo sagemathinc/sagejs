@@ -714,6 +714,7 @@ function runRelocatedSeaLanguage(context, source, language, options = {}) {
   );
   try {
     const args = [];
+    if (options.emitSage === true) args.push("--emit-sage");
     if (configuration.argument) args.push(configuration.argument);
     args.push(program);
     return runProcess(context.executable, args, {
