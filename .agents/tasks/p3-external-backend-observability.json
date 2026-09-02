@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p3-external-backend-observability",
+  "title": "P3 external backend observability",
+  "lane": "numerical-optimization",
+  "status": "active",
+  "owner": "user",
+  "objective": "Retain bounded deterministic semantic progress evidence from real cminpack and qualified NLopt callbacks, expose honest plotting and animation, and independently diagnose cminpack curve-fit covariance and rank",
+  "base_commit": "cb68b36647e7ebc7bb979b379b99846860aff269",
+  "claims": [
+    "packages/flint-wasm/numerical/index.mjs",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt",
+    "src/lib/sagejs/numerics/optimization/least_squares.py",
+    "src/lib/sagejs/numerics/optimization/multivariate.py",
+    "src/lib/sagejs/numerics/optimization/visualization.py",
+    "src/lib/sagejs/numerics/optimization/planning.py",
+    "test/numerical-p3-backends/lm-wasm.test.mjs",
+    "test/numerical-p3-nlopt/backend.test.mjs",
+    "test/numerics/optimization/external-backend-observability.cjs",
+    "test/browser-numerics-external-backend-observability.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Independent objective, residual, Jacobian, covariance, rank, and trace-budget checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

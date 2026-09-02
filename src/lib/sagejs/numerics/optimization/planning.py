@@ -31,6 +31,18 @@ def _cminpack_record(method: str, operation: str) -> dict[str, Any]:
         if method == "cminpack-lmder"
         else ["forward_finite_difference"],
         "validation": ["independent_residual", "independent_stationarity"],
+        "progress_evidence": {
+            "source": "cminpack_residual_callback",
+            "semantics": "evaluated_points_and_running_incumbent_not_iterations",
+            "backend_iterations_available": False,
+            "post_hoc_fabrication": False,
+            "retention": "bounded_by_trace_policy_without_backend_buffering",
+        },
+        "terminal_parameter_diagnostics": {
+            "curve_fit": "independently_recomputed_terminal_jacobian",
+            "covariance": "available_only_for_resolved_full_rank_jacobian",
+            "rank_deficiency": "fails_closed",
+        },
         "views": _view_contract(operation, "none"),
         "max_dimension": MAX_DENSE_DIMENSION,
         "max_residual_dimension": 16_384,
@@ -57,6 +69,13 @@ def _nlopt_record(method: str) -> dict[str, Any]:
         ],
         "truth_level": "heuristic",
         "optimality": "local_and_global_not_certified",
+        "progress_evidence": {
+            "source": "nlopt_objective_callback",
+            "semantics": "evaluated_points_and_running_incumbent_not_iterations",
+            "backend_iterations_available": False,
+            "post_hoc_fabrication": False,
+            "retention": "bounded_by_trace_policy_without_backend_buffering",
+        },
         "max_dimension": 32,
         "validation_envelope": {
             "active_bounds": "strict_complementarity_or_indeterminate",

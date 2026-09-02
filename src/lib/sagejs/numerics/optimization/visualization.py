@@ -927,6 +927,11 @@ def optimization_animation(result: OptimizationResult) -> PlotAnimation:
         if len(retained_objectives) > 0:
             scalar_reference_y = min(retained_objectives)
     frames: list[AnimationFrame] = []
+    external_progress = any(
+        record.get("progress_basis")
+        in ("cminpack_residual_callback", "nlopt_objective_callback")
+        for record in progress
+    )
     for index in range(len(records)):
         prefix = records[: index + 1]
         final_frame = index == len(records) - 1
@@ -957,12 +962,21 @@ def optimization_animation(result: OptimizationResult) -> PlotAnimation:
                 axis_ranges=axis_ranges,
             )
         trace_iteration = records[index].get("trace_iteration")
-        label = (
-            "returned result"
-            if final_frame
-            else "iteration "
-            + str(trace_iteration if trace_iteration is not None else index)
-        )
+        progress_basis = records[index].get("progress_basis")
+        if final_frame:
+            label = "returned result"
+        elif progress_basis == "nlopt_objective_callback":
+            label = "objective callback " + str(
+                records[index].get("backend_callback_ordinal", index)
+            )
+        elif progress_basis == "cminpack_residual_callback":
+            label = "residual callback " + str(
+                records[index].get("backend_callback_ordinal", index)
+            )
+        else:
+            label = "iteration " + str(
+                trace_iteration if trace_iteration is not None else index
+            )
         frames.append(
             AnimationFrame(
                 stable_frame_id(index),
@@ -989,7 +1003,7 @@ def optimization_animation(result: OptimizationResult) -> PlotAnimation:
             pause=True,
             slider=True,
             from_current=True,
-            slider_prefix="Iteration: ",
+            slider_prefix="Progress: " if external_progress else "Iteration: ",
         ),
         limits=AnimationResourceLimits(
             max_frames=MAX_OPTIMIZATION_ANIMATION_FRAMES,
@@ -1006,6 +1020,11 @@ def optimization_animation(result: OptimizationResult) -> PlotAnimation:
             "retained_progress_states": len(progress),
             "animation_decimated": len(progress) < original_progress_count,
             "callback_replayed": False,
+            "progress_semantics": (
+                "external_callback_observations"
+                if external_progress
+                else "algorithm_iterations"
+            ),
             "fixed_axes": axis_ranges[0] is not None and axis_ranges[1] is not None,
             "static_fallback": {
                 "kind": "plot-spec",

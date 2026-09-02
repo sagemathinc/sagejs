@@ -520,8 +520,29 @@ def _nlopt_minimize(
     except Exception:
         raise StopExecution("backend_failure", "nlopt_backend_unavailable") from None
 
+    progress_callbacks = [0]
+    incumbent_objective = [float("inf")]
+
     def objective_callback(candidate: list[float]) -> float:
-        return _objective(execution, candidate)
+        objective_value = _objective(execution, candidate)
+        progress_callbacks[0] += 1
+        accepted = objective_value < incumbent_objective[0]
+        if accepted:
+            incumbent_objective[0] = objective_value
+        record_progress(
+            execution,
+            progress_callbacks[0],
+            accepted=accepted,
+            data={
+                "point": [float(item) for item in candidate],
+                "objective": objective_value,
+                "incumbent_objective": incumbent_objective[0],
+                "progress_basis": "nlopt_objective_callback",
+                "backend_callback_ordinal": progress_callbacks[0],
+                "backend_iteration_available": False,
+            },
+        )
+        return objective_value
 
     def inequality_callback(candidate: list[float]) -> list[float]:
         # Public `ineq` follows SciPy (`fun(x) >= 0`); NLopt consumes `g(x) <= 0`.
@@ -715,6 +736,7 @@ def _nlopt_minimize(
             or equality_callbacks != 0
             or backend_evaluations != objective_callbacks
             or callback_count > backend_evaluation_budget
+            or progress_callbacks[0] != public_backend_callbacks
         )
         if host_stopped_before_callback:
             # The C callback and evaluation counters include the final attempt;
@@ -772,6 +794,8 @@ def _nlopt_minimize(
         "backend_inequality_callbacks": inequality_callbacks,
         "backend_equality_callbacks": equality_callbacks,
         "backend_callback_count": callback_count,
+        "backend_progress_observations": progress_callbacks[0],
+        "backend_progress_basis": "nlopt_objective_callback",
         "backend_derivative_callbacks": 0,
         "backend_iterations_available": False,
         "backend_evaluation_budget": backend_evaluation_budget,

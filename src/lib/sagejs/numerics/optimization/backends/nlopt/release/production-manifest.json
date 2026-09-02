@@ -24,8 +24,8 @@
     "src/lib/sagejs/numerics/optimization/backends/nlopt/index.mjs": "e5e4e697cb5b68dd8020a465073c760abcc6668b6f536fbd915b6b5bde0e4315",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/build.cjs": "c071aa3a421fd54bc159bb84ce5fc9549a78973241af1f0f8fca8c0e4d77cb05",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c": "0c876a9606177a26d0c8c8baf09a2f567516de201708397be508e9e46103ba03",
-    "src/lib/sagejs/numerics/optimization/multivariate.py": "3381fe66260101d5bc2c8aba1196437d74b5002cfe05a789b0b2800184c7b0f1",
-    "src/lib/sagejs/numerics/optimization/planning.py": "eabfa5fc426e21c0087c28cefbf90ecee267aece0f378041f18d9a882332cf8c",
+    "src/lib/sagejs/numerics/optimization/multivariate.py": "39b54c4b030f304354e968a4ddf9f79f3d30abf1d784eba481e7faa0b1ecea2c",
+    "src/lib/sagejs/numerics/optimization/planning.py": "f5e178cca4930e5f831b878558e315c9acdb466a78dd03688179ce958517c22e",
     "src/lib/sagejs/numerics/optimization/validation.py": "e04786d1ddad8fad902fa237f9f0457c2e142d71fde0f2f2b8c77960db1ce85b",
     "test/numerical-p3-backends/browser-resource.test.mjs": "fb2b4a1eb0431cf18ebed85e2cbdd4e3eae65e8d0e9d324055f0d8e479885d34",
     "test/numerical-p3-nlopt/abi-fuzz.test.mjs": "91bb9edb5561cf0d2483b644620f6266ed3b052ad2257d88f2d2d538e71db875",
@@ -40,7 +40,7 @@
   },
   "public_semantics_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "f77bed8685dca49f50389a9a2b5ac618cae6d56101dc5c0a47668a368295b2ef"
+    "sha256": "78213bdfb270d8f76c07fdc83a2db5e1afa9709599aa5fd15dd2cb18e2fd6926"
   },
   "qualification_tooling_files": {
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs": "f99aed93937473cd43c6ea7150b641c98230fbbe4c1a4bf8f5a99c90169563c5",
@@ -84,35 +84,12 @@
   },
   "selection": "explicit-only",
   "qualification": {
-    "status": "qualified",
-    "candidate_commit": "100d2165ef00a69ff594d72bc82b9617c9c6567a",
-    "summary_sha256": "82509c016f339e822193cf259517da1f9b845d148757b7447a003eeb53158e82",
-    "summary_bytes": 121714,
-    "public_semantics_bundle_sha256": "f77bed8685dca49f50389a9a2b5ac618cae6d56101dc5c0a47668a368295b2ef",
+    "status": "pending_source_current_requalification",
+    "reason": "Public callback-trace semantics changed; the prior four-platform qualification remains historical evidence only.",
+    "public_semantics_bundle_sha256": "78213bdfb270d8f76c07fdc83a2db5e1afa9709599aa5fd15dd2cb18e2fd6926",
     "qualification_tooling_bundle_sha256": "230de6626433dcdb84ace28ea3f96a9889cd59c794ef7e3873d7fb8fbc6da716",
     "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
-    "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
-    "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
-    "artifact_sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
-    "artifact_bytes": 72592,
-    "case_execution_sha256": "570ef01a436655a3870d5bcfd567ee09745566656f23677fea39f98fffa089fd",
-    "campaign_challenge": "fd96b60fbe044f4658b0a819b094105486b18ebe08ee45a94e89d5f0e09dfa1b",
-    "evidence_receipts_sha256": {
-      "sanitizer": "18d05dccc172f3fa92e6680309bcc9f0042c51c140e172f3b12effa4117bfce8",
-      "destructive-wasm": "49a63dd86390059ce5529dbc01a26a62acc6175447c7c51ba99ec4df0636eeb4",
-      "browser-lifecycle": "152d5cd64ed37354458406f303554e7220a181d3c4cfe5b63b4cc179b69999e7",
-      "public-integration": "2d6c4ddf0f74696a5d8316638ebd89574c7de637d0d67d767576f084e9c55ffa",
-      "resource-corruption": "557ec62b23ea00eee13fc6ba6831115fcd655ccc17debdeeaab876095d3962d3",
-      "relocation": "a769f06b6d80e8814f49886a40e4f079b78da4101b9c19efe948a8cd9b9bbda9",
-      "sea": "800151bbbef6539a9878a146b3c6159ccca6203d7577c81086b8b7f80467ff17"
-    },
-    "portable_receipts_sha256": {
-      "linux-x64": "570ef01a436655a3870d5bcfd567ee09745566656f23677fea39f98fffa089fd",
-      "linux-arm64": "bba470af74e1f53b94e38326f808023c8de973859b5d0ea228a66f2ebb317d42",
-      "macos-arm64": "d73058217f717aa0e35d9df6d8af3a9ee1d51eeca323a738964c52723c053ca7",
-      "windows-x64": "1cfeb9125104a807bf6a2d49f8c72748b8501a1c0c0e1871baa1575d8a506c60"
-    },
-    "historical_cobyla_status": "excluded-not-qualified"
+    "invalidated_summary": "qualification-v1.json"
   }
 }

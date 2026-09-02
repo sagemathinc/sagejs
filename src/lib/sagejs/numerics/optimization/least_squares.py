@@ -146,26 +146,38 @@ def _jacobian(
 
 
 def _parameter_diagnostics(
-    jacobian: Sequence[Sequence[float]], residual: Sequence[float]
+    jacobian: Sequence[Sequence[float]],
+    residual: Sequence[float],
+    *,
+    retain_covariance: bool = False,
 ) -> dict[str, Any]:
     normal, _, scale, resolved = scaled_normal_equations(jacobian, residual)
     dimension = len(normal)
     if not resolved:
-        return {
+        answer: dict[str, Any] = {
             "covariance_available": False,
             "rank_deficient_or_ill_conditioned": True,
             "standard_errors": [None for _ in range(dimension)],
             "normal_matrix_condition_estimate": None,
             "reason": "Jacobian and residual scales exceed the binary64 ratio envelope",
         }
+        if retain_covariance:
+            answer["rank_deficient"] = None
+            answer["covariance"] = None
+        return answer
     inverse = inverse_matrix(normal)
     if inverse is None:
-        return {
+        answer = {
             "covariance_available": False,
             "rank_deficient_or_ill_conditioned": True,
             "standard_errors": [None for _ in range(dimension)],
             "normal_matrix_condition_estimate": None,
         }
+        if retain_covariance:
+            answer["rank_deficient"] = True
+            answer["covariance"] = None
+            answer["reason"] = "terminal Jacobian is rank deficient"
+        return answer
     raw_condition_estimate = matrix_condition_1(normal, inverse)
     condition_estimate = (
         raw_condition_estimate if math.isfinite(raw_condition_estimate) else None
@@ -180,13 +192,17 @@ def _parameter_diagnostics(
     )
     normalized_squared_norm = finite_squared_norm(normalized_residual)
     if normalized_squared_norm is None:
-        return {
+        answer = {
             "covariance_available": False,
             "rank_deficient_or_ill_conditioned": True,
             "standard_errors": [None for _ in range(dimension)],
             "normal_matrix_condition_estimate": condition_estimate,
             "reason": "residual variance is outside the binary64 ratio envelope",
         }
+        if retain_covariance:
+            answer["rank_deficient"] = False
+            answer["covariance"] = None
+        return answer
     variance = normalized_squared_norm / degrees_of_freedom
     standard_errors: list[float | None] = []
     for index in range(dimension):
@@ -197,12 +213,19 @@ def _parameter_diagnostics(
             if standard_error is not None and math.isfinite(standard_error)
             else None
         )
-    return {
+    answer = {
         "covariance_available": True,
         "rank_deficient_or_ill_conditioned": ill_conditioned,
         "standard_errors": standard_errors,
         "normal_matrix_condition_estimate": condition_estimate,
     }
+    if retain_covariance:
+        answer["rank_deficient"] = False
+        answer["covariance"] = [
+            [inverse[row][column] * variance for column in range(dimension)]
+            for row in range(dimension)
+        ]
+    return answer
 
 
 def _residual_metrics(residual: Sequence[float]) -> dict[str, Any]:
@@ -415,8 +438,39 @@ def _cminpack_least_squares(
     except Exception:
         raise StopExecution("backend_failure", "cminpack_backend_unavailable") from None
 
+    progress_callbacks = [0]
+    incumbent_residual: list[tuple[float, float] | None] = [None]
+
     def residual_callback(candidate: list[float]) -> list[float]:
-        return _residual(execution, candidate, residual_count)
+        current_residual = _residual(execution, candidate, residual_count)
+        progress_callbacks[0] += 1
+        if problem.trace_policy.level != "none":
+            representation = scaled_sum_of_squares(current_residual)
+            accepted = incumbent_residual[0] is None or sum_squares_less(
+                representation, incumbent_residual[0]
+            )
+            if accepted:
+                incumbent_residual[0] = representation
+            trace_data: dict[str, Any] = {
+                "point": [float(item) for item in candidate],
+                "progress_basis": "cminpack_residual_callback",
+                "backend_callback_ordinal": progress_callbacks[0],
+                "backend_iteration_available": False,
+                **_residual_metrics(current_residual),
+            }
+            if problem.operation == "curve_fit" and residual_count <= 256:
+                fitted_values = _retained_fitted_values(
+                    problem.initial_data.get("fit_y"), current_residual
+                )
+                if fitted_values is not None:
+                    trace_data["fitted_values"] = fitted_values
+            record_progress(
+                execution,
+                progress_callbacks[0],
+                accepted=accepted,
+                data=trace_data,
+            )
+        return current_residual
 
     def jacobian_callback(candidate: list[float]) -> list[list[float]]:
         return _jacobian(execution, candidate, residual_count)
@@ -520,19 +574,44 @@ def _cminpack_least_squares(
         "backend_residual_evaluations": backend_residual_evaluations,
         "backend_jacobian_evaluations": backend_jacobian_evaluations,
         "backend_callback_evaluations": callback_evaluations,
+        "backend_progress_observations": progress_callbacks[0],
+        "backend_progress_basis": "cminpack_residual_callback",
         "method_identity": returned_method,
         "backend_identity": returned_backend,
     }
     if residual is not None:
         payload.update(_residual_metrics(residual))
         payload["objective"] = half_squared_norm(residual)
-        payload["parameter_diagnostics"] = {
-            "covariance_available": False,
-            "rank_deficient_or_ill_conditioned": None,
-            "standard_errors": [None for _ in point],
-            "normal_matrix_condition_estimate": None,
-            "reason": "cminpack does not expose a solver-owned final Jacobian",
-        }
+        if (
+            problem.operation == "curve_fit"
+            and status == "converged"
+            and value is not None
+        ):
+            # Diagnostics are independently recomputed at the public terminal
+            # point. Neither cminpack's internal QR workspace nor its success
+            # code is treated as covariance or rank evidence.
+            terminal_jacobian = _jacobian(execution, value, residual_count)
+            parameter_diagnostics = _parameter_diagnostics(
+                terminal_jacobian,
+                residual,
+                retain_covariance=True,
+            )
+            parameter_diagnostics["source"] = "independent_terminal_jacobian"
+            payload["parameter_diagnostics"] = parameter_diagnostics
+            if parameter_diagnostics.get("rank_deficient") is True:
+                status = "validation_failed"
+                payload["stop_reason"] = "rank_deficient_terminal_jacobian"
+        else:
+            payload["parameter_diagnostics"] = {
+                "covariance_available": False,
+                "rank_deficient_or_ill_conditioned": None,
+                "standard_errors": [None for _ in point],
+                "normal_matrix_condition_estimate": None,
+                "reason": (
+                    "independent terminal Jacobian diagnostics are retained "
+                    "for converged cminpack curve fits"
+                ),
+            }
     return value, residual, iterations, status, payload
 
 
