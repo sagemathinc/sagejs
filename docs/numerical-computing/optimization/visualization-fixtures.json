@@ -6,12 +6,21 @@
       "animation_axes_stable": true,
       "animation_controls": {
         "autoplay": false,
+        "default_speed": 1,
         "from_current": true,
         "loop": false,
         "pause": true,
         "play": true,
+        "restart": true,
         "slider": true,
-        "slider_prefix": "Iteration: "
+        "slider_prefix": "Iteration: ",
+        "speed": true,
+        "speed_multipliers": [
+          0.5,
+          1,
+          2
+        ],
+        "step": true
       },
       "animation_fixed_axes": true,
       "animation_frames": 3,
@@ -80,12 +89,21 @@
       "animation_axes_stable": true,
       "animation_controls": {
         "autoplay": false,
+        "default_speed": 1,
         "from_current": true,
         "loop": false,
         "pause": true,
         "play": true,
+        "restart": true,
         "slider": true,
-        "slider_prefix": "Iteration: "
+        "slider_prefix": "Iteration: ",
+        "speed": true,
+        "speed_multipliers": [
+          0.5,
+          1,
+          2
+        ],
+        "step": true
       },
       "animation_fixed_axes": true,
       "animation_frames": 6,
@@ -142,12 +160,21 @@
       "animation_axes_stable": true,
       "animation_controls": {
         "autoplay": false,
+        "default_speed": 1,
         "from_current": true,
         "loop": false,
         "pause": true,
         "play": true,
+        "restart": true,
         "slider": true,
-        "slider_prefix": "Iteration: "
+        "slider_prefix": "Iteration: ",
+        "speed": true,
+        "speed_multipliers": [
+          0.5,
+          1,
+          2
+        ],
+        "step": true
       },
       "animation_fixed_axes": true,
       "animation_frames": 5,
@@ -202,12 +229,21 @@
       "animation_axes_stable": true,
       "animation_controls": {
         "autoplay": false,
+        "default_speed": 1,
         "from_current": true,
         "loop": false,
         "pause": true,
         "play": true,
+        "restart": true,
         "slider": true,
-        "slider_prefix": "Iteration: "
+        "slider_prefix": "Iteration: ",
+        "speed": true,
+        "speed_multipliers": [
+          0.5,
+          1,
+          2
+        ],
+        "step": true
       },
       "animation_fixed_axes": true,
       "animation_frames": 6,
@@ -262,12 +298,21 @@
       "animation_axes_stable": true,
       "animation_controls": {
         "autoplay": false,
+        "default_speed": 1,
         "from_current": true,
         "loop": false,
         "pause": true,
         "play": true,
+        "restart": true,
         "slider": true,
-        "slider_prefix": "Iteration: "
+        "slider_prefix": "Iteration: ",
+        "speed": true,
+        "speed_multipliers": [
+          0.5,
+          1,
+          2
+        ],
+        "step": true
       },
       "animation_fixed_axes": true,
       "animation_frames": 5,
@@ -322,12 +367,21 @@
       "animation_axes_stable": true,
       "animation_controls": {
         "autoplay": false,
+        "default_speed": 1,
         "from_current": true,
         "loop": false,
         "pause": true,
         "play": true,
+        "restart": true,
         "slider": true,
-        "slider_prefix": "Iteration: "
+        "slider_prefix": "Iteration: ",
+        "speed": true,
+        "speed_multipliers": [
+          0.5,
+          1,
+          2
+        ],
+        "step": true
       },
       "animation_fixed_axes": true,
       "animation_frames": 6,
@@ -394,12 +448,21 @@
       "animation_axes_stable": true,
       "animation_controls": {
         "autoplay": false,
+        "default_speed": 1,
         "from_current": true,
         "loop": false,
         "pause": true,
         "play": true,
+        "restart": true,
         "slider": true,
-        "slider_prefix": "Iteration: "
+        "slider_prefix": "Iteration: ",
+        "speed": true,
+        "speed_multipliers": [
+          0.5,
+          1,
+          2
+        ],
+        "step": true
       },
       "animation_fixed_axes": true,
       "animation_frames": 2,
