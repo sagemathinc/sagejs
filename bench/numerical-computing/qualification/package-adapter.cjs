@@ -272,6 +272,10 @@ function parseShape(result, name) {
   return `(${shape[1]}, ${shape[2]})`;
 }
 
+function hasSourcePosition(output) {
+  return /(?:line|row)\s+\d+|\b\d+:\d+\b/i.test(output);
+}
+
 async function runParserGuards() {
   if (runNode !== null) return runInstalledParserGuards();
   const started = performance.now();
@@ -295,7 +299,7 @@ async function runParserGuards() {
       rejected: result.status !== 0,
       name_matches: output.includes(expectedName),
       message_matches: output.includes(expectedMessage),
-      positioned: /(?:line|row)\s+\d+|:\d+:\d+/i.test(output),
+      positioned: hasSourcePosition(output),
     });
   }
   const safePrograms = [
@@ -516,6 +520,7 @@ module.exports = {
 
   _testing: {
     foreignFrontendsAvailable,
+    hasSourcePosition,
     runQualificationWorker,
     validateSeaResourceDigests,
   },
