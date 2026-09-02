@@ -13,7 +13,10 @@
     "dropped_events": {"type": "integer", "minimum": 0},
     "truncated": {"type": "boolean"},
     "events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
-    "diagnostics": {"type": "array"}
+    "diagnostics": {
+      "type": "array",
+      "items": {"$ref": "diagnostic.schema.json"}
+    }
   },
   "$defs": {
     "policy": {
@@ -37,7 +40,10 @@
         "evaluation": {"type": ["integer", "null"], "minimum": 0},
         "accepted": {"type": ["boolean", "null"]},
         "data": {"type": "object"},
-        "diagnostics": {"type": "array"},
+        "diagnostics": {
+          "type": "array",
+          "items": {"$ref": "diagnostic.schema.json"}
+        },
         "important": {"type": "boolean"}
       }
     }

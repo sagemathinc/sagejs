@@ -20,6 +20,22 @@ from .visualization import spectral_animation, spectral_plot
 
 SPECTRAL_CAPABILITY_SCHEMA_VERSION = 1
 
+_IMPLEMENTATION_PLATFORMS = [
+    "linux-x64",
+    "linux-arm64",
+    "macos-arm64",
+    "windows-x64",
+]
+_IMPLEMENTATION_RUNTIMES = ["browser", "cpython", "node", "sea"]
+
+
+def _implementation_targets() -> dict[str, list[str]]:
+    return {
+        "platforms": list(_IMPLEMENTATION_PLATFORMS),
+        "runtimes": list(_IMPLEMENTATION_RUNTIMES),
+    }
+
+
 _OPERATIONS: dict[str, dict[str, Any]] = {
     "symmetric_eigen": {
         "status": "implemented",
@@ -178,14 +194,16 @@ _UNSUPPORTED: list[dict[str, Any]] = [
 
 def capabilities(operation: str | None = None) -> dict[str, Any]:
     """Return detached implemented and unsupported spectral capability records."""
-    operations = {
-        name: {
+    operations: dict[str, dict[str, Any]] = {}
+    for name in sorted(_OPERATIONS):
+        if operation is not None and name != operation:
+            continue
+        record = {
             key: list(value) if isinstance(value, list) else value
             for key, value in _OPERATIONS[name].items()
         }
-        for name in sorted(_OPERATIONS)
-        if operation is None or name == operation
-    }
+        record["implementation_targets"] = _implementation_targets()
+        operations[name] = record
     unsupported = [
         dict(record)
         for record in _UNSUPPORTED

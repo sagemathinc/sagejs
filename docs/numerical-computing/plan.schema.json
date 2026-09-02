@@ -30,7 +30,10 @@
       }
     },
     "rejected_alternatives": {"type": "array"},
-    "diagnostics": {"type": "array"}
+    "diagnostics": {
+      "type": "array",
+      "items": {"$ref": "diagnostic.schema.json"}
+    }
   },
   "$defs": {
     "optional_sha256": {

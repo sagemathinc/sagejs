@@ -10,8 +10,13 @@ from ..model import NumericalPlan, NumericalProblem
 CAPABILITY_SCHEMA_VERSION = 1
 
 _TRACE_LEVELS = ["none", "summary", "iterations", "evaluations", "debug"]
-_VALIDATED_PLATFORMS = ["linux-x64"]
-_TARGET_PLATFORMS = ["browser", "linux-arm64", "macos-arm64", "windows-x64"]
+_IMPLEMENTATION_PLATFORMS = [
+    "linux-x64",
+    "linux-arm64",
+    "macos-arm64",
+    "windows-x64",
+]
+_IMPLEMENTATION_RUNTIMES = ["browser", "cpython", "node", "sea"]
 
 
 def _method(
@@ -32,8 +37,10 @@ def _method(
             "complexity": complexity,
             "trace_levels": list(_TRACE_LEVELS),
             "visualizations": visualizations,
-            "validated_platforms": list(_VALIDATED_PLATFORMS),
-            "target_platforms_pending_receipts": list(_TARGET_PLATFORMS),
+            "implementation_targets": {
+                "platforms": list(_IMPLEMENTATION_PLATFORMS),
+                "runtimes": list(_IMPLEMENTATION_RUNTIMES),
+            },
             "source_transparent": True,
         },
         "$.linear_algebra.method",
