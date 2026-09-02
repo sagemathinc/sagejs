@@ -1,10 +1,13 @@
 """Deterministic, resource-bounded numerical parameter sweeps.
 
-The scheduler in this module deliberately does not import a thread, process,
-or browser-worker executor. Its default executor is sequential. Hosts that
-can execute independent Python callables concurrently may supply a synchronous
-batch executor; the scheduler still owns stable ordering, fixed resource
-credits, failure policy, and provenance.
+On CPython, an explicit concurrency request uses a bounded
+`ThreadPoolExecutor` without requiring application glue. Sage.js's synchronous
+live-callable contract cannot transfer arbitrary Python closures into Node or
+browser workers, so those runtimes either record an explicit sequential
+fallback or fail closed when concurrency is required. Hosts with a separately
+qualified worker protocol may still supply a synchronous batch executor; the
+scheduler owns stable ordering, fixed resource credits, failure policy, and
+provenance in every case.
 
 Aggregate evaluation, memory, trace, and result budgets are divided into fixed
 per-item credits before execution.  Consequently a different completion order
@@ -17,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
@@ -34,6 +38,7 @@ SWEEP_SEED_ALGORITHM = "xorshift32-pair-index-v1"
 SWEEP_SCHEDULER = "bounded-batch-v1"
 
 SWEEP_MODES = ("collect", "fail_fast")
+SWEEP_CONCURRENCY_FALLBACKS = ("sequential", "error")
 SWEEP_ITEM_STATUSES = (
     "completed",
     "callback_error",
@@ -97,6 +102,25 @@ def sweep_capabilities() -> dict[str, JSONValue]:
                     ],
                     "cooperative": ["max_memory_bytes", "cancellation"],
                     "unsupported": ["max_callback_depth", "max_allocation_bytes"],
+                },
+                "executors": {
+                    "cpython-thread-pool": {
+                        "status": "implemented",
+                        "runtime": "cpython",
+                        "bounded": True,
+                        "ordering": "stable_input_order",
+                    },
+                    "sagejs-live-callable-workers": {
+                        "status": "unsupported",
+                        "runtimes": ["browser", "node", "sea"],
+                        "reason": "the synchronous API cannot safely transfer arbitrary live Python closures across isolated workers",
+                        "fallbacks": ["explicit sequential execution", "fail closed"],
+                    },
+                    "custom-sync-batch": {
+                        "status": "host_supplied_unqualified",
+                        "runtimes": ["browser", "node", "sea", "cpython"],
+                        "boundary": "trusted host executor",
+                    },
                 },
                 "frontends": {
                     "sage": "run_parameter_sweep",
@@ -170,6 +194,37 @@ def _derive_seed(master_seed: int, seed_index: int) -> int:
     )
     # Twenty high bits plus 32 low bits remain exact in JSON and JavaScript.
     return (high & 1_048_575) * 4_294_967_296 + low
+
+
+def _runtime_kind() -> str:
+    """Return the execution family relevant to the synchronous scheduler."""
+    implementation = getattr(sys, "implementation", None)
+    cache_tag = getattr(implementation, "cache_tag", "")
+    if isinstance(cache_tag, str) and cache_tag.startswith("sagejs-"):
+        return "sagejs"
+    name = getattr(implementation, "name", "unknown")
+    return str(name)
+
+
+class _CPythonThreadExecutor:
+    """One reusable bounded CPython pool, loaded only on the selected path."""
+
+    def __init__(self, max_workers: int) -> None:
+        import concurrent.futures
+
+        self._futures = concurrent.futures
+        self._pool = concurrent.futures.ThreadPoolExecutor(
+            max_workers=max_workers, thread_name_prefix="sagejs-sweep"
+        )
+
+    def run(
+        self, jobs: Sequence[Callable[[], "SweepItemResult"]]
+    ) -> list["SweepItemResult"]:
+        futures = [self._pool.submit(job) for job in jobs]
+        return [future.result() for future in self._futures.as_completed(futures)]
+
+    def close(self) -> None:
+        self._pool.shutdown(wait=True, cancel_futures=True)
 
 
 class SweepBudget:
@@ -343,6 +398,20 @@ class _SweepControl(Exception):
         self.status = status
         self.resource = resource
         super().__init__(status)
+
+
+class SweepConcurrencyUnsupportedError(NotImplementedError):
+    """Raised when requested concurrency has no safe executor on this host."""
+
+    def __init__(self, runtime: str, concurrency: int) -> None:
+        self.runtime = str(runtime)
+        self.concurrency = int(concurrency)
+        super().__init__(
+            "concurrency "
+            + str(concurrency)
+            + " requires a qualified batch executor on "
+            + self.runtime
+        )
 
 
 class _SweepCallbackFailure(Exception):
@@ -706,6 +775,7 @@ def plan_parameter_sweep(
     callback_record: Mapping[str, Any] | None = None,
     executor_record: Mapping[str, Any] | None = None,
     has_batch_executor: bool = False,
+    concurrency_fallback: str = "sequential",
 ) -> SweepPlan:
     """Validate inputs and return a zero-callback sweep plan."""
     if isinstance(parameters, (str, bytes, bytearray)) or not isinstance(
@@ -722,6 +792,8 @@ def plan_parameter_sweep(
     offset = _nonnegative_integer(seed_offset, "seed_offset")
     if mode not in SWEEP_MODES:
         raise ValueError("sweep mode must be collect or fail_fast")
+    if concurrency_fallback not in SWEEP_CONCURRENCY_FALLBACKS:
+        raise ValueError("concurrency_fallback must be sequential or error")
     values = materialize_array(parameters, "$.sweep.parameters")
     if offset + len(values) > 4_294_967_296:
         raise ValueError("seed_offset plus item count exceeds the seed-index range")
@@ -735,12 +807,19 @@ def plan_parameter_sweep(
         raise ValueError("serialized sweep inputs exceed max_input_bytes")
     fallback_reason = None
     effective = requested
-    if not has_batch_executor:
+    runtime = _runtime_kind()
+    use_cpython_threads = (
+        requested > 1 and not has_batch_executor and runtime == "cpython"
+    )
+    if requested > 1 and not has_batch_executor and not use_cpython_threads:
+        if concurrency_fallback == "error":
+            raise SweepConcurrencyUnsupportedError(runtime, requested)
         effective = 1
-        if requested > 1:
-            fallback_reason = (
-                "no batch executor supplied; using portable sequential execution"
-            )
+        fallback_reason = (
+            "no qualified live-callable concurrency executor is available on "
+            + runtime
+            + "; using explicitly permitted sequential execution"
+        )
     callback = (
         {"kind": "opaque_callback", "replayable": False}
         if callback_record is None
@@ -750,6 +829,12 @@ def plan_parameter_sweep(
     if executor is None:
         if has_batch_executor:
             executor = {"kind": "custom_batch_executor", "replayable": False}
+        elif use_cpython_threads:
+            executor = {
+                "kind": "cpython_threads",
+                "name": "bounded-thread-pool",
+                "replayable": False,
+            }
         else:
             executor = {
                 "kind": "sequential",
@@ -950,13 +1035,16 @@ def run_parameter_sweep(
     callback_record: Mapping[str, Any] | None = None,
     executor_record: Mapping[str, Any] | None = None,
     cancel_record: Mapping[str, Any] | None = None,
+    concurrency_fallback: str = "sequential",
 ) -> SweepResult:
     """Run a stable ordered parameter sweep.
 
-    An evaluator receives `(parameter, context)`.  A custom `batch_executor`
+    An evaluator receives `(parameter, context)`. On CPython, requesting more
+    than one worker selects a bounded thread pool. A custom `batch_executor`
     receives at most `concurrency` zero-argument jobs and must synchronously
-    return each job's `SweepItemResult`, in any order.  The default executes
-    sequentially and records that fallback when more concurrency was requested.
+    return each job's `SweepItemResult`, in any order. Sage.js Node/browser/SEA
+    execution records a sequential fallback unless `concurrency_fallback` is
+    `"error"`, in which case planning fails before any callback is evaluated.
     """
     if not callable(evaluator):
         raise TypeError("sweep evaluator must be callable")
@@ -974,6 +1062,7 @@ def run_parameter_sweep(
         callback_record=callback_record,
         executor_record=executor_record,
         has_batch_executor=batch_executor is not None,
+        concurrency_fallback=concurrency_fallback,
     )
     cancellation = cancel_record
     if cancellation is None:
@@ -987,40 +1076,58 @@ def run_parameter_sweep(
     items: list[SweepItemResult] = []
     next_index = 0
     stop_status: str | None = None
-    while next_index < plan.item_count and stop_status is None:
-        if time.perf_counter() >= deadline:
-            stop_status = "maximum_elapsed_time"
-            break
-        stop = min(next_index + plan.effective_concurrency, plan.item_count)
-        indices = list(range(next_index, stop))
-        jobs: list[Callable[[], SweepItemResult]] = []
-        for item_index in indices:
+    automatic_executor = (
+        _CPythonThreadExecutor(plan.effective_concurrency)
+        if batch_executor is None and plan.effective_concurrency > 1
+        else None
+    )
+    try:
+        while next_index < plan.item_count and stop_status is None:
+            if time.perf_counter() >= deadline:
+                stop_status = "maximum_elapsed_time"
+                break
+            stop = min(next_index + plan.effective_concurrency, plan.item_count)
+            indices = list(range(next_index, stop))
+            jobs: list[Callable[[], SweepItemResult]] = []
+            for item_index in indices:
 
-            def job(index: int = item_index) -> SweepItemResult:
-                return _run_item(plan, index, evaluator, cancel, started_at, deadline)
+                def job(index: int = item_index) -> SweepItemResult:
+                    return _run_item(
+                        plan, index, evaluator, cancel, started_at, deadline
+                    )
 
-            jobs.append(job)
-        if batch_executor is None:
-            batch_values = [job() for job in jobs]
-        else:
-            try:
-                batch_values = _validate_batch_results(
-                    indices, batch_executor(tuple(jobs))
-                )
-            except Exception as error:
-                batch_values = _executor_failure(plan, indices, error)
-        batch_values.sort(key=lambda item: item.index)
-        items.extend(batch_values)
-        next_index = stop
-        statuses = {item.status for item in batch_values}
-        if "executor_error" in statuses:
-            stop_status = "executor_error"
-        elif "cancelled" in statuses:
-            stop_status = "cancelled"
-        elif "maximum_elapsed_time" in statuses:
-            stop_status = "maximum_elapsed_time"
-        elif mode == "fail_fast" and any(not item.success for item in batch_values):
-            stop_status = "fail_fast"
+                jobs.append(job)
+            if automatic_executor is not None:
+                try:
+                    batch_values = _validate_batch_results(
+                        indices, automatic_executor.run(tuple(jobs))
+                    )
+                except Exception as error:
+                    batch_values = _executor_failure(plan, indices, error)
+            elif batch_executor is None:
+                batch_values = [job() for job in jobs]
+            else:
+                try:
+                    batch_values = _validate_batch_results(
+                        indices, batch_executor(tuple(jobs))
+                    )
+                except Exception as error:
+                    batch_values = _executor_failure(plan, indices, error)
+            batch_values.sort(key=lambda item: item.index)
+            items.extend(batch_values)
+            next_index = stop
+            statuses = {item.status for item in batch_values}
+            if "executor_error" in statuses:
+                stop_status = "executor_error"
+            elif "cancelled" in statuses:
+                stop_status = "cancelled"
+            elif "maximum_elapsed_time" in statuses:
+                stop_status = "maximum_elapsed_time"
+            elif mode == "fail_fast" and any(not item.success for item in batch_values):
+                stop_status = "fail_fast"
+    finally:
+        if automatic_executor is not None:
+            automatic_executor.close()
     skipped_status = "skipped_fail_fast"
     if stop_status == "cancelled":
         skipped_status = "skipped_cancelled"
@@ -1045,12 +1152,14 @@ def run_parameter_sweep(
 
 
 __all__ = [
+    "SWEEP_CONCURRENCY_FALLBACKS",
     "SWEEP_ITEM_STATUSES",
     "SWEEP_MODES",
     "SWEEP_SCHEMA_VERSION",
     "SWEEP_SCHEDULER",
     "SWEEP_SEED_ALGORITHM",
     "SweepBudget",
+    "SweepConcurrencyUnsupportedError",
     "SweepItemContext",
     "SweepItemResult",
     "SweepPlan",

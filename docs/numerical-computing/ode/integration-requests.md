@@ -68,8 +68,11 @@ JSON schemas, and exhaustive numerical surface in one integration change.
   payload, startup, and lifecycle cost.
 - Automatic stiffness detection remains unqualified; `auto` intentionally stays
   on RK45.
-- Browser-worker concurrency for the shared sweep scheduler requires a real
-  host executor, transferable callback protocol, and browser receipt. The
-  portable ODE adapter correctly records a sequential fallback in its absence.
+- Browser/Node/SEA worker concurrency for live ODE factories requires a
+  transferable callback protocol and runtime receipt. The shared scheduler now
+  provides genuine bounded CPython thread concurrency, explicitly classifies
+  the Sage.js live-callable worker path as unsupported, records its sequential
+  fallback, and can fail closed before callback dispatch. The ODE adapter still
+  needs to expose that `concurrency_fallback` policy directly.
 - MATLAB, Wolfram, and Sage compatibility frontends require their own ledgers
   and shared parser/public API claims.

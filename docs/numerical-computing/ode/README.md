@@ -263,10 +263,15 @@ sweep = run_ode_parameter_sweep(
 ```
 
 Planning is callback-free. Inputs, output order, seed indices, and fixed
-per-item credits do not depend on completion order. Without a host batch
-executor, requested concurrency falls back to one and the plan records that
-choice. A supplied synchronous batch executor may run at most the planned batch
-concurrently; the scheduler validates item identities and restores input order.
+per-item credits do not depend on completion order. On CPython, requesting
+concurrency greater than one selects the shared scheduler's built-in bounded
+thread pool. Node, browser, and SEA cannot transfer this adapter's live problem
+factory closure through the current synchronous API; they record a sequential
+fallback. The generic scheduler also provides a fail-closed
+`concurrency_fallback="error"` policy, pending its exposure by this thin ODE
+adapter. A supplied synchronous batch executor may run at most the planned
+batch concurrently; the scheduler validates item identities and restores input
+order.
 
 Before each solve, the adapter reserves a conservative logical bound derived
 from dimension and the ODE output, validation, trace, dense-linear-algebra
