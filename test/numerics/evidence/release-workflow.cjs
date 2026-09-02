@@ -72,6 +72,13 @@ const scipyCatalog = JSON.parse(read(
   "bench/numerical-computing/qualification/scipy-oracle-catalog.json",
 ));
 
+const provenanceBuildWorkflows = [
+  ".github/workflows/mobile-simulators.yml",
+  ".github/workflows/wasm-candidate.yml",
+  ".github/workflows/wasm-release.yml",
+  ".github/workflows/wasm-routine.yml",
+];
+
 function rowFiles(rowId) {
   const browser = rowId.startsWith("linux-x64-browser-");
   const directory = browser
@@ -205,6 +212,36 @@ test("checked-in qualification commands expose fail-closed production entrypoint
     packageJson.scripts["release:qualify:numerics:authenticate"],
     /authenticate-release-gate\.cjs/,
   );
+});
+
+test("qualified Wasm builders fetch the promoted source-candidate ancestry", () => {
+  for (const relative of provenanceBuildWorkflows) {
+    const lines = read(relative).split("\n");
+    const checkouts = lines
+      .map((line, index) => line.includes("uses: actions/checkout@v7") ? index : -1)
+      .filter((index) => index >= 0);
+    assert.ok(checkouts.length > 0, `${relative} must check out the source`);
+    for (const index of checkouts) {
+      assert.match(
+        lines.slice(index, index + 5).join("\n"),
+        /fetch-depth: 0/,
+        `${relative}:${index + 1} must retain qualification ancestry`,
+      );
+    }
+  }
+
+  for (const stepName of [
+    "Check out the exact source candidate",
+    "Check out the exact tagged candidate",
+  ]) {
+    const start = ci.indexOf(`- name: ${stepName}`);
+    assert.notEqual(start, -1, `${stepName} is present in release CI`);
+    assert.match(
+      ci.slice(start, start + 240),
+      /uses: actions\/checkout@v7[\s\S]*?fetch-depth: 0/,
+      `${stepName} must retain qualification ancestry`,
+    );
+  }
 });
 
 test("publisher authentication requires an intact exact gate inventory", () => {

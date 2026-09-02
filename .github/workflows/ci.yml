@@ -90,6 +90,7 @@ jobs:
       - name: Check out the exact source candidate
         uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           submodules: recursive
 
       - uses: pnpm/action-setup@v6
@@ -1170,6 +1171,7 @@ jobs:
       - name: Check out the exact tagged candidate
         uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           submodules: recursive
 
       - uses: pnpm/action-setup@v6
