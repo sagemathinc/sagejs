@@ -52,6 +52,7 @@ def _nlopt_record(method: str) -> dict[str, Any]:
             "independent_objective_finiteness",
             "independent_box_feasibility",
             "empirical_projected_stationarity_consistency",
+            "strict_active_bound_consistency",
             "bounded_feasible_objective_probes",
         ],
         "truth_level": "heuristic",
@@ -59,6 +60,7 @@ def _nlopt_record(method: str) -> dict[str, Any]:
         "max_dimension": 32,
         "validation_envelope": {
             "active_bounds": "strict_complementarity_or_indeterminate",
+            "unreached_bounds": ("resolved_gradient_toward_bound_is_indeterminate"),
             "active_nonlinear_constraints": "unsupported",
             "nonlinear_equalities": "unsupported",
             "sampled_feasible_decrease": (
