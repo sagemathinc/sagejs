@@ -53,6 +53,11 @@ a real Chromium render of all seventeen visual presentations.
   Result visualization must not evaluate a user's function again.
 - Static descriptions and result tables are present in the generated HTML
   before JavaScript runs. Animation is an optional view and never autoplays.
+  The enhanced host supplies Play, Pause, Step, Restart, Speed, and Iteration
+  controls over retained frame IDs. Step and Speed are explicitly host-routed
+  because portable Plotly figure data has no relative-frame state or mutable
+  playback-speed setting; Restart and the absolute slider also remain in the
+  portable Plotly document.
 - Payload measurements are generated beside the evidence and checked
   fail-closed. Python's source-side byte receipts are retained because JSON
   distinguishes `1.0` there while JavaScript reserialization does not.
@@ -77,8 +82,10 @@ metadata, and focused tests freeze callback counts across presentation.
   discontinuity example Brent reports `converged`, while `success` is false
   because the independently checked residual is `1.0`.
 - Every animation retains its quantitative trace table. Playback never starts
-  automatically, the slider remains usable with reduced motion, and the HTML
-  contains a complete static account before JavaScript runs.
+  automatically. A reduced-motion preference disables timed Play and Speed
+  while Step, Restart, and the Iteration slider remain usable with zero-duration
+  transitions. The HTML contains a complete static account before JavaScript
+  runs.
 - The browser renderer reads PlotSpec layers directly and offers both the
   original PlotSpec/PlotAnimation JSON and a Plotly-compatible JSON document.
   The fixture also records whether the shared Plotly lowering accepted the

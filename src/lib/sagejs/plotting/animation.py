@@ -13,6 +13,7 @@ guessing how Plotly trace indices should be remapped.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from typing import Any, TypeAlias
 
@@ -177,11 +178,17 @@ class AnimationTiming:
 
 
 class AnimationControls:
-    """Declarative play, pause, and slider controls.
+    """Declarative controls for replaying retained animation frames.
 
-    Plotly figures do not encode a portable loop or autoplay lifecycle.
-    Those behaviors therefore remain explicit unsupported boundaries rather
-    than hidden JavaScript callbacks in a renderer-neutral PlotSpec.
+    Play, pause, restart, and absolute frame selection lower directly to
+    portable Plotly figure data.  Relative stepping and persistent playback
+    speed need host state, so lowering describes those capabilities in
+    `layout.meta.sagejs_animation_controls` for a host renderer to implement.
+    Neither route evaluates a mathematical callback or synthesizes a frame.
+
+    Plotly figures do not encode a portable loop or autoplay lifecycle. Those
+    behaviors remain explicit unsupported boundaries rather than hidden
+    JavaScript callbacks in a renderer-neutral PlotSpec.
     """
 
     def __init__(
@@ -189,19 +196,53 @@ class AnimationControls:
         *,
         play: bool = True,
         pause: bool = True,
+        step: bool = True,
+        restart: bool = True,
+        speed: bool = True,
         slider: bool = True,
         from_current: bool = True,
         slider_prefix: Any = "Frame: ",
+        speed_multipliers: Any = None,
+        default_speed: Any = 1.0,
         autoplay: bool = False,
         loop: bool = False,
     ) -> None:
         self._play = _boolean(play, "animation play control")
         self._pause = _boolean(pause, "animation pause control")
+        self._step = _boolean(step, "animation step control")
+        self._restart = _boolean(restart, "animation restart control")
+        self._speed = _boolean(speed, "animation speed control")
         self._slider = _boolean(slider, "animation slider control")
         self._from_current = _boolean(from_current, "animation from_current")
         if not isinstance(slider_prefix, str):
             raise TypeError("animation slider_prefix must be a string")
         self._slider_prefix = slider_prefix
+        raw_speeds = (0.5, 1.0, 2.0) if speed_multipliers is None else speed_multipliers
+        if not isinstance(raw_speeds, Sequence) or isinstance(raw_speeds, str):
+            raise TypeError("animation speed_multipliers must be a sequence")
+        normalized_speeds: list[float] = []
+        for raw_speed in raw_speeds:
+            if isinstance(raw_speed, bool) or not isinstance(raw_speed, (int, float)):
+                raise TypeError("animation speed multipliers must be numbers")
+            multiplier = float(raw_speed)
+            if not math.isfinite(multiplier) or multiplier <= 0:
+                raise ValueError(
+                    "animation speed multipliers must be positive and finite"
+                )
+            if multiplier in normalized_speeds:
+                raise ValueError("animation speed multipliers must be unique")
+            normalized_speeds.append(multiplier)
+        if len(normalized_speeds) == 0:
+            raise ValueError("animation speed_multipliers must not be empty")
+        if isinstance(default_speed, bool) or not isinstance(
+            default_speed, (int, float)
+        ):
+            raise TypeError("animation default_speed must be a number")
+        normalized_default = float(default_speed)
+        if normalized_default not in normalized_speeds:
+            raise ValueError("animation default_speed must occur in speed_multipliers")
+        self._speed_multipliers = tuple(normalized_speeds)
+        self._default_speed = normalized_default
         autoplay_value = _boolean(autoplay, "animation autoplay")
         loop_value = _boolean(loop, "animation loop")
         if autoplay_value:
@@ -212,7 +253,14 @@ class AnimationControls:
             raise UnsupportedAnimationError(
                 "looping requires a host callback and is not portable Plotly figure data"
             )
-        if not (self._play or self._pause or self._slider):
+        if not (
+            self._play
+            or self._pause
+            or self._step
+            or self._restart
+            or self._speed
+            or self._slider
+        ):
             raise ValueError("animation must expose at least one control")
 
     @property
@@ -222,6 +270,18 @@ class AnimationControls:
     @property
     def pause(self) -> bool:
         return self._pause
+
+    @property
+    def step(self) -> bool:
+        return self._step
+
+    @property
+    def restart(self) -> bool:
+        return self._restart
+
+    @property
+    def speed(self) -> bool:
+        return self._speed
 
     @property
     def slider(self) -> bool:
@@ -235,13 +295,26 @@ class AnimationControls:
     def slider_prefix(self) -> str:
         return self._slider_prefix
 
+    @property
+    def speed_multipliers(self) -> tuple[float, ...]:
+        return self._speed_multipliers
+
+    @property
+    def default_speed(self) -> float:
+        return self._default_speed
+
     def to_dict(self) -> dict[str, JSONValue]:
         return {
             "play": self._play,
             "pause": self._pause,
+            "step": self._step,
+            "restart": self._restart,
+            "speed": self._speed,
             "slider": self._slider,
             "from_current": self._from_current,
             "slider_prefix": self._slider_prefix,
+            "speed_multipliers": list(self._speed_multipliers),
+            "default_speed": self._default_speed,
             "autoplay": False,
             "loop": False,
         }
@@ -737,7 +810,12 @@ def _animation_controls(animation: PlotAnimation) -> dict[str, JSONValue]:
     answer: dict[str, JSONValue] = {}
     buttons: list[JSONValue] = []
     if controls.play:
-        play_options = _frame_options(timing, timing.frame_duration_ms)
+        effective_speed = controls.default_speed if controls.speed else 1.0
+        play_duration = max(
+            1,
+            int(round(timing.frame_duration_ms / effective_speed)),
+        )
+        play_options = _frame_options(timing, play_duration)
         play_options["fromcurrent"] = controls.from_current
         buttons.append(
             {
@@ -761,8 +839,9 @@ def _animation_controls(animation: PlotAnimation) -> dict[str, JSONValue]:
                 ],
             }
         )
+    menus: list[JSONValue] = []
     if buttons:
-        answer["updatemenus"] = [
+        menus.append(
             {
                 "type": "buttons",
                 "direction": "left",
@@ -773,7 +852,38 @@ def _animation_controls(animation: PlotAnimation) -> dict[str, JSONValue]:
                 "yanchor": "top",
                 "buttons": buttons,
             }
-        ]
+        )
+    if controls.restart:
+        menus.append(
+            {
+                "type": "buttons",
+                "direction": "left",
+                "showactive": False,
+                "x": 0.18,
+                "y": 0.0,
+                "xanchor": "left",
+                "yanchor": "top",
+                "buttons": [
+                    {
+                        "label": "Restart",
+                        "method": "animate",
+                        "args": [
+                            [animation.frames[0].id],
+                            {
+                                "frame": {
+                                    "duration": 0,
+                                    "redraw": timing.redraw,
+                                },
+                                "transition": {"duration": 0},
+                                "mode": "immediate",
+                            },
+                        ],
+                    }
+                ],
+            }
+        )
+    if menus:
+        answer["updatemenus"] = menus
     if controls.slider:
         steps: list[JSONValue] = []
         for frame in animation.frames:
@@ -795,6 +905,34 @@ def _animation_controls(animation: PlotAnimation) -> dict[str, JSONValue]:
                 "steps": steps,
             }
         ]
+    capability_routes: dict[str, JSONValue] = {}
+    for name, enabled, route in (
+        ("play", controls.play, "plotly-layout"),
+        ("pause", controls.pause, "plotly-layout"),
+        ("step", controls.step, "host-relative-frame-controller"),
+        ("restart", controls.restart, "plotly-layout"),
+        ("speed", controls.speed, "host-duration-controller"),
+        ("iteration_slider", controls.slider, "plotly-layout"),
+    ):
+        capability_routes[name] = {
+            "available": enabled,
+            "route": route if enabled else "disabled",
+        }
+    answer["sagejs_animation_controls"] = {
+        "schema": "sagejs.plotting.animation-controls/v1",
+        "capabilities": capability_routes,
+        "frame_ids": [frame.id for frame in animation.frames],
+        "frame_labels": [frame.label for frame in animation.frames],
+        "frame_duration_ms": timing.frame_duration_ms,
+        "transition_duration_ms": timing.transition_duration_ms,
+        "redraw": timing.redraw,
+        "from_current": controls.from_current,
+        "speed_multipliers": list(controls.speed_multipliers),
+        "default_speed": controls.default_speed,
+        "autoplay": False,
+        "loop": False,
+        "computed_frames_only": True,
+    }
     return answer
 
 
@@ -820,7 +958,19 @@ def lower_plot_animation(animation: Any) -> dict[str, JSONValue]:
             raise UnsupportedAnimationError(
                 "animation controls conflict with an existing Plotly layout." + reserved
             )
-    layout.update(_animation_controls(animation))
+    lowered_controls = _animation_controls(animation)
+    host_controls = lowered_controls.pop("sagejs_animation_controls")
+    layout.update(lowered_controls)
+    raw_meta = layout.get("meta")
+    layout_meta: dict[str, JSONValue]
+    if isinstance(raw_meta, Mapping):
+        layout_meta = materialize_object(raw_meta, "$.layout.meta")
+    elif raw_meta is None:
+        layout_meta = {}
+    else:
+        layout_meta = {"plotly_source_meta": raw_meta}
+    layout_meta["sagejs_animation_controls"] = host_controls
+    layout["meta"] = layout_meta
     plotly_frames: list[JSONValue] = []
     for index in range(len(animation.frames)):
         plotly_frames.append(
