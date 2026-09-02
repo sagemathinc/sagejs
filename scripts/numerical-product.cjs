@@ -9,6 +9,7 @@ const {
   lstatSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   readdirSync,
   rmSync,
   writeFileSync,
@@ -56,10 +57,18 @@ function gitCommit(root = repositoryRoot) {
 
 function regularBytes(filename, label) {
   const status = lstatSync(filename);
-  if (!status.isFile() || status.isSymbolicLink()) {
-    throw new Error(`${label} must be a regular non-symbolic-link file`);
+  if (!status.isFile() || status.isSymbolicLink() || status.nlink !== 1) {
+    throw new Error(`${label} must be a regular, non-linked file`);
   }
   return readFileSync(filename);
+}
+
+function safeInputDirectory(input) {
+  const status = lstatSync(input);
+  if (!status.isDirectory() || status.isSymbolicLink() || realpathSync(input) !== input) {
+    throw new Error("numerical product input or one of its ancestors is symlinked");
+  }
+  return input;
 }
 
 function filesUnder(directory) {
@@ -93,16 +102,29 @@ function productionManifests(root) {
   };
 }
 
-function validateRuntimeFiles(root, filenameForProductPath) {
+function pathsForScope(scope) {
+  if (scope === "all") return productFiles;
+  if (scope === "sea") {
+    return productFiles.filter(([path]) => path.startsWith("node/") && path.endsWith(".wasm"));
+  }
+  if (scope === "node" || scope === "browser") {
+    return productFiles.filter(([path]) => path.startsWith(`${scope}/`));
+  }
+  throw new Error(`unsupported numerical runtime scope ${scope}`);
+}
+
+function validateRuntimeFiles(root, filenameForProductPath, { scope = "all" } = {}) {
   const manifests = productionManifests(root);
+  const scopedPaths = new Set(pathsForScope(scope).map(([path]) => path));
   for (const [name, manifest, paths] of [
     ["cminpack", manifests.cminpack, ["node/cminpack.wasm", "browser/cminpack.wasm"]],
     ["NLopt", manifests.nlopt, ["node/nlopt-methods.wasm", "browser/nlopt-methods.wasm"]],
   ]) {
-    const copies = paths.map((path) => regularBytes(
+    const selectedPaths = paths.filter((path) => scopedPaths.has(path));
+    const copies = selectedPaths.map((path) => regularBytes(
       filenameForProductPath(path), `${name} runtime ${path}`,
     ));
-    if (!copies[0].equals(copies[1])) {
+    if (copies.length === 2 && !copies[0].equals(copies[1])) {
       throw new Error(`${name} Node and browser runtime bytes differ`);
     }
     if (
@@ -112,13 +134,50 @@ function validateRuntimeFiles(root, filenameForProductPath) {
       throw new Error(`${name} runtime differs from its production manifest`);
     }
   }
-  for (const path of productFiles
+  for (const path of pathsForScope(scope)
     .map(([productPath]) => productPath)
     .filter((path) => !path.endsWith(".wasm"))) {
     if (regularBytes(filenameForProductPath(path), `numerical runtime ${path}`).length === 0) {
       throw new Error(`numerical runtime ${path} is empty`);
     }
   }
+}
+
+function buildNumericalRuntimeAdapters(root = repositoryRoot) {
+  const { buildSync } = require("esbuild");
+  const builds = [
+    [
+      "packages/flint-wasm/numerical/index.mjs",
+      "dist/numerical/backend.cjs",
+      { format: "cjs", platform: "node", target: ["node22"] },
+    ],
+    [
+      "packages/flint-wasm/numerical/index.mjs",
+      "packages/flint-wasm/dist/numerical-backend.mjs",
+      { format: "esm", platform: "browser", target: ["es2022"] },
+    ],
+    [
+      "packages/flint-wasm/numerical/nlopt-index.mjs",
+      "dist/numerical/nlopt-backend.cjs",
+      { format: "cjs", platform: "node", target: ["node22"] },
+    ],
+    [
+      "packages/flint-wasm/numerical/nlopt-index.mjs",
+      "packages/flint-wasm/dist/nlopt-backend.mjs",
+      { format: "esm", platform: "browser", target: ["es2022"] },
+    ],
+  ];
+  for (const [entryPoint, output, options] of builds) {
+    const outfile = join(root, output);
+    mkdirSync(dirname(outfile), { recursive: true });
+    buildSync({
+      entryPoints: [join(root, entryPoint)],
+      outfile,
+      bundle: true,
+      ...options,
+    });
+  }
+  return builds.map(([, output]) => output);
 }
 
 function productBody(sourceCommit, files) {
@@ -169,8 +228,10 @@ function inspectNumericalProduct({
   expectedCommit = gitCommit(root),
 } = {}) {
   try {
-    const input = resolve(inputDirectory);
-    const manifest = JSON.parse(readFileSync(join(input, manifestName), "utf8"));
+    const input = safeInputDirectory(resolve(inputDirectory));
+    const manifest = JSON.parse(regularBytes(
+      join(input, manifestName), "numerical product manifest",
+    ).toString("utf8"));
     exactKeys(manifest, ["schema", "source_commit", "files", "identity"],
       "numerical product manifest");
     if (
@@ -217,12 +278,65 @@ function inspectNumericalProduct({
   }
 }
 
-function validateInstalledNumericalProduct(root = repositoryRoot) {
+function validateInstalledNumericalProduct(root = repositoryRoot, { scope = "all" } = {}) {
   validateRuntimeFiles(root, (path) => {
     const record = productFiles.find(([productPath]) => productPath === path);
     return join(root, record[1]);
-  });
+  }, { scope });
   return true;
+}
+
+function inspectInstalledNumericalProduct({
+  root = repositoryRoot,
+  scope = "all",
+} = {}) {
+  const files = pathsForScope(scope);
+  const present = files.filter(([, installedPath]) => existsSync(join(root, installedPath)));
+  if (present.length === 0) {
+    return { available: false, status: "absent", scope };
+  }
+  if (present.length !== files.length) {
+    return { available: false, status: "partial", scope };
+  }
+  try {
+    validateInstalledNumericalProduct(root, { scope });
+    return { available: true, status: "authenticated", scope };
+  } catch (error) {
+    return { available: false, status: "invalid", scope, reason: error.message };
+  }
+}
+
+function numericalRuntimeRequired(environment = process.env) {
+  const explicit = environment.SAGEJS_NUMERICAL_RUNTIME_REQUIRED;
+  if (explicit !== undefined && explicit !== "0" && explicit !== "1") {
+    throw new Error("SAGEJS_NUMERICAL_RUNTIME_REQUIRED must be 0 or 1");
+  }
+  return explicit === "1" || Boolean(environment.SAGEJS_NUMERICAL_PRODUCT_ROOT);
+}
+
+function resolveNumericalRuntimeCapability({
+  root = repositoryRoot,
+  environment = process.env,
+  providerAvailable,
+  scope = "node",
+} = {}) {
+  const required = numericalRuntimeRequired(environment);
+  const inspection = inspectInstalledNumericalProduct({ root, scope });
+  if (inspection.available && providerAvailable !== false) {
+    return { ...inspection, required };
+  }
+  if (inspection.available) {
+    throw new Error(
+      `the ${scope} numerical runtime is installed without an authenticated provider`,
+    );
+  }
+  if (inspection.status !== "absent" || required) {
+    throw new Error(
+      `the ${scope} numerical runtime is ${inspection.status}` +
+        (inspection.reason ? `: ${inspection.reason}` : ""),
+    );
+  }
+  return { ...inspection, required };
 }
 
 function installNumericalProduct({
@@ -274,9 +388,13 @@ if (require.main === module) {
 }
 
 module.exports = {
+  buildNumericalRuntimeAdapters,
   inspectNumericalProduct,
+  inspectInstalledNumericalProduct,
   installNumericalProduct,
+  numericalRuntimeRequired,
   productFiles,
   publishNumericalProduct,
+  resolveNumericalRuntimeCapability,
   validateInstalledNumericalProduct,
 };

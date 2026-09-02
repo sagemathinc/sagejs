@@ -122,6 +122,13 @@ jobs:
           node scripts/numerical-product.cjs publish \
             --output build/authenticated-numerical-product
 
+      - name: Require source-current qualified NLopt for a tagged product
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: >-
+          node
+          src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs
+          --require-qualified
+
       - name: Preserve the exact source-bound numerical runtime
         uses: actions/upload-artifact@v7
         with:
@@ -197,6 +204,7 @@ jobs:
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
       SAGEJS_NUMERICAL_PRODUCT_ROOT: ${{ github.workspace }}/build/authenticated-numerical-product
+      SAGEJS_NUMERICAL_RUNTIME_REQUIRED: "1"
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -426,6 +434,7 @@ jobs:
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
       SAGEJS_NUMERICAL_PRODUCT_ROOT: ${{ github.workspace }}/build/authenticated-numerical-product
+      SAGEJS_NUMERICAL_RUNTIME_REQUIRED: "1"
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -587,6 +596,7 @@ jobs:
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
       SAGEJS_NUMERICAL_PRODUCT_ROOT: ${{ github.workspace }}/build/authenticated-numerical-product
+      SAGEJS_NUMERICAL_RUNTIME_REQUIRED: "1"
     permissions:
       contents: read
       id-token: write
@@ -842,6 +852,7 @@ jobs:
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
       SAGEJS_NUMERICAL_PRODUCT_ROOT: ${{ github.workspace }}/build/authenticated-numerical-product
+      SAGEJS_NUMERICAL_RUNTIME_REQUIRED: "1"
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -1142,7 +1153,7 @@ jobs:
   numerical-browser-qualification:
     name: Numerical browser and supplemental qualification
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: linux-x64
+    needs: [linux-x64, numerical-product]
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     environment: sagejs-source-mirror
@@ -1152,6 +1163,8 @@ jobs:
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       SAGEJS_WASM_SOURCE_MIRROR_DIR: /tmp/sagejs-numerical-source-mirror
+      SAGEJS_NUMERICAL_PRODUCT_ROOT: ${{ github.workspace }}/build/authenticated-numerical-product
+      SAGEJS_NUMERICAL_RUNTIME_REQUIRED: "1"
 
     steps:
       - name: Check out the exact tagged candidate
@@ -1177,6 +1190,12 @@ jobs:
 
       - name: Install the exact JavaScript dependency graph
         run: pnpm install --frozen-lockfile
+
+      - name: Restore the canonical authenticated numerical runtime
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-numerical-product
+          path: build/authenticated-numerical-product
 
       - name: Cache authenticated numerical oracle inputs
         uses: actions/cache@v6
@@ -1206,6 +1225,9 @@ jobs:
           node packages/wasm-toolchain/scripts/toolchain.cjs prepare
           pnpm build
           pnpm --dir packages/flint-wasm build
+          node scripts/numerical-product.cjs install \
+            --input "$SAGEJS_NUMERICAL_PRODUCT_ROOT"
+          node scripts/numerical-product.cjs validate-installed
           node packages/flint-wasm/scripts/production-receipt.cjs validate
           mkdir -p build/sea
           tar -xJf build/linux-release/sagejs-linux-x64.tar.xz -C build/linux-release

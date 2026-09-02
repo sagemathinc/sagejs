@@ -14,7 +14,10 @@ const { join, relative, resolve } = require("node:path");
 const { inspectToolchain } = require(
   "../packages/wasm-toolchain/scripts/toolchain.cjs"
 );
-const { inspectNumericalProduct } = require("./numerical-product.cjs");
+const {
+  inspectNumericalProduct,
+  productFiles,
+} = require("./numerical-product.cjs");
 
 const repositoryRoot = resolve(__dirname, "..");
 const receiptRelativePath = "dist/build-receipt.json";
@@ -189,18 +192,49 @@ function outputWitnesses(root = repositoryRoot, identity = currentBuildIdentity(
     "dist/module-cache",
     "dist/runtime-cache/manifest.json",
   ];
-  if (identity.numericalRuntimeProvider?.available) {
-    witnesses.push(
-      "dist/numerical/backend.cjs",
-      "dist/numerical/cminpack.wasm",
-      "dist/numerical/nlopt-backend.cjs",
-      "dist/numerical/nlopt-methods.wasm",
-    );
-  }
+  witnesses.push(...numericalFilesForIdentity(identity)
+    .map(([, installedPath]) => installedPath));
   if (existsSync(join(root, "packages/flint/build/generated-ffi/sagejs_flint_ffi.node"))) {
     witnesses.push("dist/native-kernels/index.json");
   }
   return witnesses;
+}
+
+function numericalFilesForIdentity(identity) {
+  if (identity.numericalRuntimeProvider?.available) return productFiles;
+  if (identity.numericalRuntimeProvider !== undefined &&
+      identity.numericalRuntimeProvider.source !== "unavailable") {
+    return productFiles.filter(([path]) => !path.endsWith(".wasm"));
+  }
+  return [];
+}
+
+function numericalOutputBindings(root, identity) {
+  return numericalFilesForIdentity(identity).map(([, installedPath]) => {
+    const filename = join(root, installedPath);
+    const status = lstatSync(filename);
+    if (!status.isFile() || status.isSymbolicLink()) {
+      throw new Error(`numerical build output is not a regular file: ${installedPath}`);
+    }
+    return {
+      path: installedPath,
+      bytes: status.size,
+      sha256: sha256File(filename),
+    };
+  });
+}
+
+function validateNumericalOutputBindings(receipt, identity, root) {
+  const actual = receipt?.numericalOutputs ?? [];
+  let expected;
+  try {
+    expected = numericalOutputBindings(root, identity);
+  } catch (error) {
+    return error.message;
+  }
+  return sameIdentity(actual, expected)
+    ? null
+    : "numerical output digest or inventory differs";
 }
 
 function sameIdentity(left, right) {
@@ -213,6 +247,10 @@ function validateBuildReceipt(receipt, identity, root = repositoryRoot) {
   }
   if (!sameIdentity(receipt.identity, identity)) {
     return { current: false, reason: "build inputs changed" };
+  }
+  const numericalFailure = validateNumericalOutputBindings(receipt, identity, root);
+  if (numericalFailure !== null) {
+    return { current: false, reason: numericalFailure };
   }
   for (const witness of receipt.outputs ?? []) {
     if (!existsSync(join(root, witness))) {
@@ -261,6 +299,19 @@ function inspectSourceBuildReceipt(root = repositoryRoot) {
   ) {
     return { current: false, reason: "source or runtime inputs changed" };
   }
+  if (receipt.identity?.numericalRuntimeProvider !== undefined &&
+      !sameIdentity(receipt.identity.numericalRuntimeProvider,
+        current.numericalRuntimeProvider)) {
+    return { current: false, reason: "numerical runtime provider changed" };
+  }
+  const numericalFailure = validateNumericalOutputBindings(
+    receipt,
+    receipt.identity ?? {},
+    root,
+  );
+  if (numericalFailure !== null) {
+    return { current: false, reason: numericalFailure };
+  }
   if (!Array.isArray(receipt.outputs) || receipt.outputs.length === 0) {
     return { current: false, reason: "receipt has no output witnesses" };
   }
@@ -287,6 +338,7 @@ function writeBuildReceipt({
     durationMilliseconds,
     identity,
     outputs: outputWitnesses(root, identity),
+    numericalOutputs: numericalOutputBindings(root, identity),
   };
   writeFileSync(
     join(root, receiptRelativePath),
@@ -316,6 +368,7 @@ module.exports = {
   inspectSourceBuildReceipt,
   nativeInputIdentity,
   numericalRuntimeProviderIdentity,
+  numericalOutputBindings,
   outputWitnesses,
   refreshBuildReceiptAfterNative,
   receiptRelativePath,

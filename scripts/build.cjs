@@ -12,7 +12,9 @@ const {
 } = require("./build-receipt.cjs");
 const { formatDuration } = require("./run-test-tier.cjs");
 const {
+  buildNumericalRuntimeAdapters,
   installNumericalProduct,
+  numericalRuntimeRequired,
   validateInstalledNumericalProduct,
 } = require("./numerical-product.cjs");
 const { inspectToolchain } = require(
@@ -184,6 +186,7 @@ async function publishProductionNative() {
 
 async function buildLazyNumericalReactors({
   environment = process.env,
+  buildAdapters = buildNumericalRuntimeAdapters,
   inspect = () => inspectToolchain({ root }),
   install = installNumericalProduct,
   runCommand = run,
@@ -196,6 +199,13 @@ async function buildLazyNumericalReactors({
   }
   const inspection = inspect();
   if (!inspection.ready) {
+    if (numericalRuntimeRequired(environment)) {
+      throw new Error(
+        "the numerical runtime is required, but neither an authenticated product " +
+          "nor a prepared reproducible Wasm toolchain is available",
+      );
+    }
+    buildAdapters(root);
     return "Skipped optional numerical reactors: the reproducible Wasm toolchain is not prepared.";
   }
   const output = await runCommand(process.execPath, [

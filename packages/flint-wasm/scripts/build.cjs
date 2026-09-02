@@ -369,9 +369,19 @@ requirePath(
 );
 
 fs.mkdirSync(outputDirectory, { recursive: true });
-run(process.execPath, [
-  path.join(packageRoot, "numerical", "scripts", "build-all.cjs"),
-]);
+if (process.env.SAGEJS_NUMERICAL_PRODUCT_ROOT) {
+  const { installNumericalProduct } = require(
+    path.join(repositoryRoot, "scripts/numerical-product.cjs")
+  );
+  installNumericalProduct({
+    root: repositoryRoot,
+    inputDirectory: process.env.SAGEJS_NUMERICAL_PRODUCT_ROOT,
+  });
+} else {
+  run(process.execPath, [
+    path.join(packageRoot, "numerical", "scripts", "build-all.cjs"),
+  ]);
+}
 // Earlier builds copied these source modules beside the bundled runtime. They
 // are no longer served or receipted; remove them explicitly when resuming a
 // package build so the physical dist directory is as clean as its manifest.
@@ -1125,6 +1135,7 @@ const receipt = writeProductionReceipt({
     ...dynamicProgramInputs,
     lazyModuleGenerator,
     lazyModuleConfig,
+    path.join(repositoryRoot, "scripts", "numerical-product.cjs"),
     conwayDataSource,
     kernelCoverageSource,
     plotlySource,

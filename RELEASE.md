@@ -145,6 +145,17 @@ evidence, four process-tree memory records, and the structural startup/package/
 payload/closure record. “Skipped”, “unsupported”, stale-candidate, dirty-tree,
 or missing evidence is a release failure, never an optional result.
 
+The canonical Linux numerical producer publishes one exact, source-commit-bound
+eight-file handoff: the Node and browser cminpack/NLopt Wasm files plus their
+four JavaScript loaders. Every platform release job sets
+`SAGEJS_NUMERICAL_PRODUCT_ROOT` and `SAGEJS_NUMERICAL_RUNTIME_REQUIRED=1`, so
+bootstrap installs that handoff, build receipts bind the SHA-256 and byte count
+of all eight files, and SEA packaging rechecks the current receipt. The browser
+qualification job consumes the same artifact rather than selecting a separate
+numerical rebuild. Tagged production also runs the NLopt verifier with
+`--require-qualified`; a pending or stale qualification manifest blocks the
+handoff before any release artifact is uploaded.
+
 Copy producer outputs without merging their directories into this exact
 layout:
 
@@ -218,6 +229,13 @@ pnpm test:sea:reuse
 The unsuffixed `test:native` and `test:sea` commands remain self-contained
 developer entry points: they prepare missing inputs first. Release jobs must not
 use those rebuilding entry points after a successful bootstrap.
+
+An ordinary developer bootstrap does not implicitly download or compile the
+reproducible Wasm toolchain. If neither a prepared toolchain nor an authenticated
+handoff is configured, the resulting self-contained SEA explicitly omits the
+optional cminpack and NLopt reactor assets. A partial or invalid local reactor
+set still fails closed. Release SEAs never take the omission path because the
+required-provider settings above are mandatory on all four platform jobs.
 
 Run the Wasm release workflow's build, Node-Wasm parity, browser parity,
 security, and performance commands before tagging as well. Persistent browser

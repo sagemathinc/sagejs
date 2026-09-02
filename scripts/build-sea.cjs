@@ -23,8 +23,12 @@ const {
   MATRIX_STANDALONE_MODULES,
 } = require("../tools/standalone-library.cjs");
 const {
-  validateInstalledNumericalProduct,
+  resolveNumericalRuntimeCapability,
 } = require("./numerical-product.cjs");
+const {
+  currentBuildIdentity,
+  inspectBuildReceipt,
+} = require("./build-receipt.cjs");
 
 const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
@@ -486,8 +490,6 @@ function buildExecutable(name, withFlint, seaNode) {
     "worker/multiprocessing-worker.cjs": multiprocessingWorkerBundle,
     "worker/kernel-worker.cjs": kernelWorkerBundle,
     "native/zeromq.node": zeroMQAddonFilename(),
-    "numerical/cminpack.wasm": numericalBackendArtifact,
-    "numerical/nlopt-methods.wasm": nloptBackendArtifact,
     ...collectStandardLibraryAssets(),
     ...collectStandardLibraryCacheAssets(),
     ...collectJsonCacheAssets("lazy-module-cache"),
@@ -544,6 +546,10 @@ function buildExecutable(name, withFlint, seaNode) {
       "tree-sitter-wolfram.wasm",
     ),
   };
+  if (numericalRuntime.available) {
+    assets["numerical/cminpack.wasm"] = numericalBackendArtifact;
+    assets["numerical/nlopt-methods.wasm"] = nloptBackendArtifact;
+  }
   if (withFlint) {
     assets["native/sagejs_flint.node"] = flintAddon;
     assets["native/sagejs_flint_ffi.node"] = flintFfiAddon;
@@ -586,13 +592,22 @@ function buildExecutable(name, withFlint, seaNode) {
   );
 }
 
-try {
-  validateInstalledNumericalProduct(root);
-} catch (error) {
+const numericalProvider = currentBuildIdentity(root).numericalRuntimeProvider;
+const numericalRuntime = resolveNumericalRuntimeCapability({
+  root,
+  providerAvailable: numericalProvider.available,
+  scope: "sea",
+});
+const sourceBuildReceipt = inspectBuildReceipt(root);
+if (!sourceBuildReceipt.current) {
   throw new Error(
-    "SEA requires the authenticated numerical runtime published by `pnpm build`; " +
-      "prepare the Wasm toolchain or set SAGEJS_NUMERICAL_PRODUCT_ROOT before building. " +
-      `(${error.message})`,
+    `SEA inputs are not bound to a current build receipt: ${sourceBuildReceipt.reason}`,
+  );
+}
+if (!numericalRuntime.available) {
+  process.stdout.write(
+    "Building an optional-capability SEA without cminpack or NLopt reactors; " +
+      "prepare the Wasm toolchain or configure SAGEJS_NUMERICAL_PRODUCT_ROOT to include them.\n",
   );
 }
 

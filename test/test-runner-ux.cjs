@@ -244,13 +244,26 @@ test("build receipts require identical inputs and every output witness", () => {
 
 test("routine builds skip optional numerical reactors without a prepared toolchain", async () => {
   let ran = false;
+  let builtAdapters = false;
   const summary = await buildLazyNumericalReactors({
     environment: {},
+    buildAdapters: () => { builtAdapters = true; },
     inspect: () => ({ ready: false }),
     runCommand: async () => { ran = true; },
   });
   assert.equal(ran, false);
+  assert.equal(builtAdapters, true);
   assert.match(summary, /Skipped optional numerical reactors/);
+});
+
+test("required numerical builds fail closed without a provider", async () => {
+  await assert.rejects(
+    buildLazyNumericalReactors({
+      environment: { SAGEJS_NUMERICAL_RUNTIME_REQUIRED: "1" },
+      inspect: () => ({ ready: false }),
+    }),
+    /numerical runtime is required/,
+  );
 });
 
 test("prepared builds execute and validate the numerical reactor builder", async () => {
