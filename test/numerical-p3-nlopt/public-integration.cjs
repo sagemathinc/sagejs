@@ -116,6 +116,29 @@ probe = next(
 assert probe["maximum_sampled_decrease"] > 0.0
 assert probe["decrease_threshold"] == 0.0
 
+# At this offset the objective difference between the returned point and the
+# lower bound is smaller than one binary64 ulp.  The independent wider-stencil
+# gradient still resolves the descent direction, so validation must not turn
+# the loss of significance into a platform-dependent success.
+large_offset = minimize(
+    lambda point: 1.0e9 + point[0],
+    [1.0e-9],
+    bounds=[[0.0, 1.0]],
+    method="nlopt-nelder-mead",
+    initial_step=1.0e-12,
+    xtol=1.0e-3,
+    max_evaluations=10000,
+)
+assert large_offset.status == "converged"
+assert not large_offset.success and not large_offset.validation.passed
+bound_check = next(
+    check for check in large_offset.validation.to_dict()["checks"]
+    if check["kind"] == "strict_active_bound_consistency"
+)
+assert not bound_check["passed"]
+assert bound_check["unresolved_descent"][0]["direction"] == "lower"
+assert bound_check["unresolved_descent"][0]["distance"] > 0.0
+
 anisotropic = minimize(
     lambda point: point[0] + 1.0e16*point[1]**2,
     [1.0e-9, 0.0],

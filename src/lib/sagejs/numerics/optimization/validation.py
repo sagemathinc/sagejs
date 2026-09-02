@@ -475,6 +475,47 @@ def _minimize_validation(
         if upper_value is not None and point[index] > float(upper_value) + 1.0e-12:
             feasible = False
     gradient_stationary = residual <= threshold
+    # A projected-gradient residual can be arbitrarily small merely because a
+    # candidate is close to a bound: for positive `g_i`, the residual is the
+    # remaining distance to the lower bound.  That is useful as a stopping
+    # measure, but it is not enough to accept a derivative-free backend's
+    # heuristic success.  In particular, a large additive objective offset can
+    # erase the value difference between the candidate and the bound even when
+    # the independent, wider-stencil gradient still resolves a descent
+    # direction.  Require such a candidate to reach the bound exactly; otherwise
+    # classify it as indeterminate instead of making an offset-dependent claim.
+    unresolved_bound_descent: list[dict[str, Any]] = []
+    for index in range(len(point)):
+        lower_value = lower[index]
+        upper_value = upper[index]
+        derivative = gradient[index]
+        if (
+            lower_value is not None
+            and point[index] > float(lower_value)
+            and derivative > threshold
+        ):
+            unresolved_bound_descent.append(
+                {
+                    "coordinate": index,
+                    "direction": "lower",
+                    "distance": point[index] - float(lower_value),
+                    "derivative": derivative,
+                }
+            )
+        if (
+            upper_value is not None
+            and point[index] < float(upper_value)
+            and derivative < -threshold
+        ):
+            unresolved_bound_descent.append(
+                {
+                    "coordinate": index,
+                    "direction": "upper",
+                    "distance": float(upper_value) - point[index],
+                    "derivative": derivative,
+                }
+            )
+    strict_active_bound_consistency = len(unresolved_bound_descent) == 0
     second_order_required = False
     curvature = (
         {
@@ -513,6 +554,7 @@ def _minimize_validation(
     heuristic_consistent = (
         feasible
         and gradient_stationary
+        and strict_active_bound_consistency
         and no_sampled_decrease
         and curvature_completed
         and not curvature_contradiction
@@ -530,6 +572,16 @@ def _minimize_validation(
                     "value": residual,
                     "threshold": threshold,
                     "gradient": gradient,
+                },
+                {
+                    "kind": "strict_active_bound_consistency",
+                    "passed": strict_active_bound_consistency,
+                    "unresolved_descent": unresolved_bound_descent,
+                    "conclusion": (
+                        "no_resolved_descent_toward_unreached_bound"
+                        if strict_active_bound_consistency
+                        else "resolved_descent_requires_exact_bound_or_indeterminate"
+                    ),
                 },
                 {
                     "kind": "bounded_feasible_objective_probes",

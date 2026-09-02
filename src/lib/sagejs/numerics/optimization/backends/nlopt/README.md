@@ -10,10 +10,12 @@ The method is never selected automatically. NLopt's positive return status is
 execution evidence, not proof of an optimum. Public success has the
 `heuristic` truth level and requires independent objective finiteness, box
 feasibility, empirical projected-stationarity consistency, complete resource
-accounting, and a bounded coordinate-scaled probe set that found no
-representably lower feasible sample. The result always states that neither a
-local nor a global optimum was certified. Any contradiction or incomplete
-required check fails closed.
+accounting, strict consistency between independently resolved gradients and
+unreached finite bounds, and a bounded coordinate-scaled probe set that found
+no representably lower feasible sample. This keeps validation invariant under
+large additive objective offsets that can erase a tiny local value difference
+in binary64. The result always states that neither a local nor a global optimum
+was certified. Any contradiction or incomplete required check fails closed.
 
 `nlopt-cobyla` is deliberately absent. Source-bound UBSAN qualification found
 the formal one-based pointer-provenance undefined behavior tracked by upstream
