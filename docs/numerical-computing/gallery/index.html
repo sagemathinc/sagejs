@@ -7,9 +7,9 @@
 <nav aria-label="Numerical gallery stories"><h2>Stories</h2><ol><li><a href="#root-brent">A sign change is evidence, not the answer</a></li><li><a href="#nonlinear-fit">A fitted curve is more than a parameter vector</a></li><li><a href="#ode-adaptivity">Adaptive steps should preserve the mathematics you care about</a></li><li><a href="#linear-refinement">A solution is credible only with a scale-aware residual</a></li><li><a href="#adaptive-quadrature">An error estimate is a budget allocation record</a></li><li><a href="#runge-approximation">Representation stability and approximation quality are different</a></li><li><a href="#spectral-conditioning">Eigenvalues can be available when an eigenbasis is not trustworthy</a></li><li><a href="#optimization-path">A path explains both convergence and a budget stop</a></li><li><a href="#robust-regression">Robust fitting shows which observations lost influence</a></li></ol></nav>
 <main><section class="gallery-story" id="root-brent">
     <header><p class="domain">roots · scalar_root</p>
-      <h2>A sign change is evidence, not the answer</h2><p>Brent rapidly solves cos(x)=x, while the same stopping rule is rejected on a discontinuity by independent residual validation.</p></header>
-    <div class="story-columns"><section><h3>Learning objectives</h3><ul><li>Read a shrinking bracket from retained solver evidence.</li><li>Separate a solver stopping status from independent mathematical validation.</li></ul></section>
-      <section><h3>Method assumptions</h3><ul><li>Brent requires a finite sign-changing bracket.</li><li>The bracket-to-root implication requires continuity.</li></ul></section></div>
+      <h2>A sign change is evidence, not the answer</h2><p>Brent rapidly solves cos(x)=x and a separate bisection run checks the candidate, while the same stopping rule is rejected on a discontinuity by independent residual validation.</p></header>
+    <div class="story-columns"><section><h3>Learning objectives</h3><ul><li>Read a shrinking bracket from retained solver evidence.</li><li>Separate a solver stopping status from independent mathematical validation.</li><li>Compare Brent and bisection using retained accuracy and work measurements.</li></ul></section>
+      <section><h3>Method assumptions</h3><ul><li>Brent requires a finite sign-changing bracket.</li><li>Bisection uses the same bracket assumptions but guarantees halving steps.</li><li>The bracket-to-root implication requires continuity.</li></ul></section></div>
     <details><summary>Complete Sage.js example</summary><pre><code>import math
 from sagejs.numerics import find_root
 
@@ -26,7 +26,16 @@ result</code></pre>
     <p class="case-kind">success</p>
     <h3>Convergence of cos(x)=x</h3>
     <p class="question">Where does cos(x) meet x on [0,1]?</p>
-    <p>The retained evaluations and brackets converge to 0.7390851332; independent residual and bracket checks pass.</p>
+    <p>The retained evaluations and brackets converge to 0.7390851332; independent residual and bracket checks pass. A separately executed bisection solve agrees within the declared x-tolerance, with its full result retained below.</p><section class="reference-comparison" data-reference-comparison>
+    <h4>Independent reference-method comparison</h4>
+    <p>Two independently executed bracketed methods return validated candidates that agree within the declared x-tolerance.</p>
+    <div class="table-scroll"><table>
+      <caption>Two retained executions of the same numerical problem</caption>
+      <thead><tr><th scope="col">Role</th><th scope="col">Method</th><th scope="col">Candidate</th><th scope="col">Residual</th><th scope="col">Iterations</th><th scope="col">Evaluations</th><th scope="col">Callback calls</th></tr></thead>
+      <tbody><tr><th scope="row">Primary</th><td>brent</td><td>0.7390851332151559</td><td>7.993605777301127e-15</td><td>6</td><td>8</td><td>11</td></tr><tr><th scope="row">Reference</th><td>bisection</td><td>0.7390851332147577</td><td>6.744604874597826e-13</td><td>40</td><td>42</td><td>45</td></tr></tbody>
+    </table></div>
+    <p><strong>Agreement:</strong> absolute candidate difference 3.9823699893304365e-13; threshold 1e-12; passed=true.</p>
+  </section>
     <figure class="gallery-figure">
         <div class="gallery-plot" id="plot-root-brent-cosine-fixed-point"
           data-gallery-plot="root-brent:cosine-fixed-point"

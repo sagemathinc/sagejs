@@ -87,6 +87,9 @@ function publicManifest(bundle, html) {
         "method-assumptions",
         "success-and-failure-narratives",
         "bounded-trace-evidence",
+        ...(story.cases.some((caseRecord) => caseRecord.reference_comparison)
+          ? ["retained-reference-method-comparison"]
+          : []),
         "manual-animation",
         "play-pause-step-restart-speed-iteration-controls",
         "static-fallback",

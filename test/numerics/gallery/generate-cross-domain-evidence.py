@@ -511,8 +511,9 @@ def _case(
     presentation: dict[str, Any] | None = None,
     *,
     evidence: list[str] | None = None,
+    reference_comparison: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
+    record = {
         "id": case_id,
         "title": title,
         "kind": kind,
@@ -527,6 +528,70 @@ def _case(
             "/result/diagnostics",
         ],
         "presentation": presentation,
+    }
+    if reference_comparison is not None:
+        record["reference_comparison"] = reference_comparison
+    return record
+
+
+def _root_reference_comparison(
+    primary: Any,
+    reference: Any,
+    *,
+    primary_callback_calls: int,
+    reference_callback_calls: int,
+) -> dict[str, Any]:
+    primary_record = _stable_result(primary)
+    reference_record = _stable_result(reference)
+    threshold = max(
+        float(primary_record["reproducibility"]["problem"]["tolerances"]["xtol"]),
+        float(reference_record["reproducibility"]["problem"]["tolerances"]["xtol"]),
+    )
+    difference = abs(float(primary_record["value"]) - float(reference_record["value"]))
+
+    def summary(record: dict[str, Any], callback_calls: int) -> dict[str, Any]:
+        return {
+            "method": record["method"],
+            "value": record["value"],
+            "residual": record["validation"]["residual"],
+            "iterations": record["iterations"],
+            "evaluations": record["evaluations"],
+            "callback_calls": callback_calls,
+            "validation_passed": record["validation"]["passed"],
+            "truth_level": record["validation"]["truth_level"],
+        }
+
+    return {
+        "schema": "sagejs.numerics.reference-comparison/v1",
+        "claim": (
+            "Two independently executed bracketed methods return validated candidates "
+            "that agree within the declared x-tolerance."
+        ),
+        "primary": summary(primary_record, primary_callback_calls),
+        "reference": summary(reference_record, reference_callback_calls),
+        "agreement": {
+            "absolute_value_difference": difference,
+            "threshold": threshold,
+            "passed": difference <= threshold,
+        },
+        "execution": {
+            "independent_runs": True,
+            "distinct_callback_instances": True,
+            "callback_reevaluated_for_presentation": False,
+        },
+        "reference_result": reference_record,
+        "evidence": [
+            "/result/method",
+            "/result/value",
+            "/result/validation/residual",
+            "/result/iterations",
+            "/result/evaluations",
+            "/reference_comparison/reference_result/method",
+            "/reference_comparison/reference_result/value",
+            "/reference_comparison/reference_result/validation/residual",
+            "/reference_comparison/reference_result/iterations",
+            "/reference_comparison/reference_result/evaluations",
+        ],
     }
 
 
@@ -576,6 +641,23 @@ def root_story() -> dict[str, Any]:
         callback_after=callback.calls,
         source="NumericalResult.animate() retained-evidence view",
     )
+    reference_callback = Counted(lambda x: math.cos(x) - x)
+    reference = find_root(
+        reference_callback,
+        0.0,
+        1.0,
+        method="bisection",
+        expression="math.cos(x) - x",
+        trace="evaluations",
+        max_trace_events=96,
+        max_trace_bytes=131_072,
+    )
+    reference_comparison = _root_reference_comparison(
+        success,
+        reference,
+        primary_callback_calls=before,
+        reference_callback_calls=reference_callback.calls,
+    )
     jump_callback = Counted(lambda x: -1.0 if x < 0.0 else 1.0)
     jump = find_root(
         jump_callback,
@@ -598,13 +680,15 @@ def root_story() -> dict[str, Any]:
         "roots",
         "scalar_root",
         "A sign change is evidence, not the answer",
-        "Brent rapidly solves cos(x)=x, while the same stopping rule is rejected on a discontinuity by independent residual validation.",
+        "Brent rapidly solves cos(x)=x and a separate bisection run checks the candidate, while the same stopping rule is rejected on a discontinuity by independent residual validation.",
         [
             "Read a shrinking bracket from retained solver evidence.",
             "Separate a solver stopping status from independent mathematical validation.",
+            "Compare Brent and bisection using retained accuracy and work measurements.",
         ],
         [
             "Brent requires a finite sign-changing bracket.",
+            "Bisection uses the same bracket assumptions but guarantees halving steps.",
             "The bracket-to-root implication requires continuity.",
         ],
         [
@@ -613,9 +697,10 @@ def root_story() -> dict[str, Any]:
                 "Convergence of cos(x)=x",
                 "success",
                 "Where does cos(x) meet x on [0,1]?",
-                "The retained evaluations and brackets converge to 0.7390851332; independent residual and bracket checks pass.",
+                "The retained evaluations and brackets converge to 0.7390851332; independent residual and bracket checks pass. A separately executed bisection solve agrees within the declared x-tolerance, with its full result retained below.",
                 success,
                 presentation,
+                reference_comparison=reference_comparison,
             ),
             _case(
                 "jump-discontinuity",
@@ -1282,12 +1367,17 @@ def _measure(story: dict[str, Any]) -> dict[str, Any]:
     trace_events = 0
     trace_bytes = 0
     for case in story["cases"]:
-        trace = case["result"]["trace"]
-        trace_events = max(trace_events, int(trace["retained_events"]))
-        trace_bytes = max(
-            trace_bytes,
-            len(json.dumps(trace, allow_nan=False, separators=(",", ":")).encode()),
-        )
+        results = [case["result"]]
+        comparison = case.get("reference_comparison")
+        if comparison:
+            results.append(comparison["reference_result"])
+        for result in results:
+            trace = result["trace"]
+            trace_events = max(trace_events, int(trace["retained_events"]))
+            trace_bytes = max(
+                trace_bytes,
+                len(json.dumps(trace, allow_nan=False, separators=(",", ":")).encode()),
+            )
         presentation = case.get("presentation")
         if not presentation:
             continue

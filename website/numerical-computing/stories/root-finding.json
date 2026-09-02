@@ -9,6 +9,7 @@
     "Choose a bracketed or open root method from its mathematical assumptions.",
     "Read a semantic iteration trace without treating a small step as proof of a root.",
     "Distinguish solver termination from independently validated success.",
+    "Compare Brent and bisection using retained accuracy and work measurements.",
     "Respond to discontinuity, invalid-bracket, and divergence diagnostics."
   ],
   "method_assumptions": [
@@ -658,81 +659,67 @@
         "validation_passed": true,
         "diagnostic_codes": []
       },
-      "verification": {
-        "backend": "ordinary-python",
-        "diagnostics": [],
-        "domain_payload": {
-          "bracket": [
-            0.7390851332147577,
-            0.7390851332156672
-          ]
+      "reference_comparison": {
+        "schema": "sagejs.numerics.reference-comparison/v1",
+        "claim": "A separately executed bisection solve independently validates its candidate and agrees with Brent within the declared x-tolerance.",
+        "primary": {
+          "method": "brent",
+          "value": 0.7390851332151559,
+          "residual": 7.993605777301127e-15,
+          "iterations": 6,
+          "evaluations": 8,
+          "callback_calls": 11,
+          "validation_passed": true,
+          "truth_level": "validated_approximate"
         },
-        "elapsed_ms": 0,
-        "evaluations": 42,
-        "iterations": 40,
-        "limitations": [],
-        "measurements": {
-          "fixture_elapsed_policy": "normalized; performance is measured separately"
+        "reference": {
+          "method": "bisection",
+          "value": 0.7390851332147577,
+          "residual": 6.744604874597826e-13,
+          "iterations": 40,
+          "evaluations": 42,
+          "callback_calls": 45,
+          "validation_passed": true,
+          "truth_level": "validated_approximate"
         },
-        "method": "bisection",
-        "precision": {
-          "bits": 53,
-          "kind": "binary64"
+        "agreement": {
+          "absolute_value_difference": 3.9823699893304365e-13,
+          "threshold": 1e-12,
+          "passed": true
         },
-        "problem_digest": "fcf63873578db99b11e9ce124790317902ed4f1f87d771ece9a16c2c50a74ab7",
-        "provenance": {
-          "artifact_sha256": null,
-          "execution_binding_status": "source_transparent",
-          "implementation": "sagejs.numerics.roots",
-          "implementation_kind": "ordinary_python",
-          "planned_execution_target": {
-            "artifact_sha256": null,
-            "backend": "ordinary-python",
-            "binding_status": "source_transparent",
-            "implementation_kind": "ordinary_python",
-            "qualification_receipt_sha256": null,
-            "source_digest": null
+        "execution": {
+          "independent_runs": true,
+          "distinct_callback_instances": true,
+          "callback_reevaluated_for_presentation": false
+        },
+        "reference_result": {
+          "backend": "ordinary-python",
+          "diagnostics": [],
+          "domain_payload": {
+            "bracket": [
+              0.7390851332147577,
+              0.7390851332156672
+            ]
           },
-          "qualification_receipt_sha256": null,
-          "solver_status": "converged",
-          "source_digest": null,
-          "source_transparent": true
-        },
-        "reproducibility": {
-          "plan": {
-            "backend": "ordinary-python",
-            "capability": {
-              "backend": "ordinary-python",
-              "classification": "extension",
-              "numeric_types": [
-                "binary64"
-              ],
-              "platforms": [
-                "browser",
-                "node",
-                "sea",
-                "cpython",
-                "linux-x64",
-                "linux-arm64",
-                "macos-arm64",
-                "windows-x64"
-              ],
-              "requires": [
-                "finite_sign_change_bracket"
-              ],
-              "trace_levels": [
-                "none",
-                "summary",
-                "iterations",
-                "evaluations"
-              ],
-              "validation": [
-                "residual",
-                "bracket_invariant"
-              ]
-            },
-            "diagnostics": [],
-            "execution_target": {
+          "elapsed_ms": 0,
+          "evaluations": 42,
+          "iterations": 40,
+          "limitations": [],
+          "measurements": {
+            "fixture_elapsed_policy": "normalized; performance is measured separately"
+          },
+          "method": "bisection",
+          "precision": {
+            "bits": 53,
+            "kind": "binary64"
+          },
+          "problem_digest": "ff9203b80abb68f197d762e3b259d96d2e25d411676c96b0937f96898f9eec9d",
+          "provenance": {
+            "artifact_sha256": null,
+            "execution_binding_status": "source_transparent",
+            "implementation": "sagejs.numerics.roots",
+            "implementation_kind": "ordinary_python",
+            "planned_execution_target": {
               "artifact_sha256": null,
               "backend": "ordinary-python",
               "binding_status": "source_transparent",
@@ -740,1156 +727,1216 @@
               "qualification_receipt_sha256": null,
               "source_digest": null
             },
-            "expected_resources": {
-              "max_elapsed_ms": 30000,
-              "max_evaluations": 256,
-              "max_iterations": 100
-            },
-            "fallback": {
-              "method": "bisection"
-            },
-            "method": "bisection",
-            "numeric_type": "binary64",
-            "operation": "scalar_root",
-            "problem_digest": "fcf63873578db99b11e9ce124790317902ed4f1f87d771ece9a16c2c50a74ab7",
-            "rejected_alternatives": [
-              {
-                "method": "brent",
-                "reason": "not selected by the resolved policy"
+            "qualification_receipt_sha256": null,
+            "solver_status": "converged",
+            "source_digest": null,
+            "source_transparent": true
+          },
+          "reproducibility": {
+            "plan": {
+              "backend": "ordinary-python",
+              "capability": {
+                "backend": "ordinary-python",
+                "classification": "extension",
+                "numeric_types": [
+                  "binary64"
+                ],
+                "platforms": [
+                  "browser",
+                  "node",
+                  "sea",
+                  "cpython",
+                  "linux-x64",
+                  "linux-arm64",
+                  "macos-arm64",
+                  "windows-x64"
+                ],
+                "requires": [
+                  "finite_sign_change_bracket"
+                ],
+                "trace_levels": [
+                  "none",
+                  "summary",
+                  "iterations",
+                  "evaluations"
+                ],
+                "validation": [
+                  "residual",
+                  "bracket_invariant"
+                ]
               },
-              {
-                "method": "newton",
-                "reason": "not selected by the resolved policy"
+              "diagnostics": [],
+              "execution_target": {
+                "artifact_sha256": null,
+                "backend": "ordinary-python",
+                "binding_status": "source_transparent",
+                "implementation_kind": "ordinary_python",
+                "qualification_receipt_sha256": null,
+                "source_digest": null
               },
+              "expected_resources": {
+                "max_elapsed_ms": 30000,
+                "max_evaluations": 256,
+                "max_iterations": 100
+              },
+              "fallback": {
+                "method": "bisection"
+              },
+              "method": "bisection",
+              "numeric_type": "binary64",
+              "operation": "scalar_root",
+              "problem_digest": "ff9203b80abb68f197d762e3b259d96d2e25d411676c96b0937f96898f9eec9d",
+              "rejected_alternatives": [
+                {
+                  "method": "brent",
+                  "reason": "not selected by the resolved policy"
+                },
+                {
+                  "method": "newton",
+                  "reason": "not selected by the resolved policy"
+                },
+                {
+                  "method": "secant",
+                  "reason": "not selected by the resolved policy"
+                }
+              ],
+              "schema_version": 1,
+              "selection_reason": "the caller explicitly requested bisection"
+            },
+            "problem": {
+              "bounds": {
+                "bracket": [
+                  0,
+                  1
+                ]
+              },
+              "derivative": {
+                "kind": "none",
+                "replayable": true
+              },
+              "domain": "roots",
+              "function": {
+                "expression": "math.cos(x) - x",
+                "kind": "expression",
+                "replayable": true,
+                "variable": "x"
+              },
+              "initial_data": {
+                "points": [
+                  0,
+                  1
+                ]
+              },
+              "metadata": {},
+              "method_request": "bisection",
+              "numeric_type": "binary64",
+              "operation": "scalar_root",
+              "resource_budget": {
+                "max_elapsed_ms": 30000,
+                "max_evaluations": 256,
+                "max_iterations": 100,
+                "max_trace_bytes": 131072,
+                "max_trace_events": 64
+              },
+              "schema_version": 1,
+              "source_intent": {
+                "language": "python",
+                "source": {}
+              },
+              "tolerances": {
+                "ftol": 1e-12,
+                "rtol": 8.881784197001252e-16,
+                "xtol": 1e-12
+              },
+              "trace_policy": {
+                "level": "evaluations",
+                "max_bytes": 131072,
+                "max_events": 64
+              },
+              "variables": [
+                {
+                  "name": "x",
+                  "shape": []
+                }
+              ]
+            },
+            "replayable": true
+          },
+          "schema_version": 1,
+          "status": "converged",
+          "success": true,
+          "trace": {
+            "diagnostics": [
               {
-                "method": "secant",
-                "reason": "not selected by the resolved policy"
+                "code": "trace_truncated",
+                "details": {
+                  "dropped_events": 21
+                },
+                "message": "The semantic trace exceeded its event or byte budget and was deterministically decimated.",
+                "phase": "trace",
+                "severity": "warning",
+                "suggested_actions": [
+                  "Increase the trace budget or request a less detailed trace level."
+                ]
               }
             ],
-            "schema_version": 1,
-            "selection_reason": "the caller explicitly requested bisection"
-          },
-          "problem": {
-            "bounds": {
-              "bracket": [
-                0,
-                1
-              ]
-            },
-            "derivative": {
-              "kind": "none",
-              "replayable": true
-            },
-            "domain": "roots",
-            "function": {
-              "expression": "math.cos(x) - x",
-              "kind": "expression",
-              "replayable": true,
-              "variable": "x"
-            },
-            "initial_data": {
-              "points": [
-                0,
-                1
-              ]
-            },
-            "metadata": {},
-            "method_request": "brent",
-            "numeric_type": "binary64",
-            "operation": "scalar_root",
-            "resource_budget": {
-              "max_elapsed_ms": 30000,
-              "max_evaluations": 256,
-              "max_iterations": 100,
-              "max_trace_bytes": 131072,
-              "max_trace_events": 64
-            },
-            "schema_version": 1,
-            "source_intent": {
-              "language": "python",
-              "source": {}
-            },
-            "tolerances": {
-              "ftol": 1e-12,
-              "rtol": 8.881784197001252e-16,
-              "xtol": 1e-12
-            },
-            "trace_policy": {
+            "dropped_events": 21,
+            "events": [
+              {
+                "accepted": null,
+                "data": {
+                  "backend": "ordinary-python",
+                  "method": "bisection",
+                  "operation": "scalar_root"
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": true,
+                "iteration": null,
+                "kind": "start",
+                "sequence": 0
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 1,
+                  "x": 0
+                },
+                "diagnostics": [],
+                "evaluation": 1,
+                "important": false,
+                "iteration": 0,
+                "kind": "evaluation",
+                "sequence": 1
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -0.45969769413186023,
+                  "x": 1
+                },
+                "diagnostics": [],
+                "evaluation": 2,
+                "important": false,
+                "iteration": 0,
+                "kind": "evaluation",
+                "sequence": 2
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 0.37758256189037276,
+                  "x": 0.5
+                },
+                "diagnostics": [],
+                "evaluation": 3,
+                "important": false,
+                "iteration": 1,
+                "kind": "evaluation",
+                "sequence": 3
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.5,
+                    1
+                  ],
+                  "bracket_width": 0.5,
+                  "candidate": 0.5,
+                  "residual": 0.37758256189037276
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 1,
+                "kind": "iteration",
+                "sequence": 4
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -0.018311131126179103,
+                  "x": 0.75
+                },
+                "diagnostics": [],
+                "evaluation": 4,
+                "important": false,
+                "iteration": 2,
+                "kind": "evaluation",
+                "sequence": 5
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.5,
+                    0.75
+                  ],
+                  "bracket_width": 0.25,
+                  "candidate": 0.75,
+                  "residual": 0.018311131126179103
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 2,
+                "kind": "iteration",
+                "sequence": 6
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 0.18596311950521793,
+                  "x": 0.625
+                },
+                "diagnostics": [],
+                "evaluation": 5,
+                "important": false,
+                "iteration": 3,
+                "kind": "evaluation",
+                "sequence": 7
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.625,
+                    0.75
+                  ],
+                  "bracket_width": 0.125,
+                  "candidate": 0.625,
+                  "residual": 0.18596311950521793
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 3,
+                "kind": "iteration",
+                "sequence": 8
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 0.0853349461524715,
+                  "x": 0.6875
+                },
+                "diagnostics": [],
+                "evaluation": 6,
+                "important": false,
+                "iteration": 4,
+                "kind": "evaluation",
+                "sequence": 9
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.6875,
+                    0.75
+                  ],
+                  "bracket_width": 0.0625,
+                  "candidate": 0.6875,
+                  "residual": 0.0853349461524715
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 4,
+                "kind": "iteration",
+                "sequence": 10
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 0.03387937241806649,
+                  "x": 0.71875
+                },
+                "diagnostics": [],
+                "evaluation": 7,
+                "important": false,
+                "iteration": 5,
+                "kind": "evaluation",
+                "sequence": 11
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.71875,
+                    0.75
+                  ],
+                  "bracket_width": 0.03125,
+                  "candidate": 0.71875,
+                  "residual": 0.03387937241806649
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 5,
+                "kind": "iteration",
+                "sequence": 12
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 0.00787472545850132,
+                  "x": 0.734375
+                },
+                "diagnostics": [],
+                "evaluation": 8,
+                "important": false,
+                "iteration": 6,
+                "kind": "evaluation",
+                "sequence": 13
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.734375,
+                    0.75
+                  ],
+                  "bracket_width": 0.015625,
+                  "candidate": 0.734375,
+                  "residual": 0.00787472545850132
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 6,
+                "kind": "iteration",
+                "sequence": 14
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -0.005195711743759213,
+                  "x": 0.7421875
+                },
+                "diagnostics": [],
+                "evaluation": 9,
+                "important": false,
+                "iteration": 7,
+                "kind": "evaluation",
+                "sequence": 15
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.734375,
+                    0.7421875
+                  ],
+                  "bracket_width": 0.0078125,
+                  "candidate": 0.7421875,
+                  "residual": 0.005195711743759213
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 7,
+                "kind": "iteration",
+                "sequence": 16
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 0.001345149751805108,
+                  "x": 0.73828125
+                },
+                "diagnostics": [],
+                "evaluation": 10,
+                "important": false,
+                "iteration": 8,
+                "kind": "evaluation",
+                "sequence": 17
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.73828125,
+                    0.7421875
+                  ],
+                  "bracket_width": 0.00390625,
+                  "candidate": 0.73828125,
+                  "residual": 0.001345149751805108
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 8,
+                "kind": "iteration",
+                "sequence": 18
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -0.001923872780897673,
+                  "x": 0.740234375
+                },
+                "diagnostics": [],
+                "evaluation": 11,
+                "important": false,
+                "iteration": 9,
+                "kind": "evaluation",
+                "sequence": 19
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.73828125,
+                    0.740234375
+                  ],
+                  "bracket_width": 0.001953125,
+                  "candidate": 0.740234375,
+                  "residual": 0.001923872780897673
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 9,
+                "kind": "iteration",
+                "sequence": 20
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -0.0002890091467900868,
+                  "x": 0.7392578125
+                },
+                "diagnostics": [],
+                "evaluation": 12,
+                "important": false,
+                "iteration": 10,
+                "kind": "evaluation",
+                "sequence": 21
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.73828125,
+                    0.7392578125
+                  ],
+                  "bracket_width": 0.0009765625,
+                  "candidate": 0.7392578125,
+                  "residual": 0.0002890091467900868
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 10,
+                "kind": "iteration",
+                "sequence": 22
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 0.0005281584336581657,
+                  "x": 0.73876953125
+                },
+                "diagnostics": [],
+                "evaluation": 13,
+                "important": false,
+                "iteration": 11,
+                "kind": "evaluation",
+                "sequence": 23
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.73876953125,
+                    0.7392578125
+                  ],
+                  "bracket_width": 0.00048828125,
+                  "candidate": 0.73876953125,
+                  "residual": 0.0005281584336581657
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 11,
+                "kind": "iteration",
+                "sequence": 24
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 0.00011959667132188656,
+                  "x": 0.739013671875
+                },
+                "diagnostics": [],
+                "evaluation": 14,
+                "important": false,
+                "iteration": 12,
+                "kind": "evaluation",
+                "sequence": 25
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.739013671875,
+                    0.7392578125
+                  ],
+                  "bracket_width": 0.000244140625,
+                  "candidate": 0.739013671875,
+                  "residual": 0.00011959667132188656
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 12,
+                "kind": "iteration",
+                "sequence": 26
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -0.00008470073137478717,
+                  "x": 0.7391357421875
+                },
+                "diagnostics": [],
+                "evaluation": 15,
+                "important": false,
+                "iteration": 13,
+                "kind": "evaluation",
+                "sequence": 27
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.739013671875,
+                    0.7391357421875
+                  ],
+                  "bracket_width": 0.0001220703125,
+                  "candidate": 0.7391357421875,
+                  "residual": 0.00008470073137478717
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 13,
+                "kind": "iteration",
+                "sequence": 28
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 0.000017449346639941687,
+                  "x": 0.73907470703125
+                },
+                "diagnostics": [],
+                "evaluation": 16,
+                "important": false,
+                "iteration": 14,
+                "kind": "evaluation",
+                "sequence": 29
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.73907470703125,
+                    0.7391357421875
+                  ],
+                  "bracket_width": 0.00006103515625,
+                  "candidate": 0.73907470703125,
+                  "residual": 0.000017449346639941687
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 14,
+                "kind": "iteration",
+                "sequence": 30
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -0.00003362534821038654,
+                  "x": 0.739105224609375
+                },
+                "diagnostics": [],
+                "evaluation": 17,
+                "important": false,
+                "iteration": 15,
+                "kind": "evaluation",
+                "sequence": 31
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 1.7191737922139794e-8,
+                  "x": 0.7390851229429245
+                },
+                "diagnostics": [],
+                "evaluation": 28,
+                "important": false,
+                "iteration": 26,
+                "kind": "evaluation",
+                "sequence": 53
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851229429245,
+                    0.7390851378440857
+                  ],
+                  "bracket_width": 1.4901161193847656e-8,
+                  "candidate": 0.7390851229429245,
+                  "residual": 1.7191737922139794e-8
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 26,
+                "kind": "iteration",
+                "sequence": 54
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 4.722356616859713e-9,
+                  "x": 0.7390851303935051
+                },
+                "diagnostics": [],
+                "evaluation": 29,
+                "important": false,
+                "iteration": 27,
+                "kind": "evaluation",
+                "sequence": 55
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851303935051,
+                    0.7390851378440857
+                  ],
+                  "bracket_width": 7.450580596923828e-9,
+                  "candidate": 0.7390851303935051,
+                  "residual": 4.722356616859713e-9
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 27,
+                "kind": "iteration",
+                "sequence": 56
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -1.5123340357803272e-9,
+                  "x": 0.7390851341187954
+                },
+                "diagnostics": [],
+                "evaluation": 30,
+                "important": false,
+                "iteration": 28,
+                "kind": "evaluation",
+                "sequence": 57
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851303935051,
+                    0.7390851341187954
+                  ],
+                  "bracket_width": 3.725290298461914e-9,
+                  "candidate": 0.7390851341187954,
+                  "residual": 1.5123340357803272e-9
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 28,
+                "kind": "iteration",
+                "sequence": 58
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 1.6050113460508442e-9,
+                  "x": 0.7390851322561502
+                },
+                "diagnostics": [],
+                "evaluation": 31,
+                "important": false,
+                "iteration": 29,
+                "kind": "evaluation",
+                "sequence": 59
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851322561502,
+                    0.7390851341187954
+                  ],
+                  "bracket_width": 1.862645149230957e-9,
+                  "candidate": 0.7390851322561502,
+                  "residual": 1.6050113460508442e-9
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 29,
+                "kind": "iteration",
+                "sequence": 60
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 4.633871064640971e-11,
+                  "x": 0.7390851331874728
+                },
+                "diagnostics": [],
+                "evaluation": 32,
+                "important": false,
+                "iteration": 30,
+                "kind": "evaluation",
+                "sequence": 61
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851331874728,
+                    0.7390851341187954
+                  ],
+                  "bracket_width": 9.313225746154785e-10,
+                  "candidate": 0.7390851331874728,
+                  "residual": 4.633871064640971e-11
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 30,
+                "kind": "iteration",
+                "sequence": 62
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -7.329976625669588e-10,
+                  "x": 0.7390851336531341
+                },
+                "diagnostics": [],
+                "evaluation": 33,
+                "important": false,
+                "iteration": 31,
+                "kind": "evaluation",
+                "sequence": 63
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851331874728,
+                    0.7390851336531341
+                  ],
+                  "bracket_width": 4.656612873077393e-10,
+                  "candidate": 0.7390851336531341,
+                  "residual": 7.329976625669588e-10
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 31,
+                "kind": "iteration",
+                "sequence": 64
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -3.433294759602745e-10,
+                  "x": 0.7390851334203035
+                },
+                "diagnostics": [],
+                "evaluation": 34,
+                "important": false,
+                "iteration": 32,
+                "kind": "evaluation",
+                "sequence": 65
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851331874728,
+                    0.7390851334203035
+                  ],
+                  "bracket_width": 2.3283064365386963e-10,
+                  "candidate": 0.7390851334203035,
+                  "residual": 3.433294759602745e-10
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 32,
+                "kind": "iteration",
+                "sequence": 66
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -1.4849543816808364e-10,
+                  "x": 0.7390851333038881
+                },
+                "diagnostics": [],
+                "evaluation": 35,
+                "important": false,
+                "iteration": 33,
+                "kind": "evaluation",
+                "sequence": 67
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851331874728,
+                    0.7390851333038881
+                  ],
+                  "bracket_width": 1.1641532182693481e-10,
+                  "candidate": 0.7390851333038881,
+                  "residual": 1.4849543816808364e-10
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 33,
+                "kind": "iteration",
+                "sequence": 68
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -5.1078363760836965e-11,
+                  "x": 0.7390851332456805
+                },
+                "diagnostics": [],
+                "evaluation": 36,
+                "important": false,
+                "iteration": 34,
+                "kind": "evaluation",
+                "sequence": 69
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851331874728,
+                    0.7390851332456805
+                  ],
+                  "bracket_width": 5.820766091346741e-11,
+                  "candidate": 0.7390851332456805,
+                  "residual": 5.1078363760836965e-11
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 34,
+                "kind": "iteration",
+                "sequence": 70
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -2.369882068364859e-12,
+                  "x": 0.7390851332165767
+                },
+                "diagnostics": [],
+                "evaluation": 37,
+                "important": false,
+                "iteration": 35,
+                "kind": "evaluation",
+                "sequence": 71
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851331874728,
+                    0.7390851332165767
+                  ],
+                  "bracket_width": 2.9103830456733704e-11,
+                  "candidate": 0.7390851332165767,
+                  "residual": 2.369882068364859e-12
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 35,
+                "kind": "iteration",
+                "sequence": 72
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 2.1984414289022425e-11,
+                  "x": 0.7390851332020247
+                },
+                "diagnostics": [],
+                "evaluation": 38,
+                "important": false,
+                "iteration": 36,
+                "kind": "evaluation",
+                "sequence": 73
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851332020247,
+                    0.7390851332165767
+                  ],
+                  "bracket_width": 1.4551915228366852e-11,
+                  "candidate": 0.7390851332020247,
+                  "residual": 2.1984414289022425e-11
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 36,
+                "kind": "iteration",
+                "sequence": 74
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 9.807266110328783e-12,
+                  "x": 0.7390851332093007
+                },
+                "diagnostics": [],
+                "evaluation": 39,
+                "important": false,
+                "iteration": 37,
+                "kind": "evaluation",
+                "sequence": 75
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851332093007,
+                    0.7390851332165767
+                  ],
+                  "bracket_width": 7.275957614183426e-12,
+                  "candidate": 0.7390851332093007,
+                  "residual": 9.807266110328783e-12
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 37,
+                "kind": "iteration",
+                "sequence": 76
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 3.718692020981962e-12,
+                  "x": 0.7390851332129387
+                },
+                "diagnostics": [],
+                "evaluation": 40,
+                "important": false,
+                "iteration": 38,
+                "kind": "evaluation",
+                "sequence": 77
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851332129387,
+                    0.7390851332165767
+                  ],
+                  "bracket_width": 3.637978807091713e-12,
+                  "candidate": 0.7390851332129387,
+                  "residual": 3.718692020981962e-12
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 38,
+                "kind": "iteration",
+                "sequence": 78
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": 6.744604874597826e-13,
+                  "x": 0.7390851332147577
+                },
+                "diagnostics": [],
+                "evaluation": 41,
+                "important": false,
+                "iteration": 39,
+                "kind": "evaluation",
+                "sequence": 79
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851332147577,
+                    0.7390851332165767
+                  ],
+                  "bracket_width": 1.8189894035458565e-12,
+                  "candidate": 0.7390851332147577,
+                  "residual": 6.744604874597826e-13
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 39,
+                "kind": "iteration",
+                "sequence": 80
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "value": -8.47655279301307e-13,
+                  "x": 0.7390851332156672
+                },
+                "diagnostics": [],
+                "evaluation": 42,
+                "important": false,
+                "iteration": 40,
+                "kind": "evaluation",
+                "sequence": 81
+              },
+              {
+                "accepted": true,
+                "data": {
+                  "bracket": [
+                    0.7390851332147577,
+                    0.7390851332156672
+                  ],
+                  "bracket_width": 9.094947017729282e-13,
+                  "candidate": 0.7390851332156672,
+                  "residual": 8.47655279301307e-13
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": false,
+                "iteration": 40,
+                "kind": "iteration",
+                "sequence": 82
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "checks": [
+                    {
+                      "kind": "finite_residual",
+                      "passed": true
+                    },
+                    {
+                      "kind": "residual",
+                      "passed": true,
+                      "threshold": 1e-12,
+                      "value": 6.744604874597826e-13
+                    },
+                    {
+                      "bracket": [
+                        0.7390851332147577,
+                        0.7390851332156672
+                      ],
+                      "kind": "bracket_invariant",
+                      "passed": true
+                    }
+                  ],
+                  "condition_estimate": null,
+                  "error_estimate": 4.547473508864641e-13,
+                  "passed": true,
+                  "residual": 6.744604874597826e-13,
+                  "truth_level": "validated_approximate"
+                },
+                "diagnostics": [],
+                "evaluation": null,
+                "important": true,
+                "iteration": null,
+                "kind": "validation",
+                "sequence": 83
+              },
+              {
+                "accepted": null,
+                "data": {
+                  "candidate": 0.7390851332147577,
+                  "solver_residual": 6.744604874597826e-13,
+                  "status": "converged",
+                  "success": true
+                },
+                "diagnostics": [],
+                "evaluation": 42,
+                "important": true,
+                "iteration": 40,
+                "kind": "finish",
+                "sequence": 84
+              }
+            ],
+            "observed_events": 85,
+            "policy": {
               "level": "evaluations",
               "max_bytes": 131072,
               "max_events": 64
             },
-            "variables": [
-              {
-                "name": "x",
-                "shape": []
-              }
-            ]
+            "retained_events": 64,
+            "schema_version": 1,
+            "truncated": true
           },
-          "replayable": true
-        },
-        "schema_version": 1,
-        "status": "converged",
-        "success": true,
-        "trace": {
-          "diagnostics": [
-            {
-              "code": "trace_truncated",
-              "details": {
-                "dropped_events": 21
+          "validation": {
+            "checks": [
+              {
+                "kind": "finite_residual",
+                "passed": true
               },
-              "message": "The semantic trace exceeded its event or byte budget and was deterministically decimated.",
-              "phase": "trace",
-              "severity": "warning",
-              "suggested_actions": [
-                "Increase the trace budget or request a less detailed trace level."
-              ]
-            }
-          ],
-          "dropped_events": 21,
-          "events": [
-            {
-              "accepted": null,
-              "data": {
-                "backend": "ordinary-python",
-                "method": "bisection",
-                "operation": "scalar_root"
+              {
+                "kind": "residual",
+                "passed": true,
+                "threshold": 1e-12,
+                "value": 6.744604874597826e-13
               },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": true,
-              "iteration": null,
-              "kind": "start",
-              "sequence": 0
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 1,
-                "x": 0
-              },
-              "diagnostics": [],
-              "evaluation": 1,
-              "important": false,
-              "iteration": 0,
-              "kind": "evaluation",
-              "sequence": 1
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -0.45969769413186023,
-                "x": 1
-              },
-              "diagnostics": [],
-              "evaluation": 2,
-              "important": false,
-              "iteration": 0,
-              "kind": "evaluation",
-              "sequence": 2
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 0.37758256189037276,
-                "x": 0.5
-              },
-              "diagnostics": [],
-              "evaluation": 3,
-              "important": false,
-              "iteration": 1,
-              "kind": "evaluation",
-              "sequence": 3
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.5,
-                  1
-                ],
-                "bracket_width": 0.5,
-                "candidate": 0.5,
-                "residual": 0.37758256189037276
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 1,
-              "kind": "iteration",
-              "sequence": 4
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -0.018311131126179103,
-                "x": 0.75
-              },
-              "diagnostics": [],
-              "evaluation": 4,
-              "important": false,
-              "iteration": 2,
-              "kind": "evaluation",
-              "sequence": 5
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.5,
-                  0.75
-                ],
-                "bracket_width": 0.25,
-                "candidate": 0.75,
-                "residual": 0.018311131126179103
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 2,
-              "kind": "iteration",
-              "sequence": 6
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 0.18596311950521793,
-                "x": 0.625
-              },
-              "diagnostics": [],
-              "evaluation": 5,
-              "important": false,
-              "iteration": 3,
-              "kind": "evaluation",
-              "sequence": 7
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.625,
-                  0.75
-                ],
-                "bracket_width": 0.125,
-                "candidate": 0.625,
-                "residual": 0.18596311950521793
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 3,
-              "kind": "iteration",
-              "sequence": 8
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 0.0853349461524715,
-                "x": 0.6875
-              },
-              "diagnostics": [],
-              "evaluation": 6,
-              "important": false,
-              "iteration": 4,
-              "kind": "evaluation",
-              "sequence": 9
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.6875,
-                  0.75
-                ],
-                "bracket_width": 0.0625,
-                "candidate": 0.6875,
-                "residual": 0.0853349461524715
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 4,
-              "kind": "iteration",
-              "sequence": 10
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 0.03387937241806649,
-                "x": 0.71875
-              },
-              "diagnostics": [],
-              "evaluation": 7,
-              "important": false,
-              "iteration": 5,
-              "kind": "evaluation",
-              "sequence": 11
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.71875,
-                  0.75
-                ],
-                "bracket_width": 0.03125,
-                "candidate": 0.71875,
-                "residual": 0.03387937241806649
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 5,
-              "kind": "iteration",
-              "sequence": 12
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 0.00787472545850132,
-                "x": 0.734375
-              },
-              "diagnostics": [],
-              "evaluation": 8,
-              "important": false,
-              "iteration": 6,
-              "kind": "evaluation",
-              "sequence": 13
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.734375,
-                  0.75
-                ],
-                "bracket_width": 0.015625,
-                "candidate": 0.734375,
-                "residual": 0.00787472545850132
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 6,
-              "kind": "iteration",
-              "sequence": 14
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -0.005195711743759213,
-                "x": 0.7421875
-              },
-              "diagnostics": [],
-              "evaluation": 9,
-              "important": false,
-              "iteration": 7,
-              "kind": "evaluation",
-              "sequence": 15
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.734375,
-                  0.7421875
-                ],
-                "bracket_width": 0.0078125,
-                "candidate": 0.7421875,
-                "residual": 0.005195711743759213
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 7,
-              "kind": "iteration",
-              "sequence": 16
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 0.001345149751805108,
-                "x": 0.73828125
-              },
-              "diagnostics": [],
-              "evaluation": 10,
-              "important": false,
-              "iteration": 8,
-              "kind": "evaluation",
-              "sequence": 17
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.73828125,
-                  0.7421875
-                ],
-                "bracket_width": 0.00390625,
-                "candidate": 0.73828125,
-                "residual": 0.001345149751805108
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 8,
-              "kind": "iteration",
-              "sequence": 18
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -0.001923872780897673,
-                "x": 0.740234375
-              },
-              "diagnostics": [],
-              "evaluation": 11,
-              "important": false,
-              "iteration": 9,
-              "kind": "evaluation",
-              "sequence": 19
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.73828125,
-                  0.740234375
-                ],
-                "bracket_width": 0.001953125,
-                "candidate": 0.740234375,
-                "residual": 0.001923872780897673
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 9,
-              "kind": "iteration",
-              "sequence": 20
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -0.0002890091467900868,
-                "x": 0.7392578125
-              },
-              "diagnostics": [],
-              "evaluation": 12,
-              "important": false,
-              "iteration": 10,
-              "kind": "evaluation",
-              "sequence": 21
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.73828125,
-                  0.7392578125
-                ],
-                "bracket_width": 0.0009765625,
-                "candidate": 0.7392578125,
-                "residual": 0.0002890091467900868
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 10,
-              "kind": "iteration",
-              "sequence": 22
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 0.0005281584336581657,
-                "x": 0.73876953125
-              },
-              "diagnostics": [],
-              "evaluation": 13,
-              "important": false,
-              "iteration": 11,
-              "kind": "evaluation",
-              "sequence": 23
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.73876953125,
-                  0.7392578125
-                ],
-                "bracket_width": 0.00048828125,
-                "candidate": 0.73876953125,
-                "residual": 0.0005281584336581657
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 11,
-              "kind": "iteration",
-              "sequence": 24
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 0.00011959667132188656,
-                "x": 0.739013671875
-              },
-              "diagnostics": [],
-              "evaluation": 14,
-              "important": false,
-              "iteration": 12,
-              "kind": "evaluation",
-              "sequence": 25
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.739013671875,
-                  0.7392578125
-                ],
-                "bracket_width": 0.000244140625,
-                "candidate": 0.739013671875,
-                "residual": 0.00011959667132188656
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 12,
-              "kind": "iteration",
-              "sequence": 26
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -0.00008470073137478717,
-                "x": 0.7391357421875
-              },
-              "diagnostics": [],
-              "evaluation": 15,
-              "important": false,
-              "iteration": 13,
-              "kind": "evaluation",
-              "sequence": 27
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.739013671875,
-                  0.7391357421875
-                ],
-                "bracket_width": 0.0001220703125,
-                "candidate": 0.7391357421875,
-                "residual": 0.00008470073137478717
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 13,
-              "kind": "iteration",
-              "sequence": 28
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 0.000017449346639941687,
-                "x": 0.73907470703125
-              },
-              "diagnostics": [],
-              "evaluation": 16,
-              "important": false,
-              "iteration": 14,
-              "kind": "evaluation",
-              "sequence": 29
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.73907470703125,
-                  0.7391357421875
-                ],
-                "bracket_width": 0.00006103515625,
-                "candidate": 0.73907470703125,
-                "residual": 0.000017449346639941687
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 14,
-              "kind": "iteration",
-              "sequence": 30
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -0.00003362534821038654,
-                "x": 0.739105224609375
-              },
-              "diagnostics": [],
-              "evaluation": 17,
-              "important": false,
-              "iteration": 15,
-              "kind": "evaluation",
-              "sequence": 31
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 1.7191737922139794e-8,
-                "x": 0.7390851229429245
-              },
-              "diagnostics": [],
-              "evaluation": 28,
-              "important": false,
-              "iteration": 26,
-              "kind": "evaluation",
-              "sequence": 53
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851229429245,
-                  0.7390851378440857
-                ],
-                "bracket_width": 1.4901161193847656e-8,
-                "candidate": 0.7390851229429245,
-                "residual": 1.7191737922139794e-8
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 26,
-              "kind": "iteration",
-              "sequence": 54
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 4.722356616859713e-9,
-                "x": 0.7390851303935051
-              },
-              "diagnostics": [],
-              "evaluation": 29,
-              "important": false,
-              "iteration": 27,
-              "kind": "evaluation",
-              "sequence": 55
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851303935051,
-                  0.7390851378440857
-                ],
-                "bracket_width": 7.450580596923828e-9,
-                "candidate": 0.7390851303935051,
-                "residual": 4.722356616859713e-9
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 27,
-              "kind": "iteration",
-              "sequence": 56
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -1.5123340357803272e-9,
-                "x": 0.7390851341187954
-              },
-              "diagnostics": [],
-              "evaluation": 30,
-              "important": false,
-              "iteration": 28,
-              "kind": "evaluation",
-              "sequence": 57
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851303935051,
-                  0.7390851341187954
-                ],
-                "bracket_width": 3.725290298461914e-9,
-                "candidate": 0.7390851341187954,
-                "residual": 1.5123340357803272e-9
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 28,
-              "kind": "iteration",
-              "sequence": 58
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 1.6050113460508442e-9,
-                "x": 0.7390851322561502
-              },
-              "diagnostics": [],
-              "evaluation": 31,
-              "important": false,
-              "iteration": 29,
-              "kind": "evaluation",
-              "sequence": 59
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851322561502,
-                  0.7390851341187954
-                ],
-                "bracket_width": 1.862645149230957e-9,
-                "candidate": 0.7390851322561502,
-                "residual": 1.6050113460508442e-9
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 29,
-              "kind": "iteration",
-              "sequence": 60
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 4.633871064640971e-11,
-                "x": 0.7390851331874728
-              },
-              "diagnostics": [],
-              "evaluation": 32,
-              "important": false,
-              "iteration": 30,
-              "kind": "evaluation",
-              "sequence": 61
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851331874728,
-                  0.7390851341187954
-                ],
-                "bracket_width": 9.313225746154785e-10,
-                "candidate": 0.7390851331874728,
-                "residual": 4.633871064640971e-11
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 30,
-              "kind": "iteration",
-              "sequence": 62
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -7.329976625669588e-10,
-                "x": 0.7390851336531341
-              },
-              "diagnostics": [],
-              "evaluation": 33,
-              "important": false,
-              "iteration": 31,
-              "kind": "evaluation",
-              "sequence": 63
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851331874728,
-                  0.7390851336531341
-                ],
-                "bracket_width": 4.656612873077393e-10,
-                "candidate": 0.7390851336531341,
-                "residual": 7.329976625669588e-10
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 31,
-              "kind": "iteration",
-              "sequence": 64
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -3.433294759602745e-10,
-                "x": 0.7390851334203035
-              },
-              "diagnostics": [],
-              "evaluation": 34,
-              "important": false,
-              "iteration": 32,
-              "kind": "evaluation",
-              "sequence": 65
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851331874728,
-                  0.7390851334203035
-                ],
-                "bracket_width": 2.3283064365386963e-10,
-                "candidate": 0.7390851334203035,
-                "residual": 3.433294759602745e-10
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 32,
-              "kind": "iteration",
-              "sequence": 66
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -1.4849543816808364e-10,
-                "x": 0.7390851333038881
-              },
-              "diagnostics": [],
-              "evaluation": 35,
-              "important": false,
-              "iteration": 33,
-              "kind": "evaluation",
-              "sequence": 67
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851331874728,
-                  0.7390851333038881
-                ],
-                "bracket_width": 1.1641532182693481e-10,
-                "candidate": 0.7390851333038881,
-                "residual": 1.4849543816808364e-10
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 33,
-              "kind": "iteration",
-              "sequence": 68
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -5.1078363760836965e-11,
-                "x": 0.7390851332456805
-              },
-              "diagnostics": [],
-              "evaluation": 36,
-              "important": false,
-              "iteration": 34,
-              "kind": "evaluation",
-              "sequence": 69
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851331874728,
-                  0.7390851332456805
-                ],
-                "bracket_width": 5.820766091346741e-11,
-                "candidate": 0.7390851332456805,
-                "residual": 5.1078363760836965e-11
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 34,
-              "kind": "iteration",
-              "sequence": 70
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -2.369882068364859e-12,
-                "x": 0.7390851332165767
-              },
-              "diagnostics": [],
-              "evaluation": 37,
-              "important": false,
-              "iteration": 35,
-              "kind": "evaluation",
-              "sequence": 71
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851331874728,
-                  0.7390851332165767
-                ],
-                "bracket_width": 2.9103830456733704e-11,
-                "candidate": 0.7390851332165767,
-                "residual": 2.369882068364859e-12
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 35,
-              "kind": "iteration",
-              "sequence": 72
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 2.1984414289022425e-11,
-                "x": 0.7390851332020247
-              },
-              "diagnostics": [],
-              "evaluation": 38,
-              "important": false,
-              "iteration": 36,
-              "kind": "evaluation",
-              "sequence": 73
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851332020247,
-                  0.7390851332165767
-                ],
-                "bracket_width": 1.4551915228366852e-11,
-                "candidate": 0.7390851332020247,
-                "residual": 2.1984414289022425e-11
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 36,
-              "kind": "iteration",
-              "sequence": 74
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 9.807266110328783e-12,
-                "x": 0.7390851332093007
-              },
-              "diagnostics": [],
-              "evaluation": 39,
-              "important": false,
-              "iteration": 37,
-              "kind": "evaluation",
-              "sequence": 75
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851332093007,
-                  0.7390851332165767
-                ],
-                "bracket_width": 7.275957614183426e-12,
-                "candidate": 0.7390851332093007,
-                "residual": 9.807266110328783e-12
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 37,
-              "kind": "iteration",
-              "sequence": 76
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 3.718692020981962e-12,
-                "x": 0.7390851332129387
-              },
-              "diagnostics": [],
-              "evaluation": 40,
-              "important": false,
-              "iteration": 38,
-              "kind": "evaluation",
-              "sequence": 77
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851332129387,
-                  0.7390851332165767
-                ],
-                "bracket_width": 3.637978807091713e-12,
-                "candidate": 0.7390851332129387,
-                "residual": 3.718692020981962e-12
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 38,
-              "kind": "iteration",
-              "sequence": 78
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": 6.744604874597826e-13,
-                "x": 0.7390851332147577
-              },
-              "diagnostics": [],
-              "evaluation": 41,
-              "important": false,
-              "iteration": 39,
-              "kind": "evaluation",
-              "sequence": 79
-            },
-            {
-              "accepted": true,
-              "data": {
-                "bracket": [
-                  0.7390851332147577,
-                  0.7390851332165767
-                ],
-                "bracket_width": 1.8189894035458565e-12,
-                "candidate": 0.7390851332147577,
-                "residual": 6.744604874597826e-13
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 39,
-              "kind": "iteration",
-              "sequence": 80
-            },
-            {
-              "accepted": null,
-              "data": {
-                "value": -8.47655279301307e-13,
-                "x": 0.7390851332156672
-              },
-              "diagnostics": [],
-              "evaluation": 42,
-              "important": false,
-              "iteration": 40,
-              "kind": "evaluation",
-              "sequence": 81
-            },
-            {
-              "accepted": true,
-              "data": {
+              {
                 "bracket": [
                   0.7390851332147577,
                   0.7390851332156672
                 ],
-                "bracket_width": 9.094947017729282e-13,
-                "candidate": 0.7390851332156672,
-                "residual": 8.47655279301307e-13
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": false,
-              "iteration": 40,
-              "kind": "iteration",
-              "sequence": 82
-            },
-            {
-              "accepted": null,
-              "data": {
-                "checks": [
-                  {
-                    "kind": "finite_residual",
-                    "passed": true
-                  },
-                  {
-                    "kind": "residual",
-                    "passed": true,
-                    "threshold": 1e-12,
-                    "value": 6.744604874597826e-13
-                  },
-                  {
-                    "bracket": [
-                      0.7390851332147577,
-                      0.7390851332156672
-                    ],
-                    "kind": "bracket_invariant",
-                    "passed": true
-                  }
-                ],
-                "condition_estimate": null,
-                "error_estimate": 4.547473508864641e-13,
-                "passed": true,
-                "residual": 6.744604874597826e-13,
-                "truth_level": "validated_approximate"
-              },
-              "diagnostics": [],
-              "evaluation": null,
-              "important": true,
-              "iteration": null,
-              "kind": "validation",
-              "sequence": 83
-            },
-            {
-              "accepted": null,
-              "data": {
-                "candidate": 0.7390851332147577,
-                "solver_residual": 6.744604874597826e-13,
-                "status": "converged",
-                "success": true
-              },
-              "diagnostics": [],
-              "evaluation": 42,
-              "important": true,
-              "iteration": 40,
-              "kind": "finish",
-              "sequence": 84
-            }
-          ],
-          "observed_events": 85,
-          "policy": {
-            "level": "evaluations",
-            "max_bytes": 131072,
-            "max_events": 64
+                "kind": "bracket_invariant",
+                "passed": true
+              }
+            ],
+            "condition_estimate": null,
+            "error_estimate": 4.547473508864641e-13,
+            "passed": true,
+            "residual": 6.744604874597826e-13,
+            "truth_level": "validated_approximate"
           },
-          "retained_events": 64,
-          "schema_version": 1,
-          "truncated": true
+          "value": 0.7390851332147577
         },
-        "validation": {
-          "checks": [
-            {
-              "kind": "finite_residual",
-              "passed": true
-            },
-            {
-              "kind": "residual",
-              "passed": true,
-              "threshold": 1e-12,
-              "value": 6.744604874597826e-13
-            },
-            {
-              "bracket": [
-                0.7390851332147577,
-                0.7390851332156672
-              ],
-              "kind": "bracket_invariant",
-              "passed": true
-            }
-          ],
-          "condition_estimate": null,
-          "error_estimate": 4.547473508864641e-13,
-          "passed": true,
-          "residual": 6.744604874597826e-13,
-          "truth_level": "validated_approximate"
-        },
-        "value": 0.7390851332147577
+        "evidence": [
+          "/result/method",
+          "/result/value",
+          "/result/validation/residual",
+          "/result/iterations",
+          "/result/evaluations",
+          "/reference_comparison/reference_result/method",
+          "/reference_comparison/reference_result/value",
+          "/reference_comparison/reference_result/validation/residual",
+          "/reference_comparison/reference_result/iterations",
+          "/reference_comparison/reference_result/evaluations"
+        ]
       }
     },
     {
@@ -3726,12 +3773,21 @@
     "plot_spec_animation": {
       "controls": {
         "autoplay": false,
+        "default_speed": 1,
         "from_current": true,
         "loop": false,
         "pause": true,
         "play": true,
+        "restart": true,
         "slider": true,
-        "slider_prefix": "Frame: "
+        "slider_prefix": "Frame: ",
+        "speed": true,
+        "speed_multipliers": [
+          0.5,
+          1,
+          2
+        ],
+        "step": true
       },
       "dimension": 2,
       "frames": [
@@ -6073,6 +6129,73 @@
             "r": 32,
             "t": 48
           },
+          "meta": {
+            "sagejs_animation_controls": {
+              "autoplay": false,
+              "capabilities": {
+                "iteration_slider": {
+                  "available": true,
+                  "route": "plotly-layout"
+                },
+                "pause": {
+                  "available": true,
+                  "route": "plotly-layout"
+                },
+                "play": {
+                  "available": true,
+                  "route": "plotly-layout"
+                },
+                "restart": {
+                  "available": true,
+                  "route": "plotly-layout"
+                },
+                "speed": {
+                  "available": true,
+                  "route": "host-duration-controller"
+                },
+                "step": {
+                  "available": true,
+                  "route": "host-relative-frame-controller"
+                }
+              },
+              "computed_frames_only": true,
+              "default_speed": 1,
+              "frame_duration_ms": 350,
+              "frame_ids": [
+                "frame-0",
+                "frame-1",
+                "frame-2",
+                "frame-3",
+                "frame-4",
+                "frame-5"
+              ],
+              "frame_labels": [
+                "iteration 0",
+                "iteration 1",
+                "iteration 2",
+                "iteration 3",
+                "iteration 4",
+                "iteration 5"
+              ],
+              "from_current": true,
+              "loop": false,
+              "redraw": true,
+              "schema": "sagejs.plotting.animation-controls/v1",
+              "speed_multipliers": [
+                0.5,
+                1,
+                2
+              ],
+              "transition_duration_ms": 0
+            },
+            "semantic_source": "PlotAnimation",
+            "stable_layer_ids": [
+              "layer-0",
+              "layer-1",
+              "layer-2"
+            ],
+            "trace_truncated": false
+          },
           "paper_bgcolor": "#ffffff",
           "plot_bgcolor": "#f8fafc",
           "scene": {
@@ -6296,6 +6419,36 @@
               "xanchor": "left",
               "y": 0,
               "yanchor": "top"
+            },
+            {
+              "buttons": [
+                {
+                  "args": [
+                    [
+                      "frame-0"
+                    ],
+                    {
+                      "frame": {
+                        "duration": 0,
+                        "redraw": true
+                      },
+                      "mode": "immediate",
+                      "transition": {
+                        "duration": 0
+                      }
+                    }
+                  ],
+                  "label": "Restart",
+                  "method": "animate"
+                }
+              ],
+              "direction": "left",
+              "showactive": false,
+              "type": "buttons",
+              "x": 0.18,
+              "xanchor": "left",
+              "y": 0,
+              "yanchor": "top"
             }
           ],
           "xaxis": {
@@ -6333,15 +6486,6 @@
             "type": "linear",
             "zeroline": true,
             "zerolinecolor": "#d7dee8"
-          },
-          "meta": {
-            "semantic_source": "PlotAnimation",
-            "stable_layer_ids": [
-              "layer-0",
-              "layer-1",
-              "layer-2"
-            ],
-            "trace_truncated": false
           }
         }
       }
@@ -6376,8 +6520,8 @@
       ],
       "frames": 6,
       "max_samples_per_frame": 22,
-      "semantic_payload_bytes": 12535,
-      "plotly_payload_bytes": 18611
+      "semantic_payload_bytes": 12623,
+      "plotly_payload_bytes": 19681
     }
   },
   "accessibility": {
