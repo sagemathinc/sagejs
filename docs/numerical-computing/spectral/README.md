@@ -14,7 +14,10 @@ eigensystem = eigh([[2.0, 1.0], [1.0, 2.0]])
 assert eigensystem.success
 assert eigensystem.validation.passed
 
-decomposition = svd([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+decomposition = svd(
+    [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
+    trace="iterations",
+)
 spectrum = fft([1.0, 0.0, 0.0, 0.0])
 ```
 

@@ -120,7 +120,8 @@ function print_usage(group) {
 } // }}}
 
 function print_top_level_usage() {
-  var executable = path.basename(process.argv[1]);
+  var executable = process.env.SAGEJS_EXECUTABLE_NAME || path.basename(process.argv[1]);
+  var pythonMode = executable === "sagepython";
   var label = function (text) {
     return colored(text, COL1);
   };
@@ -128,16 +129,26 @@ function print_top_level_usage() {
     return colored(text, COL2);
   };
 
-  console.log(label("Sage.js — research mathematics native to JavaScript\n"));
+  console.log(
+    label(
+      pythonMode
+        ? "Sage.js Python mode — research mathematics native to JavaScript\n"
+        : "Sage.js — research mathematics native to JavaScript\n",
+    ),
+  );
   console.log(label("Usage:"));
   console.log("  " + command(executable) + " [options] [program]");
   console.log("  " + command(executable) + " [subcommand] [options]\n");
   console.log(
-    "With no program, start an interactive Sage calculator. A program file",
+    pythonMode
+      ? "With no program, start an interactive Python-mode calculator. A program file"
+      : "With no program, start an interactive Sage calculator. A program file",
   );
   console.log("is executed, and piped input is evaluated. Interactive input");
   console.log(
-    "defaults to Sage syntax; .py files use Python and .sage files use Sage.\n",
+    pythonMode
+      ? "defaults to ordinary Python syntax; use `sagejs` for Sage syntax.\n"
+      : "defaults to Sage syntax; .py files use Python and .sage files use Sage.\n",
   );
 
   console.log(label("Execution backend:"));

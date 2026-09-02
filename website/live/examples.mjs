@@ -56,6 +56,19 @@ B = matrix(QQ, [[1/2, 1/3], [2/5, 3/7]])
 B.inverse()`,
   },
   {
+    id: "numerical-laboratory",
+    title: "Validated numerical root",
+    description:
+      "Solve, independently validate, explain, and visualize a root-finding computation.",
+    source: `from sagejs.numerics import find_root
+
+result = find_root(lambda x: x^3 - 2, 1.0, 2.0,
+                   method="brent", trace="iterations")
+print(result.explain())
+print(result.to_json())
+result.plot()`,
+  },
+  {
     id: "numpy-signal-recovery",
     title: "NumPy spectral signal recovery",
     description: "Recover two noisy frequencies with vectorized arrays, a real FFT, and a least-squares linear solve.",

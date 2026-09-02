@@ -637,6 +637,28 @@ Gröbner bases. General primary decomposition is not yet implemented.
 - `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
 - `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
 
+## `curve_fit`
+
+```sage
+curve_fit(function, xdata, ydata, p0, **options)
+```
+
+Fit a nonlinear model with residual diagnostics and parameter provenance.
+
+Import from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.optimization`
+- Tags: numerical, fitting, least-squares
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
+
 ## `CuspForms`
 
 ```sage
@@ -1512,6 +1534,50 @@ Compile a symbolic expression to a hot JavaScript numeric function.
 ### References
 
 - [Cortex Compute Engine](https://cortexjs.io/compute-engine/).
+
+## `fft`
+
+```sage
+fft(samples, **options)
+```
+
+Compute a radix-2 or Bluestein discrete Fourier transform.
+
+Import from `sagejs.numerics.spectral`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.spectral`
+- Tags: numerical, spectral, fft
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
+
+## `find_root`
+
+```sage
+find_root(function, a=None, b=None, *, x0=None, method=None, **options)
+```
+
+Find and independently validate a scalar root with diagnostics and bounded traces.
+
+Import from `sagejs.numerics`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics`
+- Tags: numerical, root-finding, validated
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
 
 ## `frame_labels`
 
@@ -5326,6 +5392,28 @@ sage: S.vertex_list()
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
 
+## `integrate`
+
+```sage
+integrate(function, a, b, *, method=None, **options)
+```
+
+Compute an adaptive numerical integral with error and budget diagnostics.
+
+Import from `sagejs.numerics.integration`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.integration`
+- Tags: numerical, integration, quadrature
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
+
 ## `is_prime`
 
 ```sage
@@ -5780,6 +5868,50 @@ conjugacy classes using the conjugation action of the generators.
 ### Provenance
 
 - `sage-derived` — [SageMath finite groups API](https://doc.sagemath.org/html/en/reference/groups/); license GPL-2.0-or-later
+
+## `minimize`
+
+```sage
+minimize(function, x0, *, method=None, **options)
+```
+
+Minimize a multivariate objective and return a structured NumericalResult.
+
+Import from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.optimization`
+- Tags: numerical, optimization
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
+
+## `minimize_scalar`
+
+```sage
+minimize_scalar(function, bounds=None, *, method=None, **options)
+```
+
+Minimize a scalar objective with explicit budgets and validation evidence.
+
+Import from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.optimization`
+- Tags: numerical, optimization
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
 
 ## `Mod`
 
@@ -8405,6 +8537,28 @@ transcendental families remain outside the current supported surface.
 
 - [Cortex Compute Engine](https://cortexjs.io/compute-engine/).
 
+## `solve_ivp`
+
+```sage
+solve_ivp(function, t_span, y0, *, method=None, **options)
+```
+
+Solve and validate an initial-value ODE problem with adaptive-step traces.
+
+Import from `sagejs.numerics.ode`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.ode`
+- Tags: numerical, ode, initial-value-problem
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
+
 ## `Sp`
 
 ```sage
@@ -8587,6 +8741,28 @@ explicit modular-polynomial construction bound.
 
 - `sage-derived` — [SageMath supersingular modules](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/ssmod/ssmod.html); license GPL-2.0-or-later
 - `sagejs-original` — Immutable CSR Hecke operator, mass-weighted graph view, and bounded dense compatibility layer
+
+## `svd`
+
+```sage
+svd(matrix, *, trace='none', **options)
+```
+
+Compute and independently validate a singular-value decomposition.
+
+Import from `sagejs.numerics.spectral`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.spectral`
+- Tags: numerical, linear-algebra, spectral
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
 
 ## `tetrahedron`
 

@@ -29,6 +29,37 @@ DEFAULT_MAX_ANIMATION_SAMPLES = 5_000_000
 DEFAULT_MAX_ANIMATION_PAYLOAD_BYTES = 64 * 1024 * 1024
 DEFAULT_MAX_ANIMATION_DURATION_MS = 60 * 60 * 1000
 
+
+def _rich_record(mime: str, data: Any) -> Any:
+    """Materialize a native host record under Sage.js, or a dict on CPython."""
+    try:
+        import sagejs.runtime as runtime
+
+        def native_json(value: Any) -> Any:
+            if isinstance(value, dict):
+                record = runtime.object.create(None)
+                for key in value:
+                    runtime.reflect.set(record, key, native_json(value[key]))
+                return record
+            if isinstance(value, (list, tuple)):
+                array = runtime.reflect.construct(runtime.array, [])
+                for item in value:
+                    runtime.reflect.apply(
+                        runtime.array.prototype.push,
+                        array,
+                        [native_json(item)],
+                    )
+                return array
+            return value
+
+        answer = runtime.object.create(None)
+        runtime.reflect.set(answer, "mime", mime)
+        runtime.reflect.set(answer, "data", native_json(data))
+        return answer
+    except (ImportError, NameError):
+        return {"mime": mime, "data": data}
+
+
 _EASINGS = (
     "linear",
     "quad",
@@ -596,6 +627,13 @@ class PlotAnimation:
 
     def to_json(self) -> str:
         return canonical_json(self.to_dict())
+
+    def _rich_repr_(self) -> Any:
+        """Return the complete clone-safe Plotly animation payload."""
+        return _rich_record(
+            "application/vnd.plotly.v1+json",
+            lower_plot_animation(self),
+        )
 
 
 def _lower_spec_with_stable_uids(spec: PlotSpec) -> dict[str, JSONValue]:

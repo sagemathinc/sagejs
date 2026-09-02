@@ -46,6 +46,7 @@
     "dist/wasm-pack-loader.mjs",
     "dist/ffi-production-closure.json",
     "dist/lazy-modules.json",
+    "dist/documentation.json",
     "dist/dynamic-programs.json",
     "dist/production-kernel-coverage.json",
     "dist/production-manifest.json",

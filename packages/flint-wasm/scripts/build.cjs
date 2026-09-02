@@ -59,6 +59,8 @@ const m4riDependency = {
   prefix: toolchain.paths.libraries.m4ri.prefix,
 };
 const outputDirectory = path.join(packageRoot, "dist");
+const documentationSource = path.join(repositoryRoot, "website", "reference-data.json");
+const documentationOutput = path.join(outputDirectory, "documentation.json");
 const rawOutput = path.join(outputDirectory, "flint-factor.unstripped.wasm");
 const output = path.join(outputDirectory, "flint-factor.wasm");
 const resourceAdapterSource = path.join(
@@ -369,6 +371,13 @@ requirePath(
 );
 
 fs.mkdirSync(outputDirectory, { recursive: true });
+{
+  const reference = JSON.parse(fs.readFileSync(documentationSource, "utf8"));
+  if (reference?.docs?.schema_version !== 1 || !Array.isArray(reference.docs.entries)) {
+    throw new TypeError("website/reference-data.json does not contain DocSpec v1");
+  }
+  fs.writeFileSync(documentationOutput, `${JSON.stringify(reference.docs)}\n`);
+}
 if (process.env.SAGEJS_NUMERICAL_PRODUCT_ROOT) {
   const { installNumericalProduct } = require(
     path.join(repositoryRoot, "scripts/numerical-product.cjs")

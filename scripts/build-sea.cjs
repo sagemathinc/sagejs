@@ -101,6 +101,23 @@ const embeddedStandaloneLibraryBanner = `globalThis.__sagejs_embedded_standalone
   },
 )};`;
 
+// The release SEA already contains the native Sage.js runtime. Embedding the
+// separate browser distribution as well would duplicate its large standard
+// library and Wasm payload, while its module workers still require a real
+// filesystem tree. Keep the browser-artifact harness in the public npm CLI and
+// fail explicitly here instead of letting the ordinary SEA parser report an
+// unrelated unknown-option error.
+const standaloneWasmCapabilityBanner = `
+if (process.argv[2] === "--wasm") {
+  require("node:fs").writeSync(
+    process.stderr.fd,
+    "sagejs --wasm is unavailable in the standalone executable; " +
+    "install @sagemath/sagejs with Node.js to run the authenticated " +
+    "browser WebAssembly artifact.\\n",
+  );
+  process.exit(2);
+}`;
+
 const args = new Set(process.argv.slice(2));
 const buildPython = args.size === 0 || args.has("--all") || args.has("--python");
 const buildMath = args.has("--all") || args.has("--with-flint");
@@ -623,7 +640,9 @@ buildSync({
   target: "node22",
   sourcemap: false,
   minify: false,
-  banner: { js: embeddedStandaloneLibraryBanner },
+  banner: {
+    js: `${embeddedStandaloneLibraryBanner}\n${standaloneWasmCapabilityBanner}`,
+  },
   external: ["plotly.js-dist-min/plotly.min.js"],
 });
 
