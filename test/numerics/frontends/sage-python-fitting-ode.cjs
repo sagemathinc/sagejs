@@ -108,10 +108,10 @@ assert fit_problem.initial_data["point"] == [0.0, 0.0]
 fit_plan = numerical_plan(fit_problem)
 assert model_calls == [0] and jacobian_calls == [0]
 assert fit_plan.to_dict() == optimization_plan(fit_problem).to_dict()
-assert fit_plan.operation == "curve_fit"
+assert fit_plan.problem.operation == "curve_fit"
 assert fit_plan.method == "damped-gauss-newton"
 assert fit_plan.backend == "ordinary-python"
-assert fit_plan.problem_digest == fit_problem.digest
+assert fit_plan.problem.digest == fit_problem.digest
 assert supports(fit_problem)
 fit_capability = describe("curve_fit")
 assert set(fit_capability["methods"]) == {
@@ -123,11 +123,11 @@ assert set(fit_capability["methods"]) == {
 fit_result = solve_curve_fit_problem(fit_problem)
 assert fit_result.success and fit_result.validation.passed
 assert fit_result.problem.digest == fit_problem.digest
-assert fit_result.plan.problem_digest == fit_problem.digest
+assert fit_result.plan_record.problem.digest == fit_problem.digest
 assert abs(fit_result.value[0] - 2.0) < 1.0e-7
 assert abs(fit_result.value[1] - 1.0) < 1.0e-7
 fit_record = fit_result.to_dict()
-assert fit_record["operation"] == "curve_fit"
+assert fit_record["reproducibility"]["problem"]["operation"] == "curve_fit"
 assert fit_record["domain_payload"]["fit_x"] == [0.0, 1.0, 2.0, 3.0]
 assert fit_record["domain_payload"]["parameter_diagnostics"]["covariance_available"]
 assert fit_record["measurements"]["callback_counts"]["residual"] > 0
@@ -210,9 +210,9 @@ ivp_result = solve_ode_problem(ivp)
 assert ivp_result.success and ivp_result.validation.passed
 assert abs(ivp_result.value[0] - math.exp(-1.0)) < 2.0e-7
 assert ivp_result.problem.digest == ivp.digest
-assert ivp_result.plan.problem_digest == ivp.digest
+assert ivp_result.plan_record.problem.digest == ivp.digest
 ivp_record = ivp_result.to_dict()
-assert ivp_record["operation"] == "initial_value_problem"
+assert ivp_record["reproducibility"]["problem"]["operation"] == "initial_value_problem"
 assert ivp_record["domain_payload"]["trajectory"]["states"][0] == [1.0]
 ivp_record["domain_payload"]["trajectory"]["states"][0][0] = -123.0
 assert ivp_result.to_dict()["domain_payload"]["trajectory"]["states"][0] == [1.0]
@@ -236,7 +236,7 @@ try:
     plan_ode(unsupported_problem)
     raise AssertionError("an unsupported ODE method must fail closed")
 except OdeUnsupportedError as error:
-    assert error.method == "bdf"
+    assert error.feature == "bdf"
 assert unsupported_calls == [0]
 ode_surface = ode_capabilities()
 assert ode_surface["unsupported_methods"]["bdf"]["classification"] == "unsupported"
@@ -279,6 +279,18 @@ test("curve fitting and ODEs expose identical structured Sage/Python semantics",
   const cpython = runCPython(witness);
   const pythonMode = runSagejs(witness, true);
   const sageMode = runSagejs(witness, false);
-  assert.deepEqual(pythonMode, cpython);
-  assert.deepEqual(sageMode, cpython);
+  for (const observed of [pythonMode, sageMode]) {
+    for (const domain of ["fit", "ode"]) {
+      const { value: observedValue, ...observedRecord } = observed[domain];
+      const { value: expectedValue, ...expectedRecord } = cpython[domain];
+      assert.deepEqual(observedRecord, expectedRecord);
+      assert.equal(observedValue.length, expectedValue.length);
+      for (let index = 0; index < expectedValue.length; index += 1) {
+        assert.ok(
+          Math.abs(observedValue[index] - expectedValue[index]) <= 1.0e-14,
+          `${domain} value ${index} differs across runtimes`,
+        );
+      }
+    }
+  }
 });

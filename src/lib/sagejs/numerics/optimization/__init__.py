@@ -14,8 +14,8 @@ from .least_squares import (
     least_squares_problem,
     linear_fit,
     linear_fit_problem,
-    solve_least_squares_problem,
     solve_curve_fit_problem,
+    solve_least_squares_problem,
     solve_linear_fit_problem,
 )
 from .multivariate import minimize, minimize_problem, solve_minimize_problem
