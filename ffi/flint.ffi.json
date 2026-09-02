@@ -72,6 +72,8 @@
         "clear_symbol": "sagejs_fmpz_matrix_clear",
         "size_symbol": "sagejs_fmpz_matrix_allocated_bytes"
       },
+      "item_get": "fmpz_matrix_entry",
+      "item_set": "fmpz_matrix_set_entry",
       "targets": {
         "dynamic": true,
         "native": true,

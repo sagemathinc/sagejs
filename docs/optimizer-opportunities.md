@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `ee1fdc99bb36f05986baaaf1dd3bce24c494ca7c6dc60b22b2f3a65ec906a618` (514 files, 11110119 bytes).
-Analyzed source bundle: `sha256:14b1836f6f37420182aa0abe528cdb49105bcb5312158b4964b4628c0d22148c`; compiler identity: `sha256:251215b7bf9cdf16395078b4add7b31c281f5cf6ceb2d8eb46e71b9d91deaf18`.
+Input identity: `af3dd80be1001012d65b9f0ee792d1b29363e9549ab50350dd87a44893f197f5` (514 files, 11093818 bytes).
+Analyzed source bundle: `sha256:f3ffa86cc5a319fb46f61ffc97975f34bf1aef61d8c371753655f9cab9f30c66`; compiler identity: `sha256:1832396f1650e109a7e527aa95d850d90f826e659fad98f18d80044b9a75a082`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -35,7 +35,7 @@ pnpm optimizer:opportunities:query -- sha256:<digest>
 | Source modules compiled | 431 / 431 |
 | Library modules compiled | 418 / 418 |
 | Explicit control sources compiled | 13 / 13 |
-| Functions and methods compiled | 11775 |
+| Functions and methods compiled | 11777 |
 | Loop-bearing functions and methods | 3763 |
 | Loops in functions | 10916 |
 | Selected optimized loops | 49 |
@@ -49,11 +49,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 75672
-- Collection-allocation sites: 8600
-- Known coercion sites: 17184
+- Potential object-result sites: 75570
+- Collection-allocation sites: 8732
+- Known coercion sites: 17169
 - Potential boundary-call sites: 83
-- Unresolved call sites: 37813
+- Unresolved call sites: 37665
 - Selected-target allocations: 3 known; 45 runtime-dependent
 - Selected-target representation conversions: 3 known; 47 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -126,11 +126,11 @@ convenience, not a performance ranking.
 | `dashboard.dynamic-call-sites` | 6959 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
 | `dashboard.no-mathematical-domain-evidence` | 6434 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
 | `dashboard.comprehension-loop` | 3647 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
-| `dashboard.indexed-access-sites` | 2697 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
+| `dashboard.indexed-access-sites` | 2702 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
 | `bounded-integer.dynamic-call` | 2547 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | `bounded-integer.unsupported-iterator` | 2085 | Use a proved built-in `range` iteration shape or add a verifier for the required iterator semantics. |
-| `dashboard.control-flow-sites` | 1823 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
-| `bounded-integer.mutable-buffer-access` | 1790 | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
+| `bounded-integer.mutable-buffer-access` | 1845 | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
+| `dashboard.control-flow-sites` | 1821 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
 | `bounded-integer.unsupported-operation:=` | 1616 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `dashboard.nested-loop-sites` | 1515 | Consider a fused multidimensional region with explicit shape and work bounds. |
 | `bounded-integer.unsupported-control-flow` | 1059 | Restructure the loop into supported transactional branches or add a verified control-flow lowering. |
@@ -141,8 +141,8 @@ convenience, not a performance ranking.
 | `bounded-integer.unsupported-operation://` | 337 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:>` | 332 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:&&` | 265 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:unary!` | 261 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:||` | 254 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:||` | 240 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:unary!` | 223 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:>=` | 205 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:*=` | 194 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation://=` | 173 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |

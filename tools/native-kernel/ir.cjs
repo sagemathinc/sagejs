@@ -733,6 +733,40 @@ function supportedModulePreamble(statement) {
   });
 }
 
+function foreignDescriptor(
+  library,
+  declaration,
+  moduleName,
+  importedName,
+  localName,
+) {
+  return Object.freeze({
+    declarationId: declaration.declaration_id,
+    declarationIdentity: declaration.declaration_identity,
+    declarationHash: declaration.declaration_hash,
+    library: declaration.library,
+    resources: library.resources,
+    function: {
+      id: declaration.id,
+      pythonName: declaration.python_name,
+      signature: declaration.signature,
+      dynamic: declaration.dynamic,
+      native: declaration.native,
+      call_plan: declaration.call_plan,
+      effects: declaration.effects,
+      result: declaration.result,
+      errors: declaration.errors,
+      exceptions: declaration.exceptions,
+      targets: declaration.targets,
+    },
+    import: {
+      module: moduleName,
+      name: importedName,
+      localName,
+    },
+  });
+}
+
 function ffiImports(topLevel, filename) {
   const registry = loadFfiRegistry();
   const functions = new Map();
@@ -757,8 +791,36 @@ function ffiImports(topLevel, filename) {
             !resources.has(localName) && !functions.has(localName),
             `duplicate native FFI import name ${localName}`,
           );
+          const itemGetDeclaration = resource.item_get === undefined
+            ? undefined
+            : library.byPythonName.get(resource.item_get);
+          const itemSetDeclaration = resource.item_set === undefined
+            ? undefined
+            : library.byPythonName.get(resource.item_set);
           resources.set(localName, Object.freeze({
             ...resource,
+            ...(itemGetDeclaration === undefined
+              ? {}
+              : {
+                  item_get: foreignDescriptor(
+                    library,
+                    itemGetDeclaration,
+                    moduleName,
+                    itemGetDeclaration.python_name,
+                    `${localName}.__getitem__`,
+                  ),
+                }),
+            ...(itemSetDeclaration === undefined
+              ? {}
+              : {
+                  item_set: foreignDescriptor(
+                    library,
+                    itemSetDeclaration,
+                    moduleName,
+                    itemSetDeclaration.python_name,
+                    `${localName}.__setitem__`,
+                  ),
+                }),
             compiler_type: localName,
             declaration_identity: library.identity,
             library: library.library,
@@ -774,31 +836,13 @@ function ffiImports(topLevel, filename) {
           !functions.has(localName) && !resources.has(localName),
           `duplicate native FFI import name ${localName}`,
         );
-        functions.set(localName, Object.freeze({
-          declarationId: declaration.declaration_id,
-          declarationIdentity: declaration.declaration_identity,
-          declarationHash: declaration.declaration_hash,
-          library: declaration.library,
-          resources: library.resources,
-          function: {
-            id: declaration.id,
-            pythonName: declaration.python_name,
-            signature: declaration.signature,
-            dynamic: declaration.dynamic,
-            native: declaration.native,
-            call_plan: declaration.call_plan,
-            effects: declaration.effects,
-            result: declaration.result,
-            errors: declaration.errors,
-            exceptions: declaration.exceptions,
-            targets: declaration.targets,
-          },
-          import: {
-            module: moduleName,
-            name: imported.name,
-            localName,
-          },
-        }));
+        functions.set(localName, foreignDescriptor(
+          library,
+          declaration,
+          moduleName,
+          imported.name,
+          localName,
+        ));
       }
     }
   }

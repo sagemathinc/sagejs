@@ -18,11 +18,9 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_seal,
     fmpz_polynomial_set_coefficient,
     fmpz_matrix,
-    fmpz_matrix_entry,
     fmpz_matrix_hnf_into,
     fmpz_matrix_hnf_transform,
     fmpz_matrix_lll_transform,
-    fmpz_matrix_set_entry,
     fmpz_matrix_snf,
     fmpz_matrix_snf_into,
     integer_log_sqrt_balls_resource,
@@ -541,12 +539,12 @@ def _cubic_matrix_multiply_coordinates(
     target_row: uint64,
 ) -> bool:
     """Multiply exact coordinates without crossing a fixed-width buffer."""
-    left_zero = fmpz_matrix_entry(left, left_row, 0)
-    left_one = fmpz_matrix_entry(left, left_row, 1)
-    left_two = fmpz_matrix_entry(left, left_row, 2)
-    right_zero = fmpz_matrix_entry(right, right_row, 0)
-    right_one = fmpz_matrix_entry(right, right_row, 1)
-    right_two = fmpz_matrix_entry(right, right_row, 2)
+    left_zero = left[left_row, 0]
+    left_one = left[left_row, 1]
+    left_two = left[left_row, 2]
+    right_zero = right[right_row, 0]
+    right_one = right[right_row, 1]
+    right_two = right[right_row, 2]
     result_zero = (
         left_zero
         * (
@@ -607,11 +605,10 @@ def _cubic_matrix_multiply_coordinates(
             + right_two * workspace[_MULTIPLICATION_OFFSET + 26]
         )
     )
-    return (
-        fmpz_matrix_set_entry(target, target_row, 0, result_zero)
-        and fmpz_matrix_set_entry(target, target_row, 1, result_one)
-        and fmpz_matrix_set_entry(target, target_row, 2, result_two)
-    )
+    target[target_row, 0] = result_zero
+    target[target_row, 1] = result_one
+    target[target_row, 2] = result_two
+    return True
 
 
 def _cubic_matrix_power_coordinates(
@@ -626,25 +623,12 @@ def _cubic_matrix_power_coordinates(
     """Exponentiate inside arena-owned exact coordinate rows."""
     if exponent < 0:
         return False
-    if (
-        not fmpz_matrix_set_entry(values, result_row, 0, workspace[_IDENTITY_OFFSET])
-        or not fmpz_matrix_set_entry(
-            values, result_row, 1, workspace[_IDENTITY_OFFSET + 1]
-        )
-        or not fmpz_matrix_set_entry(
-            values, result_row, 2, workspace[_IDENTITY_OFFSET + 2]
-        )
-    ):
-        return False
+    values[result_row, 0] = workspace[_IDENTITY_OFFSET]
+    values[result_row, 1] = workspace[_IDENTITY_OFFSET + 1]
+    values[result_row, 2] = workspace[_IDENTITY_OFFSET + 2]
     coordinate: uint64 = 0
     while coordinate < 3:
-        if not fmpz_matrix_set_entry(
-            values,
-            square_row,
-            coordinate,
-            fmpz_matrix_entry(source, source_row, coordinate),
-        ):
-            return False
+        values[square_row, coordinate] = source[source_row, coordinate]
         coordinate += 1
     while exponent > 0:
         if exponent % 2 == 1 and not _cubic_matrix_multiply_coordinates(
@@ -680,12 +664,12 @@ def _cubic_matrix_exact_quotient_coordinates(
     replay_row: uint64,
 ) -> bool:
     """Solve an exact quotient entirely in arena-owned coordinates."""
-    numerator_zero = fmpz_matrix_entry(values, numerator_row, 0)
-    numerator_one = fmpz_matrix_entry(values, numerator_row, 1)
-    numerator_two = fmpz_matrix_entry(values, numerator_row, 2)
-    denominator_zero = fmpz_matrix_entry(values, denominator_row, 0)
-    denominator_one = fmpz_matrix_entry(values, denominator_row, 1)
-    denominator_two = fmpz_matrix_entry(values, denominator_row, 2)
+    numerator_zero = values[numerator_row, 0]
+    numerator_one = values[numerator_row, 1]
+    numerator_two = values[numerator_row, 2]
+    denominator_zero = values[denominator_row, 0]
+    denominator_one = values[denominator_row, 1]
+    denominator_two = values[denominator_row, 2]
 
     # Columns of multiplication by the denominator in the order basis.
     a00 = (
@@ -761,31 +745,17 @@ def _cubic_matrix_exact_quotient_coordinates(
         or quotient_two_numerator % determinant != 0
     ):
         return False
-    if (
-        not fmpz_matrix_set_entry(
-            values, quotient_row, 0, quotient_zero_numerator // determinant
-        )
-        or not fmpz_matrix_set_entry(
-            values, quotient_row, 1, quotient_one_numerator // determinant
-        )
-        or not fmpz_matrix_set_entry(
-            values, quotient_row, 2, quotient_two_numerator // determinant
-        )
-        or not _cubic_matrix_multiply_coordinates(
-            workspace,
-            values,
-            denominator_row,
-            values,
-            quotient_row,
-            values,
-            replay_row,
-        )
+    values[quotient_row, 0] = quotient_zero_numerator // determinant
+    values[quotient_row, 1] = quotient_one_numerator // determinant
+    values[quotient_row, 2] = quotient_two_numerator // determinant
+    if not _cubic_matrix_multiply_coordinates(
+        workspace, values, denominator_row, values, quotient_row, values, replay_row
     ):
         return False
     return (
-        fmpz_matrix_entry(values, replay_row, 0) == numerator_zero
-        and fmpz_matrix_entry(values, replay_row, 1) == numerator_one
-        and fmpz_matrix_entry(values, replay_row, 2) == numerator_two
+        values[replay_row, 0] == numerator_zero
+        and values[replay_row, 1] == numerator_one
+        and values[replay_row, 2] == numerator_two
     )
 
 
@@ -967,35 +937,11 @@ def _cubic_append_smooth_principal_relation(
             return relation_capacity + 1
         factor_index: uint64 = 0
         while factor_index < factor_count:
-            if not fmpz_matrix_set_entry(
-                relation_matrix,
-                relation_count,
-                factor_index,
-                0,
-            ):
-                return relation_capacity + 1
+            relation_matrix[relation_count, factor_index] = 0
             factor_index += 1
-        if (
-            not fmpz_matrix_set_entry(
-                relation_elements,
-                relation_count,
-                0,
-                coordinate_zero,
-            )
-            or not fmpz_matrix_set_entry(
-                relation_elements,
-                relation_count,
-                1,
-                coordinate_one,
-            )
-            or not fmpz_matrix_set_entry(
-                relation_elements,
-                relation_count,
-                2,
-                coordinate_two,
-            )
-        ):
-            return relation_capacity + 1
+        relation_elements[relation_count, 0] = coordinate_zero
+        relation_elements[relation_count, 1] = coordinate_one
+        relation_elements[relation_count, 2] = coordinate_two
         return relation_count + 1
     if norm < 1:
         return relation_count
@@ -1076,35 +1022,13 @@ def _cubic_append_smooth_principal_relation(
         return relation_capacity + 1
     factor_index = 0
     while factor_index < factor_count:
-        if not fmpz_matrix_set_entry(
-            relation_matrix,
-            relation_count,
-            factor_index,
-            workspace[_ROW_SCRATCH_OFFSET + factor_index],
-        ):
-            return relation_capacity + 1
+        relation_matrix[relation_count, factor_index] = workspace[
+            _ROW_SCRATCH_OFFSET + factor_index
+        ]
         factor_index += 1
-    if (
-        not fmpz_matrix_set_entry(
-            relation_elements,
-            relation_count,
-            0,
-            coordinate_zero,
-        )
-        or not fmpz_matrix_set_entry(
-            relation_elements,
-            relation_count,
-            1,
-            coordinate_one,
-        )
-        or not fmpz_matrix_set_entry(
-            relation_elements,
-            relation_count,
-            2,
-            coordinate_two,
-        )
-    ):
-        return relation_capacity + 1
+    relation_elements[relation_count, 0] = coordinate_zero
+    relation_elements[relation_count, 1] = coordinate_one
+    relation_elements[relation_count, 2] = coordinate_two
     return relation_count + 1
 
 
@@ -2338,12 +2262,9 @@ def _cubic_fill_ideal_t2_embedding(
             complex_imaginary_value * sqrt_two,
             scale,
         )
-        if (
-            not fmpz_matrix_set_entry(source, row, 0, real_value)
-            or not fmpz_matrix_set_entry(source, row, 1, complex_real_value)
-            or not fmpz_matrix_set_entry(source, row, 2, complex_imaginary_value)
-        ):
-            return False
+        source[row, 0] = real_value
+        source[row, 1] = complex_real_value
+        source[row, 2] = complex_imaginary_value
         row += 1
     return True
 
@@ -2364,12 +2285,9 @@ def _cubic_transformed_ideal_coordinates(
     source_row: uint64 = 0
     while source_row < 3:
         source_coefficient = (
-            coefficient_zero
-            * fmpz_matrix_entry(transforms, transform_row_offset, source_row)
-            + coefficient_one
-            * fmpz_matrix_entry(transforms, transform_row_offset + 1, source_row)
-            + coefficient_two
-            * fmpz_matrix_entry(transforms, transform_row_offset + 2, source_row)
+            coefficient_zero * transforms[transform_row_offset, source_row]
+            + coefficient_one * transforms[transform_row_offset + 1, source_row]
+            + coefficient_two * transforms[transform_row_offset + 2, source_row]
         )
         coordinate_zero += source_coefficient * workspace[basis_offset + 3 * source_row]
         coordinate_one += (
@@ -2428,9 +2346,9 @@ def _cubic_prepare_reduced_ideal_ellipsoid(
     g22 = 0
     embedding_column: uint64 = 0
     while embedding_column < 3:
-        row_zero = fmpz_matrix_entry(embedding_reduced, 0, embedding_column)
-        row_one = fmpz_matrix_entry(embedding_reduced, 1, embedding_column)
-        row_two = fmpz_matrix_entry(embedding_reduced, 2, embedding_column)
+        row_zero = embedding_reduced[0, embedding_column]
+        row_one = embedding_reduced[1, embedding_column]
+        row_two = embedding_reduced[2, embedding_column]
         g00 += row_zero * row_zero
         g01 += row_zero * row_one
         g02 += row_zero * row_two
@@ -2503,18 +2421,17 @@ def _cubic_prepare_reduced_ideal_ellipsoid(
         or limit_two > _CUBIC_REDUCED_ENUMERATION_MAX_COORDINATE
     ):
         return False
-    return (
-        fmpz_matrix_set_entry(parameters, parameter_row, 0, g00)
-        and fmpz_matrix_set_entry(parameters, parameter_row, 1, g01)
-        and fmpz_matrix_set_entry(parameters, parameter_row, 2, g02)
-        and fmpz_matrix_set_entry(parameters, parameter_row, 3, g11)
-        and fmpz_matrix_set_entry(parameters, parameter_row, 4, g12)
-        and fmpz_matrix_set_entry(parameters, parameter_row, 5, g22)
-        and fmpz_matrix_set_entry(parameters, parameter_row, 6, bound)
-        and fmpz_matrix_set_entry(parameters, parameter_row, 7, limit_zero)
-        and fmpz_matrix_set_entry(parameters, parameter_row, 8, limit_one)
-        and fmpz_matrix_set_entry(parameters, parameter_row, 9, limit_two)
-    )
+    parameters[parameter_row, 0] = g00
+    parameters[parameter_row, 1] = g01
+    parameters[parameter_row, 2] = g02
+    parameters[parameter_row, 3] = g11
+    parameters[parameter_row, 4] = g12
+    parameters[parameter_row, 5] = g22
+    parameters[parameter_row, 6] = bound
+    parameters[parameter_row, 7] = limit_zero
+    parameters[parameter_row, 8] = limit_one
+    parameters[parameter_row, 9] = limit_two
+    return True
 
 
 def _cubic_reduced_ellipsoid_candidate(
@@ -2552,13 +2469,13 @@ def _cubic_reduced_ellipsoid_candidate(
     content, ignored_left, ignored_right = _cubic_extended_gcd(content, absolute_two)
     if content != 1:
         return (0, 0, 0, 0)
-    g00 = fmpz_matrix_entry(parameters, parameter_row, 0)
-    g01 = fmpz_matrix_entry(parameters, parameter_row, 1)
-    g02 = fmpz_matrix_entry(parameters, parameter_row, 2)
-    g11 = fmpz_matrix_entry(parameters, parameter_row, 3)
-    g12 = fmpz_matrix_entry(parameters, parameter_row, 4)
-    g22 = fmpz_matrix_entry(parameters, parameter_row, 5)
-    bound = fmpz_matrix_entry(parameters, parameter_row, 6)
+    g00 = parameters[parameter_row, 0]
+    g01 = parameters[parameter_row, 1]
+    g02 = parameters[parameter_row, 2]
+    g11 = parameters[parameter_row, 3]
+    g12 = parameters[parameter_row, 4]
+    g22 = parameters[parameter_row, 5]
+    bound = parameters[parameter_row, 6]
     t2 = (
         g00 * coefficient_zero * coefficient_zero
         + 2 * g01 * coefficient_zero * coefficient_one
@@ -2600,9 +2517,9 @@ def _cubic_plan_reduced_ideal_ellipsoid(
     group_count: uint64,
 ) -> uint64:
     """Account exact prime powers for every bounded ellipsoid candidate."""
-    limit_zero = fmpz_matrix_entry(parameters, parameter_row, 7)
-    limit_one = fmpz_matrix_entry(parameters, parameter_row, 8)
-    limit_two = fmpz_matrix_entry(parameters, parameter_row, 9)
+    limit_zero = parameters[parameter_row, 7]
+    limit_one = parameters[parameter_row, 8]
+    limit_two = parameters[parameter_row, 9]
     candidate_count: uint64 = 0
     coefficient_two = -limit_two
     while coefficient_two <= limit_two:
@@ -2659,9 +2576,9 @@ def _cubic_append_reduced_ideal_ellipsoid(
     group_count: uint64,
 ) -> tuple[uint64, uint64]:
     """Admit every bounded ellipsoid candidate through exact valuations."""
-    limit_zero = fmpz_matrix_entry(parameters, parameter_row, 7)
-    limit_one = fmpz_matrix_entry(parameters, parameter_row, 8)
-    limit_two = fmpz_matrix_entry(parameters, parameter_row, 9)
+    limit_zero = parameters[parameter_row, 7]
+    limit_one = parameters[parameter_row, 8]
+    limit_two = parameters[parameter_row, 9]
     candidate_count: uint64 = 0
     coefficient_two = -limit_two
     while coefficient_two <= limit_two:
@@ -2727,34 +2644,20 @@ def _cubic_copy_relation_support_tail(
         if copy_pass == 1:
             source_row = tail_start
         while source_row < relation_count:
-            copy_support_row = (
-                copy_pass == 0
-                and fmpz_matrix_entry(relation_support, source_row, 0) != 0
-            )
-            copy_tail_row = (
-                copy_pass == 1
-                and fmpz_matrix_entry(relation_support, source_row, 0) == 0
-            )
+            copy_support_row = copy_pass == 0 and relation_support[source_row, 0] != 0
+            copy_tail_row = copy_pass == 1 and relation_support[source_row, 0] == 0
             if copy_support_row or copy_tail_row:
                 column: uint64 = 0
                 while column < factor_count:
-                    if not fmpz_matrix_set_entry(
-                        target_matrix,
-                        target_row,
-                        column,
-                        fmpz_matrix_entry(relation_matrix, source_row, column),
-                    ):
-                        return relation_count + 1
+                    target_matrix[target_row, column] = relation_matrix[
+                        source_row, column
+                    ]
                     column += 1
                 coordinate: uint64 = 0
                 while coordinate < 3:
-                    if not fmpz_matrix_set_entry(
-                        target_elements,
-                        target_row,
-                        coordinate,
-                        fmpz_matrix_entry(relation_elements, source_row, coordinate),
-                    ):
-                        return relation_count + 1
+                    target_elements[target_row, coordinate] = relation_elements[
+                        source_row, coordinate
+                    ]
                     coordinate += 1
                 target_row += 1
             source_row += 1
@@ -2801,17 +2704,9 @@ def _cubic_relation_prefix_has_archimedean_unit(
     while relation_row < relation_count:
         factor_index: uint64 = 0
         while factor_index < factor_count:
-            if not fmpz_matrix_set_entry(
-                prefix_matrix,
-                relation_row,
-                factor_index,
-                fmpz_matrix_entry(
-                    relation_candidates,
-                    relation_row,
-                    factor_index,
-                ),
-            ):
-                return -1
+            prefix_matrix[relation_row, factor_index] = relation_candidates[
+                relation_row, factor_index
+            ]
             factor_index += 1
         relation_row += 1
     if not fmpz_matrix_hnf_transform(
@@ -2826,7 +2721,7 @@ def _cubic_relation_prefix_has_archimedean_unit(
         row_nonzero = False
         factor_index = 0
         while factor_index < factor_count:
-            if fmpz_matrix_entry(prefix_hnf, relation_row, factor_index) != 0:
+            if prefix_hnf[relation_row, factor_index] != 0:
                 row_nonzero = True
             factor_index += 1
         if row_nonzero:
@@ -2840,17 +2735,9 @@ def _cubic_relation_prefix_has_archimedean_unit(
     while dependency_row < dependency_count:
         relation_index: uint64 = 0
         while relation_index < relation_count:
-            if not fmpz_matrix_set_entry(
-                prefix_dependencies,
-                dependency_row,
-                relation_index,
-                fmpz_matrix_entry(
-                    prefix_transform,
-                    relation_rank + dependency_row,
-                    relation_index,
-                ),
-            ):
-                return -1
+            prefix_dependencies[dependency_row, relation_index] = prefix_transform[
+                relation_rank + dependency_row, relation_index
+            ]
             relation_index += 1
         dependency_row += 1
     if not fmpz_matrix_lll_transform(
@@ -2866,11 +2753,7 @@ def _cubic_relation_prefix_has_archimedean_unit(
         relation_index = 0
         while relation_index < relation_count:
             candidate_bits = _cubic_bounded_bit_length(
-                fmpz_matrix_entry(
-                    prefix_dependencies_reduced,
-                    dependency_row,
-                    relation_index,
-                ),
+                prefix_dependencies_reduced[dependency_row, relation_index],
                 512,
             )
             if candidate_bits > 512:
@@ -2897,27 +2780,15 @@ def _cubic_relation_prefix_has_archimedean_unit(
             basis_one_one,
             basis_one_two,
             basis_two_two,
-            fmpz_matrix_entry(relation_elements, relation_index, 0),
-            fmpz_matrix_entry(relation_elements, relation_index, 1),
-            fmpz_matrix_entry(relation_elements, relation_index, 2),
+            relation_elements[relation_index, 0],
+            relation_elements[relation_index, 1],
+            relation_elements[relation_index, 2],
             dependency_scale,
         )
-        if (
-            witness_log_upper < witness_log_lower
-            or not fmpz_matrix_set_entry(
-                prefix_logs,
-                relation_index,
-                0,
-                witness_log_lower,
-            )
-            or not fmpz_matrix_set_entry(
-                prefix_logs,
-                relation_index,
-                1,
-                witness_log_upper,
-            )
-        ):
+        if witness_log_upper < witness_log_lower:
             return -1
+        prefix_logs[relation_index, 0] = witness_log_lower
+        prefix_logs[relation_index, 1] = witness_log_upper
         relation_index += 1
 
     unit_candidate_found = False
@@ -2930,23 +2801,13 @@ def _cubic_relation_prefix_has_archimedean_unit(
         dependency_nonzero = False
         relation_index = 0
         while relation_index < relation_count:
-            dependency_exponent = fmpz_matrix_entry(
-                prefix_dependencies_reduced,
-                dependency_row,
-                relation_index,
-            )
+            dependency_exponent = prefix_dependencies_reduced[
+                dependency_row, relation_index
+            ]
             if dependency_exponent != 0:
                 dependency_nonzero = True
-                witness_log_lower = fmpz_matrix_entry(
-                    prefix_logs,
-                    relation_index,
-                    0,
-                )
-                witness_log_upper = fmpz_matrix_entry(
-                    prefix_logs,
-                    relation_index,
-                    1,
-                )
+                witness_log_lower = prefix_logs[relation_index, 0]
+                witness_log_upper = prefix_logs[relation_index, 1]
                 if dependency_exponent > 0:
                     dependency_log_lower += dependency_exponent * witness_log_lower
                     dependency_log_upper += dependency_exponent * witness_log_upper
@@ -2966,33 +2827,17 @@ def _cubic_relation_prefix_has_archimedean_unit(
         if dependency_nonzero and dependency_orientation != 0:
             relation_index = 0
             while relation_index < relation_count:
-                if not fmpz_matrix_set_entry(
-                    prefix_unit_combinations,
-                    1,
-                    relation_index,
+                prefix_unit_combinations[1, relation_index] = (
                     dependency_orientation
-                    * fmpz_matrix_entry(
-                        prefix_dependencies_reduced,
-                        dependency_row,
-                        relation_index,
-                    ),
-                ):
-                    return -1
+                    * prefix_dependencies_reduced[dependency_row, relation_index]
+                )
                 relation_index += 1
             if not unit_candidate_found:
                 relation_index = 0
                 while relation_index < relation_count:
-                    if not fmpz_matrix_set_entry(
-                        prefix_unit_combinations,
-                        0,
-                        relation_index,
-                        fmpz_matrix_entry(
-                            prefix_unit_combinations,
-                            1,
-                            relation_index,
-                        ),
-                    ):
-                        return -1
+                    prefix_unit_combinations[0, relation_index] = (
+                        prefix_unit_combinations[1, relation_index]
+                    )
                     relation_index += 1
                 unit_candidate_found = True
                 best_regulator_lower = dependency_regulator_lower
@@ -3005,27 +2850,11 @@ def _cubic_relation_prefix_has_archimedean_unit(
                 if candidate_middle < best_middle:
                     relation_index = 0
                     while relation_index < relation_count:
-                        saved_exponent = fmpz_matrix_entry(
-                            prefix_unit_combinations,
-                            0,
-                            relation_index,
+                        saved_exponent = prefix_unit_combinations[0, relation_index]
+                        prefix_unit_combinations[0, relation_index] = (
+                            prefix_unit_combinations[1, relation_index]
                         )
-                        if not fmpz_matrix_set_entry(
-                            prefix_unit_combinations,
-                            0,
-                            relation_index,
-                            fmpz_matrix_entry(
-                                prefix_unit_combinations,
-                                1,
-                                relation_index,
-                            ),
-                        ) or not fmpz_matrix_set_entry(
-                            prefix_unit_combinations,
-                            1,
-                            relation_index,
-                            saved_exponent,
-                        ):
-                            return -1
+                        prefix_unit_combinations[1, relation_index] = saved_exponent
                         relation_index += 1
                     saved_lower = best_regulator_lower
                     saved_upper = best_regulator_upper
@@ -3069,31 +2898,17 @@ def _cubic_relation_prefix_has_archimedean_unit(
                     else:
                         relation_index = 0
                         while relation_index < relation_count:
-                            best_exponent = fmpz_matrix_entry(
-                                prefix_unit_combinations,
-                                0,
-                                relation_index,
-                            )
-                            candidate_exponent = fmpz_matrix_entry(
-                                prefix_unit_combinations,
-                                1,
-                                relation_index,
-                            )
+                            best_exponent = prefix_unit_combinations[0, relation_index]
+                            candidate_exponent = prefix_unit_combinations[
+                                1, relation_index
+                            ]
                             remainder_exponent = remainder_orientation * (
                                 candidate_exponent - reduction_quotient * best_exponent
                             )
-                            if not fmpz_matrix_set_entry(
-                                prefix_unit_combinations,
-                                0,
-                                relation_index,
-                                remainder_exponent,
-                            ) or not fmpz_matrix_set_entry(
-                                prefix_unit_combinations,
-                                1,
-                                relation_index,
-                                best_exponent,
-                            ):
-                                return -1
+                            prefix_unit_combinations[0, relation_index] = (
+                                remainder_exponent
+                            )
+                            prefix_unit_combinations[1, relation_index] = best_exponent
                             relation_index += 1
                         dependency_regulator_lower = best_regulator_lower
                         dependency_regulator_upper = best_regulator_upper
@@ -3151,40 +2966,17 @@ def _cubic_relation_prefix_has_archimedean_unit(
         or reconstructed_regulator_upper < reconstructed_regulator_lower
         or reconstructed_regulator_lower * dependency_scale_quotient
         > best_regulator_upper
-        or best_regulator_lower
-        > reconstructed_regulator_upper * dependency_scale_quotient
-        or not fmpz_matrix_set_entry(
-            prefix_unit_result,
-            0,
-            0,
-            reconstructed_zero,
-        )
-        or not fmpz_matrix_set_entry(
-            prefix_unit_result,
-            0,
-            1,
-            reconstructed_one,
-        )
-        or not fmpz_matrix_set_entry(
-            prefix_unit_result,
-            0,
-            2,
-            reconstructed_two,
-        )
-        or not fmpz_matrix_set_entry(
-            prefix_unit_result,
-            0,
-            3,
-            reconstructed_regulator_lower,
-        )
-        or not fmpz_matrix_set_entry(
-            prefix_unit_result,
-            0,
-            4,
-            reconstructed_regulator_upper,
+        or (
+            best_regulator_lower
+            > reconstructed_regulator_upper * dependency_scale_quotient
         )
     ):
         return 0
+    prefix_unit_result[0, 0] = reconstructed_zero
+    prefix_unit_result[0, 1] = reconstructed_one
+    prefix_unit_result[0, 2] = reconstructed_two
+    prefix_unit_result[0, 3] = reconstructed_regulator_lower
+    prefix_unit_result[0, 4] = reconstructed_regulator_upper
     return 1
 
 
@@ -3233,17 +3025,9 @@ def _cubic_plan_reduced_ideal_shell(
     while transform_row < 3:
         transform_column: uint64 = 0
         while transform_column < 3:
-            if not fmpz_matrix_set_entry(
-                transforms,
-                transform_row_offset + transform_row,
-                transform_column,
-                fmpz_matrix_entry(
-                    embedding_transform,
-                    transform_row,
-                    transform_column,
-                ),
-            ):
-                return 0
+            transforms[transform_row_offset + transform_row, transform_column] = (
+                embedding_transform[transform_row, transform_column]
+            )
             transform_column += 1
         transform_row += 1
 
@@ -3405,11 +3189,11 @@ def _cubic_reconstruct_archimedean_unit(
     real_sign = 1
     relation_index: uint64 = 0
     while relation_index < relation_count:
-        exponent = fmpz_matrix_entry(unit_combinations, 0, relation_index)
+        exponent = unit_combinations[0, relation_index]
         if exponent != 0:
-            element_zero = fmpz_matrix_entry(relation_elements, relation_index, 0)
-            element_one = fmpz_matrix_entry(relation_elements, relation_index, 1)
-            element_two = fmpz_matrix_entry(relation_elements, relation_index, 2)
+            element_zero = relation_elements[relation_index, 0]
+            element_one = relation_elements[relation_index, 1]
+            element_two = relation_elements[relation_index, 2]
             raw_zero = element_zero * basis_zero_zero
             raw_one = element_zero * basis_zero_one + element_one * basis_one_one
             raw_two = (
@@ -4089,49 +3873,27 @@ def _cubic_exact_unit_square_root(
                                         - 4 * target_second
                                         == 0
                                     ):
-                                        if (
-                                            not fmpz_matrix_set_entry(
-                                                exact_rows,
-                                                0,
-                                                0,
-                                                root_trace * target_zero
-                                                + root_norm * identity_zero,
-                                            )
-                                            or not fmpz_matrix_set_entry(
-                                                exact_rows,
-                                                0,
-                                                1,
-                                                root_trace * target_one
-                                                + root_norm * identity_one,
-                                            )
-                                            or not fmpz_matrix_set_entry(
-                                                exact_rows,
-                                                0,
-                                                2,
-                                                root_trace * target_two
-                                                + root_norm * identity_two,
-                                            )
-                                            or not fmpz_matrix_set_entry(
-                                                exact_rows,
-                                                1,
-                                                0,
-                                                target_zero
-                                                + root_second * identity_zero,
-                                            )
-                                            or not fmpz_matrix_set_entry(
-                                                exact_rows,
-                                                1,
-                                                1,
-                                                target_one + root_second * identity_one,
-                                            )
-                                            or not fmpz_matrix_set_entry(
-                                                exact_rows,
-                                                1,
-                                                2,
-                                                target_two + root_second * identity_two,
-                                            )
-                                        ):
-                                            return (0, 0, 0, 0)
+                                        exact_rows[0, 0] = (
+                                            root_trace * target_zero
+                                            + root_norm * identity_zero
+                                        )
+                                        exact_rows[0, 1] = (
+                                            root_trace * target_one
+                                            + root_norm * identity_one
+                                        )
+                                        exact_rows[0, 2] = (
+                                            root_trace * target_two
+                                            + root_norm * identity_two
+                                        )
+                                        exact_rows[1, 0] = (
+                                            target_zero + root_second * identity_zero
+                                        )
+                                        exact_rows[1, 1] = (
+                                            target_one + root_second * identity_one
+                                        )
+                                        exact_rows[1, 2] = (
+                                            target_two + root_second * identity_two
+                                        )
                                         if _cubic_matrix_exact_quotient_coordinates(
                                             workspace,
                                             exact_rows,
@@ -4140,21 +3902,9 @@ def _cubic_exact_unit_square_root(
                                             2,
                                             3,
                                         ):
-                                            candidate_zero = fmpz_matrix_entry(
-                                                exact_rows,
-                                                2,
-                                                0,
-                                            )
-                                            candidate_one = fmpz_matrix_entry(
-                                                exact_rows,
-                                                2,
-                                                1,
-                                            )
-                                            candidate_two = fmpz_matrix_entry(
-                                                exact_rows,
-                                                2,
-                                                2,
-                                            )
+                                            candidate_zero = exact_rows[2, 0]
+                                            candidate_one = exact_rows[2, 1]
+                                            candidate_two = exact_rows[2, 2]
                                             candidate_norm = _cubic_norm_form_value(
                                                 workspace,
                                                 candidate_zero,
@@ -4203,16 +3953,16 @@ def _cubic_bf_tail_bounds(
     scale: int,
 ) -> tuple[int, int]:
     """Replay the explicit degree-three Belabas--Friedman tail bound."""
-    log_threshold_lower = fmpz_matrix_entry(endpoints, 0, 0)
-    log_threshold_upper = fmpz_matrix_entry(endpoints, 1, 0)
-    sqrt_threshold_lower = fmpz_matrix_entry(endpoints, 2, 0)
-    sqrt_threshold_upper = fmpz_matrix_entry(endpoints, 3, 0)
-    log_ninth_lower = fmpz_matrix_entry(endpoints, 4, 0)
-    log_ninth_upper = fmpz_matrix_entry(endpoints, 5, 0)
-    log_three_threshold_lower = fmpz_matrix_entry(endpoints, 8, 0)
-    log_three_threshold_upper = fmpz_matrix_entry(endpoints, 9, 0)
-    log_discriminant_lower = fmpz_matrix_entry(endpoints, 12, 0)
-    log_discriminant_upper = fmpz_matrix_entry(endpoints, 13, 0)
+    log_threshold_lower = endpoints[0, 0]
+    log_threshold_upper = endpoints[1, 0]
+    sqrt_threshold_lower = endpoints[2, 0]
+    sqrt_threshold_upper = endpoints[3, 0]
+    log_ninth_lower = endpoints[4, 0]
+    log_ninth_upper = endpoints[5, 0]
+    log_three_threshold_lower = endpoints[8, 0]
+    log_three_threshold_upper = endpoints[9, 0]
+    log_discriminant_lower = endpoints[12, 0]
+    log_discriminant_upper = endpoints[13, 0]
     if (
         log_threshold_lower <= 0
         or sqrt_threshold_lower <= 0
@@ -4319,16 +4069,16 @@ def _cubic_bf_finite_bounds(
     scale: int,
 ) -> tuple[int, int]:
     """Evaluate the aggregated BF finite prime sum in resident dyadics."""
-    log_threshold_lower = fmpz_matrix_entry(endpoints, 0, 0)
-    log_threshold_upper = fmpz_matrix_entry(endpoints, 1, 0)
-    sqrt_threshold_lower = fmpz_matrix_entry(endpoints, 2, 0)
-    sqrt_threshold_upper = fmpz_matrix_entry(endpoints, 3, 0)
-    log_ninth_lower = fmpz_matrix_entry(endpoints, 4, 0)
-    log_ninth_upper = fmpz_matrix_entry(endpoints, 5, 0)
-    sqrt_ninth_lower = fmpz_matrix_entry(endpoints, 6, 0)
-    sqrt_ninth_upper = fmpz_matrix_entry(endpoints, 7, 0)
-    log_three_threshold_lower = fmpz_matrix_entry(endpoints, 8, 0)
-    log_three_threshold_upper = fmpz_matrix_entry(endpoints, 9, 0)
+    log_threshold_lower = endpoints[0, 0]
+    log_threshold_upper = endpoints[1, 0]
+    sqrt_threshold_lower = endpoints[2, 0]
+    sqrt_threshold_upper = endpoints[3, 0]
+    log_ninth_lower = endpoints[4, 0]
+    log_ninth_upper = endpoints[5, 0]
+    sqrt_ninth_lower = endpoints[6, 0]
+    sqrt_ninth_upper = endpoints[7, 0]
+    log_three_threshold_lower = endpoints[8, 0]
+    log_three_threshold_upper = endpoints[9, 0]
     scale_zero_lower, scale_zero_upper = _cubic_dyadic_multiply(
         sqrt_threshold_lower,
         sqrt_threshold_upper,
@@ -4355,18 +4105,15 @@ def _cubic_bf_finite_bounds(
         norm = workspace[term_base + 2]
         exponent = workspace[term_base + 3]
         value_index: uint64 = 0
-        while (
-            value_index < value_count
-            and fmpz_matrix_entry(values, value_index, 0) != norm
-        ):
+        while value_index < value_count and values[value_index, 0] != norm:
             value_index += 1
         if value_index == value_count:
             return (1, 0)
         endpoint_offset: uint64 = 4 * value_index
-        logarithm_lower = fmpz_matrix_entry(endpoints, endpoint_offset, 0)
-        logarithm_upper = fmpz_matrix_entry(endpoints, endpoint_offset + 1, 0)
-        root_lower = fmpz_matrix_entry(endpoints, endpoint_offset + 2, 0)
-        root_upper = fmpz_matrix_entry(endpoints, endpoint_offset + 3, 0)
+        logarithm_lower = endpoints[endpoint_offset, 0]
+        logarithm_upper = endpoints[endpoint_offset + 1, 0]
+        root_lower = endpoints[endpoint_offset + 2, 0]
+        root_upper = endpoints[endpoint_offset + 3, 0]
         if (
             multiplicity == 0
             or scale_index < 0
@@ -4748,7 +4495,7 @@ def _cubic_small_relation_prefix_is_trivial(
         while row < relation_count:
             content, ignored_left, ignored_right = _cubic_extended_gcd(
                 content,
-                fmpz_matrix_entry(relations, row, 0),
+                relations[row, 0],
             )
             if content == 1:
                 return True
@@ -4760,10 +4507,9 @@ def _cubic_small_relation_prefix_is_trivial(
     while left_row < relation_count:
         right_row: uint64 = 0
         while right_row < left_row:
-            determinant = fmpz_matrix_entry(relations, left_row, 0) * fmpz_matrix_entry(
-                relations, right_row, 1
-            ) - fmpz_matrix_entry(relations, left_row, 1) * fmpz_matrix_entry(
-                relations, right_row, 0
+            determinant = (
+                relations[left_row, 0] * relations[right_row, 1]
+                - relations[left_row, 1] * relations[right_row, 0]
             )
             content, ignored_left, ignored_right = _cubic_extended_gcd(
                 content,
@@ -5773,17 +5519,11 @@ def certified_complex_cubic_class_group_v1(
                 while transform_row < 3:
                     transform_column: uint64 = 0
                     while transform_column < 3:
-                        if not fmpz_matrix_set_entry(
-                            adjacent_transforms,
-                            adjacent_transform_row + transform_row,
-                            transform_column,
-                            fmpz_matrix_entry(
-                                adjacent_embedding_transform,
-                                transform_row,
-                                transform_column,
-                            ),
-                        ):
-                            return False
+                        adjacent_transforms[
+                            adjacent_transform_row + transform_row, transform_column
+                        ] = adjacent_embedding_transform[
+                            transform_row, transform_column
+                        ]
                         transform_column += 1
                     transform_row += 1
                 use_adjacent_ellipsoid = (
@@ -5814,14 +5554,11 @@ def certified_complex_cubic_class_group_v1(
                     if (
                         adjacent_ellipsoid_count
                         > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES
-                        or not fmpz_matrix_set_entry(
-                            adjacent_ellipsoid_parameters,
-                            adjacent_factor_index,
-                            10,
-                            adjacent_ellipsoid_count,
-                        )
                     ):
                         return False
+                    adjacent_ellipsoid_parameters[adjacent_factor_index, 10] = (
+                        adjacent_ellipsoid_count
+                    )
                     adjacent_candidate_count += adjacent_ellipsoid_count
                     workspace[factor_base + 9] = 4
                 if workspace[factor_base + 8] == 0:
@@ -5986,27 +5723,9 @@ def certified_complex_cubic_class_group_v1(
         )
         relation_row: uint64 = 0
         while relation_row < relation_capacity:
-            if (
-                not fmpz_matrix_set_entry(
-                    relation_elements,
-                    relation_row,
-                    0,
-                    identity_zero,
-                )
-                or not fmpz_matrix_set_entry(
-                    relation_elements,
-                    relation_row,
-                    1,
-                    identity_one,
-                )
-                or not fmpz_matrix_set_entry(
-                    relation_elements,
-                    relation_row,
-                    2,
-                    identity_two,
-                )
-            ):
-                return False
+            relation_elements[relation_row, 0] = identity_zero
+            relation_elements[relation_row, 1] = identity_one
+            relation_elements[relation_row, 2] = identity_two
             relation_row += 1
         relation_count: uint64 = 0
         group_index = 0
@@ -6034,35 +5753,19 @@ def certified_complex_cubic_class_group_v1(
                 while factor_index < factor_count:
                     factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * factor_index
                     if workspace[factor_base + 7] == group_index:
-                        if not fmpz_matrix_set_entry(
-                            relation_candidates,
-                            relation_count,
-                            factor_index,
-                            workspace[factor_base + 1],
-                        ):
-                            return False
+                        relation_candidates[relation_count, factor_index] = workspace[
+                            factor_base + 1
+                        ]
                     factor_index += 1
-                if (
-                    not fmpz_matrix_set_entry(
-                        relation_elements,
-                        relation_count,
-                        0,
-                        workspace[group_base] * identity_zero,
-                    )
-                    or not fmpz_matrix_set_entry(
-                        relation_elements,
-                        relation_count,
-                        1,
-                        workspace[group_base] * identity_one,
-                    )
-                    or not fmpz_matrix_set_entry(
-                        relation_elements,
-                        relation_count,
-                        2,
-                        workspace[group_base] * identity_two,
-                    )
-                ):
-                    return False
+                relation_elements[relation_count, 0] = (
+                    workspace[group_base] * identity_zero
+                )
+                relation_elements[relation_count, 1] = (
+                    workspace[group_base] * identity_one
+                )
+                relation_elements[relation_count, 2] = (
+                    workspace[group_base] * identity_two
+                )
                 relation_count += 1
             group_index += 1
 
@@ -6146,11 +5849,7 @@ def certified_complex_cubic_class_group_v1(
                     if (
                         next_relation_count > relation_capacity
                         or admitted_ellipsoid_count
-                        != fmpz_matrix_entry(
-                            adjacent_ellipsoid_parameters,
-                            adjacent_factor_index,
-                            10,
-                        )
+                        != adjacent_ellipsoid_parameters[adjacent_factor_index, 10]
                     ):
                         return False
                     relation_count = next_relation_count
@@ -6302,22 +6001,12 @@ def certified_complex_cubic_class_group_v1(
                             analytic_scale,
                             group_count,
                         )
-                        if (
-                            compound_pair_code == 0
-                            or not fmpz_matrix_set_entry(
-                                compound_plans,
-                                compound_plan_index,
-                                0,
-                                compound_multiplier_exponent,
-                            )
-                            or not fmpz_matrix_set_entry(
-                                compound_plans,
-                                compound_plan_index,
-                                1,
-                                compound_pair_code,
-                            )
-                        ):
+                        if compound_pair_code == 0:
                             return False
+                        compound_plans[compound_plan_index, 0] = (
+                            compound_multiplier_exponent
+                        )
+                        compound_plans[compound_plan_index, 1] = compound_pair_code
                         compound_plan_index += 1
                     compound_source_index += 1
                 compound_multiplier_count += 1
@@ -6394,17 +6083,11 @@ def certified_complex_cubic_class_group_v1(
                     if workspace[compound_source_base + 8] == 0:
                         if compound_plan_index >= compound_pair_count:
                             return False
-                        compound_admission_pair_code = fmpz_matrix_entry(
-                            compound_plans,
-                            compound_plan_index,
-                            1,
-                        )
+                        compound_admission_pair_code = compound_plans[
+                            compound_plan_index, 1
+                        ]
                         if (
-                            fmpz_matrix_entry(
-                                compound_plans,
-                                compound_plan_index,
-                                0,
-                            )
+                            compound_plans[compound_plan_index, 0]
                             != compound_admission_exponent
                             or compound_admission_pair_code < 1
                             or compound_admission_pair_code > 3
@@ -6505,17 +6188,9 @@ def certified_complex_cubic_class_group_v1(
         while relation_row < relation_count:
             factor_index = 0
             while factor_index < factor_count:
-                if not fmpz_matrix_set_entry(
-                    relation_matrix,
-                    relation_row,
-                    factor_index,
-                    fmpz_matrix_entry(
-                        relation_candidates,
-                        relation_row,
-                        factor_index,
-                    ),
-                ):
-                    return False
+                relation_matrix[relation_row, factor_index] = relation_candidates[
+                    relation_row, factor_index
+                ]
                 factor_index += 1
             relation_row += 1
         relation_hnf = arena.foreign_resource(
@@ -6534,14 +6209,7 @@ def certified_complex_cubic_class_group_v1(
             row_nonzero = False
             factor_index = 0
             while factor_index < factor_count:
-                if (
-                    fmpz_matrix_entry(
-                        relation_hnf,
-                        relation_row,
-                        factor_index,
-                    )
-                    != 0
-                ):
+                if relation_hnf[relation_row, factor_index] != 0:
                     row_nonzero = True
                 factor_index += 1
             if row_nonzero:
@@ -6559,21 +6227,13 @@ def certified_complex_cubic_class_group_v1(
         invariant_count: uint64 = 0
         factor_index = 0
         while factor_index < factor_count:
-            invariant = fmpz_matrix_entry(
-                relation_smith,
-                factor_index,
-                factor_index,
-            )
+            invariant = relation_smith[factor_index, factor_index]
             if invariant < 0:
                 invariant = -invariant
             if invariant < 1:
                 return False
             if factor_index > 0:
-                previous_invariant = fmpz_matrix_entry(
-                    relation_smith,
-                    factor_index - 1,
-                    factor_index - 1,
-                )
+                previous_invariant = relation_smith[factor_index - 1, factor_index - 1]
                 if previous_invariant < 0:
                     previous_invariant = -previous_invariant
                 if invariant % previous_invariant != 0:
@@ -6649,32 +6309,16 @@ def certified_complex_cubic_class_group_v1(
             while incremental_row < factor_count:
                 incremental_column: uint64 = 0
                 while incremental_column < factor_count:
-                    if not fmpz_matrix_set_entry(
-                        incremental_source,
-                        incremental_row,
-                        incremental_column,
-                        fmpz_matrix_entry(
-                            incremental_basis,
-                            incremental_row,
-                            incremental_column,
-                        ),
-                    ):
-                        return False
+                    incremental_source[incremental_row, incremental_column] = (
+                        incremental_basis[incremental_row, incremental_column]
+                    )
                     incremental_column += 1
                 incremental_row += 1
             incremental_column = 0
             while incremental_column < factor_count:
-                if not fmpz_matrix_set_entry(
-                    incremental_source,
-                    factor_count,
-                    incremental_column,
-                    fmpz_matrix_entry(
-                        relation_matrix,
-                        compact_source_row,
-                        incremental_column,
-                    ),
-                ):
-                    return False
+                incremental_source[factor_count, incremental_column] = relation_matrix[
+                    compact_source_row, incremental_column
+                ]
                 incremental_column += 1
             if not fmpz_matrix_hnf_into(incremental_hnf, incremental_source):
                 return False
@@ -6683,14 +6327,9 @@ def certified_complex_cubic_class_group_v1(
             while incremental_row < factor_count:
                 incremental_column = 0
                 while incremental_column < factor_count:
-                    if fmpz_matrix_entry(
-                        incremental_hnf,
-                        incremental_row,
-                        incremental_column,
-                    ) != fmpz_matrix_entry(
-                        incremental_basis,
-                        incremental_row,
-                        incremental_column,
+                    if (
+                        incremental_hnf[incremental_row, incremental_column]
+                        != incremental_basis[incremental_row, incremental_column]
                     ):
                         support_used = True
                     incremental_column += 1
@@ -6700,29 +6339,15 @@ def certified_complex_cubic_class_group_v1(
                     output[59] = 421
                     output[60] = support_count
                     return False
-                if not fmpz_matrix_set_entry(
-                    relation_support,
-                    compact_source_row,
-                    0,
-                    1,
-                ):
-                    return False
+                relation_support[compact_source_row, 0] = 1
                 support_count += 1
                 incremental_row = 0
                 while incremental_row < factor_count:
                     incremental_column = 0
                     while incremental_column < factor_count:
-                        if not fmpz_matrix_set_entry(
-                            incremental_basis,
-                            incremental_row,
-                            incremental_column,
-                            fmpz_matrix_entry(
-                                incremental_hnf,
-                                incremental_row,
-                                incremental_column,
-                            ),
-                        ):
-                            return False
+                        incremental_basis[incremental_row, incremental_column] = (
+                            incremental_hnf[incremental_row, incremental_column]
+                        )
                         incremental_column += 1
                     incremental_row += 1
             compact_source_row += 1
@@ -6732,14 +6357,9 @@ def certified_complex_cubic_class_group_v1(
         while incremental_row < factor_count:
             incremental_column = 0
             while incremental_column < factor_count:
-                if fmpz_matrix_entry(
-                    incremental_basis,
-                    incremental_row,
-                    incremental_column,
-                ) != fmpz_matrix_entry(
-                    relation_hnf,
-                    incremental_row,
-                    incremental_column,
+                if (
+                    incremental_basis[incremental_row, incremental_column]
+                    != relation_hnf[incremental_row, incremental_column]
                 ):
                     output[59] = 422
                     output[60] = support_count
@@ -6756,7 +6376,7 @@ def certified_complex_cubic_class_group_v1(
         compact_tail_count: uint64 = 0
         compact_source_row = compact_tail_start
         while compact_source_row < relation_count:
-            if fmpz_matrix_entry(relation_support, compact_source_row, 0) == 0:
+            if relation_support[compact_source_row, 0] == 0:
                 compact_tail_count += 1
             compact_source_row += 1
         compact_relation_count: uint64 = support_count + compact_tail_count
@@ -6798,14 +6418,7 @@ def certified_complex_cubic_class_group_v1(
             compact_nonzero = False
             compact_column: uint64 = 0
             while compact_column < factor_count:
-                if (
-                    fmpz_matrix_entry(
-                        compact_relation_hnf,
-                        compact_row,
-                        compact_column,
-                    )
-                    != 0
-                ):
+                if compact_relation_hnf[compact_row, compact_column] != 0:
                     compact_nonzero = True
                 compact_column += 1
             if compact_nonzero:
@@ -6823,11 +6436,7 @@ def certified_complex_cubic_class_group_v1(
         compact_index = 1
         compact_column = 0
         while compact_column < factor_count:
-            compact_invariant = fmpz_matrix_entry(
-                compact_smith,
-                compact_column,
-                compact_column,
-            )
+            compact_invariant = compact_smith[compact_column, compact_column]
             if compact_invariant < 0:
                 compact_invariant = -compact_invariant
             if compact_invariant < 1:
@@ -6877,17 +6486,11 @@ def certified_complex_cubic_class_group_v1(
             while dependency_row < dependency_count:
                 relation_index: uint64 = 0
                 while relation_index < relation_count:
-                    if not fmpz_matrix_set_entry(
-                        dependency_relations,
-                        dependency_row,
-                        relation_index,
-                        fmpz_matrix_entry(
-                            relation_transform,
-                            relation_rank + dependency_row,
-                            relation_index,
-                        ),
-                    ):
-                        return False
+                    dependency_relations[dependency_row, relation_index] = (
+                        relation_transform[
+                            relation_rank + dependency_row, relation_index
+                        ]
+                    )
                     relation_index += 1
                 dependency_row += 1
             if not fmpz_matrix_lll_transform(
@@ -6904,11 +6507,7 @@ def certified_complex_cubic_class_group_v1(
                 relation_index: uint64 = 0
                 while relation_index < relation_count:
                     coefficient_bits = _cubic_bounded_bit_length(
-                        fmpz_matrix_entry(
-                            dependency_reduced,
-                            dependency_probe_row,
-                            relation_index,
-                        ),
+                        dependency_reduced[dependency_probe_row, relation_index],
                         512,
                     )
                     if coefficient_bits > 512:
@@ -6946,27 +6545,15 @@ def certified_complex_cubic_class_group_v1(
                     basis_one_one,
                     basis_one_two,
                     basis_two_two,
-                    fmpz_matrix_entry(dependency_relation_elements, relation_index, 0),
-                    fmpz_matrix_entry(dependency_relation_elements, relation_index, 1),
-                    fmpz_matrix_entry(dependency_relation_elements, relation_index, 2),
+                    dependency_relation_elements[relation_index, 0],
+                    dependency_relation_elements[relation_index, 1],
+                    dependency_relation_elements[relation_index, 2],
                     dependency_log_scale,
                 )
-                if (
-                    witness_log_upper < witness_log_lower
-                    or not fmpz_matrix_set_entry(
-                        relation_logs,
-                        relation_index,
-                        0,
-                        witness_log_lower,
-                    )
-                    or not fmpz_matrix_set_entry(
-                        relation_logs,
-                        relation_index,
-                        1,
-                        witness_log_upper,
-                    )
-                ):
+                if witness_log_upper < witness_log_lower:
                     return False
+                relation_logs[relation_index, 0] = witness_log_lower
+                relation_logs[relation_index, 1] = witness_log_upper
                 relation_index += 1
         output[59] = 433
         unit_combinations = arena.foreign_resource(
@@ -6981,19 +6568,11 @@ def certified_complex_cubic_class_group_v1(
             dependency_log_upper = 0
             relation_index: uint64 = 0
             while relation_index < relation_count:
-                dependency_exponent = fmpz_matrix_entry(
-                    dependency_reduced,
-                    dependency_row,
-                    relation_index,
-                )
+                dependency_exponent = dependency_reduced[dependency_row, relation_index]
                 if dependency_exponent != 0:
                     dependency_nonzero = True
-                    witness_log_lower = fmpz_matrix_entry(
-                        relation_logs, relation_index, 0
-                    )
-                    witness_log_upper = fmpz_matrix_entry(
-                        relation_logs, relation_index, 1
-                    )
+                    witness_log_lower = relation_logs[relation_index, 0]
+                    witness_log_upper = relation_logs[relation_index, 1]
                     if dependency_exponent > 0:
                         dependency_log_lower += dependency_exponent * witness_log_lower
                         dependency_log_upper += dependency_exponent * witness_log_upper
@@ -7013,29 +6592,19 @@ def certified_complex_cubic_class_group_v1(
             if dependency_nonzero and dependency_orientation != 0:
                 relation_index = 0
                 while relation_index < relation_count:
-                    dependency_exponent = fmpz_matrix_entry(
-                        dependency_reduced,
-                        dependency_row,
-                        relation_index,
+                    dependency_exponent = dependency_reduced[
+                        dependency_row, relation_index
+                    ]
+                    unit_combinations[1, relation_index] = (
+                        dependency_orientation * dependency_exponent
                     )
-                    if not fmpz_matrix_set_entry(
-                        unit_combinations,
-                        1,
-                        relation_index,
-                        dependency_orientation * dependency_exponent,
-                    ):
-                        return False
                     relation_index += 1
                 if not unit_found:
                     relation_index = 0
                     while relation_index < relation_count:
-                        if not fmpz_matrix_set_entry(
-                            unit_combinations,
-                            0,
-                            relation_index,
-                            fmpz_matrix_entry(unit_combinations, 1, relation_index),
-                        ):
-                            return False
+                        unit_combinations[0, relation_index] = unit_combinations[
+                            1, relation_index
+                        ]
                         relation_index += 1
                     unit_found = True
                     regulator_lower = dependency_regulator_lower
@@ -7048,21 +6617,11 @@ def certified_complex_cubic_class_group_v1(
                     if candidate_middle < best_middle:
                         relation_index = 0
                         while relation_index < relation_count:
-                            saved_exponent = fmpz_matrix_entry(
-                                unit_combinations, 0, relation_index
-                            )
-                            if not fmpz_matrix_set_entry(
-                                unit_combinations,
-                                0,
-                                relation_index,
-                                fmpz_matrix_entry(unit_combinations, 1, relation_index),
-                            ) or not fmpz_matrix_set_entry(
-                                unit_combinations,
-                                1,
-                                relation_index,
-                                saved_exponent,
-                            ):
-                                return False
+                            saved_exponent = unit_combinations[0, relation_index]
+                            unit_combinations[0, relation_index] = unit_combinations[
+                                1, relation_index
+                            ]
+                            unit_combinations[1, relation_index] = saved_exponent
                             relation_index += 1
                         saved_lower = regulator_lower
                         saved_upper = regulator_upper
@@ -7106,28 +6665,18 @@ def certified_complex_cubic_class_group_v1(
                         else:
                             relation_index = 0
                             while relation_index < relation_count:
-                                best_exponent = fmpz_matrix_entry(
-                                    unit_combinations, 0, relation_index
-                                )
-                                candidate_exponent = fmpz_matrix_entry(
-                                    unit_combinations, 1, relation_index
-                                )
+                                best_exponent = unit_combinations[0, relation_index]
+                                candidate_exponent = unit_combinations[
+                                    1, relation_index
+                                ]
                                 remainder_exponent = remainder_orientation * (
                                     candidate_exponent
                                     - reduction_quotient * best_exponent
                                 )
-                                if not fmpz_matrix_set_entry(
-                                    unit_combinations,
-                                    0,
-                                    relation_index,
-                                    remainder_exponent,
-                                ) or not fmpz_matrix_set_entry(
-                                    unit_combinations,
-                                    1,
-                                    relation_index,
-                                    best_exponent,
-                                ):
-                                    return False
+                                unit_combinations[0, relation_index] = (
+                                    remainder_exponent
+                                )
+                                unit_combinations[1, relation_index] = best_exponent
                                 relation_index += 1
                             dependency_regulator_lower = regulator_lower
                             dependency_regulator_upper = regulator_upper
@@ -7146,7 +6695,7 @@ def certified_complex_cubic_class_group_v1(
             recovery_tail_count: uint64 = 0
             recovery_source_row: uint64 = recovery_tail_start
             while recovery_source_row < uncompacted_relation_count:
-                if fmpz_matrix_entry(relation_support, recovery_source_row, 0) == 0:
+                if relation_support[recovery_source_row, 0] == 0:
                     recovery_tail_count += 1
                 recovery_source_row += 1
             recovery_relation_count: uint64 = support_count + recovery_tail_count
@@ -7248,11 +6797,11 @@ def certified_complex_cubic_class_group_v1(
             if prefix_unit_status < 0:
                 return False
             if prefix_unit_status == 1:
-                unit_zero = fmpz_matrix_entry(prefix_unit_result, 0, 0)
-                unit_one = fmpz_matrix_entry(prefix_unit_result, 0, 1)
-                unit_two = fmpz_matrix_entry(prefix_unit_result, 0, 2)
-                regulator_lower = fmpz_matrix_entry(prefix_unit_result, 0, 3)
-                regulator_upper = fmpz_matrix_entry(prefix_unit_result, 0, 4)
+                unit_zero = prefix_unit_result[0, 0]
+                unit_one = prefix_unit_result[0, 1]
+                unit_two = prefix_unit_result[0, 2]
+                regulator_lower = prefix_unit_result[0, 3]
+                regulator_upper = prefix_unit_result[0, 4]
                 unit_found = True
                 dependency_scan_active = False
         if unit_found:
@@ -7332,11 +6881,7 @@ def certified_complex_cubic_class_group_v1(
                 dependency_exponent_total = 0
                 relation_index = 0
                 while relation_index < relation_count:
-                    dependency_exponent = fmpz_matrix_entry(
-                        unit_combinations,
-                        0,
-                        relation_index,
-                    )
+                    dependency_exponent = unit_combinations[0, relation_index]
                     if dependency_exponent < 0:
                         dependency_exponent = -dependency_exponent
                     if dependency_exponent > 4096:
@@ -7356,26 +6901,12 @@ def certified_complex_cubic_class_group_v1(
                         identity_coordinate = identity_one
                     elif coordinate_index == 2:
                         identity_coordinate = identity_two
-                    if not fmpz_matrix_set_entry(
-                        dependency_coordinates,
-                        0,
-                        coordinate_index,
-                        identity_coordinate,
-                    ) or not fmpz_matrix_set_entry(
-                        dependency_coordinates,
-                        1,
-                        coordinate_index,
-                        identity_coordinate,
-                    ):
-                        return False
+                    dependency_coordinates[0, coordinate_index] = identity_coordinate
+                    dependency_coordinates[1, coordinate_index] = identity_coordinate
                     coordinate_index += 1
                 relation_index = 0
                 while relation_index < relation_count:
-                    dependency_exponent = fmpz_matrix_entry(
-                        unit_combinations,
-                        0,
-                        relation_index,
-                    )
+                    dependency_exponent = unit_combinations[0, relation_index]
                     absolute_exponent = dependency_exponent
                     if absolute_exponent < 0:
                         absolute_exponent = -absolute_exponent
@@ -7413,9 +6944,9 @@ def certified_complex_cubic_class_group_v1(
                     5,
                 ):
                     return False
-                unit_zero = fmpz_matrix_entry(dependency_coordinates, 4, 0)
-                unit_one = fmpz_matrix_entry(dependency_coordinates, 4, 1)
-                unit_two = fmpz_matrix_entry(dependency_coordinates, 4, 2)
+                unit_zero = dependency_coordinates[4, 0]
+                unit_one = dependency_coordinates[4, 1]
+                unit_two = dependency_coordinates[4, 2]
                 dependency_norm = _cubic_norm_form_value(
                     workspace,
                     unit_zero,
@@ -7707,13 +7238,9 @@ def certified_complex_cubic_class_group_v1(
         )
         analytic_index = 0
         while analytic_index < analytic_value_count:
-            if not fmpz_matrix_set_entry(
-                analytic_values,
-                analytic_index,
-                0,
-                workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + analytic_index],
-            ):
-                return False
+            analytic_values[analytic_index, 0] = workspace[
+                _CUBIC_ANALYTIC_VALUE_OFFSET + analytic_index
+            ]
             analytic_index += 1
         analytic_precision: uint64 = _CUBIC_ANALYTIC_PRECISION
         if not integer_log_sqrt_balls_resource(
@@ -7746,18 +7273,10 @@ def certified_complex_cubic_class_group_v1(
             analytic_scale,
         )
         log_two_pi_lower, log_two_pi_upper = _cubic_log_two_pi_bounds(analytic_scale)
-        log_discriminant_lower = fmpz_matrix_entry(
-            analytic_endpoints,
-            12,
-            0,
-        )
-        log_discriminant_upper = fmpz_matrix_entry(
-            analytic_endpoints,
-            13,
-            0,
-        )
-        log_class_lower = fmpz_matrix_entry(analytic_endpoints, 16, 0)
-        log_class_upper = fmpz_matrix_entry(analytic_endpoints, 17, 0)
+        log_discriminant_lower = analytic_endpoints[12, 0]
+        log_discriminant_upper = analytic_endpoints[13, 0]
+        log_class_lower = analytic_endpoints[16, 0]
+        log_class_upper = analytic_endpoints[17, 0]
         if (
             log_regulator_upper < log_regulator_lower
             or log_two_pi_upper < log_two_pi_lower

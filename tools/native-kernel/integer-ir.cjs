@@ -1153,6 +1153,89 @@ function lowerSparseRowsCall(node, context, operations) {
   return { name: target, type: "Integer" };
 }
 
+function lowerForeignInvocation(
+  node,
+  foreign,
+  args,
+  context,
+  operations,
+  displayName,
+  evaluationOrder = undefined,
+) {
+  const signature = foreign.function.signature;
+  for (const type of [
+    signature.return_type,
+    ...signature.parameters.map((parameter) => parameter.type),
+  ]) {
+    const resource = context.foreignResources.get(type);
+    if (resource !== undefined) {
+      context.usedForeignResources.set(type, resource);
+    }
+  }
+  expect(
+    context,
+    node,
+    foreign.function.targets.native,
+    `${foreign.declarationId} is not available to native kernels`,
+  );
+  expect(
+    context,
+    node,
+    args.length === signature.parameters.length,
+    `${displayName} expects ${signature.parameters.length} arguments, got ` +
+      `${args.length}`,
+  );
+  const order = evaluationOrder || signature.parameters.map((_, index) => index);
+  expect(
+    context,
+    node,
+    order.length === args.length &&
+      new Set(order).size === args.length &&
+      order.every((index) => Number.isInteger(index) && index >= 0 && index < args.length),
+    `${displayName} has an invalid argument evaluation order`,
+  );
+  const lowered = new Array(args.length);
+  for (const index of order) {
+    const param = signature.parameters[index];
+    let value = lowerExpression(
+      args[index],
+      context,
+      operations,
+      param.type === "uint64" ? "uint64" : undefined,
+    );
+    if (param.type === "Integer") {
+      value = coerceInteger(value, context, args[index], operations);
+    }
+    expect(
+      context,
+      args[index],
+      value.type === param.type,
+      `${displayName} argument ${index + 1} expects ${param.type}, got ` +
+        `${value.type}`,
+    );
+    lowered[index] = value;
+  }
+  const target = temporary(context, node, signature.return_type);
+  if (context.foreignResources.has(signature.return_type)) {
+    expect(
+      context,
+      node,
+      context.controlDepth === 0 && context.activeExactArenas.size === 0,
+      "owned FFI resources must be created in the top-level native block " +
+        "or explicitly with NativeExactArena.foreign_resource()",
+    );
+  }
+  operations.push({
+    kind: "ffi.call",
+    target,
+    arguments: lowered,
+    returnType: signature.return_type,
+    foreign,
+  });
+  context.foreignDependencies.add(foreign.declarationIdentity);
+  return { name: target, type: signature.return_type };
+}
+
 function lowerCall(node, context, operations) {
   if (nodeType(node.expression) === "AST_Dot") {
     const owner = node.expression.expression;
@@ -1218,65 +1301,14 @@ function lowerCall(node, context, operations) {
   // local spelling, determines the native operation.
   const foreign = context.foreignFunctions.get(name);
   if (foreign !== undefined) {
-    const signature = foreign.function.signature;
-    for (const type of [
-      signature.return_type,
-      ...signature.parameters.map((parameter) => parameter.type),
-    ]) {
-      const resource = context.foreignResources.get(type);
-      if (resource !== undefined) {
-        context.usedForeignResources.set(type, resource);
-      }
-    }
-    expect(
-      context,
+    return lowerForeignInvocation(
       node,
-      foreign.function.targets.native,
-      `${foreign.declarationId} is not available to native kernels`,
-    );
-    expect(
-      context,
-      node,
-      args.length === signature.parameters.length,
-      `${name} expects ${signature.parameters.length} arguments, got ${args.length}`,
-    );
-    const lowered = signature.parameters.map((param, index) => {
-      let value = lowerExpression(
-        args[index],
-        context,
-        operations,
-        param.type === "uint64" ? "uint64" : undefined,
-      );
-      if (param.type === "Integer") {
-        value = coerceInteger(value, context, args[index], operations);
-      }
-      expect(
-        context,
-        args[index],
-        value.type === param.type,
-        `${name} argument ${index + 1} expects ${param.type}, got ${value.type}`,
-      );
-      return value;
-    });
-    const target = temporary(context, node, signature.return_type);
-    if (context.foreignResources.has(signature.return_type)) {
-      expect(
-        context,
-        node,
-        context.controlDepth === 0 && context.activeExactArenas.size === 0,
-        "owned FFI resources must be created in the top-level native block " +
-          "or explicitly with NativeExactArena.foreign_resource()",
-      );
-    }
-    operations.push({
-      kind: "ffi.call",
-      target,
-      arguments: lowered,
-      returnType: signature.return_type,
       foreign,
-    });
-    context.foreignDependencies.add(foreign.declarationIdentity);
-    return { name: target, type: signature.return_type };
+      args,
+      context,
+      operations,
+      name,
+    );
   }
 
   if (name === "sum" && !context.signatures.has(name)) {
@@ -1719,6 +1751,27 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       });
       return { name: target, type: vector.record.type };
     }
+    const foreignResource = context.foreignResources.get(liveOwnerType);
+    if (foreignResource?.item_get !== undefined) {
+      const indices = sequenceElements(node.property) || [node.property];
+      const dimensions =
+        foreignResource.item_get.function.signature.parameters.length - 1;
+      expect(
+        context,
+        node.property,
+        indices.length === dimensions,
+        `${liveOwnerType} indexing expects ${dimensions} indices, got ` +
+          `${indices.length}`,
+      );
+      return lowerForeignInvocation(
+        node,
+        foreignResource.item_get,
+        [node.expression, ...indices],
+        context,
+        operations,
+        `${liveOwnerType}.__getitem__`,
+      );
+    }
     const bufferType = nodeType(node.expression) === "AST_SymbolRef"
       ? context.variables.get(node.expression.name)
       : undefined;
@@ -2044,6 +2097,35 @@ function lowerBufferAssignment(item, right, operator, context) {
   const liveOwnerType = nodeType(item.expression) === "AST_SymbolRef"
     ? context.variables.get(item.expression.name)
     : undefined;
+  const foreignResource = context.foreignResources.get(liveOwnerType);
+  if (foreignResource?.item_set !== undefined) {
+    expect(
+      context,
+      item,
+      operator === "=",
+      `${liveOwnerType} does not support augmented indexed assignment`,
+    );
+    const indices = sequenceElements(item.property) || [item.property];
+    const dimensions =
+      foreignResource.item_set.function.signature.parameters.length - 2;
+    expect(
+      context,
+      item.property,
+      indices.length === dimensions,
+      `${liveOwnerType} indexing expects ${dimensions} indices, got ` +
+        `${indices.length}`,
+    );
+    lowerForeignInvocation(
+      item,
+      foreignResource.item_set,
+      [item.expression, ...indices, right],
+      context,
+      operations,
+      `${liveOwnerType}.__setitem__`,
+      [indices.length + 1, 0, ...indices.map((_, index) => index + 1)],
+    );
+    return operations;
+  }
   if (liveOwnerType === LIVE_INTEGER_VECTOR_TYPE) {
     const vector = liveIntegerVectorName(item.expression, context);
     const index = lowerLiveVectorIndex(item.property, context, operations);

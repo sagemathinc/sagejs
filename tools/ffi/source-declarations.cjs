@@ -223,7 +223,7 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
     required: ["id", "abi", "ownership", "wasm"],
     keywords: [
       "id", "abi", "ownership", "owner", "close", "clear", "size",
-      "host_transfer", "host_ingress", "wasm",
+      "host_transfer", "host_ingress", "item_get", "item_set", "wasm",
     ],
   });
   const ownership = requiredString(filename, call, "ownership");
@@ -233,10 +233,14 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
   const size = keywordLiteral(filename, call, "size", { default: null });
   const hostTransferNode = call.keywords.get("host_transfer");
   const hostIngressNode = call.keywords.get("host_ingress");
+  const itemGet = keywordLiteral(filename, call, "item_get", { default: null });
+  const itemSet = keywordLiteral(filename, call, "item_set", { default: null });
   const abi = keywordLiteral(filename, call, "abi", { names: true });
   expect(filename, call.node, typeof abi === "string", "resource abi must be a name");
   for (const [label, value] of [
     ["owner", owner], ["close", close], ["clear", clear], ["size", size],
+    ["item_get", itemGet],
+    ["item_set", itemSet],
   ]) {
     expect(filename, call.node, value === null || typeof value === "string",
       `resource ${label} must be None or a string`);
@@ -317,6 +321,8 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
     },
     ...(hostTransfer === undefined ? {} : { host_transfer: hostTransfer }),
     ...(hostIngress === undefined ? {} : { host_ingress: hostIngress }),
+    ...(itemGet === null ? {} : { item_get: itemGet }),
+    ...(itemSet === null ? {} : { item_set: itemSet }),
     targets: {
       dynamic: true,
       native: true,

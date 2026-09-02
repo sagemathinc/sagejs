@@ -73,7 +73,8 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
   knownKeys(filename, resource, [
     "id", "python_name", "abi_type", "ownership", "owner", "dynamic",
     "native", "targets",
-  ], ["host_transfer", "host_ingress"], `resource ${resource.id || "?"}`);
+  ], ["host_transfer", "host_ingress", "item_get", "item_set"],
+    `resource ${resource.id || "?"}`);
   if (!identifier(resource.id) || ids.has(resource.id)) {
     fail(filename, `invalid or duplicate resource id ${resource.id}`);
   }
@@ -87,6 +88,12 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
     fail(filename, `${resource.id} must be an owned resource or borrowed view`);
   }
   nullableString(filename, resource.owner, `${resource.id}.owner`);
+  if (resource.item_get !== undefined && !identifier(resource.item_get)) {
+    fail(filename, `${resource.id}.item_get must name a declared FFI function`);
+  }
+  if (resource.item_set !== undefined && !identifier(resource.item_set)) {
+    fail(filename, `${resource.id}.item_set must name a declared FFI function`);
+  }
   if ((resource.ownership === "owned") !== (resource.owner === null)) {
     fail(filename,
       `${resource.id} owned resources require a null owner and borrowed ` +
@@ -911,7 +918,73 @@ function loadDeclarationDocument(document, options = {}) {
       filename, library, fn, ids, pythonNames, resourcesByType, catalog,
     )
   );
+  const functionsByPythonName = new Map(
+    functions.map((fn) => [fn.python_name, fn]),
+  );
   const enrichedResources = resources.map((resource) => {
+    if (resource.item_get !== undefined) {
+      const accessor = functionsByPythonName.get(resource.item_get);
+      if (accessor === undefined) {
+        fail(filename,
+          `${resource.id}.item_get names unknown function ${resource.item_get}`);
+      }
+      const [owner, ...indices] = accessor.signature.parameters;
+      if (owner?.type !== resource.python_name ||
+          owner.ownership !== "borrowed" || owner.mutability !== "read") {
+        fail(filename,
+          `${resource.id}.item_get must first borrow ${resource.python_name} read-only`);
+      }
+      if (indices.length === 0 ||
+          indices.some((parameter) => parameter.type !== "uint64")) {
+        fail(filename,
+          `${resource.id}.item_get requires one or more uint64 indices`);
+      }
+      if (!["Integer", "uint64", "bool"].includes(
+        accessor.signature.return_type,
+      )) {
+        fail(filename,
+          `${resource.id}.item_get must return Integer, uint64, or bool`);
+      }
+      if (!accessor.effects.pure || accessor.effects.writes.length !== 0) {
+        fail(filename, `${resource.id}.item_get must be a pure read`);
+      }
+    }
+    if (resource.item_set !== undefined) {
+      const accessor = functionsByPythonName.get(resource.item_set);
+      if (accessor === undefined) {
+        fail(filename,
+          `${resource.id}.item_set names unknown function ${resource.item_set}`);
+      }
+      const [owner, ...tail] = accessor.signature.parameters;
+      const value = tail.at(-1);
+      const indices = tail.slice(0, -1);
+      if (owner?.type !== resource.python_name ||
+          owner.ownership !== "borrowed_mut" || owner.mutability !== "write") {
+        fail(filename,
+          `${resource.id}.item_set must first borrow ${resource.python_name} writable`);
+      }
+      if (indices.length === 0 ||
+          indices.some((parameter) => parameter.type !== "uint64")) {
+        fail(filename,
+          `${resource.id}.item_set requires one or more uint64 indices`);
+      }
+      if (value === undefined ||
+          !["Integer", "uint64", "bool"].includes(value.type)) {
+        fail(filename,
+          `${resource.id}.item_set requires a supported scalar value`);
+      }
+      if (accessor.signature.return_type !== "bool" ||
+          accessor.result.domain !== "status") {
+        fail(filename,
+          `${resource.id}.item_set must be a checked status operation`);
+      }
+      if (accessor.effects.pure ||
+          accessor.effects.writes.length !== 1 ||
+          accessor.effects.writes[0] !== owner.name) {
+        fail(filename,
+          `${resource.id}.item_set must write exactly its resource argument`);
+      }
+    }
     let root = resource;
     while (root.owner !== null) root = resourcesById.get(root.owner);
     return Object.freeze({ ...resource, root_owner: root.id });
@@ -1072,6 +1145,54 @@ function generatePythonModule(declaration) {
         `        finally:\n` +
         `            self.close()\n`
       : "";
+    const itemGet = resource.item_get === undefined
+      ? ""
+      : (() => {
+          const accessor = declaration.functions.find(
+            (fn) => fn.python_name === resource.item_get,
+          );
+          const dimensions = accessor.signature.parameters.length - 1;
+          const returned = pythonType(accessor.signature.return_type);
+          if (dimensions === 1) {
+            return `\n    def __getitem__(self, index: Any) -> ${returned}:\n` +
+              `        return ${accessor.python_name}(self, index)\n`;
+          }
+          const arguments_ = Array.from(
+            { length: dimensions }, (_, index) => `index[${index}]`,
+          );
+          return `\n    def __getitem__(self, index: Any) -> ${returned}:\n` +
+            `        if not isinstance(index, tuple) or len(index) != ` +
+              `${dimensions}:\n` +
+            `            raise TypeError(${JSON.stringify(
+              `${resource.python_name} expects ${dimensions} indices`,
+            )})\n` +
+            `        return ${accessor.python_name}(self, ` +
+              `${arguments_.join(", ")})\n`;
+        })();
+    const itemSet = resource.item_set === undefined
+      ? ""
+      : (() => {
+          const accessor = declaration.functions.find(
+            (fn) => fn.python_name === resource.item_set,
+          );
+          const dimensions = accessor.signature.parameters.length - 2;
+          const arguments_ = Array.from(
+            { length: dimensions }, (_, index) => `index[${index}]`,
+          );
+          const call = `${accessor.python_name}(self, ` +
+            `${arguments_.join(", ")}, value)`;
+          if (dimensions === 1) {
+            return `\n    def __setitem__(self, index: Any, value: Any) -> None:\n` +
+              `        ${accessor.python_name}(self, index, value)\n`;
+          }
+          return `\n    def __setitem__(self, index: Any, value: Any) -> None:\n` +
+            `        if not isinstance(index, tuple) or len(index) != ` +
+              `${dimensions}:\n` +
+            `            raise TypeError(${JSON.stringify(
+              `${resource.python_name} expects ${dimensions} indices`,
+            )})\n` +
+            `        ${call}\n`;
+        })();
     return `class ${resource.python_name}:\n` +
       `    \"\"\"Opaque ${resource.ownership} ${library.id}:` +
       `${resource.id} ${resource.ownership === "owned" ? "resource" : "view"}.` +
@@ -1083,7 +1204,7 @@ function generatePythonModule(declaration) {
       `    def _ffi_borrow(self) -> Any:\n` +
       `        return _runtime.ffi_resource_borrow(\n` +
       `            self._token, ${JSON.stringify(identity)}\n` +
-      `        )\n` + contextManager + hostTransfer;
+      `        )\n` + contextManager + hostTransfer + itemGet + itemSet;
   }).join("\n\n");
   const functions = declaration.functions.map((fn) => {
     const resultWire = [fn.result.domain, [...fn.result.success], fn.result.absence];

@@ -62,6 +62,8 @@ FmpzMatrix = flint.resource(
     close="ffiFmpzMatrixClose",
     clear="sagejs_fmpz_matrix_clear",
     size="sagejs_fmpz_matrix_allocated_bytes",
+    item_get="fmpz_matrix_entry",
+    item_set="fmpz_matrix_set_entry",
     wasm=True,
 )
 
