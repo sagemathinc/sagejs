@@ -253,7 +253,8 @@ jobs:
           pnpm release:qualify:numerics:authenticate -- \
             --candidate "$SOURCE_SHA" \
             --gate build/validated-numerical-gate/release-gate.json \
-            --rebuilt-gate build/numerical-qualification/gate/release-gate.json
+            --rebuilt-gate build/numerical-qualification/gate/release-gate.json \
+            --browser-distribution packages/flint-wasm/dist
 
       - name: Verify the receipt and stage the credential-free application
         run: |

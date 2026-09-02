@@ -15,6 +15,7 @@ const {
 } = require("../../../scripts/numerical-computing/common.cjs");
 const {
   authenticate,
+  authenticateBrowserDistribution,
   authenticatePublicNpmRoot,
   authenticateRebuiltGate,
   parseArguments: parseAuthenticateArguments,
@@ -262,7 +263,9 @@ test("documented pnpm argument separators reach every numerical qualification CL
   assert.deepEqual(parseAuthenticateArguments([
     "--", "--candidate", candidate, "--gate", "build/gate.json",
     "--rebuilt-gate", "build/rebuilt.json",
+    "--browser-distribution", "packages/flint-wasm/dist",
   ]), {
+    browser_distribution: "packages/flint-wasm/dist",
     candidate,
     gate: "build/gate.json",
     help: false,
@@ -395,6 +398,30 @@ test("publisher binds the selected public npm root bytes to all four npm rows", 
     assert.equal(authenticatePublicNpmRoot(gate, relative), sha256("qualified public root"));
     fs.writeFileSync(archive, "substituted public root");
     assert.throws(() => authenticatePublicNpmRoot(gate, relative), /differs from the four/);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("deployment binds the selected browser distribution bytes to the qualified rows", () => {
+  fs.mkdirSync(path.join(root, "build"), { recursive: true });
+  const directory = fs.mkdtempSync(path.join(root, "build", "browser-dist-binding-"));
+  try {
+    fs.mkdirSync(path.join(directory, "assets"));
+    fs.writeFileSync(path.join(directory, "production-manifest.json"), "{}\n");
+    fs.writeFileSync(path.join(directory, "assets", "runtime.mjs"), "export const x = 1;\n");
+    const relative = path.relative(root, directory).split(path.sep).join("/");
+    const expected = contentDigestPath(root, relative, "test browser distribution");
+    const gate = validGate("1".repeat(40));
+    gate.artifact_coherence.browser_distribution_content_sha256 = expected;
+    delete gate.id;
+    gate.id = contentId(gate);
+    assert.equal(authenticateBrowserDistribution(gate, relative), expected);
+    fs.writeFileSync(path.join(directory, "assets", "runtime.mjs"), "export const x = 2;\n");
+    assert.throws(
+      () => authenticateBrowserDistribution(gate, relative),
+      /differs from the numerically qualified browser distribution/,
+    );
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
@@ -801,7 +828,7 @@ test("Cloudflare activation requires the same qualified source SHA", () => {
   assert.match(deploy, /--candidate "\$SOURCE_SHA"/);
   assert.match(
     deploy,
-    /--name numerical-release-evidence[\s\S]+release:qualify:numerics:gate[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json/,
+    /--name numerical-release-evidence[\s\S]+release:qualify:numerics:gate[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json[\s\S]+--browser-distribution packages\/flint-wasm\/dist/,
   );
   assert.doesNotMatch(deploy, /Required legacy release job|if \[\[ "\$release_gate" == "missing" \]\]/);
 });
