@@ -27,11 +27,13 @@ function traceMeasurements(cases) {
       retained_events: caseRecord.result.trace.retained_events,
       payload_bytes: compactBytes(caseRecord.result.trace),
     }];
-    if (caseRecord.verification) {
+    const verification = caseRecord.verification ||
+      caseRecord.reference_comparison?.reference_result;
+    if (verification) {
       measurements.push({
         id: `${caseRecord.id}:verification`,
-        retained_events: caseRecord.verification.trace.retained_events,
-        payload_bytes: compactBytes(caseRecord.verification.trace),
+        retained_events: verification.trace.retained_events,
+        payload_bytes: compactBytes(verification.trace),
       });
     }
     return measurements;
@@ -261,6 +263,53 @@ function resultCase(id, title, kind, question, description, result, expected) {
   };
 }
 
+function methodSummary(result) {
+  return {
+    method: result.method,
+    value: result.value,
+    residual: result.validation.residual,
+    iterations: result.iterations,
+    evaluations: result.evaluations,
+    validation_passed: result.validation.passed,
+    truth_level: result.validation.truth_level,
+  };
+}
+
+function referenceComparison(primary, reference) {
+  const primaryTolerance = primary.reproducibility.problem.tolerances.xtol;
+  const referenceTolerance = reference.reproducibility.problem.tolerances.xtol;
+  const difference = Math.abs(primary.value - reference.value);
+  const threshold = Math.max(primaryTolerance, referenceTolerance);
+  return {
+    schema: "sagejs.numerics.reference-comparison/v1",
+    claim: "A separately executed bisection solve independently validates its candidate and agrees with Brent within the declared x-tolerance.",
+    primary: methodSummary(primary),
+    reference: methodSummary(reference),
+    agreement: {
+      absolute_value_difference: difference,
+      threshold,
+      passed: difference <= threshold,
+    },
+    execution: {
+      independent_runs: true,
+      callback_reevaluated_for_presentation: false,
+    },
+    reference_result: reference,
+    evidence: [
+      "/result/method",
+      "/result/value",
+      "/result/validation/residual",
+      "/result/iterations",
+      "/result/evaluations",
+      "/reference_comparison/reference_result/method",
+      "/reference_comparison/reference_result/value",
+      "/reference_comparison/reference_result/validation/residual",
+      "/reference_comparison/reference_result/iterations",
+      "/reference_comparison/reference_result/evaluations",
+    ],
+  };
+}
+
 function buildStory() {
   const evidence = pythonEvidence();
   const semantic = evidence.animation;
@@ -335,7 +384,10 @@ function buildStory() {
       },
     ),
   ];
-  cases[0].verification = evidence.verification;
+  cases[0].reference_comparison = referenceComparison(
+    evidence.cases["cosine-fixed-point"],
+    evidence.verification,
+  );
   return {
     schema_version: 1,
     id: "root-finding",
@@ -347,6 +399,7 @@ function buildStory() {
       "Choose a bracketed or open root method from its mathematical assumptions.",
       "Read a semantic iteration trace without treating a small step as proof of a root.",
       "Distinguish solver termination from independently validated success.",
+      "Compare Brent and bisection using retained accuracy and work measurements.",
       "Respond to discontinuity, invalid-bracket, and divergence diagnostics.",
     ],
     method_assumptions: [

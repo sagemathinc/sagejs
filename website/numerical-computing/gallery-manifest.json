@@ -39,7 +39,7 @@
     "story_count": 9,
     "case_count": 18,
     "animated_case_count": 13,
-    "gallery_runtime_bytes": 6791665
+    "gallery_runtime_bytes": 6822515
   },
   "story_order": [
     "root-brent",
@@ -68,6 +68,7 @@
         "method-assumptions",
         "success-and-failure-narratives",
         "bounded-trace-evidence",
+        "retained-reference-method-comparison",
         "manual-animation",
         "play-pause-step-restart-speed-iteration-controls",
         "static-fallback",

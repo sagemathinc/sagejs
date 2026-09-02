@@ -16,6 +16,7 @@ const { join, normalize, resolve, sep } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { pathToFileURL } = require("node:url");
+const Ajv2020 = require("ajv/dist/2020").default;
 
 const root = resolve(__dirname, "../../..");
 const canonical = join(root, "docs/numerical-computing/gallery");
@@ -26,7 +27,36 @@ const manifest = JSON.parse(
   readFileSync(join(website, "gallery-manifest.json"), "utf8"),
 );
 const generator = require("./generate-cross-domain-gallery.cjs");
+const rootStoryGenerator = require("./generate-root-story.cjs");
 let renderer;
+
+function rootStorySchemaValidator() {
+  const ajv = new Ajv2020({
+    allErrors: true,
+    allowUnionTypes: true,
+    strict: false,
+  });
+  for (const name of ["diagnostic", "trace"]) {
+    const schema = JSON.parse(readFileSync(
+      join(root, "docs/numerical-computing", `${name}.schema.json`),
+      "utf8",
+    ));
+    ajv.addSchema({ ...schema, $id: `https://sagejs.org/${name}.schema.json` });
+  }
+  const resultSchema = JSON.parse(readFileSync(
+    join(root, "docs/numerical-computing/result.schema.json"),
+    "utf8",
+  ));
+  ajv.addSchema({
+    ...resultSchema,
+    $id: "https://sagejs.org/result.schema.json",
+  });
+  const storySchema = JSON.parse(readFileSync(
+    join(canonical, "story.schema.json"),
+    "utf8",
+  ));
+  return ajv.compile(storySchema);
+}
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -96,6 +126,46 @@ test("public manifest inventories every story and pins deployment resources", ()
     readFileSync(join(website, "plotly.LICENSE.txt"), "utf8"),
     /MIT License/,
   );
+  const rootEntry = manifest.stories.find((entry) => entry.id === "root-brent");
+  assert.ok(rootEntry.capabilities.includes("retained-reference-method-comparison"));
+  for (const entry of manifest.stories.filter((entry) => entry.id !== "root-brent")) {
+    assert.equal(
+      entry.capabilities.includes("retained-reference-method-comparison"),
+      false,
+    );
+  }
+});
+
+test("the detailed root story retains its independent bisection result", () => {
+  const story = rootStoryGenerator.main([]);
+  const validate = rootStorySchemaValidator();
+  assert.equal(validate(story), true, JSON.stringify(validate.errors));
+  const success = story.cases.find((item) => item.id === "cosine-fixed-point");
+  const comparison = success.reference_comparison;
+  const reference = comparison.reference_result;
+
+  assert.equal(comparison.schema, "sagejs.numerics.reference-comparison/v1");
+  assert.equal(comparison.primary.method, "brent");
+  assert.equal(comparison.reference.method, "bisection");
+  assert.equal(success.verification, undefined);
+  assert.equal(comparison.primary.value, success.result.value);
+  assert.equal(comparison.reference.value, reference.value);
+  assert.equal(comparison.primary.residual, success.result.validation.residual);
+  assert.equal(comparison.reference.residual, reference.validation.residual);
+  assert.equal(
+    comparison.agreement.absolute_value_difference,
+    Math.abs(success.result.value - reference.value),
+  );
+  assert.equal(comparison.agreement.threshold, 1e-12);
+  assert.equal(comparison.agreement.passed, true);
+  assert.deepEqual(comparison.execution, {
+    independent_runs: true,
+    callback_reevaluated_for_presentation: false,
+  });
+
+  const malformed = structuredClone(story);
+  malformed.cases[0].reference_comparison.agreement.passed = false;
+  assert.equal(validate(malformed), false);
 });
 
 test("every public Open in Sage.js link carries its complete fresh-cell source", () => {

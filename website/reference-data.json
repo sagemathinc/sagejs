@@ -14833,7 +14833,35 @@
       "references": [],
       "limitations": [],
       "source": null,
-      "examples": []
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#65881c7f41cc6e9f-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.optimization import curve_fit\n\nfit = curve_fit(\n    lambda x, parameters: parameters[0]*x + parameters[1],\n    [0.0, 1.0, 2.0, 3.0],\n    [1.0, 3.0, 5.0, 7.0],\n    [0.0, 0.0],\n    jacobian=lambda x, parameters: [x, 1.0],\n)\nfit.success and fit.validation.passed and abs(fit.value[0] - 2.0) < 1.0e-8 and abs(fit.value[1] - 1.0) < 1.0e-8",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "curve-fit",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#65881c7f41cc6e9f-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -17102,7 +17130,35 @@
       "references": [],
       "limitations": [],
       "source": null,
-      "examples": []
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#a14aed811b458915-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.spectral import fft\n\nspectrum = fft([1.0, 0.0, 0.0, 0.0])\nspectrum.success and spectrum.validation.passed and all(abs(value - 1.0) < 1.0e-10 for value in spectrum.value)",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "fft",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#a14aed811b458915-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -17144,7 +17200,35 @@
           "text": "        point: Any,\n        degree: int,\n    ) -> Expression:\n        return taylor(self, variable, point, degree)\n\n    def limit(\n        self,\n        *args: Any,\n        **kwargs: Any,\n    ) -> Expression:\n        return limit(self, *args, **kwargs)\n\n    def find_root(\n        self,\n        lower: Any,\n        upper: Any,\n        maxiter: int = 100,\n        xtol: float = 1e-12,\n        method: str = \"auto\",\n        full_output: bool = False,\n        trace: str = \"iterations\",\n    ) -> Any:\n        expression = self\n        if (\n            runtime.array.isArray(self._tree)"
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#57920a98a0bed855-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics import find_root\n\nroot = find_root(lambda x: x*x - 2.0, 1.0, 2.0, method=\"brent\")\nroot.success and root.validation.passed and abs(root.value*root.value - 2.0) < 1.0e-10",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "find-root",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#57920a98a0bed855-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -28675,7 +28759,35 @@
           "text": "        return result\n\n    diff = derivative\n\n    def expand(self) -> Expression:\n        \"\"\"Expand products and integer powers in this expression.\"\"\"\n        return Expression(_call_backend(\"expand\", [self._tree]))\n\n    def factor(self) -> Expression:\n        \"\"\"Factor this expression over its exact coefficient domain.\"\"\"\n        return Expression(_call_backend(\"factor\", [self._tree]))\n\n    def integrate(\n        self,\n        variable: Any,\n        lower: Any = runtime.undefined,\n        upper: Any = runtime.undefined,\n    ) -> Expression:\n        if (\n            isinstance(variable, (list, tuple))\n            and lower is runtime.undefined\n            and upper is runtime.undefined\n        ):\n            bounds = list(variable)\n            if len(bounds) != 3:"
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#60922b0372e1f6b1-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.integration import integrate\n\nintegral = integrate(lambda x: x*x, 0.0, 1.0)\nintegral.success and integral.validation.passed and abs(integral.value - 1.0/3.0) < 1.0e-10",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "integrate",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#60922b0372e1f6b1-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -29764,7 +29876,35 @@
       "references": [],
       "limitations": [],
       "source": null,
-      "examples": []
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#56e55a2c02e6318d-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.optimization import minimize\n\nminimum = minimize(\n    lambda point: (point[0] - 3.0)**2 + (point[1] + 1.0)**2,\n    [0.0, 0.0],\n    gradient=lambda point: [2.0*(point[0] - 3.0), 2.0*(point[1] + 1.0)],\n    method=\"bfgs\",\n)\nminimum.success and minimum.validation.passed and abs(minimum.value[0] - 3.0) < 1.0e-7 and abs(minimum.value[1] + 1.0) < 1.0e-7",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "minimize",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#56e55a2c02e6318d-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -29796,7 +29936,35 @@
       "references": [],
       "limitations": [],
       "source": null,
-      "examples": []
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#8bd27c89e6130059-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.optimization import minimize_scalar\n\nminimum = minimize_scalar(lambda x: (x - 2.0)**2, -1.0, 5.0)\nminimum.success and minimum.validation.passed and abs(minimum.value - 2.0) < 1.0e-8",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "minimize-scalar",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#8bd27c89e6130059-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -36259,7 +36427,35 @@
       "references": [],
       "limitations": [],
       "source": null,
-      "examples": []
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#57a23b91ef0cce9b-3cbc87c7681f34db",
+          "line": 1,
+          "source": "import math\nfrom sagejs.numerics.ode import solve_ivp\n\nsolution = solve_ivp(lambda t, y: [y[0]], (0.0, 1.0), [1.0])\nsolution.success and solution.validation.passed and abs(solution.value[0] - math.e) < 1.0e-5",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "solve-ivp",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#57a23b91ef0cce9b-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -36722,7 +36918,35 @@
       "references": [],
       "limitations": [],
       "source": null,
-      "examples": []
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#1d9812b101682f40-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.spectral import svd\n\ndecomposition = svd([[3.0, 0.0], [0.0, 2.0]])\nvalues = decomposition.value[\"singular_values\"]\ndecomposition.success and decomposition.validation.passed and abs(values[0] - 3.0) < 1.0e-10 and abs(values[1] - 2.0) < 1.0e-10",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "svd",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#1d9812b101682f40-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -37588,10 +37812,10 @@
       "incomplete_entries": []
     },
     "examples": {
-      "entries_with_examples": 218,
-      "entries_without_examples": 103,
-      "documented": 222,
-      "verified": 216,
+      "entries_with_examples": 226,
+      "entries_without_examples": 95,
+      "documented": 230,
+      "verified": 224,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,

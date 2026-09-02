@@ -14,6 +14,7 @@ const { createServer } = require("node:http");
 const { join, normalize, resolve, sep } = require("node:path");
 const test = require("node:test");
 const { pathToFileURL } = require("node:url");
+const Ajv2020 = require("ajv/dist/2020").default;
 
 const root = resolve(__dirname, "../../..");
 const gallery = join(root, "docs/numerical-computing/gallery");
@@ -27,6 +28,36 @@ const generator = require("./generate-cross-domain-gallery.cjs");
 const evidenceText = readFileSync(evidencePath, "utf8");
 const bundle = JSON.parse(evidenceText);
 let renderer;
+
+function gallerySchemaValidator() {
+  const ajv = new Ajv2020({
+    allErrors: true,
+    allowUnionTypes: true,
+    // The pre-existing presentation schema has required Plotly fields without
+    // enumerating them under properties, so strictRequired cannot be enabled.
+    strict: false,
+  });
+  for (const name of ["diagnostic", "trace"]) {
+    const schema = JSON.parse(readFileSync(
+      join(root, "docs/numerical-computing", `${name}.schema.json`),
+      "utf8",
+    ));
+    ajv.addSchema({ ...schema, $id: `https://sagejs.org/${name}.schema.json` });
+  }
+  const resultSchema = JSON.parse(readFileSync(
+    join(root, "docs/numerical-computing/result.schema.json"),
+    "utf8",
+  ));
+  ajv.addSchema({
+    ...resultSchema,
+    $id: "https://sagejs.org/result.schema.json",
+  });
+  const gallerySchema = JSON.parse(readFileSync(
+    join(gallery, "cross-domain.schema.json"),
+    "utf8",
+  ));
+  return ajv.compile(gallerySchema);
+}
 
 test.before(async () => {
   renderer = await import(pathToFileURL(modulePath));
@@ -70,6 +101,22 @@ test("checked gallery is generated from current numerical contracts", async () =
   assert.deepEqual(statuses["spectral-conditioning/near-defective-basis"], [
     "failure", "validation_failed", false,
   ]);
+});
+
+test("the checked bundle and reference comparison satisfy their public schema", () => {
+  const validate = gallerySchemaValidator();
+  assert.equal(
+    validate(bundle),
+    true,
+    JSON.stringify(validate.errors),
+  );
+  const malformed = structuredClone(bundle);
+  malformed.stories[0].cases[0].reference_comparison.reference.value = "not-a-number";
+  assert.equal(validate(malformed), false);
+  assert.ok(validate.errors.some((error) =>
+    error.instancePath.endsWith("/reference/value") &&
+    error.keyword === "type"
+  ));
 });
 
 test("resource receipts are exact, bounded, and fail closed", () => {
@@ -138,6 +185,63 @@ test("resource receipts are exact, bounded, and fail closed", () => {
   assert.throws(
     () => renderer.assertGalleryBudgets(bundle, changedText),
     /bundle byte measurement is stale/,
+  );
+});
+
+test("the root story compares two real retained method executions", () => {
+  const rootCase = renderer.caseById(
+    bundle,
+    "root-brent",
+    "cosine-fixed-point",
+  ).caseRecord;
+  const comparison = rootCase.reference_comparison;
+  const reference = comparison.reference_result;
+
+  assert.equal(comparison.schema, "sagejs.numerics.reference-comparison/v1");
+  assert.deepEqual(comparison.execution, {
+    callback_reevaluated_for_presentation: false,
+    distinct_callback_instances: true,
+    independent_runs: true,
+  });
+  assert.equal(comparison.primary.method, "brent");
+  assert.equal(comparison.reference.method, "bisection");
+  assert.equal(reference.method, "bisection");
+  assert.equal(rootCase.result.validation.passed, true);
+  assert.equal(reference.validation.passed, true);
+  assert.equal(comparison.primary.value, rootCase.result.value);
+  assert.equal(comparison.primary.residual, rootCase.result.validation.residual);
+  assert.equal(comparison.primary.iterations, rootCase.result.iterations);
+  assert.equal(comparison.primary.evaluations, rootCase.result.evaluations);
+  assert.equal(comparison.reference.value, reference.value);
+  assert.equal(comparison.reference.residual, reference.validation.residual);
+  assert.equal(comparison.reference.iterations, reference.iterations);
+  assert.equal(comparison.reference.evaluations, reference.evaluations);
+  assert.ok(comparison.primary.callback_calls >= comparison.primary.evaluations);
+  assert.ok(comparison.reference.callback_calls >= comparison.reference.evaluations);
+  assert.equal(
+    comparison.agreement.absolute_value_difference,
+    Math.abs(rootCase.result.value - reference.value),
+  );
+  assert.equal(comparison.agreement.threshold, 1e-12);
+  assert.equal(comparison.agreement.passed, true);
+  assert.equal(reference.trace.events[0].kind, "start");
+  assert.equal(reference.trace.events.at(-1).kind, "finish");
+  for (const pointer of comparison.evidence) {
+    assert.notEqual(renderer.getPointer(rootCase, pointer), undefined);
+  }
+
+  const stale = structuredClone(bundle);
+  stale.stories[0].cases[0].reference_comparison.primary.value = 0;
+  assert.throws(
+    () => renderer.assertGalleryBudgets(stale),
+    /primary comparison summary drifted/,
+  );
+  const insufficientTraceBudget = structuredClone(bundle);
+  insufficientTraceBudget.budgets.max_trace_events_per_result =
+    reference.trace.retained_events - 1;
+  assert.throws(
+    () => renderer.assertGalleryBudgets(insufficientTraceBudget),
+    /reference max_trace_events_per_result/,
   );
 });
 
@@ -242,6 +346,9 @@ test("static document is a complete accessible lesson before JavaScript", () => 
   assert.equal((html.match(/class="gallery-story"/g) || []).length, 9);
   assert.equal((html.match(/class="gallery-case /g) || []).length, 18);
   assert.equal((html.match(/<caption>Structured numerical evidence/g) || []).length, 18);
+  assert.equal((html.match(/data-reference-comparison/g) || []).length, 1);
+  assert.match(html, /Two retained executions of the same numerical problem/);
+  assert.match(html, /Independent reference-method comparison/);
   assert.equal((html.match(/data-gallery-plot=/g) || []).length, 17);
   assert.equal((html.match(/data-gallery-animation-controls/g) || []).length, 13);
   assert.equal((html.match(/role="img"/g) || []).length, 17);
@@ -499,7 +606,8 @@ test(
       await noScript.goto(host.url, { waitUntil: "domcontentloaded" });
       assert.equal(await noScript.locator(".gallery-story").count(), 9);
       assert.equal(await noScript.locator(".gallery-case").count(), 18);
-      assert.equal(await noScript.locator("table").count(), 18);
+      assert.equal(await noScript.locator("table").count(), 19);
+      assert.equal(await noScript.locator("[data-reference-comparison]").count(), 1);
       assert.equal(await noScript.locator("[role='img']").count(), 17);
       assert.match(await noScript.locator("noscript").textContent(), /JavaScript is off/);
       await context.close();
