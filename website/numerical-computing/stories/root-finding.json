@@ -668,6 +668,7 @@
           "residual": 7.993605777301127e-15,
           "iterations": 6,
           "evaluations": 8,
+          "callback_calls": 11,
           "validation_passed": true,
           "truth_level": "validated_approximate"
         },
@@ -677,6 +678,7 @@
           "residual": 6.744604874597826e-13,
           "iterations": 40,
           "evaluations": 42,
+          "callback_calls": 45,
           "validation_passed": true,
           "truth_level": "validated_approximate"
         },
@@ -687,6 +689,7 @@
         },
         "execution": {
           "independent_runs": true,
+          "distinct_callback_instances": true,
           "callback_reevaluated_for_presentation": false
         },
         "reference_result": {
@@ -710,7 +713,7 @@
             "bits": 53,
             "kind": "binary64"
           },
-          "problem_digest": "fcf63873578db99b11e9ce124790317902ed4f1f87d771ece9a16c2c50a74ab7",
+          "problem_digest": "ff9203b80abb68f197d762e3b259d96d2e25d411676c96b0937f96898f9eec9d",
           "provenance": {
             "artifact_sha256": null,
             "execution_binding_status": "source_transparent",
@@ -782,7 +785,7 @@
               "method": "bisection",
               "numeric_type": "binary64",
               "operation": "scalar_root",
-              "problem_digest": "fcf63873578db99b11e9ce124790317902ed4f1f87d771ece9a16c2c50a74ab7",
+              "problem_digest": "ff9203b80abb68f197d762e3b259d96d2e25d411676c96b0937f96898f9eec9d",
               "rejected_alternatives": [
                 {
                   "method": "brent",
@@ -825,7 +828,7 @@
                 ]
               },
               "metadata": {},
-              "method_request": "brent",
+              "method_request": "bisection",
               "numeric_type": "binary64",
               "operation": "scalar_root",
               "resource_budget": {

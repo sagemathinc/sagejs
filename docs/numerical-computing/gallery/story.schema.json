@@ -159,6 +159,7 @@
         "residual",
         "iterations",
         "evaluations",
+        "callback_calls",
         "validation_passed",
         "truth_level"
       ],
@@ -168,6 +169,7 @@
         "residual": {"type": "number", "minimum": 0},
         "iterations": {"type": "integer", "minimum": 0},
         "evaluations": {"type": "integer", "minimum": 0},
+        "callback_calls": {"type": "integer", "minimum": 0},
         "validation_passed": {"const": true},
         "truth_level": {"const": "validated_approximate"}
       }
@@ -203,9 +205,14 @@
         "execution": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["independent_runs", "callback_reevaluated_for_presentation"],
+          "required": [
+            "independent_runs",
+            "distinct_callback_instances",
+            "callback_reevaluated_for_presentation"
+          ],
           "properties": {
             "independent_runs": {"const": true},
+            "distinct_callback_instances": {"const": true},
             "callback_reevaluated_for_presentation": {"const": false}
           }
         },
