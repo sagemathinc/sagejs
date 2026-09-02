@@ -44,6 +44,7 @@
     "sagejs.modular_forms.component_groups",
     "sagejs.modular_forms.modular_polynomial",
     "sagejs.modular_forms.mestre",
+    "sagejs.modular_forms.object_layer",
     "sagejs.modular_forms.sparse_krylov",
     "sagejs.modular_forms.sparse_hecke",
     "sagejs.modular_forms.supersingular",

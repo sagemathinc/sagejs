@@ -771,7 +771,7 @@ test("research SagePack golden vectors are byte-for-byte deterministic", async (
   );
   assert.equal(
     digest(modularForms),
-    "f6e8c03f908473570e7f3665c6fab00d1da62da224865e2bc4ee9e675a0ddbb2",
+    "d8d93bb8d2ed229f95fae2dc2deff84500ccfa9298b3fc1548bffda01b7ac09e",
   );
   assert.equal(
     digest(modularSymbols),

@@ -442,7 +442,7 @@ class CertifiedModularForm(sage.Element):
     def __mul__(self, other: Any) -> CertifiedModularForm:
         if not isinstance(other, CertifiedModularForm) and _kind(other) not in [
             "ExactModularForm",
-            "EisensteinSeriesElement",
+            "ClassicalModularFormElement",
             "NormalizedNewform",
         ]:
             scalar = self.base_ring()(other)
@@ -619,7 +619,7 @@ def _source_character(source: Any, level: int) -> ExactNebentypus:
 def _recognized_source(source: Any) -> bool:
     return _kind(source) in [
         "ExactModularForm",
-        "EisensteinSeriesElement",
+        "ClassicalModularFormElement",
         "NormalizedNewform",
     ]
 

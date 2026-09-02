@@ -8,6 +8,8 @@ ExactModularForm: Any
 CertifiedFormulaSubspace: Any
 CertifiedEtaProduct: Any
 CertifiedModularForm: Any
+ClassicalModularFormElement: Any
+ClassicalModularFormsHeckeOperator: Any
 EtaProductCertificate: Any
 ExactNebentypus: Any
 FormulaAmbientComparisonCertificate: Any
@@ -182,10 +184,17 @@ _HALF_INTEGRAL_EXPORTS = [
     "theta_qexp_certificate",
 ]
 
+_OBJECT_LAYER_EXPORTS = [
+    "ClassicalModularFormElement",
+    "ClassicalModularFormsHeckeOperator",
+]
+
 __all__ = [
     "CertifiedFormulaSubspace",
     "CertifiedEtaProduct",
     "CertifiedModularForm",
+    "ClassicalModularFormElement",
+    "ClassicalModularFormsHeckeOperator",
     "EtaProductCertificate",
     "ExactNebentypus",
     "FormulaAmbientComparisonCertificate",
@@ -331,6 +340,10 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         from . import half_integral
 
         return getattr(half_integral, name)
+    if name in _OBJECT_LAYER_EXPORTS:
+        from . import object_layer
+
+        return getattr(object_layer, name)
     if name in ["FiniteHeckeSet", "SupersingularFiniteHeckeSet", "finite_hecke_set"]:
         from . import finite_hecke
 

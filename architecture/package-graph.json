@@ -691,6 +691,27 @@
       "prefixes": []
     },
     {
+      "id": "modular-form-object-layer",
+      "layer": 7,
+      "startup": "lazy",
+      "max_source_bytes": 70000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "modular-forms",
+        "modular-form-expansions",
+        "modular-form-qexp-algebra"
+      ],
+      "modules": [
+        "sagejs.modular_forms.object_layer"
+      ],
+      "files": [
+        "src/lib/sagejs/modular_forms/object_layer.py"
+      ],
+      "prefixes": []
+    },
+    {
       "id": "rational-quaternion-algebras",
       "layer": 4,
       "startup": "lazy",
