@@ -6,7 +6,9 @@ import {
   SourceSpan,
 } from "../foreign/tree-sitter";
 import {
+  foreignFrontendDiagnostic,
   ForeignFrontend,
+  ForeignFrontendDiagnostic,
   ForeignLowering,
   ForeignLowerOptions,
 } from "../foreign/types";
@@ -24,17 +26,25 @@ export class WolframSyntaxError extends SyntaxError {
   readonly line: number;
   readonly column: number;
   readonly incomplete: boolean;
+  readonly diagnostic: ForeignFrontendDiagnostic;
 
   constructor(
     message: string,
     span: SourceSpan,
     incomplete = false,
+    diagnostic?: ForeignFrontendDiagnostic,
   ) {
     super(message);
     this.name = "WolframSyntaxError";
     this.line = span.start.line;
     this.column = span.start.column;
     this.incomplete = incomplete;
+    this.diagnostic = diagnostic ?? foreignFrontendDiagnostic(
+      "wolfram",
+      "parse_failure",
+      message,
+      { source_span: span },
+    );
   }
 
   override toString(): string {
@@ -205,6 +215,7 @@ const PYTHON_KEYWORDS = new Set([
 ]);
 
 class SageLowerer {
+  private callbackRequirements: Map<string, string> | undefined;
   private readonly names = new Map<string, string>();
   private readonly plotVariables = new Set<string>();
   private readonly directHeads: Record<string, string> = {
@@ -244,6 +255,46 @@ class SageLowerer {
     private readonly source: string,
     private readonly filename?: string,
   ) {}
+
+  private unsupportedNumerical(
+    name: string,
+    span: SourceSpan,
+    reason = "numerical syntax is not supported by the Sage.js Wolfram frontend",
+  ): never {
+    const message = `${name} ${reason}`;
+    throw new WolframSyntaxError(
+      message,
+      span,
+      false,
+      foreignFrontendDiagnostic(
+        "wolfram",
+        "unsupported_operation",
+        message,
+        {
+          surface: "natural-vendor-alias",
+          source_name: name,
+          source_span: span,
+        },
+      ),
+    );
+  }
+
+  private callback(variable: string, lowerBody: () => string): string {
+    const previousRequirements = this.callbackRequirements;
+    const requirements = new Map<string, string>();
+    this.callbackRequirements = requirements;
+    let body: string;
+    try {
+      body = lowerBody();
+    } finally {
+      this.callbackRequirements = previousRequirements;
+    }
+    const callback = `(lambda ${variable}: ${body})`;
+    if (requirements.size === 0) return callback;
+    return `_wolfram.validate_callback_names(${callback}, ${
+      this.stringLiteral(JSON.stringify([...requirements]))
+    }, globals())`;
+  }
 
   program(program: WolframProgram, captureResult = false): string {
     const statements: string[] = [];
@@ -401,10 +452,7 @@ class SageLowerer {
     }
     if (head === "Show") return this.showCall(expression);
     if (this.unsupportedNumericalHeads.has(head)) {
-      throw new WolframSyntaxError(
-        `${head} numerical syntax is not supported by the Sage.js Wolfram frontend`,
-        expression.span,
-      );
+      return this.unsupportedNumerical(head, expression.span);
     }
     const graphicsHeads: Record<string, string> = {
       Arrow: "Arrow",
@@ -440,8 +488,18 @@ class SageLowerer {
       ["Dimensions", "FactorInteger", "Head", "Length", "Prime", "Range"]
         .includes(head)
         ? `_wolfram.${head}`
-        : this.name(head)
+        : undefined
     );
+    if (target === undefined) {
+      const emittedName = this.name(head);
+      this.callbackRequirements?.set(head, emittedName);
+      return `_wolfram.call_named(${this.stringLiteral(head)}, ${
+        this.stringLiteral(emittedName)
+      }, globals()${expression.arguments.length ? ", " : ""}${
+        expression.arguments.map((argument) => this.expression(argument))
+          .join(", ")
+      })`;
+    }
     return `${target}(${
       expression.arguments.map((argument) => this.expression(argument))
         .join(", ")
@@ -519,13 +577,16 @@ class SageLowerer {
     }
     const variable = this.name(specification.elements[0].name);
     const objective = expression.arguments[0];
-    const body = objective.kind === "binary" && objective.operator === "=="
-      ? `(${this.expression(objective.left)} - ${this.expression(objective.right)})`
-      : this.expression(objective);
+    const callback = this.callback(
+      variable,
+      () => objective.kind === "binary" && objective.operator === "=="
+        ? `(${this.expression(objective.left)} - ${this.expression(objective.right)})`
+        : this.expression(objective),
+    );
     const initial = `[${specification.elements.slice(1).map((value) =>
       this.expression(value)
     ).join(", ")}]`;
-    return `_wolfram.FindRoot(lambda ${variable}: ${body}, ${
+    return `_wolfram.FindRoot(${callback}, ${
       JSON.stringify(specification.elements[0].name)
     }, ${initial})`;
   }
@@ -611,12 +672,29 @@ class SageLowerer {
         "Tan",
       ]);
       if (
-        !numericHeads.has(expression.head.name) ||
-        expression.arguments.length !== 1
+        !numericHeads.has(expression.head.name)
       ) {
-        throw new WolframSyntaxError(
-          `${operation} expressions require supported unary numerical functions`,
+        return this.unsupportedNumerical(
+          expression.head.name,
           expression.span,
+          `is not supported in ${operation} numerical expressions`,
+        );
+      }
+      if (expression.arguments.length !== 1) {
+        const message = `${operation} expressions require unary ${expression.head.name}`;
+        throw new WolframSyntaxError(
+          message,
+          expression.span,
+          false,
+          foreignFrontendDiagnostic(
+            "wolfram",
+            "invalid_frontend_arguments",
+            message,
+            {
+              source_name: expression.head.name,
+              source_span: expression.span,
+            },
+          ),
         );
       }
       this.validateNumericalScalar(expression.arguments[0], variable, operation);
