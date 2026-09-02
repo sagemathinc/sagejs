@@ -92,6 +92,13 @@ matlab_convolution = registry.emit(convolution, "matlab")
 assert "left = [1, 2];" in matlab_convolution
 assert "right = [3, 4];" in matlab_convolution
 assert "right = [3, 4].';" not in matlab_convolution
+integral = registry.lower(
+    "wolfram", "NIntegrate", lambda x: x*x, 0, 1, expression="x^2"
+)
+matlab_integral = registry.emit(integral, "matlab")
+assert "callback = @(x) x .^ 2;" in matlab_integral
+assert "result = integral(callback, lower, upper);" in matlab_integral
+assert "function =" not in matlab_integral
 body, payload = source.rsplit("\n# sagejs-intent-v1:", 1)
 envelope = json.loads(base64.urlsafe_b64decode(payload.encode("ascii")))
 

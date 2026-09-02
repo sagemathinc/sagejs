@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from .model import (
@@ -34,6 +34,7 @@ def parse_catalog_source(
     callback: str | None,
     callback_shape: str | None,
     source_name: str,
+    operand_names: Mapping[str, str] | None = None,
     lower: Callable[..., NumericalFrontendIntent],
     emit_body: Callable[[NumericalFrontendIntent, str], str],
 ) -> NumericalFrontendIntent:
@@ -46,9 +47,13 @@ def parse_catalog_source(
     expression: str | list[str] | None = None
     parameters: tuple[str, ...] | None = None
     for name in operands:
-        value_source = assignments.get(name)
+        emitted_name = name if operand_names is None else operand_names.get(name, name)
+        value_source = assignments.get(emitted_name)
         if value_source is None:
-            _failure(target, "emitted program omits operand assignment: " + name)
+            _failure(
+                target,
+                "emitted program omits operand assignment: " + emitted_name,
+            )
         assert value_source is not None
         if name == callback:
             if callback_shape is None:

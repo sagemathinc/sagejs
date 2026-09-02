@@ -798,6 +798,11 @@ def _make_parser(definition: _Definition, language: str) -> Any:
                 else _callback_shape(definition.operation.name)
             ),
             source_name=source_name,
+            operand_names=(
+                {"function": "callback"}
+                if language == "matlab" and definition.callback == "function"
+                else None
+            ),
             lower=lower,
             emit_body=lambda intent, target: _emit_body(definition, intent, target),
         )
@@ -901,10 +906,12 @@ def _assignment(name: str, value: Any, language: str) -> str:
     return name + " = " + render_value(value, language)
 
 
-def _callback_source(record: Any, language: str, shape: str) -> str:
+def _callback_source(
+    record: Any, language: str, shape: str, *, elementwise: bool = False
+) -> str:
     if not isinstance(record, Mapping):
         raise TypeError("canonical callback must be a mapping")
-    rendered = render_callback(record, language)
+    rendered = render_callback(record, language, elementwise=elementwise)
     parameters_value = record.get("parameters", [])
     if not isinstance(parameters_value, Sequence) or isinstance(parameters_value, str):
         raise TypeError("canonical callback parameters must be a sequence")
@@ -1076,7 +1083,8 @@ def _emit_matlab(definition: _Definition, values: Mapping[str, Any]) -> str:
     lines = []
     for operand in definition.operands:
         if operand != definition.callback:
-            assignment = _assignment(operand, values[operand], "matlab")
+            emitted_operand = "callback" if operand == "function" else operand
+            assignment = _assignment(emitted_operand, values[operand], "matlab")
             if (
                 name in ("linear_solve", "least_squares")
                 and operand == "right"
@@ -1089,11 +1097,17 @@ def _emit_matlab(definition: _Definition, values: Mapping[str, Any]) -> str:
                 assignment += ".'"
             lines.append(assignment + ";")
     if definition.callback is not None:
+        emitted_callback = (
+            "callback" if definition.callback == "function" else definition.callback
+        )
         lines.append(
-            definition.callback
+            emitted_callback
             + " = "
             + _callback_source(
-                values[definition.callback], "matlab", _callback_shape(name)
+                values[definition.callback],
+                "matlab",
+                _callback_shape(name),
+                elementwise=name == "definite_integral",
             )
             + ";"
         )
@@ -1107,13 +1121,13 @@ def _emit_matlab(definition: _Definition, values: Mapping[str, Any]) -> str:
         "convolution": "conv(left, right, 'full')",
         "interpolation": "@(x) interp1(nodes, values, x, 'linear')",
         "cubic_spline": "spline(nodes, values)",
-        "definite_integral": "integral(function, lower, upper)",
-        "scalar_minimum": "fminbnd(function, lower, upper)",
-        "minimize": "fminsearch(function, x0)",
-        "nonlinear_system": "fsolve(function, x0)",
+        "definite_integral": "integral(callback, lower, upper)",
+        "scalar_minimum": "fminbnd(callback, lower, upper)",
+        "minimize": "fminsearch(callback, x0)",
+        "nonlinear_system": "fsolve(callback, x0)",
         "nonlinear_least_squares": "lsqnonlin(residuals, x0)",
         "linear_fit": "polyfit(xdata, ydata, 1)",
-        "initial_value_problem": "ode45(function, t_span, y0)",
+        "initial_value_problem": "ode45(callback, t_span, y0)",
         "descriptive_statistics": "[mean(data), std(data), min(data), max(data)]",
         "one_sample_t_test": "ttest(data, population_mean)",
         "two_sample_t_test": "ttest2(first, second, 'Vartype', 'unequal')",

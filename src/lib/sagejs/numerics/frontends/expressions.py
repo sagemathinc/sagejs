@@ -315,8 +315,14 @@ def expression_record(
     }
 
 
-def render_expression(record: Mapping[str, Any], language: str) -> str:
-    """Render canonical expression IR in one supported scalar syntax."""
+def render_expression(
+    record: Mapping[str, Any], language: str, *, elementwise: bool = False
+) -> str:
+    """Render canonical expression IR in one supported scalar syntax.
+
+    Set `elementwise` for MATLAB callbacks whose host API evaluates the
+    function on arrays. The operation adapter makes this choice explicitly.
+    """
 
     target = canonical_language(language)
     if record.get("kind") != "expression":
@@ -330,10 +336,16 @@ def render_expression(record: Mapping[str, Any], language: str) -> str:
     tree = record.get("tree")
     if not isinstance(tree, Mapping):
         raise TypeError("expression record tree must be a mapping")
-    return _render(tree, target, 0)
+    return _render(tree, target, 0, elementwise=elementwise)
 
 
-def _render(tree: Mapping[str, Any], language: str, parent: int) -> str:
+def _render(
+    tree: Mapping[str, Any],
+    language: str,
+    parent: int,
+    *,
+    elementwise: bool = False,
+) -> str:
     kind = tree.get("kind")
     if kind == "number":
         return str(tree["value"])
@@ -359,7 +371,7 @@ def _render(tree: Mapping[str, Any], language: str, parent: int) -> str:
         operand = tree.get("operand")
         if not isinstance(operand, Mapping):
             raise TypeError("unary expression operand must be a mapping")
-        value = operator + _render(operand, language, 35)
+        value = operator + _render(operand, language, 35, elementwise=elementwise)
         return "(" + value + ")" if 35 < parent else value
     if kind == "call":
         function = str(tree["function"])
@@ -370,7 +382,7 @@ def _render(tree: Mapping[str, Any], language: str, parent: int) -> str:
         for argument in arguments:
             if not isinstance(argument, Mapping):
                 raise TypeError("call expression argument must be a mapping")
-            rendered.append(_render(argument, language, 0))
+            rendered.append(_render(argument, language, 0, elementwise=elementwise))
         target_name = _render_function(function, language)
         opening, closing = ("[", "]") if language == "wolfram" else ("(", ")")
         return target_name + opening + ", ".join(rendered) + closing
@@ -383,10 +395,10 @@ def _render(tree: Mapping[str, Any], language: str, parent: int) -> str:
         right = tree.get("right")
         if not isinstance(left, Mapping) or not isinstance(right, Mapping):
             raise TypeError("binary expression operands must be mappings")
-        operator = _render_operator(operation, language)
-        left_text = _render(left, language, precedence)
+        operator = _render_operator(operation, language, elementwise=elementwise)
+        left_text = _render(left, language, precedence, elementwise=elementwise)
         right_parent = precedence if operation == "power" else precedence + 1
-        right_text = _render(right, language, right_parent)
+        right_text = _render(right, language, right_parent, elementwise=elementwise)
         value = left_text + " " + operator + " " + right_text
         return "(" + value + ")" if precedence < parent else value
     raise ValueError("unknown canonical expression node: " + str(kind))
@@ -415,7 +427,9 @@ def _render_function(function: str, language: str) -> str:
     return function
 
 
-def _render_operator(operation: str, language: str) -> str:
+def _render_operator(
+    operation: str, language: str, *, elementwise: bool = False
+) -> str:
     operators = {
         "add": "+",
         "subtract": "-",
@@ -431,6 +445,17 @@ def _render_operator(operation: str, language: str) -> str:
     }
     if language == "matlab" and operation == "not_equal":
         return "~="
+    if (
+        language == "matlab"
+        and elementwise
+        and operation
+        in (
+            "multiply",
+            "divide",
+            "power",
+        )
+    ):
+        return {"multiply": ".*", "divide": "./", "power": ".^"}[operation]
     return operators[operation]
 
 

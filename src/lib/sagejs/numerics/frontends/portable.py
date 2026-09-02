@@ -282,11 +282,13 @@ def replayable_callback(record: Mapping[str, Any]) -> Any:
     return callback
 
 
-def render_callback(record: Mapping[str, Any], language: str) -> str | list[str]:
+def render_callback(
+    record: Mapping[str, Any], language: str, *, elementwise: bool = False
+) -> str | list[str]:
     """Render one portable scalar or vector callback body."""
 
     if record.get("kind") == "expression":
-        return render_expression(record, language)
+        return render_expression(record, language, elementwise=elementwise)
     if record.get("kind") == "expression_vector":
         items = record.get("items")
         if not isinstance(items, Sequence) or isinstance(items, str):
@@ -295,7 +297,7 @@ def render_callback(record: Mapping[str, Any], language: str) -> str | list[str]
         for item in items:
             if not isinstance(item, Mapping):
                 raise TypeError("expression vector item must be a mapping")
-            rendered.append(render_expression(item, language))
+            rendered.append(render_expression(item, language, elementwise=elementwise))
         return rendered
     raise UnsupportedFrontendError(
         FrontendDiagnostic(
