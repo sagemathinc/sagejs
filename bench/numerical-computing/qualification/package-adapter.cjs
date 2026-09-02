@@ -275,10 +275,19 @@ function parseShape(result, name) {
 async function runParserGuards() {
   if (runNode !== null) return runInstalledParserGuards();
   const started = performance.now();
+  // A relocated SEA cannot expose its frontend objects to this host process,
+  // so ask its CLI to print the lowered Sage source while it evaluates the
+  // witness.  This preserves structured parser diagnostics and gives the
+  // qualification adapter direct evidence that safe forms reached the
+  // intended runtime entry points.
+  const languageOptions = {
+    timeout: 180_000,
+    emitSage: runtimeContext?.kind === "relocated-sea",
+  };
   const records = [];
   for (const [language, source, expectedName, expectedMessage] of PARSER_GUARDS) {
     const result = await runPackageAsync(
-      runLanguageName, runtimeContext, source, language, { timeout: 180_000 },
+      runLanguageName, runtimeContext, source, language, languageOptions,
     );
     const output = `${result.stdout}\n${result.stderr}`;
     records.push({
@@ -296,7 +305,7 @@ async function runParserGuards() {
   const safe = [];
   for (const [language, source] of safePrograms) {
     const result = await runPackageAsync(
-      runLanguageName, runtimeContext, source, language, { timeout: 180_000 },
+      runLanguageName, runtimeContext, source, language, languageOptions,
     );
     checkProcess(result, `${language} safe parser witness`);
     safe.push(result.stdout);
