@@ -121,5 +121,18 @@ contains the frozen warmups, 20 shards, proof setting, boundary list, round,
 and 1.2-second minimum. The orchestrator revalidates every class number and any
 published invariants, so an adapter cannot self-certify arithmetic.
 
+Every successful external response must also carry a content-bound runtime
+identity. The orchestrator verifies its canonical digest and system binding,
+independently regenerates the CAS program from the exact protocol request, and
+checks the reported program digest. It retains the complete identity with the
+process evidence and requires one unchanged runtime-closure digest from census
+through every retained round; the request-specific program digest is the only
+excluded part of that closure. The supplied
+Magma adapter hashes the launcher, runtime, package tree, adapter, helper, and
+generated program. The supplied Hecke adapter additionally pins and hashes the
+Julia system image, exact Hecke Git tree, project/manifest, FLINT/GMP/MPFR
+libraries, and loaded caches. Version drift or an incomplete installation fails
+before the ready marker, so it cannot silently become benchmark evidence.
+
 Routine tests use injected fake processes and clocks. They never contact LMFDB,
 launch a CAS, or use the dedicated benchmark VM.

@@ -29,11 +29,13 @@ const {
   pariCensusSource,
   pariTimingSource,
   runFreshProcess,
+  runtimeClosureDigest,
   sageCensusSource,
   sageTimingSource,
   systemOrder,
   selectFrontierCandidate,
   timingMetrics,
+  validateRuntimeIdentity,
 } = require("../bench/class-unit-groups/run-complex-cubic-frontier.cjs");
 
 const root = path.resolve(__dirname, "..");
@@ -267,6 +269,52 @@ test("adapter responses and retained events fail closed", () => {
   const timedOut = combineCensus(corpus, [{ ...response, status: "timeout", payload: null }]);
   assert.equal(timedOut.records[0].status, "timeout");
   assert.equal(timedOut.summary.coverage_complete, false);
+});
+
+test("external runtime identities are content-bound and system-bound", () => {
+  const payload = {
+    schema: "sagejs.benchmark/complex-cubic-frontier-runtime-identity-v1",
+    system: "magma",
+    version: "Magma V2.18-5",
+    executable: "/opt/magma/bin/magma",
+    proof_setting: 'ClassGroup(order : Proof := "GRH")',
+    proof_semantics: "conditional factor-base theorem and exact relation arithmetic",
+    environment: { MAGMA_LIBRARIES: "" },
+    artifacts: [{
+      role: "magma-runtime", path: "/opt/magma/magma.exe", bytes: 100,
+      sha256: "a".repeat(64),
+    }],
+    adapter: {
+      role: "protocol-adapter", path: "/repo/magma-adapter.cjs", bytes: 200,
+      sha256: "b".repeat(64),
+    },
+    helper: {
+      role: "protocol-helper", path: "/repo/external-adapter.cjs", bytes: 300,
+      sha256: "c".repeat(64),
+    },
+    generated_program_sha256: "d".repeat(64),
+  };
+  const identity = { ...payload, identity_sha256: canonicalDigest(payload) };
+  assert.equal(validateRuntimeIdentity(identity, "magma", "d".repeat(64)), identity);
+  assert.throws(() => validateRuntimeIdentity({ ...identity, version: "Magma V2.29-1" },
+    "magma"), /stale runtime identity digest/);
+  assert.throws(() => validateRuntimeIdentity(identity, "hecke"),
+    /malformed runtime identity/);
+  assert.throws(() => validateRuntimeIdentity(identity, "magma", "e".repeat(64)),
+    /request-derived program/);
+
+  const secondPayload = { ...payload, generated_program_sha256: "e".repeat(64) };
+  const secondIdentity = {
+    ...secondPayload,
+    identity_sha256: canonicalDigest(secondPayload),
+  };
+  assert.equal(runtimeClosureDigest(identity), runtimeClosureDigest(secondIdentity));
+  const changedPayload = { ...payload, version: "Magma V2.18-6" };
+  const changedIdentity = {
+    ...changedPayload,
+    identity_sha256: canonicalDigest(changedPayload),
+  };
+  assert.notEqual(runtimeClosureDigest(identity), runtimeClosureDigest(changedIdentity));
 });
 
 test("timing identity binds the manifest and physical survey asset", () => {

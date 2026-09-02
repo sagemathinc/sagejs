@@ -28,6 +28,8 @@ const {
 const ROOT = path.resolve(__dirname, "../..");
 const READY_MARKER = "SAGEJS_COMPLEX_CUBIC_FRONTIER_READY";
 const RESPONSE_MARKER = "SAGEJS_COMPLEX_CUBIC_FRONTIER_RESPONSE|";
+const RUNTIME_IDENTITY_SCHEMA =
+  "sagejs.benchmark/complex-cubic-frontier-runtime-identity-v1";
 const GP_CENSUS_MARKER = "SAGEJS_COMPLEX_CUBIC_GP_CENSUS|";
 const GP_TIMING_MARKER = "SAGEJS_COMPLEX_CUBIC_GP_TIMING|";
 const MINIMUM_ROOT_NS = 1_200_000_000n;
@@ -271,9 +273,12 @@ function toolPlan(options) {
         try { version = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"))).version; } catch {}
       } else if (system === "pari" && !options.adapters[system]) {
         try {
-          version = childProcess.execFileSync(executable, ["--version"], {
+          const probe = childProcess.spawnSync(executable, ["--version"], {
             encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 10_000,
-          }).split(/\r?\n/)[0].trim();
+          });
+          if (probe.error || probe.status !== 0) throw probe.error || new Error("nonzero exit");
+          version = `${probe.stdout || ""}\n${probe.stderr || ""}`
+            .split(/\r?\n/).map((line) => line.trim()).find(Boolean) || "version-probe-failed";
         } catch {
           version = "version-probe-failed";
         }
@@ -619,6 +624,7 @@ function runFreshProcess(spec, options = {}) {
     const child = spawn(spec.executable, spec.args, {
       cwd: ROOT,
       env: { ...process.env, ...THREAD_ENV, ...spec.env },
+      detached: process.platform !== "win32",
       stdio: ["pipe", "pipe", "pipe"],
     });
     const stdoutState = { buffer: "" };
@@ -628,6 +634,14 @@ function runFreshProcess(spec, options = {}) {
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
+      if (process.platform !== "win32" && Number.isSafeInteger(child.pid)) {
+        try {
+          process.kill(-child.pid, "SIGKILL");
+          return;
+        } catch {
+          // Fall back to the immediate child if its process group has already exited.
+        }
+      }
       child.kill("SIGKILL");
     }, spec.timeoutSeconds * 1000);
     child.stdout.on("data", (chunk) => {
@@ -676,6 +690,71 @@ function responseFromStdout(stdout) {
   return JSON.parse(line.slice(RESPONSE_MARKER.length));
 }
 
+function validateIdentityArtifact(artifact, label) {
+  if (!artifact || typeof artifact !== "object" || Array.isArray(artifact) ||
+      typeof artifact.role !== "string" || artifact.role.length === 0 ||
+      typeof artifact.path !== "string" || !path.isAbsolute(artifact.path) ||
+      !Number.isSafeInteger(artifact.bytes) || artifact.bytes <= 0 ||
+      typeof artifact.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(artifact.sha256) ||
+      (artifact.file_count !== undefined &&
+        (!Number.isSafeInteger(artifact.file_count) || artifact.file_count <= 0))) {
+    throw new Error(`${label} is malformed`);
+  }
+  return artifact;
+}
+
+function runtimeClosureDigest(identity) {
+  const {
+    identity_sha256: _identityDigest,
+    generated_program_sha256: _programDigest,
+    ...closure
+  } = identity;
+  return canonicalDigest(closure);
+}
+
+function validateRuntimeIdentity(identity, system, expectedProgramSha256 = null) {
+  const expectedProofSetting = system === "magma"
+    ? 'ClassGroup(order : Proof := "GRH")'
+    : system === "hecke"
+      ? "class_group(order; GRH=true, redo=true)"
+      : null;
+  if (!identity || typeof identity !== "object" || Array.isArray(identity) ||
+      identity.schema !== RUNTIME_IDENTITY_SCHEMA || identity.system !== system ||
+      typeof identity.version !== "string" || identity.version.length === 0 ||
+      typeof identity.executable !== "string" || !path.isAbsolute(identity.executable) ||
+      identity.proof_setting !== expectedProofSetting ||
+      typeof identity.proof_semantics !== "string" || identity.proof_semantics.length === 0 ||
+      !identity.environment || typeof identity.environment !== "object" ||
+      Array.isArray(identity.environment) ||
+      !Array.isArray(identity.artifacts) || identity.artifacts.length === 0 ||
+      typeof identity.generated_program_sha256 !== "string" ||
+      !/^[0-9a-f]{64}$/.test(identity.generated_program_sha256) ||
+      typeof identity.identity_sha256 !== "string" ||
+      !/^[0-9a-f]{64}$/.test(identity.identity_sha256)) {
+    throw new Error(`${system} emitted a malformed runtime identity`);
+  }
+  const artifacts = [
+    ...identity.artifacts.map((artifact, index) =>
+      validateIdentityArtifact(artifact, `${system} runtime identity artifact ${index}`)),
+    validateIdentityArtifact(identity.adapter, `${system} runtime identity adapter`),
+    validateIdentityArtifact(identity.helper, `${system} runtime identity helper`),
+  ];
+  const roles = artifacts.map((artifact) => artifact.role);
+  if (new Set(roles).size !== roles.length || identity.adapter.role !== "protocol-adapter" ||
+      identity.helper.role !== "protocol-helper") {
+    throw new Error(`${system} emitted duplicate or invalid runtime identity artifact roles`);
+  }
+  const { identity_sha256: recordedDigest, ...payload } = identity;
+  if (canonicalDigest(payload) !== recordedDigest) {
+    throw new Error(`${system} emitted a stale runtime identity digest`);
+  }
+  if (expectedProgramSha256 !== null &&
+      identity.generated_program_sha256 !== expectedProgramSha256) {
+    throw new Error(`${system} runtime identity does not match the request-derived program`);
+  }
+  return identity;
+}
+
 async function invokeAdapter(tool, corpus, mode, options = {}) {
   if (tool.status !== "available") {
     return { response: {
@@ -685,9 +764,17 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
   }
   let args;
   let input;
+  let adapterRequest = null;
+  let expectedProgramSha256 = null;
   if (tool.adapter_kind === "json-protocol") {
     args = [];
-    input = `${JSON.stringify(protocolRequest(corpus, mode, tool.system, options))}\n`;
+    adapterRequest = protocolRequest(corpus, mode, tool.system, options);
+    input = `${JSON.stringify(adapterRequest)}\n`;
+    const adapterModule = require(tool.executable);
+    if (typeof adapterModule.source !== "function") {
+      throw new Error(`${tool.system} adapter does not expose deterministic source(request)`);
+    }
+    expectedProgramSha256 = sha256(adapterModule.source(adapterRequest));
   } else if (tool.system === "sagejs") {
     args = ["--python", "-"];
     input = mode === "census" ? sageCensusSource(corpus.records) :
@@ -711,6 +798,13 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
       parseGpTiming(processResult.stdout, corpus, options.boundaries, options.round);
   } else response = responseFromStdout(processResult.stdout);
   validateAdapterResponse(response, { mode, system: tool.system });
+  const runtimeIdentity = response.status === "ok" && tool.adapter_kind === "json-protocol"
+    ? validateRuntimeIdentity(
+      response.payload?.runtime_identity,
+      tool.system,
+      expectedProgramSha256,
+    )
+    : null;
   if (processResult.status === "ok" && processResult.ready === null) {
     throw new Error(`${tool.system} adapter never emitted the ready marker`);
   }
@@ -729,6 +823,10 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
       return match ? String(BigInt(match[1]) * 1024n) : null;
     })(),
     stderr_sha256: sha256(processResult.stderr),
+    runtime_identity: runtimeIdentity,
+    runtime_closure_sha256: runtimeIdentity === null
+      ? null
+      : runtimeClosureDigest(runtimeIdentity),
   };
   return { response, process: processEvidence };
 }
@@ -1019,6 +1117,21 @@ async function runTiming(corpus, census, tools, source, options) {
       !census.summary.agreement || !census.summary.coverage_complete) {
     throw new Error("timing requires a complete agreeing census for the identical corpus and source tree");
   }
+  const censusRuntimeClosures = new Map();
+  for (const tool of tools.filter((entry) => entry.adapter_kind === "json-protocol")) {
+    const matchingProcesses = (census.summary.processes || []).filter((process) =>
+      process?.system === tool.system && process.mode === "census");
+    if (matchingProcesses.length !== 1) {
+      throw new Error(`timing requires exactly one ${tool.system} census runtime identity`);
+    }
+    const process = matchingProcesses[0];
+    const identity = validateRuntimeIdentity(process.runtime_identity, tool.system);
+    const closure = runtimeClosureDigest(identity);
+    if (process.runtime_closure_sha256 !== closure) {
+      throw new Error(`${tool.system} census runtime closure digest is stale`);
+    }
+    censusRuntimeClosures.set(tool.system, closure);
+  }
   const events = [];
   const processes = [];
   for (let round = 0; round < RETAINED_ROUNDS; round += 1) {
@@ -1028,6 +1141,10 @@ async function runTiming(corpus, census, tools, source, options) {
       const invocation = await invokeAdapter(tool, corpus, "timing", {
         ...options, round, boundaries: options.boundaries,
       });
+      if (tool.adapter_kind === "json-protocol" && invocation.response.status === "ok" &&
+          invocation.process.runtime_closure_sha256 !== censusRuntimeClosures.get(tool.system)) {
+        throw new Error(`${tool.system} runtime closure changed after the accepted census`);
+      }
       processes.push(invocation.process);
       if (invocation.response.status !== "ok") {
         for (const boundary of options.boundaries) for (let shard = 0; shard < 20; shard += 1) {
@@ -1175,4 +1292,6 @@ module.exports = {
   deterministicBootstrap,
   selectFrontierCandidate,
   toolPlan,
+  runtimeClosureDigest,
+  validateRuntimeIdentity,
 };
