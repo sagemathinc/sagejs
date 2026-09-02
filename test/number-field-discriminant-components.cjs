@@ -31,8 +31,11 @@ const fixture = JSON.parse(
     "utf8",
   ),
 );
+// This full dynamic witness takes roughly two minutes on supported Windows
+// hosts, so keep the slower platforms outside the 120-second fast-host budget.
 const WITNESS_TIMEOUT_MS =
   process.platform === "darwin" ||
+  process.platform === "win32" ||
   (process.platform === "linux" && process.arch === "arm64")
     ? 300_000
     : 120_000;
