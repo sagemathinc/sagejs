@@ -95,10 +95,14 @@ The direct settings are exact and intentionally asymmetric:
   requested conditional computation.
 
 For Sage.js, a native result must match the live field, publish an authenticated
-receipt, and pass `receipt.verify(field)`. That replay occurs in the untimed
-census and uses the ordinary exact implementation. A native decline instead
-continues through the exact dynamic class-group implementation and verifies its
-presentation. Records distinguish native pass, native decline with exact
+receipt, and pass `receipt.verify_conditional_grh(field)`. That replay occurs in
+the untimed census, bypasses the closed native program, and uses the ordinary
+exact class/unit implementation with `proof=False`. It therefore independently
+recomputes the complete class group under the same explicit GRH contract; the
+stronger `receipt.verify(field)` remains available for a separately scheduled
+unconditional audit. A native decline instead continues through the exact
+dynamic class-group implementation and verifies its presentation. Records bind
+the replay contract and distinguish native pass, native decline with exact
 fallback, certificate/proof failure, disagreement, timeout, error, and missing
 comparator. Receipt JSON is an audit view; the authority is accurately called
 `live-authenticated-with-independent-exact-recomputation`, not detached replay.

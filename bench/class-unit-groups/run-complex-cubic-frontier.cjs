@@ -35,6 +35,8 @@ const GP_TIMING_MARKER = "SAGEJS_COMPLEX_CUBIC_GP_TIMING|";
 const MINIMUM_ROOT_NS = 1_200_000_000n;
 const RETAINED_ROUNDS = 11;
 const CENSUS_PARTS_SCHEMA = "sagejs.benchmark/complex-cubic-frontier-census-part-v1";
+const SAGE_CONDITIONAL_REPLAY_CONTRACT =
+  "ordinary-nonnative-complete-class-group-proof-false";
 const DIRECT_CENSUS_PARTITIONS = Object.freeze({
   sagejs: Object.freeze({
     partition: "singleton-global-rank-v1",
@@ -418,7 +420,8 @@ for record in records:
             receipt_digest = hashlib.sha256(json.dumps(
                 receipt_payload, sort_keys=True, separators=(",", ":")
             ).encode()).hexdigest()
-            replay = bool(receipt.verify(field))
+            replay = bool(receipt.verify_conditional_grh(field))
+            replay_contract = ${pythonLiteral(SAGE_CONDITIONAL_REPLAY_CONTRACT)}
             proof_status = receipt.proof_status
             status = "native-pass" if authenticated and replay else "native-certificate-failure"
             fallback_verified = None
@@ -429,6 +432,7 @@ for record in records:
             fallback_verified = bool(computation.complete and group.verify())
             authenticated = None
             replay = None
+            replay_contract = None
             receipt_payload = None
             receipt_digest = None
             proof_status = computation.proof_status
@@ -438,6 +442,7 @@ for record in records:
             "class_number": class_number, "class_group_invariants": invariants,
             "proof_status": proof_status, "native_receipt_authenticated": authenticated,
             "independent_exact_replay": replay, "fallback_verified": fallback_verified,
+            "independent_exact_replay_contract": replay_contract,
             "receipt_digest": receipt_digest, "receipt": receipt_payload,
         })
     except Exception as error:
@@ -869,6 +874,7 @@ function validateCheckpointObservation(observed, expected) {
     const receipt = observed.receipt;
     if (observed.native_receipt_authenticated !== true ||
         observed.independent_exact_replay !== true || observed.fallback_verified !== null ||
+        observed.independent_exact_replay_contract !== SAGE_CONDITIONAL_REPLAY_CONTRACT ||
         !receipt || typeof receipt !== "object" || Array.isArray(receipt) ||
         typeof observed.receipt_digest !== "string" ||
         !/^[0-9a-f]{64}$/.test(observed.receipt_digest) ||
@@ -896,6 +902,7 @@ function validateCheckpointObservation(observed, expected) {
       !/^exact(?:-[a-z0-9]+)*-(?:conditional-grh|unconditional)$/.test(observed.proof_status) ||
       observed.native_receipt_authenticated !== null ||
       observed.independent_exact_replay !== null || observed.fallback_verified !== true ||
+      observed.independent_exact_replay_contract !== null ||
       observed.receipt !== null || observed.receipt_digest !== null) {
     throw new Error(`census checkpoint for ${expected.label} has an invalid fallback proof branch`);
   }
@@ -1870,6 +1877,7 @@ async function runCensus(corpus, tools, source, options) {
       hecke: "class_group(...; GRH=true)",
       lmfdb_oracle: "used_grh=false",
       receipt_carrier: "live-authenticated-with-independent-exact-recomputation",
+      sagejs_independent_replay: SAGE_CONDITIONAL_REPLAY_CONTRACT,
     },
     systems: tools.map((tool) => tool.system),
     tools,

@@ -198,6 +198,7 @@ for index, coefficients in enumerate(((1, 0, -1, 1), (-8, -1, 0, 1), (-55, 9, 0,
     K = NumberField(polynomial, "v" + str(index))
     receipt = certified_complex_cubic_class_number(K)
     assert receipt is not None
+    assert receipt.verify_conditional_grh()
     assert receipt.verify()
 
 # A hostile same-order mutation must not pass replay merely because C4 and
@@ -218,6 +219,7 @@ receipt.__dict__["_snapshot"] = (
 assert receipt.matches(K)
 assert receipt.class_number == 4
 assert receipt.invariants == (2, 2)
+assert not receipt.verify_conditional_grh()
 assert not receipt.verify()
 print("cubic-native-independent-replay-ok")
 `, 240_000);

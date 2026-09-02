@@ -402,6 +402,16 @@ result for the particular field. External agreement is also tested against a
 versioned LMFDB corpus and PARI/Magma/Hecke oracles, but those comparisons are
 regressions, not premises in the proof above.
 
+`receipt.verify_conditional_grh()` is the matching conditional audit. It also
+bypasses the native program, reconstructs the maximal order, checks the exact
+unit norm, and recomputes the complete class group through the ordinary object
+implementation, but requests `proof=False` and accepts only an exact
+GRH-conditional result or the stronger unconditional result. The 1,000-field
+frontier census records this method and its contract explicitly. This avoids
+silently turning a conditional performance experiment into 1,000 unrelated
+unconditional class-group searches; `verify()` remains the stronger audit when
+that additional theorem strength is wanted.
+
 The conditional PARI comparison has a further deliberate asymmetry. At its
 usual precision, `bnfinit(P,0)` can accept the class number and regulator from
 its relation lattice and analytic formula while warning that fundamental-unit

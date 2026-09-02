@@ -362,6 +362,8 @@ test("verified Sage singleton checkpoints publish atomically and resume exactly"
       proof_status: receipt.proof_status,
       native_receipt_authenticated: true,
       independent_exact_replay: true,
+      independent_exact_replay_contract:
+        "ordinary-nonnative-complete-class-group-proof-false",
       fallback_verified: null,
       receipt_digest: receiptDigest,
       receipt,
@@ -421,6 +423,20 @@ test("verified Sage singleton checkpoints publish atomically and resume exactly"
   await assert.rejects(() => runCensusBatchWithCheckpoint(
     corpus, tool, source, options, batch, 0, invoke,
   ), /schema-valid census process evidence/);
+  fs.writeFileSync(filename, originalPart);
+
+  const wrongReplayContract = JSON.parse(originalPart);
+  wrongReplayContract.response.payload.records[0].independent_exact_replay_contract =
+    "ordinary-native-self-check";
+  wrongReplayContract.process.response_sha256 = canonicalDigest(
+    wrongReplayContract.response,
+  );
+  delete wrongReplayContract.part_sha256;
+  wrongReplayContract.part_sha256 = canonicalDigest(wrongReplayContract);
+  fs.writeFileSync(filename, canonicalJson(wrongReplayContract));
+  await assert.rejects(() => runCensusBatchWithCheckpoint(
+    corpus, tool, source, options, batch, 0, invoke,
+  ), /invalid native proof branch/);
   fs.writeFileSync(filename, originalPart);
 
   const tampered = JSON.parse(fs.readFileSync(filename, "utf8"));
@@ -512,6 +528,7 @@ test("timing authenticates every direct census shard and label digest", () => {
     proof_status: "exact-unconditional",
     native_receipt_authenticated: null,
     independent_exact_replay: null,
+    independent_exact_replay_contract: null,
     fallback_verified: true,
     receipt_digest: null,
     receipt: null,
@@ -811,7 +828,8 @@ test("Sage sources classify and replay outside timing and use contiguous roots",
   assert.doesNotMatch(census, /from sage\.all import/);
   assert.match(census, /class_number\(proof=False\)/);
   assert.match(census, /receipt\.matches\(field\)/);
-  assert.match(census, /receipt\.verify\(field\)/);
+  assert.match(census, /receipt\.verify_conditional_grh\(field\)/);
+  assert.match(census, /ordinary-nonnative-complete-class-group-proof-false/);
   assert.match(census, /native-decline-fallback-pass/);
 
   const timing = sageTimingSource(corpus, ["scalar-prepared", "fresh-complete"], 0, 17n);

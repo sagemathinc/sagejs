@@ -424,6 +424,58 @@ class CertifiedComplexCubicClassNumber:
         ):
             return False
 
+    def verify_conditional_grh(self, field: Any | None = None) -> bool:
+        """Independently recompute the result under the receipt's GRH contract.
+
+        This audit does not invoke the closed native program.  It uses the
+        ordinary object implementation to reconstruct the maximal order, check
+        the published unit exactly, and compute the complete class group with
+        `proof=False`.  The accepted result is therefore exact under the same
+        explicit GRH assumptions as the native receipt.  Use `verify()` when
+        the stronger, potentially much more expensive unconditional replay is
+        required.
+        """
+        selected = self.field if field is None else field
+        if not self.matches(selected):
+            return False
+        try:
+            order = selected.maximal_order()
+            if order.discriminant() != self.field_discriminant:
+                return False
+            basis = tuple(order.basis())
+            if len(basis) != 3:
+                return False
+            unit = (
+                self.unit_coordinates[0] * basis[0]
+                + self.unit_coordinates[1] * basis[1]
+                + self.unit_coordinates[2] * basis[2]
+            )
+            if abs(unit.norm()) != 1:
+                return False
+            general = __import__(
+                "sagejs.number_fields.class_unit_groups",
+                fromlist=["class_unit_groups"],
+            )
+            computation = general.compute_class_unit_group(selected, proof=False)
+            return bool(
+                computation.complete
+                and computation.proof_status
+                in ("exact-relations-conditional-grh", "exact-unconditional")
+                and computation.class_number() == self.class_number
+                and tuple(computation.class_group().invariants()) == self.invariants
+            )
+        except (
+            AttributeError,
+            ImportError,
+            KeyError,
+            OverflowError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+            ArithmeticError,
+        ):
+            return False
+
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-safe audit view of this live authenticated receipt."""
         return {
