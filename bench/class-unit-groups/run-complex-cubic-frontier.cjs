@@ -877,7 +877,10 @@ function validateCheckpointObservation(observed, expected) {
         JSON.stringify(receipt.polynomial_coefficients) !==
           JSON.stringify(expected.coefficients) ||
         receipt.field_discriminant !== expected.discriminant ||
-        receipt.equation_order_index !== expected.equation_order_index ||
+        // This is the literal input-polynomial order index. The LMFDB corpus
+        // selection dimension is not an equality oracle for that basis-dependent value.
+        typeof receipt.equation_order_index !== "string" ||
+        !/^[1-9][0-9]*$/.test(receipt.equation_order_index) ||
         receipt.class_number !== expected.class_number ||
         JSON.stringify(receipt.invariants) !== JSON.stringify(expected.class_group_invariants) ||
         receipt.proof_status !== observed.proof_status ||

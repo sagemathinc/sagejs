@@ -341,7 +341,7 @@ test("verified Sage singleton checkpoints publish atomically and resume exactly"
     class_number: record.class_number,
     invariants: record.class_group_invariants,
     field_discriminant: record.discriminant,
-    equation_order_index: record.equation_order_index,
+    equation_order_index: "3",
     proof_status: "exact-relations-conditional-grh",
     assumptions: ["GRH for the relevant class characters"],
     theorem: "test-theorem",
