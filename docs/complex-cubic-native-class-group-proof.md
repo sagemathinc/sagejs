@@ -8,18 +8,24 @@ This note records the mathematical contract of
 changes to the accepted domain, proof receipt, or acceptance test must update
 this argument and its regression tests.
 
-The result is **exact conditional on GRH**. It is not an unconditional proof
-and it is not justified merely by agreement with PARI, Magma, Hecke, or LMFDB.
-The exact assumption carried by every successful receipt is
+The result is exact, either unconditionally or conditional on explicitly named
+GRH hypotheses. It is not justified merely by agreement with PARI, Magma,
+Hecke, or LMFDB. There are two distinct conditional hypotheses:
 
-> $\zeta_K(s)$ and $\zeta_{\mathbb Q}(s)$ are nonzero whenever
-> $\operatorname{Re}(s) > \tfrac12$.
+- **BDF generator hypothesis:** for every nontrivial character $\chi$ of the
+  ideal class group $\operatorname{Cl}(K)$, the Hecke $L$-function
+  $L(s,\chi)$ is nonzero whenever $\operatorname{Re}(s)>\tfrac12$.
+- **Belabas--Friedman residue hypothesis:** $\zeta_K(s)$ and
+  $\zeta_{\mathbb Q}(s)$ are nonzero whenever
+  $\operatorname{Re}(s)>\tfrac12$.
 
-This is the hypothesis in Belabas--Friedman, Theorem 1. All ideal arithmetic,
-relations, Smith normal form, units, and interval endpoints are exact. GRH is
-used in two named places: to certify the field-specific Belabas--Diaz y
-Diaz--Friedman factor-base cutoff, and to turn a finite Euler calculation into
-a rigorous enclosure for the Dedekind-zeta residue.
+The first is the hypothesis of Belabas--Diaz y Diaz--Friedman, Theorem 2.1; the
+second is the hypothesis of Belabas--Friedman, Theorem 1. A receipt lists only
+the hypotheses actually used. All ideal arithmetic, relations, Smith normal
+form, units, and interval endpoints are exact. The BDF hypothesis is used only
+when its field-specific factor-base cutoff improves the unconditional
+Minkowski cutoff. The residue hypothesis is used only to turn a finite Euler
+calculation into a rigorous enclosure for the Dedekind-zeta residue.
 
 ## Claim and accepted domain
 
@@ -273,7 +279,7 @@ exact multiplication algebra of the certified maximal order. In particular,
 index primes are not analyzed from the possibly misleading defining
 polynomial.
 
-Belabas--Friedman Theorem 1 states, under the GRH hypothesis above and for
+Belabas--Friedman Theorem 1 states, under the residue hypothesis above and for
 $X \geq 69$, that $\log \kappa_K$ differs from their explicit finite
 expression $f_K(X)$ by at most
 
@@ -326,18 +332,21 @@ the source-transparent program consumes only certified endpoints. Any failed
 sign, containment, precision, shape, or capacity check causes a decline.
 
 The final host check deliberately repeats a weaker rational consequence,
-$\mathrm{upper}<2/3<\log 2$, before it gives the native output authority. This is
-defense in depth; it cannot promote a declined native computation.
+$\mathrm{upper}<842/1215<\log 2$, before it gives the native output authority.
+The second strict inequality follows from the first three positive terms in
+the atanh series
+$\log 2=2(1/3+1/(3^3\cdot3)+1/(3^5\cdot5)+\cdots)$.
+This is defense in depth; it cannot promote a declined native computation.
 
 ## Receipt, replay, and trusted base
 
-The version-one detached receipt records the polynomial, field discriminant,
+The version-two audit receipt records the polynomial, field discriminant,
 class invariants, unit coordinates, selected generator bound, factor-base and
 relation sizes, theorem name, and explicit assumptions. Full relation proofs
 also record the successful compound-multiplier prefix and dyadic analytic
 intervals. Empty-generator-base proofs leave those inapplicable fields zero.
-The receipt is an audit record, not yet a standalone proof object: it does not
-contain all ideal relations or local Euler witnesses.
+The receipt is a live authenticated audit record, not yet a standalone proof
+object: it does not contain all ideal relations or local Euler witnesses.
 
 `receipt.verify()` is intentionally independent of the native program. It
 reconstructs the maximal order, checks the unit norm, and recomputes the class

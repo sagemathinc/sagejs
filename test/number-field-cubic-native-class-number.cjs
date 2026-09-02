@@ -139,16 +139,24 @@ for index, (coefficients, order, invariants) in enumerate(cases):
     assert receipt.class_number == order
     assert receipt.invariants == invariants
     assert receipt.proof_status == "exact-relations-conditional-grh"
-    assert receipt.theorem == (
-        "belabas-diaz-y-diaz-friedman-generators-plus-"
-        "belabas-friedman-index-one"
-    )
-    assert receipt.assumptions == (
-        "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
-    )
+    if coefficients == (-55, 9, 0, 1):
+        assert receipt.theorem == (
+            "belabas-diaz-y-diaz-friedman-generators-plus-"
+            "belabas-friedman-index-one"
+        )
+        assert receipt.assumptions == (
+            "GRH: L(s, chi) is nonzero whenever Re(s) > 1/2 for every nontrivial character chi of Cl(K)",
+            "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
+        )
+    else:
+        assert receipt.theorem == "minkowski-generators-plus-belabas-friedman-index-one"
+        assert receipt.assumptions == (
+            "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
+        )
     assert receipt.matches(K)
     assert K.class_number(proof=False) == order
     detached = receipt.to_dict()
+    assert detached["schema"] == "sagejs.number-fields/certified-complex-cubic-native-v2"
     assert detached["class_number"] == order
     assert tuple(detached["invariants"]) == invariants
     assert detached["proof_status"] == "exact-relations-conditional-grh"
@@ -183,6 +191,26 @@ for index, coefficients in enumerate(((1, 0, -1, 1), (-8, -1, 0, 1), (-55, 9, 0,
     receipt = certified_complex_cubic_class_number(K)
     assert receipt is not None
     assert receipt.verify()
+
+# A hostile same-order mutation must not pass replay merely because C4 and
+# C2 x C2 both have order four. This bypasses the public immutability guard to
+# exercise the verifier's semantic binding, not a supported mutation path.
+K = NumberField(x**3 - x**2 + 3*x + 6, "forged")
+receipt = certified_complex_cubic_class_number(K)
+assert receipt is not None
+assert receipt.invariants == (4,)
+values = list(receipt._values)
+values[2:5] = [2, 2, 2]
+receipt.__dict__["_values"] = tuple(values)
+receipt.__dict__["_snapshot"] = (
+    id(K),
+    receipt.polynomial_coefficients,
+    receipt._values,
+)
+assert receipt.matches(K)
+assert receipt.class_number == 4
+assert receipt.invariants == (2, 2)
+assert not receipt.verify()
 print("cubic-native-independent-replay-ok")
 `, 240_000);
   assert.equal(output, "cubic-native-independent-replay-ok");
@@ -316,11 +344,18 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
         assert receipt.factor_base_size == 5, label
         assert receipt.relation_count == 13, label
         assert receipt.proof_status == "exact-relations-conditional-grh", label
+        assert receipt.assumptions == (
+            "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
+        ), label
+        assert receipt.theorem == "minkowski-generators-plus-belabas-friedman-index-one", label
     if label == "3.1.808.1":
         assert receipt.generator_bound == 8, label
         assert receipt.factor_base_size == 4, label
         assert receipt.relation_count == 59, label
         assert receipt.proof_status == "exact-trivial-presentation-conditional-grh", label
+        assert receipt.assumptions == (
+            "GRH: L(s, chi) is nonzero whenever Re(s) > 1/2 for every nontrivial character chi of Cl(K)",
+        ), label
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label

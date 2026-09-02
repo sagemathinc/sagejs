@@ -40,6 +40,13 @@ _resident_coefficients: tuple[Any, tuple[int, int, int, int], Any] | None = None
 _resident_native_module: Any | None = None
 _resident_call_active = False
 _CERTIFIED_CUBIC_RECEIPT_TOKEN = object()
+_BDF_CLASS_CHARACTER_GRH = (
+    "GRH: L(s, chi) is nonzero whenever Re(s) > 1/2 for every nontrivial "
+    "character chi of Cl(K)"
+)
+_BELABAS_FRIEDMAN_ZETA_GRH = (
+    "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2"
+)
 
 
 def _integral_monic_cubic_coefficients(field: Any) -> tuple[int, int, int, int] | None:
@@ -278,6 +285,13 @@ class CertifiedComplexCubicClassNumber:
     def analytic_precision(self) -> int:
         return self._values[39]
 
+    def _minkowski_bound(self) -> int:
+        discriminant_root = _cubic_ceil_sqrt(-self.field_discriminant)
+        return (2 * discriminant_root + 6) // 7
+
+    def _uses_bdf_generator_bound(self) -> bool:
+        return self.generator_bound < self._minkowski_bound()
+
     @property
     def proof_status(self) -> str:
         if self._values[35] == _CUBIC_PROOF_TRIVIAL_MINKOWSKI:
@@ -294,7 +308,11 @@ class CertifiedComplexCubicClassNumber:
     def assumptions(self) -> tuple[str, ...]:
         if self._values[35] == _CUBIC_PROOF_TRIVIAL_MINKOWSKI:
             return ()
-        return ("GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",)
+        if self._values[35] == _CUBIC_PROOF_TRIVIAL_GRH:
+            return (_BDF_CLASS_CHARACTER_GRH,)
+        if self._uses_bdf_generator_bound():
+            return (_BDF_CLASS_CHARACTER_GRH, _BELABAS_FRIEDMAN_ZETA_GRH)
+        return (_BELABAS_FRIEDMAN_ZETA_GRH,)
 
     @property
     def theorem(self) -> str:
@@ -308,7 +326,12 @@ class CertifiedComplexCubicClassNumber:
             if self.factor_base_size != 0:
                 suffix = "trivial-relation-presentation"
             return "belabas-diaz-y-diaz-friedman-generators-plus-" + suffix
-        return "belabas-diaz-y-diaz-friedman-generators-plus-belabas-friedman-index-one"
+        if self._uses_bdf_generator_bound():
+            return (
+                "belabas-diaz-y-diaz-friedman-generators-plus-"
+                "belabas-friedman-index-one"
+            )
+        return "minkowski-generators-plus-belabas-friedman-index-one"
 
     def matches(self, field: Any) -> bool:
         """Return whether this live immutable receipt still binds `field`."""
@@ -355,10 +378,14 @@ class CertifiedComplexCubicClassNumber:
             )
             replay = ordinary.bounded_cubic_minkowski_class_number(selected)
             authenticated = ordinary.authenticated_cubic_class_number(replay, selected)
+            presentation = replay.presentation
             if bool(
                 authenticated == self.class_number
                 and replay.complete
                 and replay.proof_status == "exact-unconditional"
+                and presentation is not None
+                and presentation.verify()
+                and tuple(presentation.invariants) == self.invariants
             ):
                 return True
             # The small class-only producer is intentionally bounded and can
@@ -391,9 +418,9 @@ class CertifiedComplexCubicClassNumber:
             return False
 
     def to_dict(self) -> dict[str, Any]:
-        """Return a detached, exact, JSON-safe research receipt."""
+        """Return a JSON-safe audit view of this live authenticated receipt."""
         return {
-            "schema": "sagejs.number-fields/certified-complex-cubic-native-v1",
+            "schema": "sagejs.number-fields/certified-complex-cubic-native-v2",
             "polynomial_coefficients": list(self.polynomial_coefficients),
             "class_number": self.class_number,
             "invariants": list(self.invariants),
