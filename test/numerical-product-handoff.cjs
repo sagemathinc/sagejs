@@ -8,6 +8,7 @@ const {
   linkSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -51,7 +52,12 @@ function write(filename, value) {
 }
 
 function fixture(context) {
-  const root = mkdtempSync(join(tmpdir(), "sagejs-numerical-product-"));
+  // macOS exposes its temporary directory through /var, which is normally a
+  // symlink to /private/var.  The handoff validator correctly rejects any
+  // product path with a symlinked ancestor, so construct the fixture beneath
+  // the canonical temporary directory instead of accidentally testing that
+  // rejection path here.
+  const root = mkdtempSync(join(realpathSync(tmpdir()), "sagejs-numerical-product-"));
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const cminpack = Buffer.from("cminpack-production-wasm");
   const nlopt = Buffer.from("nlopt-production-wasm");
