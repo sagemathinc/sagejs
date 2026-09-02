@@ -258,10 +258,10 @@ async function main() {
         "\\end{array}\\right)",
     );
     const shownRational = await session.evaluate("show(2/3)");
-    assert.equal(shownRational.repr, "2/3");
-    assert.deepEqual(shownRational.display, {
-      mime: "text/latex",
-      data: "$\\displaystyle \\frac{2}{3}$",
+    assert.equal(shownRational.repr, "");
+    assert.deepEqual(shownRational.events[0].data, {
+      "text/plain": "2/3",
+      "text/latex": "$\\displaystyle \\frac{2}{3}$",
     });
     assert.equal(
       (

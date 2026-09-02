@@ -28,6 +28,31 @@ def _event_value(event: Any, name: str, default: Any = None) -> Any:
     return default if value is runtime.undefined else value
 
 
+def _python_json(value: Any) -> Any:
+    """Materialize validated host JSON as ordinary Python containers."""
+    if value is None or runtime.strict_equal(runtime.jstype(value), "string"):
+        return value
+    if runtime.strict_equal(runtime.jstype(value), "number") or runtime.strict_equal(
+        runtime.jstype(value), "boolean"
+    ):
+        return value
+    if runtime.array.isArray(value):
+        return [_python_json(item) for item in value]
+    answer = {}
+    for key in runtime.object.keys(value):
+        answer[str(key)] = _python_json(runtime.reflect.get(value, key))
+    return answer
+
+
+def _python_buffers(value: Any) -> list[memoryview]:
+    """Copy host typed arrays into the Python buffer protocol."""
+    if value is None:
+        return []
+    if not runtime.array.isArray(value):
+        raise TypeError("comm buffers must be a list")
+    return [memoryview(bytes(buffer)) for buffer in value]
+
+
 _manager: Any = None
 _installed = False
 
@@ -86,7 +111,7 @@ def _message(event: Any) -> dict[str, Any]:
     event_type = _event_value(event, "type")
     content = {
         "comm_id": _event_value(event, "commId"),
-        "data": _event_value(event, "data", {}),
+        "data": _python_json(_event_value(event, "data", {})),
     }
     if event_type == "open":
         content["target_name"] = _event_value(event, "targetName")
@@ -96,9 +121,9 @@ def _message(event: Any) -> dict[str, Any]:
     return {
         "header": {},
         "parent_header": {},
-        "metadata": _event_value(event, "metadata", {}),
+        "metadata": _python_json(_event_value(event, "metadata", {})),
         "content": content,
-        "buffers": _event_value(event, "buffers", []),
+        "buffers": _python_buffers(_event_value(event, "buffers", [])),
     }
 
 

@@ -5,6 +5,25 @@ export interface SageDisplayData {
   data: unknown;
 }
 
+export interface SageOutputEvent {
+  schema: "sagejs.output-event/v1";
+  type: "stream" | "display_data" | "update_display_data" | "clear_output" | "error";
+  parentId?: string;
+  [name: string]: unknown;
+}
+
+export interface SageCommEvent {
+  schema: "sagejs.comm-event/v1";
+  type: "open" | "message" | "close";
+  commId: string;
+  parentId?: string;
+  targetName?: string;
+  targetModule?: string;
+  data: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  buffers: Uint8Array[];
+}
+
 export interface SageOptimizationReport {
   schema: "sagejs.optimizer-evaluation/v1";
   authority: "compiler-verified-static";
@@ -29,6 +48,11 @@ export interface SageEvaluationResult {
   durationMs: number;
   /** Optional rich representation of the final value. */
   display?: SageDisplayData;
+  /** Standard Python/Jupyter MIME bundle for the final expression. */
+  mimeBundle?: {
+    data: Record<string, unknown>;
+    metadata: Record<string, unknown>;
+  };
   /** Compiler-verified static optimizer decisions for this evaluation. */
   optimization: SageOptimizationReport;
 }
@@ -37,6 +61,9 @@ export interface SageEvaluationOptions {
   filename?: string;
   timeout?: number;
   onOutput?: (text: string) => void;
+  onError?: (text: string) => void;
+  onEvent?: (event: SageOutputEvent) => void;
+  onComm?: (event: SageCommEvent) => void;
 }
 
 export interface BrowserSageSessionOptions {
@@ -79,6 +106,14 @@ export class SageSession {
   ): this;
   on(type: "ready", listener: () => void): this;
   on(type: "error", listener: (error: Error) => void): this;
+  on(
+    type: "output",
+    listener: (event: SageOutputEvent, context: { requestId: number }) => void,
+  ): this;
+  on(
+    type: "comm",
+    listener: (event: SageCommEvent, context: { requestId: number }) => void,
+  ): this;
   off(type: string, listener: (...parameters: unknown[]) => void): this;
   ready(): Promise<this>;
   evaluate(
@@ -89,6 +124,13 @@ export class SageSession {
     source: string,
     options?: SageEvaluationOptions,
   ): Promise<SageEvaluationResult>;
+  comm(event: SageCommEvent, handlers?: {
+    onOutput?: (text: string) => void;
+    onError?: (text: string) => void;
+    onEvent?: (event: SageOutputEvent) => void;
+    onComm?: (event: SageCommEvent) => void;
+  }): Promise<void>;
+  commInfo(targetName?: string): Promise<Record<string, unknown>>;
   interrupt(): Promise<void>;
   reset(): Promise<void>;
   close(): Promise<void>;

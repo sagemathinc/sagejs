@@ -52,13 +52,15 @@ try {
             "α = 2\n" +
             "print(eval('α + 1'))\n" +
             "print(eval('sum(i*i for i in range(5))'))\n" +
+            "print(sage_eval('2^3', locals=globals()))\n" +
+            "print(sage_eval('1/2', locals=globals()))\n" +
             "try:\n" +
             "    compile('def broken(', '<dynamic-syntax>', 'exec')\n" +
             "except SyntaxError:\n" +
             "    print('syntax-error')",
         );
         assert.equal(language.repr, "");
-        assert.equal(language.stdout, "43\n-1\n3\n30\nsyntax-error\n");
+        assert.equal(language.stdout, "43\n-1\n3\n30\n8\n1/2\nsyntax-error\n");
       }
 
       const mpmath = await evaluate(
@@ -76,6 +78,11 @@ try {
       if (!isolated) {
         await assert.rejects(
           evaluate("eval('40 + 2')"),
+          /authenticated portable cache.*cross-origin-isolated host/,
+        );
+        assert.equal(pageErrors.length, 1);
+        assert.match(
+          pageErrors.pop(),
           /authenticated portable cache.*cross-origin-isolated host/,
         );
       }

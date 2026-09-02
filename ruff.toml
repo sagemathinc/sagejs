@@ -8,6 +8,7 @@ extend-exclude = [
   "src/baselib/graph_reference_data.py",
   "src/lib/mpmath",
   "src/lib/comm",
+  "src/lib/ipywidgets",
   "src/lib/traitlets",
   "test/aes_vectors.py",
   "test/annotations.py",

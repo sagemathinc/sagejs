@@ -777,8 +777,14 @@ def show_graphics(
     if len(graphics_values) == 0:
         raise ValueError("Show requires at least one graphic")
     options, ordered, diagnostics, events = _translate_options("Show", option_records)
-    show_target = runtime.reflect.get(runtime.global_object, "show")
-    graphic = show_target(graphics_values[0], *graphics_values[1:], **options)
+    # Wolfram `Show` is an expression constructor whose value is displayed by
+    # the evaluator. Do not call Sage's imperative `show(...)`, which publishes
+    # immediately and intentionally returns `None`.
+    graphic = graphics_values[0]
+    for value in graphics_values[1:]:
+        graphic = graphic + value
+    if len(options) and hasattr(graphic, "set_extra_kwds"):
+        graphic.set_extra_kwds(options)
     return _with_plot_context(graphic, "Show", intent, ordered, diagnostics, events)
 
 

@@ -3,10 +3,12 @@
 ## Python widget runtime
 
 Sage.js ships the ordinary, unmodified Python runtime sources from
-`traitlets` 5.15.1 under `src/lib/traitlets`. The exact tag, Git revision,
-wheel digest, license, and protocol role are recorded in
+`traitlets` 5.15.1, `comm` 0.2.3, and `ipywidgets` 8.1.9 under `src/lib`.
+The exact tags, Git revisions, wheel digests, licenses, and protocol roles are recorded in
 `upstream-tests/ipywidgets/manifest.json`; the shared BSD 3-Clause notice is
-in `licenses/JUPYTER-WIDGETS-BSD-3-CLAUSE.txt`. Tests and documentation from
+in `licenses/JUPYTER-WIDGETS-BSD-3-CLAUSE.txt`, with the ipywidgets source
+distribution's complete bundled notice in
+`licenses/IPYWIDGETS-BSD-3-CLAUSE-NOTICE.txt`. Tests and documentation from
 the upstream distribution remain in the conformance corpus rather than the
 production module tree.
 
