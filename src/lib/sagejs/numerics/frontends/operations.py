@@ -1077,7 +1077,11 @@ def _emit_matlab(definition: _Definition, values: Mapping[str, Any]) -> str:
     for operand in definition.operands:
         if operand != definition.callback:
             assignment = _assignment(operand, values[operand], "matlab")
-            if operand == "right" and _is_flat_sequence(values[operand]):
+            if (
+                name in ("linear_solve", "least_squares")
+                and operand == "right"
+                and _is_flat_sequence(values[operand])
+            ):
                 # MATLAB interprets `[a, b]` as a row vector, while both `A \\ b`
                 # and `lsqminnorm(A, b)` require a column with one entry per row.
                 # Use the nonconjugating transpose so complex right-hand sides
@@ -1121,12 +1125,13 @@ def _emit_matlab(definition: _Definition, values: Mapping[str, Any]) -> str:
 
 
 def _is_flat_sequence(value: Any) -> bool:
-    return isinstance(value, Sequence) and not isinstance(
-        value, (str, bytes, bytearray)
-    ) and all(
-        not isinstance(item, Sequence)
-        or isinstance(item, (str, bytes, bytearray))
-        for item in value
+    return (
+        isinstance(value, Sequence)
+        and not isinstance(value, (str, bytes, bytearray))
+        and all(
+            not isinstance(item, Sequence) or isinstance(item, (str, bytes, bytearray))
+            for item in value
+        )
     )
 
 

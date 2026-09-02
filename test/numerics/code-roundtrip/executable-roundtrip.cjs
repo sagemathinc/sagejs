@@ -87,6 +87,11 @@ least_squares = registry.lower(
     "matlab", "lsqminnorm", [[1, 0], [0, 1], [1, 1]], [1, 2, 3]
 )
 assert "right = [1, 2, 3].';" in registry.emit(least_squares, "matlab")
+convolution = registry.lower("matlab", "conv", [1, 2], [3, 4])
+matlab_convolution = registry.emit(convolution, "matlab")
+assert "left = [1, 2];" in matlab_convolution
+assert "right = [3, 4];" in matlab_convolution
+assert "right = [3, 4].';" not in matlab_convolution
 body, payload = source.rsplit("\n# sagejs-intent-v1:", 1)
 envelope = json.loads(base64.urlsafe_b64decode(payload.encode("ascii")))
 

@@ -58,7 +58,7 @@ def parse_catalog_source(
             )
             arguments.append(None)
         else:
-            arguments.append(_parse_operand(value_source, target, name))
+            arguments.append(_parse_operand(value_source, target, name, expected.name))
     options: dict[str, Any] = {"source_text": source}
     if expression is not None:
         options["expression"] = expression
@@ -80,9 +80,13 @@ def parse_catalog_source(
     return reconstructed
 
 
-def _parse_operand(source: str, language: str, name: str) -> Any:
+def _parse_operand(source: str, language: str, name: str, operation: str) -> Any:
     value_source = source
-    matlab_column = language == "matlab" and name == "right"
+    matlab_column = (
+        language == "matlab"
+        and operation in ("linear_solve", "least_squares")
+        and name == "right"
+    )
     if matlab_column and value_source.endswith(".'"):
         value_source = value_source[:-2].rstrip()
         value = _ValueParser(value_source, language).parse()
