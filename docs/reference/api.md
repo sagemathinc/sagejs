@@ -8287,11 +8287,12 @@ q - q^3 + O(q^4)
 show(value: Any, *others: Any, **options: Any) -> Any
 ```
 
-Return `value` for rich display, combining graphics when requested.
+Display `value`, combining graphics when requested.
 
-Multiple graphics are added before display.  Notebook kernels render the
-returned semantic object using Plotly-compatible HTML/data, without
-requiring a Jupyter extension.
+Multiple graphics are added before display. Notebook and browser kernels
+publish the semantic object through their rich-display channel; text-only
+processes print its ordinary representation. This also works from inside
+callbacks, where returning the object would otherwise discard it.
 
 ### Metadata
 

@@ -12111,8 +12111,8 @@
         "kind": "function",
         "module": "sage.plot",
         "signature": "show(value: Any, *others: Any, **options: Any) -> Any",
-        "summary": "Return `value` for rich display, combining graphics when requested.",
-        "doc": "Return `value` for rich display, combining graphics when requested.\n\nMultiple graphics are added before display.  Notebook kernels render the\nreturned semantic object using Plotly-compatible HTML/data, without\nrequiring a Jupyter extension.",
+        "summary": "Display `value`, combining graphics when requested.",
+        "doc": "Display `value`, combining graphics when requested.\n\nMultiple graphics are added before display. Notebook and browser kernels\npublish the semantic object through their rich-display channel; text-only\nprocesses print its ordinary representation. This also works from inside\ncallbacks, where returning the object would otherwise discard it.",
         "tags": [
           "graphics",
           "plotting",
@@ -28498,10 +28498,10 @@
         "name": "list_plot",
         "qualified": "list_plot",
         "path": "src/baselib/graphics.py",
-        "line": 6329,
+        "line": 6339,
         "excerpt": {
-          "start_line": 6317,
-          "text": "    returned semantic object using Plotly-compatible HTML/data, without\n    requiring a Jupyter extension.\n    \"\"\"\n\n    answer = value\n    for other in others:\n        answer = answer + other\n    if len(options) and hasattr(answer, \"set_extra_kwds\"):\n        answer.set_extra_kwds(options)\n    return answer\n\n\ndef list_plot(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a sequence of y-values or a sequence of `(x, y)` pairs.\"\"\"\n    options = _copy_options(options)\n    values = list(data)\n    if len(values) == 0:\n        return Graphics()\n    if isinstance(values[0], (list, tuple)):\n        points = [_point_pair(value) for value in values]\n    else:"
+          "start_line": 6327,
+          "text": "    publish = runtime.reflect.get(runtime.global_object, \"__sagejs_display_publish__\")\n    if runtime.jstype(publish) == \"function\":\n        runtime.reflect.apply(\n            publish,\n            runtime.undefined,\n            [answer, None, False],\n        )\n    else:\n        print(answer)\n    return None\n\n\ndef list_plot(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a sequence of y-values or a sequence of `(x, y)` pairs.\"\"\"\n    options = _copy_options(options)\n    values = list(data)\n    if len(values) == 0:\n        return Graphics()\n    if isinstance(values[0], (list, tuple)):\n        points = [_point_pair(value) for value in values]\n    else:"
         }
       },
       "examples": []
@@ -28558,9 +28558,9 @@
         "name": "list_plot_loglog",
         "qualified": "list_plot_loglog",
         "path": "src/baselib/graphics.py",
-        "line": 6403,
+        "line": 6413,
         "excerpt": {
-          "start_line": 6391,
+          "start_line": 6401,
           "text": "\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return plot(funcs, *range_args, **options)\n\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -28618,9 +28618,9 @@
         "name": "list_plot_semilogx",
         "qualified": "list_plot_semilogx",
         "path": "src/baselib/graphics.py",
-        "line": 6413,
+        "line": 6423,
         "excerpt": {
-          "start_line": 6401,
+          "start_line": 6411,
           "text": "\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogy(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -28678,9 +28678,9 @@
         "name": "list_plot_semilogy",
         "qualified": "list_plot_semilogy",
         "path": "src/baselib/graphics.py",
-        "line": 6423,
+        "line": 6433,
         "excerpt": {
-          "start_line": 6411,
+          "start_line": 6421,
           "text": "\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogy(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\nline2d = line\narrow2d = arrow\npoint2d = point"
         }
       },
@@ -33367,9 +33367,9 @@
         "name": "plot_loglog",
         "qualified": "plot_loglog",
         "path": "src/baselib/graphics.py",
-        "line": 6373,
+        "line": 6383,
         "excerpt": {
-          "start_line": 6361,
+          "start_line": 6371,
           "text": "            if index + 1 < len(points):\n                path.append((points[index + 1][0], points[index][1]))\n        return line(path, **options)\n    answer = Graphics()\n    for index in range(len(points) - 1):\n        answer = answer + line(\n            [points[index], (points[index + 1][0], points[index][1])],\n            **options,\n        )\n    return answer\n\n\ndef plot_loglog(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,"
         }
       },
@@ -33427,9 +33427,9 @@
         "name": "plot_semilogx",
         "qualified": "plot_semilogx",
         "path": "src/baselib/graphics.py",
-        "line": 6383,
+        "line": 6393,
         "excerpt": {
-          "start_line": 6371,
+          "start_line": 6381,
           "text": "\n\ndef plot_loglog(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,"
         }
       },
@@ -33487,9 +33487,9 @@
         "name": "plot_semilogy",
         "qualified": "plot_semilogy",
         "path": "src/baselib/graphics.py",
-        "line": 6393,
+        "line": 6403,
         "excerpt": {
-          "start_line": 6381,
+          "start_line": 6391,
           "text": "\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return plot(funcs, *range_args, **options)\n\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -33607,9 +33607,9 @@
         "name": "plot_step_function",
         "qualified": "plot_step_function",
         "path": "src/baselib/graphics.py",
-        "line": 6348,
+        "line": 6358,
         "excerpt": {
-          "start_line": 6336,
+          "start_line": 6346,
           "text": "    values = list(data)\n    if len(values) == 0:\n        return Graphics()\n    if isinstance(values[0], (list, tuple)):\n        points = [_point_pair(value) for value in values]\n    else:\n        points = [(float(index), float(values[index])) for index in range(len(values))]\n    if plotjoined:\n        return line(points, **options)\n    return point(points, **options)\n\n\ndef plot_step_function(\n    values: Any,\n    vertical_lines: bool = True,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the step function defined by a sequence of `(x, y)` pairs.\"\"\"\n    points = sorted([_point_pair(value) for value in values])\n    if len(points) <= 1:\n        return line([], **options)\n    if vertical_lines:\n        path = []\n        for index in range(len(points)):\n            path.append(points[index])"
         }
       },
@@ -34501,16 +34501,16 @@
         "name": "prime_pi",
         "qualified": "prime_pi",
         "path": "src/baselib/builtins.py",
-        "line": 6962,
+        "line": 7100,
         "excerpt": {
-          "start_line": 6950,
+          "start_line": 7088,
           "text": "\ndef latex(value: Any) -> LatexExpr:\n    \"\"\"Return a compact LaTeX expression for `value`.\"\"\"\n    if _builtins_member_is_function(value, \"_latex_\"):\n        return LatexExpr(_builtins_call_member(value, \"_latex_\", []))\n    return LatexExpr(value)\n\n\n_prime_pi_primes = None\n_prime_pi_checked_through = 1\n\n\ndef prime_pi(value: Any) -> Any:\n    r\"\"\"\n    Return the number of primes less than or equal to `value`.\n\n    Results are exact.  Moderate bounds are served by an incremental prime\n    cache, while large isolated bounds use Lehmer's combinatorial algorithm.\n    As in Sage, inputs are limited to integers below `2^63`.\n\n    ### Examples\n\n    ```sage\n    sage: prime_pi(10)\n    4"
         }
       },
       "examples": [
         {
           "id": "src/baselib/builtins.py#4c7d8330c2c79857-4b227777d4dd1fc6",
-          "line": 6973,
+          "line": 7111,
           "source": "prime_pi(10)",
           "want": "4\n",
           "tags": [],
@@ -34526,7 +34526,7 @@
         },
         {
           "id": "src/baselib/builtins.py#ca981138a8a22b10-b7a56873cd771f2c",
-          "line": 6975,
+          "line": 7113,
           "source": "prime_pi(100)",
           "want": "25\n",
           "tags": [],
@@ -34542,7 +34542,7 @@
         },
         {
           "id": "src/baselib/builtins.py#c0bc81d3429aebdb-0f03cde178fa9f37",
-          "line": 6977,
+          "line": 7115,
           "source": "prime_pi(10^12)",
           "want": "37607912018\n",
           "tags": [],
@@ -34802,10 +34802,10 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 8701,
+        "line": 8872,
         "excerpt": {
-          "start_line": 8689,
-          "text": "        return copier()\n    copier = getattr(value, \"copy\", None)\n    if callable(copier):\n        return copier()\n    if isinstance(value, (str, bytes, int, float, complex, tuple, frozenset)):\n        return value\n    try:\n        return type(value)(value)\n    except Exception:\n        raise TypeError(\"object does not support shallow copying\")  # noqa: B904\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
+          "start_line": 8860,
+          "text": "            if use_default_types\n            else isinstance(value, ltypes)\n        )\n        if level < max_level and flatten_value:\n            nested = list(value)\n            for index in range(len(nested) - 1, -1, -1):\n                pending.append((nested[index], level + 1))\n        else:\n            answer.append(value)\n    return answer\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
       "examples": []
@@ -34929,16 +34929,16 @@
         "name": "random_matrix",
         "qualified": "random_matrix",
         "path": "src/baselib/matrix.py",
-        "line": 10365,
+        "line": 10376,
         "excerpt": {
-          "start_line": 10353,
+          "start_line": 10364,
           "text": "            return MatrixSpace(sage.QQ, rows, columns)._from_fmpq_matrix_resource(\n                resource\n            )\n        except Exception:\n            private_resource.close()\n            if resource is not runtime.undefined:\n                resource.close()\n            raise\n\n    return runtime.undefined\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = \"randomize\",\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b17ff7be6a528fc2-e3b0c44298fc1c14",
-          "line": 10389,
+          "line": 10400,
           "source": "A = random_matrix(ZZ, 3, 5, x=-10, y=11)",
           "want": "",
           "tags": [],
@@ -34954,7 +34954,7 @@
         },
         {
           "id": "src/baselib/matrix.py#97db44fc39945d18-41f2eaaeeeb24074",
-          "line": 10390,
+          "line": 10401,
           "source": "A.nrows(), A.ncols(), A.base_ring()",
           "want": "(3, 5, Integer Ring)\n",
           "tags": [],
@@ -34970,7 +34970,7 @@
         },
         {
           "id": "src/baselib/matrix.py#fa1961c5906b90ea-3cbc87c7681f34db",
-          "line": 10392,
+          "line": 10403,
           "source": "random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')",
           "want": "True\n",
           "tags": [],
@@ -35461,8 +35461,8 @@
       "kind": "function",
       "module": "sage.plot",
       "signature": "show(value: Any, *others: Any, **options: Any) -> Any",
-      "summary": "Return `value` for rich display, combining graphics when requested.",
-      "doc": "Return `value` for rich display, combining graphics when requested.\n\nMultiple graphics are added before display.  Notebook kernels render the\nreturned semantic object using Plotly-compatible HTML/data, without\nrequiring a Jupyter extension.",
+      "summary": "Display `value`, combining graphics when requested.",
+      "doc": "Display `value`, combining graphics when requested.\n\nMultiple graphics are added before display. Notebook and browser kernels\npublish the semantic object through their rich-display channel; text-only\nprocesses print its ordinary representation. This also works from inside\ncallbacks, where returning the object would otherwise discard it.",
       "tags": [
         "graphics",
         "plotting",
@@ -35877,16 +35877,16 @@
         "name": "sudoku",
         "qualified": "sudoku",
         "path": "src/baselib/matrix.py",
-        "line": 9599,
+        "line": 9606,
         "excerpt": {
-          "start_line": 9587,
+          "start_line": 9594,
           "text": "    elif len(values) == 1:\n        entries = list(values[0])\n    else:\n        raise TypeError(\"unsupported vector() constructor signature\")\n    if isinstance(values[0], Vector):\n        source = values[0]\n        return source if base is None else source.change_ring(base)\n    if base is None:\n        base = _base_for_values(entries)\n    return VectorSpace(base, len(entries))(entries)\n\n\ndef sudoku(puzzle: Matrix) -> Matrix:\n    r\"\"\"\n    Solve a 9-by-9 Sudoku puzzle represented by a matrix.\n\n    Entries from 1 through 9 are fixed clues and zero denotes an empty cell.\n    The input matrix is not modified.  A `ValueError` is raised if the clues\n    are inconsistent or the puzzle has no solution.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 9, [\n    ....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b58bb4a279a18edf-e3b0c44298fc1c14",
-          "line": 9610,
+          "line": 9617,
           "source": "A = matrix(ZZ, 9, [\n    5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,\n    0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,\n    0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,\n    7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,\n    4,9,0,0,5,0,0,0,3])",
           "want": "",
           "tags": [],
@@ -35902,7 +35902,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9971501a52f38d1a-b7945d60e67a36b5",
-          "line": 9616,
+          "line": 9623,
           "source": "sudoku(A)[0]",
           "want": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n",
           "tags": [],
@@ -36596,16 +36596,16 @@
         "name": "_sagejs_version",
         "qualified": "_sagejs_version",
         "path": "src/baselib/builtins.py",
-        "line": 23,
+        "line": 30,
         "excerpt": {
-          "start_line": 11,
-          "text": "\nimport sagejs.runtime as runtime\n\n_builtins_number_class = runtime.native_number_class\n_builtins_number_prototype = runtime.reflect.get(_builtins_number_class, \"prototype\")\n_builtins_number_value_of = runtime.reflect.get(_builtins_number_prototype, \"valueOf\")\n_Bool = bool\n_Float = float\n_Int = int\n_Str = str\n\n\ndef _sagejs_version(json: _Bool = False) -> Any:\n    \"\"\"Return the Sage.js release string or its machine-readable record.\n\n    `version()` returns a concise human-readable string. `version(True)` and\n    `version(json=True)` return a detached dictionary with stable field names.\n\n    ### Examples\n\n    ```sage\n    sage: version().startswith(\"Sage.js v\")\n    True\n    sage: info = version(json=True)\n    sage: info[\"schema\"]"
+          "start_line": 18,
+          "text": "_Float = float\n_Int = int\n_Str = str\n\n_builtins_symbol_class = runtime.reflect.get(runtime.global_object, \"Symbol\")\n_BUILTINS_CALLABLE_ALLOCATION_KEY = runtime.reflect.apply(\n    runtime.reflect.get(_builtins_symbol_class, \"for\"),\n    runtime.undefined,\n    [\"sagejs.python.callable-instance-allocation\"],\n)\n\n\ndef _sagejs_version(json: _Bool = False) -> Any:\n    \"\"\"Return the Sage.js release string or its machine-readable record.\n\n    `version()` returns a concise human-readable string. `version(True)` and\n    `version(json=True)` return a detached dictionary with stable field names.\n\n    ### Examples\n\n    ```sage\n    sage: version().startswith(\"Sage.js v\")\n    True\n    sage: info = version(json=True)\n    sage: info[\"schema\"]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/builtins.py#bfcaa180a823102e-3cbc87c7681f34db",
-          "line": 32,
+          "line": 39,
           "source": "version().startswith(\"Sage.js v\")",
           "want": "True\n",
           "tags": [],
@@ -36621,7 +36621,7 @@
         },
         {
           "id": "src/baselib/builtins.py#4270aaccf86fac20-e3b0c44298fc1c14",
-          "line": 34,
+          "line": 41,
           "source": "info = version(json=True)",
           "want": "",
           "tags": [],
@@ -36637,7 +36637,7 @@
         },
         {
           "id": "src/baselib/builtins.py#d181e8a0e9db5e6c-60ebc8787044b57f",
-          "line": 35,
+          "line": 42,
           "source": "info[\"schema\"]",
           "want": "sagejs.version/v1\n",
           "tags": [],
@@ -36653,7 +36653,7 @@
         },
         {
           "id": "src/baselib/builtins.py#578a06e6e0f5f19c-546311dad70b3619",
-          "line": 37,
+          "line": 44,
           "source": "info[\"name\"]",
           "want": "Sage.js\n",
           "tags": [],

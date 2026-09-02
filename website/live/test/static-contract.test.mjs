@@ -57,6 +57,7 @@ test("Cloudflare policy isolates a deliberately dynamic, credential-free origin"
   assert.match(headers, /Access-Control-Allow-Origin: \*/);
   assert.match(headers, /Cross-Origin-Resource-Policy: cross-origin/);
   assert.match(headers, /\/embed\/v1\/frame\.html[\s\S]*frame-ancestors \*/);
+  assert.match(headers, /! Content-Security-Policy/);
   assert.match(headers, /! X-Frame-Options/);
   const privacy = await read("privacy.html");
   assert.match(privacy, /dedicated origin with no authentication cookies/);

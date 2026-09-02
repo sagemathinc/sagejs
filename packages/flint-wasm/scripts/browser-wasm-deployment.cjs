@@ -20,12 +20,20 @@ function parseHeadersFile(source) {
     const line = raw.trimEnd();
     if (!line.trim() || line.trimStart().startsWith("#")) continue;
     if (!/^\s/.test(raw)) {
-      current = { pattern: line.trim(), headers: new Map() };
+      current = { pattern: line.trim(), headers: new Map(), detached: new Set() };
       rules.push(current);
       continue;
     }
     if (!current) throw new Error("header occurs before a path pattern");
-    const match = line.trim().match(/^([^:]+):\s*(.+)$/);
+    const trimmed = line.trim();
+    const detached = trimmed.match(/^!\s+([A-Za-z0-9-]+)$/);
+    if (detached) {
+      const name = detached[1].toLowerCase();
+      current.detached.add(name);
+      current.headers.delete(name);
+      continue;
+    }
+    const match = trimmed.match(/^([^:]+):\s*(.+)$/);
     if (!match) throw new Error(`invalid _headers line ${JSON.stringify(raw)}`);
     current.headers.set(match[1].toLowerCase(), match[2]);
   }

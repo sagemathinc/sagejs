@@ -24,6 +24,7 @@
   Cross-Origin-Resource-Policy: cross-origin
 
 /embed/v1/frame.html
+  ! Content-Security-Policy
   Content-Security-Policy: default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors *; form-action 'none'; media-src 'none'
   ! X-Frame-Options
 

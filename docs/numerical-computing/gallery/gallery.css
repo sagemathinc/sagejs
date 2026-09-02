@@ -11,7 +11,6 @@
   --success: #246b45;
   --failure: #9b2c2c;
 }
-
 * { box-sizing: border-box; }
 
 body {
@@ -112,4 +111,3 @@ pre { overflow-x: auto; padding: 1rem; }
     --failure: #ff9b9b;
   }
 }
-

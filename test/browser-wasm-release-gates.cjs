@@ -333,8 +333,20 @@ test("Cloudflare-compatible header policy is parsed and security checked", () =>
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   Content-Security-Policy: default-src 'none'; script-src 'self' 'unsafe-eval'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'
+/embed/v1/frame.html
+  ! X-Frame-Options
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'none'; frame-ancestors *
 `);
   assert.deepEqual(validateHeadersRules(rules), []);
+  assert.deepEqual(
+    [...rules[1].detached].sort(),
+    ["content-security-policy", "x-frame-options"],
+  );
+  assert.equal(
+    rules[1].headers.get("content-security-policy"),
+    "default-src 'none'; frame-ancestors *",
+  );
   rules[0].headers.delete("cross-origin-opener-policy");
   assert.match(validateHeadersRules(rules).join("\n"), /cross-origin-opener-policy/);
 });
