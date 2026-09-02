@@ -34,6 +34,7 @@ function deserializeError(serialized) {
  */
 export class SageSession {
   constructor({
+    mode = "sage",
     worker = new URL("./kernel-worker.mjs", import.meta.url),
     compiler = new URL("./dist/compiler.js", import.meta.url),
     baselib = new URL("./dist/baselib.js", import.meta.url),
@@ -66,6 +67,9 @@ export class SageSession {
     optimizationLevel,
     onGraphicsSave,
   } = {}) {
+    if (mode !== "sage" && mode !== "python") {
+      throw new TypeError(`unknown Sage.js language mode ${JSON.stringify(mode)}`);
+    }
     if (
       optimizationLevel !== undefined &&
       !["O0", "O1", "O2", "O3", "Os"].includes(optimizationLevel)
@@ -79,6 +83,7 @@ export class SageSession {
       configuredCompilerWorker = String(compilerWorkerUrl);
     }
     this.resources = {
+      mode,
       worker: String(worker),
       compiler: String(compiler),
       baselib: String(baselib),
@@ -229,6 +234,7 @@ export class SageSession {
       {
         type: "initialize",
         protocol: 2,
+        mode: this.resources.mode,
         compiler: this.resources.compiler,
         baselib: this.resources.baselib,
         standardLibrary: this.resources.standardLibrary,

@@ -460,7 +460,10 @@ module.exports = {
       await page.goto(address(server), { waitUntil: "domcontentloaded" });
       await page.evaluate(async () => {
         const { createSage } = await import("/kernel.mjs");
-        globalThis.__sagejsQualificationSession = await createSage({ timeout: 180_000 });
+        globalThis.__sagejsQualificationSession = await createSage({
+          mode: "python",
+          timeout: 180_000,
+        });
       });
       const host = internals.initializeHostOracles(scipyOracleArtifact.path, context.root);
       const requirements = internals.capabilityModuleRequirements;

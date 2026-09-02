@@ -493,6 +493,23 @@ def _python_values(value: Any, dtype_name: str) -> Any:
         return [_python_values(item, dtype_name) for item in value]
     if dtype_name == "bool":
         return bool(value)
+    if dtype_name in (
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "uint8",
+        "uint16",
+        "uint32",
+        "uint64",
+    ):
+        # BigInt-backed `numpy-ts` arrays expose JavaScript `bigint` scalars.
+        # NumPy's public `item()` and `tolist()` boundaries return ordinary
+        # Python integers, so normalize them before user callbacks can mix
+        # them with Python numeric literals.
+        return int(value)
+    if dtype_name in ("float16", "float32", "float64"):
+        return float(value)
     if dtype_name in ("complex64", "complex128"):
         return _wrap(value)
     return value

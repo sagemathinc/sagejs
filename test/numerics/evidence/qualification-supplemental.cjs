@@ -19,6 +19,7 @@ const {
 const {
   stageBrowserArtifact,
   subjectFor,
+  validateBrowserArtifactSources,
 } = require("../../../scripts/numerical-computing/qualification/prepare-browser.cjs");
 const {
   createBinding: createBrowserExecutableBinding,
@@ -924,7 +925,7 @@ test("browser memory subjects and executable bytes match full-runtime receipts",
       value: { runtime: { subject: record.value.subject }, artifacts: [artifact] },
     };
   });
-  assert.equal(
+  assert.deepEqual(
     verifyMatrixBrowserSubjectCoherence(matrix, records, matrixReceipts),
     true,
   );
@@ -1248,6 +1249,56 @@ test("browser artifact staging binds runtime-only modules without node_modules",
   assert.equal(fs.existsSync(path.join(temporary, "output", "new-runtime-only.mjs")), true);
   assert.equal(fs.existsSync(path.join(temporary, "output", "dist", "generated.dat")), true);
   assert.equal(fs.existsSync(path.join(temporary, "output", "node_modules")), false);
+});
+
+test("browser qualification rejects stale compiled Python sources", (context) => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-browser-freshness-test-"));
+  context.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(temporary, "scripts"), { recursive: true });
+  fs.mkdirSync(path.join(temporary, "src", "lib"), { recursive: true });
+  fs.mkdirSync(path.join(temporary, "artifact", "dist"), { recursive: true });
+  const generator = "scripts/build-lazy-module-cache.cjs";
+  const config = "scripts/precompiled-python-packages.json";
+  const source = "src/lib/demo.py";
+  fs.writeFileSync(path.join(temporary, generator), "// generator\n");
+  fs.writeFileSync(path.join(temporary, config), "{}\n");
+  fs.writeFileSync(path.join(temporary, source), "value = 1\n");
+  const bundle = {
+    schema: "sagejs.lazy-module-bundle/v2",
+    generator: { path: generator, sha256: sha256("// generator\n") },
+    config: { path: config, sha256: sha256("{}\n") },
+    roots: { package: ["demo"], taskRuntime: [] },
+    modules: {
+      demo: {
+        resource: "demo.json",
+        resourceSha256: "b".repeat(64),
+        source: "demo.py",
+        sourceSha256: sha256("value = 1\n"),
+        signature: "c".repeat(40),
+        version: "test",
+        mode: "python",
+        package: false,
+        filename: "/__sagejs_lazy_modules__/demo.py",
+        packagePath: null,
+        dependencies: [],
+        javascriptTemplate:
+          'const filename = "/__sagejs_lazy_modules__/__SAGEJS_MODULE_FILENAME__";',
+      },
+    },
+  };
+  fs.writeFileSync(
+    path.join(temporary, "artifact", "dist", "lazy-modules.json"),
+    JSON.stringify(bundle),
+  );
+  assert.equal(
+    JSON.stringify(validateBrowserArtifactSources(temporary, "artifact")),
+    JSON.stringify(bundle),
+  );
+  fs.writeFileSync(path.join(temporary, source), "value = 2\n");
+  assert.throws(
+    () => validateBrowserArtifactSources(temporary, "artifact"),
+    /stale lazy-module source demo/,
+  );
 });
 
 test("repository inputs and nonexistent outputs reject symlinked parents", (context) => {

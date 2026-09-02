@@ -320,6 +320,31 @@ print(
     }
 
     await waitForOutput("2 * 1013");
+    const pythonModeProbe = await command("Runtime.evaluate", {
+      expression: `(async () => {
+        const { createSage } = await import("/kernel.mjs");
+        const session = await createSage({ mode: "python" });
+        try {
+          const result = await session.evaluate(
+            "print(isinstance(1.0, float))\\n" +
+            "try:\\n" +
+            "    1.0 / 0.0\\n" +
+            "except Exception as error:\\n" +
+            "    print(type(error).__name__)"
+          );
+          return { stdout: result.stdout, repr: result.repr };
+        } finally {
+          await session.close();
+        }
+      })()`,
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    assert.equal(pythonModeProbe.exceptionDetails, undefined);
+    assert.deepEqual(pythonModeProbe.result.value, {
+      stdout: "True\nZeroDivisionError\n",
+      repr: "",
+    });
     const publicExactSubspacesOnly = process.argv.includes(
       "--public-exact-subspaces",
     );

@@ -40,6 +40,8 @@ export interface SageEvaluationOptions {
 }
 
 export interface BrowserSageSessionOptions {
+  /** Default source and runtime semantics for evaluations in this session. */
+  mode?: "sage" | "python";
   worker?: string | URL;
   compiler?: string | URL;
   baselib?: string | URL;

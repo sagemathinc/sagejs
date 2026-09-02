@@ -93,6 +93,7 @@ test("session configures a validated compiler-worker optimizer policy", async ()
 
   globalThis.Worker = TestWorker;
   const session = new SageSession({
+    mode: "python",
     worker: "test-worker.mjs",
     compilerWorker: "compiler-worker.mjs",
     optimizationLevel: "O0",
@@ -106,9 +107,14 @@ test("session configures a validated compiler-worker optimizer policy", async ()
       ),
       "O0",
     );
+    assert.equal(initialized.mode, "python");
     assert.throws(
       () => new SageSession({ optimizationLevel: "fast" }),
       /optimizationLevel must be O0, O1, O2, O3, or Os/,
+    );
+    assert.throws(
+      () => new SageSession({ mode: "matlab" }),
+      /unknown Sage.js language mode "matlab"/,
     );
   } finally {
     await session.close();

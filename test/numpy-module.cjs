@@ -41,6 +41,8 @@ const expected = [
   "(3, 2)",
   "[4, 6]",
   "() 0 5",
+  "True 1",
+  "True 1.5",
   "IndexError",
   "IndexError",
   "ValueError",

@@ -7,6 +7,9 @@ const path = require("node:path");
 const { pretty, readJson, repositoryPath, sha256 } = require("../common.cjs");
 const { validateCorpus } = require("../contracts.cjs");
 const { bindCapabilityDraft, writeImmutableJson } = require("../receipt.cjs");
+const {
+  validateLazyModuleBundle,
+} = require("../../lazy-module-provenance.cjs");
 const { createBinding } = require("./browser-executable.cjs");
 const { createBinding: createScipyOracleBinding } = require("./scipy-oracle.cjs");
 const { capabilityDraft } = require("./prepare-node.cjs");
@@ -89,6 +92,24 @@ function stageBrowserArtifact(root, artifactPath, outputPath) {
   return destination.relative;
 }
 
+function validateBrowserArtifactSources(root, artifactPath) {
+  const source = repositoryPath(root, artifactPath, "browser artifact source");
+  const bundlePath = path.join(source.absolute, "dist", "lazy-modules.json");
+  if (!fs.existsSync(bundlePath) || !fs.statSync(bundlePath).isFile()) {
+    throw new Error(`browser artifact is missing its lazy-module bundle: ${bundlePath}`);
+  }
+  let bundle;
+  try {
+    bundle = readJson(bundlePath);
+  } catch (error) {
+    throw new Error(`invalid browser lazy-module bundle: ${bundlePath}`, {
+      cause: error,
+    });
+  }
+  validateLazyModuleBundle(bundle, { repositoryRoot: root });
+  return bundle;
+}
+
 function value(argv, name, fallback = null) {
   const index = argv.indexOf(name);
   if (index < 0) return fallback;
@@ -127,6 +148,7 @@ async function prepare({
   root, corpusPath, adapterPath, specPath, artifactPath, cminpackArtifactPath,
   nloptArtifactPath, outputDirectory, kind, engine,
 }) {
+  validateBrowserArtifactSources(root, artifactPath);
   const corpus = validateCorpus(readJson(repositoryPath(root, corpusPath, "corpus").absolute));
   const spec = readJson(repositoryPath(root, specPath, "capability spec").absolute);
   const adapter = require(repositoryPath(root, adapterPath, "adapter").absolute);
@@ -258,4 +280,5 @@ if (require.main === module) {
 
 module.exports = {
   browserArtifactSpecifications, main, prepare, stageBrowserArtifact, subjectFor, usage,
+  validateBrowserArtifactSources,
 };

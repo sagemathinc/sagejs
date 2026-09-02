@@ -399,14 +399,18 @@ class UnavailableNumericalBackend:
 def residual(point):
     return [point[0] - 2.0]
 
-backend_state = runtime._numerical_backends
-had_backend = "cminpack" in backend_state
-original_backend = backend_state["cminpack"] if had_backend else None
+original_backend_loader = runtime.numerical_backend
+active_backend = [None]
+def qualification_backend(name=None):
+    if name is None or name == "cminpack":
+        return active_backend[0]
+    return original_backend_loader(name)
+runtime.reflect.set(runtime, "numerical_backend", qualification_backend)
 records = []
 try:
     for kind in input_record["resource_failures"]:
         backend = UnavailableNumericalBackend(kind)
-        backend_state["cminpack"] = backend
+        active_backend[0] = backend
         automatic = least_squares(residual, [20.0], method="auto")
         explicit = least_squares(
             residual, [20.0], method="cminpack-lmdif"
@@ -424,10 +428,7 @@ try:
             "private_detail_leaked": "private numerical-resource detail" in serialized,
         })
 finally:
-    if had_backend:
-        backend_state["cminpack"] = original_backend
-    else:
-        del backend_state["cminpack"]
+    runtime.reflect.set(runtime, "numerical_backend", original_backend_loader)
 output_record = {"records": records}`,
     "p3-nlopt-nelder-mead-rosenbrock": String.raw`
 import sagejs.runtime as runtime
@@ -596,11 +597,13 @@ class EntryWitness:
         self.entered = True
         raise RuntimeError("out-of-envelope call entered NLopt backend")
 
-backend_state = runtime._numerical_backends
-had_backend = "nlopt" in backend_state
-original_backend = backend_state["nlopt"] if had_backend else None
 witness = EntryWitness()
-backend_state["nlopt"] = witness
+original_backend_loader = runtime.numerical_backend
+def qualification_backend(name=None):
+    if name == "nlopt":
+        return witness
+    return original_backend_loader(name)
+runtime.reflect.set(runtime, "numerical_backend", qualification_backend)
 try:
     answer = minimize(
         lambda point: sum(value*value for value in point),
@@ -629,10 +632,7 @@ except Exception as error:
     }
 finally:
     output_record["backend_entered"] = witness.entered
-    if had_backend:
-        backend_state["nlopt"] = original_backend
-    else:
-        del backend_state["nlopt"]`,
+    runtime.reflect.set(runtime, "numerical_backend", original_backend_loader)`,
     "p3-nlopt-cobyla-explicitly-unsupported": String.raw`
 import sagejs.runtime as runtime
 from sagejs.numerics.optimization import minimize
@@ -644,11 +644,13 @@ class EntryWitness:
         self.entered = True
         raise RuntimeError("unsupported COBYLA entered NLopt backend")
 
-backend_state = runtime._numerical_backends
-had_backend = "nlopt" in backend_state
-original_backend = backend_state["nlopt"] if had_backend else None
 witness = EntryWitness()
-backend_state["nlopt"] = witness
+original_backend_loader = runtime.numerical_backend
+def qualification_backend(name=None):
+    if name == "nlopt":
+        return witness
+    return original_backend_loader(name)
+runtime.reflect.set(runtime, "numerical_backend", qualification_backend)
 try:
     minimize(lambda point: point[0]*point[0], [1.0], method="nlopt-cobyla")
     output_record = {"rejected": False, "error_name": None, "error_message": ""}
@@ -660,10 +662,7 @@ except Exception as error:
     }
 finally:
     output_record["backend_entered"] = witness.entered
-    if had_backend:
-        backend_state["nlopt"] = original_backend
-    else:
-        del backend_state["nlopt"]`,
+    runtime.reflect.set(runtime, "numerical_backend", original_backend_loader)`,
     "p3-nlopt-nonlinear-constraints-explicitly-unsupported": String.raw`
 import sagejs.runtime as runtime
 from sagejs.numerics.optimization import minimize
@@ -675,11 +674,13 @@ class EntryWitness:
         self.entered = True
         raise RuntimeError("unsupported nonlinear constraint entered NLopt backend")
 
-backend_state = runtime._numerical_backends
-had_backend = "nlopt" in backend_state
-original_backend = backend_state["nlopt"] if had_backend else None
 witness = EntryWitness()
-backend_state["nlopt"] = witness
+original_backend_loader = runtime.numerical_backend
+def qualification_backend(name=None):
+    if name == "nlopt":
+        return witness
+    return original_backend_loader(name)
+runtime.reflect.set(runtime, "numerical_backend", qualification_backend)
 try:
     minimize(
         lambda point: point[0]*point[0],
@@ -695,10 +696,7 @@ except Exception as error:
     }
 finally:
     output_record["backend_entered"] = witness.entered
-    if had_backend:
-        backend_state["nlopt"] = original_backend
-    else:
-        del backend_state["nlopt"]`,
+    runtime.reflect.set(runtime, "numerical_backend", original_backend_loader)`,
     "p3-nlopt-failure-provenance": String.raw`
 import sagejs.runtime as runtime
 from sagejs.numerics.optimization import minimize
@@ -754,13 +752,17 @@ class UnavailableNloptBackend:
     def solve(self, options):
         raise RuntimeError(self.kind + " private nlopt-resource detail")
 
-backend_state = runtime._numerical_backends
-had_backend = "nlopt" in backend_state
-original_backend = backend_state["nlopt"] if had_backend else None
+original_backend_loader = runtime.numerical_backend
+active_backend = [None]
+def qualification_backend(name=None):
+    if name == "nlopt":
+        return active_backend[0]
+    return original_backend_loader(name)
+runtime.reflect.set(runtime, "numerical_backend", qualification_backend)
 records = []
 try:
     for kind in input_record["resource_failures"]:
-        backend_state["nlopt"] = UnavailableNloptBackend(kind)
+        active_backend[0] = UnavailableNloptBackend(kind)
         automatic = minimize(lambda point: (point[0]-2.0)**2, [20.0])
         explicit = []
         for method in ("nlopt-nelder-mead",):
@@ -783,10 +785,7 @@ try:
             "explicit": explicit,
         })
 finally:
-    if had_backend:
-        backend_state["nlopt"] = original_backend
-    else:
-        del backend_state["nlopt"]
+    runtime.reflect.set(runtime, "numerical_backend", original_backend_loader)
 output_record = {"records": records}`,
     "p4-ode-exponential": String.raw`
 from sagejs.numerics.ode import solve_ivp

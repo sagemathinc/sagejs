@@ -16,7 +16,7 @@
     ]
   },
   "reviewed_sagejs_files": {
-    "packages/flint-wasm/evaluator.mjs": "9e992dd85fac8a53681a41a772e8759970154492203f4fe0a5193b5ea67e46e0",
+    "packages/flint-wasm/evaluator.mjs": "58adaa3026498ab20df2c2f6ae0698891ce205a38245e4209781f7c1537118f2",
     "packages/flint-wasm/numerical/nlopt-index.mjs": "21d752734022de158af44bc8f8cf9c164a5cd0ab95358c532632573447cbebb3",
     "packages/flint-wasm/numerical/scripts/build-all.cjs": "6aefdb71fa589b773be46926e24c5a8e0c84a1a953ac72a1a99138a419fe014f",
     "packages/flint-wasm/numerical/scripts/production-toolchain-identity.cjs": "b626c20d9bc4e1cd13cb301bbaa2d6d418b22fd796b8e7980bc140a7fa69fcb8",
@@ -40,7 +40,7 @@
   },
   "public_semantics_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "3aac699b460e5de0ae6a2e6939ea82badb44612846574ecc2e3baa1242867e57"
+    "sha256": "f77bed8685dca49f50389a9a2b5ac618cae6d56101dc5c0a47668a368295b2ef"
   },
   "qualification_tooling_files": {
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs": "f99aed93937473cd43c6ea7150b641c98230fbbe4c1a4bf8f5a99c90169563c5",
@@ -84,35 +84,12 @@
   },
   "selection": "explicit-only",
   "qualification": {
-    "status": "qualified",
-    "candidate_commit": "6b90b147568b501ec17cf40eb41647641507044d",
-    "summary_sha256": "d84efa95dff1551487dc43692fb95366fcbc01cf594789210b9689d4973ea849",
-    "summary_bytes": 121696,
-    "public_semantics_bundle_sha256": "3aac699b460e5de0ae6a2e6939ea82badb44612846574ecc2e3baa1242867e57",
+    "status": "pending_source_current_requalification",
+    "reason": "Browser Python-mode selection changed the evaluator boundary; source-current qualification is required.",
+    "public_semantics_bundle_sha256": "f77bed8685dca49f50389a9a2b5ac618cae6d56101dc5c0a47668a368295b2ef",
     "qualification_tooling_bundle_sha256": "230de6626433dcdb84ace28ea3f96a9889cd59c794ef7e3873d7fb8fbc6da716",
     "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
-    "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
-    "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
-    "artifact_sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
-    "artifact_bytes": 72592,
-    "case_execution_sha256": "7813e192aac874b65902ce345cf13d7323cc9d73aeabe93aab645525e4b559ea",
-    "campaign_challenge": "853bc5f47a5b0fcca40cf776652c9a9ca662831a1edc4de371a097b166900fc9",
-    "evidence_receipts_sha256": {
-      "sanitizer": "a2e4d6192a899a806881a692660bf36ae465a688937cfb802a3f99eca761a65d",
-      "destructive-wasm": "c75f704b76a14449dce8243c632d71180063f2bcdf44198299641063a05d18e1",
-      "browser-lifecycle": "4a85e1faeee7ee40a6bc30bcddce93634dd1349656d8c72e057bd7deb8018d8f",
-      "public-integration": "4c157b1fe41f4ab507873530c4689713811f886896fe8b699f69d5fd239e5a59",
-      "resource-corruption": "ea8f4ca67dc477c330c905e9eec7ede56367b691ec2b7f683658951e4316b8e4",
-      "relocation": "dc55776d5fd697a66cb2f154201f6fe4ffbb23196554fc95c31c5bafa3cfc087",
-      "sea": "919cd3620d0fcf2390dae707131e3e89209f06a1fe8ba6ce4dd4620342e3cd3c"
-    },
-    "portable_receipts_sha256": {
-      "linux-x64": "7813e192aac874b65902ce345cf13d7323cc9d73aeabe93aab645525e4b559ea",
-      "linux-arm64": "0e8d765ed5cc3fb6cc7622e686cd8d567bf4c5ab7bfd8ab27df3c114b1d364bb",
-      "macos-arm64": "e2b1ae958f9cf74971a397abee9d16f41f8dad2a39450be30436e21775f0fde5",
-      "windows-x64": "3b07b3b6aa297124e0859a46ec628bd636da3c1aee4398bf838d130ec00d473e"
-    },
-    "historical_cobyla_status": "excluded-not-qualified"
+    "invalidated_summary": "qualification-v1.json"
   }
 }

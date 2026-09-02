@@ -572,6 +572,7 @@ export function createBrowserRuntimeModules({
  * non-isolated hosts can execute authenticated precompiled dynamic programs.
  */
 export async function instantiateSageEvaluator({
+  mode = "sage",
   compiler,
   baselib,
   standardLibrary,
@@ -630,6 +631,9 @@ export async function instantiateSageEvaluator({
   fetchCapabilityReport = globalThis.fetch,
   fetchAutoReceiptPolicy = globalThis.fetch,
 }) {
+  if (mode !== "sage" && mode !== "python") {
+    throw new TypeError(`unknown Sage.js language mode ${JSON.stringify(mode)}`);
+  }
   const language = new CompilerWorker(compilerWorker, WorkerConstructor);
   const globals = createGlobalInstaller(globalThis);
   const capabilityDispatchTrace = createCapabilityDispatchTrace();
@@ -703,6 +707,7 @@ export async function instantiateSageEvaluator({
       dynamicProgramBundle,
     ] = await Promise.all([
       language.request("initialize", {
+        mode,
         compiler: String(compiler),
         baselib: String(baselib),
         standardLibrary: String(standardLibrary),
@@ -1028,7 +1033,7 @@ export async function instantiateSageEvaluator({
   installGlobal("__sagejs_output_write__", (text) => {
     outputHandler(String(text));
   });
-  installGlobal("__sagejs_sage_mode__", true);
+  installGlobal("__sagejs_sage_mode__", mode === "sage");
   try {
     globalEvaluate(initialization);
     if (wasmNativeResolver !== undefined) {
@@ -1137,6 +1142,7 @@ export async function instantiateSageEvaluator({
     const compiled = await language.request("compile", {
       source,
       filename,
+      mode,
     });
     if (
       compiled === null ||
