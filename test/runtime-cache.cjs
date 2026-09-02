@@ -25,10 +25,12 @@ assert.equal(manifest.arch, process.arch);
 
 // The compiler VM must not embed the complete mathematical runtime. Doing so
 // initializes the same multi-megabyte baselib twice on the first expression:
-// once for compilation and once for evaluation. Keep this structural startup
-// invariant independent of noisy wall-clock measurements.
+// once for compilation and once for evaluation. The 68 KiB allowance covers
+// the CPython-compatible class namespace and callable allocation semantics;
+// keep this structural startup invariant independent of noisy wall-clock
+// measurements.
 assert.ok(
-  compilerSource.byteLength <= 4 * 1024 * 1024 + 17 * 1024,
+  compilerSource.byteLength <= 4 * 1024 * 1024 + 68 * 1024,
   `compiler bootstrap grew to ${compilerSource.byteLength} bytes`,
 );
 assert.ok(
