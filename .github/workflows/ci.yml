@@ -139,6 +139,97 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  public-npm-root:
+    name: Canonical public npm root and browser distribution
+    needs: [routine, numerical-product]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    environment: sagejs-source-mirror
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      SAGEJS_WASM_SOURCE_MIRROR_DIR: /tmp/sagejs-public-npm-source-mirror
+      SAGEJS_NUMERICAL_PRODUCT_ROOT: ${{ github.workspace }}/build/authenticated-numerical-product
+      SAGEJS_NUMERICAL_RUNTIME_REQUIRED: "1"
+
+    steps:
+      - name: Check out the exact source candidate
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+
+      - name: Fetch every pinned Wasm source from the private mirror
+        run: |
+          node tools/source-mirror/scripts/source-mirror.mjs fetch \
+            --output "$SAGEJS_WASM_SOURCE_MIRROR_DIR"
+          node tools/source-mirror/scripts/source-mirror.mjs environment \
+            --input "$SAGEJS_WASM_SOURCE_MIRROR_DIR" >> "$GITHUB_ENV"
+
+      - name: Install the exact JavaScript dependency graph
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore the canonical authenticated numerical runtime
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-numerical-product
+          path: build/authenticated-numerical-product
+
+      - id: toolchain
+        run: |
+          path="$(node packages/wasm-toolchain/scripts/toolchain.cjs cache-path)"
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          echo "identity=${path##*/}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.toolchain.outputs.path }}
+          key: sagejs-wasm-toolchain-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.identity }}
+
+      - name: Build and authenticate the canonical browser distribution
+        run: |
+          node packages/wasm-toolchain/scripts/toolchain.cjs prepare
+          pnpm build
+          pnpm --dir packages/flint-wasm build
+          node scripts/numerical-product.cjs validate-installed
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+          node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
+            --dist packages/flint-wasm/dist \
+            --budget bench/browser-wasm-budget.json \
+            --require-baseline
+
+      - name: Pack the one public npm root and prove its embedded Wasm identity
+        run: |
+          mkdir -p build/release/npm build/packed-public-root
+          SAGEJS_SKIP_PREPACK=1 pnpm pack --out build/release/npm/sagejs.tgz
+          tar -xzf build/release/npm/sagejs.tgz -C build/packed-public-root
+          node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
+            --dist packages/flint-wasm/dist \
+            --compare build/packed-public-root/package/packages/flint-wasm/dist
+
+      - name: Preserve the byte-identical root package and browser distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-public-npm-root
+          overwrite: true
+          path: |
+            build/release/npm/sagejs.tgz
+            packages/flint-wasm/dist
+          if-no-files-found: error
+          retention-days: 14
+
   platform-smoke:
     name: Platform smoke (${{ matrix.target }})
     needs: routine
@@ -198,7 +289,7 @@ jobs:
 
   linux-x64:
     name: Linux x64 native, tests, and SEA
-    needs: [routine, numerical-product]
+    needs: [routine, numerical-product, public-npm-root]
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'linux-x64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 150
@@ -263,6 +354,12 @@ jobs:
         with:
           name: sagejs-numerical-product
           path: build/authenticated-numerical-product
+
+      - name: Restore the canonical public npm root and browser distribution
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-public-npm-root
+          path: .
 
       - name: Bootstrap the complete native system
         env:
@@ -369,7 +466,6 @@ jobs:
       - name: Package Linux x64 for npm and the shell installer
         run: |
           pnpm package:native-npm linux-x64 build/sea/sagejs build/sea/sagepython
-          SAGEJS_SKIP_PREPACK=1 pnpm pack --out build/release/npm/sagejs.tgz
           pnpm test:npm-package
           cp install.sh build/release/install.sh
 
@@ -421,14 +517,13 @@ jobs:
             build/release/sagejs-linux-x64.tar.xz
             build/release/sagejs-linux-x64.tar.xz.sha256
             build/release/install.sh
-            build/release/npm/sagejs.tgz
             build/release/npm/sagejs-linux-x64.tgz
           if-no-files-found: error
           retention-days: 14
 
   linux-arm64:
     name: Linux arm64 native, tests, and SEA
-    needs: [routine, numerical-product]
+    needs: [routine, numerical-product, public-npm-root]
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'linux-arm64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     timeout-minutes: 150
@@ -494,6 +589,12 @@ jobs:
           name: sagejs-numerical-product
           path: build/authenticated-numerical-product
 
+      - name: Restore the canonical public npm root and browser distribution
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-public-npm-root
+          path: .
+
       - name: Bootstrap the complete native system
         env:
           SAGEJS_BUILD_JOBS: "8"
@@ -535,7 +636,6 @@ jobs:
       - name: Package Linux arm64 for npm
         run: |
           pnpm package:native-npm linux-arm64 build/sea/sagejs build/sea/sagepython
-          SAGEJS_SKIP_PREPACK=1 pnpm pack --out build/release/npm/sagejs.tgz
 
       - name: Cache authenticated numerical oracle inputs
         if: startsWith(github.ref, 'refs/tags/v')
@@ -590,7 +690,7 @@ jobs:
 
   windows-x64:
     name: Windows x64 native, tests, and SEA
-    needs: [routine, numerical-product]
+    needs: [routine, numerical-product, public-npm-root]
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'windows-x64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-windows-2025
     timeout-minutes: 240
@@ -692,6 +792,12 @@ jobs:
           name: sagejs-numerical-product
           path: build/authenticated-numerical-product
 
+      - name: Restore the canonical public npm root and browser distribution
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-public-npm-root
+          path: .
+
       - name: Bootstrap the compiler and native mathematics stack
         env:
           SAGEJS_BUILD_JOBS: "8"
@@ -783,11 +889,6 @@ jobs:
 
       - name: Package Windows x64 for npm
         run: pnpm package:native-npm windows-x64 build/sea/sagejs.exe build/sea/sagepython.exe
-
-      - name: Pack the public npm package on Windows
-        env:
-          SAGEJS_SKIP_PREPACK: "1"
-        run: pnpm pack --out build/release/npm/sagejs.tgz
 
       - name: Cache authenticated numerical oracle inputs
         if: startsWith(github.ref, 'refs/tags/v')
@@ -953,12 +1054,6 @@ jobs:
           SAGEJS_BUILD_JOBS: "6"
         run: pnpm test:sea:reuse
 
-      - name: Pack public npm source for signed qualification
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          SAGEJS_SKIP_PREPACK: "1"
-        run: pnpm pack --out build/release/npm/sagejs.tgz
-
       - name: Cache authenticated numerical oracle inputs
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/cache@v6
@@ -994,7 +1089,6 @@ jobs:
           overwrite: true
           path: |
             build/numerical-qualification/platform/macos-arm64
-            build/release/npm/sagejs.tgz
             dist/numerical
           if-no-files-found: error
           retention-days: 14
@@ -1014,7 +1108,7 @@ jobs:
   macos-sign:
     name: Sign and notarize macOS arm64 release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: macos-arm64
+    needs: [macos-arm64, public-npm-root]
     # Blacksmith's macOS fleet is available in 6- and 12-vCPU sizes only.
     runs-on: blacksmith-6vcpu-macos-15
     timeout-minutes: 120
@@ -1047,6 +1141,12 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: sagejs-macos-arm64-qualification-input
+          path: .
+
+      - name: Restore the canonical public npm root and browser distribution
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-public-npm-root
           path: .
 
       - name: Cache authenticated numerical oracle inputs
@@ -1154,7 +1254,7 @@ jobs:
   numerical-browser-qualification:
     name: Numerical browser and supplemental qualification
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux-x64, numerical-product]
+    needs: [linux-x64, numerical-product, public-npm-root]
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     environment: sagejs-source-mirror
@@ -1199,6 +1299,12 @@ jobs:
           name: sagejs-numerical-product
           path: build/authenticated-numerical-product
 
+      - name: Restore the canonical public npm root and browser distribution
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-public-npm-root
+          path: .
+
       - name: Cache authenticated numerical oracle inputs
         uses: actions/cache@v6
         with:
@@ -1222,7 +1328,7 @@ jobs:
           name: sagejs-linux-x64
           path: build/linux-release
 
-      - name: Build the source-authenticated browser product
+      - name: Build source evidence around the authenticated browser product
         run: |
           node packages/wasm-toolchain/scripts/toolchain.cjs prepare
           pnpm build
@@ -1233,7 +1339,6 @@ jobs:
           env -u SAGEJS_NUMERICAL_PRODUCT_ROOT \
             -u SAGEJS_NUMERICAL_RUNTIME_REQUIRED \
             node packages/flint-wasm/numerical/scripts/build-all.cjs
-          pnpm --dir packages/flint-wasm build
           node scripts/numerical-product.cjs install \
             --input "$SAGEJS_NUMERICAL_PRODUCT_ROOT"
           node scripts/numerical-product.cjs validate-installed
@@ -1276,6 +1381,7 @@ jobs:
       - windows-x64
       - macos-sign
       - numerical-browser-qualification
+      - public-npm-root
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -1317,6 +1423,10 @@ jobs:
         with:
           name: numerical-qualification-browser-supplemental
           path: .
+      - uses: actions/download-artifact@v8
+        with:
+          name: sagejs-public-npm-root
+          path: .
 
       - name: Rebuild and require the exact 16-row release gate
         run: |
@@ -1335,7 +1445,9 @@ jobs:
           pnpm release:qualify:numerics:authenticate -- \
             --candidate "$(git rev-parse HEAD)" \
             --gate build/validated-numerical-gate/release-gate.json \
-            --rebuilt-gate build/numerical-qualification/gate/release-gate.json
+            --rebuilt-gate build/numerical-qualification/gate/release-gate.json \
+            --public-npm-root build/release/npm/sagejs.tgz \
+            --browser-distribution packages/flint-wasm/dist
 
       - name: Preserve the final numerical release evidence
         uses: actions/upload-artifact@v7
@@ -1397,6 +1509,12 @@ jobs:
           name: numerical-release-evidence
           path: build/numerical-qualification
 
+      - name: Restore the canonical public npm root and browser distribution
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-public-npm-root
+          path: .
+
       - name: Download the validated release artifacts
         env:
           GH_TOKEN: ${{ github.token }}
@@ -1412,6 +1530,8 @@ jobs:
             gh run download "$GITHUB_RUN_ID" --repo "$GH_REPO" \
               --name "$artifact" --dir release
           done
+          mkdir -p release/npm
+          cp build/release/npm/sagejs.tgz release/npm/sagejs.tgz
 
       - name: Rebuild and authenticate the gate and exact public npm root
         run: |
@@ -1423,7 +1543,8 @@ jobs:
             --candidate "$(git rev-parse HEAD)" \
             --gate build/validated-numerical-gate/release-gate.json \
             --rebuilt-gate build/numerical-qualification/gate/release-gate.json \
-            --public-npm-root release/npm/sagejs.tgz
+            --public-npm-root release/npm/sagejs.tgz \
+            --browser-distribution packages/flint-wasm/dist
 
       - name: Create or update the draft GitHub release
         env:

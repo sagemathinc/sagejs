@@ -91,6 +91,40 @@ const provenanceBuildWorkflows = [
   ".github/workflows/wasm-routine.yml",
 ];
 
+function workflowJobs(source) {
+  const headers = [...source.matchAll(/^  ([a-zA-Z0-9_-]+):\s*$/gm)];
+  return new Map(headers.map((match, index) => {
+    const start = match.index;
+    const end = headers[index + 1]?.index ?? source.length;
+    return [match[1], source.slice(start, end)];
+  }));
+}
+
+function jobNeeds(job) {
+  const lines = job.split("\n");
+  const index = lines.findIndex((line) => line.startsWith("    needs:"));
+  if (index === -1) return [];
+  const value = lines[index].slice("    needs:".length).trim();
+  const inline = value.match(/^\[([^\]]*)\]$/);
+  if (inline) {
+    return inline[1].split(",").map((name) => name.trim()).filter(Boolean);
+  }
+  if (value) return [value];
+  const dependencies = [];
+  for (const line of lines.slice(index + 1)) {
+    const item = line.match(/^      - ([a-zA-Z0-9_-]+)\s*$/);
+    if (item === null) break;
+    dependencies.push(item[1]);
+  }
+  return dependencies;
+}
+
+const ciJobs = workflowJobs(ci);
+const ciJob = (name) => {
+  assert.ok(ciJobs.has(name), `missing CI job ${name}`);
+  return ciJobs.get(name);
+};
+
 function rowFiles(rowId) {
   const browser = rowId.startsWith("linux-x64-browser-");
   const directory = browser
@@ -775,6 +809,77 @@ test("tag CI collects 12 platform and four browser rows before publication", () 
   );
 });
 
+test("tag CI packs one authenticated public npm root before every consumer", () => {
+  const producer = ciJob("public-npm-root");
+  assert.deepEqual(jobNeeds(producer), ["routine", "numerical-product"]);
+  const build = producer.indexOf("pnpm --dir packages/flint-wasm build");
+  const validate = producer.indexOf(
+    "node packages/flint-wasm/scripts/production-receipt.cjs validate",
+  );
+  const pack = producer.indexOf(
+    "SAGEJS_SKIP_PREPACK=1 pnpm pack --out build/release/npm/sagejs.tgz",
+  );
+  const compare = producer.indexOf(
+    "--compare build/packed-public-root/package/packages/flint-wasm/dist",
+  );
+  const upload = producer.indexOf("name: sagejs-public-npm-root", compare);
+  assert.ok(build >= 0 && build < validate && validate < pack && pack < compare && compare < upload);
+  assert.match(producer, /path: \|\n\s+build\/release\/npm\/sagejs\.tgz\n\s+packages\/flint-wasm\/dist/);
+  assert.equal(
+    [...ci.matchAll(/pnpm pack --out build\/release\/npm\/sagejs\.tgz/g)].length,
+    1,
+    "tag CI must create the public root tarball exactly once",
+  );
+
+  for (const name of ["linux-x64", "linux-arm64", "windows-x64", "macos-sign"]) {
+    const job = ciJob(name);
+    assert.ok(jobNeeds(job).includes("public-npm-root"), `${name} must wait for the public root`);
+    assert.match(job, /name: sagejs-public-npm-root\n\s+path: \./);
+    assert.match(job, /--root-archive build\/release\/npm\/sagejs\.tgz/);
+    assert.doesNotMatch(job, /pnpm pack --out/);
+  }
+
+  const browser = ciJob("numerical-browser-qualification");
+  assert.ok(jobNeeds(browser).includes("public-npm-root"));
+  assert.match(browser, /name: sagejs-public-npm-root\n\s+path: \./);
+  assert.doesNotMatch(browser, /pnpm --dir packages\/flint-wasm build/);
+
+  const gate = ciJob("numerical-release-gate");
+  assert.ok(jobNeeds(gate).includes("public-npm-root"));
+  assert.match(gate, /name: sagejs-public-npm-root\n\s+path: \./);
+  assert.match(gate, /--public-npm-root build\/release\/npm\/sagejs\.tgz/);
+  assert.match(gate, /--browser-distribution packages\/flint-wasm\/dist/);
+
+  const publisher = ciJob("publish-release");
+  assert.match(publisher, /name: sagejs-public-npm-root\n\s+path: \./);
+  assert.match(
+    publisher,
+    /cp build\/release\/npm\/sagejs\.tgz release\/npm\/sagejs\.tgz[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
+  );
+  assert.match(publisher, /--browser-distribution packages\/flint-wasm\/dist/);
+  assert.match(publisher, /publish_package release\/npm\/sagejs\.tgz latest/);
+});
+
+test("tag CI release artifact graph is acyclic", () => {
+  const visiting = new Set();
+  const visited = new Set();
+  function visit(name, chain = []) {
+    if (visiting.has(name)) {
+      assert.fail(`circular CI dependency: ${[...chain, name].join(" -> ")}`);
+    }
+    if (visited.has(name)) return;
+    visiting.add(name);
+    for (const dependency of jobNeeds(ciJob(name))) {
+      assert.ok(ciJobs.has(dependency), `${name} depends on missing job ${dependency}`);
+      visit(dependency, [...chain, name]);
+    }
+    visiting.delete(name);
+    visited.add(name);
+  }
+  for (const name of ciJobs.keys()) visit(name);
+  assert.ok(visited.has("publish-release"));
+});
+
 test("clean browser qualification builds source evidence before restoring the product", () => {
   const browserJob = ci.slice(
     ci.indexOf("numerical-browser-qualification:"),
@@ -804,7 +909,7 @@ test("one trusted workflow publishes and recovery reruns its authenticated job",
   assert.doesNotMatch(ci, /secrets\.NPM_TOKEN|pnpm publish "\$archive"/);
   assert.match(
     ci,
-    /release:qualify:numerics:gate[\s\S]+--input build\/numerical-qualification[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+release:qualify:numerics:authenticate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
+    /release:qualify:numerics:gate[\s\S]+--input build\/numerical-qualification[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+release:qualify:numerics:authenticate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz[\s\S]+--browser-distribution packages\/flint-wasm\/dist/,
   );
   assert.match(ci, /recover-publish:[\s\S]+actions:\s*write/);
   assert.match(ci, /jobs\?filter=all&per_page=100/);

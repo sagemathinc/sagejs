@@ -209,7 +209,7 @@ test("production identity stays canonical while retaining the host builder", () 
 test("release and SEA builders preserve the required numerical handoff", () => {
   const workflow = readFileSync(join(__dirname, "../.github/workflows/ci.yml"), "utf8");
   assert.match(workflow,
-    /numerical-browser-qualification:[\s\S]*needs: \[linux-x64, numerical-product\]/);
+    /numerical-browser-qualification:[\s\S]*needs: \[linux-x64, numerical-product, public-npm-root\]/);
   assert.match(workflow,
     /name: Require source-current qualified NLopt[\s\S]*--require-qualified/);
   assert.match(workflow,
