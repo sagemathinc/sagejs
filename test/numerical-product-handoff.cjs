@@ -24,6 +24,7 @@ const {
   resolveNumericalRuntimeCapability,
 } = require("../scripts/numerical-product.cjs");
 const {
+  numericalRuntimeProviderIdentity,
   numericalOutputBindings,
   validateBuildReceipt,
 } = require("../scripts/build-receipt.cjs");
@@ -87,6 +88,17 @@ test("the numerical product handoff is exact, source-bound, and installable", (c
     inputDirectory: output,
     expectedCommit: candidate,
   }).valid, true);
+  assert.match(inspectNumericalProduct({
+    root,
+    inputDirectory: output,
+  }).reason, /git rev-parse HEAD/);
+  assert.deepEqual(numericalRuntimeProviderIdentity(root, {
+    SAGEJS_NUMERICAL_PRODUCT_ROOT: output,
+  }), {
+    available: false,
+    source: "unavailable",
+    reason: "invalid-product",
+  });
   assert.match(inspectNumericalProduct({
     root,
     inputDirectory: output,

@@ -225,9 +225,10 @@ function publishNumericalProduct({
 function inspectNumericalProduct({
   root = repositoryRoot,
   inputDirectory,
-  expectedCommit = gitCommit(root),
+  expectedCommit,
 } = {}) {
   try {
+    const sourceCommit = expectedCommit ?? gitCommit(root);
     const input = safeInputDirectory(resolve(inputDirectory));
     const manifest = JSON.parse(regularBytes(
       join(input, manifestName), "numerical product manifest",
@@ -236,7 +237,7 @@ function inspectNumericalProduct({
       "numerical product manifest");
     if (
       manifest?.schema !== schema ||
-      manifest.source_commit !== expectedCommit ||
+      manifest.source_commit !== sourceCommit ||
       !commitPattern.test(manifest.source_commit) ||
       !Array.isArray(manifest.files)
     ) {

@@ -158,7 +158,7 @@ function numericalRuntimeProviderIdentity(
     const product = inspectNumericalProduct({ root, inputDirectory: productRoot });
     return product.valid
       ? { available: true, source: "authenticated-product", identity: product.identity }
-      : { available: false, source: "invalid-product" };
+      : { available: false, source: "unavailable", reason: "invalid-product" };
   }
   try {
     const toolchain = inspectToolchain({ root, environment });
