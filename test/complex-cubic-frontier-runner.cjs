@@ -21,6 +21,8 @@ const {
 } = require("../bench/class-unit-groups/load-complex-cubic-frontier-survey.cjs");
 const frozen = require("../bench/optimization-engine/complex-cubic-frontier-corpus.cjs");
 const {
+  DIRECT_CENSUS_FIELDS_PER_SHARD,
+  DIRECT_CENSUS_PARTITION,
   MINIMUM_ROOT_NS,
   READY_MARKER,
   censusBatchPlan,
@@ -41,6 +43,7 @@ const {
   runtimeClosureDigest,
   sageCensusSource,
   sageTimingSource,
+  shardRecords,
   systemOrder,
   selectFrontierCandidate,
   timingMetrics,
@@ -147,6 +150,7 @@ test("frozen survey projection is deterministic, disjoint, and authenticated", (
   const counts = Array(20).fill(0);
   first.records.forEach((record) => { counts[record.selection.shard] += 1; });
   assert.deepEqual(counts, Array(20).fill(50));
+  assert.deepEqual(shardRecords(first).map((records) => records.length), Array(20).fill(50));
 });
 
 test("direct GP sources pin flag-zero conditional and explicit full certification", () => {
@@ -190,10 +194,23 @@ test("census runs direct systems in isolated complete shards", () => {
     system: "sagejs", status: "available", adapter_kind: "generated-sagejs-python",
   };
   const batches = censusBatchPlan(corpus, tool);
-  assert.equal(batches.length, 20);
+  assert.equal(DIRECT_CENSUS_FIELDS_PER_SHARD, 10);
+  assert.equal(DIRECT_CENSUS_PARTITION, "within-timing-shard-contiguous-ranks-v1");
+  assert.equal(batches.length, 100);
   assert.deepEqual(batches.map((batch) => batch.shard),
-    Array.from({ length: 20 }, (_, index) => index));
-  assert.ok(batches.every((batch) => batch.corpus.records.length === 50));
+    Array.from({ length: 100 }, (_, index) => index));
+  assert.ok(batches.every((batch) => batch.corpus.records.length === 10));
+  batches.forEach((batch) => {
+    const timingShard = Math.floor(batch.shard / 5);
+    const ranks = batch.corpus.records.map((record) => record.selection.stratum_rank);
+    assert.ok(batch.corpus.records.every((record) => record.selection.shard === timingShard));
+    assert.deepEqual(ranks, Array.from({ length: 10 }, (_, index) =>
+      (batch.shard % 5) * 10 + index + 1));
+  });
+  assert.deepEqual(
+    [...batches.flatMap((batch) => batch.corpus.records.map((record) => record.label))].sort(),
+    [...corpus.records.map((record) => record.label)].sort(),
+  );
 
   const entries = batches.map((batch) => ({
     batch,
@@ -214,7 +231,7 @@ test("census runs direct systems in isolated complete shards", () => {
   }));
   const merged = mergeCensusInvocations(tool, corpus, entries);
   assert.equal(merged.payload.records.length, 1000);
-  assert.equal(merged.payload.records.filter((record) => record.status === "timeout").length, 50);
+  assert.equal(merged.payload.records.filter((record) => record.status === "timeout").length, 10);
   assert.equal(censusBatchPlan(corpus, { ...tool, adapter_kind: "json-protocol" }).length, 1);
 
   const unavailableTool = { ...tool, system: "magma", status: "unavailable" };
@@ -312,6 +329,7 @@ test("timing authenticates every direct census shard and label digest", () => {
   const tool = {
     system: "sagejs", status: "available", adapter_kind: "generated-sagejs-python",
   };
+  const cpus = [0, 1, 2, 3];
   const processes = censusBatchPlan(corpus, tool).map((batch) => ({
     system: tool.system,
     mode: "census",
@@ -322,15 +340,18 @@ test("timing authenticates every direct census shard and label digest", () => {
     generated_program_sha256: sha256(sageCensusSource(batch.corpus.records)),
     launched_monotonic_nanoseconds: String(batch.shard * 20),
     ended_monotonic_nanoseconds: String(batch.shard * 20 + 10),
-    affinity_logical_cpus: [0],
+    affinity_logical_cpus: [cpus[batch.shard % cpus.length]],
     runtime_identity: null,
     runtime_closure_sha256: null,
   }));
   const census = {
     execution: {
       scheduler: "static-shard-modulo-cpu-list-v1",
-      direct_cpus: [0],
+      direct_cpus: cpus,
       external_cpu: 0,
+      direct_partition: "within-timing-shard-contiguous-ranks-v1",
+      direct_fields_per_shard: 10,
+      direct_shard_count: 100,
       max_live_processes_per_cpu: 1,
       timing_authority: "none-census-is-non-authoritative",
     },
@@ -344,8 +365,13 @@ test("timing authenticates every direct census shard and label digest", () => {
     /exactly the expected census process topology/);
 
   const duplicate = structuredClone(census);
-  duplicate.summary.processes[19].census_shard = 18;
+  duplicate.summary.processes[99].census_shard = 98;
   assert.throws(() => validateCensusProcessTopology(duplicate, corpus, [tool]),
+    /topology is invalid/);
+
+  const outOfRange = structuredClone(census);
+  outOfRange.summary.processes[99].census_shard = 100;
+  assert.throws(() => validateCensusProcessTopology(outOfRange, corpus, [tool]),
     /topology is invalid/);
 
   const stale = structuredClone(census);
@@ -354,14 +380,30 @@ test("timing authenticates every direct census shard and label digest", () => {
     /label digest is stale/);
 
   const wrongCpu = structuredClone(census);
-  wrongCpu.summary.processes[7].affinity_logical_cpus = [1];
+  wrongCpu.summary.processes[7].affinity_logical_cpus = [0];
   assert.throws(() => validateCensusProcessTopology(wrongCpu, corpus, [tool]),
     /label digest is stale/);
 
+  const staleProgram = structuredClone(census);
+  staleProgram.summary.processes[7].generated_program_sha256 = "1".repeat(64);
+  assert.throws(() => validateCensusProcessTopology(staleProgram, corpus, [tool]),
+    /label digest is stale/);
+
   const overlap = structuredClone(census);
-  overlap.summary.processes[1].launched_monotonic_nanoseconds = "5";
+  overlap.summary.processes[4].launched_monotonic_nanoseconds = "5";
   assert.throws(() => validateCensusProcessTopology(overlap, corpus, [tool]),
     /overlap on logical CPU 0/);
+
+  for (const [key, value] of [
+    ["direct_partition", "forged-partition"],
+    ["direct_fields_per_shard", 11],
+    ["direct_shard_count", 99],
+  ]) {
+    const forged = structuredClone(census);
+    forged.execution[key] = value;
+    assert.throws(() => validateCensusProcessTopology(forged, corpus, [tool]),
+      /authenticated census execution topology/);
+  }
 
   const missingExecution = structuredClone(census);
   delete missingExecution.execution;
@@ -608,8 +650,16 @@ test("machine schemas are valid JSON and pin the production cardinalities", () =
     "one-contiguous-monotonic-timer");
   assert.equal(evidenceSchema.$defs.timingEvent.properties.phase_sum_used.const, false);
   assert.equal(evidenceSchema.$defs.timingEvent.properties.digest_inside_root.const, false);
+  assert.equal(evidenceSchema.$defs.timingEvent.properties.shard.maximum, 19);
+  assert.equal(evidenceSchema.$defs.timingEvent.properties.record_count.maximum, 50);
   assert.equal(evidenceSchema.$defs.censusTool.additionalProperties, false);
   assert.equal(evidenceSchema.$defs.censusProcess.additionalProperties, false);
+  assert.equal(evidenceSchema.$defs.censusProcess.properties.census_shard.oneOf[0].maximum, 99);
+  assert.equal(evidenceSchema.oneOf[0].properties.execution.properties.direct_partition.const,
+    "within-timing-shard-contiguous-ranks-v1");
+  assert.equal(evidenceSchema.oneOf[0].properties.execution.properties.direct_fields_per_shard.const,
+    10);
+  assert.equal(evidenceSchema.oneOf[0].properties.execution.properties.direct_shard_count.const, 100);
   for (const field of [
     "census_shard",
     "record_labels_sha256",

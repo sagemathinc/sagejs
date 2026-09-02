@@ -38,7 +38,7 @@
         "round": { "type": "null" },
         "census_shard": {
           "oneOf": [
-            { "type": "integer", "minimum": 0, "maximum": 19 },
+            { "type": "integer", "minimum": 0, "maximum": 99 },
             { "type": "null" }
           ]
         },
@@ -118,7 +118,7 @@
         "tools": { "type": "array", "items": { "$ref": "#/$defs/censusTool" } },
         "execution": {
           "type": "object", "additionalProperties": false,
-          "required": ["scheduler", "direct_cpus", "external_cpu", "max_live_processes_per_cpu", "timing_authority"],
+          "required": ["scheduler", "direct_cpus", "external_cpu", "direct_partition", "direct_fields_per_shard", "direct_shard_count", "max_live_processes_per_cpu", "timing_authority"],
           "properties": {
             "scheduler": { "const": "static-shard-modulo-cpu-list-v1" },
             "direct_cpus": {
@@ -126,6 +126,9 @@
               "items": { "type": "integer", "minimum": 0 }
             },
             "external_cpu": { "type": "integer", "minimum": 0 },
+            "direct_partition": { "const": "within-timing-shard-contiguous-ranks-v1" },
+            "direct_fields_per_shard": { "const": 10 },
+            "direct_shard_count": { "const": 100 },
             "max_live_processes_per_cpu": { "const": 1 },
             "timing_authority": { "const": "none-census-is-non-authoritative" }
           }

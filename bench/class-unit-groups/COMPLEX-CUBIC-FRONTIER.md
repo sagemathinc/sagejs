@@ -44,12 +44,13 @@ node bench/class-unit-groups/run-complex-cubic-frontier.cjs --census \
   --output /data/complex-cubic-frontier-census.json
 ```
 
-The built-in Sage.js and direct-PARI census paths run as 20 isolated 50-field
-processes. `--census-cpus` permits at most one direct process on each listed
+The built-in Sage.js and direct-PARI census paths run as 100 isolated 10-field
+processes: every timing stratum is divided into five contiguous selection-rank
+slices. `--census-cpus` permits at most one direct process on each listed
 logical CPU; this shortens only the non-authoritative correctness census.
 Every process records its affinity, is bound to its shard-label digest, and has
-its own explicit timeout, so one difficult shard remains an explicit failed
-region rather than erasing already completed regions. External protocol
+its own explicit timeout, so one difficult 10-field shard remains an explicit
+failed region rather than erasing unrelated regions. External protocol
 adapters retain one serialized full-corpus process because their runtime
 closure is authenticated as a single unit. Retained timing rejects
 `--census-cpus` and remains serialized on `--cpu`. PARI's decreasing `bnf.cyc`
@@ -111,9 +112,14 @@ The two roots are:
 Each retained shard has one contiguous monotonic root. Phase sums never replace
 it. Per-field nested clocks are diagnostic only. Answers are retained during
 the root but their canonical digest and comparison with census/LMFDB occur
-afterward. PARI computes a richer BNF state at both boundaries, so the
-Sage.js/PARI ratio is one-sided frontier evidence rather than an equal-output
-microbenchmark.
+afterward. The internal outputs are intentionally different. PARI computes a
+BNF state but `bnfinit(P,0)` may accept a class number and regulator while
+omitting a fundamental unit when its working precision is insufficient;
+Sage.js native success publishes and exactly checks unit coordinates in its
+receipt. The ratio therefore compares the same observable scalar request under
+the same requested conditional-GRH mode, but it is not an equal-certificate
+microbenchmark. Sage.js records its two precise GRH hypotheses in the receipt;
+PARI documents flag $0$ generically as GRH-conditional.
 
 The output preserves all raw shard roots and reports 11 absolute corpus totals,
 paired shard and diagnostic field ratios, median/geometric mean/tails/worst,

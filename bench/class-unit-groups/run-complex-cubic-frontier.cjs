@@ -34,6 +34,8 @@ const GP_CENSUS_MARKER = "SAGEJS_COMPLEX_CUBIC_GP_CENSUS|";
 const GP_TIMING_MARKER = "SAGEJS_COMPLEX_CUBIC_GP_TIMING|";
 const MINIMUM_ROOT_NS = 1_200_000_000n;
 const RETAINED_ROUNDS = 11;
+const DIRECT_CENSUS_FIELDS_PER_SHARD = 10;
+const DIRECT_CENSUS_PARTITION = "within-timing-shard-contiguous-ranks-v1";
 const THREAD_ENV = Object.freeze({
   OPENBLAS_NUM_THREADS: "1",
   OMP_NUM_THREADS: "1",
@@ -325,6 +327,19 @@ function systemOrder(round, systems = SYSTEMS) {
 function shardRecords(corpus) {
   const shards = Array.from({ length: 20 }, () => []);
   for (const record of corpus.records) shards[record.selection.shard].push(record);
+  return shards;
+}
+
+function directCensusShardRecords(corpus) {
+  const shards = [];
+  for (const records of shardRecords(corpus)) {
+    if (records.length % DIRECT_CENSUS_FIELDS_PER_SHARD !== 0) {
+      throw new Error("direct census partition requires complete fixed-size timing-stratum slices");
+    }
+    for (let start = 0; start < records.length; start += DIRECT_CENSUS_FIELDS_PER_SHARD) {
+      shards.push(records.slice(start, start + DIRECT_CENSUS_FIELDS_PER_SHARD));
+    }
+  }
   return shards;
 }
 
@@ -825,7 +840,7 @@ function interpretAdapterProcessResult(
       throw new Error(`${tool.system} adapter never emitted the ready marker`);
     }
   } catch (error) {
-    // A malformed direct census shard is a measured failed 50-field region, not
+    // A malformed direct census shard is a measured failed 10-field region, not
     // grounds for discarding evidence from every other independent shard.
     // External adapters authenticate one whole-corpus runtime closure, and timing
     // responses are retained evidence roots, so both continue to fail closed.
@@ -911,7 +926,7 @@ function censusBatchPlan(corpus, tool) {
   if (tool.status !== "available" || tool.adapter_kind === "json-protocol") {
     return [{ shard: null, corpus }];
   }
-  return shardRecords(corpus).map((records, shard) => ({
+  return directCensusShardRecords(corpus).map((records, shard) => ({
     shard,
     corpus: { ...corpus, records },
   }));
@@ -975,12 +990,16 @@ function validateCensusProcessTopology(census, corpus, tools) {
       new Set(execution.direct_cpus).size !== execution.direct_cpus.length ||
       execution.direct_cpus.some((cpu) => !Number.isSafeInteger(cpu) || cpu < 0) ||
       !Number.isSafeInteger(execution.external_cpu) || execution.external_cpu < 0 ||
+      execution.direct_partition !== DIRECT_CENSUS_PARTITION ||
+      execution.direct_fields_per_shard !== DIRECT_CENSUS_FIELDS_PER_SHARD ||
+      execution.direct_shard_count !== directCensusShardRecords(corpus).length ||
       execution.max_live_processes_per_cpu !== 1 ||
       execution.timing_authority !== "none-census-is-non-authoritative") {
     throw new Error("timing requires an authenticated census execution topology");
   }
+  const directShards = directCensusShardRecords(corpus);
   const expectedProcessCount = availableTools.reduce((count, tool) =>
-    count + (tool.adapter_kind === "json-protocol" ? 1 : 20), 0);
+    count + (tool.adapter_kind === "json-protocol" ? 1 : directShards.length), 0);
   if (processes.length !== expectedProcessCount || processes.some((process) =>
     !process || process.mode !== "census" ||
     !availableTools.some((tool) => tool.system === process.system))) {
@@ -988,7 +1007,6 @@ function validateCensusProcessTopology(census, corpus, tools) {
   }
 
   const runtimeClosures = new Map();
-  const shards = shardRecords(corpus);
   for (const tool of availableTools) {
     const matching = processes.filter((process) => process.system === tool.system);
     if (tool.adapter_kind === "json-protocol") {
@@ -1013,26 +1031,28 @@ function validateCensusProcessTopology(census, corpus, tools) {
       continue;
     }
 
-    if (matching.length !== 20) {
-      throw new Error(`timing requires exactly 20 ${tool.system} census shard processes`);
+    if (matching.length !== directShards.length) {
+      throw new Error(
+        `timing requires exactly ${directShards.length} ${tool.system} census shard processes`,
+      );
     }
     const byShard = new Map();
     for (const process of matching) {
       if (!Number.isSafeInteger(process.census_shard) || process.census_shard < 0 ||
-          process.census_shard >= 20 || byShard.has(process.census_shard) ||
+          process.census_shard >= directShards.length || byShard.has(process.census_shard) ||
           process.status !== "ok" || process.response_validation_error != null ||
           process.runtime_identity !== null || process.runtime_closure_sha256 !== null) {
         throw new Error(`${tool.system} census shard process topology is invalid`);
       }
       byShard.set(process.census_shard, process);
     }
-    for (let shard = 0; shard < 20; shard += 1) {
+    for (let shard = 0; shard < directShards.length; shard += 1) {
       const process = byShard.get(shard);
       const expectedCpu = execution.direct_cpus[shard % execution.direct_cpus.length];
       const expectedProgram = tool.system === "sagejs"
-        ? sha256(sageCensusSource(shards[shard]))
-        : sha256(pariCensusSource(shards[shard]));
-      if (process?.record_labels_sha256 !== recordLabelsDigest(shards[shard]) ||
+        ? sha256(sageCensusSource(directShards[shard]))
+        : sha256(pariCensusSource(directShards[shard]));
+      if (process?.record_labels_sha256 !== recordLabelsDigest(directShards[shard]) ||
           process.affinity_logical_cpus?.length !== 1 ||
           process.affinity_logical_cpus[0] !== expectedCpu ||
           process.generated_program_sha256 !== expectedProgram) {
@@ -1351,6 +1371,9 @@ async function runCensus(corpus, tools, source, options) {
       scheduler: "static-shard-modulo-cpu-list-v1",
       direct_cpus: options.censusCpus,
       external_cpu: options.cpu,
+      direct_partition: DIRECT_CENSUS_PARTITION,
+      direct_fields_per_shard: DIRECT_CENSUS_FIELDS_PER_SHARD,
+      direct_shard_count: directCensusShardRecords(corpus).length,
       max_live_processes_per_cpu: 1,
       timing_authority: "none-census-is-non-authoritative",
     },
@@ -1475,6 +1498,9 @@ async function main(argv = process.argv.slice(2)) {
       scheduler: "static-shard-modulo-cpu-list-v1",
       direct_cpus: options.censusCpus,
       external_cpu: options.cpu,
+      direct_partition: DIRECT_CENSUS_PARTITION,
+      direct_fields_per_shard: DIRECT_CENSUS_FIELDS_PER_SHARD,
+      direct_shard_count: directCensusShardRecords(corpus).length,
       max_live_processes_per_cpu: 1,
       timing_authority: "none-census-is-non-authoritative",
     },
@@ -1510,6 +1536,8 @@ if (require.main === module) {
 }
 
 module.exports = {
+  DIRECT_CENSUS_FIELDS_PER_SHARD,
+  DIRECT_CENSUS_PARTITION,
   MINIMUM_ROOT_NS,
   READY_MARKER,
   RESPONSE_MARKER,
@@ -1517,6 +1545,7 @@ module.exports = {
   THREAD_ENV,
   combineCensus,
   censusBatchPlan,
+  directCensusShardRecords,
   corpusIdentitiesMatch,
   corpusIdentity,
   interpretAdapterProcessResult,
