@@ -419,7 +419,11 @@ test("public browser evaluator authenticates numeric and symbolic Wasm routes", 
       "specialist:symbolic-numerical-integral-wasm",
       "specialist:symbolic-find-root-wasm",
     ]) {
-      assert.equal(routes.get(capabilityId), "receipt-backed-wasm-artifact");
+      assert.equal(
+        routes.get(capabilityId),
+        "receipt-backed-wasm-artifact",
+        `missing public browser Wasm route ${capabilityId}`,
+      );
     }
     socket.close();
   } finally {
