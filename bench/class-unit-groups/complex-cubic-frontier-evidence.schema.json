@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/benchmarks/complex-cubic-frontier-evidence.schema.json",
+  "title": "Complex cubic census and retained timing evidence",
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "nullableDigest": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+    "nanoseconds": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+    "system": { "enum": ["sagejs", "pari", "magma", "hecke"] },
+    "boundary": { "enum": ["scalar-prepared", "fresh-complete"] },
+    "terminalStatus": { "enum": ["ok", "timeout", "error", "unavailable"] },
+    "timingEvent": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "round", "order_position", "system", "boundary", "shard", "proof",
+        "status", "iterations", "record_count", "root_nanoseconds", "root_source",
+        "phase_sum_used", "digest_inside_root", "answer_digest", "per_field_nanoseconds"
+      ],
+      "properties": {
+        "round": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "order_position": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "system": { "$ref": "#/$defs/system" },
+        "boundary": { "$ref": "#/$defs/boundary" },
+        "shard": { "type": "integer", "minimum": 0, "maximum": 19 },
+        "proof": { "const": "conditional-grh" },
+        "status": { "$ref": "#/$defs/terminalStatus" },
+        "iterations": { "type": "integer", "minimum": 0 },
+        "record_count": { "type": "integer", "minimum": 0, "maximum": 50 },
+        "root_nanoseconds": { "oneOf": [{ "$ref": "#/$defs/nanoseconds" }, { "type": "null" }] },
+        "root_source": { "const": "one-contiguous-monotonic-timer" },
+        "phase_sum_used": { "const": false },
+        "digest_inside_root": { "const": false },
+        "answer_digest": { "$ref": "#/$defs/nullableDigest" },
+        "per_field_nanoseconds": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]+$" } }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema", "schema_version", "recorded_at", "corpus", "source", "host", "proof_contract", "systems", "records", "summary"],
+      "properties": {
+        "schema": { "const": "sagejs.benchmark/complex-cubic-frontier-census-v1" },
+        "schema_version": { "const": 1 },
+        "recorded_at": { "type": "string", "format": "date-time" },
+        "corpus": { "type": "object" },
+        "source": { "type": "object" },
+        "host": { "type": "object" },
+        "proof_contract": { "type": "object" },
+        "systems": { "type": "array", "items": { "$ref": "#/$defs/system" } },
+        "records": { "type": "array", "minItems": 1000, "maxItems": 1000, "items": { "type": "object" } },
+        "summary": { "type": "object" }
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema", "schema_version", "recorded_at", "corpus", "census", "source", "host", "protocol", "tools", "processes", "events", "metrics"],
+      "properties": {
+        "schema": { "const": "sagejs.benchmark/complex-cubic-frontier-timing-v1" },
+        "schema_version": { "const": 1 },
+        "recorded_at": { "type": "string", "format": "date-time" },
+        "corpus": { "type": "object" },
+        "census": { "type": "object" },
+        "source": { "type": "object" },
+        "host": { "type": "object" },
+        "protocol": { "type": "object" },
+        "tools": { "type": "array", "items": { "type": "object" } },
+        "processes": { "type": "array", "items": { "type": "object" } },
+        "events": { "type": "array", "items": { "$ref": "#/$defs/timingEvent" } },
+        "metrics": { "type": "object" }
+      }
+    }
+  ]
+}

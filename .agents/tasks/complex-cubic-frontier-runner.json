@@ -1,0 +1,99 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "complex-cubic-frontier-runner",
+  "title": "Complex cubic frontier benchmark contract",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a deterministic two-pass 1000-field complex-cubic class-group census and calibrated frontier timing runner with machine schemas and fake-process regression tests",
+  "base_commit": "f568bbd5fcbd8ac0bfd233dbaeadeb8e9e9eafa4",
+  "claims": [
+    "bench/class-unit-groups/generate-complex-cubic-frontier-corpus.cjs",
+    "bench/class-unit-groups/run-complex-cubic-frontier.cjs",
+    "bench/class-unit-groups/complex-cubic-frontier-schema.cjs",
+    "bench/class-unit-groups/COMPLEX-CUBIC-FRONTIER.md",
+    "bench/class-unit-groups/complex-cubic-frontier-corpus.schema.json",
+    "bench/class-unit-groups/complex-cubic-frontier-evidence.schema.json",
+    "test/complex-cubic-frontier-runner.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "PARI/GP bnfinit flag 0 under GRH semantics",
+      "LMFDB exact complex cubic field records with used_grh=false",
+      "independent Sage.js exact receipt replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/complex-cubic-frontier-runner.cjs",
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/complex-cubic-frontier-runner.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.182,
+      "started_at": "2026-09-02T09:08:29.354Z",
+      "commit": "f568bbd5fcbd8ac0bfd233dbaeadeb8e9e9eafa4",
+      "workspace_fingerprint": "e9d79c491f8ee709352ed6d57e38e0aa0bdc5e0f6b3118110b14f431c4706e8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 880.681,
+      "started_at": "2026-09-02T09:08:33.907Z",
+      "commit": "f568bbd5fcbd8ac0bfd233dbaeadeb8e9e9eafa4",
+      "workspace_fingerprint": "e9d79c491f8ee709352ed6d57e38e0aa0bdc5e0f6b3118110b14f431c4706e8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.473,
+      "started_at": "2026-09-02T09:23:20.179Z",
+      "commit": "f568bbd5fcbd8ac0bfd233dbaeadeb8e9e9eafa4",
+      "workspace_fingerprint": "e9d79c491f8ee709352ed6d57e38e0aa0bdc5e0f6b3118110b14f431c4706e8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.52,
+      "started_at": "2026-09-02T09:24:26.988Z",
+      "commit": "f568bbd5fcbd8ac0bfd233dbaeadeb8e9e9eafa4",
+      "workspace_fingerprint": "e9d79c491f8ee709352ed6d57e38e0aa0bdc5e0f6b3118110b14f431c4706e8b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an offline deterministic 1,000-field LMFDB corpus generator, a strict two-pass Sage.js/PARI frontier runner, optional Magma/Hecke JSON adapters, canonical machine schemas, protocol documentation, and fake-process/clock regression coverage. The runner fixes direct GP conditional semantics at bnfinit(...,0), keeps scalar-prepared and fresh-complete roots contiguous, performs authenticated Sage.js receipt replay outside timing, and reports raw/paired/stratified frontier evidence.",
+    "risks": [
+      "The lane has no installed GP executable, so direct-GP source generation is contract-tested but awaits an integration smoke run with PARI.",
+      "Magma and Hecke are supported through a strict adapter protocol but no site-specific adapter executable is bundled.",
+      "pnpm architecture:check reaches optimizer opportunity verification and then fails on the pre-existing stale manifest: expected input 398a192b5a42bd18e6cfd87bb10eaf1fdb507ef947168fcd5140487e361d5900, stored b26bb877b000c27bdf1c4676d35fc730eb7639eaf502f1cad175545baa8f9ddb. The integration lane is regenerating that artifact."
+    ],
+    "next_steps": [
+      "Integrate the regenerated optimizer-opportunity artifact and rerun pnpm architecture:check, then promote this task from active to review.",
+      "On opt, provide GP and the frozen offline LMFDB snapshot, generate the audited corpus, and run census before retained timing.",
+      "If secondary measurements are desired, implement the documented Magma and Hecke adapter protocol and include both systems in census and timing."
+    ]
+  }
+}
