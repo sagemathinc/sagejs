@@ -4,7 +4,7 @@
   "id": "p1-root-backend-performance",
   "title": "P1 Root Backend Performance",
   "lane": "numerical-qualification",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Close P1 scalar-root backend and performance acceptance with a representative backend-neutral correctness/benchmark corpus, evidence-backed acceleration decision, honest budgets, and exact-candidate release qualification evidence",
   "base_commit": "f920b45567bafccab63b3c8bfc34dfa1facd1edc",
@@ -34,14 +34,75 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/numerics/evidence/root-performance.cjs",
+    "node scripts/numerical-computing/qualify.cjs corpus validate bench/numerical-computing/qualification/root-performance.corpus.json",
     "node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs",
     "node scripts/numerical-computing/qualification/validate-campaign.cjs",
     "pnpm architecture:check"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/numerics/evidence/root-performance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.761,
+      "started_at": "2026-09-02T21:18:48.092Z",
+      "commit": "ec0f41497954141bf6f0a91dfeb13a70edf2b577",
+      "workspace_fingerprint": "34f49c1e30799ee53a27d9764e1acd8ae5ca22e9f5dcebf5787a2f173c47d574",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/numerical-computing/qualify.cjs corpus validate bench/numerical-computing/qualification/root-performance.corpus.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.051,
+      "started_at": "2026-09-02T21:18:49.512Z",
+      "commit": "ec0f41497954141bf6f0a91dfeb13a70edf2b577",
+      "workspace_fingerprint": "34f49c1e30799ee53a27d9764e1acd8ae5ca22e9f5dcebf5787a2f173c47d574",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.8,
+      "started_at": "2026-09-02T21:18:50.218Z",
+      "commit": "ec0f41497954141bf6f0a91dfeb13a70edf2b577",
+      "workspace_fingerprint": "34f49c1e30799ee53a27d9764e1acd8ae5ca22e9f5dcebf5787a2f173c47d574",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/numerical-computing/qualification/validate-campaign.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.062,
+      "started_at": "2026-09-02T21:18:58.655Z",
+      "commit": "ec0f41497954141bf6f0a91dfeb13a70edf2b577",
+      "workspace_fingerprint": "34f49c1e30799ee53a27d9764e1acd8ae5ca22e9f5dcebf5787a2f173c47d574",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.338,
+      "started_at": "2026-09-02T21:18:59.361Z",
+      "commit": "ec0f41497954141bf6f0a91dfeb13a70edf2b577",
+      "workspace_fingerprint": "34f49c1e30799ee53a27d9764e1acd8ae5ca22e9f5dcebf5787a2f173c47d574",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added a 12-case, five-sample backend-neutral scalar-root corpus spanning bisection, Brent, secant, and Newton, traced and untraced runs, and cheap/moderate/expensive callbacks. A dedicated adapter observes exact built Node, fresh npm, relocated SEA, real browser, and worker subjects; it independently checks roots, residuals, trace policy, method, and the ordinary-python backend. The exact-candidate collector binds the clean commit, runtime, source closure, corpus, adapter, capabilities, and artifacts. The backend survey retains ordinary CPython-parseable source: scalar iterations are sequential callback drivers, and no surveyed external/native option justifies callback crossings, payload, duplicated trace/resource semantics, and four-platform qualification. An authenticated Linux x64 Node 26.7.0 receipt for ec0f41497 passed all cases; median untraced solve time was 34.45-97.42 ms, traced Brent/secant/Newton was 102.93-120.01 ms, and traced bisection was 1.61-1.68 s.",
+    "risks": [
+      "The authenticated receipt currently covers Linux x64 Node only. The hook supports npm, SEA, Chromium, Firefox, WebKit, and the Chromium worker, but those exact artifact/runtime rows must be collected on the persistent release hosts before a cross-runtime or four-platform performance claim.",
+      "Traced bisection intentionally emits many teaching events and is substantially slower than the other methods. Its provisional 5000 ms/solve release ceiling is honest but loose; receipts expose the actual distribution and should be used to decide whether trace representation merits a separate optimization project.",
+      "The callback tiers are deterministic scalar functions, not vectorized batches, arbitrary ill-conditioned problems, cross-language callback bridges, cold startup, or UI latency. The documentation explicitly limits the conclusion to this envelope."
+    ],
+    "next_steps": [
+      "Collect and retain exact-candidate npm, SEA, Chromium, Firefox, WebKit, and Chromium-worker receipts using the common preparers and this collector during final numerical release qualification.",
+      "Run the same exact corpus on Linux ARM64, macOS ARM64, and Windows x64 before tightening provisional release ceilings or claiming platform-wide performance.",
+      "Revisit source-transparent acceleration only if a new representative corpus proves solver bookkeeping dominates callback work; do not add a separate C/Wasm scalar-root loop without end-to-end evidence and trace/resource parity."
+    ]
   }
 }
