@@ -288,6 +288,14 @@ test("MATLAB fzero and Wolfram FindRoot lower to the canonical engine", async ()
       language: "matlab",
     });
     assert.ok(Math.abs(Number(matlab.repr) - Math.SQRT2) < 1e-11);
+    const matlabTranscendental = await session.evaluate(
+      "fzero(@(x) cos(x) - x, [0 1])",
+      { language: "matlab" },
+    );
+    assert.ok(
+      Math.abs(Number(matlabTranscendental.repr) - 0.7390851332151607) <
+        1e-11,
+    );
     const wolfram = await session.evaluate(
       "FindRoot[Cos[x] == x, {x, 0, 1}]",
       { language: "wolfram" },
