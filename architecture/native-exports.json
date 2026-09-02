@@ -5143,6 +5143,7 @@
       "consumers": [
         "packages/flint-wasm/dynamic-compiler.mjs",
         "packages/flint-wasm/node-cli.mjs",
+        "packages/flint-wasm/numerical/scripts/build-all.cjs",
         "packages/flint-wasm/numerical/scripts/build.cjs",
         "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs",
         "packages/flint-wasm/scripts/build.cjs",
