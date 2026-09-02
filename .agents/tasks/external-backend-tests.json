@@ -1,0 +1,41 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "external-backend-tests",
+  "title": "External backend observability regression tests",
+  "lane": "numerical-optimization",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add focused portable and qualified-backend regression coverage for authentic cminpack and NLopt progress semantics and independently recomputed curve-fit diagnostics",
+  "base_commit": "fa793b4a422638e82fe678e8be2412fda6082fd8",
+  "claims": [
+    "test/numerics/optimization/external-backend-observability.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Dynamic least-squares/minimization semantics and independent linear-algebra checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
