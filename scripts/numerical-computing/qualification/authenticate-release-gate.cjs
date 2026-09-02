@@ -85,7 +85,8 @@ const EXPECTED_SUPPLEMENTAL = new Map([
 
 function usage() {
   return `Usage: node scripts/numerical-computing/qualification/authenticate-release-gate.cjs \\
-  --candidate COMMIT --gate FILE --rebuilt-gate FILE [--public-npm-root FILE]
+  --candidate COMMIT --gate FILE --rebuilt-gate FILE \\
+  [--browser-distribution PATH] [--public-npm-root FILE]
 
 Authenticates the immutable final numerical release-gate document before a
 publisher or deployment consumes it. The rebuilt gate must have been assembled
@@ -102,7 +103,10 @@ function parseArguments(argv) {
   for (let index = 0; index < argv.length; index += 2) {
     const name = argv[index];
     const value = argv[index + 1];
-    if (!["--candidate", "--gate", "--rebuilt-gate", "--public-npm-root"].includes(name)) {
+    if (![
+      "--browser-distribution", "--candidate", "--gate", "--public-npm-root",
+      "--rebuilt-gate",
+    ].includes(name)) {
       throw new Error(`unknown argument ${name}`);
     }
     if (!value || value.startsWith("--")) throw new Error(`${name} requires a value`);
@@ -366,6 +370,16 @@ function authenticatePublicNpmRoot(value, filename) {
   return digest;
 }
 
+function authenticateBrowserDistribution(value, filename) {
+  const digest = contentDigestPath(root, filename, "browser distribution");
+  if (digest !== value.artifact_coherence.browser_distribution_content_sha256) {
+    throw new Error(
+      "browser distribution differs from the numerically qualified browser distribution",
+    );
+  }
+  return digest;
+}
+
 function authenticateRebuiltGate(value, rebuilt, candidate) {
   authenticate(value, candidate);
   authenticate(rebuilt, candidate);
@@ -400,6 +414,9 @@ function main(argv = process.argv.slice(2)) {
   if (!gate.bytes.equals(rebuilt.bytes)) {
     throw new Error("published numerical release gate bytes differ from the raw-evidence rebuild");
   }
+  if (options.browser_distribution !== undefined) {
+    authenticateBrowserDistribution(gate.value, options.browser_distribution);
+  }
   if (options.public_npm_root !== undefined) {
     authenticatePublicNpmRoot(gate.value, options.public_npm_root);
   }
@@ -417,6 +434,7 @@ if (require.main === module) {
 }
 
 module.exports = {
-  authenticate, authenticatePublicNpmRoot, authenticateRebuiltGate,
+  authenticate, authenticateBrowserDistribution, authenticatePublicNpmRoot,
+  authenticateRebuiltGate,
   main, parseArguments, usage,
 };
