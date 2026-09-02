@@ -28,6 +28,7 @@ The production browser package and Linux SEA must already exist.
 }
 
 function parseArguments(argv) {
+  if (argv[0] === "--") argv = argv.slice(1);
   if (argv.includes("--help") || argv.includes("-h")) return { help: true };
   const accepted = new Set(["--candidate", "--output", "--artifact"]);
   const result = { artifact: ARTIFACT };

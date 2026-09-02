@@ -96,6 +96,7 @@ than a recomputable compact content ID alone, the publication trust boundary.
 }
 
 function parseArguments(argv) {
+  if (argv[0] === "--") argv = argv.slice(1);
   if (argv.includes("--help") || argv.includes("-h")) return { help: true };
   const result = {};
   for (let index = 0; index < argv.length; index += 2) {
