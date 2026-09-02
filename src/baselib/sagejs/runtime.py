@@ -650,6 +650,23 @@ def documentation_registry():
 
 
 _numerical_backends = {}
+_optional_flint_state = {"attempted": False, "backend": None}
+
+
+def optional_flint_backend():
+    """Return the FLINT backend when installed, otherwise `None`.
+
+    Portable callers use this capability boundary before choosing an exact
+    dynamic fallback.  `flint_backend()` remains the strict accessor for code
+    whose contract requires FLINT.
+    """
+    if not _optional_flint_state["attempted"]:
+        _optional_flint_state["attempted"] = True
+        try:
+            _optional_flint_state["backend"] = ρσ_flint_backend()
+        except Exception:
+            _optional_flint_state["backend"] = None
+    return _optional_flint_state["backend"]
 
 
 def numerical_backend(name="cminpack"):

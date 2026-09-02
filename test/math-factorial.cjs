@@ -58,3 +58,34 @@ test("math.factorial matches CPython", async () => {
     await session.close();
   }
 });
+
+test("factorial retains an exact dynamic fallback without FLINT", async () => {
+  const session = await createSage({ mode: "python" });
+  try {
+    await session.evaluate([
+      "import sagejs.runtime as runtime",
+      "runtime.optional_flint_backend = lambda: None",
+      "from math import factorial as math_factorial",
+    ].join("\n"));
+    assert.equal((await session.evaluate("math_factorial(25)")).repr,
+      "15511210043330985984000000");
+    assert.equal(
+      (await session.evaluate("len(str(math_factorial(10000)))")).repr,
+      "35660",
+    );
+  } finally {
+    await session.close();
+  }
+
+  const sageSession = await createSage();
+  try {
+    await sageSession.evaluate([
+      "import sagejs.runtime as runtime",
+      "runtime.optional_flint_backend = lambda: None",
+    ].join("\n"));
+    assert.equal((await sageSession.evaluate("factorial(25)")).repr,
+      "15511210043330985984000000");
+  } finally {
+    await sageSession.close();
+  }
+});
