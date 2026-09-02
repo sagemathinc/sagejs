@@ -33,7 +33,9 @@
   "validation": [
     "pnpm build",
     "pnpm test:compiler",
-    "pnpm architecture:check"
+    "pnpm architecture:check",
+    "node --test test/complex-cubic-frontier-holdout-gate.cjs test/complex-cubic-frontier-runner.cjs test/complex-cubic-frontier-competitor-adapters.cjs",
+    "pnpm docs:check"
   ],
   "runs": [],
   "handoff": {
