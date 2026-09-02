@@ -3,6 +3,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { createHash } = require("node:crypto");
 
 const { pretty, readJson, repositoryPath, sha256 } = require("../common.cjs");
 const { validateCorpus } = require("../contracts.cjs");
@@ -94,6 +95,45 @@ function stageBrowserArtifact(root, artifactPath, outputPath) {
 
 function validateBrowserArtifactSources(root, artifactPath) {
   const source = repositoryPath(root, artifactPath, "browser artifact source");
+  const standardLibraryPath = path.join(source.absolute, "dist", "stdlib.json");
+  if (!fs.existsSync(standardLibraryPath) || !fs.statSync(standardLibraryPath).isFile()) {
+    throw new Error(
+      `browser artifact is missing its standard-library bundle: ${standardLibraryPath}`,
+    );
+  }
+  let standardLibrary;
+  try {
+    standardLibrary = readJson(standardLibraryPath);
+  } catch (error) {
+    throw new Error(`invalid browser standard-library bundle: ${standardLibraryPath}`, {
+      cause: error,
+    });
+  }
+  if (
+    standardLibrary === null ||
+    typeof standardLibrary !== "object" ||
+    Array.isArray(standardLibrary) ||
+    standardLibrary.modules === null ||
+    typeof standardLibrary.modules !== "object" ||
+    Array.isArray(standardLibrary.modules)
+  ) {
+    throw new Error(`invalid browser standard-library bundle: ${standardLibraryPath}`);
+  }
+  for (const [name, module] of Object.entries(standardLibrary.modules)) {
+    if (
+      module === null ||
+      typeof module !== "object" ||
+      typeof module.source !== "string" ||
+      module.cache === null ||
+      typeof module.cache !== "object"
+    ) {
+      throw new Error(`invalid browser standard-library module ${name}`);
+    }
+    const expected = createHash("sha1").update(module.source).digest("hex");
+    if (module.cache.signature !== expected) {
+      throw new Error(`stale precompiled standard-library source ${name}`);
+    }
+  }
   const bundlePath = path.join(source.absolute, "dist", "lazy-modules.json");
   if (!fs.existsSync(bundlePath) || !fs.statSync(bundlePath).isFile()) {
     throw new Error(`browser artifact is missing its lazy-module bundle: ${bundlePath}`);

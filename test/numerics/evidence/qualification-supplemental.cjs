@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -1290,6 +1291,28 @@ test("browser qualification rejects stale compiled Python sources", (context) =>
     path.join(temporary, "artifact", "dist", "lazy-modules.json"),
     JSON.stringify(bundle),
   );
+  const standardLibrarySource = "value = 3\n";
+  const standardLibrary = {
+    modules: {
+      example: {
+        package: false,
+        source: standardLibrarySource,
+        cache: {
+          signature: createHash("sha1")
+            .update(standardLibrarySource)
+            .digest("hex"),
+        },
+      },
+    },
+    preload: [],
+  };
+  const standardLibraryPath = path.join(
+    temporary,
+    "artifact",
+    "dist",
+    "stdlib.json",
+  );
+  fs.writeFileSync(standardLibraryPath, JSON.stringify(standardLibrary));
   assert.equal(
     JSON.stringify(validateBrowserArtifactSources(temporary, "artifact")),
     JSON.stringify(bundle),
@@ -1298,6 +1321,13 @@ test("browser qualification rejects stale compiled Python sources", (context) =>
   assert.throws(
     () => validateBrowserArtifactSources(temporary, "artifact"),
     /stale lazy-module source demo/,
+  );
+  fs.writeFileSync(path.join(temporary, source), "value = 1\n");
+  standardLibrary.modules.example.source = "value = 4\n";
+  fs.writeFileSync(standardLibraryPath, JSON.stringify(standardLibrary));
+  assert.throws(
+    () => validateBrowserArtifactSources(temporary, "artifact"),
+    /stale precompiled standard-library source example/,
   );
 });
 

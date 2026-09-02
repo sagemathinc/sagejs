@@ -946,16 +946,19 @@ for (const filename of pythonSources(standardLibrarySourceDirectory)) {
     `${name.replaceAll(".", "-")}.json`,
   );
   if (!fs.existsSync(cacheFilename)) continue;
+  const source = fs.readFileSync(filename, "utf8");
+  const cache = JSON.parse(fs.readFileSync(cacheFilename, "utf8"));
+  const sourceSignature = createHash("sha1").update(source).digest("hex");
+  if (cache.signature !== sourceSignature) {
+    throw new Error(
+      `compiled browser module ${name} is stale (run \`pnpm build\` first)`,
+    );
+  }
   standardLibraryReceiptInputs.push(filename, cacheFilename);
   standardLibraryModules[name] = {
     package: path.basename(filename) === "__init__.py",
-    source: fs.readFileSync(filename, "utf8"),
-    cache: JSON.parse(
-      fs.readFileSync(
-        cacheFilename,
-        "utf8",
-      ),
-    ),
+    source,
+    cache,
   };
 }
 fs.writeFileSync(
