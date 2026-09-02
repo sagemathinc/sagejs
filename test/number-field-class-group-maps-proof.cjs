@@ -521,11 +521,11 @@ assert class_group_from_engine_result(PublicEngineResult()) is C
 assert C.gen().ideal() == generator_ideals[0]
 assert C.gen().order() == C.invariants()[0] and (C.gen()**C.gen().order()).is_one()
 assert C(C.gen().ideal()) == C.gen()
-arbitrary = generator_ideals[0] ** (C.gen().order() + 1) * O.ideal(2) ** 3
+arbitrary = generator_ideals[0] ** (C.gen().order() + 1) * O.ideal(5) ** 3
 assert C(arbitrary) == C.gen()
 assert C.discrete_log(arbitrary).principal_witness.verify(O)
 assert not C.is_principal(arbitrary, proof=False)
-principal = generator_ideals[0] ** (2 * C.gen().order()) * O.ideal(2) ** 3
+principal = generator_ideals[0] ** (2 * C.gen().order()) * O.ideal(5) ** 3
 answer = C.principality(principal)
 assert answer and answer.generator.verify_principal_ideal(principal)
 try:
@@ -567,6 +567,15 @@ corrupted = copy.deepcopy(payload)
 corrupted["conditional_evidence"]["content_sha256"] = "0" * 64
 assert not C.verify_proof_payload(corrupted)
 
+# Equality between two attacker-controlled copies is not a theorem contract.
+# Even when both assumption fields and the nested digest are changed
+# coherently, replay must reject an unrelated GRH statement.
+corrupted = copy.deepcopy(payload)
+corrupted["assumption"] = "GRH for an unrelated L-function"
+corrupted["conditional_evidence"]["assumption"] = corrupted["assumption"]
+corrupted["conditional_evidence"] = seal(corrupted["conditional_evidence"])
+assert not C.verify_proof_payload(corrupted)
+
 for path, mutate in (
     (("theorem",), lambda value: "forged-" + value),
     (("relation_count",), lambda _value: True),
@@ -586,10 +595,11 @@ for path, mutate in (
     corrupted["conditional_evidence"] = seal(corrupted["conditional_evidence"])
     assert not C.verify_proof_payload(corrupted), path
 
-corrupted = copy.deepcopy(payload)
-_ignored = corrupted["conditional_evidence"]["relations"].reverse()
-corrupted["conditional_evidence"] = seal(corrupted["conditional_evidence"])
-assert not C.verify_proof_payload(corrupted)
+if len(payload["conditional_evidence"]["relations"]) > 1:
+    corrupted = copy.deepcopy(payload)
+    _ignored = corrupted["conditional_evidence"]["relations"].reverse()
+    corrupted["conditional_evidence"] = seal(corrupted["conditional_evidence"])
+    assert not C.verify_proof_payload(corrupted)
 
 corrupted = copy.deepcopy(payload)
 _omitted = corrupted["conditional_evidence"]["factor_base"].pop()
@@ -653,10 +663,10 @@ from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-K = NumberField(x**2 + x + 11, "q")
+K = NumberField(x**2 - 6, "q")
 O = K.maximal_order()
-generator = K(2)
-I = O.ideal(2)
+generator = K.gen() + 2
+I = O.ideal(generator)
 witness = FactoredNumberFieldElement.from_element(K, generator)
 
 def seal(payload):
@@ -706,7 +716,7 @@ fingerprint = {
 }
 raw_record = {
     "index": 0,
-    "norm": 4,
+    "norm": 2,
     "coordinates": [],
     "ideal": ideal_payload,
     "witness": witness.to_dict(),
@@ -737,7 +747,7 @@ partition1 = seal({
 PROGRESS = seal({
     "schema": "sagejs.number-fields.minkowski-proof-progress.v1",
     "theorem": "Minkowski ideal-class theorem",
-    "bound": [4, 1],
+    "bound": [2, 1],
     "prime_fingerprints": [fingerprint],
     "dependency_hashes": {
         "relations": "1" * 64,
@@ -783,7 +793,7 @@ class EngineResult:
     diagnostics = {"factor_base_bound": 0, "relations": 0, "unconditional_prime_records": (raw_record,)}
     stages = (
         Stage("analytic-index", "complete", {"rigorous": True, "lower_index": 1, "upper_index": 1}),
-        Stage("unconditional-proof", "complete", {"theorem": "Minkowski", "bound": 4, "prime_ideals": 1}),
+        Stage("unconditional-proof", "complete", {"theorem": "Minkowski", "bound": 2, "prime_ideals": 1}),
         Stage("proof", "complete", {"proof_status": EXACT_UNCONDITIONAL, "minkowski_primes": 1, "exact_relations": 0}),
     )
     def __init__(self, progress=PROGRESS):
@@ -805,14 +815,14 @@ assert answer and answer.generator.evaluate() == generator and answer.verify(O)
 assert C.is_principal(I, proof=True)
 payload = C.proof_payload()
 assert payload["proof_status"] == EXACT_UNCONDITIONAL
-assert payload["bound"] == [4, 1] and len(payload["prime_records"]) == 1
+assert payload["bound"] == [2, 1] and len(payload["prime_records"]) == 1
 assert payload["proof_progress"]["partition_count"] == 2
 assert payload["saturation"]["index_bound"] == 6
 assert C.verify_proof_payload(payload)
 for path, value in (
     (("theorem",), "forged Minkowski theorem"),
     (("discriminant",), 2),
-    (("bound", 0), 2),
+    (("bound", 0), 3),
     (("field_order_fingerprint", "discriminant"), 2),
     (("saturation", "complete"), False),
     (("saturation", "evidence", "attempts", 1, "root_coordinates"), [[[9, 1]]]),
@@ -824,7 +834,7 @@ for path, value in (
     (("prime_records", 0, "coordinates", 0), True),
     (("proof_progress", "partition_count"), True),
     (("proof_progress", "completed_items"), True),
-    (("bound", 0), 4.0),
+    (("bound", 0), 2.0),
     (("prime_records", 0, "coordinates", 0), 0.0),
     (("proof_progress", "partition_count"), 2.0),
 ):
@@ -877,7 +887,7 @@ print("engine-unconditional-proof-ok")
   assert.equal(output, "engine-unconditional-proof-ok");
 });
 
-test("public unconditional groups replay prime schemas and direct Minkowski evidence", () => {
+test("public groups distinguish analytic GRH completion from Minkowski generation", () => {
   const output = run(String.raw`
 import copy
 
@@ -913,25 +923,52 @@ bad_ideal["prime_records"][0]["principal_witness"]["ideal"]["schema"] = (
 )
 assert not C6.verify_proof_payload(bad_ideal)
 
-for proof in (False, True):
-    K3 = NumberField(x**3 + 4*x - 1, "b")
-    C3 = K3.class_group(proof=proof)
-    assert C3.order() == 2 and C3.proof_status == "exact-unconditional"
-    payload3 = C3.proof_payload()
-    assert C3.verify_proof_payload(payload3)
-    assert payload3["proof_progress"]["complete"] is True
-    assert payload3["proof_progress"]["completed_items"] == len(
-        payload3["prime_records"]
-    )
-    assert all(
-        record["ideal"]["schema"] == "sagejs.number-fields.prime-ideal.v1"
-        for record in payload3["prime_records"]
-    )
-    corrupted = copy.deepcopy(payload3)
-    corrupted["prime_records"][0]["ideal"]["schema"] = "unknown-schema"
-    assert not C3.verify_proof_payload(corrupted)
+K3 = NumberField(x**3 + 4*x - 1, "b")
+conditional_result = class_unit_context(K3, proof=False)
+assert conditional_result.proof_status == "exact-relations-conditional-grh"
+assert conditional_result.context.proof_state.assumptions == (
+    "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
+)
+C3_conditional = K3.class_group(proof=False)
+assert C3_conditional.order() == 2
+assert C3_conditional.proof_status == "exact-relations-conditional-grh"
+conditional_payload = C3_conditional.proof_payload()
+assert "Minkowski" in conditional_payload["theorem"]
+assert conditional_payload["assumption"] == (
+    "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2"
+)
+assert conditional_payload["conditional_evidence"]["factor_base_plan"][
+    "bound"
+][
+    "assumptions"
+] == []
+assert C3_conditional.verify_proof_payload(conditional_payload)
+corrupted_conditional = copy.deepcopy(conditional_payload)
+corrupted_conditional["conditional_evidence"]["factor_base_plan"][
+    "bound"
+][
+    "assumptions"
+] = ["forged GRH assumption"]
+assert not C3_conditional.verify_proof_payload(corrupted_conditional)
 
-result3 = class_unit_context(K3, proof=True)
+C3 = K3.class_group(proof=True)
+assert C3.order() == 2 and C3.proof_status == "exact-unconditional"
+payload3 = C3.proof_payload()
+assert C3.verify_proof_payload(payload3)
+assert payload3["proof_progress"]["complete"] is True
+assert payload3["proof_progress"]["completed_items"] == len(
+    payload3["prime_records"]
+)
+assert all(
+    record["ideal"]["schema"] == "sagejs.number-fields.prime-ideal.v1"
+    for record in payload3["prime_records"]
+)
+corrupted = copy.deepcopy(payload3)
+corrupted["prime_records"][0]["ideal"]["schema"] = "unknown-schema"
+assert not C3.verify_proof_payload(corrupted)
+
+K3_unbounded = NumberField(x**3 + 4*x - 1, "unbounded")
+result3 = class_unit_context(K3_unbounded, proof=True)
 factor_stage = next(stage for stage in result3.stages if stage.name == "factor-base")
 factor_stage.details["bound"] = 100_001
 result3.diagnostics["factor_base_bound"] = 100_001
@@ -941,7 +978,7 @@ try:
 except ArithmeticError:
     pass
 
-print("public-unconditional-replay-ok")
+print("public-proof-regimes-replay-ok")
 `);
-  assert.equal(output, "public-unconditional-replay-ok");
+  assert.equal(output, "public-proof-regimes-replay-ok");
 });

@@ -343,8 +343,10 @@ test("verified Sage singleton checkpoints publish atomically and resume exactly"
     field_discriminant: record.discriminant,
     equation_order_index: "3",
     proof_status: "exact-relations-conditional-grh",
-    assumptions: ["GRH for the relevant class characters"],
-    theorem: "test-theorem",
+    assumptions: [
+      "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
+    ],
+    theorem: "minkowski-generators-plus-belabas-friedman-index-one",
   };
   const receiptDigest = sha256(JSON.stringify(JSON.parse(canonicalJson(receipt))));
   const response = {
@@ -363,7 +365,7 @@ test("verified Sage singleton checkpoints publish atomically and resume exactly"
       native_receipt_authenticated: true,
       independent_exact_replay: true,
       independent_exact_replay_contract:
-        "ordinary-nonnative-complete-class-group-proof-false",
+        "ordinary-object-engine-bypassing-closed-cubic-program-proof-false",
       fallback_verified: null,
       receipt_digest: receiptDigest,
       receipt,
@@ -434,6 +436,27 @@ test("verified Sage singleton checkpoints publish atomically and resume exactly"
   delete wrongReplayContract.part_sha256;
   wrongReplayContract.part_sha256 = canonicalDigest(wrongReplayContract);
   fs.writeFileSync(filename, canonicalJson(wrongReplayContract));
+  await assert.rejects(() => runCensusBatchWithCheckpoint(
+    corpus, tool, source, options, batch, 0, invoke,
+  ), /invalid native proof branch/);
+  fs.writeFileSync(filename, originalPart);
+
+  const wrongProofContract = JSON.parse(originalPart);
+  wrongProofContract.response.payload.records[0].receipt.proof_status =
+    "exact-invented-conditional-grh";
+  wrongProofContract.response.payload.records[0].proof_status =
+    "exact-invented-conditional-grh";
+  wrongProofContract.response.payload.records[0].receipt_digest = sha256(
+    JSON.stringify(JSON.parse(canonicalJson(
+      wrongProofContract.response.payload.records[0].receipt,
+    ))),
+  );
+  wrongProofContract.process.response_sha256 = canonicalDigest(
+    wrongProofContract.response,
+  );
+  delete wrongProofContract.part_sha256;
+  wrongProofContract.part_sha256 = canonicalDigest(wrongProofContract);
+  fs.writeFileSync(filename, canonicalJson(wrongProofContract));
   await assert.rejects(() => runCensusBatchWithCheckpoint(
     corpus, tool, source, options, batch, 0, invoke,
   ), /invalid native proof branch/);
@@ -829,7 +852,10 @@ test("Sage sources classify and replay outside timing and use contiguous roots",
   assert.match(census, /class_number\(proof=False\)/);
   assert.match(census, /receipt\.matches\(field\)/);
   assert.match(census, /receipt\.verify_conditional_grh\(field\)/);
-  assert.match(census, /ordinary-nonnative-complete-class-group-proof-false/);
+  assert.match(
+    census,
+    /ordinary-object-engine-bypassing-closed-cubic-program-proof-false/,
+  );
   assert.match(census, /native-decline-fallback-pass/);
 
   const timing = sageTimingSource(corpus, ["scalar-prepared", "fresh-complete"], 0, 17n);

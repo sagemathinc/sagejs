@@ -12,6 +12,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from sagejs.number_fields.class_group_proof_contracts import (
+    BDF_CLASS_CHARACTER_GRH,
+    BELABAS_FRIEDMAN_ZETA_GRH,
+)
 from sagejs.number_fields.cubic_class_number_native import (
     _CUBIC_ANALYTIC_MAX_TERMS,
     _CUBIC_ANALYTIC_MAX_VALUES,
@@ -47,13 +51,6 @@ _resident_coefficients: tuple[Any, tuple[int, int, int, int], Any] | None = None
 _resident_native_module: Any | None = None
 _resident_call_active = False
 _CERTIFIED_CUBIC_RECEIPT_TOKEN = object()
-_BDF_CLASS_CHARACTER_GRH = (
-    "GRH: L(s, chi) is nonzero whenever Re(s) > 1/2 for every nontrivial "
-    "character chi of Cl(K)"
-)
-_BELABAS_FRIEDMAN_ZETA_GRH = (
-    "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2"
-)
 
 
 def _integral_monic_cubic_coefficients(field: Any) -> tuple[int, int, int, int] | None:
@@ -316,10 +313,10 @@ class CertifiedComplexCubicClassNumber:
         if self._values[35] == _CUBIC_PROOF_TRIVIAL_MINKOWSKI:
             return ()
         if self._values[35] == _CUBIC_PROOF_TRIVIAL_GRH:
-            return (_BDF_CLASS_CHARACTER_GRH,)
+            return (BDF_CLASS_CHARACTER_GRH,)
         if self._uses_bdf_generator_bound():
-            return (_BDF_CLASS_CHARACTER_GRH, _BELABAS_FRIEDMAN_ZETA_GRH)
-        return (_BELABAS_FRIEDMAN_ZETA_GRH,)
+            return (BDF_CLASS_CHARACTER_GRH, BELABAS_FRIEDMAN_ZETA_GRH)
+        return (BELABAS_FRIEDMAN_ZETA_GRH,)
 
     @property
     def theorem(self) -> str:
@@ -354,6 +351,37 @@ class CertifiedComplexCubicClassNumber:
         except (AttributeError, TypeError, ValueError, ArithmeticError):
             return False
 
+    def _verify_bounded_minkowski(self, selected: Any) -> bool:
+        """Replay only the unconditional bounded cubic object producer."""
+        order = selected.maximal_order()
+        if order.discriminant() != self.field_discriminant:
+            return False
+        basis = tuple(order.basis())
+        if len(basis) != 3:
+            return False
+        unit = (
+            self.unit_coordinates[0] * basis[0]
+            + self.unit_coordinates[1] * basis[1]
+            + self.unit_coordinates[2] * basis[2]
+        )
+        if abs(unit.norm()) != 1:
+            return False
+        ordinary = __import__(
+            "sagejs.number_fields.cubic_class_number",
+            fromlist=["cubic_class_number"],
+        )
+        replay = ordinary.bounded_cubic_minkowski_class_number(selected)
+        authenticated = ordinary.authenticated_cubic_class_number(replay, selected)
+        presentation = replay.presentation
+        return bool(
+            authenticated == self.class_number
+            and replay.complete
+            and replay.proof_status == "exact-unconditional"
+            and presentation is not None
+            and presentation.verify()
+            and tuple(presentation.invariants) == self.invariants
+        )
+
     def verify(self, field: Any | None = None) -> bool:
         """Replay this receipt through the ordinary exact cubic producer.
 
@@ -366,34 +394,7 @@ class CertifiedComplexCubicClassNumber:
         if not self.matches(selected):
             return False
         try:
-            order = selected.maximal_order()
-            if order.discriminant() != self.field_discriminant:
-                return False
-            basis = tuple(order.basis())
-            if len(basis) != 3:
-                return False
-            unit = (
-                self.unit_coordinates[0] * basis[0]
-                + self.unit_coordinates[1] * basis[1]
-                + self.unit_coordinates[2] * basis[2]
-            )
-            if abs(unit.norm()) != 1:
-                return False
-            ordinary = __import__(
-                "sagejs.number_fields.cubic_class_number",
-                fromlist=["cubic_class_number"],
-            )
-            replay = ordinary.bounded_cubic_minkowski_class_number(selected)
-            authenticated = ordinary.authenticated_cubic_class_number(replay, selected)
-            presentation = replay.presentation
-            if bool(
-                authenticated == self.class_number
-                and replay.complete
-                and replay.proof_status == "exact-unconditional"
-                and presentation is not None
-                and presentation.verify()
-                and tuple(presentation.invariants) == self.invariants
-            ):
+            if self._verify_bounded_minkowski(selected):
                 return True
             # The small class-only producer is intentionally bounded and can
             # decline even when the general exact engine succeeds.  That
@@ -438,6 +439,24 @@ class CertifiedComplexCubicClassNumber:
         selected = self.field if field is None else field
         if not self.matches(selected):
             return False
+        # Empty bases and trivial presentations have no analytic completion
+        # hypothesis. Replay those through the stronger ordinary Minkowski
+        # checker instead of asking the full class/unit engine to do unrelated
+        # unit and residue work.
+        if self.proof_status != "exact-relations-conditional-grh":
+            try:
+                return self._verify_bounded_minkowski(selected)
+            except (
+                AttributeError,
+                ImportError,
+                KeyError,
+                OverflowError,
+                RuntimeError,
+                TypeError,
+                ValueError,
+                ArithmeticError,
+            ):
+                return False
         try:
             order = selected.maximal_order()
             if order.discriminant() != self.field_discriminant:
@@ -456,11 +475,34 @@ class CertifiedComplexCubicClassNumber:
                 "sagejs.number_fields.class_unit_groups",
                 fromlist=["class_unit_groups"],
             )
-            computation = general.compute_class_unit_group(selected, proof=False)
+            algorithm = (
+                "minkowski"
+                if self.assumptions == (BELABAS_FRIEDMAN_ZETA_GRH,)
+                else "auto"
+            )
+            computation = general.compute_class_unit_group(
+                selected,
+                proof=False,
+                algorithm=algorithm,
+            )
+            proof_state = getattr(computation.context, "proof_state", None)
+            replay_assumptions = tuple(getattr(proof_state, "assumptions", ()))
+            assumptions_covered = set(replay_assumptions).issubset(
+                set(self.assumptions)
+            )
             return bool(
                 computation.complete
                 and computation.proof_status
                 in ("exact-relations-conditional-grh", "exact-unconditional")
+                and proof_state is not None
+                and getattr(proof_state, "label", None) == computation.proof_status
+                and (
+                    computation.proof_status == "exact-unconditional"
+                    and replay_assumptions == ()
+                    or computation.proof_status == "exact-relations-conditional-grh"
+                    and bool(replay_assumptions)
+                    and assumptions_covered
+                )
                 and computation.class_number() == self.class_number
                 and tuple(computation.class_group().invariants()) == self.invariants
             )

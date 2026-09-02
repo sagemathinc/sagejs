@@ -43,11 +43,15 @@ quintic as well.
 explicit spelling of the same policy. A complete result has proof status
 `exact-unconditional`.
 
-`proof=False` permits the factor-base completeness theorem to assume GRH. A
-complete result then has status `exact-relations-conditional-grh`. The ideals,
-relations, Smith normal form, units, witnesses, and group operations are still
-exact; only the theorem that the searched factor base is sufficient is
-conditional. This is not a floating-point or heuristic group.
+`proof=False` permits two explicitly named GRH hypotheses. The
+Belabas--Diaz y Diaz--Friedman generator bound assumes nonvanishing to the
+right of the critical line for nontrivial class-group characters. Separately,
+the Belabas--Friedman omitted-tail bound used to prove the combined class/unit
+index is one assumes the corresponding nonvanishing for $\zeta_K$ and
+$\zeta_{\mathbb Q}$. A complete result then has status
+`exact-relations-conditional-grh` and records the hypotheses it actually used.
+The ideals, relations, Smith normal form, units, witnesses, and group
+operations are exact; this is not a floating-point or heuristic group.
 
 The two policies have distinct cache identities. Always retain
 `result.proof_status` with serialized results, and do not relabel a conditional

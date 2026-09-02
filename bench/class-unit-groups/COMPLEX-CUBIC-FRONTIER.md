@@ -96,9 +96,13 @@ The direct settings are exact and intentionally asymmetric:
 
 For Sage.js, a native result must match the live field, publish an authenticated
 receipt, and pass `receipt.verify_conditional_grh(field)`. That replay occurs in
-the untimed census, bypasses the closed native program, and uses the ordinary
-exact class/unit implementation with `proof=False`. It therefore independently
-recomputes the complete class group under the same explicit GRH contract; the
+the untimed census and bypasses the closed cubic program. Relation-lattice
+receipts use the ordinary object class/unit engine with `proof=False`; that
+engine may itself use other source-transparent native accelerators. Empty-base
+and trivial-presentation receipts instead use the stronger ordinary bounded
+Minkowski replay, avoiding unrelated analytic unit work. The audit therefore
+independently recomputes the complete class group under no stronger hypotheses
+than the receipt publishes; the
 stronger `receipt.verify(field)` remains available for a separately scheduled
 unconditional audit. A native decline instead continues through the exact
 dynamic class-group implementation and verifies its presentation. Records bind

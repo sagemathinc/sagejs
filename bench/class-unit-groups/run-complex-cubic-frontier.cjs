@@ -36,7 +36,43 @@ const MINIMUM_ROOT_NS = 1_200_000_000n;
 const RETAINED_ROUNDS = 11;
 const CENSUS_PARTS_SCHEMA = "sagejs.benchmark/complex-cubic-frontier-census-part-v1";
 const SAGE_CONDITIONAL_REPLAY_CONTRACT =
-  "ordinary-nonnative-complete-class-group-proof-false";
+  "ordinary-object-engine-bypassing-closed-cubic-program-proof-false";
+const BDF_CLASS_CHARACTER_GRH =
+  "GRH: L(s, chi) is nonzero whenever Re(s) > 1/2 for every nontrivial character chi of Cl(K)";
+const BELABAS_FRIEDMAN_ZETA_GRH =
+  "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2";
+const NATIVE_RECEIPT_PROOF_CONTRACTS = Object.freeze({
+  "exact-empty-generator-base-unconditional": Object.freeze([Object.freeze({
+    assumptions: Object.freeze([]),
+    theorem: "minkowski-generators-plus-empty-factor-base",
+  })]),
+  "exact-trivial-presentation-unconditional": Object.freeze([Object.freeze({
+    assumptions: Object.freeze([]),
+    theorem: "minkowski-generators-plus-trivial-relation-presentation",
+  })]),
+  "exact-empty-generator-base-conditional-grh": Object.freeze([Object.freeze({
+    assumptions: Object.freeze([BDF_CLASS_CHARACTER_GRH]),
+    theorem: "belabas-diaz-y-diaz-friedman-generators-plus-empty-factor-base",
+  })]),
+  "exact-trivial-presentation-conditional-grh": Object.freeze([Object.freeze({
+    assumptions: Object.freeze([BDF_CLASS_CHARACTER_GRH]),
+    theorem: "belabas-diaz-y-diaz-friedman-generators-plus-trivial-relation-presentation",
+  })]),
+  "exact-relations-conditional-grh": Object.freeze([
+    Object.freeze({
+      assumptions: Object.freeze([BELABAS_FRIEDMAN_ZETA_GRH]),
+      theorem: "minkowski-generators-plus-belabas-friedman-index-one",
+    }),
+    Object.freeze({
+      assumptions: Object.freeze([
+        BDF_CLASS_CHARACTER_GRH,
+        BELABAS_FRIEDMAN_ZETA_GRH,
+      ]),
+      theorem:
+        "belabas-diaz-y-diaz-friedman-generators-plus-belabas-friedman-index-one",
+    }),
+  ]),
+});
 const DIRECT_CENSUS_PARTITIONS = Object.freeze({
   sagejs: Object.freeze({
     partition: "singleton-global-rank-v1",
@@ -861,6 +897,15 @@ function hasExactKeys(value, keys) {
     Object.keys(value).sort().join("\n") === [...keys].sort().join("\n"));
 }
 
+function nativeReceiptProofContractIsValid(receipt) {
+  const contracts = NATIVE_RECEIPT_PROOF_CONTRACTS[receipt?.proof_status];
+  if (!contracts || !Array.isArray(receipt.assumptions)) return false;
+  return contracts.some((contract) =>
+    receipt.theorem === contract.theorem &&
+    JSON.stringify(receipt.assumptions) === JSON.stringify(contract.assumptions)
+  );
+}
+
 function validateCheckpointObservation(observed, expected) {
   if (!observed || observed.label !== expected.label ||
       !["native-pass", "native-decline-fallback-pass"].includes(observed.status) ||
@@ -890,12 +935,7 @@ function validateCheckpointObservation(observed, expected) {
         receipt.class_number !== expected.class_number ||
         JSON.stringify(receipt.invariants) !== JSON.stringify(expected.class_group_invariants) ||
         receipt.proof_status !== observed.proof_status ||
-        !Array.isArray(receipt.assumptions) ||
-        receipt.assumptions.some((assumption) => typeof assumption !== "string" || !assumption) ||
-        (receipt.proof_status.includes("conditional-grh")
-          ? receipt.assumptions.length === 0
-          : receipt.assumptions.length !== 0) ||
-        typeof receipt.theorem !== "string" || receipt.theorem.length === 0) {
+        !nativeReceiptProofContractIsValid(receipt)) {
       throw new Error(`census checkpoint for ${expected.label} has an invalid native proof branch`);
     }
   } else if (typeof observed.proof_status !== "string" ||

@@ -403,10 +403,16 @@ versioned LMFDB corpus and PARI/Magma/Hecke oracles, but those comparisons are
 regressions, not premises in the proof above.
 
 `receipt.verify_conditional_grh()` is the matching conditional audit. It also
-bypasses the native program, reconstructs the maximal order, checks the exact
-unit norm, and recomputes the complete class group through the ordinary object
-implementation, but requests `proof=False` and accepts only an exact
-GRH-conditional result or the stronger unconditional result. The 1,000-field
+bypasses the closed cubic program, reconstructs the maximal order, and checks
+the exact unit norm. Relation-lattice receipts recompute the complete class
+group through the ordinary object engine with `proof=False` and accept only an
+exact GRH-conditional result whose recorded hypotheses are no stronger than
+the receipt's, or the stronger unconditional result. Empty-base and
+trivial-presentation receipts use the ordinary bounded Minkowski checker,
+which is stronger and avoids introducing an analytic hypothesis absent from
+the receipt. The ordinary engine may use independently checked
+source-transparent native accelerators; it does not call the closed cubic
+implementation. The 1,000-field
 frontier census records this method and its contract explicitly. This avoids
 silently turning a conditional performance experiment into 1,000 unrelated
 unconditional class-group searches; `verify()` remains the stronger audit when

@@ -24,6 +24,9 @@ from typing import Any, Callable, Iterable, Sequence, cast
 
 import sagejs as sage
 import sagejs.runtime as runtime
+from sagejs.number_fields.class_group_proof_contracts import (
+    analytic_class_unit_assumptions,
+)
 
 EXACT_UNCONDITIONAL = "exact-unconditional"
 EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
@@ -5405,7 +5408,13 @@ class ClassUnitGroupEngine:
                     if tuple(plan.assumptions) or "Minkowski" not in str(plan.theorem):
                         return False
                 elif proof_status == EXACT_RELATIONS_CONDITIONAL_GRH:
-                    if not tuple(plan.assumptions):
+                    # The overall class/unit result can be conditional because
+                    # its Belabas--Friedman `hR` completion uses GRH even when
+                    # the smaller generator plan is the unconditional
+                    # Minkowski plan.  Keep those two authorities distinct.
+                    if not tuple(plan.assumptions) and "Minkowski" not in str(
+                        plan.theorem
+                    ):
                         return False
                 else:
                     return False
@@ -6146,6 +6155,9 @@ class ClassUnitGroupEngine:
         initial_proof_status: str,
     ) -> ClassUnitComputation:
         """Finish the proof objects and maps after one rigorous `hR` stage."""
+        conditional_assumptions = analytic_class_unit_assumptions(
+            str(plan.theorem), tuple(plan.assumptions)
+        )
         (
             collector,
             presentation,
@@ -6268,7 +6280,7 @@ class ClassUnitGroupEngine:
                 else None
             ),
             assumptions=(
-                tuple(plan.assumptions)
+                conditional_assumptions
                 if proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
                 else ()
             ),
@@ -6422,7 +6434,17 @@ class ClassUnitGroupEngine:
                 torsion, regulator, index = self._analytic_index(
                     presentation, units, unit_rank
                 )
-            initial_proof_status = _factor_base_proof_status(plan)
+            factor_base_proof_status = _factor_base_proof_status(plan)
+            # Every nontrivial computation reaching `_analytic_index` consumes
+            # the Belabas--Friedman zeta-residue bound.  Thus a `proof=False`
+            # result is conditional even when its factor base was generated
+            # unconditionally by Minkowski.  Specialized empty/trivial paths
+            # return before this point and retain their unconditional labels.
+            initial_proof_status = (
+                factor_base_proof_status
+                if self.proof
+                else EXACT_RELATIONS_CONDITIONAL_GRH
+            )
             if (
                 class_number_only
                 and index.index_one

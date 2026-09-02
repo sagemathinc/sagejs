@@ -667,7 +667,9 @@ bdf_started = time.perf_counter()
 bdf = bdf_bound(order, max_bound=10000)
 bdf_seconds = time.perf_counter() - bdf_started
 assert bdf.bound == benchmark["bdf_bound"] == case["bounds"]["bdf"]
-assert bdf.assumptions == ("GRH for the Dedekind zeta function",)
+assert bdf.assumptions == (
+    "GRH: L(s, chi) is nonzero whenever Re(s) > 1/2 for every nontrivial character chi of Cl(K)",
+)
 assert bdf.details["strict_inequality"] is True
 assert bdf.interval.lower.numerator > 0
 assert bdf_seconds < benchmark["maximum_anchored_bdf_seconds"]
@@ -1156,7 +1158,9 @@ margin = bound.interval.to_dyadic_dict(64)
 assert int(order.discriminant()) == -1083
 assert bound.bound == 9
 assert bound.precision_bits == 64
-assert bound.assumptions == ("GRH for the Dedekind zeta function",)
+assert bound.assumptions == (
+    "GRH: L(s, chi) is nonzero whenever Re(s) > 1/2 for every nontrivial character chi of Cl(K)",
+)
 assert margin == {
     "scale_bits": 64,
     "lower_numerator": 12923988274345410010,

@@ -20,6 +20,7 @@ import math
 from typing import Any, Iterator
 
 import sagejs.runtime as runtime
+from sagejs.number_fields.class_group_proof_contracts import BDF_CLASS_CHARACTER_GRH
 
 _embeddings = __import__("sagejs.number_fields.embeddings", fromlist=["embeddings"])
 _prime_ideals = __import__(
@@ -1213,7 +1214,7 @@ def bdf_bound(
     detail_bits = max(32, min(256, bits))
     result = FactorBaseBound(
         "Belabas--Diaz y Diaz--Friedman",
-        ("GRH for the Dedekind zeta function",),
+        (BDF_CLASS_CHARACTER_GRH,),
         upper,
         degree,
         (r1, r2),
