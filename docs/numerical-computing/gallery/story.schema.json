@@ -132,6 +132,7 @@
         "static_description": {"type": "string", "minLength": 1},
         "result": {"$ref": "../result.schema.json"},
         "verification": {"$ref": "../result.schema.json"},
+        "reference_comparison": {"$ref": "#/$defs/reference_comparison"},
         "evidence_expectations": {
           "type": "object",
           "additionalProperties": false,
@@ -146,6 +147,74 @@
               "uniqueItems": true
             }
           }
+        }
+      }
+    },
+    "method_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "value",
+        "residual",
+        "iterations",
+        "evaluations",
+        "validation_passed",
+        "truth_level"
+      ],
+      "properties": {
+        "method": {"type": "string", "minLength": 1},
+        "value": {"type": "number"},
+        "residual": {"type": "number", "minimum": 0},
+        "iterations": {"type": "integer", "minimum": 0},
+        "evaluations": {"type": "integer", "minimum": 0},
+        "validation_passed": {"const": true},
+        "truth_level": {"const": "validated_approximate"}
+      }
+    },
+    "reference_comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "claim",
+        "primary",
+        "reference",
+        "agreement",
+        "execution",
+        "reference_result",
+        "evidence"
+      ],
+      "properties": {
+        "schema": {"const": "sagejs.numerics.reference-comparison/v1"},
+        "claim": {"type": "string", "minLength": 1},
+        "primary": {"$ref": "#/$defs/method_summary"},
+        "reference": {"$ref": "#/$defs/method_summary"},
+        "agreement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["absolute_value_difference", "threshold", "passed"],
+          "properties": {
+            "absolute_value_difference": {"type": "number", "minimum": 0},
+            "threshold": {"type": "number", "exclusiveMinimum": 0},
+            "passed": {"const": true}
+          }
+        },
+        "execution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["independent_runs", "callback_reevaluated_for_presentation"],
+          "properties": {
+            "independent_runs": {"const": true},
+            "callback_reevaluated_for_presentation": {"const": false}
+          }
+        },
+        "reference_result": {"$ref": "../result.schema.json"},
+        "evidence": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^/"}
         }
       }
     },

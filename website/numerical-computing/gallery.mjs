@@ -85,6 +85,91 @@ function traceMeasurement(result) {
   };
 }
 
+function resultSummary(result, callbackCalls) {
+  return {
+    method: result.method,
+    value: result.value,
+    residual: result.validation.residual,
+    iterations: result.iterations,
+    evaluations: result.evaluations,
+    callback_calls: callbackCalls,
+    validation_passed: result.validation.passed,
+    truth_level: result.validation.truth_level,
+  };
+}
+
+function assertReferenceComparison(caseRecord, storyId) {
+  const comparison = caseRecord.reference_comparison;
+  if (!comparison) return null;
+  const label = `${storyId}/${caseRecord.id}`;
+  if (comparison.schema !== "sagejs.numerics.reference-comparison/v1") {
+    throw new Error(`${label}: unknown reference comparison schema`);
+  }
+  if (
+    !comparison.execution.independent_runs ||
+    !comparison.execution.distinct_callback_instances ||
+    comparison.execution.callback_reevaluated_for_presentation
+  ) {
+    throw new Error(`${label}: reference comparison is not an independent retained run`);
+  }
+  const reference = comparison.reference_result;
+  const primarySummary = resultSummary(
+    caseRecord.result,
+    comparison.primary.callback_calls,
+  );
+  const referenceSummary = resultSummary(
+    reference,
+    comparison.reference.callback_calls,
+  );
+  if (stableJson(comparison.primary) !== stableJson(primarySummary)) {
+    throw new Error(`${label}: primary comparison summary drifted from its result`);
+  }
+  if (stableJson(comparison.reference) !== stableJson(referenceSummary)) {
+    throw new Error(`${label}: reference comparison summary drifted from its result`);
+  }
+  if (comparison.primary.method === comparison.reference.method) {
+    throw new Error(`${label}: reference comparison reused the primary method`);
+  }
+  for (const summary of [comparison.primary, comparison.reference]) {
+    if (!summary.validation_passed || summary.truth_level !== "validated_approximate") {
+      throw new Error(`${label}: reference comparison contains an unvalidated result`);
+    }
+    if (
+      !Number.isInteger(summary.callback_calls) ||
+      summary.callback_calls < summary.evaluations
+    ) {
+      throw new Error(`${label}: invalid retained callback count`);
+    }
+  }
+  const primaryProblem = caseRecord.result.reproducibility.problem;
+  const referenceProblem = reference.reproducibility.problem;
+  for (const field of [
+    "domain",
+    "operation",
+    "function",
+    "bounds",
+    "numeric_type",
+    "tolerances",
+  ]) {
+    if (stableJson(primaryProblem[field]) !== stableJson(referenceProblem[field])) {
+      throw new Error(`${label}: compared runs do not describe the same ${field}`);
+    }
+  }
+  const difference = Math.abs(caseRecord.result.value - reference.value);
+  if (difference !== comparison.agreement.absolute_value_difference) {
+    throw new Error(`${label}: candidate difference is not derived from results`);
+  }
+  if (
+    !Number.isFinite(comparison.agreement.threshold) ||
+    comparison.agreement.threshold <= 0 ||
+    comparison.agreement.passed !== (difference <= comparison.agreement.threshold)
+  ) {
+    throw new Error(`${label}: invalid reference-method agreement claim`);
+  }
+  for (const pointer of comparison.evidence) getPointer(caseRecord, pointer);
+  return traceMeasurement(reference);
+}
+
 function presentationMeasurements(presentation) {
   if (!presentation) {
     return { frames: 0, scalars: 0, semantic: 0, plotly: 0 };
@@ -234,6 +319,21 @@ export function assertGalleryBudgets(bundle, serialized = undefined) {
       if (trace.payload > bundle.budgets.max_trace_bytes_per_result) {
         throw new Error(`${story.id}/${caseRecord.id}: max_trace_bytes_per_result`);
       }
+      const referenceTrace = assertReferenceComparison(caseRecord, story.id);
+      if (referenceTrace) {
+        observed.traceEvents = Math.max(observed.traceEvents, referenceTrace.events);
+        observed.traceBytes = Math.max(observed.traceBytes, referenceTrace.payload);
+        if (referenceTrace.events > bundle.budgets.max_trace_events_per_result) {
+          throw new Error(
+            `${story.id}/${caseRecord.id}: reference max_trace_events_per_result`,
+          );
+        }
+        if (referenceTrace.payload > bundle.budgets.max_trace_bytes_per_result) {
+          throw new Error(
+            `${story.id}/${caseRecord.id}: reference max_trace_bytes_per_result`,
+          );
+        }
+      }
       const presentation = caseRecord.presentation;
       if (!presentation) continue;
       if (!presentation.computed_evidence_only) {
@@ -335,6 +435,31 @@ function resultEvidenceRows(caseRecord) {
   ).join("");
 }
 
+function referenceComparisonHtml(caseRecord) {
+  const comparison = caseRecord.reference_comparison;
+  if (!comparison) return "";
+  const rows = [comparison.primary, comparison.reference].map((record, index) =>
+    `<tr><th scope="row">${escapeHtml(index === 0 ? "Primary" : "Reference")}</th>` +
+    `<td>${escapeHtml(record.method)}</td>` +
+    `<td>${escapeHtml(record.value)}</td>` +
+    `<td>${escapeHtml(record.residual)}</td>` +
+    `<td>${escapeHtml(record.iterations)}</td>` +
+    `<td>${escapeHtml(record.evaluations)}</td>` +
+    `<td>${escapeHtml(record.callback_calls)}</td></tr>`
+  ).join("");
+  const agreement = comparison.agreement;
+  return `<section class="reference-comparison" data-reference-comparison>
+    <h4>Independent reference-method comparison</h4>
+    <p>${escapeHtml(comparison.claim)}</p>
+    <div class="table-scroll"><table>
+      <caption>Two retained executions of the same numerical problem</caption>
+      <thead><tr><th scope="col">Role</th><th scope="col">Method</th><th scope="col">Candidate</th><th scope="col">Residual</th><th scope="col">Iterations</th><th scope="col">Evaluations</th><th scope="col">Callback calls</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <p><strong>Agreement:</strong> absolute candidate difference ${escapeHtml(agreement.absolute_value_difference)}; threshold ${escapeHtml(agreement.threshold)}; passed=${escapeHtml(agreement.passed)}.</p>
+  </section>`;
+}
+
 function animationControlsHtml(presentation) {
   const animation = presentation?.plot_animation;
   if (!animation) return "";
@@ -389,7 +514,7 @@ function caseHtml(story, caseRecord) {
     <p class="case-kind">${escapeHtml(caseRecord.kind)}</p>
     <h3>${escapeHtml(caseRecord.title)}</h3>
     <p class="question">${escapeHtml(caseRecord.question)}</p>
-    <p>${escapeHtml(caseRecord.static_description)}</p>
+    <p>${escapeHtml(caseRecord.static_description)}</p>${referenceComparisonHtml(caseRecord)}
     ${plot}
     <div class="table-scroll"><table>
       <caption>Structured numerical evidence for ${escapeHtml(caseRecord.title)}</caption>

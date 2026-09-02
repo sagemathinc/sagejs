@@ -81,6 +81,15 @@ metadata, and focused tests freeze callback counts across presentation.
 - A solver termination and independent validation remain distinct. In the
   discontinuity example Brent reports `converged`, while `success` is false
   because the independently checked residual is `1.0`.
+- The first root story also contains a
+  `sagejs.numerics.reference-comparison/v1` record. Brent and bisection execute
+  separately over distinct callback instances. The record retains the complete
+  bisection `NumericalResult`, derives both displayed method summaries from the
+  two result records, and checks their candidate difference against the larger
+  declared x-tolerance. The accessible page shows values, residuals,
+  iterations, evaluations, callback calls, and the agreement test; it does not
+  reconstruct a comparison from a picture or rerun either callback while
+  rendering.
 - Every animation retains its quantitative trace table. Playback never starts
   automatically. A reduced-motion preference disables timed Play and Speed
   while Step, Restart, and the Iteration slider remain usable with zero-duration
