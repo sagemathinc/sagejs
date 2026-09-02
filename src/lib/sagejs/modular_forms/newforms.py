@@ -466,10 +466,18 @@ class OldModularFormsSubspace(sage.Parent):
     ) -> list[Any]:
         if algorithm not in ["default", "modular_symbols"]:
             raise ValueError("oldspace q-expansions use exact degeneracy maps")
-        precision = self.precision() if prec is None else _sturm_precision(self, prec)
-        return _series_from_matrix(
-            _old_q_expansion_matrix(self._cusp_space, precision), variable
+        requested_precision = (
+            self.precision() if prec is None else _sturm_precision(self, prec)
         )
+        proof_precision = _sturm_precision(self)
+        construction_precision = max(requested_precision, proof_precision)
+        result = _series_from_matrix(
+            _old_q_expansion_matrix(self._cusp_space, construction_precision),
+            variable,
+        )
+        if requested_precision < construction_precision:
+            return [series.add_bigoh(requested_precision) for series in result]
+        return result
 
     def q_expansion_basis_certificate(
         self, prec: Any = None

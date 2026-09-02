@@ -1394,7 +1394,20 @@ class ModularFormsSubspace(sage.Parent):
             variable = opts["var"]
         if "ρσ_py_var" in opts:
             variable = opts["ρσ_py_var"]
-        effective_precision = self.precision() if prec is None else prec
+        effective_precision = (
+            self.precision()
+            if prec is None
+            else _exact_nonnegative_integer(prec, "precision")
+        )
+        proof_precision = max(1, self.sturm_bound() + 1)
+        if effective_precision < proof_precision:
+            certified_basis = self.q_expansion_basis(
+                proof_precision,
+                algorithm,
+                variable,
+                **opts,
+            )
+            return [series.add_bigoh(effective_precision) for series in certified_basis]
         receipt = self.q_expansion_algorithm_receipt(algorithm, effective_precision)
         algorithm = receipt.selected_algorithm()
         if algorithm == "formulas":

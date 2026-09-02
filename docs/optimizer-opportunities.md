@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `4701b16d88e3567301436ace6426122905db47afd3104b4160b2766683dc8451` (579 files, 11921661 bytes).
-Analyzed source bundle: `sha256:4a825086594ca66e36559f4ac811164b81b02913a06df4363e55c90c65edb998`; compiler identity: `sha256:00c5d02bb732c810d3c08af6228e91c518636dfc439211ce8cd24b9fca7c1849`.
+Input identity: `f68c441420c4e0c086be63157faf23d93a94dfd1f5ce6c3d4add75107a41d25a` (579 files, 11922006 bytes).
+Analyzed source bundle: `sha256:16faeb2b8ed168d2dc9604ea3c54a35dfca4c67877ca6b4c8a16bf3f9f55ee12`; compiler identity: `sha256:854ffe880b8f3c5bdd5000294c1a2e9f7538455d66668a6c1c16a78c3dd48014`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -36,11 +36,11 @@ pnpm optimizer:opportunities:query -- sha256:<digest>
 | Library modules compiled | 483 / 483 |
 | Explicit control sources compiled | 13 / 13 |
 | Functions and methods compiled | 14016 |
-| Loop-bearing functions and methods | 4348 |
-| Loops in functions | 11974 |
+| Loop-bearing functions and methods | 4349 |
+| Loops in functions | 11975 |
 | Selected optimized loops | 52 |
 | Compiler-rejected loops | 3017 |
-| Unrecognized loops | 8905 |
+| Unrecognized loops | 8906 |
 | One-reason compiler near-misses | 253 |
 
 A rejected loop has a stable reason from a domain pass. An unrecognized loop was compiled
@@ -49,11 +49,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 78590
-- Collection-allocation sites: 9626
+- Potential object-result sites: 78592
+- Collection-allocation sites: 9627
 - Known coercion sites: 16586
 - Potential boundary-call sites: 82
-- Unresolved call sites: 40000
+- Unresolved call sites: 40001
 - Selected-target allocations: 3 known; 48 runtime-dependent
 - Selected-target representation conversions: 3 known; 50 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -122,10 +122,10 @@ convenience, not a performance ranking.
 
 | Stable reason | Loops | Remediation |
 | --- | ---: | --- |
-| `dashboard.no-current-pass-claimed` | 8905 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
-| `dashboard.dynamic-call-sites` | 8009 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
-| `dashboard.no-mathematical-domain-evidence` | 7551 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
-| `dashboard.comprehension-loop` | 4156 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
+| `dashboard.no-current-pass-claimed` | 8906 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
+| `dashboard.dynamic-call-sites` | 8010 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
+| `dashboard.no-mathematical-domain-evidence` | 7552 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
+| `dashboard.comprehension-loop` | 4157 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
 | `dashboard.indexed-access-sites` | 3108 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
 | `bounded-integer.dynamic-call` | 2403 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | `dashboard.control-flow-sites` | 2160 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
