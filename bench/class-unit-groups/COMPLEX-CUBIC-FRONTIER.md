@@ -163,6 +163,59 @@ counts within $1\times$, $3\times$, and $10\times$, a deterministic 95% shard
 bootstrap interval, and diagnostics stratified by corpus dimensions and
 Sage.js route. Missing tools remain explicit incomplete coverage.
 
+## Freeze before revealing the holdout
+
+The holdout is not an informal follow-up sample. After the survey census and
+retained timing pass are accepted, create the content-addressed predecessor
+freeze:
+
+```bash
+node bench/class-unit-groups/complex-cubic-frontier-holdout.cjs --freeze \
+  --corpus bench/optimization-engine/complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json \
+  --asset-dir /data/complex-cubic-frontier-v1 \
+  --census /data/complex-cubic-frontier-census.json \
+  --timing /data/complex-cubic-frontier-timing.json \
+  --output-dir /data/frontier-freezes
+```
+
+The command revalidates every survey census process, Sage.js proof branch,
+independent receipt replay, direct PARI result, LMFDB invariant, retained timing
+event, source tree, build receipt, and generated timing program. It recomputes
+the complete metrics and applies one fixed selector: the
+smallest-discriminant native decline, or, if none exists, the
+smallest-discriminant field whose 11 paired scalar-prepared samples have median
+Sage.js/PARI ratio at least $3$ and Sage.js is slower in at least 9 rounds. The
+freeze binds the physical and canonical hashes of both predecessor files, the
+selected field and survey coordinates, its complete stratum, Git commit/tree,
+build receipt, selection parameters, timestamp, and the still-unread holdout
+asset identity. Its filename is derived from the canonical freeze payload.
+
+Only then may the holdout census command open the second release asset:
+
+```bash
+node bench/class-unit-groups/complex-cubic-frontier-holdout.cjs --holdout-census \
+  --freeze-file /data/frontier-freezes/complex-cubic-frontier-freeze-sha256-DIGEST.json \
+  --corpus bench/optimization-engine/complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json \
+  --asset-dir /data/complex-cubic-frontier-v1 \
+  --census /data/complex-cubic-frontier-census.json \
+  --timing /data/complex-cubic-frontier-timing.json \
+  --sagejs /path/to/bin/sagejs --gp /path/to/gp --cpu 2 \
+  --output /data/complex-cubic-frontier-holdout-census.json
+```
+
+Before the first holdout-asset read, this command reauthenticates the freeze
+against the original census and timing bytes and independently reruns the
+selector. It then admits all and only selection ranks 51 through 70 of the
+frozen stratum—exactly 20 fields, with no result-dependent filtering,
+replacement, or adaptation. Sage.js runs in 20 isolated singleton processes;
+each native result must carry its authenticated conditional-GRH receipt and
+pass the same independent replay as the survey, while each decline must pass
+the exact fallback verifier. One direct `bnfinit(P,0)` PARI process supplies the
+second implementation. Both systems must agree with the stronger
+`used_grh=false` LMFDB class number and invariant factors before a complete
+holdout census is written. This pass is correctness evidence; retained timing,
+if desired later, needs a separately frozen protocol.
+
 ## Magma and Hecke adapter protocol
 
 Magma and Hecke are optional secondary comparators and require explicit
