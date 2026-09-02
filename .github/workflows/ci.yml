@@ -1224,6 +1224,13 @@ jobs:
         run: |
           node packages/wasm-toolchain/scripts/toolchain.cjs prepare
           pnpm build
+          # The authenticated handoff is the product under test, but the
+          # sanitizer collector also needs source-current build reports and
+          # expanded upstream sources.  Build that evidence once without the
+          # handoff environment, then reinstall the canonical product below.
+          env -u SAGEJS_NUMERICAL_PRODUCT_ROOT \
+            -u SAGEJS_NUMERICAL_RUNTIME_REQUIRED \
+            node packages/flint-wasm/numerical/scripts/build-all.cjs
           pnpm --dir packages/flint-wasm build
           node scripts/numerical-product.cjs install \
             --input "$SAGEJS_NUMERICAL_PRODUCT_ROOT"

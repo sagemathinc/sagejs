@@ -590,6 +590,28 @@ test("tag CI collects 12 platform and four browser rows before publication", () 
   );
 });
 
+test("clean browser qualification builds source evidence before restoring the product", () => {
+  const browserJob = ci.slice(
+    ci.indexOf("numerical-browser-qualification:"),
+    ci.indexOf("numerical-release-gate:"),
+  );
+  const sourceBuild = browserJob.indexOf(
+    "node packages/flint-wasm/numerical/scripts/build-all.cjs",
+  );
+  const productInstall = browserJob.indexOf(
+    "node scripts/numerical-product.cjs install",
+  );
+  assert.ok(sourceBuild >= 0 && sourceBuild < productInstall);
+  assert.match(
+    browserJob,
+    /env -u SAGEJS_NUMERICAL_PRODUCT_ROOT \\\n+\s+-u SAGEJS_NUMERICAL_RUNTIME_REQUIRED \\\n+\s+node packages\/flint-wasm\/numerical\/scripts\/build-all\.cjs/,
+  );
+  assert.match(
+    browserJob,
+    /node scripts\/numerical-product\.cjs install[\s\S]+node scripts\/numerical-product\.cjs validate-installed/,
+  );
+});
+
 test("one trusted workflow publishes and recovery reruns its authenticated job", () => {
   assert.match(ci, /Numerical release qualification gate|numerical-release-gate/);
   assert.match(ci, /id-token:\s*write/);
