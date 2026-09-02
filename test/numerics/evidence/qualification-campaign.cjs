@@ -215,6 +215,13 @@ test("runtime adapters are executable and cminpack evidence uses portable Sage.j
     assert.equal(typeof adapter.runCase, "function");
     assert.equal(typeof adapter.close, "function");
   }
+  assert.equal(
+    packageAdapter._testing.hasSourcePosition(
+      "MatlabSyntaxError: 1:1: eig numerical syntax is not supported",
+    ),
+    true,
+  );
+  assert.equal(packageAdapter._testing.hasSourcePosition("no source position"), false);
   for (const id of [
     "p3-cminpack-rosenbrock-lmdif",
     "p3-cminpack-rosenbrock-lmder",
