@@ -2343,6 +2343,69 @@ class Vector(sage.Element):
     def list(self) -> list[Any]:
         return list(self._exact_values())
 
+    def __call__(self, *args: Any, **kwargs: Any) -> Vector:
+        """Evaluate or substitute every coordinate of a symbolic vector."""
+        values = []
+        for entry in self:
+            if callable(entry):
+                values.append(entry(*args, **kwargs))
+            elif len(args) == 0 and len(runtime.object.keys(kwargs)) == 0:
+                values.append(entry)
+            else:
+                values.append(entry)
+        return vector(values)
+
+    def diff(self, *variables: Any) -> Vector:
+        """Differentiate each coordinate."""
+        values = []
+        for entry in self:
+            derivative = getattr(entry, "diff", None)
+            if callable(derivative):
+                values.append(derivative(*variables))
+            else:
+                values.append(0)
+        return vector(values)
+
+    derivative = diff
+
+    def norm(self, p: int = 2) -> Any:
+        """Return the symbolic or exact `p`-norm of this vector."""
+        p = int(p)
+        if p < 1:
+            raise ValueError("vector norm degree must be positive")
+        total = 0
+        for entry in self:
+            total += abs(entry) ** p
+        if p == 1:
+            return total
+        if p == 2:
+            square_root = runtime.reflect.get(runtime.global_object, "sqrt")
+            return runtime.reflect.apply(square_root, runtime.undefined, [total])
+        return total ** runtime.rational_class(1, p)
+
+    def numerical_approx(
+        self,
+        prec: Any = None,
+        digits: Any = None,
+    ) -> Vector:
+        """Numerically approximate every coordinate."""
+        approximate = runtime.reflect.get(
+            runtime.global_object,
+            "numerical_approx",
+        )
+        return vector(
+            [
+                runtime.reflect.apply(
+                    approximate,
+                    runtime.undefined,
+                    [entry, prec, digits],
+                )
+                for entry in self
+            ]
+        )
+
+    n = numerical_approx
+
     def __copy__(self) -> Vector:
         if self._native_value is runtime.undefined:
             return Vector(self._parent, list(self._entries))
@@ -2490,6 +2553,21 @@ class Vector(sage.Element):
     def __rmul__(self, other: object) -> Vector:
         return self * other
 
+    def __truediv__(self, other: object) -> Vector:
+        if runtime.is_exact_integer(other):
+            denominator = runtime.integer_bigint(other)
+            if denominator == 0:
+                raise ZeroDivisionError("vector division by zero")
+            reciprocal = runtime.rational_class(1, denominator)
+        elif isinstance(other, sage.Rational):
+            if other._numerator == 0:
+                raise ZeroDivisionError("vector division by zero")
+            reciprocal = runtime.rational_class(other._denominator, other._numerator)
+        else:
+            base = self._coordinate_ring()
+            reciprocal = base(1) / base(other)
+        return self * reciprocal
+
     def _sage_binop_(
         self,
         operator: str,
@@ -2504,6 +2582,8 @@ class Vector(sage.Element):
             if reflected:
                 return self.__rmul__(other)
             return self.__mul__(other)
+        if operator == "truediv" and not reflected:
+            return self.__truediv__(other)
         raise TypeError("operation " + operator + " is not defined for vectors")
 
     def dot_product(self, other: Vector) -> Any:
@@ -2609,6 +2689,14 @@ class VectorSubspaceParent(sage.Parent):
         return [self.gen(index) for index in range(self.dimension())]
 
     gens = basis
+
+    def coordinate_vector(self, value: Any) -> Vector:
+        """Return coordinates of `value` in this subspace's basis."""
+        ambient_value = self._ambient(value)
+        coordinates = self._basis_matrix.transpose().solve_right(ambient_value)
+        if self._basis_matrix.transpose() * coordinates != ambient_value:
+            raise ArithmeticError("vector is not in the subspace")
+        return coordinates
 
     def gen(self, index: int = 0) -> Vector:
         row = self._basis_matrix.row(index)
@@ -7009,6 +7097,27 @@ class Matrix(sage.Element):
             return self._approximate_eigenvectors(False)
         return self._exact_eigenvectors(False)
 
+    def eigenmatrix_right(self) -> Any:
+        """Return `(D, P)` with right eigenvectors as the columns of `P`."""
+        eigenvalues = []
+        columns = []
+        for value, basis, _multiplicity in self.eigenvectors_right():
+            for basis_vector in basis:
+                eigenvalues.append(value)
+                columns.append(basis_vector)
+        if len(columns) != self.nrows():
+            raise ValueError("matrix is not diagonalizable")
+        base = columns[0]._coordinate_ring() if len(columns) else self.base_ring()
+        for value in eigenvalues:
+            base = _common_base(base, runtime.coercion_model.parentOf(value))
+        entries = []
+        for row in range(self.nrows()):
+            for column in range(self.ncols()):
+                entries.append(columns[column][row])
+        change = matrix(base, self.nrows(), self.ncols(), entries)
+        diagonal = diagonal_matrix(base, eigenvalues)
+        return runtime.math_tuple([diagonal, change])
+
     def _eigenspaces(self, left: bool) -> list[Any]:
         if not _is_approximate_base(self.base_ring()):
             answer = []
@@ -9062,7 +9171,12 @@ class Matrix(sage.Element):
         lines = []
         for row, text_row in enumerate(text_rows):
             if row in self._row_subdivisions:
-                lines.append("[" + "-" * (len(lines[-1]) - 2) + "]")
+                previous = lines[-1][1:-1]
+                lines.append(
+                    "["
+                    + "".join("+" if value == "|" else "-" for value in previous)
+                    + "]"
+                )
             entries = []
             for col in range(self.ncols()):
                 entries.append(text_row[col].rjust(width))
@@ -9569,6 +9683,21 @@ def block_matrix(*args: Any, **options: Any) -> Matrix:
             column_cuts.append(total)
         answer.subdivide(row_cuts, column_cuts)
     return answer
+
+
+def block_diagonal_matrix(*sub_matrices: Any, **options: Any) -> Matrix:
+    """Construct a matrix whose diagonal blocks are `sub_matrices`."""
+    if len(sub_matrices) == 1 and isinstance(sub_matrices[0], (list, tuple)):
+        blocks = list(sub_matrices[0])
+    else:
+        blocks = list(sub_matrices)
+    count = len(blocks)
+    if count == 0:
+        return matrix(0, 0)
+    entries = [0 for _index in range(count * count)]
+    for index in range(count):
+        entries[index * count + index] = blocks[index]
+    return block_matrix(count, count, entries, **options)
 
 
 def det(value: Any) -> Any:
@@ -10426,7 +10555,7 @@ def random_matrix(
         raise TypeError(
             "random_matrix currently requires ZZ, QQ, GF, Zmod, or a real/complex field"
         )
-    if algorithm != "randomize":
+    if algorithm not in ("randomize", "unimodular"):
         raise NotImplementedError(
             "random_matrix algorithm '" + algorithm + "' is not implemented yet"
         )
@@ -10440,6 +10569,37 @@ def random_matrix(
     cols = rows if ncols is None else int(ncols)
     if rows < 0 or cols < 0:
         raise ValueError("matrix dimensions must be nonnegative")
+    if algorithm == "unimodular":
+        if rows != cols:
+            raise ValueError("a unimodular matrix must be square")
+        if base not in (sage.ZZ, sage.QQ):
+            raise TypeError("unimodular random matrices require ZZ or QQ")
+        if len(runtime.object.keys(kwds)):
+            raise TypeError("unimodular random matrices do not accept extra options")
+        entries = []
+        for row in range(rows):
+            entries.append([base(1 if row == column else 0) for column in range(cols)])
+        for _step in range(max(4, 4 * rows)):
+            if rows < 2:
+                if rows == 1 and _random_int(0, 2):
+                    entries[0][0] = -entries[0][0]
+                continue
+            first = _random_int(0, rows - 1)
+            second = _random_int(0, rows - 2)
+            if second >= first:
+                second += 1
+            operation = _random_int(0, 2)
+            if operation == 0:
+                entries[first], entries[second] = entries[second], entries[first]
+            elif operation == 1:
+                entries[first] = [-value for value in entries[first]]
+            else:
+                multiplier = -1 if _random_int(0, 2) == 0 else 1
+                entries[first] = [
+                    entries[first][column] + multiplier * entries[second][column]
+                    for column in range(cols)
+                ]
+        return matrix(base, entries)
     density_supplied = runtime.reflect.has(kwds, "density")
     raw_density = keyword("density", None)
     # Sage treats an explicit `density=None` exactly like an omitted density:

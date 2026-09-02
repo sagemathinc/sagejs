@@ -100,11 +100,120 @@ class HTMLFragmentFactory:
             )
         )
 
+    def table(
+        self,
+        rows: Any,
+        header_row: bool = False,
+        header_column: bool = False,
+    ) -> HtmlFragment:
+        """Return the rich HTML form of a Sage teaching table."""
+        return HtmlFragment(
+            Table(rows, header_row=header_row, header_column=header_column)._html_()
+        )
+
     def __repr__(self) -> str:
         return "Create HTML output (see html? for details)"
 
 
 html = HTMLFragmentFactory()
+
+
+def _escape_html(value: Any) -> str:
+    return (
+        str(value)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#39;")
+    )
+
+
+class Table:
+    """A compact Sage-compatible plain-text and rich HTML table."""
+
+    def __init__(
+        self,
+        rows: Any,
+        header_row: bool = False,
+        header_column: bool = False,
+    ) -> None:
+        self._rows = [list(row) for row in rows]
+        self._header_row = bool(header_row)
+        self._header_column = bool(header_column)
+        width = 0 if len(self._rows) == 0 else len(self._rows[0])
+        for row in self._rows:
+            if len(row) != width:
+                raise ValueError("table rows must all have the same length")
+
+    def __repr__(self) -> str:
+        if len(self._rows) == 0:
+            return ""
+        text = [[str(value) for value in row] for row in self._rows]
+        widths = []
+        for column in range(len(text[0])):
+            widths.append(max(len(row[column]) for row in text))
+
+        def render(row: list[str]) -> str:
+            return (
+                "  "
+                + "   ".join(
+                    row[column].ljust(widths[column]) for column in range(len(row))
+                ).rstrip()
+            )
+
+        output = [render(text[0])]
+        if self._header_row:
+            output.append("├" + "┼".join("─" * (width + 2) for width in widths) + "┤")
+        output.extend(render(row) for row in text[1:])
+        return "\n".join(output)
+
+    __str__ = __repr__
+
+    def _html_(self) -> str:
+        output = ['<div class="notruncate">', '<table class="table_form">', "<tbody>"]
+        latex_function = runtime.reflect.get(runtime.global_object, "latex")
+        for row_index, row in enumerate(self._rows):
+            output.append("<tr>")
+            for column_index, value in enumerate(row):
+                header = (self._header_row and row_index == 0) or (
+                    self._header_column and column_index == 0
+                )
+                tag = "th" if header else "td"
+                if header:
+                    contents = _escape_html(value)
+                else:
+                    rendered = runtime.reflect.apply(
+                        latex_function,
+                        runtime.undefined,
+                        [value],
+                    )
+                    contents = r"\(" + _escape_html(rendered) + r"\)"
+                output.append(
+                    '<{} style="text-align:left">{}</{}>'.format(
+                        tag,
+                        contents,
+                        tag,
+                    )
+                )
+            output.append("</tr>")
+        output.extend(["</tbody>", "</table>", "</div>"])
+        return "\n".join(output)
+
+    def _repr_mimebundle_(self) -> Any:
+        return {
+            "text/html": self._html_(),
+            "text/plain": repr(self),
+        }
+
+
+def table(
+    rows: Any,
+    header_row: bool = False,
+    header_column: bool = False,
+) -> Table:
+    """Construct a Sage-compatible table from an iterable of rows."""
+    return Table(rows, header_row=header_row, header_column=header_column)
 
 
 def pretty_print(*args: Any, **options: Any) -> None:

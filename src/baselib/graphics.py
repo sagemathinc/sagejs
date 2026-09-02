@@ -565,6 +565,17 @@ def _apply_axis_ticks(
             if len(formatter) != len(values):
                 raise ValueError("tick label list must have the same length as ticks")
             runtime.reflect.set(axis, "ticktext", [str(value) for value in formatter])
+        elif str(formatter) == "pi":
+            labels = []
+            for value in values:
+                ratio = value / runtime.math.PI
+                if abs(ratio) < 1e-14:
+                    labels.append("0")
+                elif abs(ratio - 1) < 1e-14:
+                    labels.append("π")
+                else:
+                    labels.append(str(ratio) + "π")
+            runtime.reflect.set(axis, "ticktext", labels)
         elif callable(formatter):
             runtime.reflect.set(
                 axis,
@@ -3467,10 +3478,33 @@ def arrow(
     return graphic
 
 
-def point(points: Any, **options: Any) -> Graphics:
-    """Return a graphics object containing one or more points."""
+def point(points: Any, **options: Any) -> Any:
+    """Return one or more points, dispatching three coordinates to `point3d`."""
     options = _copy_options(options)
-    normalized = _normalize_points(points)
+    values = list(points)
+    dimension = 0
+    if len(values) in (2, 3):
+        nested = isinstance(values[0], (list, tuple))
+        if not nested:
+            try:
+                nested = hasattr(values[0], "__len__") and not isinstance(
+                    values[0], str
+                )
+            except Exception:
+                nested = False
+        if not nested:
+            dimension = len(values)
+    if dimension == 0 and len(values):
+        try:
+            dimension = len(list(values[0]))
+        except Exception:
+            dimension = 0
+    if dimension == 3:
+        point3d_function = runtime.reflect.get(runtime.global_object, "point3d")
+        if runtime.jstype(point3d_function) != "function":
+            raise RuntimeError("the 3D plotting module is unavailable")
+        return point3d_function(values, **options)
+    normalized = _normalize_points(values)
     defaults = {
         "alpha": 1,
         "rgbcolor": [0, 0, 1],
@@ -5620,7 +5654,28 @@ def parametric_plot(
         points.append(
             (_finite_value(callables[0](value)), _finite_value(callables[1](value)))
         )
-    return line(points, **options)
+    fill = _option_pop(options, "fill", False)
+    fillcolor = _option_pop(options, "fillcolor", "automatic")
+    fillalpha = _option_pop(options, "fillalpha", 0.5)
+    edgecolor = _option_pop(options, "edgecolor", None)
+    answer = Graphics()
+    if fill not in (False, None):
+        if fillcolor == "automatic":
+            fillcolor = _option_get(
+                options,
+                "rgbcolor",
+                _option_get(options, "color", (0.5, 0.5, 0.5)),
+            )
+        answer = answer + polygon(
+            points,
+            rgbcolor=fillcolor,
+            alpha=fillalpha,
+            thickness=0,
+            fill=True,
+        )
+    if edgecolor is not None and not _option_has(options, "color"):
+        options["color"] = edgecolor
+    return answer + line(points, **options)
 
 
 def polar_plot(
@@ -5637,7 +5692,7 @@ def polar_plot(
     radial = plot(funcs, *range_args, **options)
     answer = Graphics()
     for primitive in radial:
-        if not isinstance(primitive, Line):
+        if not isinstance(primitive, (Line, Polygon)):
             continue
         points = []
         for index in range(len(primitive.xdata)):
@@ -5647,7 +5702,15 @@ def polar_plot(
                 (radius * runtime.math.cos(theta), radius * runtime.math.sin(theta))
             )
         primitive_options = primitive.options()
-        answer = answer + line(points, **primitive_options)
+        if isinstance(primitive, Polygon):
+            answer = answer + polygon(points, **primitive_options)
+        else:
+            for name in ("fill", "fillcolor", "fillalpha"):
+                _option_pop(primitive_options, name, None)
+            edgecolor = _option_pop(primitive_options, "edgecolor", None)
+            if edgecolor is not None and not _option_has(primitive_options, "color"):
+                primitive_options["color"] = edgecolor
+            answer = answer + line(points, **primitive_options)
     answer.set_extra_kwds(radial.get_extra_kwds())
     return answer
 
@@ -5659,23 +5722,46 @@ def contour_plot(
     **options: Any,
 ) -> Graphics:
     """Plot a sampled scalar function as a filled contour grid."""
-    options = _copy_options(options)
-    plot_points = _option_pop(options, "plot_points", 50)
+    supplied = _copy_options(options)
+    options = _copy_options(runtime.reflect.get(contour_plot, "options"))
+    _option_update(options, supplied)
+    plot_points = _option_pop(options, "plot_points", 100)
     xvalues, yvalues, zvalues = _sample_grid_2d(
         function_value, xrange, yrange, plot_points
     )
-    defaults = {
-        "fill": True,
-        "colorbar": True,
-        "cmap": "Viridis",
-        "alpha": 1,
-    }
-    _option_update(defaults, options)
-    graphics_options = _graphics_options(defaults)
+    graphics_options = _graphics_options(options)
     graphic = Graphics()
     graphic.set_extra_kwds(graphics_options)
-    graphic.add_primitive(Contour(xvalues, yvalues, zvalues, defaults))
+    graphic.add_primitive(Contour(xvalues, yvalues, zvalues, options))
     return graphic
+
+
+_CONTOUR_PLOT_DEFAULTS = {
+    "aspect_ratio": 1,
+    "axes": False,
+    "colorbar": False,
+    "contours": None,
+    "fill": True,
+    "frame": True,
+    "labels": False,
+    "legend_label": None,
+    "linestyles": None,
+    "linewidths": None,
+    "plot_points": 100,
+    "region": None,
+    "cmap": "Viridis",
+    "alpha": 1,
+}
+
+
+def _contour_plot_restore_defaults() -> dict[str, Any]:
+    current = _copy_options(_CONTOUR_PLOT_DEFAULTS)
+    runtime.reflect.set(contour_plot, "options", current)
+    return current
+
+
+runtime.reflect.set(contour_plot, "options", _copy_options(_CONTOUR_PLOT_DEFAULTS))
+runtime.reflect.set(contour_plot, "defaults", _contour_plot_restore_defaults)
 
 
 def density_plot(
@@ -6046,6 +6132,9 @@ def region_plot(
         zvalues.append(row)
     incolor = _option_pop(options, "incol", "blue")
     outcolor = _option_pop(options, "outcol", "rgba(0,0,0,0)")
+    bordercolor = _option_pop(options, "bordercol", None)
+    borderstyle = _option_pop(options, "borderstyle", "solid")
+    borderwidth = _option_pop(options, "borderwidth", 1)
     if outcolor is None:
         outcolor = "rgba(0,0,0,0)"
     defaults = {
@@ -6065,6 +6154,23 @@ def region_plot(
     graphic = Graphics()
     graphic.set_extra_kwds(graphics_options)
     graphic.add_primitive(Density(xvalues, yvalues, zvalues, defaults))
+    if bordercolor is not None:
+        graphic.add_primitive(
+            Contour(
+                xvalues,
+                yvalues,
+                zvalues,
+                {
+                    "fill": False,
+                    "contours": [0.5],
+                    "cmap": [bordercolor, bordercolor],
+                    "linestyles": borderstyle,
+                    "linewidths": borderwidth,
+                    "colorbar": False,
+                    "alpha": defaults["alpha"],
+                },
+            )
+        )
     return graphic
 
 

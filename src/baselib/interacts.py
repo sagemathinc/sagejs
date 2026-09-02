@@ -29,6 +29,9 @@ class _LazyHTMLFactory:
     def iframe(self, *args: Any, **kwargs: Any) -> Any:
         return _display_module().html.iframe(*args, **kwargs)
 
+    def table(self, *args: Any, **kwargs: Any) -> Any:
+        return _display_module().html.table(*args, **kwargs)
+
     def __repr__(self) -> str:
         return "Create HTML output (see html? for details)"
 
@@ -39,6 +42,11 @@ html = _LazyHTMLFactory()
 def pretty_print(*args: Any, **options: Any) -> None:
     """Publish arguments through the active rich-display backend."""
     _display_module().pretty_print(*args, **options)
+
+
+def table(*args: Any, **options: Any) -> Any:
+    """Construct a plain-text and rich HTML teaching table."""
+    return _display_module().table(*args, **options)
 
 
 def _interacts_module() -> Any:

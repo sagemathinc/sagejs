@@ -9,13 +9,13 @@
       "file": "src/doc/en/prep/advanced-2D-plotting.rst",
       "classification": "planned",
       "reason": "remaining Sage plotting and presentation compatibility",
-      "lines": [130, 187, 297, 322, 433, 453, 454, 479, 550, 602, 688, 689, 690, 697, 698, 704, 705]
+      "lines": [297, 322, 433, 454, 479, 688, 689, 690, 697, 698, 704, 705]
     },
     {
       "file": "src/doc/en/prep/calculus.rst",
       "classification": "planned",
       "reason": "remaining symbolic calculus, vector, and plotting compatibility",
-      "lines": [79, 110, 140, 295, 304, 312, 322, 335, 343, 354, 395, 415, 432, 446, 454, 467, 479, 531, 574, 623, 635, 698, 699, 700, 701, 702]
+      "lines": [79, 110, 140, 295, 304, 312, 322, 335, 343, 354, 415, 432, 446, 454, 467, 479, 531, 574, 623, 635, 698, 699, 700, 701, 702]
     },
     {
       "file": "src/doc/en/prep/intro-tutorial.rst",
@@ -27,7 +27,7 @@
       "file": "src/doc/en/prep/programming.rst",
       "classification": "planned",
       "reason": "remaining REPL display, table, and Sage object compatibility",
-      "lines": [111, 250, 280, 290, 366, 381, 478, 520, 526, 546, 557, 558, 565, 575, 691, 730, 732]
+      "lines": [111, 250, 280, 290, 478, 520, 526, 546, 557, 558, 565, 575, 691, 730, 732]
     },
     {
       "file": "src/doc/en/prep/quickstarts/abstract-algebra.rst",
@@ -51,13 +51,13 @@
       "file": "src/doc/en/prep/quickstarts/linear-algebra.rst",
       "classification": "planned",
       "reason": "remaining Sage matrix constructor and linear-algebra compatibility",
-      "lines": [94, 121, 143, 192, 194, 246, 287, 289, 306, 315, 316, 326, 328, 334, 336]
+      "lines": [94, 192, 194, 287, 289, 306, 316, 328, 334]
     },
     {
       "file": "src/doc/en/prep/quickstarts/multivariable-calculus.rst",
       "classification": "planned",
       "reason": "symbolic-vector calculus and three-dimensional plotting compatibility",
-      "lines": [78, 85, 86, 94, 99, 103, 114, 115, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 205, 233, 275, 298, 299, 300]
+      "lines": [103, 205, 233, 298, 299, 300]
     },
     {
       "file": "src/doc/en/prep/quickstarts/number-theory.rst",
@@ -81,7 +81,7 @@
       "file": "src/doc/en/prep/symbolics-and-basic-plotting.rst",
       "classification": "planned",
       "reason": "remaining symbolic simplification and three-dimensional plotting compatibility",
-      "lines": [67, 112, 122, 151, 166, 180, 207, 393, 428, 442, 444, 458, 459, 461]
+      "lines": [67, 112, 122, 151, 166, 180, 207, 393, 428, 442, 444, 461]
     }
   ]
 }
