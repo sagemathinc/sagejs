@@ -2288,6 +2288,30 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
   });
   assert.equal(windows.cflags_cc, undefined);
 
+  const profiledLinux = bindingGyp(ir, true, true, "linux", true).targets[0];
+  assert.ok(profiledLinux.cflags.includes("-g"));
+  assert.ok(!profiledLinux.ldflags.includes("-Wl,--strip-all"));
+
+  const profiledMacos = bindingGyp(ir, true, true, "darwin", true).targets[0];
+  assert.equal(
+    profiledMacos.xcode_settings.GCC_GENERATE_DEBUGGING_SYMBOLS,
+    "YES",
+  );
+  assert.equal(
+    profiledMacos.xcode_settings.DEBUG_INFORMATION_FORMAT,
+    "dwarf-with-dsym",
+  );
+
+  const profiledWindows = bindingGyp(ir, true, true, "win32", true).targets[0];
+  assert.equal(
+    profiledWindows.msvs_settings.VCCLCompilerTool.DebugInformationFormat,
+    3,
+  );
+  assert.equal(
+    profiledWindows.msvs_settings.VCLinkerTool.GenerateDebugInformation,
+    "true",
+  );
+
   const exactWindows = bindingGyp({
     foreignLibraries: [],
     functions: [{ kernelKind: "integer" }],

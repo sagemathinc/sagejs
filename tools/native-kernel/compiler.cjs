@@ -642,6 +642,7 @@ function bindingGyp(
   sourceBoundsChecked,
   hasExceptionShims = false,
   platform = process.platform,
+  profileSymbols = false,
 ) {
   const usesPrimeField = ir.functions.some(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
@@ -721,6 +722,7 @@ function bindingGyp(
     };
     target.msvs_settings = {
       VCCLCompilerTool: {
+        ...(profileSymbols ? { DebugInformationFormat: 3 } : {}),
         Optimization: 3,
         WarningLevel: 3,
         ...(hasExceptionShims
@@ -734,6 +736,9 @@ function bindingGyp(
           }
           : {}),
       },
+      ...(profileSymbols
+        ? { VCLinkerTool: { GenerateDebugInformation: "true" } }
+        : {}),
     };
   } else {
     target.libraries = [
@@ -756,6 +761,7 @@ function bindingGyp(
       "-Wextra",
       "-ffunction-sections",
       "-fdata-sections",
+      ...(profileSymbols ? ["-g"] : []),
     ];
     if (hasExceptionShims) {
       target["cflags_cc!"] = ["-fno-exceptions", "-fno-rtti"];
@@ -769,6 +775,12 @@ function bindingGyp(
       target.xcode_settings = {
         GCC_OPTIMIZATION_LEVEL: "3",
         MACOSX_DEPLOYMENT_TARGET: macosDeploymentTarget(),
+        ...(profileSymbols
+          ? {
+            DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym",
+            GCC_GENERATE_DEBUGGING_SYMBOLS: "YES",
+          }
+          : {}),
         ...(hasExceptionShims
           ? {
             CLANG_CXX_LANGUAGE_STANDARD: cxxLanguage.xcode,
@@ -781,7 +793,7 @@ function bindingGyp(
       target.ldflags = [
         "-Wl,--gc-sections",
         "-Wl,--exclude-libs,ALL",
-        "-Wl,--strip-all",
+        ...(profileSymbols ? [] : ["-Wl,--strip-all"]),
       ];
     }
   }
@@ -800,6 +812,13 @@ async function compileKernel(options) {
   const sourcePath = realpathSync(resolve(options.sourcePath));
   const sourceKey = options.sourceKey;
   const source = readFileSync(sourcePath, "utf8");
+  if (
+    options.profileSymbols !== undefined &&
+    typeof options.profileSymbols !== "boolean"
+  ) {
+    throw new TypeError("profileSymbols must be a boolean when provided");
+  }
+  const profileSymbols = options.profileSymbols === true;
   const sourceHash = sha256(source);
   const cacheRoot = resolve(
     options.cacheRoot ||
@@ -845,6 +864,7 @@ async function compileKernel(options) {
     foreignInputs,
     primeFieldTuning: tuning,
     sourceBoundsChecked,
+    profileSymbols,
     automaticSelections,
     mpfr: "4.2.2",
     mpc: mpcVersion,
@@ -935,7 +955,11 @@ async function compileKernel(options) {
   writeFileSync(
     join(outputPath, "binding.gyp"),
     `${JSON.stringify(bindingGyp(
-      ir, sourceBoundsChecked, exceptionShims !== null,
+      ir,
+      sourceBoundsChecked,
+      exceptionShims !== null,
+      process.platform,
+      profileSymbols,
     ), null, 2)}\n`,
   );
   writeFileSync(
@@ -944,6 +968,7 @@ async function compileKernel(options) {
       cacheKey,
       primeFieldTuning: tuning,
       sourceBoundsChecked,
+      profileSymbols,
       automaticSelections,
       sourceHash,
       sourcePath,
