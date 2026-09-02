@@ -1,0 +1,41 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "animation-controls-core",
+  "title": "Semantic animation controls",
+  "lane": "graphics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Declare and lower honest play, pause, restart, speed, step, and iteration-slider animation capabilities without callback replay or invented states",
+  "base_commit": "fa793b4a422638e82fe678e8be2412fda6082fd8",
+  "claims": [
+    "src/lib/sagejs/plotting/animation.py",
+    "scripts/plotting/animation-controls.test.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython and Sage.js semantic/lowering parity"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
