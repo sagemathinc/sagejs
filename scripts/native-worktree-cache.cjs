@@ -176,7 +176,13 @@ function walkPath(workspace, requestedPath, options = {}) {
   if (!metadata.isDirectory()) {
     throw new Error(`native cache cannot snapshot special file ${path}`);
   }
-  const entries = readdirSync(absolute).sort();
+  // Declared source directories may be imported by CPython while another
+  // validation shard computes a native key.  Bytecode caches are ignored
+  // build byproducts, never native compiler inputs, and including them makes
+  // otherwise identical keys depend on that scheduling race.
+  const entries = readdirSync(absolute)
+    .filter((name) => name !== "__pycache__" && !/\.py[co]$/i.test(name))
+    .sort();
   if (entries.length === 0) return [{ path, type: "directory" }];
   return entries.flatMap((name) => walkPath(workspace, join(path, name), options));
 }
