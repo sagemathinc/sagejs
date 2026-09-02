@@ -128,6 +128,14 @@ the Node row before signing and the npm/SEA rows after signing only because the
 two jobs restore the same source and provision the identical content-addressed
 oracle at the identical workspace path.
 
+Collecting a platform's Node row also runs the bounded `release` numerical
+soak in fresh processes and writes `<platform>-soak.evidence.json`. The final
+gate requires one source- and Node-artifact-bound soak record from each of the
+four supported platforms; a missing, failed, stale, or relabeled soak is a
+release failure. The separate scheduled workflow runs the longer `scheduled`
+profile for trend detection, but it does not substitute for these exact
+candidate receipts.
+
 Linux x64 also collects the four real-browser rows and all supplemental gates
 after the production browser artifact and the exact Linux SEA exist:
 
@@ -188,8 +196,9 @@ pnpm release:qualify:numerics:authenticate -- \
 ```
 
 The gate is exactly 16 product rows (Node/npm/SEA on four platforms plus four
-browser/worker rows), five supplemental categories represented by seven raw
-records, and one source-current hermetic SciPy binding per platform. Producer
+browser/worker rows), six supplemental requirements represented by eleven raw
+records (including four platform-specific numerical soaks), and one
+source-current hermetic SciPy binding per platform. Producer
 jobs are independent; the browser job consumes only the candidate's already
 built Linux SEA, and the aggregation job consumes only their immutable
 evidence. This one-way DAG avoids both circular qualification and a publisher
@@ -269,10 +278,10 @@ alpha release policy explicitly allows it. Never force-push a tag.
 
 The tag starts the clean native/SEA workflow, mandatory numerical qualification
 DAG, and reproducible Wasm release workflow. The native release publisher
-cannot run until the exact 16-row numerical gate and all five supplemental
-categories pass. Monitor individual jobs and stop or cancel dependent work promptly
-after a failure. Pull the complete failed-job log and identify the first causal
-error rather than reacting to the final aggregate failure.
+cannot run until the exact 16-row numerical gate and all six supplemental
+requirements pass. Monitor individual jobs and stop or cancel dependent work
+promptly after a failure. Pull the complete failed-job log and identify the
+first causal error rather than reacting to the final aggregate failure.
 
 ### 5. Publish and deploy
 
