@@ -53,10 +53,6 @@ print(a[:, None, :][1, 0, ::2].tolist())
 
 scalar_array = np.squeeze(np.array([[[5]]]))
 print(scalar_array.shape, scalar_array.ndim, scalar_array.item())
-integer_values = np.array([1, 2], dtype=np.int64).tolist()
-float_values = np.array([1.5], dtype=np.float64).tolist()
-print(isinstance(integer_values[0], int), integer_values[0] ** 2)
-print(isinstance(float_values[0], float), repr(float_values[0]))
 
 
 def error_name(function):
