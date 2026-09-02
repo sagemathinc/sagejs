@@ -83,7 +83,8 @@ function validateSupplementalTemplate(template) {
 
 function main() {
   const corpus = validateCorpus(readJson(corpusPath));
-  const draft = capabilityDraft(readJson(specPath), corpus);
+  const spec = readJson(specPath);
+  const draft = capabilityDraft(spec, corpus);
   const available = draft.capabilities.filter((item) => item.status === "available");
   const unavailable = new Map(
     draft.capabilities.filter((item) => item.status === "unavailable").map((item) => [item.id, item]),
