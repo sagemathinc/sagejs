@@ -816,9 +816,29 @@ test("destructive Wasm output is independently checked for cleanup and recovery"
     harness_input_artifact_mismatch: { cminpack: "rejected", nlopt: "rejected" },
     product_malformed_artifact: { cminpack: "fail-closed", nlopt: "fail-closed" },
     cminpack: component,
-    nlopt: component,
+    nlopt: {
+      ...component,
+      allocation_failure_positions: {
+        fixture: { triggered: 4, first_normal_success: 4 },
+      },
+    },
   });
   assert.equal(checks["allocation-failure"].status, "passed");
+  assert.throws(
+    () => validateHarnessOutput({
+      schema: "sagejs.numerical-wasm-destructive-output/v1",
+      harness_input_artifact_mismatch: { cminpack: "rejected", nlopt: "rejected" },
+      product_malformed_artifact: { cminpack: "fail-closed", nlopt: "fail-closed" },
+      cminpack: component,
+      nlopt: {
+        ...component,
+        allocation_failure_positions: {
+          fixture: { triggered: 4, first_normal_success: 5 },
+        },
+      },
+    }),
+    /lacks a first normal-success boundary/,
+  );
   assert.throws(
     () => validateHarnessOutput({
       schema: "sagejs.numerical-wasm-destructive-output/v1",

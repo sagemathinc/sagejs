@@ -126,8 +126,11 @@ function assertLifecycle(label, record) {
   }
   for (const [method, envelope] of Object.entries(record.allocation_failure_positions)) {
     const triggered = Number.isSafeInteger(envelope) ? envelope : envelope?.triggered;
-    if (!Number.isSafeInteger(triggered) || triggered < 9) {
+    if (!Number.isSafeInteger(triggered) || triggered < 1) {
       throw new Error(`${label}/${method} allocation-failure campaign is too small`);
+    }
+    if (Number.isSafeInteger(envelope) && triggered < 9) {
+      throw new Error(`${label}/${method} fixed allocation-failure campaign is too small`);
     }
     if (!Number.isSafeInteger(envelope) && envelope.first_normal_success !== triggered) {
       throw new Error(`${label}/${method} lacks a first normal-success boundary`);
