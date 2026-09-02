@@ -14,19 +14,19 @@
   "sources": [
     {
       "path": "tools/wolfram/frontend.ts",
-      "sha256": "703c71971523e54ee92e1e48cabd5ec23523ba25725ed766968e6cc51e1f9df3"
+      "sha256": "fcd6205a36621831723d486892ea5c3a64c2e5c7de4d8a623be0723d62635063"
     },
     {
       "path": "src/lib/wolfram.py",
-      "sha256": "9f8e7641ac3ddbe893ed073ac9c32aff5b766b93c342a047f511e9a350a65c4c"
+      "sha256": "97cebe4414d1666657cfc57bef52db17b2305b8c03cff0bce30f66cbc6e24ea5"
     },
     {
       "path": "tools/matlab/frontend.ts",
-      "sha256": "b68aea64bc1b1632acef741e4bfc0f58cd5f8cfbe1824fad8bf1b9bccb588b20"
+      "sha256": "d73857027109b715ec9e05013b5f08670f08970c5de5b3af1f6b163d8956d987"
     },
     {
       "path": "src/lib/matlab.py",
-      "sha256": "3416e74a93e7b3b0760fa6ef9bd4b3d5fa2987566ae8f215d88183b4ab14fc2d"
+      "sha256": "d61639a98f8ecac1b9480bf97c3980df09c0e9483e6c195df668d5c164e5d654"
     },
     {
       "path": "tools/kernel.ts",
@@ -124,6 +124,10 @@
           "implementation": "cone"
         },
         {
+          "name": "CubicSplineInterpolation",
+          "implementation": "cubic_spline_interpolation"
+        },
+        {
           "name": "Cuboid",
           "implementation": "cuboid"
         },
@@ -144,8 +148,36 @@
           "implementation": "wolfram_disk"
         },
         {
+          "name": "Eigensystem",
+          "implementation": "eigensystem"
+        },
+        {
           "name": "FactorInteger",
           "implementation": "factor_integer"
+        },
+        {
+          "name": "FindMinimum",
+          "implementation": "find_minimum"
+        },
+        {
+          "name": "FindRoot",
+          "implementation": "find_root"
+        },
+        {
+          "name": "FindRootIntent",
+          "implementation": "find_root_intent"
+        },
+        {
+          "name": "FindRootSystem",
+          "implementation": "find_root_system"
+        },
+        {
+          "name": "Fourier",
+          "implementation": "fourier"
+        },
+        {
+          "name": "GeneralEigensystem",
+          "implementation": "general_eigensystem"
         },
         {
           "name": "Graphics",
@@ -172,12 +204,56 @@
           "implementation": "image_size"
         },
         {
+          "name": "Interpolation",
+          "implementation": "interpolation"
+        },
+        {
+          "name": "LeastSquares",
+          "implementation": "least_squares"
+        },
+        {
           "name": "Length",
           "implementation": "length"
         },
         {
           "name": "Line",
           "implementation": "wolfram_line"
+        },
+        {
+          "name": "LinearModelFitData",
+          "implementation": "linear_model_fit"
+        },
+        {
+          "name": "LinearSolve",
+          "implementation": "linear_solve"
+        },
+        {
+          "name": "ListConvolve",
+          "implementation": "list_convolve"
+        },
+        {
+          "name": "Map",
+          "implementation": "map_numerical"
+        },
+        {
+          "name": "NDSolveValue",
+          "implementation": "nd_solve_value"
+        },
+        {
+          "name": "NIntegrate",
+          "implementation": "n_integrate"
+        },
+        {
+          "name": "NMinimizeScalar",
+          "implementation": "n_minimize_scalar"
+        },
+        {
+          "name": "NonlinearLeastSquares",
+          "implementation": "nonlinear_least_squares"
+        },
+        {
+          "name": "OneSampleTTest",
+          "implementation": "one_sample_t_test"
         },
         {
           "name": "Opacity",
@@ -216,8 +292,16 @@
           "implementation": "rgb_color"
         },
         {
+          "name": "SageJSDescribe",
+          "implementation": "sagejs_describe"
+        },
+        {
           "name": "Show",
           "implementation": "show_graphics"
+        },
+        {
+          "name": "SingularValueDecomposition",
+          "implementation": "singular_value_decomposition"
         },
         {
           "name": "Sphere",
@@ -242,6 +326,10 @@
         {
           "name": "Torus",
           "implementation": "torus"
+        },
+        {
+          "name": "TwoSampleTTest",
+          "implementation": "two_sample_t_test"
         }
       ]
     },
@@ -265,64 +353,109 @@
       ],
       "runtime_exports": [
         "ALL",
+        "arrayfun",
         "axes",
         "call_or_index",
         "class_name",
         "colon",
+        "conv",
+        "conv_result",
         "delete",
+        "eig",
+        "eig_result",
+        "fft",
+        "fft_result",
         "figure",
+        "fitlm",
+        "fminbnd",
+        "fminsearch",
+        "fsolve",
+        "fzero",
+        "fzero_intent",
+        "fzero_result",
         "gca",
         "gcf",
         "get",
         "get_property",
         "grid",
+        "gridded_interpolant",
         "hold",
+        "integral",
+        "integral_result",
         "ishold",
         "ldivide",
         "legend",
+        "linsolve",
+        "lsqminnorm",
+        "lsqnonlin",
         "mldivide",
         "mpower",
         "mrdivide",
         "mtimes",
         "numel",
+        "numerical_code",
+        "numerical_intent",
+        "numerical_result",
+        "numerical_value",
+        "ode45",
         "plot",
         "plotly",
         "plotspec",
+        "polyfit",
         "power",
         "rdivide",
+        "sagejs_describe",
         "set",
         "set_index",
         "set_property",
         "size",
+        "spline",
         "subplot",
         "surf",
+        "svd",
+        "svd_result",
         "times",
         "title",
+        "ttest",
+        "ttest2",
         "xlabel",
         "xlim",
         "ylabel",
         "ylim"
       ],
       "plotting_runtime_exports": [
+        "arrayfun",
         "axes",
         "class_name",
+        "conv",
         "delete",
         "figure",
+        "fminbnd",
+        "fminsearch",
+        "fsolve",
+        "fzero",
         "gca",
         "gcf",
         "get",
         "grid",
         "hold",
+        "integral",
         "ishold",
         "legend",
+        "linsolve",
+        "lsqminnorm",
+        "lsqnonlin",
         "numel",
+        "ode45",
         "plot",
         "plotly",
         "plotspec",
+        "polyfit",
         "set",
         "size",
         "subplot",
         "surf",
+        "svd",
         "title",
         "xlabel",
         "xlim",

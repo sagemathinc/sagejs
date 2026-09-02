@@ -182,9 +182,15 @@ function wolframPlotHeads(source) {
   const end = source.indexOf("  private iterator(", start);
   assert.notEqual(start, -1, "missing Wolfram call lowerer");
   assert.notEqual(end, -1, "missing Wolfram iterator lowerer");
-  const names = [...source.slice(start, end).matchAll(/if \(head === "([A-Za-z0-9]+)"\)/g)]
-    .map((match) => match[1])
-    .filter((name) => name !== "Table" && name !== "Show");
+  const callLowerer = source.slice(start, end);
+  const clauses = [...callLowerer.matchAll(
+    /if \(head === "([A-Za-z0-9]+)"\)[\s\S]*?(?=\n    if \(|\n    const graphicsHeads:)/g,
+  )];
+  const names = clauses
+    .filter((match) =>
+      /return this\.[A-Za-z0-9]*[Pp]lot[A-Za-z0-9]*\(/.test(match[0])
+    )
+    .map((match) => match[1]);
   for (const name of names) {
     assert.ok(WOLFRAM_SIGNATURES[name], `classify new Wolfram plotting head ${name}`);
     assert.ok(WOLFRAM_TARGETS[name], `record lowering target for Wolfram plotting head ${name}`);
