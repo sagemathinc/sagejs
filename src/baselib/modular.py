@@ -3830,6 +3830,181 @@ class ModularSymbolsSpace(sage.Parent):
         numerator = self.weight() * self._group.index()
         return numerator // 12
 
+    def _q_expansion_signed_cusp_space(self) -> ModularSymbolsSpace:
+        """Return the signed symbol space used by Hecke-dual expansions."""
+        if not self.is_cuspidal():
+            raise ArithmeticError("space must be cuspidal")
+        if self.sign() != 0:
+            return self
+        cached = self._q_expansion_signed_cusp_space_cache
+        if cached is not None:
+            return cached
+        if self._character is not None:
+            signed_space = ModularSymbols(
+                self.character(), self.weight(), 1, self.base_ring()
+            ).cuspidal_submodule()
+        elif self.weight() == 2:
+            signed_space = self.plus_submodule()
+        else:
+            signed_space = ModularSymbols(
+                self.level(), self.weight(), 1, sage.QQ
+            ).cuspidal_submodule()
+            if self.dimension() != 2 * signed_space.dimension():
+                raise NotImplementedError(
+                    "higher-weight sign-zero q-expansions currently require the full "
+                    "cuspidal submodule"
+                )
+        self._q_expansion_signed_cusp_space_cache = signed_space
+        return signed_space
+
+    def _q_expansion_data(
+        self,
+        precision: Any,
+        use_cache: bool = True,
+    ) -> tuple[Any, Any, Any, Any, Any]:
+        """Return the Hecke-dual basis and its exact modular-symbol lift."""
+        precision = _exact_nonnegative_integer(precision, "q-expansion precision")
+        if precision < 1:
+            raise ValueError("precision must be at least 1")
+        if use_cache:
+            cached = self._q_expansion_data_cache.get(precision)
+            if cached is not runtime.undefined:
+                return cached
+        signed_space = self._q_expansion_signed_cusp_space()
+        dimension = signed_space.dimension()
+        target_dimension = min(precision - 1, dimension)
+        if target_dimension == 0:
+            result = (
+                signed_space,
+                matrix(signed_space.base_ring(), 0, precision),  # type: ignore[name-defined]  # noqa: F821
+                runtime.math_tuple([]),
+                matrix(signed_space.base_ring(), 0, precision),  # type: ignore[name-defined]  # noqa: F821
+                matrix(signed_space.base_ring(), 0, 0),  # type: ignore[name-defined]  # noqa: F821
+            )
+            if use_cache:
+                self._q_expansion_data_cache.set(precision, result)
+            return result
+
+        hecke_matrices = [
+            signed_space.hecke_matrix(index) for index in range(1, precision)
+        ]
+        accumulated_rows = []
+        functional_indices = []
+        coefficient_ring = signed_space.base_ring()
+        coefficient_basis = matrix(  # type: ignore[name-defined]  # noqa: F821
+            coefficient_ring, 0, precision - 1
+        )
+        order = [0]
+        order.extend(range(dimension - 1, 0, -1))
+        for functional_index in order:
+            rows = [[] for _row in range(dimension)]
+            for operator in hecke_matrices:
+                values = operator.row(functional_index).list()
+                for row_index in range(dimension):
+                    rows[row_index].append(values[row_index])
+            accumulated_rows.extend(rows)
+            functional_indices.append(functional_index)
+            coefficient_basis = (
+                matrix(coefficient_ring, accumulated_rows)  # type: ignore[name-defined]  # noqa: F821
+                .row_space()
+                .basis_matrix()
+            )
+            if coefficient_basis.nrows() >= target_dimension:
+                break
+        if coefficient_basis.nrows() < target_dimension:
+            raise ArithmeticError(
+                "Hecke matrix coefficients did not span the expected cusp-form space"
+            )
+        coefficient_basis = coefficient_basis.matrix_from_prefix_rows(target_dimension)
+        coefficient_rows = []
+        for row in coefficient_basis.rows():
+            coefficient_rows.append([coefficient_ring(0)] + row.list())
+        coefficient_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
+            coefficient_ring, coefficient_rows
+        )
+        coefficient_matrix.set_immutable()
+        raw_rows = []
+        for row in accumulated_rows:
+            raw_rows.append([coefficient_ring(0)] + list(row))
+        raw_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
+            coefficient_ring, raw_rows
+        )
+        lift_matrix = raw_matrix.solve_left(coefficient_matrix)
+        if lift_matrix * raw_matrix != coefficient_matrix:
+            raise ArithmeticError(
+                "could not lift the canonical q-expansion basis to Hecke-dual rows"
+            )
+        raw_matrix.set_immutable()
+        lift_matrix.set_immutable()
+        result = (
+            signed_space,
+            coefficient_matrix,
+            runtime.math_tuple(functional_indices),
+            raw_matrix,
+            lift_matrix,
+        )
+        if use_cache:
+            self._q_expansion_data_cache.set(precision, result)
+        return result
+
+    def _q_expansion_hecke_matrix(
+        self,
+        index: Any,
+        maximum_precision: Any,
+    ) -> Any:
+        r"""Transport $T_n$ to the canonical Hecke-dual expansion basis."""
+        hecke_index = _positive_integer(index, "Hecke index")
+        maximum = _exact_nonnegative_integer(maximum_precision, "q-expansion precision")
+        if maximum < 1:
+            raise ValueError("precision must be at least 1")
+        signed_space = self._q_expansion_signed_cusp_space()
+        dimension = signed_space.dimension()
+        if dimension == 0:
+            return matrix(  # type: ignore[name-defined]  # noqa: F821
+                signed_space.base_ring(), 0, 0
+            )
+
+        precision = (
+            min(maximum, max(2, dimension + 1)) if self.weight() == 2 else maximum
+        )
+        try:
+            data = self._q_expansion_data(precision)
+        except ArithmeticError:
+            if precision == maximum:
+                raise
+            precision = maximum
+            data = self._q_expansion_data(precision)
+        signed_space, coefficients, indices, raw_matrix, lift_matrix = data
+        if coefficients.nrows() != dimension:
+            if precision == maximum:
+                raise ArithmeticError(
+                    "the separating q-expansion prefix has incomplete dimension"
+                )
+            signed_space, coefficients, indices, raw_matrix, lift_matrix = (
+                self._q_expansion_data(maximum)
+            )
+        if coefficients.nrows() != dimension:
+            raise ArithmeticError(
+                "the Sturm q-expansion prefix has incomplete dimension"
+            )
+
+        symbol_matrix = signed_space.hecke_matrix(hecke_index)
+        image_rows = []
+        for block_index in range(len(indices)):
+            start = block_index * dimension
+            block = raw_matrix.matrix_from_rows(range(start, start + dimension))
+            image_rows.extend((symbol_matrix.transpose() * block).rows())
+        image_raw = matrix(  # type: ignore[name-defined]  # noqa: F821
+            signed_space.base_ring(), [row.list() for row in image_rows]
+        )
+        image_matrix = lift_matrix * image_raw
+        answer = coefficients.solve_left(image_matrix)
+        if answer * coefficients != image_matrix:
+            raise ArithmeticError(
+                "the modular-symbol Hecke action did not preserve the q-expansion span"
+            )
+        return answer
+
     def diamond_bracket_matrix(self, value: Any) -> Any:
         """Return the scalar matrix of the diamond operator `<value>`."""
         value = _exact_integer(value, "diamond-bracket index")

@@ -91,6 +91,31 @@ test("good and bad Hecke operators act on parented elements", async (t) => {
   );
 });
 
+test("Hecke-dual transport agrees with coefficient reconstruction", async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "from sagejs.modular_forms.object_layer import _basis_matrix, _hecke_image_matrix",
+    "import sagejs.runtime as runtime",
+    "checks = []",
+    "S = CuspForms(37, 2)",
+    "P = S.sturm_bound() + 1",
+    "X = S._modular_symbols_cusp_space()",
+    "for n in [2, 4, 37]:",
+    "    fast = S.hecke_matrix(n)",
+    "    B = _basis_matrix(S, P)",
+    "    image = _hecke_image_matrix(S, n, P)",
+    "    checks.append(fast * B == image)",
+    "checks.append(X._q_expansion_data_cache.get(5 * (P - 1) + 1) is runtime.undefined)",
+    "N = CuspForms(33, 2).new_subspace()",
+    "P = N.sturm_bound() + 1",
+    "fast = N.hecke_matrix(3)",
+    "checks.append(fast * _basis_matrix(N, P) == _hecke_image_matrix(N, 3, P))",
+    "print(checks)",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), "[True, True, True, True, True]");
+});
+
 test("old and new subspaces share the exact element contract", async (t) => {
   const session = await createSage();
   t.after(() => session.close());
