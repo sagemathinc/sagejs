@@ -48,6 +48,7 @@ sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 
 const witness = String.raw`
 import math
+import sys
 import time
 from sagejs.numerics.ode import (
     ode_capabilities,
@@ -56,6 +57,8 @@ from sagejs.numerics.ode import (
     run_ode_parameter_sweep,
 )
 from sagejs.numerics.sweeps import SweepBudget
+
+IS_SAGEJS = sys.version == "Sage.js"
 
 parameters = [{"rate": 0.5}, {"rate": 1.0}, {"rate": 2.0}]
 assert ode_capabilities()["parameter_sweeps"]["scheduler"] == "bounded-batch-v1"
@@ -104,7 +107,7 @@ planned = plan_ode_parameter_sweep(
 assert factory_calls[0] == 0
 assert planned.item_count == 3
 assert planned.requested_concurrency == 3
-assert planned.effective_concurrency == 1
+assert planned.effective_concurrency == (1 if IS_SAGEJS else 3)
 assert all(planned.quota(index)["evaluations"] >= 2 for index in range(3))
 
 sequential = run_ode_parameter_sweep(
@@ -130,7 +133,11 @@ expected_evaluations = len(parameters) + sum(
     item.value["evaluations"] for item in sequential.items
 )
 assert sequential.to_dict()["measurements"]["evaluations"] == expected_evaluations
-assert sequential.to_dict()["reproducibility"]["plan"]["fallback_reason"] is not None
+if IS_SAGEJS:
+    assert sequential.to_dict()["reproducibility"]["plan"]["fallback_reason"] is not None
+else:
+    assert sequential.to_dict()["reproducibility"]["plan"]["fallback_reason"] is None
+    assert sequential.to_dict()["provenance"]["executor"]["kind"] == "cpython_threads"
 
 def reverse_batch(jobs):
     return [job() for job in reversed(jobs)]

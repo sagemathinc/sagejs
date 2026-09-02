@@ -1,7 +1,9 @@
 # Deterministic bounded parameter sweeps
 
 Sage.js parameter sweeps are a control contract around independent numerical
-computations. They are not an implicit thread pool. The contract provides:
+computations. CPython concurrency requests use a built-in bounded thread pool;
+Sage.js runtimes never pretend that a synchronous live closure can be moved to
+an isolated worker. The contract provides:
 
 - stable input/output ordering even when work completes out of order;
 - explicit requested and effective concurrency;
@@ -14,9 +16,12 @@ computations. They are not an implicit thread pool. The contract provides:
 - canonical finite JSON with callback, executor, seed, and scheduler provenance.
 
 The implementation is ordinary CPython-parseable Python in
-`sagejs.numerics.sweeps`. It imports no thread, process, worker, or event-loop
-runtime. Without an explicit batch executor, requested parallelism safely
-falls back to sequential execution and the plan records why.
+`sagejs.numerics.sweeps`. CPython imports `concurrent.futures` lazily only when
+the requested concurrency exceeds one. Node, browser, and SEA execution use an
+explicit sequential fallback by default and record why. Set
+`concurrency_fallback="error"` when parallel execution is a requirement; an
+unsupported plan then raises `SweepConcurrencyUnsupportedError` before any
+callback runs.
 
 ## Basic contract
 
@@ -59,9 +64,10 @@ result = run_parameter_sweep(
 )
 ```
 
-In this example `effective_concurrency` is one because no batch executor was
-provided. This is intentional: an opaque callback cannot be silently sent to a
-browser worker or child process.
+In CPython this example has `effective_concurrency == 4` and uses the built-in
+bounded thread pool. In Node, browser, and SEA it has
+`effective_concurrency == 1` plus an explicit fallback reason. An opaque live
+callback cannot be silently sent to an isolated JavaScript worker.
 
 Call `plan_parameter_sweep(...)` to validate the complete input and inspect
 fixed per-item credits without evaluating the callback. Oversized input count,
@@ -114,7 +120,30 @@ Memory limits cannot observe arbitrary allocations made inside a foreign or
 opaque callback. `reserve_memory` is therefore a cooperative contract. Input
 and returned-value limits are measured directly and are not cooperative.
 
-## Explicit concurrency adapter
+## Built-in and explicit concurrency executors
+
+On CPython, no adapter is required. Each scheduler batch creates a bounded
+thread pool with exactly the effective batch size, collects completion-order
+results, validates their identities, and restores input order. Fixed per-item
+credits and seeds therefore remain independent of thread completion order.
+The executor provenance is `cpython_threads/bounded-thread-pool` and is marked
+non-replayable because user callbacks may observe shared-state scheduling.
+
+Sage.js on Node, in a browser worker, or in a SEA is single-threaded within one
+live Python evaluator. The synchronous API cannot safely serialize an
+arbitrary callback, its globals, and a mutable `SweepItemContext` to another
+worker. These runtimes are explicitly classified unsupported for automatic
+live-callable concurrency. Applications should select one of two honest
+policies:
+
+- accept the default, provenance-recorded sequential fallback; or
+- pass `concurrency_fallback="error"` to require genuine parallelism and fail
+  before dispatch.
+
+A separately qualified host may still provide an explicit executor. A batch
+executor receives at most `concurrency` zero-argument jobs and returns each
+resulting `SweepItemResult`. It may return them in completion order; the
+scheduler validates identities and restores input order.
 
 A batch executor receives at most `concurrency` zero-argument jobs and returns
 each resulting `SweepItemResult`. It may return them in completion order; the
@@ -143,11 +172,13 @@ or non-result values converts the complete in-flight batch to structured
 `executor_error` outcomes and stops dispatch. At most one batch is in flight,
 which provides backpressure.
 
-CPython tests exercise a real `ThreadPoolExecutor` adapter and verify that
-active callbacks never exceed the requested bound. The shared implementation
-does not itself assume CPython threads. A future browser adapter must use a
-replayable callback/module reference and worker message protocol; it must not
-pretend an opaque closure is transferable.
+Focused tests instrument active callback counts and prove that the built-in
+CPython executor overlaps work without exceeding the requested bound. They
+also prove stable ordering and seeds across different completion orders,
+batch-boundary fail-fast behavior, and cooperative cancellation of an in-flight
+batch. A future browser adapter must use a replayable callback/module reference
+and worker message protocol; it must not pretend an opaque closure is
+transferable.
 
 ## Failure and cancellation semantics
 
@@ -191,7 +222,9 @@ The focused corpus validates CPython and Sage.js/Node on Linux x64, including
 partial failures, callback and cancellation exceptions, deadlines, fixed
 aggregate credits, trace truncation, invalid/non-finite results, large-input
 rejection, result detachment, stable reversed completion order, deterministic
-sharding, malformed executors, and a real bounded threaded adapter.
+sharding, malformed executors, genuine built-in threaded overlap, concurrency
+bounds, deterministic concurrent output, concurrent cancellation, batch
+fail-fast, explicit Sage.js fallback, and fail-closed required concurrency.
 
 This lane does **not** claim Windows x64, Linux ARM64, macOS ARM64, browser
 worker, SEA, or npm qualification. Those require receipts bound to the final

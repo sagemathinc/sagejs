@@ -2,15 +2,19 @@
 
 import json
 import math
+import sys
 import time
 
 from sagejs.numerics.sweeps import (
     SWEEP_ITEM_STATUSES,
     SWEEP_SCHEMA_VERSION,
     SweepBudget,
+    SweepConcurrencyUnsupportedError,
     plan_parameter_sweep,
     run_parameter_sweep,
 )
+
+IS_SAGEJS = sys.version == "Sage.js"
 
 
 def replayable_callback_record(name):
@@ -25,8 +29,16 @@ def replayable_callback_record(name):
 parameters = [{"x": value} for value in range(6)]
 plan = plan_parameter_sweep(parameters, seed=20260831, concurrency=4)
 assert plan.item_count == 6
-assert plan.effective_concurrency == 1
-assert plan.to_dict()["fallback_reason"].startswith("no batch executor supplied")
+assert plan.effective_concurrency == (1 if IS_SAGEJS else 4)
+if IS_SAGEJS:
+    assert (
+        "no qualified live-callable concurrency executor"
+        in plan.to_dict()["fallback_reason"]
+    )
+    assert plan.to_dict()["executor"]["kind"] == "sequential"
+else:
+    assert plan.to_dict()["fallback_reason"] is None
+    assert plan.to_dict()["executor"]["kind"] == "cpython_threads"
 assert sum(plan.quota(index)["evaluations"] for index in range(6)) == 100_000
 assert len({plan.item_seed(index) for index in range(6)}) == 6
 assert [plan.item_seed(index) for index in range(6)] == [
@@ -53,12 +65,33 @@ sequential = run_parameter_sweep(
     callback_record=replayable_callback_record("seeded_evaluator"),
 )
 assert sequential.success and sequential.status == "completed"
-assert sequential.plan.effective_concurrency == 1
+assert sequential.plan.effective_concurrency == (1 if IS_SAGEJS else 4)
 assert [item.value["x"] for item in sequential.items] == list(range(6))
 assert [item.value["seed"] for item in sequential.items] == [
     plan.item_seed(index) for index in range(6)
 ]
-assert json.loads(sequential.to_json())["reproducibility"]["replayable"] is True
+assert json.loads(sequential.to_json())["reproducibility"]["replayable"] is IS_SAGEJS
+
+if IS_SAGEJS:
+    try:
+        plan_parameter_sweep(
+            parameters,
+            concurrency=2,
+            concurrency_fallback="error",
+        )
+    except SweepConcurrencyUnsupportedError as error:
+        assert error.runtime == "sagejs"
+        assert error.concurrency == 2
+    else:
+        raise AssertionError("required unsupported concurrency did not fail closed")
+else:
+    required = plan_parameter_sweep(
+        parameters,
+        concurrency=2,
+        concurrency_fallback="error",
+    )
+    assert required.effective_concurrency == 2
+    assert required.to_dict()["executor"]["kind"] == "cpython_threads"
 
 batch_sizes = []
 
@@ -323,6 +356,7 @@ for invalid in (
         [1], concurrency=3, budget=SweepBudget(max_concurrency=2)
     ),
     lambda: plan_parameter_sweep([1], mode="unknown"),
+    lambda: plan_parameter_sweep([1], concurrency_fallback="unknown"),
     lambda: plan_parameter_sweep([1], seed=-1),
     lambda: plan_parameter_sweep([1, 2], seed_offset=4_294_967_295),
 ):
