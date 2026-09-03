@@ -96,19 +96,25 @@ The direct settings are exact and intentionally asymmetric:
 
 For Sage.js, a native result must match the live field, publish an authenticated
 receipt, and pass `receipt.verify_conditional_grh(field)`. That replay occurs in
-the untimed census and bypasses the closed cubic program. Relation-lattice
-receipts use the ordinary object class/unit engine with `proof=False`; that
-engine may itself use other source-transparent native accelerators. Empty-base
-and trivial-presentation receipts instead use the stronger ordinary bounded
-Minkowski replay, avoiding unrelated analytic unit work. The audit therefore
-independently recomputes the complete class group under no stronger hypotheses
-than the receipt publishes; the
-stronger `receipt.verify(field)` remains available for a separately scheduled
-unconditional audit. A native decline instead continues through the exact
-dynamic class-group implementation and verifies its presentation. Records bind
-the replay contract and distinguish native pass, native decline with exact
-fallback, certificate/proof failure, disagreement, timeout, error, and missing
-comparator. Receipt JSON is an audit view; the authority is accurately called
+the untimed census. Its first call may rerun the closed program solely to
+extract an untrusted finite transcript; the closed result supplies no replay
+authority. Ordinary objects independently rebuild the maximal order and the
+complete theorem-qualified factor base, match every factor ideal exactly,
+authenticate principal relations spanning the published row lattice, and
+recompute its HNF and SNF. For a nontrivial presentation, they also check the
+published exact unit and independently use the Belabas--Friedman enclosure and
+analytic class-number formula to isolate the global class/unit index as one.
+Conditional trivial presentations stop after proving that their row lattice is
+all of $\mathbb Z^n$; unconditional trivial presentations use the stronger
+ordinary bounded-Minkowski checker. The audit therefore independently proves
+the complete class group under exactly the receipt's stated hypotheses without
+rediscovering relations. The stronger `receipt.verify(field)` remains available
+for a separately scheduled unconditional audit. A native decline instead
+continues through the exact dynamic class-group implementation and verifies its
+presentation. Records bind the replay contract and distinguish native pass,
+native decline with exact fallback, certificate/proof failure, disagreement,
+timeout, error, and missing comparator. Receipt JSON is an audit view; the
+authority is accurately called
 `live-authenticated-with-independent-exact-recomputation`, not detached replay.
 
 The helper that generates unconditional direct-GP census source uses
