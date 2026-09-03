@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 238,
+    "classified-native-file": 244,
     "declared-ffi": 456,
     "declared-ffi-resource": 34,
     "napi-export": 352,

@@ -7213,18 +7213,17 @@ def denominator(value: Any) -> Any:
     raise TypeError("denominator() is not defined for this value")
 
 
-def _factorial_product(start: _Int, stop: _Int) -> Any:
-    """Return the balanced exact product of the integers in `[start, stop)`."""
-    if stop - start <= 24:
-        result = runtime.bigint(1)
-        for value in range(start, stop):
-            result = runtime.native_mul(result, runtime.bigint(value))
-        return result
+def _factorial_product(start: Any, stop: Any) -> Any:
+    """Return the balanced exact product from `start` through `stop`."""
+    if start > stop:
+        return runtime.bigint(1)
+    if stop - start <= 32:
+        answer = runtime.bigint(1)
+        for factor in range(start, stop + 1):
+            answer *= runtime.bigint(factor)
+        return answer
     middle = (start + stop) // 2
-    return runtime.native_mul(
-        _factorial_product(start, middle),
-        _factorial_product(middle, stop),
-    )
+    return _factorial_product(start, middle) * _factorial_product(middle + 1, stop)
 
 
 def factorial(value: Any) -> Any:
@@ -7235,12 +7234,15 @@ def factorial(value: Any) -> Any:
         raise ValueError("factorial() is not defined for negative integers")
     if integer > runtime.bigint(4294967295):
         raise OverflowError("factorial() argument is too large")
-    size = runtime.number(integer)
-    try:
-        backend = runtime.flint_backend()
-    except Exception:
-        return _factorial_product(2, size + 1)
-    return runtime.normalize_integer(backend.factorial(size))
+    integer_number = runtime.number(integer)
+    backend = runtime.optional_flint_backend()
+    if backend is not None:
+        native_factorial = runtime.reflect.get(backend, "factorial")
+        if runtime.jstype(native_factorial) == "function":
+            return runtime.normalize_integer(
+                runtime.reflect.apply(native_factorial, backend, [integer_number])
+            )
+    return _factorial_product(2, integer_number)
 
 
 def binomial(n: Any, k: Any) -> Any:

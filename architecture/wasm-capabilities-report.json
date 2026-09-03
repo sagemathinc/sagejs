@@ -1,9 +1,9 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "18ecd28502e3b52616cb029fc3902b57e33889d6539fce6cd67c54bb637292cf",
+  "source_sha256": "1473fcd8ff380a3a51fab7b38622da3bf21a686a96c35dcee9b4269e4b9e56d9",
   "counts": {
-    "total": 1068,
+    "total": 1070,
     "by_kind": {
       "declared-ffi-function": 456,
       "declared-ffi-resource": 34,
@@ -20,7 +20,7 @@
       "shared-core": 50
     },
     "by_status": {
-      "available": 603,
+      "available": 605,
       "desktop-only": 47,
       "fallback": 418
     }

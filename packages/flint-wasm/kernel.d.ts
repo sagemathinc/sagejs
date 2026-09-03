@@ -146,6 +146,17 @@ export class SageSession {
     onComm?: (event: SageCommEvent) => void;
   }): Promise<void>;
   commInfo(targetName?: string): Promise<Record<string, unknown>>;
+  /**
+   * Evaluate Sage/Python source and return its final expression as detached
+   * JSON-compatible data. Put a multiline expression in a variable and use
+   * that variable as the final physical line.
+   */
+  evaluateJSON(source: string, options?: SageEvaluationOptions): Promise<unknown>;
+  /** Return the installed DocSpec v1 catalog. */
+  documentation(): Promise<{
+    schema_version: 1;
+    entries: Array<Record<string, unknown>>;
+  }>;
   interrupt(): Promise<void>;
   reset(): Promise<void>;
   close(): Promise<void>;

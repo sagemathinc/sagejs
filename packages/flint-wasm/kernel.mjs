@@ -250,6 +250,7 @@ export class SageSession {
       {
         type: "initialize",
         protocol: 3,
+        mode: this.resources.mode,
         compiler: this.resources.compiler,
         baselib: this.resources.baselib,
         standardLibrary: this.resources.standardLibrary,
@@ -386,6 +387,63 @@ export class SageSession {
 
   commInfo(targetName) {
     return this.request("commInfo", { targetName });
+  }
+
+  /** Evaluate and return the final value as detached JSON-compatible data. */
+  async evaluateJSON(source, options = {}) {
+    if (typeof source !== "string" || !source.trim()) {
+      throw new TypeError("evaluateJSON() requires Sage/Python source");
+    }
+    const token = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const marker = `__SAGEJS_JSON_${token}__`;
+    const lines = source.trimEnd().split("\n");
+    const finalExpression = lines.pop().trim();
+    const setup = lines.join("\n");
+    const valueName = `__sagejs_json_value_${token}`;
+    const methodName = `__sagejs_json_method_${token}`;
+    const { onOutput: _onOutput, onError: _onError, ...evaluationOptions } = options;
+    const result = await this.evaluate(
+      (setup ? `${setup}\n` : "") +
+        `import json\n` +
+        `${valueName} = (${finalExpression})\n` +
+        `${methodName} = getattr(${valueName}, "to_json", None)\n` +
+        `print(${JSON.stringify(marker)} + (` +
+        `${methodName}() if callable(${methodName}) ` +
+        `else json.dumps(${valueName})))`,
+      evaluationOptions,
+    );
+    const line = result.stdout
+      .split("\n")
+      .find((candidate) => candidate.startsWith(marker));
+    if (line === undefined) {
+      throw new TypeError("evaluateJSON() did not receive a structured result");
+    }
+    return JSON.parse(line.slice(marker.length));
+  }
+
+  /** Return the same installed DocSpec v1 catalog exposed by Node sessions. */
+  async documentation() {
+    await this.ready();
+    if (!this.documentationPromise) {
+      const hostLoader = globalThis.__sagejs_read_json_resource__;
+      const loaded = typeof hostLoader === "function"
+        ? hostLoader(this.resources.documentation)
+        : fetch(this.resources.documentation).then(async (response) => {
+          if (!response.ok) {
+            throw new Error(
+              `unable to load Sage.js documentation (${response.status} ${response.statusText})`,
+            );
+          }
+          return response.json();
+        });
+      this.documentationPromise = loaded.then((catalog) => {
+        if (catalog?.schema_version !== 1 || !Array.isArray(catalog.entries)) {
+          throw new TypeError("Sage.js browser documentation is not DocSpec v1");
+        }
+        return catalog;
+      });
+    }
+    return this.documentationPromise;
   }
 
   async replaceWorker(error, waitForReady = true) {

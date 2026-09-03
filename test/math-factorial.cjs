@@ -40,9 +40,7 @@ test("math.factorial matches CPython", async () => {
     await session.evaluate(
       [
         "import sagejs.runtime as _runtime",
-        "def _unavailable_flint_backend():",
-        "    raise RuntimeError('FLINT is intentionally unavailable')",
-        "_runtime.flint_backend = _unavailable_flint_backend",
+        "_runtime.optional_flint_backend = lambda: None",
       ].join("\n"),
     );
     assert.equal(
@@ -82,9 +80,7 @@ test("Sage factorial has an exact portable fallback", async () => {
     await session.evaluate(
       [
         "import sagejs.runtime as _runtime",
-        "def _unavailable_flint_backend():",
-        "    raise RuntimeError('FLINT is intentionally unavailable')",
-        "_runtime.flint_backend = _unavailable_flint_backend",
+        "_runtime.optional_flint_backend = lambda: None",
       ].join("\n"),
     );
     assert.equal(
