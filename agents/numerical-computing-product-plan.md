@@ -29,20 +29,22 @@ As of 2026-09-02, P0-P7 are implemented and validated for the published
 supported surface. P8's fail-closed collection, authentication, and release
 workflow are implemented, but this source document makes no final-candidate
 release claim. Such a claim exists only after one frozen commit passes the
-exact 16-row product matrix and seven supplemental records described in
+exact 16-row product matrix and six supplemental requirements represented by
+eleven raw records, as described in
 [`docs/numerical-computing/qualification/`](../docs/numerical-computing/qualification/).
 Candidate SHAs and receipt identities belong in immutable qualification
 artifacts and release notes. Editing them into source after qualification
 would create a different candidate.
 
 The implemented surface is generated from the live public registries. It
-contains 49 capabilities (41 `extension`, 8 `translated`) and 22 frontend
-operations (20 `translated`, 2 `extension`), plus 17 stable diagnostics.
-`pnpm architecture:numerics` rejects registry and classification drift and
-checks 23 browser lazy roots covering 67 public numerical modules. The ledger
-classifies claims that are actually public and implemented; explicit deferred
-and unsupported variants remain in the reviewed domain support matrices rather
-than being manufactured as callable registry entries.
+contains 59 classified capabilities: 49 implemented capabilities (41
+`extension`, 8 `translated`) and 10 explicit `unsupported` entries. It also
+contains 22 frontend operations (20 `translated`, 2 `extension`) and 17 stable
+diagnostics. `pnpm architecture:numerics` rejects registry and classification
+drift and checks 23 browser lazy roots covering 68 public numerical modules.
+The ledger classifies claims that are actually public; deferred variants remain
+in the reviewed domain support matrices rather than being manufactured as
+callable registry entries.
 
 The integrated implementation includes:
 
@@ -62,8 +64,9 @@ The integrated implementation includes:
   ODE and generic parameter sweeps;
 - descriptive and inferential statistics, reproducible sampling, regression,
   robust fitting, and retained validation evidence;
-- a complete reviewed multilingual catalog with 63 supported and 25 explicitly
-  unsupported target-emission cells; and
+- a complete reviewed multilingual catalog with 62 Sage.js self-round-tripping
+  and 26 explicitly unsupported target-emission cells, with external vendor
+  runtime execution classified separately; and
 - renderer-neutral explanations, PlotSpecs, animations, and checked teaching
   stories derived only from retained evidence.
 
@@ -79,14 +82,15 @@ Primary executable evidence by phase is retained in the repository:
 | P5 | The [spectral](../test/numerics/spectral/spectral-laboratory.cjs), [statistics](../test/numerics/statistics/test.cjs), and [bounded-sweep](../test/numerics/sweeps/bounded-sweeps.cjs) tests |
 | P6 | [`numerical-catalog.cjs`](../test/numerics/multilingual/numerical-catalog.cjs) and the machine-readable [support matrix](../docs/numerical-computing/multilingual/support-matrix.json) |
 | P7 | [`cross-domain-gallery.test.cjs`](../test/numerics/gallery/cross-domain-gallery.test.cjs) and the generated [gallery evidence](../docs/numerical-computing/gallery/evidence.json) |
-| P8 | The 65-case [product corpus](../bench/numerical-computing/qualification/product.corpus.json), [campaign tests](../test/numerics/evidence/qualification-campaign.cjs), and [release-workflow tests](../test/numerics/evidence/release-workflow.cjs) |
+| P8 | The 69-case [product corpus](../bench/numerical-computing/qualification/product.corpus.json), [campaign tests](../test/numerics/evidence/qualification-campaign.cjs), and [release-workflow tests](../test/numerics/evidence/release-workflow.cjs) |
 
 These domains are separate lazy source packages and their integrated modules
 are in the strict CPython/Ruff/Pyright inventory. The backend-neutral product
-corpus contains 65 P0-P8 cases across definition identities, differential
+corpus contains 69 P0-P8 cases across definition identities, differential
 oracles, independent residuals, conditioned stress, metamorphic properties,
-deterministic fuzz, and failure semantics. The source gallery contains nine
-stories and 18 checked cases. Public deployment is a separate release action
+deterministic fuzz, and failure semantics. The source gallery contains ten
+stories and 20 checked cases, including 15 bounded animations. Public
+deployment is a separate release action
 and must not be inferred from the source artifact.
 
 Completion applies to this reviewed supported surface, not every aspirational

@@ -37,8 +37,9 @@ The numerical implementation is supported by backend-neutral correctness
 corpora, metamorphic and failure tests, bounded fuzz and sweep cases, executed
 differential oracles drawn from NumPy, SciPy, and mpmath, plus retained R
 reference source and fixtures. Qualified cminpack integration supplies
-nonlinear least squares. NLopt promotion remains
-conservative and capability-gated until its production evidence is complete.
+nonlinear least squares. One explicit-only NLopt Nelder-Mead Wasm reactor is
+qualified and capability-gated; it is never selected automatically, and other
+NLopt methods remain unsupported until separately qualified.
 
 Release publication now requires an authenticated numerical evidence gate. It
 binds the exact candidate to Node, npm, SEA, and browser observations; Linux
