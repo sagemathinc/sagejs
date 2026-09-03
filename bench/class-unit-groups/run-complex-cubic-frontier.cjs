@@ -32,7 +32,7 @@ const RESPONSE_MARKER = "SAGEJS_COMPLEX_CUBIC_FRONTIER_RESPONSE|";
 const WARMUP_MARKER = "SAGEJS_COMPLEX_CUBIC_FRONTIER_WARMUP|";
 const WARMUP_SCHEMA = "sagejs.benchmark/complex-cubic-frontier-warmup-v1";
 const WARMUP_ATTESTATION_SCHEMA =
-  "sagejs.benchmark/complex-cubic-frontier-warmup-attestation-v1";
+  "sagejs.benchmark/complex-cubic-frontier-warmup-attestation-v2";
 const RUNTIME_IDENTITY_SCHEMA =
   "sagejs.benchmark/complex-cubic-frontier-runtime-identity-v1";
 const GP_CENSUS_MARKER = "SAGEJS_COMPLEX_CUBIC_GP_CENSUS|";
@@ -680,33 +680,46 @@ function validateWarmupResponse(response, records) {
 
 function validateRuntimeWarmupAttestation(attestation, runtimeClosure, records = null) {
   if (!hasExactKeys(attestation, [
-    "schema", "program_sha256", "record_count", "observations_sha256", "pass_count",
-    "response_sha256_by_pass", "runtime_closure_sha256_by_pass",
+    "schema", "program_bundle_sha256", "record_count", "processes_per_pass",
+    "observations_sha256", "pass_count", "response_bundle_sha256_by_pass",
+    "runtime_closure_sha256_by_pass",
   ]) || attestation.schema !== WARMUP_ATTESTATION_SCHEMA ||
-      attestation.record_count !== 1000 || attestation.pass_count !== 2 ||
-      !/^[0-9a-f]{64}$/.test(attestation.program_sha256 || "") ||
+      attestation.record_count !== 1000 || attestation.processes_per_pass !== 20 ||
+      attestation.pass_count !== 2 ||
+      !/^[0-9a-f]{64}$/.test(attestation.program_bundle_sha256 || "") ||
       !/^[0-9a-f]{64}$/.test(attestation.observations_sha256 || "") ||
-      !Array.isArray(attestation.response_sha256_by_pass) ||
-      attestation.response_sha256_by_pass.length !== 2 ||
+      !Array.isArray(attestation.response_bundle_sha256_by_pass) ||
+      attestation.response_bundle_sha256_by_pass.length !== 2 ||
       !Array.isArray(attestation.runtime_closure_sha256_by_pass) ||
       attestation.runtime_closure_sha256_by_pass.length !== 2 ||
-      attestation.response_sha256_by_pass.some((digest) =>
+      attestation.response_bundle_sha256_by_pass.some((digest) =>
         !/^[0-9a-f]{64}$/.test(digest)) ||
       attestation.runtime_closure_sha256_by_pass.some((digest) =>
         digest !== runtimeClosure?.sha256)) {
     throw new Error("candidate runtime warmup attestation is malformed");
   }
   if (records !== null) {
-    const expectedResponse = expectedWarmupResponse(records);
-    const expectedResponseDigest = canonicalDigest(expectedResponse);
-    if (attestation.program_sha256 !== sha256(sageWarmupSource(records)) ||
-        attestation.observations_sha256 !== expectedResponse.observations_sha256 ||
-        attestation.response_sha256_by_pass.some((digest) =>
-          digest !== expectedResponseDigest)) {
+    if (!Array.isArray(records) || records.length !== 1000) {
+      throw new Error("candidate runtime warmup attestation requires 1,000 survey records");
+    }
+    const partitions = shardRecords({ records });
+    if (partitions.length !== 20 || partitions.some((partition) => partition.length !== 50)) {
+      throw new Error("candidate runtime warmup attestation requires 20 survey strata");
+    }
+    const expectedResponses = partitions.map(expectedWarmupResponse);
+    const expectedResponseBundleDigest = canonicalDigest(expectedResponses);
+    const expectedProgramBundleDigest = canonicalDigest(
+      partitions.map((partition) => sha256(sageWarmupSource(partition))),
+    );
+    if (attestation.program_bundle_sha256 !== expectedProgramBundleDigest ||
+        attestation.observations_sha256 !==
+          expectedWarmupResponse(records).observations_sha256 ||
+        attestation.response_bundle_sha256_by_pass.some((digest) =>
+          digest !== expectedResponseBundleDigest)) {
       throw new Error("candidate runtime warmup attestation disagrees with the frozen survey");
     }
-  } else if (attestation.response_sha256_by_pass[0] !==
-      attestation.response_sha256_by_pass[1]) {
+  } else if (attestation.response_bundle_sha256_by_pass[0] !==
+      attestation.response_bundle_sha256_by_pass[1]) {
     throw new Error("candidate runtime warmup passes did not agree");
   }
   return attestation;
@@ -723,6 +736,14 @@ function bindWarmedRuntimeClosure(warmup, source, records) {
   return { ...source, candidate_runtime_warmup: warmup.attestation };
 }
 
+function assertRuntimeClosureUnchanged(recordedRuntimeClosure, currentRuntimeClosure) {
+  if (!recordedRuntimeClosure || !currentRuntimeClosure ||
+      canonicalDigest(recordedRuntimeClosure) !== canonicalDigest(currentRuntimeClosure)) {
+    throw new Error("candidate runtime closure changed during the measured execution");
+  }
+  return currentRuntimeClosure;
+}
+
 function warmCandidateDirectEnvironment(corpus, root = ROOT, dependencies = {}) {
   const records = corpus?.records;
   if (!Array.isArray(records) || records.length !== 1000) {
@@ -733,9 +754,13 @@ function warmCandidateDirectEnvironment(corpus, root = ROOT, dependencies = {}) 
   const identifyClosure = dependencies.candidateRuntimeClosure || candidateRuntimeClosure;
   const spawn = dependencies.spawnSync || childProcess.spawnSync;
   const makeSource = dependencies.sageWarmupSource || sageWarmupSource;
-  const generatedSource = makeSource(records);
-  const responses = [];
-  const run = () => {
+  const partitions = shardRecords(corpus);
+  if (partitions.length !== 20 || partitions.some((partition) => partition.length !== 50)) {
+    throw new Error("candidate direct environment warmup requires 20 fifty-field strata");
+  }
+  const generatedSources = partitions.map(makeSource);
+  const responsesByPass = [];
+  const runPartition = (partition, generatedSource, shard) => {
     const identity = identifyEnvironment(root);
     const result = spawn(
       identity.node_executable.path,
@@ -751,7 +776,7 @@ function warmCandidateDirectEnvironment(corpus, root = ROOT, dependencies = {}) 
     );
     if (result.error || result.status !== 0 || result.signal !== null) {
       throw new Error(
-        "candidate direct environment warmup failed: " +
+        `candidate direct environment warmup shard ${shard} failed: ` +
           (result.error?.message || result.stderr ||
             `status=${result.status} signal=${result.signal}`),
       );
@@ -760,24 +785,29 @@ function warmCandidateDirectEnvironment(corpus, root = ROOT, dependencies = {}) 
       entry.startsWith(WARMUP_MARKER));
     if (!line) throw new Error("candidate direct environment warmup emitted no result marker");
     const response = JSON.parse(line.slice(WARMUP_MARKER.length));
-    validateWarmupResponse(response, records);
-    responses.push(response);
+    return validateWarmupResponse(response, partition);
+  };
+  const runPass = () => {
+    const responses = partitions.map((partition, shard) =>
+      runPartition(partition, generatedSources[shard], shard));
+    responsesByPass.push(responses);
   };
 
-  run();
+  runPass();
   const before = identifyClosure(root);
-  run();
+  runPass();
   const after = identifyClosure(root);
   if (canonicalDigest(before) !== canonicalDigest(after)) {
     throw new Error("candidate direct environment did not reach a stable runtime closure");
   }
   const attestation = {
     schema: WARMUP_ATTESTATION_SCHEMA,
-    program_sha256: sha256(generatedSource),
+    program_bundle_sha256: canonicalDigest(generatedSources.map(sha256)),
     record_count: records.length,
-    observations_sha256: responses[0].observations_sha256,
-    pass_count: responses.length,
-    response_sha256_by_pass: responses.map(canonicalDigest),
+    processes_per_pass: partitions.length,
+    observations_sha256: expectedWarmupResponse(records).observations_sha256,
+    pass_count: responsesByPass.length,
+    response_bundle_sha256_by_pass: responsesByPass.map(canonicalDigest),
     runtime_closure_sha256_by_pass: [before.sha256, after.sha256],
   };
   validateRuntimeWarmupAttestation(attestation, after, records);
@@ -2770,6 +2800,10 @@ async function main(argv = process.argv.slice(2)) {
       source,
       options,
     );
+  assertRuntimeClosureUnchanged(
+    source.candidate_runtime_closure,
+    candidateRuntimeClosure(ROOT),
+  );
   writeJsonAtomic(options.output, evidence);
   console.log(`${options.output}: ${evidence.schema}`);
 }
@@ -2794,6 +2828,7 @@ module.exports = {
   THREAD_ENV,
   candidateDirectEnvironmentIdentity,
   candidateRuntimeClosure,
+  assertRuntimeClosureUnchanged,
   bindWarmedRuntimeClosure,
   prepareCandidateDirectEnvironment,
   warmCandidateDirectEnvironment,

@@ -346,11 +346,12 @@ function sourceIdentity(
     };
     source.candidate_runtime_warmup = {
       schema: WARMUP_ATTESTATION_SCHEMA,
-      program_sha256: "1".repeat(64),
+      program_bundle_sha256: "1".repeat(64),
       record_count: 1000,
+      processes_per_pass: 20,
       observations_sha256: "2".repeat(64),
       pass_count: 2,
-      response_sha256_by_pass: ["3".repeat(64), "3".repeat(64)],
+      response_bundle_sha256_by_pass: ["3".repeat(64), "3".repeat(64)],
       runtime_closure_sha256_by_pass: [
         runtimeCharacter.repeat(64), runtimeCharacter.repeat(64),
       ],
@@ -369,13 +370,32 @@ function sourceIdentity(
         observations_sha256:
           sha256(JSON.stringify(JSON.parse(canonicalJson(observations)))),
       };
+      const partitions = shardRecords({ records });
+      const responses = partitions.map((partition) => {
+        const selected = partition.map((record) => ({
+          label: record.label,
+          discriminant: record.discriminant,
+          class_number: record.class_number,
+          class_group_invariants: record.class_group_invariants,
+        }));
+        return {
+          schema: WARMUP_SCHEMA,
+          record_count: partition.length,
+          native_pass_count: partition.length,
+          observations_sha256:
+            sha256(JSON.stringify(JSON.parse(canonicalJson(selected)))),
+        };
+      });
       source.candidate_runtime_warmup = {
         schema: WARMUP_ATTESTATION_SCHEMA,
-        program_sha256: sha256(sageWarmupSource(records)),
+        program_bundle_sha256: canonicalDigest(
+          partitions.map((partition) => sha256(sageWarmupSource(partition))),
+        ),
         record_count: records.length,
+        processes_per_pass: partitions.length,
         observations_sha256: response.observations_sha256,
         pass_count: 2,
-        response_sha256_by_pass: [canonicalDigest(response), canonicalDigest(response)],
+        response_bundle_sha256_by_pass: [canonicalDigest(responses), canonicalDigest(responses)],
         runtime_closure_sha256_by_pass: [
           runtimeCharacter.repeat(64), runtimeCharacter.repeat(64),
         ],

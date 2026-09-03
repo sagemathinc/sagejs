@@ -30,6 +30,7 @@ const {
   WARMUP_ATTESTATION_SCHEMA,
   WARMUP_MARKER,
   WARMUP_SCHEMA,
+  assertRuntimeClosureUnchanged,
   bindWarmedRuntimeClosure,
   censusBatchPlan,
   censusPartFilename,
@@ -951,7 +952,23 @@ test("full-survey warmup is a two-pass, content-bound runtime fixed point", () =
   let spawnCount = 0;
   let closureCount = 0;
   const closure = { schema: "unit-runtime", sha256: "a".repeat(64), files: 3 };
-  const expectedWarmupProgram = sageWarmupSource(corpus.records);
+  const partitions = shardRecords(corpus);
+  const expectedWarmupPrograms = partitions.map(sageWarmupSource);
+  const partitionResponses = partitions.map((partition) => {
+    const partitionObservations = partition.map((record) => ({
+      label: record.label,
+      discriminant: record.discriminant,
+      class_number: record.class_number,
+      class_group_invariants: record.class_group_invariants,
+    }));
+    return {
+      schema: WARMUP_SCHEMA,
+      record_count: partition.length,
+      native_pass_count: partition.length,
+      observations_sha256:
+        sha256(JSON.stringify(JSON.parse(canonicalJson(partitionObservations)))),
+    };
+  });
   const warmup = warmCandidateDirectEnvironment(corpus, "/candidate", {
     candidateDirectEnvironmentIdentity: () => ({
       node_executable: { path: "/node" }, environment: { UNIT: "1" },
@@ -960,28 +977,29 @@ test("full-survey warmup is a two-pass, content-bound runtime fixed point", () =
       closureCount += 1;
       return structuredClone(closure);
     },
-    sageWarmupSource: () => expectedWarmupProgram,
+    sageWarmupSource,
     spawnSync: (executable, args, options) => {
+      const shard = spawnCount % partitions.length;
       spawnCount += 1;
       assert.equal(executable, "/node");
       assert.deepEqual(args, ["/candidate/bin/sagejs", "--python", "-"]);
-      assert.equal(options.input, expectedWarmupProgram);
+      assert.equal(options.input, expectedWarmupPrograms[shard]);
       return {
         error: null,
         status: 0,
         signal: null,
         stderr: "",
-        stdout: `${WARMUP_MARKER}${JSON.stringify(response)}\n`,
+        stdout: `${WARMUP_MARKER}${JSON.stringify(partitionResponses[shard])}\n`,
       };
     },
   });
-  assert.equal(spawnCount, 2);
+  assert.equal(spawnCount, 40);
   assert.equal(closureCount, 2);
   assert.deepEqual(warmup.candidate_runtime_closure, closure);
   assert.equal(warmup.attestation.schema, WARMUP_ATTESTATION_SCHEMA);
   assert.equal(warmup.attestation.pass_count, 2);
-  assert.deepEqual(warmup.attestation.response_sha256_by_pass,
-    [canonicalDigest(response), canonicalDigest(response)]);
+  assert.deepEqual(warmup.attestation.response_bundle_sha256_by_pass,
+    [canonicalDigest(partitionResponses), canonicalDigest(partitionResponses)]);
 
   const source = { candidate_runtime_closure: structuredClone(closure) };
   const bound = bindWarmedRuntimeClosure(warmup, source, corpus.records);
@@ -992,8 +1010,14 @@ test("full-survey warmup is a two-pass, content-bound runtime fixed point", () =
   assert.throws(() => bindWarmedRuntimeClosure(warmup, {
     candidate_runtime_closure: { ...closure, files: 4 },
   }, corpus.records), /changed after/);
+  assert.equal(assertRuntimeClosureUnchanged(closure, structuredClone(closure)).sha256,
+    closure.sha256);
+  assert.throws(() => assertRuntimeClosureUnchanged(
+    closure, { ...closure, files: 4 },
+  ), /changed during/);
 
   let unstableClosureCall = 0;
+  let unstableSpawnCount = 0;
   assert.throws(() => warmCandidateDirectEnvironment(corpus, "/candidate", {
     candidateDirectEnvironmentIdentity: () => ({
       node_executable: { path: "/node" }, environment: {},
@@ -1001,11 +1025,14 @@ test("full-survey warmup is a two-pass, content-bound runtime fixed point", () =
     candidateRuntimeClosure: () => ({
       ...closure, files: ++unstableClosureCall,
     }),
-    sageWarmupSource: () => expectedWarmupProgram,
-    spawnSync: () => ({
-      error: null, status: 0, signal: null, stderr: "",
-      stdout: `${WARMUP_MARKER}${JSON.stringify(response)}\n`,
-    }),
+    sageWarmupSource,
+    spawnSync: () => {
+      const ordinal = unstableSpawnCount++ % partitions.length;
+      return {
+        error: null, status: 0, signal: null, stderr: "",
+        stdout: `${WARMUP_MARKER}${JSON.stringify(partitionResponses[ordinal])}\n`,
+      };
+    },
   }), /stable runtime closure/);
 });
 

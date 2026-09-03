@@ -261,15 +261,21 @@ locale/time zone, the fixed single-thread environment, source mode, the exact
 candidate production native pack, a closure-bound noninteractive module cache,
 and controlled nonexistent dynamic-cache and site-package roots. Before source
 identity is recorded, two identical untimed passes traverse all 1,000 exposed
-survey fields. Every field must reproduce its frozen class group through an
+survey fields as 20 fresh 50-field stratum processes per pass, matching the
+retained 50-field partition without retaining the whole corpus's object graph
+in one interpreter. Every field must reproduce its frozen class group through an
 authenticated native receipt and independent exact replay; only a compact
-observation digest crosses the process boundary. The generated-program digest,
-both response digests, both closure digests, and pass count form a compact
+observation digest crosses each process boundary. The generated-program bundle,
+both response bundles, both closure digests, process count, and pass count form a compact
 warmup attestation retained in the source identity. The complete runtime closure
 is hashed after each pass and must be unchanged; the separately recorded source
 closure must equal that fixed point. Thus the second pass proves that every
 survey-exercised lazy path has stabilized, without a post-warm identity gap.
-This applies to the survey census and timing commands too. The
+This applies to the survey census and timing commands too. Because retained
+timing visits all 20 partitions in one interpreter, the complete runtime closure
+is hashed again after the actual census or timing execution and before evidence
+publication; any mutation invalidates the run and requires a new qualification
+cycle. The
 runtime closure records the full environment and launch identity, the complete
 production cache index, the selected cubic loader, and the manifest and exact
 bytes of its required native pack. It rejects the loader's standalone-addon
