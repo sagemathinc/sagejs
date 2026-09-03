@@ -1,0 +1,60 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p7-sweep-presentation",
+  "title": "P7 Sweep Presentation",
+  "lane": "numerical-sweeps",
+  "status": "active",
+  "owner": "user",
+  "objective": "Teach bounded ODE parameter sweeps through retained SweepResult evidence, structured explanations, PlotSpec/animation, and an honest success/failure gallery story without replaying callbacks",
+  "base_commit": "4f8ed1cd040af912dae0a8f6e3bc65f84381dbeb",
+  "claims": [
+    "src/lib/sagejs/numerics/sweeps.py",
+    "test/numerics/sweeps/sweep-presentation.test.cjs",
+    "test/numerics/gallery/generate_sweep_evidence.py",
+    "test/numerics/gallery/generate-cross-domain-evidence.py",
+    "test/numerics/gallery/generate-cross-domain-gallery.cjs",
+    "test/numerics/gallery/cross-domain-gallery.test.cjs",
+    "test/numerics/gallery/root-gallery.test.cjs",
+    "bench/numerical-gallery/measure.cjs",
+    "docs/numerical-computing/gallery/README.md",
+    "docs/numerical-computing/gallery/cross-domain.schema.json",
+    "docs/numerical-computing/gallery/gallery.css",
+    "docs/numerical-computing/gallery/gallery.mjs",
+    "docs/numerical-computing/gallery/evidence.json",
+    "docs/numerical-computing/gallery/index.html",
+    "docs/numerical-computing/sweeps/README.md",
+    "website/numerical-computing/gallery.mjs",
+    "website/numerical-computing/gallery.css",
+    "website/numerical-computing/evidence.json",
+    "website/numerical-computing/index.html",
+    "website/numerical-computing/gallery-manifest.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Retained SweepResult records and independent ODE residual/analytic checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

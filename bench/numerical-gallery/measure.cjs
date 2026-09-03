@@ -243,7 +243,9 @@ async function measure() {
     },
     interpretation: {
       solver_and_visualization_generation: "included in evidence_generation_ms",
-      browser_wall_scope: "navigation, evidence fetch/validation, 17 Plotly renders, and frame registration",
+      browser_wall_scope:
+        `navigation, evidence fetch/validation, ${browser.rendered_figures || "bounded"} ` +
+        "Plotly renders, and frame registration",
       cache_policy: "one cold browser page in a fresh context; no network CDN",
       claim: "release ceilings are enforced; measurements are not optimization targets",
     },

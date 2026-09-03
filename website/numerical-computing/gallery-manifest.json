@@ -2,7 +2,7 @@
   "schema_version": 2,
   "kind": "sagejs-numerical-gallery",
   "title": "Numerical methods, with evidence",
-  "description": "Nine interactive teaching stories built from bounded Sage.js numerical results, traces, validation checks, and semantic plots.",
+  "description": "Ten interactive teaching stories built from bounded Sage.js numerical results, traces, validation checks, and semantic plots.",
   "entrypoint": "./index.html",
   "evidence": "./evidence.json",
   "renderer": "./gallery.mjs",
@@ -36,10 +36,10 @@
     "max_gallery_runtime_bytes": 10000000
   },
   "measurements": {
-    "story_count": 9,
-    "case_count": 18,
-    "animated_case_count": 13,
-    "gallery_runtime_bytes": 6822515
+    "story_count": 10,
+    "case_count": 20,
+    "animated_case_count": 15,
+    "gallery_runtime_bytes": 7081751
   },
   "story_order": [
     "root-brent",
@@ -50,7 +50,8 @@
     "runge-approximation",
     "spectral-conditioning",
     "optimization-path",
-    "robust-regression"
+    "robust-regression",
+    "ode-parameter-sweep"
   ],
   "stories": [
     {
@@ -261,6 +262,31 @@
         "method-assumptions",
         "success-and-failure-narratives",
         "bounded-trace-evidence",
+        "manual-animation",
+        "play-pause-step-restart-speed-iteration-controls",
+        "static-fallback",
+        "plotspec-json-export",
+        "plotly-json-export",
+        "accessible-html-export",
+        "fresh-sagejs-example"
+      ]
+    },
+    {
+      "id": "ode-parameter-sweep",
+      "title": "A parameter sweep is evidence, not a smooth promise",
+      "domain": "ode",
+      "operation": "parameter_sweep",
+      "status": "complete",
+      "entrypoint": "./index.html#ode-parameter-sweep",
+      "case_ids": [
+        "validated-decay-family",
+        "one-budgeted-failure"
+      ],
+      "capabilities": [
+        "method-assumptions",
+        "success-and-failure-narratives",
+        "bounded-trace-evidence",
+        "retained-parameter-sweep-explanation",
         "manual-animation",
         "play-pause-step-restart-speed-iteration-controls",
         "static-fallback",

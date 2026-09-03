@@ -50,7 +50,7 @@ function publicManifest(bundle, html) {
     kind: "sagejs-numerical-gallery",
     title: "Numerical methods, with evidence",
     description:
-      "Nine interactive teaching stories built from bounded Sage.js numerical results, traces, validation checks, and semantic plots.",
+      "Ten interactive teaching stories built from bounded Sage.js numerical results, traces, validation checks, and semantic plots.",
     entrypoint: "./index.html",
     evidence: "./evidence.json",
     renderer: "./gallery.mjs",
@@ -89,6 +89,9 @@ function publicManifest(bundle, html) {
         "bounded-trace-evidence",
         ...(story.cases.some((caseRecord) => caseRecord.reference_comparison)
           ? ["retained-reference-method-comparison"]
+          : []),
+        ...(story.operation === "parameter_sweep"
+          ? ["retained-parameter-sweep-explanation"]
           : []),
         "manual-animation",
         "play-pause-step-restart-speed-iteration-controls",

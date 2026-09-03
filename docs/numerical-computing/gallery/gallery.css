@@ -71,6 +71,7 @@ a { color: var(--accent); }
 .gallery-case-success .case-kind { color: var(--success); }
 .gallery-case-failure .case-kind { color: var(--failure); }
 .question { font-size: 1.1rem; font-weight: 650; }
+.sweep-explanation { overflow-wrap: anywhere; }
 
 .gallery-figure {
   border: 1px solid var(--line);

@@ -76,10 +76,11 @@ test("checked gallery is generated from current numerical contracts", async () =
     "spectral-conditioning",
     "optimization-path",
     "robust-regression",
+    "ode-parameter-sweep",
   ]);
-  assert.equal(bundle.measurements.story_count, 9);
-  assert.equal(bundle.measurements.case_count, 18);
-  assert.equal(bundle.measurements.animated_case_count, 13);
+  assert.equal(bundle.measurements.story_count, 10);
+  assert.equal(bundle.measurements.case_count, 20);
+  assert.equal(bundle.measurements.animated_case_count, 15);
   const statuses = Object.fromEntries(bundle.stories.flatMap((story) =>
     story.cases.map((caseRecord) => [
       `${story.id}/${caseRecord.id}`,
@@ -100,6 +101,12 @@ test("checked gallery is generated from current numerical contracts", async () =
   ], "Runge is an approximation-design failure, not a false solver status");
   assert.deepEqual(statuses["spectral-conditioning/near-defective-basis"], [
     "failure", "validation_failed", false,
+  ]);
+  assert.deepEqual(statuses["ode-parameter-sweep/validated-decay-family"], [
+    "success", "completed", true,
+  ]);
+  assert.deepEqual(statuses["ode-parameter-sweep/one-budgeted-failure"], [
+    "failure", "completed_with_failures", false,
   ]);
 });
 
@@ -123,9 +130,9 @@ test("resource receipts are exact, bounded, and fail closed", () => {
   const measurements = renderer.assertGalleryBudgets(bundle, evidenceText);
   assert.deepEqual(measurements, {
     bundle_bytes: Buffer.byteLength(evidenceText),
-    story_count: 9,
-    case_count: 18,
-    animated_case_count: 13,
+    story_count: 10,
+    case_count: 20,
+    animated_case_count: 15,
   });
   assert.ok(measurements.bundle_bytes < bundle.budgets.max_bundle_bytes);
   for (const budget of [
@@ -245,6 +252,89 @@ test("the root story compares two real retained method executions", () => {
   );
 });
 
+test("the ODE sweep story presents only retained item-level evidence", () => {
+  const success = renderer.caseById(
+    bundle,
+    "ode-parameter-sweep",
+    "validated-decay-family",
+  ).caseRecord;
+  const failure = renderer.caseById(
+    bundle,
+    "ode-parameter-sweep",
+    "one-budgeted-failure",
+  ).caseRecord;
+
+  assert.deepEqual(success.result.counts, {
+    completed: 5,
+    failed: 0,
+    planned: 5,
+    skipped: 0,
+  });
+  assert.equal(success.presentation.explanation.evidence.validated_item_count, 5);
+  assert.equal(success.independent_oracle.checks.length, 5);
+  assert.equal(success.independent_oracle.passed, true);
+  assert.equal(failure.presentation.explanation.evidence.validated_item_count, 4);
+  assert.equal(failure.independent_oracle.checks.length, 4);
+  assert.equal(failure.independent_oracle.passed, true);
+  assert.deepEqual(
+    failure.presentation.explanation.evidence.failures.map((item) => [
+      item.index,
+      item.parameter.rate,
+      item.status,
+    ]),
+    [[3, 2, "callback_error"]],
+  );
+
+  for (const caseRecord of [success, failure]) {
+    assert.equal(caseRecord.presentation.callback_reevaluated, false);
+    assert.equal(
+      caseRecord.presentation.callback_count_before,
+      caseRecord.presentation.callback_count_after,
+    );
+    assert.equal(
+      caseRecord.result.measurements.result_bytes,
+      caseRecord.result.items.reduce(
+        (total, item) => total + item.measurements.result_bytes,
+        0,
+      ),
+    );
+    assert.equal(
+      caseRecord.result.measurements.trace_bytes,
+      caseRecord.result.items.reduce(
+        (total, item) => total + item.measurements.trace_bytes,
+        0,
+      ),
+    );
+    const animation = caseRecord.presentation.plot_animation;
+    assert.deepEqual(
+      animation.metadata.selected_completed_item_counts,
+      [0, 1, 2, 3, 4, 5],
+    );
+    for (const frame of animation.frames) {
+      const processed = frame.metadata.processed_items;
+      const expected = caseRecord.result.items.slice(0, processed)
+        .filter((item) => item.success)
+        .map((item) => item.parameter.rate);
+      assert.deepEqual(frame.state.value.layers[0].data.x, expected);
+      assert.equal(frame.metadata.interpolated, false);
+    }
+  }
+
+  assert.deepEqual(
+    success.presentation.plot_spec.layers[0].data.x,
+    [0.25, 0.5, 1, 2, 4],
+  );
+  assert.deepEqual(
+    failure.presentation.plot_spec.layers[0].data.x,
+    [0.25, 0.5, 1, 4],
+  );
+  assert.equal(failure.presentation.plot_spec.layers[0].data.x.includes(2), false);
+  const failedFrame = failure.presentation.plot_animation.frames[4];
+  assert.equal(failedFrame.metadata.processed_items, 4);
+  assert.equal(failedFrame.metadata.source_item_status, "callback_error");
+  assert.deepEqual(failedFrame.state.value.layers[0].data.x, [0.25, 0.5, 1]);
+});
+
 test("every presentation is computed evidence and callback counts stay frozen", () => {
   let presentations = 0;
   for (const story of bundle.stories) {
@@ -290,7 +380,7 @@ test("every presentation is computed evidence and callback counts stay frozen", 
       assert.equal(protocol.capabilities.restart.route, "plotly-layout");
     }
   }
-  assert.equal(presentations, 17);
+  assert.equal(presentations, 19);
 
   const root = renderer.caseById(
     bundle,
@@ -324,8 +414,8 @@ test("failure stories cite real distinctions instead of cosmetic warnings", () =
   const failures = bundle.stories.map((story) =>
     story.cases.find((item) => item.kind === "failure"),
   );
-  assert.equal(failures.length, 9);
-  assert.equal(failures.filter((item) => !item.result.success).length, 8);
+  assert.equal(failures.length, 10);
+  assert.equal(failures.filter((item) => !item.result.success).length, 9);
   const discontinuity = failures.find((item) => item.id === "jump-discontinuity");
   assert.equal(discontinuity.result.validation.residual, 1);
   assert.equal(discontinuity.result.validation.passed, false);
@@ -343,15 +433,16 @@ test("static document is a complete accessible lesson before JavaScript", () => 
   const html = readFileSync(htmlPath, "utf8");
   const css = readFileSync(cssPath, "utf8");
   assert.match(html, /^<!doctype html>/);
-  assert.equal((html.match(/class="gallery-story"/g) || []).length, 9);
-  assert.equal((html.match(/class="gallery-case /g) || []).length, 18);
-  assert.equal((html.match(/<caption>Structured numerical evidence/g) || []).length, 18);
+  assert.equal((html.match(/class="gallery-story"/g) || []).length, 10);
+  assert.equal((html.match(/class="gallery-case /g) || []).length, 20);
+  assert.equal((html.match(/<caption>Structured numerical evidence/g) || []).length, 20);
   assert.equal((html.match(/data-reference-comparison/g) || []).length, 1);
+  assert.equal((html.match(/data-sweep-explanation/g) || []).length, 2);
   assert.match(html, /Two retained executions of the same numerical problem/);
   assert.match(html, /Independent reference-method comparison/);
-  assert.equal((html.match(/data-gallery-plot=/g) || []).length, 17);
-  assert.equal((html.match(/data-gallery-animation-controls/g) || []).length, 13);
-  assert.equal((html.match(/role="img"/g) || []).length, 17);
+  assert.equal((html.match(/data-gallery-plot=/g) || []).length, 19);
+  assert.equal((html.match(/data-gallery-animation-controls/g) || []).length, 15);
+  assert.equal((html.match(/role="img"/g) || []).length, 19);
   assert.match(html, /<noscript>/);
   assert.match(html, /All explanations and result tables are already present/);
   assert.match(html, /Runge phenomenon/);
@@ -473,7 +564,7 @@ test(
       await page.waitForSelector("html[data-gallery-ready='true']");
       assert.equal(
         await page.getAttribute("html", "data-gallery-rendered-count"),
-        "17",
+        "19",
       );
       const timing = await page.evaluate(() => ({
         hydration: Number(document.documentElement.dataset.galleryHydrationMs),
@@ -481,10 +572,10 @@ test(
       }));
       assert.ok(timing.hydration <= bundle.budgets.max_browser_hydration_ms);
       assert.ok(timing.single <= bundle.budgets.max_single_plot_render_ms);
-      assert.equal(await page.locator(".js-plotly-plot").count(), 17);
-      assert.equal(await page.locator(".gallery-story").count(), 9);
-      assert.equal(await page.locator(".gallery-case").count(), 18);
-      assert.equal(await page.locator(".gallery-animation-controls").count(), 13);
+      assert.equal(await page.locator(".js-plotly-plot").count(), 19);
+      assert.equal(await page.locator(".gallery-story").count(), 10);
+      assert.equal(await page.locator(".gallery-case").count(), 20);
+      assert.equal(await page.locator(".gallery-animation-controls").count(), 15);
       assert.equal(
         await page.locator(
           "#plot-optimization-path-rosenbrock-convergence .slider-container",
@@ -575,7 +666,7 @@ test(
       );
       assert.equal(
         await reduced.getAttribute("html", "data-gallery-rendered-count"),
-        "17",
+        "19",
       );
       const reducedControlsSelector =
         "#case-root-brent-cosine-fixed-point [data-gallery-animation-controls]";
@@ -604,11 +695,12 @@ test(
       const context = await browser.newContext({ javaScriptEnabled: false });
       const noScript = await context.newPage();
       await noScript.goto(host.url, { waitUntil: "domcontentloaded" });
-      assert.equal(await noScript.locator(".gallery-story").count(), 9);
-      assert.equal(await noScript.locator(".gallery-case").count(), 18);
-      assert.equal(await noScript.locator("table").count(), 19);
+      assert.equal(await noScript.locator(".gallery-story").count(), 10);
+      assert.equal(await noScript.locator(".gallery-case").count(), 20);
+      assert.equal(await noScript.locator("table").count(), 21);
       assert.equal(await noScript.locator("[data-reference-comparison]").count(), 1);
-      assert.equal(await noScript.locator("[role='img']").count(), 17);
+      assert.equal(await noScript.locator("[data-sweep-explanation]").count(), 2);
+      assert.equal(await noScript.locator("[role='img']").count(), 19);
       assert.match(await noScript.locator("noscript").textContent(), /JavaScript is off/);
       await context.close();
     } finally {

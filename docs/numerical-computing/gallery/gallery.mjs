@@ -79,10 +79,24 @@ function scalarCount(value) {
 }
 
 function traceMeasurement(result) {
-  return {
-    events: result.trace.retained_events,
-    payload: bytes(JSON.stringify(result.trace)),
-  };
+  const traces = [];
+  if (result?.trace) {
+    traces.push(result.trace);
+  } else if (result?.operation === "parameter_sweep") {
+    for (const item of result.items || []) {
+      if (item.trace) traces.push(item.trace);
+      if (item.value?.trace) traces.push(item.value.trace);
+    }
+  } else {
+    throw new Error("gallery result has no retained trace evidence");
+  }
+  return traces.reduce(
+    (maximum, trace) => ({
+      events: Math.max(maximum.events, trace.retained_events),
+      payload: Math.max(maximum.payload, bytes(JSON.stringify(trace))),
+    }),
+    { events: 0, payload: 0 },
+  );
 }
 
 function resultSummary(result, callbackCalls) {
@@ -417,22 +431,64 @@ function escapeHtml(value) {
 
 function resultEvidenceRows(caseRecord) {
   const result = caseRecord.result;
-  const rows = [
-    ["Status", result.status],
-    ["Success", String(result.success)],
-    ["Method", result.method],
-    ["Backend", result.backend],
-    ["Validation", `${result.validation.truth_level}; passed=${result.validation.passed}`],
-    ["Iterations", result.iterations],
-    ["Evaluations", result.evaluations],
-    [
-      "Diagnostics",
-      result.diagnostics.map((item) => item.code).join(", ") || "none",
-    ],
-  ];
+  const explanation = caseRecord.presentation?.explanation;
+  const rows = result.operation === "parameter_sweep"
+    ? [
+      ["Status", result.status],
+      ["Success", String(result.success)],
+      ["Method", result.provenance.scheduler],
+      ["Backend", result.provenance.executor.name],
+      [
+        "Validation",
+        `${explanation.evidence.validated_item_count} nested results passed; ` +
+          `${explanation.evidence.validation_failed_item_count} did not pass`,
+      ],
+      ["Items", `${result.counts.completed}/${result.counts.planned} processed`],
+      ["Evaluations", result.measurements.evaluations],
+      [
+        "Diagnostics",
+        explanation.evidence.failures.map((item) =>
+          `item ${item.index}: ${item.status}`
+        ).join(", ") || "none",
+      ],
+    ]
+    : [
+      ["Status", result.status],
+      ["Success", String(result.success)],
+      ["Method", result.method],
+      ["Backend", result.backend],
+      ["Validation", `${result.validation.truth_level}; passed=${result.validation.passed}`],
+      ["Iterations", result.iterations],
+      ["Evaluations", result.evaluations],
+      [
+        "Diagnostics",
+        result.diagnostics.map((item) => item.code).join(", ") || "none",
+      ],
+    ];
   return rows.map(([key, value]) =>
     `<tr><th scope="row">${escapeHtml(key)}</th><td>${escapeHtml(value)}</td></tr>`
   ).join("");
+}
+
+function sweepExplanationHtml(caseRecord) {
+  const explanation = caseRecord.presentation?.explanation;
+  if (!explanation) return "";
+  const interpretation = explanation.interpretation.map((item) =>
+    `<li>${escapeHtml(item)}</li>`
+  ).join("");
+  const failures = explanation.evidence.failures.map((failure) =>
+    `<li>Item ${escapeHtml(failure.index)} (${escapeHtml(JSON.stringify(failure.parameter))}): ` +
+      `${escapeHtml(failure.status)} — ${escapeHtml(failure.error.message || "no callback value retained")}</li>`
+  ).join("");
+  const limitations = explanation.limitations.map((item) =>
+    `<li>${escapeHtml(item)}</li>`
+  ).join("");
+  return `<section class="sweep-explanation" data-sweep-explanation>
+    <h4>Retained sweep explanation</h4>
+    <ul>${interpretation}</ul>${failures ? `
+    <h5>Failed items</h5><ul>${failures}</ul>` : ""}
+    <details><summary>Limits of this evidence</summary><ul>${limitations}</ul></details>
+  </section>`;
 }
 
 function referenceComparisonHtml(caseRecord) {
@@ -514,7 +570,7 @@ function caseHtml(story, caseRecord) {
     <p class="case-kind">${escapeHtml(caseRecord.kind)}</p>
     <h3>${escapeHtml(caseRecord.title)}</h3>
     <p class="question">${escapeHtml(caseRecord.question)}</p>
-    <p>${escapeHtml(caseRecord.static_description)}</p>${referenceComparisonHtml(caseRecord)}
+    <p>${escapeHtml(caseRecord.static_description)}</p>${referenceComparisonHtml(caseRecord)}${sweepExplanationHtml(caseRecord)}
     ${plot}
     <div class="table-scroll"><table>
       <caption>Structured numerical evidence for ${escapeHtml(caseRecord.title)}</caption>
@@ -543,10 +599,10 @@ export function buildGalleryDocument(bundle) {
   const body = bundle.stories.map(buildAccessibleStoryHtml).join("");
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Nine interactive Sage.js numerical lessons with checked results, failures, traces, plots, and animations.">
+<meta name="description" content="Ten interactive Sage.js numerical lessons with checked results, failures, traces, plots, and animations.">
 <title>Sage.js numerical methods laboratory</title><link rel="stylesheet" href="./gallery.css"></head>
 <body><header class="hero"><p class="site-links"><a href="../">Sage.js dashboard</a> · <a href="https://app.sagejs.org/">Run Sage.js</a> · <a href="../reference.html">Reference</a></p><p class="eyebrow">Sage.js numerical computing</p><h1>Evidence, not solver theater</h1>
-<p>Nine bounded lessons replay retained numerical evidence. Every success and failure remains fully readable without JavaScript or animation.</p></header>
+<p>Ten bounded lessons replay retained numerical evidence. Every success and failure remains fully readable without JavaScript or animation.</p></header>
 <nav aria-label="Numerical gallery stories"><h2>Stories</h2><ol>${navigation}</ol></nav>
 <main>${body}</main>
 <noscript><p class="noscript">JavaScript is off. All explanations and result tables are already present; interactive Plotly views and JSON downloads are optional enhancements.</p></noscript>

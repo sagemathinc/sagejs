@@ -21,6 +21,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src" / "lib"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from sagejs.numerics import find_root
 from sagejs.numerics.approximation import chebyshev_approximation, interpolate
@@ -42,6 +43,7 @@ from sagejs.plotting import (
     make_layer,
     stable_frame_id,
 )
+from generate_sweep_evidence import sweep_story
 
 SCHEMA = "sagejs.numerics.gallery.story/v1"
 
@@ -1367,17 +1369,33 @@ def _measure(story: dict[str, Any]) -> dict[str, Any]:
     trace_events = 0
     trace_bytes = 0
     for case in story["cases"]:
-        results = [case["result"]]
+        result = case["result"]
+        results = [result]
         comparison = case.get("reference_comparison")
         if comparison:
             results.append(comparison["reference_result"])
         for result in results:
-            trace = result["trace"]
-            trace_events = max(trace_events, int(trace["retained_events"]))
-            trace_bytes = max(
-                trace_bytes,
-                len(json.dumps(trace, allow_nan=False, separators=(",", ":")).encode()),
-            )
+            traces = []
+            if "trace" in result:
+                traces.append(result["trace"])
+            elif result.get("operation") == "parameter_sweep":
+                for item in result["items"]:
+                    traces.append(item["trace"])
+                    nested = item.get("value")
+                    if isinstance(nested, dict) and "trace" in nested:
+                        traces.append(nested["trace"])
+            else:
+                raise ValueError("gallery result has no retained trace evidence")
+            for trace in traces:
+                trace_events = max(trace_events, int(trace["retained_events"]))
+                trace_bytes = max(
+                    trace_bytes,
+                    len(
+                        json.dumps(
+                            trace, allow_nan=False, separators=(",", ":")
+                        ).encode()
+                    ),
+                )
         presentation = case.get("presentation")
         if not presentation:
             continue
@@ -1418,6 +1436,7 @@ def build() -> dict[str, Any]:
         spectral_story(),
         optimization_story(),
         statistics_story(),
+        sweep_story(),
     ]
     budgets = {
         "max_bundle_bytes": 8_000_000,

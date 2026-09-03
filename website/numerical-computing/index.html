@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Nine interactive Sage.js numerical lessons with checked results, failures, traces, plots, and animations.">
+<meta name="description" content="Ten interactive Sage.js numerical lessons with checked results, failures, traces, plots, and animations.">
 <title>Sage.js numerical methods laboratory</title><link rel="stylesheet" href="./gallery.css"></head>
 <body><header class="hero"><p class="site-links"><a href="../">Sage.js dashboard</a> · <a href="https://app.sagejs.org/">Run Sage.js</a> · <a href="../reference.html">Reference</a></p><p class="eyebrow">Sage.js numerical computing</p><h1>Evidence, not solver theater</h1>
-<p>Nine bounded lessons replay retained numerical evidence. Every success and failure remains fully readable without JavaScript or animation.</p></header>
-<nav aria-label="Numerical gallery stories"><h2>Stories</h2><ol><li><a href="#root-brent">A sign change is evidence, not the answer</a></li><li><a href="#nonlinear-fit">A fitted curve is more than a parameter vector</a></li><li><a href="#ode-adaptivity">Adaptive steps should preserve the mathematics you care about</a></li><li><a href="#linear-refinement">A solution is credible only with a scale-aware residual</a></li><li><a href="#adaptive-quadrature">An error estimate is a budget allocation record</a></li><li><a href="#runge-approximation">Representation stability and approximation quality are different</a></li><li><a href="#spectral-conditioning">Eigenvalues can be available when an eigenbasis is not trustworthy</a></li><li><a href="#optimization-path">A path explains both convergence and a budget stop</a></li><li><a href="#robust-regression">Robust fitting shows which observations lost influence</a></li></ol></nav>
+<p>Ten bounded lessons replay retained numerical evidence. Every success and failure remains fully readable without JavaScript or animation.</p></header>
+<nav aria-label="Numerical gallery stories"><h2>Stories</h2><ol><li><a href="#root-brent">A sign change is evidence, not the answer</a></li><li><a href="#nonlinear-fit">A fitted curve is more than a parameter vector</a></li><li><a href="#ode-adaptivity">Adaptive steps should preserve the mathematics you care about</a></li><li><a href="#linear-refinement">A solution is credible only with a scale-aware residual</a></li><li><a href="#adaptive-quadrature">An error estimate is a budget allocation record</a></li><li><a href="#runge-approximation">Representation stability and approximation quality are different</a></li><li><a href="#spectral-conditioning">Eigenvalues can be available when an eigenbasis is not trustworthy</a></li><li><a href="#optimization-path">A path explains both convergence and a budget stop</a></li><li><a href="#robust-regression">Robust fitting shows which observations lost influence</a></li><li><a href="#ode-parameter-sweep">A parameter sweep is evidence, not a smooth promise</a></li></ol></nav>
 <main><section class="gallery-story" id="root-brent">
     <header><p class="domain">roots · scalar_root</p>
       <h2>A sign change is evidence, not the answer</h2><p>Brent rapidly solves cos(x)=x and a separate bisection run checks the candidate, while the same stopping rule is rejected on a discontinuity by independent residual validation.</p></header>
@@ -656,6 +656,106 @@ result</code></pre>
     <div class="table-scroll"><table>
       <caption>Structured numerical evidence for Finite coefficients can still fail validation</caption>
       <tbody><tr><th scope="row">Status</th><td>validation_failed</td></tr><tr><th scope="row">Success</th><td>false</td></tr><tr><th scope="row">Method</th><td>ordinary-least-squares</td></tr><tr><th scope="row">Backend</th><td>ordinary-python</td></tr><tr><th scope="row">Validation</th><td>indeterminate; passed=false</td></tr><tr><th scope="row">Iterations</th><td>0</td></tr><tr><th scope="row">Evaluations</th><td>22</td></tr><tr><th scope="row">Diagnostics</th><td>validation_failed</td></tr></tbody>
+    </table></div>
+  </article>
+  </section><section class="gallery-story" id="ode-parameter-sweep">
+    <header><p class="domain">ode · parameter_sweep</p>
+      <h2>A parameter sweep is evidence, not a smooth promise</h2><p>Vary a decay rate, validate every completed ODE endpoint independently, and retain a bounded failure without manufacturing a missing curve point.</p></header>
+    <div class="story-columns"><section><h3>Learning objectives</h3><ul><li>Read a sweep as ordered item-level evidence with aggregate resource accounting.</li><li>Compare validated numerical endpoints with the analytic decay law.</li><li>Distinguish a missing failed result from an interpolated or fabricated value.</li><li>Use Play, Pause, Step, Restart, Speed, and the slider over exact retained prefixes.</li></ul></section>
+      <section><h3>Method assumptions</h3><ul><li>The scalar decay model y&#39;=-rate*y has the analytic solution y(t)=exp(-rate*t).</li><li>Every successful nested ODE result must retain passing independent validation evidence.</li><li>Sweep ordering is input ordering; animation order does not imply adaptive sampling in parameter space.</li><li>Failures have no plot coordinate unless the failed result retained a validated numeric value.</li></ul></section></div>
+    <details><summary>Complete Sage.js example</summary><pre><code>import math
+from sagejs.numerics.ode import ode_problem, run_ode_parameter_sweep
+
+def make_problem(parameter, limits):
+    rate = float(parameter[&quot;rate&quot;])
+    return ode_problem(
+        lambda t, y: [-rate*y[0]],
+        (0.0, 2.0),
+        [1.0],
+        max_evaluations=limits.max_evaluations,
+        max_elapsed_ms=9000,
+        reference=lambda t: [math.exp(-rate*t)],
+    )
+
+result = run_ode_parameter_sweep(
+    [
+        {&quot;rate&quot;: float(&quot;0.25&quot;)},
+        {&quot;rate&quot;: float(&quot;0.5&quot;)},
+        {&quot;rate&quot;: float(&quot;1.0&quot;)},
+        {&quot;rate&quot;: float(&quot;2.0&quot;)},
+    ],
+    make_problem,
+)
+result</code></pre>
+      <p><a class="open-in-sage" href="https://app.sagejs.org/#code=aW1wb3J0IG1hdGgKZnJvbSBzYWdlanMubnVtZXJpY3Mub2RlIGltcG9ydCBvZGVfcHJvYmxlbSwgcnVuX29kZV9wYXJhbWV0ZXJfc3dlZXAKCmRlZiBtYWtlX3Byb2JsZW0ocGFyYW1ldGVyLCBsaW1pdHMpOgogICAgcmF0ZSA9IGZsb2F0KHBhcmFtZXRlclsicmF0ZSJdKQogICAgcmV0dXJuIG9kZV9wcm9ibGVtKAogICAgICAgIGxhbWJkYSB0LCB5OiBbLXJhdGUqeVswXV0sCiAgICAgICAgKDAuMCwgMi4wKSwKICAgICAgICBbMS4wXSwKICAgICAgICBtYXhfZXZhbHVhdGlvbnM9bGltaXRzLm1heF9ldmFsdWF0aW9ucywKICAgICAgICBtYXhfZWxhcHNlZF9tcz05MDAwLAogICAgICAgIHJlZmVyZW5jZT1sYW1iZGEgdDogW21hdGguZXhwKC1yYXRlKnQpXSwKICAgICkKCnJlc3VsdCA9IHJ1bl9vZGVfcGFyYW1ldGVyX3N3ZWVwKAogICAgWwogICAgICAgIHsicmF0ZSI6IGZsb2F0KCIwLjI1Iil9LAogICAgICAgIHsicmF0ZSI6IGZsb2F0KCIwLjUiKX0sCiAgICAgICAgeyJyYXRlIjogZmxvYXQoIjEuMCIpfSwKICAgICAgICB7InJhdGUiOiBmbG9hdCgiMi4wIil9LAogICAgXSwKICAgIG1ha2VfcHJvYmxlbSwKKQpyZXN1bHQ" target="_blank" rel="noopener">Open in Sage.js</a> — starts a fresh browser worksheet containing this self-contained example.</p></details>
+    <article class="gallery-case gallery-case-success" id="case-ode-parameter-sweep-validated-decay-family">
+    <p class="case-kind">success</p>
+    <h3>A family of validated decay curves</h3>
+    <p class="question">How does the terminal state change with the decay rate?</p>
+    <p>Five independently validated terminal states follow exp(-2*rate); the slider reveals only exact completed sweep prefixes.</p><section class="sweep-explanation" data-sweep-explanation>
+    <h4>Retained sweep explanation</h4>
+    <ul><li>5 of 5 planned items ran; 0 failed and 0 were skipped.</li><li>5 nested numerical results retained passing independent validation evidence.</li></ul>
+    <details><summary>Limits of this evidence</summary><ul><li>Sweep success means every scheduled item completed; generic callback values have no implied mathematical validation.</li><li>The scheduler&#39;s memory and cancellation limits are cooperative inside live callbacks.</li><li>Presentation reads retained finite JSON only and cannot recover values suppressed by failed items.</li></ul></details>
+  </section>
+    <figure class="gallery-figure">
+        <div class="gallery-plot" id="plot-ode-parameter-sweep-validated-decay-family"
+          data-gallery-plot="ode-parameter-sweep:validated-decay-family"
+          role="img" aria-label="Parameter sweep retained 5 successful numeric points from 5 processed items. 0 processed items failed and remain in the structured explanation, not as invented plot coordinates.">
+          <p>Parameter sweep retained 5 successful numeric points from 5 processed items. 0 processed items failed and remain in the structured explanation, not as invented plot coordinates.</p>
+        </div>
+        <div class="gallery-animation-controls" data-gallery-animation-controls hidden>
+    <div class="animation-transport" role="group" aria-label="Animation playback controls"><button type="button" data-animation-action="play">Play</button><button type="button" data-animation-action="pause">Pause</button><button type="button" data-animation-action="step">Step</button><button type="button" data-animation-action="restart">Restart</button></div>
+    <label>Speed <select data-animation-speed><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label><label class="animation-iteration">Iteration
+        <input data-animation-slider type="range" min="0" max="5" step="1" value="0">
+        <output data-animation-frame-label>start</output>
+      </label>
+    <span class="reduced-motion-note" data-animation-reduced-note hidden>Timed playback is disabled by your reduced-motion preference; Step, Restart, and Iteration remain available.</span>
+  </div>
+        <figcaption>Parameter sweep retained 5 successful numeric points from 5 processed items. 0 processed items failed and remain in the structured explanation, not as invented plot coordinates.</figcaption>
+        <div class="gallery-actions">
+          <button type="button" data-export="plotspec" data-story="ode-parameter-sweep" data-case="validated-decay-family">Export PlotSpec JSON</button>
+          <button type="button" data-export="plotly" data-story="ode-parameter-sweep" data-case="validated-decay-family">Export Plotly JSON</button>
+          <button type="button" data-export="html" data-story="ode-parameter-sweep" data-case="validated-decay-family">Export accessible HTML</button>
+        </div>
+      </figure>
+    <div class="table-scroll"><table>
+      <caption>Structured numerical evidence for A family of validated decay curves</caption>
+      <tbody><tr><th scope="row">Status</th><td>completed</td></tr><tr><th scope="row">Success</th><td>true</td></tr><tr><th scope="row">Method</th><td>bounded-batch-v1</td></tr><tr><th scope="row">Backend</th><td>portable-sequential</td></tr><tr><th scope="row">Validation</th><td>5 nested results passed; 0 did not pass</td></tr><tr><th scope="row">Items</th><td>5/5 processed</td></tr><tr><th scope="row">Evaluations</th><td>681</td></tr><tr><th scope="row">Diagnostics</th><td>none</td></tr></tbody>
+    </table></div>
+  </article><article class="gallery-case gallery-case-failure" id="case-ode-parameter-sweep-one-budgeted-failure">
+    <p class="case-kind">failure</p>
+    <h3>One parameter exhausts its local budget</h3>
+    <p class="question">What remains trustworthy when one nested ODE solve exhausts its evaluation budget?</p>
+    <p>Four validated terminal states remain visible. The rate-2 item has a retained callback_error and no fabricated coordinate.</p><section class="sweep-explanation" data-sweep-explanation>
+    <h4>Retained sweep explanation</h4>
+    <ul><li>5 of 5 planned items ran; 1 failed and 0 were skipped.</li><li>4 nested numerical results retained passing independent validation evidence.</li></ul>
+    <h5>Failed items</h5><ul><li>Item 3 ({&quot;rate&quot;:2}): callback_error — maximum_evaluations/maximum_evaluations</li></ul>
+    <details><summary>Limits of this evidence</summary><ul><li>Sweep success means every scheduled item completed; generic callback values have no implied mathematical validation.</li><li>The scheduler&#39;s memory and cancellation limits are cooperative inside live callbacks.</li><li>Presentation reads retained finite JSON only and cannot recover values suppressed by failed items.</li></ul></details>
+  </section>
+    <figure class="gallery-figure">
+        <div class="gallery-plot" id="plot-ode-parameter-sweep-one-budgeted-failure"
+          data-gallery-plot="ode-parameter-sweep:one-budgeted-failure"
+          role="img" aria-label="Parameter sweep retained 4 successful numeric points from 5 processed items. 1 processed item failed and remains in the structured explanation, not as invented plot coordinates.">
+          <p>Parameter sweep retained 4 successful numeric points from 5 processed items. 1 processed item failed and remains in the structured explanation, not as invented plot coordinates.</p>
+        </div>
+        <div class="gallery-animation-controls" data-gallery-animation-controls hidden>
+    <div class="animation-transport" role="group" aria-label="Animation playback controls"><button type="button" data-animation-action="play">Play</button><button type="button" data-animation-action="pause">Pause</button><button type="button" data-animation-action="step">Step</button><button type="button" data-animation-action="restart">Restart</button></div>
+    <label>Speed <select data-animation-speed><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label><label class="animation-iteration">Iteration
+        <input data-animation-slider type="range" min="0" max="5" step="1" value="0">
+        <output data-animation-frame-label>start</output>
+      </label>
+    <span class="reduced-motion-note" data-animation-reduced-note hidden>Timed playback is disabled by your reduced-motion preference; Step, Restart, and Iteration remain available.</span>
+  </div>
+        <figcaption>Parameter sweep retained 4 successful numeric points from 5 processed items. 1 processed item failed and remains in the structured explanation, not as invented plot coordinates.</figcaption>
+        <div class="gallery-actions">
+          <button type="button" data-export="plotspec" data-story="ode-parameter-sweep" data-case="one-budgeted-failure">Export PlotSpec JSON</button>
+          <button type="button" data-export="plotly" data-story="ode-parameter-sweep" data-case="one-budgeted-failure">Export Plotly JSON</button>
+          <button type="button" data-export="html" data-story="ode-parameter-sweep" data-case="one-budgeted-failure">Export accessible HTML</button>
+        </div>
+      </figure>
+    <div class="table-scroll"><table>
+      <caption>Structured numerical evidence for One parameter exhausts its local budget</caption>
+      <tbody><tr><th scope="row">Status</th><td>completed_with_failures</td></tr><tr><th scope="row">Success</th><td>false</td></tr><tr><th scope="row">Method</th><td>bounded-batch-v1</td></tr><tr><th scope="row">Backend</th><td>portable-sequential</td></tr><tr><th scope="row">Validation</th><td>4 nested results passed; 0 did not pass</td></tr><tr><th scope="row">Items</th><td>5/5 processed</td></tr><tr><th scope="row">Evaluations</th><td>512</td></tr><tr><th scope="row">Diagnostics</th><td>item 3: callback_error</td></tr></tbody>
     </table></div>
   </article>
   </section></main>
