@@ -38,13 +38,13 @@
   "direct_finalizer_sites": [
     {"path":"packages/flint-wasm/algebraic.mjs","count":2,"policy":"bounded exact snapshots; finalizer is last-resort cleanup"},
     {"path":"packages/flint-wasm/index.mjs","count":1,"policy":"bounded reconstructible P1 handles; finalizer is last-resort cleanup"},
-    {"path":"packages/flint-wasm/numeric-backend.mjs","count":2,"policy":"bounded exact MPFR snapshots; finalizer is last-resort cleanup"},
+    {"path":"packages/flint-wasm/numeric-backend.mjs","count":4,"policy":"bounded exact MPFR, Arb, and Acb snapshots; finalizer is last-resort cleanup"},
     {"path":"src/baselib/sagejs_bootstrap.py","count":1,"policy":"generated generic resource token; persistent public owners require an audited policy above"},
     {"path":"tools/ffi/wasm-adapters.cjs","count":1,"policy":"generated backend wrapper; persistent public owners require an audited policy above"},
     {"path":"tools/native-kernel/ffi-codegen.cjs","count":1,"policy":"generated native-module resource wrapper"}
   ],
   "non_ffi_persistent_families": [
-    {"id":"numeric-real-complex","policy":"bounded-exact-spill","evidence":"packages/flint-wasm/numeric-backend.mjs"},
+    {"id":"numeric-real-complex-interval","policy":"bounded-exact-spill","evidence":"packages/flint-wasm/numeric-backend.mjs"},
     {"id":"algebraic-scalar-matrix","policy":"bounded-exact-spill","evidence":"packages/flint-wasm/algebraic.mjs"},
     {"id":"modular-p1-list","policy":"bounded-reconstructible-cache","evidence":"packages/flint-wasm/index.mjs"}
   ],

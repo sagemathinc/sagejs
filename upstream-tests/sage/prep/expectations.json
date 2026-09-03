@@ -68,8 +68,8 @@
     {
       "file": "src/doc/en/prep/quickstarts/numerical-analysis.rst",
       "classification": "planned",
-      "reason": "directed rounding and certified interval arithmetic",
-      "lines": [39, 44, 46, 54, 56, 63, 64, 68, 73, 78, 83, 90, 95, 109, 121, 129, 140, 148, 149, 150, 160, 161, 168, 180, 193, 198, 206, 226, 239, 251, 253, 266, 274, 300, 310, 311]
+      "reason": "remaining binary reconstruction, numeric approximation, and plotting compatibility",
+      "lines": [95, 121, 160, 161, 168, 193, 198, 206, 239, 300, 310, 311]
     },
     {
       "file": "src/doc/en/prep/quickstarts/statistics-and-distributions.rst",

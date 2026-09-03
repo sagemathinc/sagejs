@@ -17,6 +17,7 @@
         "src/elliptic_lfunction.c",
         "src/extension_field.c",
         "src/floating.c",
+        "src/intervals.c",
         "src/hyperelliptic/genus3_jacobian.c",
         "src/hyperelliptic/genus3_jacobian_addon.c",
         "src/hyperelliptic/period_quadrature.c",

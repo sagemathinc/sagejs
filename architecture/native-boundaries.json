@@ -13,10 +13,10 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 236,
+    "classified-native-file": 238,
     "declared-ffi": 456,
     "declared-ffi-resource": 34,
-    "napi-export": 331,
+    "napi-export": 352,
     "runtime-intrinsic": 147,
     "wasm-export": 74
   },
@@ -5654,6 +5654,96 @@
       "family": "numerical"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalBinary",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalBinary",
+      "symbol": "sagejs_complex_interval_binary",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalFromParts",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalFromParts",
+      "symbol": "sagejs_complex_interval_from_parts",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPart",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalPart",
+      "symbol": "sagejs_complex_interval_part",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPowInt",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalPowInt",
+      "symbol": "sagejs_complex_interval_pow_int",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPrecision",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalPrecision",
+      "symbol": "sagejs_complex_interval_precision",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRelation",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalRelation",
+      "symbol": "sagejs_complex_interval_relation",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRound",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalRound",
+      "symbol": "sagejs_complex_interval_round",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalToString",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalToString",
+      "symbol": "sagejs_complex_interval_to_string",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalUnary",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalUnary",
+      "symbol": "sagejs_complex_interval_unary",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:complexMul",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -8295,6 +8385,106 @@
       "family": "numerical"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalBinary",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalBinary",
+      "symbol": "sagejs_real_interval_binary",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromBounds",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalFromBounds",
+      "symbol": "sagejs_real_interval_from_bounds",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromRational",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalFromRational",
+      "symbol": "sagejs_real_interval_from_rational",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPart",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalPart",
+      "symbol": "sagejs_real_interval_part",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPowInt",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalPowInt",
+      "symbol": "sagejs_real_interval_pow_int",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPrecision",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalPrecision",
+      "symbol": "sagejs_real_interval_precision",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRelation",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalRelation",
+      "symbol": "sagejs_real_interval_relation",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRound",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalRound",
+      "symbol": "sagejs_real_interval_round",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalToString",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalToString",
+      "symbol": "sagejs_real_interval_to_string",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalUnary",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalUnary",
+      "symbol": "sagejs_real_interval_unary",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:realMul",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -8311,6 +8501,26 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realNeg",
       "symbol": "sagejs_real_neg",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realNext",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realNext",
+      "symbol": "sagejs_real_next",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realParts",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realParts",
+      "symbol": "sagejs_real_parts",
       "disposition": "migrate-to-declared-ffi",
       "family": "numerical"
     },
@@ -9515,6 +9725,22 @@
       "disposition": "external-library-bridge",
       "review_status": "accepted",
       "lane": "hyperelliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/src/intervals.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/intervals.c",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/intervals.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/intervals.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
     },
     {
       "id": "native-file:packages/flint/src/matrix.c",

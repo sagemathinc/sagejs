@@ -498,6 +498,46 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_numeric_complex_interval_binary",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_interval_close",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_interval_format",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_interval_from_parts",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_interval_part",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_interval_pow_int",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_interval_precision",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_interval_relation",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_interval_round",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_complex_interval_unary",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_numeric_complex_neg",
           "kind": "function"
         },
@@ -570,7 +610,63 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_numeric_real_interval_binary",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_interval_close",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_interval_format",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_interval_from_bounds",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_interval_from_dump",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_interval_from_rational",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_interval_part",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_interval_pow_int",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_interval_precision",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_interval_relation",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_interval_round",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_interval_unary",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_numeric_real_neg",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_next",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_numeric_real_parts",
           "kind": "function"
         },
         {

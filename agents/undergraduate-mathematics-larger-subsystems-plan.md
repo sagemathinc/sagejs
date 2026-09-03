@@ -47,6 +47,12 @@ Sage.js-owned widget MIME type or comm protocol.
 
 ## P3 — Directed rounding and certified real/complex intervals
 
+Implemented on `integrate/undergrad-interacts` in September 2026. The public
+field parents remain available at startup while their element implementation
+is loaded lazily. Native builds and the browser use the same MPFR/Arb/Acb
+semantics through FLINT; exact native/Wasm differential tests cover endpoint
+directions, arithmetic, serialization, and bounded resource restoration.
+
 ### Floating-point rounding
 
 Finish Sage-compatible `RealField(prec, rnd=...)` behavior for `RNDN`, `RNDU`,

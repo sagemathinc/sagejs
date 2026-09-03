@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "7ae88846a7e9faf8775d50a20703896b2bedba07d6769bba2fe5192ba7fab774",
+  "source_sha256": "18ecd28502e3b52616cb029fc3902b57e33889d6539fce6cd67c54bb637292cf",
   "counts": {
-    "total": 1047,
+    "total": 1068,
     "by_kind": {
       "declared-ffi-function": 456,
       "declared-ffi-resource": 34,
-      "napi-export": 331,
+      "napi-export": 352,
       "production-kernel": 53,
       "runtime-intrinsic": 147,
       "specialist-capability": 26
@@ -15,12 +15,12 @@
     "by_disposition": {
       "compiled-source": 53,
       "desktop-only": 47,
-      "generated-wasm": 339,
+      "generated-wasm": 360,
       "portable-fallback": 560,
       "shared-core": 48
     },
     "by_status": {
-      "available": 582,
+      "available": 603,
       "desktop-only": 47,
       "fallback": 418
     }
@@ -7085,6 +7085,114 @@
       "explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalBinary",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalFromParts",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPart",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPowInt",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPrecision",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRelation",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRound",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalToString",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalUnary",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:complexMul",
       "family": "numerical",
       "disposition": "generated-wasm",
@@ -10274,6 +10382,126 @@
       "explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalBinary",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromBounds",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromRational",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPart",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPowInt",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPrecision",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRelation",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRound",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalToString",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalUnary",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:realMul",
       "family": "numerical",
       "disposition": "generated-wasm",
@@ -10296,6 +10524,30 @@
         "src/baselib/real_complex.py"
       ],
       "explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realNext",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/baselib/real_complex.py"
+      ],
+      "explanation": "The public numerical operation runs through a bounded receipt-backed MPFR WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realParts",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/baselib/real_complex.py"
+      ],
+      "explanation": "The public numerical operation runs through a bounded receipt-backed MPFR WebAssembly resource."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realPowInt",

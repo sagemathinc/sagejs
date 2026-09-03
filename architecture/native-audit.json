@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5347,
-      "bytes": 175207,
+      "lines": 5396,
+      "bytes": 177818,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -413,12 +413,13 @@
     },
     {
       "path": "packages/flint-wasm/src/numeric.c",
-      "lines": 1708,
-      "bytes": 53768,
+      "lines": 2890,
+      "bytes": 92112,
       "decision": "retain-bridge",
       "priority": "high",
       "responsibilities": [
         "bounded generation-tagged MPFR and complex resource ownership",
+        "bounded generation-tagged Arb and Acb interval resource ownership",
         "decimal ingress plus exact MPFR spill and restore transport",
         "mature Arb and Acb special-function dispatch",
         "bounded elementary-expression VM, quadrature, and root iteration",

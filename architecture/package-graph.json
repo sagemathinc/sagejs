@@ -84,7 +84,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 780000,
+      "max_source_bytes": 790000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -109,10 +109,20 @@
       "prefixes": []
     },
     {
+      "id": "interval-arithmetic",
+      "layer": 3,
+      "startup": "lazy",
+      "max_source_bytes": 30000,
+      "depends_on": ["core-runtime", "native-integration", "arithmetic"],
+      "modules": ["sagejs.intervals"],
+      "files": ["src/lib/sagejs/intervals.py"],
+      "prefixes": []
+    },
+    {
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 440000,
+      "max_source_bytes": 450000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py"
