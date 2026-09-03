@@ -2011,12 +2011,10 @@
         "wolfram"
       ],
       "target_languages": [
-        "matlab",
         "python-scipy",
         "sage"
       ],
       "round_trip_languages": [
-        "matlab",
         "python-scipy",
         "sage"
       ],

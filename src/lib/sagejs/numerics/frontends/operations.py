@@ -7,6 +7,7 @@ remain owned by their domain packages and are imported lazily by execution.
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, NoReturn
 
@@ -66,6 +67,39 @@ class _Definition:
 
 
 _LANGUAGES = ("sage", "python-scipy", "matlab", "wolfram")
+
+_MATLAB_RESERVED_IDENTIFIERS = frozenset(
+    {
+        "arguments",
+        "break",
+        "case",
+        "catch",
+        "classdef",
+        "continue",
+        "else",
+        "elseif",
+        "end",
+        "enumeration",
+        "events",
+        "for",
+        "function",
+        "global",
+        "if",
+        "methods",
+        "otherwise",
+        "parfor",
+        "persistent",
+        "properties",
+        "return",
+        "spmd",
+        "switch",
+        "try",
+        "while",
+    }
+)
+_WOLFRAM_RESERVED_IDENTIFIERS = frozenset(
+    {"E", "False", "I", "Infinity", "Null", "Pi", "True"}
+)
 
 
 def _aliases(
@@ -400,7 +434,12 @@ _DEFINITIONS = (
         module="sagejs.numerics.statistics",
         function="describe",
         options=("ddof", "nan_policy", "trace"),
-        targets=("sage", "python-scipy", "matlab"),
+        # MATLAB's four-statistic vector did not preserve the canonical
+        # descriptive-statistics result (count, quantiles, variance metadata,
+        # and the quantile convention were all lost). Keep natural input
+        # lowering, but fail closed on outward emission until a faithful
+        # target result contract is implemented and externally qualified.
+        targets=("sage", "python-scipy"),
     ),
     _Definition(
         "statistics",
@@ -916,6 +955,8 @@ def _callback_source(
     if not isinstance(parameters_value, Sequence) or isinstance(parameters_value, str):
         raise TypeError("canonical callback parameters must be a sequence")
     parameters = [str(item) for item in parameters_value]
+    for parameter in parameters:
+        _validate_target_identifier(parameter, language)
     bodies = rendered if isinstance(rendered, list) else [rendered]
     vector_output = isinstance(rendered, list)
     if shape in ("scalar", "sweep") and len(parameters) != 1:
@@ -999,6 +1040,35 @@ def _callback_source(
     return (
         "Function[{p}, Function[{" + ", ".join(parameters) + "}, " + value + "] @@ p]"
     )
+
+
+def _validate_target_identifier(name: str, language: str) -> None:
+    """Reject callback names that are not identifiers in an outward target."""
+
+    if language == "matlab":
+        valid = (
+            re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", name) is not None
+            and len(name) <= 63
+            and name not in _MATLAB_RESERVED_IDENTIFIERS
+        )
+    elif language == "wolfram":
+        # `_` introduces a pattern in Wolfram Language, so Python identifiers
+        # containing underscores are not safe target symbols.
+        valid = (
+            re.fullmatch(r"[A-Za-z$][A-Za-z0-9$]*", name) is not None
+            and name not in _WOLFRAM_RESERVED_IDENTIFIERS
+        )
+    else:
+        return
+    if not valid:
+        raise UnsupportedFrontendError(
+            FrontendDiagnostic(
+                "unsupported_target",
+                "callback parameter is not a safe " + language + " identifier: " + name,
+                language=language,
+                details={"identifier": name},
+            )
+        )
 
 
 def _emit_python_like(
@@ -1128,7 +1198,6 @@ def _emit_matlab(definition: _Definition, values: Mapping[str, Any]) -> str:
         "nonlinear_least_squares": "lsqnonlin(residuals, x0)",
         "linear_fit": "polyfit(xdata, ydata, 1)",
         "initial_value_problem": "ode45(callback, t_span, y0)",
-        "descriptive_statistics": "[mean(data), std(data), min(data), max(data)]",
         "one_sample_t_test": "ttest(data, population_mean)",
         "two_sample_t_test": "ttest2(first, second, 'Vartype', 'unequal')",
         "linear_regression": "fitlm(x, y)",

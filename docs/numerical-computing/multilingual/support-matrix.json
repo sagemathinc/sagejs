@@ -4,7 +4,7 @@
   "legend": {
     "registry": "a programmatic source alias lowers to the canonical Sage.js operation",
     "natural_parser": "the actual foreign-language parser recognizes a qualified natural source form",
-    "emit": "target-native source emission and checked generated-source round trip are qualified",
+    "emit": "Sage.js emits target-shaped source and self-round-trips it through canonical intent and the shared Sage.js backend; this does not imply execution in the external runtime",
     "unsupported_emit": "outward emission fails with a structured unsupported_target diagnostic"
   },
   "languages": ["sage", "python-scipy", "matlab", "wolfram"],
@@ -132,8 +132,8 @@
       "operation": "statistics:descriptive_statistics:v1",
       "registry": ["sage", "python-scipy", "matlab", "wolfram"],
       "natural_parser": ["matlab", "wolfram"],
-      "emit": ["sage", "python-scipy", "matlab"],
-      "unsupported_emit": ["wolfram"]
+      "emit": ["sage", "python-scipy"],
+      "unsupported_emit": ["matlab", "wolfram"]
     },
     {
       "operation": "statistics:one_sample_t_test:v1",

@@ -36,6 +36,38 @@ _DEFAULT_OPTIONS: dict[str, Any] = {
     "max_trace_bytes": 1000000,
 }
 _METHODS = ("auto", "bisection", "brent", "newton", "secant")
+_MATLAB_RESERVED_IDENTIFIERS = frozenset(
+    {
+        "arguments",
+        "break",
+        "case",
+        "catch",
+        "classdef",
+        "continue",
+        "else",
+        "elseif",
+        "end",
+        "enumeration",
+        "events",
+        "for",
+        "function",
+        "global",
+        "if",
+        "methods",
+        "otherwise",
+        "parfor",
+        "persistent",
+        "properties",
+        "return",
+        "spmd",
+        "switch",
+        "try",
+        "while",
+    }
+)
+_WOLFRAM_RESERVED_IDENTIFIERS = frozenset(
+    {"E", "False", "I", "Infinity", "Null", "Pi", "True"}
+)
 
 
 def _unsupported(
@@ -428,12 +460,38 @@ def _root_parts(
         raise TypeError("canonical root function must be a mapping")
     expression = render_expression(function_value, language)
     variable = str(operands["variable"])
+    _validate_target_identifier(variable, language)
     bracket = operands["bracket"]
     points = operands["initial_points"]
     initial = bracket if isinstance(bracket, list) and bracket else points
     if not isinstance(initial, list):
         raise TypeError("canonical root initial data must be a list")
     return expression, variable, initial, intent.options
+
+
+def _validate_target_identifier(name: str, language: str) -> None:
+    """Reject scalar-root variables that change target-language syntax."""
+
+    if language == "matlab":
+        valid = (
+            re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", name) is not None
+            and len(name) <= 63
+            and name not in _MATLAB_RESERVED_IDENTIFIERS
+        )
+    elif language == "wolfram":
+        valid = (
+            re.fullmatch(r"[A-Za-z$][A-Za-z0-9$]*", name) is not None
+            and name not in _WOLFRAM_RESERVED_IDENTIFIERS
+        )
+    else:
+        return
+    if not valid:
+        _unsupported(
+            "unsupported_target",
+            "scalar-root variable is not a safe " + language + " identifier: " + name,
+            language=language,
+            details={"identifier": name},
+        )
 
 
 def _emit_sage(intent: NumericalFrontendIntent) -> str:
