@@ -5329,7 +5329,9 @@ def ρσ_resolve_module_name(
     hoisted, so a direct read would instead yield `undefined` and suppress
     idioms such as `try: set; except NameError: ...`.
     """
+    declared_in_module = False
     if module_namespace is not None and _builtins_has_member(module_namespace, name):
+        declared_in_module = True
         module_value = _builtins_get_member(module_namespace, name)
         if module_value is not runtime.undefined:
             return module_value
@@ -5346,6 +5348,9 @@ def ρσ_resolve_module_name(
         builtin_value = _builtins_get_member(module_builtins, name)
         if builtin_value is not runtime.undefined:
             return builtin_value
+    if declared_in_module:
+        # Deleted Python bindings may use Python builtins, never JS globals.
+        raise NameError("name '" + name + "' is not defined")
     if _builtins_has_member(runtime.global_object, name):
         global_value = _builtins_get_member(runtime.global_object, name)
         if global_value is not runtime.undefined:
