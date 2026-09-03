@@ -328,6 +328,13 @@ function sourceIdentity(
       flint_runtime: {
         declaration_identity: `flint@${"6".repeat(64)}`,
         resolved_loader: "packages/flint/index.cjs",
+        package_resolution: {
+          strategy: "fresh-node-create-require-v1",
+          runtime_require_origin: "dist/tools/resources.js",
+          workspace_link: "node_modules/@sagemath/sagejs-flint",
+          workspace_link_realpath: "packages/flint",
+          resolved_loader: "packages/flint/index.cjs",
+        },
         generated_addon_sha256: "5".repeat(64),
         direct_addon_sha256: "4".repeat(64),
       },
@@ -1078,14 +1085,53 @@ test("candidate runtime closure requires and binds the production native pack", 
     "node_modules/@sagemath/sagejs-flint",
   );
   fs.mkdirSync(path.dirname(packageLink), { recursive: true });
-  fs.symlinkSync("../../packages/flint", packageLink);
+  fs.symlinkSync(
+    process.platform === "win32" ? flint : "../../packages/flint",
+    packageLink,
+    process.platform === "win32" ? "junction" : "dir",
+  );
   const present = candidateRuntimeClosure(directory);
   assert.equal(present.production_native_pack.pack_key, packKey);
   assert.equal(present.production_native_pack.sha256, sha256("preferred-pack-v1"));
   assert.equal(present.flint_runtime.resolved_loader, "packages/flint/index.cjs");
   assert.equal(
+    present.flint_runtime.package_resolution.runtime_require_origin,
+    "dist/tools/resources.js",
+  );
+  assert.equal(
     present.flint_runtime.generated_addon_sha256,
     sha256("generated-flint-addon"),
+  );
+  const shadow = path.join(
+    directory,
+    "dist/tools/node_modules/@sagemath/sagejs-flint",
+  );
+  fs.mkdirSync(shadow, { recursive: true });
+  assert.throws(
+    () => candidateRuntimeClosure(directory),
+    /rejects a nearer FLINT resolution entry/,
+  );
+  fs.rmSync(path.join(directory, "dist/tools/node_modules"), {
+    recursive: true,
+    force: true,
+  });
+  const alternateFlint = path.join(directory, "packages/alternate-flint");
+  fs.cpSync(flint, alternateFlint, { recursive: true });
+  fs.unlinkSync(packageLink);
+  fs.symlinkSync(
+    alternateFlint,
+    packageLink,
+    process.platform === "win32" ? "junction" : "dir",
+  );
+  assert.throws(
+    () => candidateRuntimeClosure(directory),
+    /requires the workspace FLINT package link/,
+  );
+  fs.unlinkSync(packageLink);
+  fs.symlinkSync(
+    process.platform === "win32" ? flint : "../../packages/flint",
+    packageLink,
+    process.platform === "win32" ? "junction" : "dir",
   );
   assert.deepEqual(present.standalone_native_addon, {
     path: `dist/native-kernels/${cacheKey}/build/Release/sagejs_native_kernel.node`,

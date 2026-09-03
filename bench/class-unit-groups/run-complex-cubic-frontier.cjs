@@ -293,6 +293,42 @@ function pinnedLaunchWrapperIdentity() {
   };
 }
 
+function lstatOrNull(filename) {
+  try {
+    return fs.lstatSync(filename);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+function resolvePackageFresh(root, origin, packageName) {
+  const source = `
+const fs = require("node:fs");
+const { createRequire } = require("node:module");
+const resolved = createRequire(process.argv[1]).resolve(process.argv[2]);
+process.stdout.write(fs.realpathSync(resolved));
+`;
+  const result = childProcess.spawnSync(
+    process.execPath,
+    ["-e", source, origin, packageName],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: { LANG: "C.UTF-8", LC_ALL: "C.UTF-8", TZ: "UTC" },
+      timeout: 10_000,
+    },
+  );
+  if (result.error || result.status !== 0 || result.signal !== null) {
+    throw new Error(
+      `candidate runtime closure cannot freshly resolve ${packageName}: ` +
+        (result.error?.message || result.stderr ||
+          `status=${result.status} signal=${result.signal}`),
+    );
+  }
+  return result.stdout;
+}
+
 function expectedDirectSagejsExecutable(root = ROOT) {
   return fs.realpathSync(path.join(root, "bin/sagejs"));
 }
@@ -448,7 +484,7 @@ function candidateRuntimeClosure(root = ROOT) {
     selected.cacheKey,
     "build/Release/sagejs_native_kernel.node",
   );
-  if (fs.existsSync(path.join(root, standaloneAddonName))) {
+  if (lstatOrNull(path.join(root, standaloneAddonName)) !== null) {
     throw new Error(
       "candidate runtime closure rejects the standalone native-addon fallback",
     );
@@ -460,21 +496,47 @@ function candidateRuntimeClosure(root = ROOT) {
       !/^flint@[0-9a-f]{64}$/.test(flintDeclaration.declarationIdentity || "")) {
     throw new Error("candidate runtime closure has no declared FLINT package boundary");
   }
-  const loaderDirectory = path.join(root, cacheRoot, selected.cacheKey);
+  const runtimeRequireOrigin = path.join(root, "dist/tools/resources.js");
   const expectedFlintLoader = path.join(root, "packages/flint/index.cjs");
-  let resolvedFlintLoader;
-  try {
-    resolvedFlintLoader = require.resolve("@sagemath/sagejs-flint", {
-      paths: [loaderDirectory],
-    });
-  } catch (error) {
-    throw new Error(`candidate runtime closure cannot resolve declared FLINT: ${error.message}`);
+  const shadowCandidates = [
+    "dist/tools/node_modules/@sagemath/sagejs-flint",
+    "dist/node_modules/@sagemath/sagejs-flint",
+  ];
+  for (const candidate of shadowCandidates) {
+    if (lstatOrNull(path.join(root, candidate)) !== null) {
+      throw new Error(
+        `candidate runtime closure rejects a nearer FLINT resolution entry ${candidate}`,
+      );
+    }
   }
-  if (fs.realpathSync(resolvedFlintLoader) !== expectedFlintLoader) {
+  const workspaceLinkName = "node_modules/@sagemath/sagejs-flint";
+  const workspaceLink = path.join(root, workspaceLinkName);
+  const workspaceLinkStatus = lstatOrNull(workspaceLink);
+  if (!workspaceLinkStatus?.isSymbolicLink() ||
+      fs.realpathSync(workspaceLink) !== path.join(root, "packages/flint")) {
+    throw new Error(
+      "candidate runtime closure requires the workspace FLINT package link",
+    );
+  }
+  const resolvedFlintLoader = resolvePackageFresh(
+    root,
+    runtimeRequireOrigin,
+    "@sagemath/sagejs-flint",
+  );
+  if (resolvedFlintLoader !== expectedFlintLoader) {
     throw new Error(
       "candidate runtime closure rejects a shadowed or retargeted FLINT package",
     );
   }
+  const flintResolution = {
+    strategy: "fresh-node-create-require-v1",
+    runtime_require_origin: "dist/tools/resources.js",
+    rejected_nearer_entries: shadowCandidates,
+    workspace_link: workspaceLinkName,
+    workspace_link_target: fs.readlinkSync(workspaceLink),
+    workspace_link_realpath: "packages/flint",
+    resolved_loader: "packages/flint/index.cjs",
+  };
   const flintManifestName = "packages/flint/build/generated-ffi/manifest.json";
   const flintDirectManifestName =
     "packages/flint/build/Release/sagejs_flint.manifest.json";
@@ -507,6 +569,9 @@ function candidateRuntimeClosure(root = ROOT) {
   }
   hash.update("native-cache-selection\0");
   hash.update(canonicalJson(selected));
+  hash.update("\0");
+  hash.update("flint-package-resolution\0");
+  hash.update(canonicalJson(flintResolution));
   hash.update("\0");
   const packManifestName = path.posix.join(cacheRoot, "pack/index.json");
   const packName = path.posix.join(
@@ -561,7 +626,8 @@ function candidateRuntimeClosure(root = ROOT) {
     },
     flint_runtime: {
       declaration_identity: flintDeclaration.declarationIdentity,
-      resolved_loader: "packages/flint/index.cjs",
+      package_resolution: flintResolution,
+      resolved_loader: flintResolution.resolved_loader,
       generated_manifest: flintManifestName,
       generated_addon: flintGeneratedAddonName,
       generated_addon_sha256: flintManifest.addon_hash,

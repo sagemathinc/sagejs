@@ -163,6 +163,16 @@ function validateCandidateSourceIdentity(source) {
         `dist/native-kernels/${closure.native_cache_key}/build/Release/sagejs_native_kernel.node` ||
       closure.standalone_native_addon?.required_absent !== true ||
       closure.flint_runtime?.resolved_loader !== "packages/flint/index.cjs" ||
+      closure.flint_runtime?.package_resolution?.strategy !==
+        "fresh-node-create-require-v1" ||
+      closure.flint_runtime?.package_resolution?.runtime_require_origin !==
+        "dist/tools/resources.js" ||
+      closure.flint_runtime?.package_resolution?.workspace_link !==
+        "node_modules/@sagemath/sagejs-flint" ||
+      closure.flint_runtime?.package_resolution?.workspace_link_realpath !==
+        "packages/flint" ||
+      closure.flint_runtime?.package_resolution?.resolved_loader !==
+        "packages/flint/index.cjs" ||
       !/^flint@[0-9a-f]{64}$/.test(
         closure.flint_runtime?.declaration_identity || "",
       ) ||
