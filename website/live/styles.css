@@ -148,6 +148,14 @@ kbd { background: var(--panel-soft); border: 1px solid var(--line); border-botto
 .result-running { border-left-color: #2b84a1; }
 .plot { background: white; min-height: 22rem; overflow: auto; width: 100%; }
 .plot.sagejs-latex-display { color: #17211d; font-size: 1.05rem; min-height: 0; padding: .9rem 1rem 1.15rem; text-align: center; }
+.event-output { background: var(--panel); overflow: auto; padding: .75rem; }
+.event-output:empty { display: none; }
+.event-output.widget-output { min-height: 2.5rem; }
+.event-output img { height: auto; max-width: 100%; }
+.html-output { overflow-wrap: anywhere; }
+.html-output .katex-display { overflow-x: auto; overflow-y: hidden; }
+.widget-error { color: var(--danger); }
+.widget-stale-notice { color: var(--muted); font-size: .85rem; margin: .65rem .75rem; }
 
 footer { align-items: center; border-top: 1px solid var(--line); color: var(--muted); display: flex; flex-wrap: wrap; font-size: .82rem; gap: 1rem; justify-content: center; padding: 1.5rem; text-align: center; }
 footer p { margin: 0; }

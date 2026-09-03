@@ -195,26 +195,78 @@ function withPrecision(value, precision) {
  * the browser; conversion to binary64 is explicit.
  */
 export function createPortableNumericBackend() {
+  const requireNearest = (rounding, operation) => {
+    if (rounding !== 0) {
+      throw new Error(`${operation} with directed rounding requires the MPFR WebAssembly backend`);
+    }
+  };
+  const intervalUnavailable = (operation) => {
+    throw new Error(
+      `${operation} requires the certified FLINT/Arb WebAssembly backend`,
+    );
+  };
   const backend = {
-    realFromString(value, precision) { return real(value, precision); },
-    realFromBigInt(value, precision) { return real(BigInt(value), precision); },
-    realFromRational(numerator, denominator, precision) {
+    realFromString(value, precision, rounding = 0, base = 10) {
+      requireNearest(rounding, "realFromString");
+      if (base !== 10) {
+        throw new Error("base-2 real input requires the MPFR WebAssembly backend");
+      }
+      return real(value, precision);
+    },
+    realFromBigInt(value, precision, rounding = 0) {
+      requireNearest(rounding, "realFromBigInt");
+      return real(BigInt(value), precision);
+    },
+    realFromRational(numerator, denominator, precision, rounding = 0) {
+      requireNearest(rounding, "realFromRational");
       return real(rational(BigInt(numerator), BigInt(denominator)), precision);
     },
-    realRound(value, precision) { return real(realValue(value), precision); },
+    realRound(value, precision, rounding = 0) {
+      requireNearest(rounding, "realRound");
+      return real(realValue(value), precision);
+    },
     realPrecision(value) { return Number(value.precision); },
-    realAdd(left, right) { return real(add(realValue(left), realValue(right)), left.precision); },
-    realSub(left, right) { return real(sub(realValue(left), realValue(right)), left.precision); },
-    realMul(left, right) { return real(mul(realValue(left), realValue(right)), left.precision); },
-    realDiv(left, right) { return real(div(realValue(left), realValue(right)), left.precision); },
+    realAdd(left, right, rounding = 0) {
+      requireNearest(rounding, "realAdd");
+      return real(add(realValue(left), realValue(right)), left.precision);
+    },
+    realSub(left, right, rounding = 0) {
+      requireNearest(rounding, "realSub");
+      return real(sub(realValue(left), realValue(right)), left.precision);
+    },
+    realMul(left, right, rounding = 0) {
+      requireNearest(rounding, "realMul");
+      return real(mul(realValue(left), realValue(right)), left.precision);
+    },
+    realDiv(left, right, rounding = 0) {
+      requireNearest(rounding, "realDiv");
+      return real(div(realValue(left), realValue(right)), left.precision);
+    },
     realNeg(value) { return real(neg(realValue(value)), value.precision); },
-    realPowInt(value, exponent) { return real(pow(realValue(value), exponent), value.precision); },
+    realPowInt(value, exponent, rounding = 0) {
+      requireNearest(rounding, "realPowInt");
+      return real(pow(realValue(value), exponent), value.precision);
+    },
     realEqual(left, right) {
       const difference = sub(realValue(left), realValue(right));
       return difference.numerator === 0n;
     },
     realToDouble(value) { return Number(decimalText(realValue(value), value.precision)); },
-    realToString(value) { return decimalText(realValue(value), value.precision); },
+    realToString(value, base = 10, rounding = 0) {
+      if (rounding !== 0) {
+        throw new Error("directed real formatting requires the MPFR WebAssembly backend");
+      }
+      if (base !== 10) {
+        throw new Error("directed/base-2 real formatting requires the MPFR WebAssembly backend");
+      }
+      return decimalText(realValue(value), value.precision);
+    },
+    realNext() {
+      throw new Error("adjacent real values require the MPFR WebAssembly backend");
+    },
+    realParts() {
+      throw new Error("exact MPFR decomposition requires the WebAssembly backend");
+    },
     complexFromReals(realPart, imaginaryPart) {
       if (realPart.precision !== imaginaryPart.precision) {
         throw new RangeError("complex components must have the same precision");
@@ -306,6 +358,25 @@ export function createPortableNumericBackend() {
       value = complexValue(value);
       return [decimalText(value.real, value.precision), decimalText(value.imaginary, value.precision)];
     },
+    realIntervalFromRational() { return intervalUnavailable("real intervals"); },
+    realIntervalFromBounds() { return intervalUnavailable("real intervals"); },
+    realIntervalRound() { return intervalUnavailable("real intervals"); },
+    realIntervalBinary() { return intervalUnavailable("real intervals"); },
+    realIntervalUnary() { return intervalUnavailable("real intervals"); },
+    realIntervalPowInt() { return intervalUnavailable("real intervals"); },
+    realIntervalRelation() { return intervalUnavailable("real intervals"); },
+    realIntervalPart() { return intervalUnavailable("real intervals"); },
+    realIntervalToString() { return intervalUnavailable("real intervals"); },
+    realIntervalPrecision() { return intervalUnavailable("real intervals"); },
+    complexIntervalFromParts() { return intervalUnavailable("complex intervals"); },
+    complexIntervalRound() { return intervalUnavailable("complex intervals"); },
+    complexIntervalBinary() { return intervalUnavailable("complex intervals"); },
+    complexIntervalUnary() { return intervalUnavailable("complex intervals"); },
+    complexIntervalPowInt() { return intervalUnavailable("complex intervals"); },
+    complexIntervalRelation() { return intervalUnavailable("complex intervals"); },
+    complexIntervalPart() { return intervalUnavailable("complex intervals"); },
+    complexIntervalToString() { return intervalUnavailable("complex intervals"); },
+    complexIntervalPrecision() { return intervalUnavailable("complex intervals"); },
   };
   return Object.freeze(backend);
 }
@@ -337,7 +408,31 @@ const wasmNumericExports = Object.freeze([
   "sagejs_numeric_real_precision",
   "sagejs_numeric_real_to_double",
   "sagejs_numeric_real_format",
+  "sagejs_numeric_real_next",
+  "sagejs_numeric_real_parts",
   "sagejs_numeric_real_close",
+  "sagejs_numeric_real_interval_from_rational",
+  "sagejs_numeric_real_interval_from_bounds",
+  "sagejs_numeric_real_interval_from_dump",
+  "sagejs_numeric_real_interval_round",
+  "sagejs_numeric_real_interval_binary",
+  "sagejs_numeric_real_interval_unary",
+  "sagejs_numeric_real_interval_pow_int",
+  "sagejs_numeric_real_interval_relation",
+  "sagejs_numeric_real_interval_part",
+  "sagejs_numeric_real_interval_format",
+  "sagejs_numeric_real_interval_precision",
+  "sagejs_numeric_real_interval_close",
+  "sagejs_numeric_complex_interval_from_parts",
+  "sagejs_numeric_complex_interval_round",
+  "sagejs_numeric_complex_interval_binary",
+  "sagejs_numeric_complex_interval_unary",
+  "sagejs_numeric_complex_interval_pow_int",
+  "sagejs_numeric_complex_interval_relation",
+  "sagejs_numeric_complex_interval_part",
+  "sagejs_numeric_complex_interval_format",
+  "sagejs_numeric_complex_interval_precision",
+  "sagejs_numeric_complex_interval_close",
   "sagejs_numeric_complex_from_reals",
   "sagejs_numeric_complex_round",
   "sagejs_numeric_complex_binary",
@@ -481,6 +576,8 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
   const maximumCachedHandles = 256;
   const realObjects = new WeakMap();
   const complexObjects = new WeakMap();
+  const realIntervalObjects = new WeakMap();
+  const complexIntervalObjects = new WeakMap();
   const activeStates = new Set();
   const realFinalizer = typeof FinalizationRegistry === "undefined"
     ? undefined
@@ -496,6 +593,24 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     : new FinalizationRegistry((state) => {
         if (state.handle !== 0) {
           exports.sagejs_numeric_complex_close(state.handle);
+          activeStates.delete(state);
+          state.handle = 0;
+        }
+      });
+  const realIntervalFinalizer = typeof FinalizationRegistry === "undefined"
+    ? undefined
+    : new FinalizationRegistry((state) => {
+        if (state.handle !== 0) {
+          exports.sagejs_numeric_real_interval_close(state.handle);
+          activeStates.delete(state);
+          state.handle = 0;
+        }
+      });
+  const complexIntervalFinalizer = typeof FinalizationRegistry === "undefined"
+    ? undefined
+    : new FinalizationRegistry((state) => {
+        if (state.handle !== 0) {
+          exports.sagejs_numeric_complex_interval_close(state.handle);
           activeStates.delete(state);
           state.handle = 0;
         }
@@ -580,7 +695,11 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     if (state.handle === 0) return;
     const answer = state.kind === "real"
       ? exports.sagejs_numeric_real_close(state.handle)
-      : exports.sagejs_numeric_complex_close(state.handle);
+      : state.kind === "complex"
+        ? exports.sagejs_numeric_complex_close(state.handle)
+        : state.kind === "realInterval"
+          ? exports.sagejs_numeric_real_interval_close(state.handle)
+          : exports.sagejs_numeric_complex_interval_close(state.handle);
     if (answer !== 1) failure(operation);
     activeStates.delete(state);
     state.handle = 0;
@@ -589,11 +708,11 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
   function snapshotState(state) {
     if (state.handle === 0) return;
     if (state.kind === "real") {
-      if (exports.sagejs_numeric_real_format(state.handle, 1) !== 1) {
+      if (exports.sagejs_numeric_real_format(state.handle, 1, 0) !== 1) {
         failure("real cache snapshot");
       }
       state.snapshot = readOutput("real cache snapshot");
-    } else {
+    } else if (state.kind === "complex") {
       const parts = [];
       for (let imaginary = 0; imaginary <= 1; imaginary += 1) {
         const partHandle = uint32(exports.sagejs_numeric_complex_part(
@@ -601,13 +720,37 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
         ));
         if (partHandle === 0) failure("complex cache part");
         try {
-          if (exports.sagejs_numeric_real_format(partHandle, 1) !== 1) {
+          if (exports.sagejs_numeric_real_format(partHandle, 1, 0) !== 1) {
             failure("complex cache snapshot");
           }
           parts.push(readOutput("complex cache snapshot"));
         } finally {
           if (exports.sagejs_numeric_real_close(partHandle) !== 1) {
             failure("complex cache part close");
+          }
+        }
+      }
+      state.snapshot = Object.freeze(parts);
+    } else if (state.kind === "realInterval") {
+      if (exports.sagejs_numeric_real_interval_format(state.handle, 2) !== 1) {
+        failure("real interval cache snapshot");
+      }
+      state.snapshot = readOutput("real interval cache snapshot");
+    } else {
+      const parts = [];
+      for (let imaginary = 0; imaginary <= 1; imaginary += 1) {
+        const partHandle = uint32(exports.sagejs_numeric_complex_interval_part(
+          imaginary, state.handle,
+        ));
+        if (partHandle === 0) failure("complex interval cache part");
+        try {
+          if (exports.sagejs_numeric_real_interval_format(partHandle, 2) !== 1) {
+            failure("complex interval cache snapshot");
+          }
+          parts.push(readOutput("complex interval cache snapshot"));
+        } finally {
+          if (exports.sagejs_numeric_real_interval_close(partHandle) !== 1) {
+            failure("complex interval cache part close");
           }
         }
       }
@@ -640,12 +783,21 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
 
   function hydrateRealSnapshot(snapshot, precision, operation) {
     writeInput(snapshot, operation);
-    const handle = uint32(exports.sagejs_numeric_real_from_string(0));
+    const handle = uint32(exports.sagejs_numeric_real_from_string(0, 0));
     if (handle === 0) failure(operation);
     if (uint32(exports.sagejs_numeric_real_precision(handle)) !== precision) {
       exports.sagejs_numeric_real_close(handle);
       throw new Error(`${operation} restored the wrong precision`);
     }
+    return handle;
+  }
+
+  function hydrateRealIntervalSnapshot(snapshot, precision, operation) {
+    writeInput(snapshot, operation);
+    const handle = uint32(
+      exports.sagejs_numeric_real_interval_from_dump(Number(precision)),
+    );
+    if (handle === 0) failure(operation);
     return handle;
   }
 
@@ -661,7 +813,7 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
       state.handle = hydrateRealSnapshot(
         state.snapshot, state.precision, "real cache restore",
       );
-    } else {
+    } else if (state.kind === "complex") {
       let realHandle = 0;
       let imaginaryHandle = 0;
       try {
@@ -687,6 +839,36 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
           failure("complex cache real-part close");
         }
       }
+    } else if (state.kind === "realInterval") {
+      state.handle = hydrateRealIntervalSnapshot(
+        state.snapshot, state.precision, "real interval cache restore",
+      );
+    } else {
+      let realHandle = 0;
+      let imaginaryHandle = 0;
+      try {
+        realHandle = hydrateRealIntervalSnapshot(
+          state.snapshot[0], state.precision,
+          "complex interval real-part cache restore",
+        );
+        imaginaryHandle = hydrateRealIntervalSnapshot(
+          state.snapshot[1], state.precision,
+          "complex interval imaginary-part cache restore",
+        );
+        state.handle = uint32(exports.sagejs_numeric_complex_interval_from_parts(
+          realHandle, imaginaryHandle, Number(state.precision),
+        ));
+        if (state.handle === 0) failure("complex interval cache restore");
+      } finally {
+        if (imaginaryHandle !== 0 &&
+            exports.sagejs_numeric_real_interval_close(imaginaryHandle) !== 1) {
+          failure("complex interval cache imaginary-part close");
+        }
+        if (realHandle !== 0 &&
+            exports.sagejs_numeric_real_interval_close(realHandle) !== 1) {
+          failure("complex interval cache real-part close");
+        }
+      }
     }
     activeStates.add(state);
     pruneHandles(protectedStates);
@@ -706,20 +888,26 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
       __sagejsWasmNumericResource: kind,
       precision: Number(precision),
     });
-    if (kind === "real") {
-      realObjects.set(value, state);
-      realFinalizer?.register(value, state, value);
-    } else {
-      complexObjects.set(value, state);
-      complexFinalizer?.register(value, state, value);
-    }
+    const objects = kind === "real" ? realObjects
+      : kind === "complex" ? complexObjects
+      : kind === "realInterval" ? realIntervalObjects
+      : complexIntervalObjects;
+    const finalizer = kind === "real" ? realFinalizer
+      : kind === "complex" ? complexFinalizer
+      : kind === "realInterval" ? realIntervalFinalizer
+      : complexIntervalFinalizer;
+    objects.set(value, state);
+    finalizer?.register(value, state, value);
     activeStates.add(state);
     pruneHandles(new Set([state]));
     return value;
   }
 
   function rawState(value, kind) {
-    const objects = kind === "real" ? realObjects : complexObjects;
+    const objects = kind === "real" ? realObjects
+      : kind === "complex" ? complexObjects
+      : kind === "realInterval" ? realIntervalObjects
+      : complexIntervalObjects;
     const state = objects.get(value);
     if (state === undefined || state.closed) {
       throw new TypeError(`expected a live WebAssembly ${kind} resource`);
@@ -741,12 +929,19 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
   function close(value) {
     const realState = realObjects.get(value);
     const complexState = complexObjects.get(value);
-    const state = realState ?? complexState;
+    const realIntervalState = realIntervalObjects.get(value);
+    const complexIntervalState = complexIntervalObjects.get(value);
+    const state = realState ?? complexState ?? realIntervalState ?? complexIntervalState;
     const kind = realState !== undefined ? "real"
-      : complexState !== undefined ? "complex" : undefined;
+      : complexState !== undefined ? "complex"
+      : realIntervalState !== undefined ? "realInterval"
+      : complexIntervalState !== undefined ? "complexInterval" : undefined;
     if (kind === undefined) throw new TypeError("expected a WebAssembly numeric resource");
     if (state.closed) return false;
-    const finalizer = kind === "real" ? realFinalizer : complexFinalizer;
+    const finalizer = kind === "real" ? realFinalizer
+      : kind === "complex" ? complexFinalizer
+      : kind === "realInterval" ? realIntervalFinalizer
+      : complexIntervalFinalizer;
     finalizer?.unregister(value);
     closeHandle(state, `${kind} close`);
     state.snapshot = undefined;
@@ -758,6 +953,10 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     resource("real", handle, precision, operation);
   const complex = (handle, precision, operation) =>
     resource("complex", handle, precision, operation);
+  const realInterval = (handle, precision, operation) =>
+    resource("realInterval", handle, precision, operation);
+  const complexInterval = (handle, precision, operation) =>
+    resource("complexInterval", handle, precision, operation);
   const realPrecision = (value) => {
     value = requireResource(value, "real");
     trace("realPrecision", 4, 4);
@@ -768,14 +967,32 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     trace("complexPrecision", 4, 4);
     return value.precision;
   };
+  const realIntervalPrecision = (value) => {
+    value = requireResource(value, "realInterval");
+    trace("realIntervalPrecision", 4, 4);
+    return value.precision;
+  };
+  const complexIntervalPrecision = (value) => {
+    value = requireResource(value, "complexInterval");
+    trace("complexIntervalPrecision", 4, 4);
+    return value.precision;
+  };
 
-  function realFromText(value, precision, name) {
-    if (!Number.isSafeInteger(precision) || precision < 16 || precision > 1048576) {
-      throw new TypeError(`${name} precision must be an integer from 16 through 1048576`);
+  function realFromText(value, precision, name, rounding = 0, base = 10) {
+    if (!Number.isSafeInteger(precision) || precision < 2 || precision > 1048576) {
+      throw new TypeError(`${name} precision must be an integer from 2 through 1048576`);
+    }
+    if (!Number.isSafeInteger(rounding) || rounding < 0 || rounding > 4) {
+      throw new TypeError(`${name} rounding mode must be an integer from 0 through 4`);
+    }
+    if (base !== 2 && base !== 10) {
+      throw new TypeError(`${name} base must be 2 or 10`);
     }
     const ingressBytes = writeInput(value, name);
     const answer = real(
-      exports.sagejs_numeric_real_from_string(Number(precision)),
+      exports.sagejs_numeric_real_from_string(
+        Number(precision), rounding, Number(base),
+      ),
       precision,
       name,
     );
@@ -783,10 +1000,12 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     return answer;
   }
 
-  function realBinary(name, operation, left, right) {
+  function realBinary(name, operation, left, right, rounding = 0) {
     [left, right] = requireResources([left, right], "real");
     const answer = real(
-      exports.sagejs_numeric_real_binary(operation, left.handle, right.handle),
+      exports.sagejs_numeric_real_binary(
+        operation, left.handle, right.handle, Number(rounding),
+      ),
       left.precision,
       name,
     );
@@ -805,24 +1024,53 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     return answer;
   }
 
+  function realIntervalBinary(name, operation, left, right, precision) {
+    [left, right] = requireResources([left, right], "realInterval");
+    const answer = realInterval(
+      exports.sagejs_numeric_real_interval_binary(
+        Number(operation), left.handle, right.handle, Number(precision),
+      ),
+      precision,
+      name,
+    );
+    trace(name, 16, 4);
+    return answer;
+  }
+
+  function complexIntervalBinary(name, operation, left, right, precision) {
+    [left, right] = requireResources([left, right], "complexInterval");
+    const answer = complexInterval(
+      exports.sagejs_numeric_complex_interval_binary(
+        Number(operation), left.handle, right.handle, Number(precision),
+      ),
+      precision,
+      name,
+    );
+    trace(name, 16, 4);
+    return answer;
+  }
+
   const backend = {
-    realFromString(value, precision) {
-      return realFromText(value, precision, "realFromString");
+    realFromString(value, precision, rounding = 0, base = 10) {
+      return realFromText(value, precision, "realFromString", rounding, base);
     },
-    realFromBigInt(value, precision) {
-      return realFromText(BigInt(value), precision, "realFromBigInt");
+    realFromBigInt(value, precision, rounding = 0) {
+      return realFromText(BigInt(value), precision, "realFromBigInt", rounding);
     },
-    realFromRational(numerator, denominator, precision) {
+    realFromRational(numerator, denominator, precision, rounding = 0) {
       return realFromText(
         `${BigInt(numerator)}/${BigInt(denominator)}`,
         precision,
         "realFromRational",
+        rounding,
       );
     },
-    realRound(value, precision) {
+    realRound(value, precision, rounding = 0) {
       value = requireResource(value, "real");
       const answer = real(
-        exports.sagejs_numeric_real_round(value.handle, Number(precision)),
+        exports.sagejs_numeric_real_round(
+          value.handle, Number(precision), Number(rounding),
+        ),
         precision,
         "realRound",
       );
@@ -830,10 +1078,18 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
       return answer;
     },
     realPrecision,
-    realAdd(left, right) { return realBinary("realAdd", 0, left, right); },
-    realSub(left, right) { return realBinary("realSub", 1, left, right); },
-    realMul(left, right) { return realBinary("realMul", 2, left, right); },
-    realDiv(left, right) { return realBinary("realDiv", 3, left, right); },
+    realAdd(left, right, rounding = 0) {
+      return realBinary("realAdd", 0, left, right, rounding);
+    },
+    realSub(left, right, rounding = 0) {
+      return realBinary("realSub", 1, left, right, rounding);
+    },
+    realMul(left, right, rounding = 0) {
+      return realBinary("realMul", 2, left, right, rounding);
+    },
+    realDiv(left, right, rounding = 0) {
+      return realBinary("realDiv", 3, left, right, rounding);
+    },
     realNeg(value) {
       value = requireResource(value, "real");
       const answer = real(
@@ -844,11 +1100,11 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
       trace("realNeg", 4, 4);
       return answer;
     },
-    realPowInt(value, exponent) {
+    realPowInt(value, exponent, rounding = 0) {
       value = requireResource(value, "real");
       const ingressBytes = writeInput(BigInt(exponent), "realPowInt");
       const answer = real(
-        exports.sagejs_numeric_real_pow_int(value.handle),
+        exports.sagejs_numeric_real_pow_int(value.handle, Number(rounding)),
         value.precision,
         "realPowInt",
       );
@@ -869,16 +1125,228 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
       trace("realToDouble", 4, 8);
       return answer;
     },
-    realToString(value) {
+    realToString(value, base = 10, rounding = 0, full = false) {
       value = requireResource(value, "real");
       writeInput("", "realToString");
-      if (exports.sagejs_numeric_real_format(value.handle, 0) !== 1) {
+      const mode = base === 10 ? 0 : base === 2 ? 2 : -1;
+      if (mode < 0) throw new RangeError("real string base must be 2 or 10");
+      if (exports.sagejs_numeric_real_format(
+        value.handle,
+        mode,
+        Number(rounding),
+        full ? 1 : 0,
+      ) !== 1) {
         failure("realToString");
       }
       const answer = readOutput("realToString");
       trace("realToString", 4, utf8Encoder.encode(answer).length);
       return answer;
     },
+    realNext(value, direction) {
+      value = requireResource(value, "real");
+      const answer = real(
+        exports.sagejs_numeric_real_next(value.handle, Number(direction)),
+        value.precision,
+        "realNext",
+      );
+      trace("realNext", 8, 4);
+      return answer;
+    },
+    realParts(value) {
+      value = requireResource(value, "real");
+      if (exports.sagejs_numeric_real_parts(value.handle) !== 1) {
+        failure("realParts");
+      }
+      const parts = readOutput("realParts").split("|");
+      if (parts.length !== 3) throw new Error("realParts returned malformed data");
+      trace("realParts", 4, parts.join("|").length);
+      return Object.freeze([Number(parts[0]), BigInt(parts[1]), BigInt(parts[2])]);
+    },
+    realIntervalFromRational(numerator, denominator, precision) {
+      const ingressBytes = writeInput(
+        `${BigInt(numerator)}/${BigInt(denominator)}`,
+        "realIntervalFromRational",
+      );
+      const answer = realInterval(
+        exports.sagejs_numeric_real_interval_from_rational(Number(precision)),
+        precision,
+        "realIntervalFromRational",
+      );
+      trace("realIntervalFromRational", ingressBytes + 4, 4);
+      return answer;
+    },
+    realIntervalFromBounds(lower, upper, precision) {
+      [lower, upper] = requireResources([lower, upper], "real");
+      const answer = realInterval(
+        exports.sagejs_numeric_real_interval_from_bounds(
+          lower.handle, upper.handle, Number(precision),
+        ),
+        precision,
+        "realIntervalFromBounds",
+      );
+      trace("realIntervalFromBounds", 12, 4);
+      return answer;
+    },
+    realIntervalRound(value, precision) {
+      value = requireResource(value, "realInterval");
+      const answer = realInterval(
+        exports.sagejs_numeric_real_interval_round(value.handle, Number(precision)),
+        precision,
+        "realIntervalRound",
+      );
+      trace("realIntervalRound", 8, 4);
+      return answer;
+    },
+    realIntervalBinary(operation, left, right, precision) {
+      return realIntervalBinary(
+        "realIntervalBinary", operation, left, right, precision,
+      );
+    },
+    realIntervalUnary(operation, value, precision) {
+      value = requireResource(value, "realInterval");
+      const answer = realInterval(
+        exports.sagejs_numeric_real_interval_unary(
+          Number(operation), value.handle, Number(precision),
+        ),
+        precision,
+        "realIntervalUnary",
+      );
+      trace("realIntervalUnary", 12, 4);
+      return answer;
+    },
+    realIntervalPowInt(value, exponent, precision) {
+      value = requireResource(value, "realInterval");
+      const ingressBytes = writeInput(BigInt(exponent), "realIntervalPowInt");
+      const answer = realInterval(
+        exports.sagejs_numeric_real_interval_pow_int(
+          value.handle, Number(precision),
+        ),
+        precision,
+        "realIntervalPowInt",
+      );
+      trace("realIntervalPowInt", ingressBytes + 8, 4);
+      return answer;
+    },
+    realIntervalRelation(operation, left, right) {
+      [left, right] = requireResources([left, right], "realInterval");
+      const answer = exports.sagejs_numeric_real_interval_relation(
+        Number(operation), left.handle, right.handle,
+      );
+      if (answer < 0) failure("realIntervalRelation");
+      trace("realIntervalRelation", 12, 1);
+      return answer === 1;
+    },
+    realIntervalPart(operation, value) {
+      value = requireResource(value, "realInterval");
+      const answer = real(
+        exports.sagejs_numeric_real_interval_part(Number(operation), value.handle),
+        value.precision,
+        "realIntervalPart",
+      );
+      trace("realIntervalPart", 8, 4);
+      return answer;
+    },
+    realIntervalToString(value, style = 0) {
+      value = requireResource(value, "realInterval");
+      if (exports.sagejs_numeric_real_interval_format(
+        value.handle, Number(style),
+      ) !== 1) {
+        failure("realIntervalToString");
+      }
+      const answer = readOutput("realIntervalToString");
+      trace("realIntervalToString", 8, utf8Encoder.encode(answer).length);
+      return answer;
+    },
+    realIntervalPrecision,
+    complexIntervalFromParts(realPart, imaginaryPart, precision) {
+      [realPart, imaginaryPart] = requireResources(
+        [realPart, imaginaryPart], "realInterval",
+      );
+      const answer = complexInterval(
+        exports.sagejs_numeric_complex_interval_from_parts(
+          realPart.handle, imaginaryPart.handle, Number(precision),
+        ),
+        precision,
+        "complexIntervalFromParts",
+      );
+      trace("complexIntervalFromParts", 12, 4);
+      return answer;
+    },
+    complexIntervalRound(value, precision) {
+      value = requireResource(value, "complexInterval");
+      const answer = complexInterval(
+        exports.sagejs_numeric_complex_interval_round(
+          value.handle, Number(precision),
+        ),
+        precision,
+        "complexIntervalRound",
+      );
+      trace("complexIntervalRound", 8, 4);
+      return answer;
+    },
+    complexIntervalBinary(operation, left, right, precision) {
+      return complexIntervalBinary(
+        "complexIntervalBinary", operation, left, right, precision,
+      );
+    },
+    complexIntervalUnary(operation, value, precision) {
+      value = requireResource(value, "complexInterval");
+      const answer = complexInterval(
+        exports.sagejs_numeric_complex_interval_unary(
+          Number(operation), value.handle, Number(precision),
+        ),
+        precision,
+        "complexIntervalUnary",
+      );
+      trace("complexIntervalUnary", 12, 4);
+      return answer;
+    },
+    complexIntervalPowInt(value, exponent, precision) {
+      value = requireResource(value, "complexInterval");
+      const ingressBytes = writeInput(BigInt(exponent), "complexIntervalPowInt");
+      const answer = complexInterval(
+        exports.sagejs_numeric_complex_interval_pow_int(
+          value.handle, Number(precision),
+        ),
+        precision,
+        "complexIntervalPowInt",
+      );
+      trace("complexIntervalPowInt", ingressBytes + 8, 4);
+      return answer;
+    },
+    complexIntervalRelation(operation, left, right) {
+      [left, right] = requireResources([left, right], "complexInterval");
+      const answer = exports.sagejs_numeric_complex_interval_relation(
+        Number(operation), left.handle, right.handle,
+      );
+      if (answer < 0) failure("complexIntervalRelation");
+      trace("complexIntervalRelation", 12, 1);
+      return answer === 1;
+    },
+    complexIntervalPart(operation, value) {
+      value = requireResource(value, "complexInterval");
+      const answer = realInterval(
+        exports.sagejs_numeric_complex_interval_part(
+          Number(operation), value.handle,
+        ),
+        value.precision,
+        "complexIntervalPart",
+      );
+      trace("complexIntervalPart", 8, 4);
+      return answer;
+    },
+    complexIntervalToString(value, style = 0) {
+      value = requireResource(value, "complexInterval");
+      if (exports.sagejs_numeric_complex_interval_format(
+        value.handle, Number(style),
+      ) !== 1) {
+        failure("complexIntervalToString");
+      }
+      const answer = readOutput("complexIntervalToString");
+      trace("complexIntervalToString", 8, utf8Encoder.encode(answer).length);
+      return answer;
+    },
+    complexIntervalPrecision,
     complexFromReals(realPart, imaginaryPart) {
       [realPart, imaginaryPart] = requireResources(
         [realPart, imaginaryPart], "real",

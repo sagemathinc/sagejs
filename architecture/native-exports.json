@@ -3,7 +3,7 @@
   "policy": "architecture/native-export-policy.json",
   "counts": {
     "declared-ffi": 7,
-    "migrate-to-declared-ffi": 217,
+    "migrate-to-declared-ffi": 238,
     "migrate-to-typed-python": 34,
     "retain-differential-oracle": 6,
     "retain-host-adapter": 35,
@@ -109,7 +109,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3449,
+        "line": 3450,
         "lines": 18,
         "sha256": "14321bdd4cbe2dac73da67890e6021d179fa25ffc74e6e097a1daab841aa3213",
         "calls": [
@@ -148,7 +148,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4627,
+        "line": 4628,
         "lines": 16,
         "sha256": "409bad240e5f70fbd1c23111062903d0600dfd04efb76c1756539062fb7e87f3",
         "calls": [
@@ -275,7 +275,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 563,
+        "line": 868,
         "lines": 4,
         "sha256": "cb506c4a3b2d0452780bad666bae6e5d26ff3e53025b88f8d02c020cc6c28221",
         "calls": [
@@ -308,7 +308,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 830,
+        "line": 1135,
         "lines": 61,
         "sha256": "2f8a0521ee9e75abf94c9a87823c90680be743afcaabf5f49a30dba21273480c",
         "calls": [
@@ -356,7 +356,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 575,
+        "line": 880,
         "lines": 4,
         "sha256": "b453761d942acd9bc435d0c584a8a2afdc8cf62832a880542474690b1dab5770",
         "calls": [
@@ -391,7 +391,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 787,
+        "line": 1092,
         "lines": 42,
         "sha256": "d3a16d2cecde0c3abe24ea2f11fe51928f0cf727a2fc6205f57e66c5ad0631ba",
         "calls": [
@@ -439,7 +439,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 623,
+        "line": 928,
         "lines": 16,
         "sha256": "5b5d50ff4afeb3bf348efb56fa0e0d12aa0cf559b72a0e51ea9bd3aac702b47b",
         "calls": [
@@ -476,7 +476,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 498,
+        "line": 803,
         "lines": 24,
         "sha256": "0ee2fa37a2d13de43e6bee6c17eba258831d5bb5adfa11364af6b36c84455740",
         "calls": [
@@ -556,7 +556,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 735,
+        "line": 1040,
         "lines": 15,
         "sha256": "63e06638316d2ac7898862801974554c674a5456a224e2474bd839a600528295",
         "calls": [
@@ -597,7 +597,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 769,
+        "line": 1074,
         "lines": 17,
         "sha256": "58a1974fadd7e029457c868fd4eca944e0bca49d7d271ebb92f5cbd7c7b0ca42",
         "calls": [
@@ -628,6 +628,393 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalBinary",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalBinary",
+      "callback": "sagejs_complex_interval_binary",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 927,
+        "lines": 33,
+        "sha256": "077c66033e9b817ab2f5003e044759a16195471f6ed007b28f58ed8e0e555fcd",
+        "calls": [
+          "acb_add",
+          "acb_div",
+          "acb_mul",
+          "acb_sub",
+          "get_operation",
+          "get_precision",
+          "new_complex_interval",
+          "require_arguments",
+          "round_acb_enclosure",
+          "unwrap_complex_interval",
+          "wrap_complex_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalFromParts",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalFromParts",
+      "callback": "sagejs_complex_interval_from_parts",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 882,
+        "lines": 26,
+        "sha256": "eca1dfbb3f9fb872e97b7c616093aa24489cedc94bbbc42e8c5746d1a5e06a07",
+        "calls": [
+          "acb_imagref",
+          "acb_realref",
+          "arb_set",
+          "arb_set_round",
+          "get_precision",
+          "new_complex_interval",
+          "require_arguments",
+          "unwrap_real_interval",
+          "wrap_complex_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-intervals.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "packages/flint/test/test.cjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPart",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalPart",
+      "callback": "sagejs_complex_interval_part",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 1058,
+        "lines": 18,
+        "sha256": "86572b9391dba58a23f2aeb5183e94a8858491f652aa41a8b782cc3e28a7c59d",
+        "calls": [
+          "acb_imagref",
+          "acb_realref",
+          "arb_set",
+          "get_operation",
+          "new_real_interval",
+          "require_arguments",
+          "unwrap_complex_interval",
+          "wrap_real_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-intervals.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "packages/flint/test/test.cjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPowInt",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalPowInt",
+      "callback": "sagejs_complex_interval_pow_int",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 1001,
+        "lines": 34,
+        "sha256": "40d4baf6704f477e15d9af9ab216eba24a8ddd7bf3c3b463512b46abcb2757d8",
+        "calls": [
+          "acb_pow_fmpz",
+          "bigint_to_mpz",
+          "fmpz_clear",
+          "fmpz_init",
+          "fmpz_set_mpz",
+          "get_precision",
+          "mpz_clear",
+          "mpz_init",
+          "new_complex_interval",
+          "require_arguments",
+          "round_acb_enclosure",
+          "unwrap_complex_interval",
+          "wrap_complex_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPrecision",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalPrecision",
+      "callback": "sagejs_complex_interval_precision",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 1130,
+        "lines": 14,
+        "sha256": "9f1c6b6aca4f1ce1e04356cb258b9d6208b31c8e88f6dc69b35618084e299ab6",
+        "calls": [
+          "check_napi",
+          "napi_create_int64",
+          "require_arguments",
+          "unwrap_complex_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "packages/flint/test/test.cjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRelation",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalRelation",
+      "callback": "sagejs_complex_interval_relation",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 1036,
+        "lines": 21,
+        "sha256": "bf6d9f92fdf347c8d3f6df2b39f15b601616758f16415bd5401d8a79ef6206a8",
+        "calls": [
+          "acb_contains",
+          "acb_equal",
+          "acb_overlaps",
+          "check_napi",
+          "get_operation",
+          "napi_get_boolean",
+          "require_arguments",
+          "unwrap_complex_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRound",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalRound",
+      "callback": "sagejs_complex_interval_round",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 909,
+        "lines": 17,
+        "sha256": "f976c6d7eb6112eae0b99f802f25490fa23ed987207d41e493926cc4d7fe8ce0",
+        "calls": [
+          "acb_set_round",
+          "get_precision",
+          "new_complex_interval",
+          "require_arguments",
+          "unwrap_complex_interval",
+          "wrap_complex_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalToString",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalToString",
+      "callback": "sagejs_complex_interval_to_string",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 1077,
+        "lines": 52,
+        "sha256": "31a32a73fe4130911fd05e3a6f3506d2125aca4e34cee4ddff3ea1a908f1819e",
+        "calls": [
+          "acb_imagref",
+          "acb_realref",
+          "arb_clear",
+          "arb_init",
+          "arb_is_negative",
+          "arb_is_zero",
+          "arb_neg",
+          "arb_set",
+          "format_arb_brackets",
+          "format_arb_question",
+          "free",
+          "get_operation",
+          "malloc",
+          "napi_throw_error",
+          "require_arguments",
+          "snprintf",
+          "string_result",
+          "strlen",
+          "unwrap_complex_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-intervals.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "packages/flint/test/test.cjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalUnary",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexIntervalUnary",
+      "callback": "sagejs_complex_interval_unary",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 961,
+        "lines": 39,
+        "sha256": "b7193a2774dfcedc44b48ad61fe1f23e3e5f26bf9a7f0498fb66130f18b9bce3",
+        "calls": [
+          "acb_cos",
+          "acb_exp",
+          "acb_log",
+          "acb_neg",
+          "acb_sin",
+          "acb_sqrt",
+          "acb_tan",
+          "get_operation",
+          "get_precision",
+          "new_complex_interval",
+          "require_arguments",
+          "round_acb_enclosure",
+          "unwrap_complex_interval",
+          "wrap_complex_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:complexMul",
       "package": "@sagemath/sagejs-flint",
       "export": "complexMul",
@@ -637,7 +1024,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 571,
+        "line": 876,
         "lines": 4,
         "sha256": "7d9fa862ca7548f2ddf1bb3f93042edc0e4972fea9e4f3d546645b200e892f34",
         "calls": [
@@ -672,7 +1059,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 580,
+        "line": 885,
         "lines": 15,
         "sha256": "386491c0e4f21e40739ed10d583b03448b8b1ba7a26ce160557adc5cc6657ec9",
         "calls": [
@@ -710,7 +1097,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 596,
+        "line": 901,
         "lines": 26,
         "sha256": "b43e7f9f758677cc16222f269a271b8981b065f2ae60e6af593893b2134dc6c1",
         "calls": [
@@ -753,7 +1140,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 704,
+        "line": 1009,
         "lines": 14,
         "sha256": "66fad1c16d707adec7664d9145824065a89bdfe82dfef6daae37cf58366a0354",
         "calls": [
@@ -793,7 +1180,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 719,
+        "line": 1024,
         "lines": 15,
         "sha256": "3b6d7b61bbf32ea0f6d3a73b816104cc618af3ca4030aca40a23ec4dc3827ce4",
         "calls": [
@@ -834,7 +1221,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 751,
+        "line": 1056,
         "lines": 17,
         "sha256": "f5de52d7915999de66c25d894f1c99efa94354b7e949c69d7d1b4741e8e65dab",
         "calls": [
@@ -876,7 +1263,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 523,
+        "line": 828,
         "lines": 17,
         "sha256": "3f1b3c090328b2838fae0cb9f3dbbb44cd16e6093510e365cfbeb1c4ca922773",
         "calls": [
@@ -914,7 +1301,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 567,
+        "line": 872,
         "lines": 4,
         "sha256": "8468272242b860cfa71f0fb44031db1dfcd758a6f6918ae7b1faf9614f68f040",
         "calls": [
@@ -947,7 +1334,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 640,
+        "line": 945,
         "lines": 63,
         "sha256": "6bc5638593e1f681bdbb58113c6a5c05f194c73a150a304167ea2c108a4da8b5",
         "calls": [
@@ -1962,7 +2349,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1120,
+        "line": 1121,
         "lines": 199,
         "sha256": "0f2f7766be5948ff4922f75b824da588bb0169377e89ad89ed10d391dfd6d4fa",
         "calls": [
@@ -2017,7 +2404,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1320,
+        "line": 1321,
         "lines": 45,
         "sha256": "7ff2bfe5aace68744698458dddbe72939b86582798bba58f9fbde815df32bc9a",
         "calls": [
@@ -2394,7 +2781,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 444,
+        "line": 445,
         "lines": 147,
         "sha256": "985da1a3ebb425c5702dd92b566396b488c80ab2e885960bb2a145e6d7a87f40",
         "calls": [
@@ -2456,7 +2843,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 724,
+        "line": 725,
         "lines": 103,
         "sha256": "8a62277b2667b8af607f928e9e6b8bc9088f8e63fc30ac16590bb74676dc2fb6",
         "calls": [
@@ -2510,7 +2897,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3468,
+        "line": 3469,
         "lines": 73,
         "sha256": "c581fb3e7f4996c5cb208086a99615c519cd54a83338181f5679eddcaacc8ab0",
         "calls": [
@@ -2572,7 +2959,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3434,
+        "line": 3435,
         "lines": 4,
         "sha256": "0b795ed955bf2a0e66db7f59375bb1f0d7b2ebcb8f774f5920692f5a348707be",
         "calls": [
@@ -2595,7 +2982,8 @@
         "packages/flint/test/test.cjs",
         "src/baselib/builtins.py",
         "src/lib/math.py",
-        "src/lib/sagejs/hyperelliptic_curves/lseries.py"
+        "src/lib/sagejs/hyperelliptic_curves/lseries.py",
+        "test/math-factorial.cjs"
       ],
       "declared_ffi": null
     },
@@ -2609,7 +2997,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3439,
+        "line": 3440,
         "lines": 4,
         "sha256": "7e505d85d392f22a06cd8fd5d11cef818b488ce0236a7ded5f9938034011dd39",
         "calls": [
@@ -4450,7 +4838,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3383,
+        "line": 3384,
         "lines": 28,
         "sha256": "dab527d177e239b7f5483b93d5b0dc62c90ee30f493bf485d14202358e9a7573",
         "calls": [
@@ -4687,7 +5075,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4607,
+        "line": 4608,
         "lines": 5,
         "sha256": "b93b2564514c055d247081ec8990b737afb2b6177ca20e04cb736051d3ccedae",
         "calls": [
@@ -5120,7 +5508,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3364,
+        "line": 3365,
         "lines": 18,
         "sha256": "412f4142bec919fd791f8399cc5ef100d4d949d79efa50400dabcf88eceec761",
         "calls": [
@@ -5167,7 +5555,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1677,
+        "line": 1678,
         "lines": 21,
         "sha256": "24640c96629ab76a2aa6ae105fc16e98702aebec861c5f11e494708a9bd2637e",
         "calls": [
@@ -6865,7 +7253,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4601,
+        "line": 4602,
         "lines": 5,
         "sha256": "410eec0af09e0df2e0c095f9e5e525ee8743bb8218e0d58678424fc62bb40f63",
         "calls": [
@@ -6897,7 +7285,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4595,
+        "line": 4596,
         "lines": 5,
         "sha256": "c3d6c929e1876b3e4a0e45cf51f9ebacbf17d2153b156f70e7a8b1b2155bf1d6",
         "calls": [
@@ -8071,7 +8459,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4573,
+        "line": 4574,
         "lines": 10,
         "sha256": "e06ff2d4c4953a7b949b3ee2d15670b367fad62213b8a11252009c245399ad89",
         "calls": [
@@ -8103,7 +8491,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1699,
+        "line": 1700,
         "lines": 23,
         "sha256": "ad0a19c28083bc840128280c0464ba93a7659f052c76ccff1714cdd72ec9166a",
         "calls": [
@@ -8296,7 +8684,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1768,
+        "line": 1769,
         "lines": 29,
         "sha256": "dd1feb7feb36f6d5539abe184830be836d02626914468a67884471bf72abc985",
         "calls": [
@@ -8338,7 +8726,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2967,
+        "line": 2968,
         "lines": 27,
         "sha256": "272140686be0fa57410a26efbeeeeaf2889191e6748cc05d08ca8c46fc64c1fa",
         "calls": [
@@ -8377,7 +8765,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2866,
+        "line": 2867,
         "lines": 28,
         "sha256": "b35f190537afdc3afd5fe6a557bd5c9dfff149261e589610870adeb977cfe1cd",
         "calls": [
@@ -8414,7 +8802,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1798,
+        "line": 1799,
         "lines": 19,
         "sha256": "30635cf32ab7af8e30952541141402f3d9253ad9cef90e767bdb5bf1e9712dba",
         "calls": [
@@ -8452,7 +8840,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2895,
+        "line": 2896,
         "lines": 19,
         "sha256": "259812fa3092d3466ac3443ef7e59ccb2a2fa8ad6185fa860e78c7cbb1f8ed8c",
         "calls": [
@@ -8488,7 +8876,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3144,
+        "line": 3145,
         "lines": 58,
         "sha256": "8202e939a43d23d800a720242ed181ac3fe98af2228264627c4c48bfe9e3a940",
         "calls": [
@@ -9649,7 +10037,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2008,
+        "line": 2009,
         "lines": 4,
         "sha256": "c26f52404f53b0f76b6c666707f3ec5e1b13bfdb8b4e8c4a10c23ce143090dca",
         "calls": [
@@ -9685,7 +10073,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2536,
+        "line": 2537,
         "lines": 54,
         "sha256": "101935c7beb926eee8e1d662451aea17f20487e5897ccb87133e3ae852aefb51",
         "calls": [
@@ -9736,7 +10124,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2463,
+        "line": 2464,
         "lines": 71,
         "sha256": "b44fc6eab8c8451fc6c74847cff354c1c74029db5daeefb3763347227afb0366",
         "calls": [
@@ -9791,7 +10179,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3102,
+        "line": 3103,
         "lines": 41,
         "sha256": "6c6820f5ffa60b06799b84a09ea4ad8da86bcdd2d96896f748d6c959072481a4",
         "calls": [
@@ -9831,7 +10219,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2387,
+        "line": 2388,
         "lines": 23,
         "sha256": "959f61408b67b01eeb90c85deecd2664a832b08667f8eb4b1c8c6d3f309bc87b",
         "calls": [
@@ -9871,7 +10259,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3233,
+        "line": 3234,
         "lines": 130,
         "sha256": "3348b7e82a37d65068b06e219fd388fde9f77b3ca61d983d5df948086c22f622",
         "calls": [
@@ -9930,7 +10318,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3053,
+        "line": 3054,
         "lines": 48,
         "sha256": "7a6d9e996b3db5b6ce60a06445083ee5e26a251cce086d4e57c371d01147490f",
         "calls": [
@@ -9979,7 +10367,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2121,
+        "line": 2122,
         "lines": 51,
         "sha256": "196eec07aa9c23ec6acce201195dcec60067fe389cb6676c4d266f8d72e6345f",
         "calls": [
@@ -10023,7 +10411,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2334,
+        "line": 2335,
         "lines": 52,
         "sha256": "c25ca887901768f28b135cd6c6e8c5f64aedfea33949277304ce37650d7ebb13",
         "calls": [
@@ -10069,7 +10457,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2018,
+        "line": 2019,
         "lines": 4,
         "sha256": "c47eae19c1ca0e9732a1d7637be7cad238ecc8f75d6c4dc8390fa051c4c5c6c3",
         "calls": [
@@ -10105,7 +10493,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2173,
+        "line": 2174,
         "lines": 34,
         "sha256": "58deb2882b818398264f50096bd57840bc2f3d19a8eac1b5d385db8a0feef4d3",
         "calls": [
@@ -10145,7 +10533,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2023,
+        "line": 2024,
         "lines": 29,
         "sha256": "92f6e560c707705c7d19ffa6fb355a9c7bcd3ad38a9955eab302c9920007c72d",
         "calls": [
@@ -10183,7 +10571,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2053,
+        "line": 2054,
         "lines": 31,
         "sha256": "2abda6ce4f40c4ce7efe8401eb9ae80205c0f93a40584cd2b2145f98abc2feba",
         "calls": [
@@ -10226,7 +10614,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2208,
+        "line": 2209,
         "lines": 32,
         "sha256": "f37714c385196f3611cbe00f7198c97600dcdf35a0cec17ce37b0508e6dcf692",
         "calls": [
@@ -10265,7 +10653,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2286,
+        "line": 2287,
         "lines": 4,
         "sha256": "fa445f9072d31a48dc3b25c1f4a31c4ab68a8239b209d4738d5ce9daa395077a",
         "calls": [
@@ -10298,7 +10686,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2291,
+        "line": 2292,
         "lines": 4,
         "sha256": "cddeda8ad29aee25e25b0b6f59b23f4d82af0e5a1d5b12849110bbfbc0411cfb",
         "calls": [
@@ -10331,7 +10719,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2013,
+        "line": 2014,
         "lines": 4,
         "sha256": "fdd9987082f9bb620e686791d9f93c16828f3ce8f975d32f2e45d7d158d0f610",
         "calls": [
@@ -10367,7 +10755,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2411,
+        "line": 2412,
         "lines": 51,
         "sha256": "739ed7d05a4fb45fbe3832dd30a5d38074c202a92314fb9ec5eebb55f7ea6953",
         "calls": [
@@ -10413,7 +10801,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2085,
+        "line": 2086,
         "lines": 35,
         "sha256": "541da55195e1e5103937d9a7e7da09177f1d8810f8d3b6ad1fa12086574da10e",
         "calls": [
@@ -10454,7 +10842,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2296,
+        "line": 2297,
         "lines": 37,
         "sha256": "5e3a8eb33e4b87655b6283ec5d536d714fd71588f763beec69312ac72d7d2879",
         "calls": [
@@ -10494,7 +10882,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1723,
+        "line": 1724,
         "lines": 26,
         "sha256": "a2f69bd8b09061483d56eb0db04e41aefa46c422d4aca9fe82337943b6e69203",
         "calls": [
@@ -10535,7 +10923,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3444,
+        "line": 3445,
         "lines": 4,
         "sha256": "5cbe49af6cbdf98e6f071a2d3b8cb33d44499407221a7431dd9ffc3791596e9d",
         "calls": [
@@ -10567,7 +10955,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3687,
+        "line": 3688,
         "lines": 115,
         "sha256": "8a480900935cf1708a8c03416eea753271ec4d1231c856a621dd6cab60104f56",
         "calls": [
@@ -10621,7 +11009,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3666,
+        "line": 3667,
         "lines": 20,
         "sha256": "c3e8f559e18bdebcb00a81d8376d0868899dd67c5fd31b6660b24ac319df8b46",
         "calls": [
@@ -10658,7 +11046,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3803,
+        "line": 3804,
         "lines": 49,
         "sha256": "b2aab653e9648b386786ffe3b3d5d6968007281d0a2e60b39b4fad401c19cf48",
         "calls": [
@@ -10702,7 +11090,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3853,
+        "line": 3854,
         "lines": 44,
         "sha256": "6795ad175fc7972d892557f0e5617a157c451a66b9e04a0e5425b0a0bdd7cc99",
         "calls": [
@@ -10746,7 +11134,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3619,
+        "line": 3620,
         "lines": 46,
         "sha256": "85c6d5a53bbc6c28253f77d487763a2c3c7dc7b524f7ae67d0f73b850228925b",
         "calls": [
@@ -11863,7 +12251,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2701,
+        "line": 2702,
         "lines": 164,
         "sha256": "e87ec763aefbeafd8f72eca41863f0f52ac7d9ca47838a219b04de3583e1b2df",
         "calls": [
@@ -12076,7 +12464,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1530,
+        "line": 1531,
         "lines": 47,
         "sha256": "dff62b78631fc7b15ce5878b3113caf6a4619162ee24e50beb98f16928d3b82d",
         "calls": [
@@ -12121,7 +12509,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1595,
+        "line": 1596,
         "lines": 16,
         "sha256": "8b686b85a5e643558448ded3dad571ce9d6db10f1a9fd8b73a9bd826cd8a7e77",
         "calls": [
@@ -12158,7 +12546,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1635,
+        "line": 1636,
         "lines": 27,
         "sha256": "a74fb261c6fe03b794897e9f94fb83676d6aeb6ae215affc1e8e2ecb94492741",
         "calls": [
@@ -12198,7 +12586,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 268,
+        "line": 390,
         "lines": 4,
         "sha256": "7a32f27476d01d840bf41e996ab52ccaac5cea7a417c05a36684c82e7cee7ecc",
         "calls": [
@@ -12232,7 +12620,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 280,
+        "line": 402,
         "lines": 4,
         "sha256": "b19d582c2aa33093d15fb8be78da6c8a2802f5ef17b1d7ee24933d9f8b813f2f",
         "calls": [
@@ -12266,7 +12654,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 328,
+        "line": 453,
         "lines": 16,
         "sha256": "4aaba2b7add3a9b47402349649fd3afa765cf5bcdf1b199b35ec22dbabd0324c",
         "calls": [
@@ -12303,18 +12691,19 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 164,
-        "lines": 24,
-        "sha256": "7bce775cc8653459e922ebc885a77dcd21ac07eab96253875a85b61721f25995",
+        "line": 269,
+        "lines": 27,
+        "sha256": "312919a368ef253b3661f20827fa989d9c95444ddeba884e127e8f1d779b1414",
         "calls": [
           "bigint_to_mpz",
           "finalize_real",
           "get_precision",
+          "get_rounding",
           "mpfr_set_z",
           "mpz_clear",
           "mpz_init",
           "new_real",
-          "require_arguments",
+          "require_optional_argument",
           "wrap_real"
         ]
       },
@@ -12346,21 +12735,26 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 189,
-        "lines": 38,
-        "sha256": "82ad69ab8d6b70c127367a2f85a76a8735665cdede22407c9b54dfdde4cb4753",
+        "line": 297,
+        "lines": 46,
+        "sha256": "09322ee6dd7ed654f746c5f269017402effc0ac74a9b395649f8704fe6546ff8",
         "calls": [
           "bigint_to_mpz",
           "finalize_real",
           "get_precision",
-          "mpfr_div_z",
-          "mpfr_set_z",
+          "get_rounding",
+          "mpfr_set_q",
+          "mpq_canonicalize",
+          "mpq_clear",
+          "mpq_init",
+          "mpq_set_den",
+          "mpq_set_num",
           "mpz_clear",
           "mpz_init",
           "mpz_sgn",
           "napi_throw_range_error",
           "new_real",
-          "require_arguments",
+          "require_optional_argument",
           "wrap_real"
         ]
       },
@@ -12376,6 +12770,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-intervals.test.mjs",
         "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py"
@@ -12392,17 +12787,21 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 128,
-        "lines": 35,
-        "sha256": "39fe962e4928ffdf64d9480d2198260651bd7ce45faf41f5f2fe7edc2216c19e",
+        "line": 222,
+        "lines": 46,
+        "sha256": "25929a8f8f348396872abd8bc853de8c19348c76c94163a16b4b3dbbedc236f9",
         "calls": [
+          "check_napi",
           "finalize_real",
           "free",
           "get_precision",
+          "get_rounding",
           "mpfr_set_str",
+          "napi_get_value_int32",
+          "napi_throw_range_error",
           "napi_throw_type_error",
           "new_real",
-          "require_arguments",
+          "require_argument_range",
           "value_string",
           "wrap_real"
         ]
@@ -12427,6 +12826,444 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalBinary",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalBinary",
+      "callback": "sagejs_real_interval_binary",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 662,
+        "lines": 43,
+        "sha256": "0aab432ce649ba8280f574183b29eb8b76576a3e16701f47cad812a5be9fe733",
+        "calls": [
+          "arb_add",
+          "arb_div",
+          "arb_intersection",
+          "arb_mul",
+          "arb_sub",
+          "arb_union",
+          "finalize_real_interval",
+          "get_operation",
+          "get_precision",
+          "napi_throw_range_error",
+          "new_real_interval",
+          "require_arguments",
+          "round_arb_enclosure",
+          "unwrap_real_interval",
+          "wrap_real_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-intervals.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "packages/flint/test/test.cjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromBounds",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalFromBounds",
+      "callback": "sagejs_real_interval_from_bounds",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 618,
+        "lines": 26,
+        "sha256": "ecd36f571e2ee334dea6b2b8054cd88d371ddedf1406193ffd2f9594ecb50981",
+        "calls": [
+          "arb_set_interval_mpfr",
+          "get_precision",
+          "mpfr_greater_p",
+          "napi_throw_range_error",
+          "new_real_interval",
+          "require_arguments",
+          "sagejs_native_unwrap_real",
+          "wrap_real_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromRational",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalFromRational",
+      "callback": "sagejs_real_interval_from_rational",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 579,
+        "lines": 38,
+        "sha256": "1091ca1d2134e315bcf6134c0ffedced17e11267b00b7dafcc63bf8a5cbfd2bf",
+        "calls": [
+          "arb_set_interval_mpfr",
+          "fmpq_clear",
+          "fmpq_get_mpq",
+          "fmpq_init",
+          "get_precision",
+          "mpfr_clear",
+          "mpfr_init2",
+          "mpfr_set_q",
+          "mpq_clear",
+          "mpq_init",
+          "new_real_interval",
+          "require_arguments",
+          "values_to_fmpq",
+          "wrap_real_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-intervals.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "packages/flint/test/test.cjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPart",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalPart",
+      "callback": "sagejs_real_interval_part",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 802,
+        "lines": 49,
+        "sha256": "a79c684edf6b26cc1ba13501d94409828adedb4f02ad768f5b970c7856615daf",
+        "calls": [
+          "arb_get_interval_mpfr",
+          "arb_midref",
+          "arb_radref",
+          "arf_clear",
+          "arf_get_mpfr",
+          "arf_init",
+          "arf_set_mag",
+          "get_operation",
+          "mpfr_abs",
+          "mpfr_clear",
+          "mpfr_div",
+          "mpfr_init2",
+          "mpfr_set",
+          "mpfr_sub",
+          "require_arguments",
+          "sagejs_native_new_real",
+          "sagejs_native_wrap_real",
+          "unwrap_real_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPowInt",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalPowInt",
+      "callback": "sagejs_real_interval_pow_int",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 747,
+        "lines": 33,
+        "sha256": "ec73625cb422c1fe8cd7456797f38a2798c792cdf66132ee88f6804c6dc3b12a",
+        "calls": [
+          "arb_pow_fmpz",
+          "bigint_to_mpz",
+          "fmpz_clear",
+          "fmpz_init",
+          "fmpz_set_mpz",
+          "get_precision",
+          "mpz_clear",
+          "mpz_init",
+          "new_real_interval",
+          "require_arguments",
+          "round_arb_enclosure",
+          "unwrap_real_interval",
+          "wrap_real_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-intervals.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPrecision",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalPrecision",
+      "callback": "sagejs_real_interval_precision",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 868,
+        "lines": 13,
+        "sha256": "d6f4ae45e14822107b024b0f3164f2c55fe7723881c69edf114498c27220ec3b",
+        "calls": [
+          "check_napi",
+          "napi_create_int64",
+          "require_arguments",
+          "unwrap_real_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-intervals.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "packages/flint/test/test.cjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRelation",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalRelation",
+      "callback": "sagejs_real_interval_relation",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 781,
+        "lines": 20,
+        "sha256": "35f13c2a0e420bbeff6f9815d22c76266b3352ed47726d7cf4671fc2eb4389aa",
+        "calls": [
+          "arb_contains",
+          "arb_equal",
+          "arb_overlaps",
+          "check_napi",
+          "get_operation",
+          "napi_get_boolean",
+          "require_arguments",
+          "unwrap_real_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-intervals.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "packages/flint/test/test.cjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRound",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalRound",
+      "callback": "sagejs_real_interval_round",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 645,
+        "lines": 16,
+        "sha256": "2446d06d01b6cccf76c57d3a3941e1b4f5c95da35465a84f2bd5fa8e4a9f8c2d",
+        "calls": [
+          "arb_set_round",
+          "get_precision",
+          "new_real_interval",
+          "require_arguments",
+          "unwrap_real_interval",
+          "wrap_real_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalToString",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalToString",
+      "callback": "sagejs_real_interval_to_string",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 852,
+        "lines": 15,
+        "sha256": "72f8143b6cc1f305685cd0877be96a079b6f0456f0b576b9cdfa8c5541fb3afa",
+        "calls": [
+          "format_arb_brackets",
+          "format_arb_question",
+          "get_operation",
+          "require_arguments",
+          "string_result",
+          "unwrap_real_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-intervals.test.mjs",
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "packages/flint/test/test.cjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalUnary",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realIntervalUnary",
+      "callback": "sagejs_real_interval_unary",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/intervals.c",
+        "line": 706,
+        "lines": 40,
+        "sha256": "5158ecc2e7ea509b805f0e41fc9c6cd973d1796420f7c34ded6f6b4403e2f3f1",
+        "calls": [
+          "arb_abs",
+          "arb_cos",
+          "arb_exp",
+          "arb_log",
+          "arb_neg",
+          "arb_sin",
+          "arb_sqrt",
+          "arb_tan",
+          "get_operation",
+          "get_precision",
+          "new_real_interval",
+          "require_arguments",
+          "round_arb_enclosure",
+          "unwrap_real_interval",
+          "wrap_real_interval"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "src/lib/sagejs/intervals.py"
+      ],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:realMul",
       "package": "@sagemath/sagejs-flint",
       "export": "realMul",
@@ -12436,7 +13273,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 276,
+        "line": 398,
         "lines": 4,
         "sha256": "fed98f5e77a14bef569b6863dae5bb1952f9f34bd8ad8fc90d2ab5273ed6957c",
         "calls": [
@@ -12469,7 +13306,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 285,
+        "line": 407,
         "lines": 15,
         "sha256": "803c5499dfd594d97b253dcc3c083db7ef1a625a81d08630c90cabfca3c9b0ea",
         "calls": [
@@ -12498,6 +13335,94 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:realNext",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realNext",
+      "callback": "sagejs_real_next",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/floating.c",
+        "line": 711,
+        "lines": 26,
+        "sha256": "3ccd4b2d37211336c56878f1f68d6d9717d5ea566189bd35c330095fc5746d12",
+        "calls": [
+          "check_napi",
+          "mpfr_get_prec",
+          "mpfr_nextabove",
+          "mpfr_nextbelow",
+          "mpfr_set",
+          "napi_get_value_int32",
+          "napi_throw_range_error",
+          "new_real",
+          "require_arguments",
+          "unwrap_real",
+          "wrap_real"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "src/baselib/real_complex.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realParts",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realParts",
+      "callback": "sagejs_real_parts",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/floating.c",
+        "line": 738,
+        "lines": 34,
+        "sha256": "eaf765e3792c0105810238fac47ff5cb9b6f3c5b1e3a24f115a271fd208e71c5",
+        "calls": [
+          "check_napi",
+          "mpfr_get_z_2exp",
+          "mpz_abs",
+          "mpz_clear",
+          "mpz_init",
+          "mpz_sgn",
+          "mpz_to_bigint",
+          "napi_create_array_with_length",
+          "napi_create_bigint_int64",
+          "napi_create_int32",
+          "napi_set_element",
+          "require_arguments",
+          "unwrap_real"
+        ]
+      },
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Real, complex, and special-function exports adapt MPFR, MPC, Arb, and FLINT numerical algorithms.",
+      "fallback": "The portable numerical layer preserves explicit precision semantics or reports a capability boundary.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "mpmath"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+        "src/baselib/real_complex.py"
+      ],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:realPowInt",
       "package": "@sagemath/sagejs-flint",
       "export": "realPowInt",
@@ -12507,17 +13432,18 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 301,
-        "lines": 26,
-        "sha256": "ec4750bf41f688e6117b59e7f3f9abdeae4abf619997d6787e396e320b61d0b6",
+        "line": 423,
+        "lines": 29,
+        "sha256": "ad4d49be99b0c2f93dd267ff8523d4b0fbef2d327f28614ea49531d9faf59876",
         "calls": [
           "bigint_to_mpz",
+          "get_rounding",
           "mpfr_get_prec",
           "mpfr_pow_z",
           "mpz_clear",
           "mpz_init",
           "new_real",
-          "require_arguments",
+          "require_optional_argument",
           "unwrap_real",
           "wrap_real"
         ]
@@ -12549,7 +13475,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 483,
+        "line": 788,
         "lines": 14,
         "sha256": "1990238e828f0e193f1c8d9ef2f3bb2886a6bf288cdf115828bdf76ed39bd98c",
         "calls": [
@@ -12587,14 +13513,15 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 228,
-        "lines": 17,
-        "sha256": "80c0e0b1bc9ee49a3084263c217833385db51f0e5628bc4180d4e8fe3879f70c",
+        "line": 344,
+        "lines": 20,
+        "sha256": "150f820fb5470d1237985749b79a62fbd91a9c56cb04ad792d3ba02c5fb9e35c",
         "calls": [
           "get_precision",
+          "get_rounding",
           "mpfr_set",
           "new_real",
-          "require_arguments",
+          "require_optional_argument",
           "unwrap_real",
           "wrap_real"
         ]
@@ -12625,7 +13552,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 272,
+        "line": 394,
         "lines": 4,
         "sha256": "19183a00de19d6bfbdbe93d20faf0758aa15f25489f960bddcc5b9b2ce8dbcbd",
         "calls": [
@@ -12658,7 +13585,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 468,
+        "line": 773,
         "lines": 14,
         "sha256": "b59800c5e90454f3cd8798e8ed1e57cfcb7d437130acd53f376350e4967fb353",
         "calls": [
@@ -12696,16 +13623,22 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 442,
-        "lines": 25,
-        "sha256": "68c24f289a1b6ade4b7e56755f7fb81c18e31e06d0b649ce667b9f634ea3a719",
+        "line": 667,
+        "lines": 43,
+        "sha256": "c99071af079152b9c3a04afb8ccf1999c543ebb44112d68a2da316580ebc14bf",
         "calls": [
           "check_napi",
-          "format_real",
+          "format_real_base2",
+          "format_real_full",
           "free",
+          "get_rounding",
           "napi_create_string_utf8",
+          "napi_get_value_bool",
+          "napi_get_value_int32",
           "napi_throw_error",
-          "require_arguments",
+          "napi_throw_range_error",
+          "require_argument_range",
+          "sagejs_format_real_rounding",
           "unwrap_real"
         ]
       },
@@ -12722,6 +13655,7 @@
       "consumers": [
         "packages/flint-wasm/numeric-backend.mjs",
         "packages/flint-wasm/test/numeric-backend.test.mjs",
+        "packages/flint-wasm/test/numeric-intervals.test.mjs",
         "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/real_complex.py",
@@ -12739,7 +13673,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4504,
+        "line": 4505,
         "lines": 57,
         "sha256": "fafc148f40ec1c88440f20a802db96207ca1c22d7619550e9c750940b3233dee",
         "calls": [
@@ -12787,7 +13721,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4429,
+        "line": 4430,
         "lines": 74,
         "sha256": "498698d66f37a1f227c95bbf14d24545b34efca6ea8188b7af4a050c12da853d",
         "calls": [
@@ -13005,7 +13939,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4263,
+        "line": 4264,
         "lines": 64,
         "sha256": "a41e51b344b4a5ff45a7db414533f373fcaf9f0f2f117edc283d62d7798f5b2b",
         "calls": [
@@ -13050,7 +13984,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4155,
+        "line": 4156,
         "lines": 76,
         "sha256": "35eba215326210b3fd9c80afee726cbc4728b01d0b9360c370ce69e8138d0a4e",
         "calls": [
@@ -13093,7 +14027,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4094,
+        "line": 4095,
         "lines": 60,
         "sha256": "5d02ecbb95d6365c3e56e9c7d8f617ece19dd0d9a01c8cad39c39629b9b3276b",
         "calls": [
@@ -13138,7 +14072,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4613,
+        "line": 4614,
         "lines": 13,
         "sha256": "ed65b49ad723a350bcb65f2608181df0fd803d87df7d5b9a800780734d134c3b",
         "calls": [
@@ -13171,7 +14105,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4562,
+        "line": 4563,
         "lines": 10,
         "sha256": "89079d7fea4034f172606828b79afe145f22ce4bfbc1f5ba276982f83ec56de1",
         "calls": [
@@ -13216,7 +14150,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1663,
+        "line": 1664,
         "lines": 13,
         "sha256": "b011668fe96d4a18ec7e25a797515a0dbd48b173167f287b06a9d2a918cda887",
         "calls": [
@@ -13253,7 +14187,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1750,
+        "line": 1751,
         "lines": 17,
         "sha256": "89b5edff657f859c955ae89468c28641e379390734544c5e2ca33f431280eeef",
         "calls": [
@@ -13290,7 +14224,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/floating.c",
-        "line": 892,
+        "line": 1197,
         "lines": 51,
         "sha256": "44a32ee9d38e6d2110f67edf6e63b7b16abbca4777d5a5812e4e14dc603b4a1f",
         "calls": [
@@ -13439,7 +14373,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1856,
+        "line": 1857,
         "lines": 29,
         "sha256": "c953693f089cb0686c21d1246ecc354ec5173c39076a49ef0635e6c850b079a6",
         "calls": [
@@ -13479,7 +14413,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1886,
+        "line": 1887,
         "lines": 21,
         "sha256": "ad092e90f431db54928c8b9f95f86072952bf3142e447457567a011a8f809e67",
         "calls": [
@@ -13692,7 +14626,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1502,
+        "line": 1503,
         "lines": 27,
         "sha256": "365f7cbe7d51b8cdcc4d7501ee820dcff0ea66ffbbe18ef300bc601b352245b0",
         "calls": [
@@ -13734,7 +14668,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1578,
+        "line": 1579,
         "lines": 16,
         "sha256": "f4a8412933fb0416504893ce132edd20559a305e2e86df174cdbcf25684520dd",
         "calls": [
@@ -13773,7 +14707,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1818,
+        "line": 1819,
         "lines": 37,
         "sha256": "034ed78b3d3754c530e99187de6fe5d89cbdc01f3b592bdc83a491af84fe12eb",
         "calls": [
@@ -13814,7 +14748,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1612,
+        "line": 1613,
         "lines": 21,
         "sha256": "fb8cb2cd20300f72ee8957a38adc24580905c454e4f60e6bef91fba8bfed7491",
         "calls": [
@@ -13850,7 +14784,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1908,
+        "line": 1909,
         "lines": 36,
         "sha256": "3d4c9f55dd41e1652935fef332a48d8a1eb93ebfcccd10480ff4f99fa0c24657",
         "calls": [
@@ -13889,7 +14823,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2596,
+        "line": 2597,
         "lines": 97,
         "sha256": "b7f9d4fc41e8b525688fe6f5434c2d59553983d9c6c28e50b229be0d4cf3873e",
         "calls": [

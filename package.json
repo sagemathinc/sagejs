@@ -246,6 +246,9 @@
     "upstream:extract": "node scripts/extract-sage-doctests.cjs",
     "upstream:report": "pnpm run build && node scripts/run-sage-doctests.cjs upstream-tests/sage/rings/finite_rings/finite_field_prime_modn.doctests.json --allow-failures --verbose",
     "tutorial:extract": "node scripts/extract-sage-tutorial.cjs",
+    "prep:extract": "node scripts/extract-sage-prep.cjs",
+    "test:prep": "pnpm run build:check && node scripts/run-sage-prep.cjs",
+    "prep:report": "pnpm run build && node scripts/run-sage-prep.cjs --allow-failures --write-results /tmp/sagejs-prep-results.json",
     "test:tutorial": "pnpm run build:check && node scripts/run-sage-tutorial.cjs",
     "tutorial:report": "pnpm run build && node scripts/run-sage-tutorial.cjs --allow-failures --write-results /tmp/sagejs-tutorial-results.json",
     "rh:extract": "node scripts/extract-rh-corpus.cjs",
@@ -434,7 +437,9 @@
     "test": "test"
   },
   "dependencies": {
+    "@cocalc/widgets": "1.3.0",
     "@cortex-js/compute-engine": "0.98.0",
+    "@jupyter-widgets/controls": "5.0.12",
     "fflate": "0.7.5",
     "numpy-ts": "1.6.0",
     "playwright-core": "1.62.0",

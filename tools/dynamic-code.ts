@@ -58,6 +58,7 @@ export interface DynamicCode {
   ast?: any;
   cacheFilename: string;
   filename: string;
+  jsage: boolean;
   mode: "eval" | "exec" | "single";
   moduleId: string;
   outputs: Record<string, string>;
@@ -73,6 +74,7 @@ interface PreparedDynamicCode {
 
 interface DynamicCodeCache {
   filename: string;
+  jsage: boolean;
   mode: DynamicCode["mode"];
   outputs: Record<string, string>;
   sourceHash: string;
@@ -101,6 +103,7 @@ function readDynamicCache(
       cached.version === expected.version &&
       cached.sourceHash === expected.sourceHash &&
       cached.filename === expected.filename &&
+      cached.jsage === expected.jsage &&
       cached.mode === expected.mode &&
       cached.outputs &&
       typeof cached.outputs === "object"
@@ -118,6 +121,7 @@ function writeDynamicCache(code: DynamicCode): void {
       version: code.version,
       sourceHash: code.sourceHash,
       filename: code.filename,
+      jsage: code.jsage,
       mode: code.mode,
       outputs: code.outputs,
     } satisfies DynamicCodeCache));
@@ -127,7 +131,7 @@ function writeDynamicCache(code: DynamicCode): void {
   }
 }
 
-function parserOptions(filename: string, moduleId: string) {
+function parserOptions(filename: string, moduleId: string, jsage: boolean) {
   return {
     filename,
     module_id: moduleId,
@@ -138,6 +142,7 @@ function parserOptions(filename: string, moduleId: string) {
     libdir: join(__dirname, "../../src/lib"),
     exact_integer_literals: true,
     strict_python_scopes: true,
+    jsage,
     scoped_flags: {
       dict_literals: true,
       overload_getitem: true,
@@ -160,17 +165,23 @@ function parseSource(
   filename: string,
   mode: DynamicCode["mode"],
   moduleId: string,
+  jsage: boolean,
 ) {
-  const parse = Reflect.get(globalThis, "__sagejs_parse_python__");
+  const parse = Reflect.get(
+    globalThis,
+    jsage ? "__sagejs_parse_sage__" : "__sagejs_parse_python__",
+  );
   if (typeof parse !== "function") {
-    throw new Error("the authoritative Python frontend is not initialized");
+    throw new Error(
+      `the authoritative ${jsage ? "Sage" : "Python"} frontend is not initialized`,
+    );
   }
   return Reflect.apply(
     parse,
     undefined,
     [
     mode === "eval" ? expressionSource(source) : statementSource(source),
-    parserOptions(filename, moduleId),
+    parserOptions(filename, moduleId, jsage),
     ],
   );
 }
@@ -203,10 +214,13 @@ export function compileDynamic(
   source: string,
   filename: string,
   mode: DynamicCode["mode"],
+  jsage = false,
 ): DynamicCode {
   const version = dynamicCompiler().get_compiler_version();
   const sourceHash = sha256(source);
-  const identity = sha256(JSON.stringify({ version, sourceHash, filename, mode }));
+  const identity = sha256(
+    JSON.stringify({ version, sourceHash, filename, mode, jsage }),
+  );
   const moduleId = `__dynamic_${identity.slice(0, 24)}__`;
   const cacheFilename = join(dynamicCacheDirectory(version), `${identity}.json`);
   if (!process.env.SAGEJS_DYNAMIC_CACHE_DIR) {
@@ -219,7 +233,7 @@ export function compileDynamic(
       precompiledDynamicCacheDirectory(join(__dirname, "..", "dynamic-cache")),
     `${identity}.json`,
   );
-  const expected = { version, sourceHash, filename, mode };
+  const expected = { version, sourceHash, filename, mode, jsage };
   const outputs =
     readDynamicCache(cacheFilename, expected) ??
     readDynamicCache(precompiledCacheFilename, expected);
@@ -227,6 +241,7 @@ export function compileDynamic(
     return {
       cacheFilename,
       filename,
+      jsage,
       mode,
       moduleId,
       outputs,
@@ -236,11 +251,12 @@ export function compileDynamic(
     };
   }
   try {
-    const ast = parseSource(source, filename, mode, moduleId);
+    const ast = parseSource(source, filename, mode, moduleId, jsage);
     return {
       ast,
       cacheFilename,
       filename,
+      jsage,
       mode,
       moduleId,
       outputs: Object.create(null),
@@ -296,7 +312,13 @@ export function runDynamic(
   if (typeof cached === "string") {
     return { javascript: cached, moduleId: code.moduleId };
   }
-  code.ast ??= parseSource(code.source, code.filename, code.mode, code.moduleId);
+  code.ast ??= parseSource(
+    code.source,
+    code.filename,
+    code.mode,
+    code.moduleId,
+    code.jsage,
+  );
   const originalAnnotatedLocals = code.ast.annotated_locals;
   let javascript: string;
   try {
@@ -322,6 +344,7 @@ export function runDynamic(
       write_name: true,
       beautify: true,
       exact_integers: true,
+      rational_division: code.jsage,
       python_tuples: true,
       python_truthiness: true,
       python_attributes: true,

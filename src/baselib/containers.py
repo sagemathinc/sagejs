@@ -557,7 +557,11 @@ def _list_len(self: Any) -> int:
 @runtime.native_method
 def _list_contains(self: Any, value: Any) -> bool:
     for item in self:
-        if equals(item, value):
+        # CPython sequence containment is an identity-or-equality test.  The
+        # identity shortcut is observable when ``__eq__`` raises or returns a
+        # non-boolean value, and it is particularly important for hot lists of
+        # class and descriptor objects.
+        if item is value or equals(item, value):
             return True
     return False
 
@@ -1147,6 +1151,16 @@ def set_wrap(native_set: Any) -> SageSet:
 
 
 def _dict_normalize_key(key: Any) -> Any:
+    # Attribute dictionaries, keyword arguments, globals, and most JSON-like
+    # Python mappings overwhelmingly use primitive string keys.  Their native
+    # identity is already exactly Python's hash/equality identity, so avoid
+    # the generic unhashable, numeric, and structural-key checks.  In
+    # particular, metaclass-heavy packages construct many class dictionaries;
+    # sending every class member name through ``isinstance`` made that work
+    # needlessly quadratic in runtime-dispatch cost.
+    key_type = runtime.jstype(key)
+    if runtime.strict_equal(key_type, "string"):
+        return key
     if isinstance(key, SageSet):
         raise TypeError("unhashable type: 'set'")
     if key is True:
@@ -1155,7 +1169,7 @@ def _dict_normalize_key(key: Any) -> Any:
         return 0
     if _is_boxed_float(key):
         return _numeric_key(key)
-    if runtime.strict_equal(runtime.jstype(key), "number"):
+    if runtime.strict_equal(key_type, "number"):
         return _numeric_key(key)
     if runtime.is_exact_integer(key):
         return runtime.normalize_integer(runtime.bigint(key))
@@ -1713,7 +1727,12 @@ def ρσ_scope_dict(values: Any) -> SageDict:
     answer = SageDict()
     for key in runtime.object.keys(values):
         if values[key] is not runtime.undefined:
-            answer.__setitem__(key, values[key])
+            # ``Object.keys`` returns primitive strings, whose normalized key
+            # is the string itself.  Populate both native maps directly rather
+            # than repeating the generic Python mapping protocol for every
+            # member in a compiler-generated class or scope namespace.
+            answer.jsmap.set(key, values[key])
+            answer.keymap.set(key, key)
     return answer
 
 
@@ -1785,6 +1804,18 @@ runtime.set_class_repr(list_constructor, "<class 'list'>")
 runtime.set_class_repr(ρσ_dict, "<class 'dict'>")
 runtime.set_class_repr(ρσ_set, "<class 'set'>")
 runtime.set_class_repr(ρσ_frozenset, "<class 'frozenset'>")
+
+
+def _containers_set_type_metadata(cls: Any, name: _Str) -> None:
+    runtime.reflect.set(cls, "__name__", name)
+    runtime.reflect.set(cls, "__qualname__", name)
+    runtime.reflect.set(cls, "__module__", "builtins")
+
+
+_containers_set_type_metadata(list_constructor, "list")
+_containers_set_type_metadata(ρσ_dict, "dict")
+_containers_set_type_metadata(ρσ_set, "set")
+_containers_set_type_metadata(ρσ_frozenset, "frozenset")
 for builtin_container_type in (
     list_constructor,
     ρσ_dict,

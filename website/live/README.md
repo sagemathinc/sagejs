@@ -58,6 +58,7 @@ after the network is disabled:
 
 ```sh
 node website/live/test/browser-offline.mjs
+node website/live/test/browser-embed.mjs
 ```
 
 The test stages the verified release, loads it under production headers in
@@ -73,6 +74,102 @@ Sage.js release caches after the new install succeeds.
 Firefox and WebKit remain manual/CI browser-matrix release checks because this
 focused script intentionally uses Chromium's DevTools protocol to make network
 loss deterministic.
+
+## Embeddable cell candidate
+
+The staged site includes a provisional reusable cell at `/embed/v1/`. It is
+built from the same controller, evaluator, rich-output pipeline, and standard
+ipywidgets manager as the standalone app. The declarative form is:
+
+```html
+<script type="module" src="./embed/v1/sagejs-cell.mjs"></script>
+<sagejs-cell run-button-text="Evaluate">
+  <script type="text/x-sage">factor(2026)</script>
+</sagejs-cell>
+```
+
+The equivalent module API is:
+
+```js
+import { createSageCell } from "./embed/v1/sagejs-cell.mjs";
+
+const cell = await createSageCell(document.querySelector("#calculus"), {
+  source: "show(integral(sin(x), x))",
+  autoEvaluate: true,
+});
+```
+
+Cells own independent workers by default and expose `source`, `ready`, `run`,
+`interrupt`, `reset`, `clear`, `snapshot`, and `dispose`. To deliberately share
+variables and widget state, give cells the same `session` name:
+
+```html
+<sagejs-cell session="calculus"><script type="text/x-sage">a = 10</script></sagejs-cell>
+<sagejs-cell session="calculus"><script type="text/x-sage">a^2</script></sagejs-cell>
+```
+
+Shared cells must use the same Sage or Python language mode. Their executions
+are serialized, and the worker remains alive until its final owning cell is
+disposed. The default pool permits at most 16 live workers, including at most
+8 named shared sessions; these bounds prevent an embedded page from creating
+workers without limit. `sageCellSessionStats()` exposes counts for diagnostics.
+
+Configuration also supports editor visibility, button text, auto-evaluation,
+bounded timeout, System/Light/Dark themes, and math typesetting. Controller
+events are re-emitted as bubbling, composed custom events from the element.
+Removing a cell releases its session lease and its own widget views.
+
+`browser-embed.mjs` qualifies declarative, factory-created, and named shared
+cells, including Shadow DOM CodeMirror/output, reference-counted lifecycle,
+serialized shared state, KaTeX, and a live Sage `@interact` slider. It also
+loads the module and immutable runtime
+from a second origin into a deliberately non-isolated course page. A Blob
+module bootstrap handles both the kernel worker and its nested compiler worker;
+the public runtime responses permit credential-free CORS and cross-origin
+resource use.
+
+A strict host CSP must explicitly allow the pinned Sage.js asset origin. The
+smallest currently qualified shape is equivalent to:
+
+```text
+script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://app.sagejs.org
+worker-src blob: https://app.sagejs.org
+connect-src https://app.sagejs.org
+style-src 'self' 'unsafe-inline' https://app.sagejs.org
+font-src https://app.sagejs.org
+img-src data: blob: https://app.sagejs.org
+```
+
+The host does not need COOP or COEP for basic execution and standard widgets;
+the component reports `crossOriginIsolated: false` in that mode. The iframe
+transport is also available at `/embed/v1/frame.html` for hosts that want an
+additional CSS and JavaScript boundary. Give it an exact, URL-encoded
+`parentOrigin` and use a cross-origin sandbox that retains origin identity:
+
+```html
+<iframe
+  src="https://app.sagejs.org/embed/v1/frame.html?parentOrigin=https%3A%2F%2Fcourse.example"
+  sandbox="allow-scripts allow-same-origin"
+  title="Sage.js calculation">
+</iframe>
+```
+
+The frame sends and receives structured messages with schema
+`org.sagejs.cell-frame/v1`. It first sends `{type: "ready"}`. The exact parent
+may then send bounded requests with a unique `id`, `type: "request"`, and one
+of `initialize`, `configure`, `set-source`, `run`, `interrupt`, `reset`,
+`snapshot`, or `dispose`. Responses repeat the request id and contain either a
+bounded result summary or a name/message error; mathematical displays and
+widgets remain rendered inside the frame. The frame checks both `event.source`
+and the exact configured origin, rejects wildcard origins, caps messages and
+source at 256 KiB, and does not expose interpreter objects. See
+`frame-example.html` for a complete host.
+
+The dedicated frame response alone permits `frame-ancestors *` and omits
+`X-Frame-Options`; the standalone app and all other pages remain unframeable.
+The shared-session/pooling policy, complete isolated-versus-fallback capability
+table, and Firefox/WebKit matrix remain under implementation. Do not yet treat
+the candidate interfaces as frozen compatibility contracts.
 
 ## Product behavior
 

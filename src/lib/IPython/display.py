@@ -8,15 +8,12 @@ from typing import Any
 import sagejs.runtime as runtime
 
 
-def _host_function(name: str) -> Any:
+def _optional_host_function(name: str) -> Any:
+    """Return a host display hook, or `None` in a text-only process."""
     function = runtime.reflect.get(runtime.global_object, name)
-    if not runtime.strict_equal(runtime.jstype(function), "function"):
-        raise RuntimeError(
-            "rich display requires a Sage.js interactive evaluator; "
-            + name
-            + " is unavailable"
-        )
-    return function
+    if runtime.strict_equal(runtime.jstype(function), "function"):
+        return function
+    return None
 
 
 class DisplayHandle:
@@ -43,28 +40,35 @@ def display(
     clear: bool = False,
     **kwargs: Any,
 ) -> DisplayHandle | None:
-    """Publish objects immediately as ordered Jupyter display events."""
+    """Publish rich display events, with readable text output in the CLI."""
     del include, exclude, metadata, transient, raw, kwargs
     if clear:
         clear_output(wait=True)
-    publish = _host_function("__sagejs_display_publish__")
+    publish = _optional_host_function("__sagejs_display_publish__")
     resolved_id = display_id
     for obj in objs:
-        value = runtime.reflect.apply(
-            publish,
-            runtime.undefined,
-            [obj, resolved_id, False],
-        )
-        if value is not runtime.undefined and value is not None:
-            resolved_id = value
+        if publish is None:
+            print(obj)
+        else:
+            value = runtime.reflect.apply(
+                publish,
+                runtime.undefined,
+                [obj, resolved_id, False],
+            )
+            if value is not runtime.undefined and value is not None:
+                resolved_id = value
     return DisplayHandle(resolved_id) if display_id else None
 
 
 def update_display(obj: Any, *, display_id: str, **kwargs: Any) -> None:
     """Publish an update for a previously assigned display id."""
     del kwargs
+    publish = _optional_host_function("__sagejs_display_publish__")
+    if publish is None:
+        print(obj)
+        return
     runtime.reflect.apply(
-        _host_function("__sagejs_display_publish__"),
+        publish,
         runtime.undefined,
         [obj, display_id, True],
     )
@@ -72,9 +76,10 @@ def update_display(obj: Any, *, display_id: str, **kwargs: Any) -> None:
 
 def clear_output(wait: bool = False) -> None:
     """Publish a Jupyter `clear_output` event."""
-    runtime.reflect.apply(
-        _host_function("__sagejs_clear_output__"), runtime.undefined, [wait]
-    )
+    clear = _optional_host_function("__sagejs_clear_output__")
+    if clear is None:
+        return
+    runtime.reflect.apply(clear, runtime.undefined, [wait])
 
 
 class DisplayObject:

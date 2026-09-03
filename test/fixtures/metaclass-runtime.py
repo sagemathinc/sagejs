@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from inspect import getfullargspec, signature
+from inspect import getcallargs, getfullargspec, signature
 
 
 class AllocatingMeta(type):
@@ -52,6 +52,23 @@ list.append(values, 5)
 assert values == [5]
 
 
+for builtin_value, builtin_type, builtin_name in (
+    (None, type(None), "NoneType"),
+    (False, bool, "bool"),
+    (1, int, "int"),
+    (1.5, float, "float"),
+    ("text", str, "str"),
+    ([], list, "list"),
+    ((), tuple, "tuple"),
+    ({}, dict, "dict"),
+    (set(), set, "set"),
+):
+    assert builtin_value.__class__ is builtin_type
+    assert builtin_type.__name__ == builtin_name
+    assert builtin_type.__qualname__ == builtin_name
+    assert builtin_type.__module__ == "builtins"
+
+
 class SetupBaseMeta(type):
     def __init__(cls, name, bases, namespace):
         super().__init__(name, bases, namespace)
@@ -95,6 +112,115 @@ class CustomDirectory:
 
 assert "custom_entry" in dir(CustomDirectory())
 assert issubclass(ModuleNotFoundError, ImportError)
+
+
+class IdentityContains:
+    def __eq__(self, other):
+        raise AssertionError("list containment compared an identical object")
+
+
+identity_contains = IdentityContains()
+assert identity_contains in [identity_contains]
+
+
+class DynamicNamespace:
+    answer = 42
+
+
+# A class dictionary is a cached, read-only, live mapping just as CPython's
+# mappingproxy is. Retaining the view must not make class updates stale.
+dynamic_namespace = DynamicNamespace.__dict__
+assert dynamic_namespace["answer"] == 42
+setattr(DynamicNamespace, "answer", 44)
+assert dynamic_namespace["answer"] == 44
+try:
+    dynamic_namespace["answer"] = 45
+except TypeError:
+    pass
+else:
+    raise AssertionError("a class namespace allowed item assignment")
+assert DynamicNamespace.answer == 44
+delattr(DynamicNamespace, "answer")
+assert "answer" not in dynamic_namespace
+
+
+class AttributeFactoryProduct:
+    def __init__(self, value=0):
+        self.value = value
+
+
+class AttributeFactoryOwner:
+    def __init__(self):
+        self.factory = AttributeFactoryProduct
+
+    def construct(self):
+        return self.factory(*(), **{"value": 17})
+
+
+# A class stored on an instance is a callable value, not a descriptor which
+# binds the owning instance. This must agree for simple and expanded calls.
+assert AttributeFactoryOwner().construct().value == 17
+
+
+class CallableDescriptorBase:
+    inherited = property(lambda self: self._value)
+
+
+class CallableDescriptorInstance(CallableDescriptorBase):
+    def __init__(self):
+        self._value = 23
+
+    def __call__(self):
+        return self._value
+
+
+callable_descriptor_instance = CallableDescriptorInstance()
+assert callable_descriptor_instance.inherited == 23
+assert callable_descriptor_instance() == 23
+assert callable_descriptor_instance.__dict__["_value"] == 23
+
+
+class CallableCustomAllocator:
+    def __new__(cls, *args, **kwargs):
+        instance = object.__new__(cls)
+        instance.allocated_with = (args, kwargs)
+        return instance
+
+    def __init__(self, value=0, **kwargs):
+        self.value = value
+
+    def __call__(self):
+        return self.value
+
+
+callable_custom_allocator = CallableCustomAllocator(29, label=31)
+assert callable_custom_allocator.allocated_with == ((29,), {"label": 31})
+assert callable_custom_allocator() == 29
+assert type(callable_custom_allocator) is CallableCustomAllocator
+
+
+class ExplicitBaseInitializer:
+    def __init__(self, **kwargs):
+        self.explicit_value = kwargs["value"]
+
+
+class ExplicitChildInitializer(ExplicitBaseInitializer):
+    def __init__(self, **kwargs):
+        ExplicitBaseInitializer.__init__(self, **kwargs)
+
+
+assert ExplicitChildInitializer(value=37).explicit_value == 37
+
+
+class KeywordClassMethod:
+    @classmethod
+    def create(cls, **kwargs):
+        instance = cls()
+        instance.class_value = kwargs["value"]
+        return instance
+
+
+assert KeywordClassMethod.create(value=41).class_value == 41
 
 
 class DecoratedProperty:
@@ -224,6 +350,26 @@ module_annotated_signature = signature(ModuleAnnotatedInitializer)
 assert (
     module_annotated_signature.parameters["value"].annotation is ModuleAnnotationTarget
 )
+
+
+def call_shape(a, b=2, *items, flag=3, **options):
+    return a, b, items, flag, options
+
+
+assert getcallargs(call_shape, 1, 4, 5, flag=7, extra=9) == {
+    "a": 1,
+    "b": 4,
+    "items": (5,),
+    "flag": 7,
+    "options": {"extra": 9},
+}
+
+try:
+    getcallargs(call_shape)
+except TypeError as error:
+    assert "missing 1 required positional argument: 'a'" in str(error)
+else:
+    raise AssertionError("getcallargs accepted a missing required argument")
 
 
 class CustomAllocatorOnly:

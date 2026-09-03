@@ -11,11 +11,11 @@ const {
 } = require("./run-sage-doctests.cjs");
 
 const root = resolve(__dirname, "..");
-const corpus = join(root, "upstream-tests", "sage", "tutorial");
 
 function parseArguments(argv) {
   const options = {
     allowFailures: false,
+    corpus: "tutorial",
     verbose: false,
     timeout: 30_000,
   };
@@ -24,6 +24,7 @@ function parseArguments(argv) {
     if (value === "--") continue;
     else if (value === "--allow-failures") options.allowFailures = true;
     else if (value === "--verbose") options.verbose = true;
+    else if (value === "--corpus") options.corpus = argv[++index];
     else if (value === "--only") options.only = new RegExp(argv[++index]);
     else if (value === "--file") options.file = new RegExp(argv[++index]);
     else if (value === "--section") {
@@ -39,7 +40,7 @@ function parseArguments(argv) {
   return options;
 }
 
-function loadJson(filename) {
+function loadJson(corpus, filename) {
   return JSON.parse(readFileSync(join(corpus, filename), "utf8"));
 }
 
@@ -208,11 +209,15 @@ function selectedGroups(fixture, options) {
 
 async function main() {
   const options = parseArguments(process.argv.slice(2));
-  const fixture = loadJson("guided-tour.doctests.json");
-  const source = loadJson("SOURCE.json");
-  const expectations = loadJson("expectations.json");
+  if (!/^[a-z][a-z0-9-]*$/.test(options.corpus)) {
+    throw new Error("invalid Sage tutorial corpus name");
+  }
+  const corpus = join(root, "upstream-tests", "sage", options.corpus);
+  const source = loadJson(corpus, "SOURCE.json");
+  const expectations = loadJson(corpus, "expectations.json");
+  const fixture = loadJson(corpus, expectations.fixture);
   if (fixture.source.revision !== source.revision) {
-    throw new Error("Guided Tour fixture revision does not match SOURCE.json");
+    throw new Error("Sage tutorial fixture revision does not match SOURCE.json");
   }
 
   const groups = selectedGroups(fixture, options);
@@ -223,6 +228,13 @@ async function main() {
   const skip = expectations.skip ?? {};
   const run = expectations.run ?? {};
   const xfail = { ...(expectations.xfail ?? {}) };
+  const classifications = {};
+  const allowedClassifications = new Set([
+    "supported",
+    "presentation-only",
+    "planned",
+    "intentionally-out-of-scope",
+  ]);
   for (const group of expectations.xfailGroups ?? []) {
     const groupIds = group.ids ?? group.lines?.map(
       (line) => `${group.file}:${line}`,
@@ -232,11 +244,17 @@ async function main() {
         "each xfailGroups entry needs a reason and nonempty ids or file/lines",
       );
     }
+    if (!allowedClassifications.has(group.classification)) {
+      throw new Error(
+        "each xfailGroups entry needs a valid classification",
+      );
+    }
     for (const id of groupIds) {
       if (xfail[id]) {
         throw new Error(`duplicate expected-failure classification: ${id}`);
       }
       xfail[id] = group.reason;
+      classifications[id] = group.classification;
     }
   }
   const match = expectations.match ?? {};
@@ -262,9 +280,10 @@ async function main() {
   };
   const byFile = {};
   const bySection = {};
+  const byClassification = {};
   const results = [];
 
-  function record(example, status, actual, reason) {
+  function record(example, status, actual, reason, classification) {
     counts[status] += 1;
     const filename = basename(example.id.split(":")[0]);
     byFile[filename] ??= {};
@@ -272,10 +291,13 @@ async function main() {
     bySection[example.section] ??= {};
     bySection[example.section][status] =
       (bySection[example.section][status] ?? 0) + 1;
+    byClassification[classification] =
+      (byClassification[classification] ?? 0) + 1;
     results.push({
       id: example.id,
       section: example.section,
       status,
+      classification,
       reason,
       source: example.source,
       want: example.want,
@@ -292,7 +314,13 @@ async function main() {
           skip[example.id] ??
           (run[example.id] ? undefined : rstSkip?.value);
         if (reason) {
-          record(example, "skip", "", reason);
+          record(
+            example,
+            "skip",
+            "",
+            reason,
+            "intentionally-out-of-scope",
+          );
           if (options.verbose) {
             process.stdout.write(`SKIP  ${example.id} — ${reason}\n`);
           }
@@ -307,7 +335,13 @@ async function main() {
         );
         if (xfail[example.id]) {
           const status = matches ? "xpass" : "xfail";
-          record(example, status, actual, xfail[example.id]);
+          record(
+            example,
+            status,
+            actual,
+            xfail[example.id],
+            classifications[example.id] ?? "planned",
+          );
           if (options.verbose || status === "xpass") {
             process.stdout.write(
               `${status.toUpperCase().padEnd(5)} ${example.id} — ` +
@@ -318,10 +352,10 @@ async function main() {
             }
           }
         } else if (matches) {
-          record(example, "pass", actual);
+          record(example, "pass", actual, undefined, "supported");
           if (options.verbose) process.stdout.write(`PASS  ${example.id}\n`);
         } else {
-          record(example, "fail", actual);
+          record(example, "fail", actual, undefined, "supported");
           if (options.verbose) {
             process.stdout.write(`FAIL  ${example.id}\n${detail(example, actual)}\n`);
           }
@@ -342,6 +376,7 @@ async function main() {
           counts,
           byFile,
           bySection,
+          byClassification,
           results,
         },
         null,
@@ -357,7 +392,8 @@ async function main() {
     process.stdout.write(`${filename}: ${summary}\n`);
   }
   process.stdout.write(
-    `Sage Guided Tour: ${counts.pass} passed, ${counts.xfail} xfailed, ` +
+    `${source.title ?? "Sage tutorial"}: ${counts.pass} passed, ` +
+      `${counts.xfail} xfailed, ` +
       `${counts.skip} skipped, ${counts.fail} failed, ` +
       `${counts.xpass} xpassed (${selected.length} selected)\n`,
   );
