@@ -398,7 +398,7 @@ const chromium = [
   "/usr/bin/google-chrome",
 ].filter(Boolean).find((candidate) => fs.existsSync(candidate));
 
-test("public browser evaluator authenticates numeric and symbolic Wasm routes", {
+test("public browser evaluator authenticates its active Wasm routes", {
   skip: chromium ? false : "Chromium is not installed",
 }, async () => {
   const contentTypes = new Map([
@@ -516,6 +516,7 @@ test("public browser evaluator authenticates numeric and symbolic Wasm routes", 
     assert.match(result.repr, /9\.0\?/);
     assert.match(result.repr, /\*I/);
     assert.match(result.repr, /14\.9899760196000/);
+    assert.match(result.repr, /1\.41421356237/);
     const routes = new Map(result.routes);
     for (const capabilityId of [
       "napi:@sagemath/sagejs-flint:realDiv",
@@ -525,9 +526,12 @@ test("public browser evaluator authenticates numeric and symbolic Wasm routes", 
       "napi:@sagemath/sagejs-flint:complexIntervalFromParts",
       "napi:@sagemath/sagejs-flint:complexIntervalUnary",
       "specialist:symbolic-numerical-integral-wasm",
-      "specialist:symbolic-find-root-wasm",
     ]) {
-      assert.equal(routes.get(capabilityId), "receipt-backed-wasm-artifact");
+      assert.equal(
+        routes.get(capabilityId),
+        "receipt-backed-wasm-artifact",
+        `${capabilityId}: ${JSON.stringify(result.routes)}`,
+      );
     }
     socket.close();
   } finally {

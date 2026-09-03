@@ -67,15 +67,33 @@ export interface SageEvaluationOptions {
 }
 
 export interface BrowserSageSessionOptions {
+  /** Default source and runtime semantics for evaluations in this session. */
+  mode?: "sage" | "python";
   worker?: string | URL;
   compiler?: string | URL;
   baselib?: string | URL;
   standardLibrary?: string | URL;
   lazyModules?: string | URL;
+  conwayData?: string | URL;
+  dynamicPrograms?: string | URL;
   flint?: string | URL;
+  algebraic?: string | URL;
+  nativeKernels?: string | URL;
   m4ri?: string | URL;
+  numerical?: string | URL;
+  numericalNlopt?: string | URL;
+  nloptAdapter?: string | URL;
   symbolic?: string | URL;
+  documentation?: string | URL;
   compilerWorker?: string | URL;
+  compilerFrontend?: string | URL;
+  foreignFrontend?: string | URL;
+  treeSitterRuntime?: string | URL;
+  pythonGrammar?: string | URL;
+  sageGrammar?: string | URL;
+  foreignGrammars?: Record<string, string | URL>;
+  capabilityReport?: string | URL;
+  optimizationLevel?: "O0" | "O1" | "O2" | "O3" | "Os";
   onGraphicsSave?: (request: SageGraphicsSaveRequest) => void | Promise<void>;
 }
 

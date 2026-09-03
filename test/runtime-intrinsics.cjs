@@ -37,10 +37,12 @@ const bootstrapAssignments = Array.from(
   ),
   (match) => [match[1], match[2] ?? match[3]],
 );
+const moduleStateNames = ["_numerical_backends"];
 const bootstrapNames = [
   ...new Set([
     ...bootstrapFunctions,
     ...bootstrapAssignments.map(([name]) => name),
+    ...moduleStateNames,
     "undefined",
   ]),
 ].sort();
@@ -52,7 +54,8 @@ assert.deepEqual(
 const expectedBootstrapAssignments = runtimeManifest
   .filter(
     ([name]) =>
-      name !== "undefined" && !bootstrapFunctions.includes(name),
+      name !== "undefined" && !bootstrapFunctions.includes(name) &&
+      !moduleStateNames.includes(name),
   )
   .map(([name, value]) =>
     // The source bootstrap runs before builtins initializes these stable
@@ -104,6 +107,15 @@ assert.match(
 );
 assert.doesNotMatch(generated, /\$ρσ\$py\$runtime\s*[.(]/);
 
+const numericalBackendState = compile(
+  "import sagejs.runtime as runtime\n" +
+    "backend_state = runtime._numerical_backends\n",
+);
+assert.match(
+  numericalBackendState,
+  /backend_state = ρσ_modules\["sagejs\.runtime"\]\._numerical_backends/,
+);
+
 const firstClassRuntime = compile(
   "import sagejs.runtime as runtime\n" +
     "call = getattr(runtime, 'ffi_call')\n" +
@@ -153,6 +165,18 @@ assert.match(
   nativePropertyRead,
   /frozen = ρσ_native_freeze_tuple\(values, prototype\)/,
 );
+
+for (const mode of ["python", "sage"]) {
+  const bootstrap = readFileSync(
+    join(root, "dist", "runtime-cache", `runtime-bootstrap-${mode}.js`),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    bootstrap,
+    /\bρσ_native_get\b/u,
+    `${mode} bootstrap must lower native_get calls instead of retaining a missing symbol`,
+  );
+}
 
 const exactValueCodec = compile(
   "import sagejs.runtime as runtime\n" +

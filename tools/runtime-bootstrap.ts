@@ -364,11 +364,28 @@ export function runRuntimeBootstrap(
   // ordinary name lookup.
   const moduleRegistry = Reflect.get(globalThis, "ρσ_modules");
   if (!Object.prototype.hasOwnProperty.call(moduleRegistry, "builtins")) {
+    const facadeNames = Reflect.get(globalThis, "__sagejs_baselib_facade_names__");
+    if (!Array.isArray(facadeNames)) {
+      throw new Error("generated baselib facade inventory is unavailable");
+    }
+    const builtinNames = new Set<PropertyKey>([
+      ...facadeNames,
+      "__sagejs_native_resolve__",
+      "__sagejs_native_fallback_policy__",
+    ]);
     const metadata: Record<PropertyKey, any> = Object.create(null);
     Object.assign(metadata, {
       __name__: "builtins",
       __package__: "",
       __loader__: null,
+      // `eval` is a reserved JavaScript binding, so the compiler publishes
+      // the Python implementation under its internal `ρσ_eval` name instead
+      // of adding an `eval` entry to the generated facade.  Expose that exact
+      // implementation explicitly: falling through to `globalThis.eval`
+      // would leak the JavaScript host primitive into Python, while omitting
+      // it breaks ordinary `import builtins; builtins.eval(...)` consumers
+      // such as `inspect.signature(..., eval_str=True)` and Traitlets.
+      eval: Reflect.get(globalThis, "ρσ_eval"),
       __spec__: {
         name: "builtins",
         parent: "",
@@ -380,25 +397,31 @@ export function runRuntimeBootstrap(
     const builtins = new Proxy(metadata, {
       get(target, property) {
         if (Reflect.has(target, property)) return Reflect.get(target, property);
-        return Reflect.get(globalThis, property);
+        return builtinNames.has(property)
+          ? Reflect.get(globalThis, property)
+          : undefined;
       },
       has(target, property) {
-        return Reflect.has(target, property) || Reflect.has(globalThis, property);
+        return Reflect.has(target, property) ||
+          (builtinNames.has(property) && Reflect.has(globalThis, property));
       },
       set(target, property, value) {
         if (Reflect.has(target, property)) return Reflect.set(target, property, value);
-        return Reflect.set(globalThis, property, value);
+        if (builtinNames.has(property)) {
+          return Reflect.set(globalThis, property, value);
+        }
+        return Reflect.set(target, property, value);
       },
       ownKeys(target) {
         return [...new Set([
           ...Reflect.ownKeys(target),
-          ...Reflect.ownKeys(globalThis),
+          ...facadeNames.filter((property) => Reflect.has(globalThis, property)),
         ])];
       },
       getOwnPropertyDescriptor(target, property) {
         const local = Reflect.getOwnPropertyDescriptor(target, property);
         if (local) return local;
-        if (Reflect.has(globalThis, property)) {
+        if (builtinNames.has(property) && Reflect.has(globalThis, property)) {
           return {
             configurable: true,
             enumerable: true,

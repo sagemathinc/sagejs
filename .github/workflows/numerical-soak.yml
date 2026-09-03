@@ -1,0 +1,82 @@
+name: Scheduled numerical reliability soak
+
+on:
+  schedule:
+    - cron: "41 3 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: numerical-soak-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  numerical-soak:
+    name: Bounded Linux x64 numerical soak
+    runs-on: blacksmith-8vcpu-ubuntu-2404
+    timeout-minutes: 120
+    env:
+      CI: "true"
+
+    steps:
+      - name: Check out the exact soak candidate
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+
+      - name: Install the pinned dependency graph
+        run: pnpm install --frozen-lockfile
+
+      - id: toolchain
+        name: Identify the pinned Wasm toolchain
+        run: |
+          path="$(node packages/wasm-toolchain/scripts/toolchain.cjs cache-path)"
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          echo "identity=${path##*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the pinned Wasm toolchain
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.toolchain.outputs.path }}
+          key: sagejs-wasm-toolchain-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.identity }}
+
+      - name: Build the source-current numerical runtime
+        run: |
+          node packages/wasm-toolchain/scripts/toolchain.cjs prepare
+          node packages/wasm-toolchain/scripts/probe.cjs
+          node packages/flint-wasm/numerical/scripts/build-all.cjs
+          pnpm build
+
+      - name: Run the bounded scheduled reliability campaign
+        run: |
+          mkdir -p build/numerical-soak
+          set -o pipefail
+          node --expose-gc scripts/numerical-computing/qualification/run-soak.cjs \
+            --candidate "$(git rev-parse HEAD)" \
+            --artifact dist \
+            --profile scheduled \
+            --output build/numerical-soak/scheduled.evidence.json \
+            2>&1 | tee build/numerical-soak/scheduled.log
+
+      - name: Preserve scheduled soak evidence and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: numerical-soak-${{ github.sha }}-${{ github.run_attempt }}
+          path: build/numerical-soak
+          if-no-files-found: warn
+          retention-days: 14

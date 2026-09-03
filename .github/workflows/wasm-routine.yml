@@ -44,6 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           submodules: recursive
       - uses: pnpm/action-setup@v6
         with:
@@ -106,6 +107,7 @@ jobs:
           node packages/flint-wasm/test/browser-wasm-parity.mjs \
             --tier routine --engines chromium --require-engines chromium \
             --receipt build/wasm-routine-parity.json
+          pnpm --dir packages/flint-wasm test:browser:numerics
           node packages/flint-wasm/test/browser-wasm-serialization.mjs
           node packages/flint-wasm/test/browser-wasm-security.mjs
 

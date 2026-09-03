@@ -108,6 +108,8 @@ export interface KernelEvaluation {
   events: SageOutputEvent[];
   commEvents: SageCommEvent[];
   optimization: SageOptimizationReport;
+  /** Detached JSON-compatible value requested by an embedding host. */
+  json?: unknown;
 }
 
 export interface KernelProfileEvaluation {
@@ -148,6 +150,7 @@ export interface KernelEvaluator {
       language?: SageLanguageMode;
       suppressResult?: boolean;
       parentId?: string;
+      structuredResult?: boolean;
     },
   ): KernelEvaluation;
   profile(
@@ -380,6 +383,31 @@ function richDisplay(value: unknown): SageDisplayData | undefined {
     mime: Reflect.get(display, "mime"),
     data: displayTransportValue(Reflect.get(display, "data")),
   };
+}
+
+function structuredJSONValue(value: unknown): unknown {
+  if (typeof value === "bigint") return value.toString();
+  if (
+    value !== null &&
+    (typeof value === "object" || typeof value === "function")
+  ) {
+    const method = Reflect.get(value, "to_json");
+    if (typeof method === "function") {
+      const text = Reflect.apply(method, value, []);
+      if (typeof text !== "string") {
+        throw new TypeError("to_json() must return JSON text");
+      }
+      return JSON.parse(text);
+    }
+  }
+  const encoded = JSON.stringify(
+    displayTransportValue(value),
+    (_key, item) => (typeof item === "bigint" ? item.toString() : item),
+  );
+  if (encoded === undefined) {
+    throw new TypeError("evaluation result is not JSON-compatible");
+  }
+  return JSON.parse(encoded);
 }
 
 /**
@@ -720,6 +748,7 @@ export function createKernelEvaluator({
     suppressResult: boolean,
     events: SageOutputEvent[] = [],
     commEvents: SageCommEvent[] = [],
+    structuredResult = false,
   ): KernelEvaluation {
     const publishResult =
       !suppressResult &&
@@ -745,6 +774,7 @@ export function createKernelEvaluator({
       events,
       commEvents,
       optimization: optimizationReport!,
+      ...(structuredResult ? { json: structuredJSONValue(value) } : {}),
     };
   }
 
@@ -877,11 +907,13 @@ export function createKernelEvaluator({
         language = mode,
         suppressResult = false,
         parentId,
+        structuredResult = false,
       }: {
         filename?: string;
         language?: SageLanguageMode;
         suppressResult?: boolean;
         parentId?: string;
+        structuredResult?: boolean;
       } = {},
     ): KernelEvaluation {
       assertEvaluatorNotProfileContaminated();
@@ -921,6 +953,7 @@ export function createKernelEvaluator({
           suppressResult,
           activeEvents ?? [],
           activeCommEvents ?? [],
+          structuredResult,
         );
       } finally {
         activeEvents = undefined;
@@ -1246,6 +1279,7 @@ export function createKernelEvaluator({
     documentation(): DocumentationCatalog {
       return documentationCatalogFromRegistry(
         Reflect.get(globalThis, "__sagejs_doc_registry__"),
+        { includeNumericalFlagships: true },
       );
     },
 

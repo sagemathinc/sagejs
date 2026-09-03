@@ -77,6 +77,7 @@ async function main(): Promise<void> {
           language: message.language,
           suppressResult: message.suppressResult,
           parentId: message.parentId,
+          structuredResult: message.structuredResult,
         });
       } else if (message.type === "complete") {
         result = evaluator.complete(message.source, message.cursorPosition);

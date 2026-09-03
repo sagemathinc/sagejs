@@ -9159,6 +9159,30 @@
       "lane": "integration"
     },
     {
+      "id": "native-file:bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+      "kind": "classified-native-file",
+      "path": "bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
+      "kind": "classified-native-file",
+      "path": "bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/numerical-optimization/callback-probe.c",
+      "kind": "classified-native-file",
+      "path": "bench/numerical-optimization/callback-probe.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
       "id": "native-file:bench/optimizer-workloads/modular-scan-target.c",
       "kind": "classified-native-file",
       "path": "bench/optimizer-workloads/modular-scan-target.c",
@@ -9180,6 +9204,22 @@
       "path": "packages/fflas/include/sagejs/fflas_matrix_ffi.h",
       "disposition": "external-library-bridge",
       "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:packages/flint-wasm/numerical/qualification/mgh-oracle-adapter.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/numerical/qualification/mgh-oracle-adapter.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "disposition": "external-library-bridge",
+      "review_status": "audited",
       "lane": "integration"
     },
     {
@@ -10813,6 +10853,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "distribution"
+    },
+    {
+      "id": "native-file:src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "kind": "classified-native-file",
+      "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "disposition": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "numerical-optimization"
     },
     {
       "id": "native-file:test/fixtures/native-exact-workspace-direct-reference.c",

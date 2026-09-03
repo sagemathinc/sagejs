@@ -67,6 +67,86 @@
       "prefixes": []
     },
     {
+      "id": "numerical-linear-algebra",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 360000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.linear_algebra"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/linear_algebra/"]
+    },
+    {
+      "id": "numerical-approximation",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 340000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.approximation"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/approximation/"]
+    },
+    {
+      "id": "numerical-integration",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 220000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.integration"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/integration/"]
+    },
+    {
+      "id": "numerical-optimization",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 440000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.optimization"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/optimization/"]
+    },
+    {
+      "id": "numerical-ode",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 340000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.ode"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/ode/"]
+    },
+    {
+      "id": "numerical-spectral",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 400000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.spectral"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/spectral/"]
+    },
+    {
+      "id": "numerical-statistics",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 360000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.statistics"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/statistics/"]
+    },
+    {
+      "id": "numerical-sweeps",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 120000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing"],
+      "modules": ["sagejs.numerics.sweeps"],
+      "files": ["src/lib/sagejs/numerics/sweeps.py"],
+      "prefixes": []
+    },
+    {
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
@@ -861,6 +941,25 @@
       "prefixes": ["src/lib/IPython/", "src/lib/comm/", "src/lib/ipywidgets/", "src/lib/sagejs/interacts/", "src/lib/sagejs/widgets/", "src/lib/traitlets/"]
     },
     {
+      "id": "numerical-computing",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 500000,
+      "depends_on": ["core-runtime", "python-stdlib", "plot-spec"],
+      "modules": ["sagejs.numerics"],
+      "files": [
+        "src/lib/sagejs/numerics/__init__.py",
+        "src/lib/sagejs/numerics/_json.py",
+        "src/lib/sagejs/numerics/capabilities.py",
+        "src/lib/sagejs/numerics/diagnostics.py",
+        "src/lib/sagejs/numerics/model.py",
+        "src/lib/sagejs/numerics/roots.py",
+        "src/lib/sagejs/numerics/trace.py",
+        "src/lib/sagejs/numerics/visualization.py"
+      ],
+      "prefixes": ["src/lib/sagejs/numerics/frontends/"]
+    },
+    {
       "id": "numeric-compat",
       "layer": 4,
       "startup": "lazy",
@@ -877,7 +976,7 @@
       "max_source_bytes": 120000,
       "depends_on": [
         "core-runtime", "python-stdlib", "arithmetic", "symbolics",
-        "numeric-compat", "graphics"
+        "numeric-compat", "numerical-computing", "graphics"
       ],
       "modules": ["macaulay2", "magma", "maple", "matlab", "wolfram"],
       "files": [

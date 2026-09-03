@@ -1242,7 +1242,14 @@ def linspace(
 
 
 def _unary_ufunc(name: str, value: Any) -> Any:
-    return _wrap(_call(name, [_native_array(value)]))
+    answer = _wrap(_call(name, [_native_array(value)]))
+    # NumPy ufuncs return a scalar for scalar and zero-dimensional inputs,
+    # while preserving an ndarray for inputs with one or more dimensions.
+    # numpy-ts represents both cases as an NDArray, so recover the public
+    # Python distinction at this facade boundary.
+    if isinstance(answer, ndarray) and answer.ndim == 0:
+        return answer.item()
+    return answer
 
 
 def sin(value: Any) -> Any:

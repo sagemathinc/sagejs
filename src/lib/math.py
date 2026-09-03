@@ -21,6 +21,9 @@ import sagejs.runtime as runtime
 
 pi = Math.PI
 e = Math.E
+tau = 2.0 * pi
+inf = float("inf")
+nan = float("nan")
 
 
 ########################################

@@ -1,0 +1,94 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "animation-controls-gallery",
+  "title": "Interactive numerical gallery controls",
+  "lane": "documentation-compat",
+  "status": "active",
+  "owner": "user",
+  "objective": "Render and browser-test play, pause, step, restart, speed, and iteration-slider controls over retained numerical PlotAnimation frames while respecting reduced motion and resource budgets",
+  "base_commit": "a4624f09a202ffe14a6a4e3646402a429250f9af",
+  "claims": [
+    "docs/numerical-computing/gallery/",
+    "website/numerical-computing/",
+    "test/numerics/gallery/"
+  ],
+  "dependencies": [
+    "animation-controls-core"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Chromium interaction tests over retained Plotly frames",
+      "Generated semantic evidence remains callback-count stable and resource bounded"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm docs:check",
+    "pnpm test:tutorial",
+    "node test/numerics/gallery/generate-cross-domain-gallery.cjs",
+    "node --test test/numerics/gallery/root-gallery.test.cjs test/numerics/gallery/fresh-sage-examples.test.cjs test/numerics/gallery/cross-domain-gallery.test.cjs",
+    "node bench/numerical-gallery/measure.cjs",
+    "pnpm parallel:check"
+  ],
+  "runs": [
+    {
+      "command": "node test/numerics/gallery/generate-cross-domain-gallery.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.817,
+      "started_at": "2026-09-02T22:52:07.837Z",
+      "commit": "a4624f09a202ffe14a6a4e3646402a429250f9af",
+      "workspace_fingerprint": "2bafe0c8f7482a33ebf5846ad83185dc3af0a5452299ea23519d6b7e35640f18",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/gallery/root-gallery.test.cjs test/numerics/gallery/fresh-sage-examples.test.cjs test/numerics/gallery/cross-domain-gallery.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 30.261,
+      "started_at": "2026-09-02T22:52:14.824Z",
+      "commit": "a4624f09a202ffe14a6a4e3646402a429250f9af",
+      "workspace_fingerprint": "2bafe0c8f7482a33ebf5846ad83185dc3af0a5452299ea23519d6b7e35640f18",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/numerical-gallery/measure.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.684,
+      "started_at": "2026-09-02T22:52:52.598Z",
+      "commit": "a4624f09a202ffe14a6a4e3646402a429250f9af",
+      "workspace_fingerprint": "2bafe0c8f7482a33ebf5846ad83185dc3af0a5452299ea23519d6b7e35640f18",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.648,
+      "started_at": "2026-09-02T22:53:01.148Z",
+      "commit": "a4624f09a202ffe14a6a4e3646402a429250f9af",
+      "workspace_fingerprint": "2bafe0c8f7482a33ebf5846ad83185dc3af0a5452299ea23519d6b7e35640f18",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Progressively enhance every retained numerical PlotAnimation with honest Play, Pause, Step, Restart, Speed, and Iteration controls. Relative stepping and playback speed live in the shared host renderer over exact retained frame IDs; Plotly owns absolute playback, pause, restart, and slider lowering. Chromium tests cover interaction, no-autoplay, exact-frame identity, pause cancellation, and reduced-motion behavior, while generated public assets and resource evidence remain bounded.",
+    "risks": [
+      "The host controls rely on the versioned sagejs.plotting.animation-controls/v1 layout metadata contract from animation-controls-core."
+    ],
+    "next_steps": [
+      "Integrate animation-controls-core before this lane, then run the focused gallery suite from a built integration worktree."
+    ]
+  }
+}

@@ -1,0 +1,301 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerics-spectral",
+  "title": "Validated spectral numerical methods",
+  "lane": "numerical-spectral",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement P5 eigenvalue, SVD, FFT, convolution and sparse iterative functionality with residual and reconstruction validation",
+  "base_commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+  "claims": [
+    "src/lib/sagejs/numerics/spectral/",
+    "test/numerics/spectral/",
+    "bench/numerics/spectral/",
+    "docs/numerical-computing/spectral/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "NumPy/SciPy differential corpus and spectral/reconstruction residuals"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/numerics/spectral/strict-python.cjs",
+    "node --test test/numerics/spectral/spectral-laboratory.cjs",
+    "node --test test/numerics/spectral/spectral-visualization.cjs",
+    "python3 -I test/numerics/spectral/numpy_scipy_oracle.py",
+    "python3 -I bench/numerics/spectral/benchmark.py",
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node test/numerics/spectral/strict-python.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.887,
+      "started_at": "2026-08-31T13:55:25.710Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/spectral/spectral-laboratory.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.136,
+      "started_at": "2026-08-31T13:55:28.305Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I test/numerics/spectral/numpy_scipy_oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.504,
+      "started_at": "2026-08-31T13:55:39.110Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I bench/numerics/spectral/benchmark.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.461,
+      "started_at": "2026-08-31T13:55:40.282Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.474,
+      "started_at": "2026-08-31T13:55:50.858Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 397.702,
+      "started_at": "2026-08-31T13:56:38.020Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.601,
+      "started_at": "2026-08-31T14:03:27.877Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.56,
+      "started_at": "2026-08-31T14:04:11.859Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerics/spectral/strict-python.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.282,
+      "started_at": "2026-08-31T14:50:57.876Z",
+      "commit": "b58d2a6b5bafbb5a0eef4f8ac2c62f0257e0df26",
+      "workspace_fingerprint": "d6aaf2d84122c098d33639de83b648cf608263ca6083a24e9a503f6a0cb314c0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/spectral/spectral-laboratory.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.484,
+      "started_at": "2026-08-31T14:51:07.842Z",
+      "commit": "b58d2a6b5bafbb5a0eef4f8ac2c62f0257e0df26",
+      "workspace_fingerprint": "d6aaf2d84122c098d33639de83b648cf608263ca6083a24e9a503f6a0cb314c0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I test/numerics/spectral/numpy_scipy_oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.531,
+      "started_at": "2026-08-31T14:51:19.058Z",
+      "commit": "b58d2a6b5bafbb5a0eef4f8ac2c62f0257e0df26",
+      "workspace_fingerprint": "d6aaf2d84122c098d33639de83b648cf608263ca6083a24e9a503f6a0cb314c0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I bench/numerics/spectral/benchmark.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.892,
+      "started_at": "2026-08-31T14:51:20.358Z",
+      "commit": "b58d2a6b5bafbb5a0eef4f8ac2c62f0257e0df26",
+      "workspace_fingerprint": "d6aaf2d84122c098d33639de83b648cf608263ca6083a24e9a503f6a0cb314c0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 49.629,
+      "started_at": "2026-08-31T14:51:31.772Z",
+      "commit": "b58d2a6b5bafbb5a0eef4f8ac2c62f0257e0df26",
+      "workspace_fingerprint": "d6aaf2d84122c098d33639de83b648cf608263ca6083a24e9a503f6a0cb314c0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.587,
+      "started_at": "2026-08-31T14:52:22.131Z",
+      "commit": "b58d2a6b5bafbb5a0eef4f8ac2c62f0257e0df26",
+      "workspace_fingerprint": "d6aaf2d84122c098d33639de83b648cf608263ca6083a24e9a503f6a0cb314c0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerics/spectral/strict-python.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.291,
+      "started_at": "2026-08-31T16:20:55.013Z",
+      "commit": "875b3c37de351605b0e466a0ba006911db4000e2",
+      "workspace_fingerprint": "4a61d4021ab1c33dbdf1e9ea9b47ae9ad8024bc31968ae8dcfa9f9ff2ca847ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/spectral/spectral-laboratory.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.541,
+      "started_at": "2026-08-31T16:21:07.476Z",
+      "commit": "875b3c37de351605b0e466a0ba006911db4000e2",
+      "workspace_fingerprint": "4a61d4021ab1c33dbdf1e9ea9b47ae9ad8024bc31968ae8dcfa9f9ff2ca847ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I test/numerics/spectral/numpy_scipy_oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.471,
+      "started_at": "2026-08-31T16:21:18.702Z",
+      "commit": "875b3c37de351605b0e466a0ba006911db4000e2",
+      "workspace_fingerprint": "4a61d4021ab1c33dbdf1e9ea9b47ae9ad8024bc31968ae8dcfa9f9ff2ca847ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I bench/numerics/spectral/benchmark.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.835,
+      "started_at": "2026-08-31T16:21:19.877Z",
+      "commit": "875b3c37de351605b0e466a0ba006911db4000e2",
+      "workspace_fingerprint": "4a61d4021ab1c33dbdf1e9ea9b47ae9ad8024bc31968ae8dcfa9f9ff2ca847ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/spectral/spectral-visualization.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.144,
+      "started_at": "2026-08-31T16:21:32.353Z",
+      "commit": "875b3c37de351605b0e466a0ba006911db4000e2",
+      "workspace_fingerprint": "4a61d4021ab1c33dbdf1e9ea9b47ae9ad8024bc31968ae8dcfa9f9ff2ca847ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 47.234,
+      "started_at": "2026-08-31T16:22:40.316Z",
+      "commit": "875b3c37de351605b0e466a0ba006911db4000e2",
+      "workspace_fingerprint": "4a61d4021ab1c33dbdf1e9ea9b47ae9ad8024bc31968ae8dcfa9f9ff2ca847ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.551,
+      "started_at": "2026-08-31T16:23:34.223Z",
+      "commit": "875b3c37de351605b0e466a0ba006911db4000e2",
+      "workspace_fingerprint": "4a61d4021ab1c33dbdf1e9ea9b47ae9ad8024bc31968ae8dcfa9f9ff2ca847ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 397.13,
+      "started_at": "2026-08-31T16:23:46.033Z",
+      "commit": "875b3c37de351605b0e466a0ba006911db4000e2",
+      "workspace_fingerprint": "4a61d4021ab1c33dbdf1e9ea9b47ae9ad8024bc31968ae8dcfa9f9ff2ca847ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.291,
+      "started_at": "2026-08-31T16:30:29.506Z",
+      "commit": "875b3c37de351605b0e466a0ba006911db4000e2",
+      "workspace_fingerprint": "4a61d4021ab1c33dbdf1e9ea9b47ae9ad8024bc31968ae8dcfa9f9ff2ca847ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.409,
+      "started_at": "2026-08-31T16:30:40.075Z",
+      "commit": "875b3c37de351605b0e466a0ba006911db4000e2",
+      "workspace_fingerprint": "4a61d4021ab1c33dbdf1e9ea9b47ae9ad8024bc31968ae8dcfa9f9ff2ca847ac",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented and scale-hardened the claimed ordinary-Python spectral package: validated Hermitian and general eigensystems, reduced SVD, radix-2/Bluestein FFT, direct/FFT convolution, canonical CSR storage, certified-SPD CG/BiCGSTAB solves, and a gap-certified dominant Hermitian sparse eigenpair. All dense, transform, and sparse paths normalize finite inputs, use scale-safe norms and relative validation, rescale with exponent-aware arithmetic, and return structured validation_failed results without non-finite JSON when a finite mathematical output is not representable in binary64. General nonsymmetric eigensystems independently validate pivoted basis inversion, reciprocal condition, inverse residual, reconstruction, eigenpair residuals, and Schur factors; defective and near-defective bases fail closed with no value. Automatic sparse solves use CG only after a sufficient strict Hermitian diagonal-dominance SPD certificate, while uncertified/indefinite Hermitian inputs route to BiCGSTAB; sparse power iteration requires separated Gershgorin intervals and rejects equal-magnitude or zero spectra before iteration. Added SpectralResult with versioned JSON explanations, accessible text, and bounded renderer-neutral PlotSpec/PlotAnimation views for eigensystems, SVD, FFT, convolution, conditioning, convergence, and aliasing; views use only returned/retained evidence, cap static samples at 1024 and frames at 32, and record decimation or magnitude normalization. Added package-local side-effect-free supports/plan dispatch using detached capabilities and independently recorded sparse certificates. CPython/Sage.js tests cover extreme scale, failure, metamorphic, JSON, cancellation, maximum_elapsed_time, planning, explanations, accessibility, trace bounds, and visualization; the oracle retains 342 NumPy/SciPy comparisons with maximum absolute difference 1.0658141036401503e-14. Refreshed strict checks, benchmark/payload evidence, capability classifications, and documentation.",
+    "risks": [
+      "Four-platform qualification remains an integration/release responsibility; focused receipts in this task are Linux x64.",
+      "The full architecture aggregate remains an integration responsibility: the synchronized numerical foundation has a shared native-boundary inventory change outside this lane's claims.",
+      "pnpm test:changed stops at merge:check because src/lib/sagejs/numerics/spectral/__init__.py has no shared package-graph owner. All eight modules pass focused Pyright and repository strict-Python checks but are intentionally not yet listed in the shared pyrightconfig because both registries are outside this lane's claims.",
+      "This lane emits the exact maximum_elapsed_time stop and diagnostic. The integration lane must add that exact spelling to shared STATUS_CODES and the diagnostic registry before exercising a public elapsed-time result."
+    ],
+    "next_steps": [
+      "In the integration lane, add a lazy numerical-spectral package-graph component (layer 5, at least a 220000-byte source budget) for prefix src/lib/sagejs/numerics/spectral/, module sagejs.numerics.spectral, depending on core-runtime, python-stdlib, and numerical-computing (which already owns the PlotSpec dependency).",
+      "In the integration lane, add exactly src/lib/sagejs/numerics/spectral/__init__.py, _common.py, dense.py, planning.py, result.py, sparse.py, transforms.py, and visualization.py to pyrightconfig.json; register test/numerics/spectral/spectral-laboratory.cjs, spectral-visualization.cjs, and strict-python.cjs in the appropriate shared test/package ownership records; and connect the package-local capabilities, supports, and plan functions to the central lazy numerical facade.",
+      "In the integration lane, add maximum_elapsed_time exactly to src/lib/sagejs/numerics/model.py STATUS_CODES and src/lib/sagejs/numerics/diagnostics.py with execution-phase warning semantics; do not alias it to maximum_evaluations.",
+      "Regenerate and review the shared native-boundary inventory for the inherited numerical-optimization callback probe, then rerun pnpm architecture:check, pnpm test:changed, and the required four-platform qualification."
+    ]
+  }
+}

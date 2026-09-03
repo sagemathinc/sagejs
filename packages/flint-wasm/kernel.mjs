@@ -34,6 +34,7 @@ function deserializeError(serialized) {
  */
 export class SageSession {
   constructor({
+    mode = "sage",
     worker = new URL("./kernel-worker.mjs", import.meta.url),
     compiler = new URL("./dist/compiler.js", import.meta.url),
     baselib = new URL("./dist/baselib.js", import.meta.url),
@@ -45,6 +46,9 @@ export class SageSession {
     algebraic = new URL("./dist/flint-algebraic.wasm", import.meta.url),
     nativeKernels = new URL("./dist/native-kernels/index.json", import.meta.url),
     m4ri = new URL("./dist/m4ri-resource.wasm", import.meta.url),
+    numerical = new URL("./dist/cminpack.wasm", import.meta.url),
+    numericalNlopt = new URL("./dist/nlopt-methods.wasm", import.meta.url),
+    nloptAdapter = new URL("./dist/nlopt-backend.mjs", import.meta.url),
     symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
     compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
     compilerFrontend = new URL("./dist/compiler-frontend.mjs", import.meta.url),
@@ -60,9 +64,13 @@ export class SageSession {
       wolfram: new URL("./dist/tree-sitter-wolfram.wasm", import.meta.url),
     }),
     capabilityReport = new URL("./dist/wasm-capabilities-report.json", import.meta.url),
+    documentation = new URL("./dist/documentation.json", import.meta.url),
     optimizationLevel,
     onGraphicsSave,
   } = {}) {
+    if (mode !== "sage" && mode !== "python") {
+      throw new TypeError(`unknown Sage.js language mode ${JSON.stringify(mode)}`);
+    }
     if (
       optimizationLevel !== undefined &&
       !["O0", "O1", "O2", "O3", "Os"].includes(optimizationLevel)
@@ -76,6 +84,7 @@ export class SageSession {
       configuredCompilerWorker = String(compilerWorkerUrl);
     }
     this.resources = {
+      mode,
       worker: String(worker),
       compiler: String(compiler),
       baselib: String(baselib),
@@ -87,6 +96,9 @@ export class SageSession {
       algebraic: String(algebraic),
       nativeKernels: String(nativeKernels),
       m4ri: String(m4ri),
+      numerical: String(numerical),
+      numericalNlopt: String(numericalNlopt),
+      nloptAdapter: String(nloptAdapter),
       symbolic: String(symbolic),
       compilerWorker: configuredCompilerWorker,
       compilerFrontend: String(compilerFrontend),
@@ -98,6 +110,7 @@ export class SageSession {
         Object.entries(foreignGrammars).map(([name, url]) => [name, String(url)]),
       ),
       capabilityReport: String(capabilityReport),
+      documentation: String(documentation),
     };
     this.onGraphicsSave = onGraphicsSave;
     this.listeners = new Map();
@@ -247,6 +260,9 @@ export class SageSession {
         algebraic: this.resources.algebraic,
         nativeKernels: this.resources.nativeKernels,
         m4ri: this.resources.m4ri,
+        numerical: this.resources.numerical,
+        numericalNlopt: this.resources.numericalNlopt,
+        nloptAdapter: this.resources.nloptAdapter,
         symbolic: this.resources.symbolic,
         compilerWorker: this.resources.compilerWorker,
         compilerFrontend: this.resources.compilerFrontend,

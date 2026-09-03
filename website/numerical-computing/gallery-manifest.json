@@ -1,0 +1,300 @@
+{
+  "schema_version": 2,
+  "kind": "sagejs-numerical-gallery",
+  "title": "Numerical methods, with evidence",
+  "description": "Ten interactive teaching stories built from bounded Sage.js numerical results, traces, validation checks, and semantic plots.",
+  "entrypoint": "./index.html",
+  "evidence": "./evidence.json",
+  "renderer": "./gallery.mjs",
+  "stylesheet": "./gallery.css",
+  "plotly": {
+    "href": "./plotly.min.js",
+    "package": "plotly.js-dist-min",
+    "version": "3.7.0",
+    "license": "./plotly.LICENSE.txt",
+    "bytes": 4851164,
+    "sha256": "8ef4c6ab1369f0019611cbcd2d5b8aafef23e5d19ef58c39d4b4249831fe2180"
+  },
+  "budgets": {
+    "max_all_exports_generation_ms": 2000,
+    "max_animation_frames": 32,
+    "max_browser_hydration_ms": 20000,
+    "max_bundle_bytes": 8000000,
+    "max_evidence_generation_ms": 180000,
+    "max_parse_and_budget_validation_ms": 1000,
+    "max_plotly_bytes": 4000000,
+    "max_scalars_per_frame": 16384,
+    "max_semantic_animation_bytes": 4000000,
+    "max_single_plot_render_ms": 5000,
+    "max_static_html_generation_ms": 1000,
+    "max_story_bytes": 1500000,
+    "max_trace_bytes_per_result": 1000000,
+    "max_trace_events_per_result": 256
+  },
+  "deployment_budgets": {
+    "max_plotly_distribution_bytes": 6000000,
+    "max_gallery_runtime_bytes": 10000000
+  },
+  "measurements": {
+    "story_count": 10,
+    "case_count": 20,
+    "animated_case_count": 15,
+    "gallery_runtime_bytes": 7081751
+  },
+  "story_order": [
+    "root-brent",
+    "nonlinear-fit",
+    "ode-adaptivity",
+    "linear-refinement",
+    "adaptive-quadrature",
+    "runge-approximation",
+    "spectral-conditioning",
+    "optimization-path",
+    "robust-regression",
+    "ode-parameter-sweep"
+  ],
+  "stories": [
+    {
+      "id": "root-brent",
+      "title": "A sign change is evidence, not the answer",
+      "domain": "roots",
+      "operation": "scalar_root",
+      "status": "complete",
+      "entrypoint": "./index.html#root-brent",
+      "case_ids": [
+        "cosine-fixed-point",
+        "jump-discontinuity"
+      ],
+      "capabilities": [
+        "method-assumptions",
+        "success-and-failure-narratives",
+        "bounded-trace-evidence",
+        "retained-reference-method-comparison",
+        "manual-animation",
+        "play-pause-step-restart-speed-iteration-controls",
+        "static-fallback",
+        "plotspec-json-export",
+        "plotly-json-export",
+        "accessible-html-export",
+        "fresh-sagejs-example"
+      ]
+    },
+    {
+      "id": "nonlinear-fit",
+      "title": "A fitted curve is more than a parameter vector",
+      "domain": "optimization",
+      "operation": "curve_fit",
+      "status": "complete",
+      "entrypoint": "./index.html#nonlinear-fit",
+      "case_ids": [
+        "exponential-decay",
+        "model-domain-error"
+      ],
+      "capabilities": [
+        "method-assumptions",
+        "success-and-failure-narratives",
+        "bounded-trace-evidence",
+        "manual-animation",
+        "play-pause-step-restart-speed-iteration-controls",
+        "static-fallback",
+        "plotspec-json-export",
+        "plotly-json-export",
+        "accessible-html-export",
+        "fresh-sagejs-example"
+      ]
+    },
+    {
+      "id": "ode-adaptivity",
+      "title": "Adaptive steps should preserve the mathematics you care about",
+      "domain": "ode",
+      "operation": "initial_value_problem",
+      "status": "complete",
+      "entrypoint": "./index.html#ode-adaptivity",
+      "case_ids": [
+        "harmonic-oscillator",
+        "stiff-explicit-budget"
+      ],
+      "capabilities": [
+        "method-assumptions",
+        "success-and-failure-narratives",
+        "bounded-trace-evidence",
+        "manual-animation",
+        "play-pause-step-restart-speed-iteration-controls",
+        "static-fallback",
+        "plotspec-json-export",
+        "plotly-json-export",
+        "accessible-html-export",
+        "fresh-sagejs-example"
+      ]
+    },
+    {
+      "id": "linear-refinement",
+      "title": "A solution is credible only with a scale-aware residual",
+      "domain": "linear_algebra",
+      "operation": "solve",
+      "status": "complete",
+      "entrypoint": "./index.html#linear-refinement",
+      "case_ids": [
+        "iterative-refinement",
+        "singular-system"
+      ],
+      "capabilities": [
+        "method-assumptions",
+        "success-and-failure-narratives",
+        "bounded-trace-evidence",
+        "manual-animation",
+        "play-pause-step-restart-speed-iteration-controls",
+        "static-fallback",
+        "plotspec-json-export",
+        "plotly-json-export",
+        "accessible-html-export",
+        "fresh-sagejs-example"
+      ]
+    },
+    {
+      "id": "adaptive-quadrature",
+      "title": "An error estimate is a budget allocation record",
+      "domain": "integration",
+      "operation": "adaptive_quadrature",
+      "status": "complete",
+      "entrypoint": "./index.html#adaptive-quadrature",
+      "case_ids": [
+        "gaussian-area",
+        "oscillation-budget"
+      ],
+      "capabilities": [
+        "method-assumptions",
+        "success-and-failure-narratives",
+        "bounded-trace-evidence",
+        "manual-animation",
+        "play-pause-step-restart-speed-iteration-controls",
+        "static-fallback",
+        "plotspec-json-export",
+        "plotly-json-export",
+        "accessible-html-export",
+        "fresh-sagejs-example"
+      ]
+    },
+    {
+      "id": "runge-approximation",
+      "title": "Representation stability and approximation quality are different",
+      "domain": "approximation",
+      "operation": "polynomial_approximation",
+      "status": "complete",
+      "entrypoint": "./index.html#runge-approximation",
+      "case_ids": [
+        "runge-chebyshev",
+        "runge-equispaced"
+      ],
+      "capabilities": [
+        "method-assumptions",
+        "success-and-failure-narratives",
+        "bounded-trace-evidence",
+        "manual-animation",
+        "play-pause-step-restart-speed-iteration-controls",
+        "static-fallback",
+        "plotspec-json-export",
+        "plotly-json-export",
+        "accessible-html-export",
+        "fresh-sagejs-example"
+      ]
+    },
+    {
+      "id": "spectral-conditioning",
+      "title": "Eigenvalues can be available when an eigenbasis is not trustworthy",
+      "domain": "spectral",
+      "operation": "eigensystem",
+      "status": "complete",
+      "entrypoint": "./index.html#spectral-conditioning",
+      "case_ids": [
+        "hermitian-jacobi",
+        "near-defective-basis"
+      ],
+      "capabilities": [
+        "method-assumptions",
+        "success-and-failure-narratives",
+        "bounded-trace-evidence",
+        "manual-animation",
+        "play-pause-step-restart-speed-iteration-controls",
+        "static-fallback",
+        "plotspec-json-export",
+        "plotly-json-export",
+        "accessible-html-export",
+        "fresh-sagejs-example"
+      ]
+    },
+    {
+      "id": "optimization-path",
+      "title": "A path explains both convergence and a budget stop",
+      "domain": "optimization",
+      "operation": "minimize",
+      "status": "complete",
+      "entrypoint": "./index.html#optimization-path",
+      "case_ids": [
+        "rosenbrock-convergence",
+        "rosenbrock-budget"
+      ],
+      "capabilities": [
+        "method-assumptions",
+        "success-and-failure-narratives",
+        "bounded-trace-evidence",
+        "manual-animation",
+        "play-pause-step-restart-speed-iteration-controls",
+        "static-fallback",
+        "plotspec-json-export",
+        "plotly-json-export",
+        "accessible-html-export",
+        "fresh-sagejs-example"
+      ]
+    },
+    {
+      "id": "robust-regression",
+      "title": "Robust fitting shows which observations lost influence",
+      "domain": "statistics",
+      "operation": "regression",
+      "status": "complete",
+      "entrypoint": "./index.html#robust-regression",
+      "case_ids": [
+        "huber-outlier",
+        "large-offset-validation"
+      ],
+      "capabilities": [
+        "method-assumptions",
+        "success-and-failure-narratives",
+        "bounded-trace-evidence",
+        "manual-animation",
+        "play-pause-step-restart-speed-iteration-controls",
+        "static-fallback",
+        "plotspec-json-export",
+        "plotly-json-export",
+        "accessible-html-export",
+        "fresh-sagejs-example"
+      ]
+    },
+    {
+      "id": "ode-parameter-sweep",
+      "title": "A parameter sweep is evidence, not a smooth promise",
+      "domain": "ode",
+      "operation": "parameter_sweep",
+      "status": "complete",
+      "entrypoint": "./index.html#ode-parameter-sweep",
+      "case_ids": [
+        "validated-decay-family",
+        "one-budgeted-failure"
+      ],
+      "capabilities": [
+        "method-assumptions",
+        "success-and-failure-narratives",
+        "bounded-trace-evidence",
+        "retained-parameter-sweep-explanation",
+        "manual-animation",
+        "play-pause-step-restart-speed-iteration-controls",
+        "static-fallback",
+        "plotspec-json-export",
+        "plotly-json-export",
+        "accessible-html-export",
+        "fresh-sagejs-example"
+      ]
+    }
+  ]
+}

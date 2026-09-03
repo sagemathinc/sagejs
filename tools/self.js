@@ -321,6 +321,10 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
     ans.pretty +=
       'ρσ_baselib_modules["sagejs"].runtime = ' +
       'ρσ_baselib_modules["sagejs.runtime"];\n';
+    // Retain the exact Python/Sage facade for builtins lookup.
+    ans.pretty +=
+      "globalThis.__sagejs_baselib_facade_names__ = " +
+      "Object.freeze(Object.keys(ρσ_baselib_facade));\n";
     ans.pretty += "ρσ_baselib_facade = null;\n";
   } finally {
     frontend?.close();

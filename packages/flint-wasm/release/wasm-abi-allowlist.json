@@ -1,6 +1,49 @@
 {
   "schema": "sagejs.wasm-abi-allowlist/v1",
   "modules": {
+    "cminpack.wasm": {
+      "imports": [
+        {
+          "module": "sagejs_p3",
+          "name": "evaluate",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "_initialize",
+          "kind": "function"
+        },
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "p3_alloc",
+          "kind": "function"
+        },
+        {
+          "name": "p3_free",
+          "kind": "function"
+        },
+        {
+          "name": "p3_live_allocations",
+          "kind": "function"
+        },
+        {
+          "name": "p3_live_bytes",
+          "kind": "function"
+        },
+        {
+          "name": "p3_lm_solve",
+          "kind": "function"
+        },
+        {
+          "name": "p3_set_allocation_failure_after",
+          "kind": "function"
+        }
+      ]
+    },
     "flint-algebraic.wasm": {
       "imports": [
         {
@@ -5424,6 +5467,53 @@
         },
         {
           "name": "sagejs_wasm_result_u64_at_m_ff835e83a0a952ff",
+          "kind": "function"
+        }
+      ]
+    },
+    "nlopt-methods.wasm": {
+      "imports": [
+        {
+          "module": "sagejs_numerical_nlopt",
+          "name": "evaluate",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "_initialize",
+          "kind": "function"
+        },
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_nlopt_alloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nlopt_free",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nlopt_live_allocations",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nlopt_live_bytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nlopt_probe_callback",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nlopt_set_allocation_failure_after",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nlopt_solve",
           "kind": "function"
         }
       ]

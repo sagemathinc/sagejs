@@ -134,7 +134,6 @@ def native_ge(left, right):
 
 
 def native_get(value, property_name):
-    """Read a JavaScript property, allowing ordinary primitive boxing."""
     return r"%js value[property_name]"
 
 
@@ -630,7 +629,6 @@ def ρσ_dynamic_eval(
 
 
 def register_doc(name, value, metadata=None):
-    """Register a public runtime object and optional DocSpec metadata."""
     registry = reflect.get(global_object, "__sagejs_doc_registry__")
     if registry is undefined:
         registry = []
@@ -645,11 +643,40 @@ def register_doc(name, value, metadata=None):
 
 
 def documentation_registry():
-    """Return public names explicitly registered for documentation."""
     registry = reflect.get(global_object, "__sagejs_doc_registry__")
     if registry is undefined:
         return []
     return registry
+
+
+_numerical_backends = {}
+_optional_flint_state = {"attempted": False, "backend": None}
+
+
+def optional_flint_backend():
+    """Return the FLINT backend when installed, otherwise `None`.
+
+    Portable callers use this capability boundary before choosing an exact
+    dynamic fallback.  `flint_backend()` remains the strict accessor for code
+    whose contract requires FLINT.
+    """
+    if not _optional_flint_state["attempted"]:
+        _optional_flint_state["attempted"] = True
+        try:
+            _optional_flint_state["backend"] = ρσ_flint_backend()
+        except Exception:
+            _optional_flint_state["backend"] = None
+    return _optional_flint_state["backend"]
+
+
+def numerical_backend(name="cminpack"):
+    if name not in ("cminpack", "nlopt"):
+        raise ValueError("unknown numerical backend")
+    if name not in _numerical_backends:
+        _numerical_backends[name] = require_module(
+            "@sagemath/sagejs-numerical" + ("" if name == "cminpack" else "-nlopt")
+        )
+    return _numerical_backends[name]
 
 
 array = Array

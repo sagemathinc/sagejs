@@ -1006,6 +1006,37 @@
       },
       {
         "schema_version": 1,
+        "name": "curve_fit",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.optimization",
+        "signature": "curve_fit(function, xdata, ydata, p0, **options)",
+        "summary": "Fit a nonlinear model with residual diagnostics and parameter provenance.",
+        "doc": "Fit a nonlinear model with residual diagnostics and parameter provenance.\n\nImport from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "fitting",
+          "least-squares"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
         "name": "CuspForms",
         "aliases": [],
         "kind": "function",
@@ -2270,6 +2301,68 @@
         "limitations": [
           "The current compiler targets JavaScript numeric evaluation."
         ]
+      },
+      {
+        "schema_version": 1,
+        "name": "fft",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.spectral",
+        "signature": "fft(samples, **options)",
+        "summary": "Compute a radix-2 or Bluestein discrete Fourier transform.",
+        "doc": "Compute a radix-2 or Bluestein discrete Fourier transform.\n\nImport from `sagejs.numerics.spectral`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "spectral",
+          "fft"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "find_root",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics",
+        "signature": "find_root(function, a=None, b=None, *, x0=None, method=None, **options)",
+        "summary": "Find and independently validate a scalar root with diagnostics and bounded traces.",
+        "doc": "Find and independently validate a scalar root with diagnostics and bounded traces.\n\nImport from `sagejs.numerics`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "root-finding",
+          "validated"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
       },
       {
         "schema_version": 1,
@@ -7505,6 +7598,37 @@
       },
       {
         "schema_version": 1,
+        "name": "integrate",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.integration",
+        "signature": "integrate(function, a, b, *, method=None, **options)",
+        "summary": "Compute an adaptive numerical integral with error and budget diagnostics.",
+        "doc": "Compute an adaptive numerical integral with error and budget diagnostics.\n\nImport from `sagejs.numerics.integration`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "integration",
+          "quadrature"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
         "name": "is_prime",
         "aliases": [],
         "kind": "function",
@@ -8249,6 +8373,66 @@
         "limitations": [
           "Generic permutation and matrix groups are explicitly enumerated and are therefore intended for small orders."
         ]
+      },
+      {
+        "schema_version": 1,
+        "name": "minimize",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.optimization",
+        "signature": "minimize(function, x0, *, method=None, **options)",
+        "summary": "Minimize a multivariate objective and return a structured NumericalResult.",
+        "doc": "Minimize a multivariate objective and return a structured NumericalResult.\n\nImport from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "optimization"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "minimize_scalar",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.optimization",
+        "signature": "minimize_scalar(function, bounds=None, *, method=None, **options)",
+        "summary": "Minimize a scalar objective with explicit budgets and validation evidence.",
+        "doc": "Minimize a scalar objective with explicit budgets and validation evidence.\n\nImport from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "optimization"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
       },
       {
         "schema_version": 1,
@@ -12205,6 +12389,37 @@
       },
       {
         "schema_version": 1,
+        "name": "solve_ivp",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.ode",
+        "signature": "solve_ivp(function, t_span, y0, *, method=None, **options)",
+        "summary": "Solve and validate an initial-value ODE problem with adaptive-step traces.",
+        "doc": "Solve and validate an initial-value ODE problem with adaptive-step traces.\n\nImport from `sagejs.numerics.ode`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "ode",
+          "initial-value-problem"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
         "name": "Sp",
         "aliases": [],
         "kind": "function",
@@ -12467,6 +12682,37 @@
           "Auxiliary levels greater than one are not implemented.",
           "Composite-index and bad-prime Hecke operators are not implemented."
         ]
+      },
+      {
+        "schema_version": 1,
+        "name": "svd",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.spectral",
+        "signature": "svd(matrix, *, trace='none', **options)",
+        "summary": "Compute and independently validate a singular-value decomposition.",
+        "doc": "Compute and independently validate a singular-value decomposition.\n\nImport from `sagejs.numerics.spectral`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "linear-algebra",
+          "spectral"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
       },
       {
         "schema_version": 1,
@@ -14494,6 +14740,67 @@
             "id": "src/baselib/polynomial.py#06c5e7960cda410c-5badf7217b080d99",
             "status": "pass",
             "actual": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "curve_fit",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.optimization",
+      "signature": "curve_fit(function, xdata, ydata, p0, **options)",
+      "summary": "Fit a nonlinear model with residual diagnostics and parameter provenance.",
+      "doc": "Fit a nonlinear model with residual diagnostics and parameter provenance.\n\nImport from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "fitting",
+        "least-squares"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": null,
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#65881c7f41cc6e9f-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.optimization import curve_fit\n\nfit = curve_fit(\n    lambda x, parameters: parameters[0]*x + parameters[1],\n    [0.0, 1.0, 2.0, 3.0],\n    [1.0, 3.0, 5.0, 7.0],\n    [0.0, 0.0],\n    jacobian=lambda x, parameters: [x, 1.0],\n)\nfit.success and fit.validation.passed and abs(fit.value[0] - 2.0) < 1.0e-8 and abs(fit.value[1] - 1.0) < 1.0e-8",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "curve-fit",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#65881c7f41cc6e9f-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
           }
         }
       ]
@@ -16615,6 +16922,137 @@
         }
       },
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "fft",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.spectral",
+      "signature": "fft(samples, **options)",
+      "summary": "Compute a radix-2 or Bluestein discrete Fourier transform.",
+      "doc": "Compute a radix-2 or Bluestein discrete Fourier transform.\n\nImport from `sagejs.numerics.spectral`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "spectral",
+        "fft"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": null,
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#a14aed811b458915-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.spectral import fft\n\nspectrum = fft([1.0, 0.0, 0.0, 0.0])\nspectrum.success and spectrum.validation.passed and all(abs(value - 1.0) < 1.0e-10 for value in spectrum.value)",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "fft",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#a14aed811b458915-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "find_root",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics",
+      "signature": "find_root(function, a=None, b=None, *, x0=None, method=None, **options)",
+      "summary": "Find and independently validate a scalar root with diagnostics and bounded traces.",
+      "doc": "Find and independently validate a scalar root with diagnostics and bounded traces.\n\nImport from `sagejs.numerics`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "root-finding",
+        "validated"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "find_root",
+        "qualified": "Expression.find_root",
+        "path": "src/baselib/symbolic.py",
+        "line": 750,
+        "excerpt": {
+          "start_line": 738,
+          "text": "        point: Any,\n        degree: int,\n    ) -> Expression:\n        return taylor(self, variable, point, degree)\n\n    def limit(\n        self,\n        *args: Any,\n        **kwargs: Any,\n    ) -> Expression:\n        return limit(self, *args, **kwargs)\n\n    def find_root(\n        self,\n        lower: Any,\n        upper: Any,\n        maxiter: int = 100,\n        xtol: float = 1e-12,\n        method: str = \"auto\",\n        full_output: bool = False,\n        trace: str = \"iterations\",\n    ) -> Any:\n        expression = self\n        if (\n            runtime.array.isArray(self._tree)"
+        }
+      },
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#57920a98a0bed855-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics import find_root\n\nroot = find_root(lambda x: x*x - 2.0, 1.0, 2.0, method=\"brent\")\nroot.success and root.validation.passed and abs(root.value*root.value - 2.0) < 1.0e-10",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "find-root",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#57920a98a0bed855-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -28107,6 +28545,76 @@
     },
     {
       "schema_version": 1,
+      "name": "integrate",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.integration",
+      "signature": "integrate(function, a, b, *, method=None, **options)",
+      "summary": "Compute an adaptive numerical integral with error and budget diagnostics.",
+      "doc": "Compute an adaptive numerical integral with error and budget diagnostics.\n\nImport from `sagejs.numerics.integration`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "integration",
+        "quadrature"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "integrate",
+        "qualified": "Expression.integrate",
+        "path": "src/baselib/symbolic.py",
+        "line": 674,
+        "excerpt": {
+          "start_line": 662,
+          "text": "        return result\n\n    diff = derivative\n\n    def expand(self) -> Expression:\n        \"\"\"Expand products and integer powers in this expression.\"\"\"\n        return Expression(_call_backend(\"expand\", [self._tree]))\n\n    def factor(self) -> Expression:\n        \"\"\"Factor this expression over its exact coefficient domain.\"\"\"\n        return Expression(_call_backend(\"factor\", [self._tree]))\n\n    def integrate(\n        self,\n        variable: Any,\n        lower: Any = runtime.undefined,\n        upper: Any = runtime.undefined,\n    ) -> Expression:\n        if (\n            isinstance(variable, (list, tuple))\n            and lower is runtime.undefined\n            and upper is runtime.undefined\n        ):\n            bounds = list(variable)\n            if len(bounds) != 3:"
+        }
+      },
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#60922b0372e1f6b1-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.integration import integrate\n\nintegral = integrate(lambda x: x*x, 0.0, 1.0)\nintegral.success and integral.validation.passed and abs(integral.value - 1.0/3.0) < 1.0e-10",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "integrate",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#60922b0372e1f6b1-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "is_prime",
       "aliases": [],
       "kind": "function",
@@ -29158,6 +29666,126 @@
             "id": "src/baselib/groups.py#6f7ecbdb475e0987-eaa0689a095d4394",
             "status": "pass",
             "actual": "336\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "minimize",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.optimization",
+      "signature": "minimize(function, x0, *, method=None, **options)",
+      "summary": "Minimize a multivariate objective and return a structured NumericalResult.",
+      "doc": "Minimize a multivariate objective and return a structured NumericalResult.\n\nImport from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "optimization"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": null,
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#56e55a2c02e6318d-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.optimization import minimize\n\nminimum = minimize(\n    lambda point: (point[0] - 3.0)**2 + (point[1] + 1.0)**2,\n    [0.0, 0.0],\n    gradient=lambda point: [2.0*(point[0] - 3.0), 2.0*(point[1] + 1.0)],\n    method=\"bfgs\",\n)\nminimum.success and minimum.validation.passed and abs(minimum.value[0] - 3.0) < 1.0e-7 and abs(minimum.value[1] + 1.0) < 1.0e-7",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "minimize",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#56e55a2c02e6318d-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "minimize_scalar",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.optimization",
+      "signature": "minimize_scalar(function, bounds=None, *, method=None, **options)",
+      "summary": "Minimize a scalar objective with explicit budgets and validation evidence.",
+      "doc": "Minimize a scalar objective with explicit budgets and validation evidence.\n\nImport from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "optimization"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": null,
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#8bd27c89e6130059-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.optimization import minimize_scalar\n\nminimum = minimize_scalar(lambda x: (x - 2.0)**2, -1.0, 5.0)\nminimum.success and minimum.validation.passed and abs(minimum.value - 2.0) < 1.0e-8",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "minimize-scalar",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#8bd27c89e6130059-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
           }
         }
       ]
@@ -35594,6 +36222,67 @@
     },
     {
       "schema_version": 1,
+      "name": "solve_ivp",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.ode",
+      "signature": "solve_ivp(function, t_span, y0, *, method=None, **options)",
+      "summary": "Solve and validate an initial-value ODE problem with adaptive-step traces.",
+      "doc": "Solve and validate an initial-value ODE problem with adaptive-step traces.\n\nImport from `sagejs.numerics.ode`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "ode",
+        "initial-value-problem"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": null,
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#57a23b91ef0cce9b-3cbc87c7681f34db",
+          "line": 1,
+          "source": "import math\nfrom sagejs.numerics.ode import solve_ivp\n\nsolution = solve_ivp(lambda t, y: [y[0]], (0.0, 1.0), [1.0])\nsolution.success and solution.validation.passed and abs(solution.value[0] - math.e) < 1.0e-5",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "solve-ivp",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#57a23b91ef0cce9b-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "Sp",
       "aliases": [],
       "kind": "function",
@@ -36018,6 +36707,67 @@
             "id": "src/baselib/modular.py#959a51d353f2e5ad-63bd7e92de99d396",
             "status": "pass",
             "actual": "(3, 3, 3)\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "svd",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.spectral",
+      "signature": "svd(matrix, *, trace='none', **options)",
+      "summary": "Compute and independently validate a singular-value decomposition.",
+      "doc": "Compute and independently validate a singular-value decomposition.\n\nImport from `sagejs.numerics.spectral`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "linear-algebra",
+        "spectral"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": null,
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#1d9812b101682f40-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.spectral import svd\n\ndecomposition = svd([[3.0, 0.0], [0.0, 2.0]])\nvalues = decomposition.value[\"singular_values\"]\ndecomposition.success and decomposition.validation.passed and abs(values[0] - 3.0) < 1.0e-10 and abs(values[1] - 2.0) < 1.0e-10",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "svd",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#1d9812b101682f40-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
           }
         }
       ]
