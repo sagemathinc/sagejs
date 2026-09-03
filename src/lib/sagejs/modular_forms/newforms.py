@@ -419,10 +419,14 @@ class OldModularFormsSubspace(sage.Parent):
     """The exact span of all proper-level degeneracy images."""
 
     def __init__(self, cusp_space: Any) -> None:
+        self._kind = "OldModularFormsSubspace"
+        self._subspace_kind = "Old"
         self._cusp_space = cusp_space
         self._dimension = _old_q_expansion_matrix(
             cusp_space, _sturm_precision(cusp_space)
         ).rank()
+        self._classical_qexp_basis_cache = runtime.map()
+        self._classical_hecke_cache = runtime.map()
         runtime.object.freeze(self)
 
     def ambient_space(self) -> Any:
@@ -462,10 +466,18 @@ class OldModularFormsSubspace(sage.Parent):
     ) -> list[Any]:
         if algorithm not in ["default", "modular_symbols"]:
             raise ValueError("oldspace q-expansions use exact degeneracy maps")
-        precision = self.precision() if prec is None else _sturm_precision(self, prec)
-        return _series_from_matrix(
-            _old_q_expansion_matrix(self._cusp_space, precision), variable
+        requested_precision = (
+            self.precision() if prec is None else _sturm_precision(self, prec)
         )
+        proof_precision = _sturm_precision(self)
+        construction_precision = max(requested_precision, proof_precision)
+        result = _series_from_matrix(
+            _old_q_expansion_matrix(self._cusp_space, construction_precision),
+            variable,
+        )
+        if requested_precision < construction_precision:
+            return [series.add_bigoh(requested_precision) for series in result]
+        return result
 
     def q_expansion_basis_certificate(
         self, prec: Any = None
@@ -473,6 +485,61 @@ class OldModularFormsSubspace(sage.Parent):
         return NewOldDecompositionCertificate(
             self._cusp_space, _sturm_precision(self, prec)
         )
+
+    def basis(self, prec: Any = None) -> list[Any]:
+        """Return the canonical exact parented oldspace basis."""
+        from . import object_layer
+
+        return object_layer.basis(self, prec)
+
+    gens = basis
+
+    def gen(self, index: Any = 0) -> Any:
+        return self.basis()[_nonnegative(index, "basis index")]
+
+    def __call__(self, value: Any = 0) -> Any:
+        from . import object_layer
+
+        return object_layer.construct_element(self, value)
+
+    def coordinates(self, value: Any) -> Any:
+        from . import object_layer
+
+        return object_layer.coordinates(self, value)
+
+    def contains(self, value: Any) -> bool:
+        from . import object_layer
+
+        return object_layer.contains(self, value)
+
+    def __contains__(self, value: Any) -> bool:
+        return self.contains(value)
+
+    def zero(self) -> Any:
+        from . import object_layer
+
+        return object_layer.zero(self)
+
+    def hecke_matrix(self, index: Any) -> Any:
+        from . import object_layer
+
+        return object_layer.hecke_matrix(self, index)
+
+    def T(self, index: Any) -> Any:
+        from . import object_layer
+
+        return object_layer.hecke_operator(self, index)
+
+    hecke_operator = T
+
+    def _from_serialized_classical_element(
+        self,
+        coordinates: Any,
+        display_precision: Any,
+    ) -> Any:
+        from . import object_layer
+
+        return object_layer.construct_element(self, coordinates, display_precision)
 
     def __repr__(self) -> str:
         return (

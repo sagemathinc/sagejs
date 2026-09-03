@@ -13,7 +13,7 @@ const {
 
 test("the exact modular q-expansion source bundle is frozen", () => {
   const manifest = verifySourceFreeze();
-  assert.equal(manifest.files.length, 26);
+  assert.equal(manifest.files.length, 31);
   assert.deepEqual(manifest.required_checks, REQUIRED_CHECKS);
   assert.match(manifest.bundle_sha256, /^[0-9a-f]{64}$/u);
 });

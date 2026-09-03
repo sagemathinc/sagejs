@@ -20,6 +20,7 @@ const FILES = [
   "bench/modular/qexp-correctness/sagejs-corpus.cjs",
   "bench/modular/qexp-correctness/source-freeze.cjs",
   "docs/index.md",
+  "docs/classical-modular-form-elements.md",
   "docs/modular-form-q-expansions.md",
   "docs/modular-forms-tour.md",
   "src/baselib/modular.py",
@@ -27,8 +28,10 @@ const FILES = [
   "src/lib/sagejs/modular_forms/eta_products.py",
   "src/lib/sagejs/modular_forms/half_integral.py",
   "src/lib/sagejs/modular_forms/newforms.py",
+  "src/lib/sagejs/modular_forms/object_layer.py",
   "src/lib/sagejs/modular_forms/qexp.py",
   "src/lib/sagejs/modular_forms/qexp_algebra.py",
+  "test/classical-modular-form-elements.cjs",
   "test/eta-products.cjs",
   "test/formula-hecke.cjs",
   "test/half-integral-modular-forms.cjs",
@@ -36,6 +39,8 @@ const FILES = [
   "test/modular.cjs",
   "test/qexp-algebra.cjs",
   "test/qexp-p0-correctness.cjs",
+  "test/serialization.cjs",
+  "tools/serialization-codecs/modular-forms.ts",
 ];
 
 const REQUIRED_CHECKS = [
@@ -68,7 +73,7 @@ function writeSourceFreeze() {
   const manifest = {
     schema: "sagejs.modular-qexp-source-freeze.v1",
     scope:
-      "Exact integral- and half-integral-weight q-expansions, certified formulas, eta products, old/new and eigenpacket reconstruction, and certified formula Hecke action",
+      "Exact integral- and half-integral-weight q-expansions, certified formulas, eta products, old/new and eigenpacket reconstruction, certified formula Hecke action, and the parented Gamma0/QQ modular-form object layer",
     required_checks: REQUIRED_CHECKS,
     files,
     bundle_sha256: bundleSha256(files),
