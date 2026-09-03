@@ -75,7 +75,7 @@ for source_language, name, arguments, options in cases:
         assert result.frontend_intent.digest == intent.digest
         executed_cells += 1
 
-assert expected_cells == 62
+assert expected_cells == 63
 assert executed_cells == expected_cells
 
 # Prove that the trailer is not trusted as semantics. Re-sign two edited Sage
@@ -140,7 +140,7 @@ for value in (1.0, -0.0):
         )
         assert parsed.digest == floating.digest
 
-print("62 emitted numerical programs self-round-tripped through Sage.js")
+print("63 emitted numerical programs self-round-tripped through Sage.js")
 `;
 
 test("all advertised outward programs self-round-trip through Sage.js", () => {
@@ -148,7 +148,7 @@ test("all advertised outward programs self-round-trip through Sage.js", () => {
     (process.platform === "win32" ? "python" : "python3");
   assert.equal(
     run(executable, ["-I", "-c", witness]),
-    "62 emitted numerical programs self-round-tripped through Sage.js",
+    "63 emitted numerical programs self-round-tripped through Sage.js",
   );
 });
 
@@ -183,6 +183,6 @@ test("the public audit partitions every operation/language cell", () => {
     assert.deepEqual(operation.output_only, []);
     roundTrips += operation.sagejs_self_round_trip.length;
   }
-  assert.equal(roundTrips, 62);
+  assert.equal(roundTrips, 63);
   assert.deepEqual(ledger.proof.external_runtime_execution, []);
 });

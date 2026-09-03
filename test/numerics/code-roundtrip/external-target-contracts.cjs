@@ -60,6 +60,7 @@ cases = [
     ("sage", "nonlinear_least_squares", (lambda p: [p[0]-2, p[1]+1], [0, 0]), {"expression": ["x0-2", "x1+1"]}),
     ("sage", "linear_fit", ([0, 1, 2], [1, 3, 5]), {}),
     ("sage", "solve_ivp", (lambda t, y: [y[1], -y[0]], [0, 1], [1, 0]), {"expression": ["y1", "-y0"]}),
+    ("sage", "describe", ([1, 2, 3, 4],), {}),
 ]
 
 programs = []
@@ -77,15 +78,6 @@ for source_language, name, arguments, options in cases:
             "language": language,
             "body": body,
         })
-
-# A partial four-number summary is not a faithful representation of the
-# canonical descriptive-statistics result and must now fail closed.
-description = registry.lower("sage", "describe", [1, 2, 3, 4])
-try:
-    registry.emit(description, "matlab")
-    raise AssertionError("partial MATLAB descriptive statistics unexpectedly emitted")
-except UnsupportedFrontendError as error:
-    assert error.diagnostic.code == "unsupported_target"
 
 # User-selected callback identifiers must not turn into target keywords or
 # Wolfram pattern syntax.
@@ -131,7 +123,7 @@ test("external-target evidence covers every advertised MATLAB/Wolfram emitter", 
   const evidenceKeys = evidence.programs.map(key).sort();
   assert.deepEqual(evidenceKeys, emittedKeys);
   assert.equal(new Set(evidenceKeys).size, evidenceKeys.length);
-  assert.equal(evidenceKeys.length, 18);
+  assert.equal(evidenceKeys.length, 19);
 
   for (const record of evidence.programs) {
     assert.equal(record.vendor_runtime_executed, false, key(record));

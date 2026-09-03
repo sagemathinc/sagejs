@@ -14,8 +14,8 @@ operation/language cells is exactly one of:
 - **unsupported**: emission fails with a structured `unsupported_target`
   diagnostic.
 
-There are currently 62 Sage.js self-round-trip cells, zero output-only cells,
-and 26 unsupported cells. The zero is intentional: a catalog emitter is not
+There are currently 63 Sage.js self-round-trip cells, zero output-only cells,
+and 25 unsupported cells. The zero is intentional: a catalog emitter is not
 allowed to publish a template under a stronger round-trip label. Targets whose
 result shape, option semantics, or callable convention is not yet preserved
 remain unsupported.
@@ -62,6 +62,8 @@ official documentation. In particular it protects:
 - the `callback` binding used instead of MATLAB's reserved `function` keyword;
 - elementwise `.*`, `./`, and `.^` arithmetic for MATLAB `integral` callbacks;
 - column-valued residual and ODE callbacks with one-based state indexing; and
+- the full MATLAB descriptive-statistics record, including an explicit R
+  type-7 quantile calculation rather than a target-dependent default; and
 - target-native result conventions such as Wolfram `FindRoot` rules and the
   single-output MATLAB `ode45` solution structure.
 
@@ -80,9 +82,6 @@ diagnostic, trace, or evidence envelope.
 - A MATLAB row vector and a one-row matrix have the same literal syntax. When
   canonical shape would be lost, emission fails closed instead of silently
   changing the problem.
-- MATLAB descriptive-statistics emission is unsupported. Its former four-value
-  vector omitted most of the canonical result and did not state a compatible
-  quantile convention.
 - Callback and root-variable names that are MATLAB keywords, invalid MATLAB
   identifiers, Wolfram patterns, or protected Wolfram constants fail closed.
 - Scalar-root code has its older operation-specific parsers rather than an

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "semantics": "sagejs-external-numerical-target-evidence-v1",
-  "as_of": "2026-09-02",
+  "as_of": "2026-09-03",
   "evidence_levels": {
     "sagejs_self_round_trip": "Sage.js parses its own emitted finite-value and callback subset back to canonical intent and executes that intent through the shared Sage.js backend.",
     "vendored_grammar": "The emitted body parses without an error node under Sage.js's vendored Tree-sitter grammar for the target language.",
@@ -35,6 +35,9 @@
     "matlab_ode45": "https://www.mathworks.com/help/matlab/ref/ode45.html",
     "matlab_operators": "https://www.mathworks.com/help/matlab/matlab_prog/matlab-operators-and-special-characters.html",
     "matlab_polyfit": "https://www.mathworks.com/help/matlab/ref/polyfit.html",
+    "matlab_sort": "https://www.mathworks.com/help/matlab/ref/double.sort.html",
+    "matlab_struct": "https://www.mathworks.com/help/matlab/ref/struct.html",
+    "matlab_sum": "https://www.mathworks.com/help/matlab/ref/double.sum.html",
     "wolfram_findroot": "https://reference.wolfram.com/language/ref/FindRoot.html",
     "wolfram_fourier": "https://reference.wolfram.com/language/ref/Fourier.html",
     "wolfram_fourier_parameters": "https://reference.wolfram.com/language/ref/FourierParameters.html",
@@ -241,13 +244,18 @@
       "forbidden_source_fragments": ["function ="],
       "vendor_runtime_executed": false,
       "vendor_runtime_qualified": false
-    }
-  ],
-  "rejected_emitters": [
+    },
     {
       "operation": "statistics:descriptive_statistics:v1",
       "language": "matlab",
-      "reason": "The former [mean, standard deviation, minimum, maximum] vector omitted count, sum, variance metadata, quantiles, range, interquartile range, median absolute deviation, ddof, and the quantile convention from the canonical result. Outward emission now fails closed."
+      "official_references": ["matlab_sort", "matlab_struct", "matlab_sum"],
+      "shape_convention": "The canonical flat sample is normalized to a column for reductions. Quartiles and median absolute deviation explicitly use zero-based (n-1)p positions translated to MATLAB's one-based indexing.",
+      "result_convention": "result is a MATLAB struct carrying every canonical default descriptive-statistics field, ddof=1, and the explicit linear-r-type-7 quantile label; target-native floating reduction order may differ in the last bits from Sage.js.",
+      "required_source_fragments": ["observations = data(:);", "if sample_count <= 1", "if any(~isfinite(observations))", "centered_sum_squares =", "quantile_positions = (sample_count - 1) .* quantile_probabilities;", "median_absolute_deviation =", "result = struct( ...", "'quantile_method', 'linear-r-type-7'"],
+      "forbidden_source_fragments": ["result = [mean(data), std(data), min(data), max(data)]"],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
     }
-  ]
+  ],
+  "rejected_emitters": []
 }

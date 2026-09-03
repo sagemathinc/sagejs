@@ -434,12 +434,10 @@ _DEFINITIONS = (
         module="sagejs.numerics.statistics",
         function="describe",
         options=("ddof", "nan_policy", "trace"),
-        # MATLAB's four-statistic vector did not preserve the canonical
-        # descriptive-statistics result (count, quantiles, variance metadata,
-        # and the quantile convention were all lost). Keep natural input
-        # lowering, but fail closed on outward emission until a faithful
-        # target result contract is implemented and externally qualified.
-        targets=("sage", "python-scipy"),
+        # The MATLAB emitter constructs the complete default-result record and
+        # spells out the R type-7 quantile convention.  This avoids the lossy
+        # four-statistic vector used by the old prototype.
+        targets=("sage", "python-scipy", "matlab"),
     ),
     _Definition(
         "statistics",
@@ -1181,6 +1179,66 @@ def _emit_matlab(definition: _Definition, values: Mapping[str, Any]) -> str:
             )
             + ";"
         )
+    if name == "descriptive_statistics":
+        # Preserve the complete canonical default result instead of projecting
+        # to MATLAB's unrelated four-number summaries.  The scaled corrected
+        # two-pass variance mirrors Sage.js's numerical shape, and the
+        # interpolation below is explicitly R type 7 rather than a release-
+        # dependent target default.
+        lines.extend(
+            (
+                "observations = data(:);",
+                "sample_count = numel(observations);",
+                "if sample_count <= 1",
+                "    error('descriptive statistics require at least two observations');",
+                "end",
+                "if any(~isfinite(observations))",
+                "    error('descriptive statistics require finite observations');",
+                "end",
+                "sample_total = sum(observations);",
+                "sample_mean = sample_total / sample_count;",
+                "centered = observations - sample_mean;",
+                "center_scale = max(abs(centered));",
+                "normalized_centered = centered / max(center_scale, realmin);",
+                "centered_sum_squares = (center_scale * center_scale) * "
+                "(sum(normalized_centered .* normalized_centered) - "
+                "sum(normalized_centered)^2 / sample_count);",
+                "sample_variance = centered_sum_squares / (sample_count - 1);",
+                "sorted_data = sort(observations);",
+                "quantile_probabilities = [0.25, 0.5, 0.75];",
+                "quantile_positions = (sample_count - 1) .* quantile_probabilities;",
+                "quantile_lower = floor(quantile_positions) + 1;",
+                "quantile_fractions = quantile_positions - floor(quantile_positions);",
+                "quantile_values = sorted_data(quantile_lower).' + "
+                "quantile_fractions .* (sorted_data(quantile_lower + 1).' - "
+                "sorted_data(quantile_lower).');",
+                "absolute_deviations = sort(abs(observations - quantile_values(2)));",
+                "mad_position = (sample_count - 1) * 0.5;",
+                "mad_lower = floor(mad_position) + 1;",
+                "mad_fraction = mad_position - floor(mad_position);",
+                "median_absolute_deviation = absolute_deviations(mad_lower) + "
+                "mad_fraction * (absolute_deviations(mad_lower + 1) - "
+                "absolute_deviations(mad_lower));",
+                "result = struct( ...",
+                "    'count', sample_count, ...",
+                "    'sum', sample_total, ...",
+                "    'mean', sample_mean, ...",
+                "    'variance', sample_variance, ...",
+                "    'standard_deviation', sqrt(sample_variance), ...",
+                "    'standard_error', sqrt(sample_variance / sample_count), ...",
+                "    'minimum', sorted_data(1), ...",
+                "    'q1', quantile_values(1), ...",
+                "    'median', quantile_values(2), ...",
+                "    'q3', quantile_values(3), ...",
+                "    'maximum', sorted_data(end), ...",
+                "    'range', sorted_data(end) - sorted_data(1), ...",
+                "    'interquartile_range', quantile_values(3) - quantile_values(1), ...",
+                "    'median_absolute_deviation', median_absolute_deviation, ...",
+                "    'ddof', 1, ...",
+                "    'quantile_method', 'linear-r-type-7');",
+            )
+        )
+        return "\n".join(lines)
     calls = {
         "linear_solve": "matrix \\ right",
         "least_squares": "lsqminnorm(matrix, right)",

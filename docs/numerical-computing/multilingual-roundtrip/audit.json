@@ -27,7 +27,7 @@
     {"operation": "least_squares:nonlinear_least_squares:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab"], "output_only": [], "unsupported": ["wolfram"]},
     {"operation": "fitting:linear_fit:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab"], "output_only": [], "unsupported": ["wolfram"]},
     {"operation": "ode:initial_value_problem:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab"], "output_only": [], "unsupported": ["wolfram"]},
-    {"operation": "statistics:descriptive_statistics:v1", "sagejs_self_round_trip": ["sage", "python-scipy"], "output_only": [], "unsupported": ["matlab", "wolfram"]},
+    {"operation": "statistics:descriptive_statistics:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab"], "output_only": [], "unsupported": ["wolfram"]},
     {"operation": "statistics:one_sample_t_test:v1", "sagejs_self_round_trip": ["sage", "python-scipy"], "output_only": [], "unsupported": ["matlab", "wolfram"]},
     {"operation": "statistics:two_sample_t_test:v1", "sagejs_self_round_trip": ["sage", "python-scipy"], "output_only": [], "unsupported": ["matlab", "wolfram"]},
     {"operation": "statistics:linear_regression:v1", "sagejs_self_round_trip": ["sage", "python-scipy"], "output_only": [], "unsupported": ["matlab", "wolfram"]},

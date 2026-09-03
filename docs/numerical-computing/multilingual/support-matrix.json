@@ -132,8 +132,8 @@
       "operation": "statistics:descriptive_statistics:v1",
       "registry": ["sage", "python-scipy", "matlab", "wolfram"],
       "natural_parser": ["matlab", "wolfram"],
-      "emit": ["sage", "python-scipy"],
-      "unsupported_emit": ["matlab", "wolfram"]
+      "emit": ["sage", "python-scipy", "matlab"],
+      "unsupported_emit": ["wolfram"]
     },
     {
       "operation": "statistics:one_sample_t_test:v1",
