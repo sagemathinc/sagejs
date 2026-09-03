@@ -16,8 +16,9 @@ marshalled to a packed `Float64Array` backend without changing semantics.
 
 ## Quick start
 
-The integration lane has not yet re-exported this package from the shared
-`sagejs.numerics` facade, so import the domain package directly:
+The linear-algebra API intentionally remains in its domain package instead of
+flattening generic names such as `solve`, `plan`, and `capabilities` into the
+shared `sagejs.numerics` facade. Import it directly:
 
 ```python
 from sagejs.numerics.linear_algebra import solve
@@ -181,8 +182,9 @@ Cholesky only when the caller supplies `assume="positive_definite"`; Cholesky
 still verifies symmetry and positive pivots. There is no silent symmetry guess
 and no silent fallback from a false structural claim.
 
-Domain failures remain explicit even though the current shared status registry
-does not contain all linear-algebra codes:
+Domain failures remain explicit. The shared result status uses a deliberately
+small cross-domain vocabulary, while `failure_code` preserves each precise
+linear-algebra reason:
 
 | `result.failure_code` | Current shared status | Meaning and response |
 |---|---|---|
@@ -197,10 +199,10 @@ does not contain all linear-algebra codes:
 | `cancellation_callback_error` | `validation_failed` | The cancellation callback raised; repair the callback before retrying. |
 | `nonfinite_intermediate` | `validation_failed` | A mathematically required intermediate is outside representable binary64 range; rescale or use a wider numeric type. |
 
-Until the remaining shared normalization lands, domain-specific failures use
-existing `ill_conditioned`, `validation_failed`, and `cancelled` diagnostics
-as applicable, while the domain code and structured details preserve the
-precise identity. Elapsed-time exhaustion already uses the shared
+Domain-specific failures use the shared `ill_conditioned`,
+`validation_failed`, and `cancelled` diagnostics as applicable, while the
+domain code and structured details preserve the precise identity. Elapsed-time
+exhaustion uses the shared
 `maximum_elapsed_time` status and diagnostic. See
 [`integration-requests.md`](integration-requests.md) for the exact shared
 changes requested from the integration lane.
