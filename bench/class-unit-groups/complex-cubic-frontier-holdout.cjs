@@ -146,21 +146,17 @@ function validateCandidateSourceIdentity(source) {
   validateSourceIdentity(source, "candidate source");
   const closure = source.candidate_runtime_closure;
   if (!closure ||
-      closure.schema !== "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v1" ||
+      closure.schema !== "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v2" ||
       !/^[0-9a-f]{64}$/.test(closure.sha256 || "") ||
       !Number.isSafeInteger(closure.file_count) || closure.file_count < 1 ||
       typeof closure.total_bytes !== "string" || !/^[1-9][0-9]*$/.test(closure.total_bytes) ||
       !/^[0-9a-f]{64}$/.test(closure.native_cache_key || "") ||
-      !closure.preferred_native_pack ||
-      closure.preferred_native_pack.path !==
-        "src/lib/sagejs/number_fields/.sagejs-native-kernels/pack/" +
-          "sagejs_native_kernel_pack.node" ||
-      typeof closure.preferred_native_pack.present !== "boolean" ||
-      (closure.preferred_native_pack.present
-        ? !/^[0-9a-f]{64}$/.test(closure.preferred_native_pack.sha256 || "") ||
-          !/^[1-9][0-9]*$/.test(closure.preferred_native_pack.bytes || "")
-        : closure.preferred_native_pack.sha256 !== null ||
-          closure.preferred_native_pack.bytes !== null) ||
+      !closure.production_native_pack ||
+      closure.production_native_pack.path !==
+        "dist/native-kernels/pack/sagejs_native_kernel_pack.node" ||
+      !/^[0-9a-f]{64}$/.test(closure.production_native_pack.pack_key || "") ||
+      !/^[0-9a-f]{64}$/.test(closure.production_native_pack.sha256 || "") ||
+      !/^[1-9][0-9]*$/.test(closure.production_native_pack.bytes || "") ||
       canonicalDigest(closure.direct_process_environment) !==
         canonicalDigest(candidateDirectEnvironmentIdentity())) {
     throw new Error("candidate source requires an authenticated runtime/build-output closure");

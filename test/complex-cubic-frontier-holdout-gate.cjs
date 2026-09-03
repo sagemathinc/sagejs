@@ -310,17 +310,16 @@ function sourceIdentity(
   };
   if (runtimeCharacter !== null) {
     source.candidate_runtime_closure = {
-      schema: "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v1",
+      schema: "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v2",
       sha256: runtimeCharacter.repeat(64),
       file_count: 42,
       total_bytes: "123456",
       native_cache_key: "9".repeat(64),
-      preferred_native_pack: {
-        path: "src/lib/sagejs/number_fields/.sagejs-native-kernels/pack/" +
-          "sagejs_native_kernel_pack.node",
-        present: false,
-        sha256: null,
-        bytes: null,
+      production_native_pack: {
+        path: "dist/native-kernels/pack/sagejs_native_kernel_pack.node",
+        pack_key: "8".repeat(64),
+        sha256: "7".repeat(64),
+        bytes: "1234",
       },
       direct_process_environment: candidateDirectEnvironmentIdentity(),
     };
@@ -941,6 +940,10 @@ test("direct Sage.js execution is ROOT-bound and forced to source mode", () => {
   assert.equal(environment.SAGEJS_NATIVE_MODE, "auto");
   assert.equal(environment.SAGEJS_NATIVE_AUTOLOAD, "1");
   assert.equal(
+    environment.SAGEJS_NATIVE_CACHE_DIR,
+    path.join(root, "dist/native-kernels"),
+  );
+  assert.equal(
     environment.SAGEJS_SITE_PACKAGES,
     "/nonexistent/sagejs-complex-cubic-frontier-site-packages",
   );
@@ -965,7 +968,7 @@ test("direct Sage.js execution is ROOT-bound and forced to source mode", () => {
   assert.throws(() => validateDirectSagejsTool(other), /must execute ROOT\/bin\/sagejs/);
 });
 
-test("candidate runtime closure binds preferred native-pack absence and bytes", (t) => {
+test("candidate runtime closure requires and binds the production native pack", (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-frontier-closure-"));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const requiredFiles = [
@@ -986,36 +989,44 @@ test("candidate runtime closure binds preferred native-pack absence and bytes", 
     fs.writeFileSync(filename, `${name}\n`);
   }
   const cacheKey = "7".repeat(64);
-  const cacheRoot = path.join(
-    directory,
-    "src/lib/sagejs/number_fields/.sagejs-native-kernels",
-  );
+  const packKey = "8".repeat(64);
+  const cacheRoot = path.join(directory, "dist/native-kernels");
   const source = path.join(directory, "src/lib/sagejs/number_fields/cubic_class_number_native.py");
   fs.mkdirSync(cacheRoot, { recursive: true });
   fs.writeFileSync(path.join(cacheRoot, "index.json"), JSON.stringify({
-    sources: { [source]: { cacheKey } },
+    schema: "sagejs.native-cache/v4",
+    complete: true,
+    packs: [{ packKey, kernels: [cacheKey] }],
+    sources: { [source]: { cacheKey, packKey } },
   }));
-  for (const name of [
-    "binding.gyp", "index.cjs", "kernel.c", "kernel_core.c", "kernel_core.h",
-    "manifest.json", "build/Release/sagejs_native_kernel.node",
-  ]) {
-    const filename = path.join(cacheRoot, cacheKey, name);
-    fs.mkdirSync(path.dirname(filename), { recursive: true });
-    fs.writeFileSync(filename, `${name}\n`);
-  }
-
-  const absent = candidateRuntimeClosure(directory);
-  assert.equal(absent.preferred_native_pack.present, false);
-  assert.equal(absent.preferred_native_pack.sha256, null);
+  const loader = path.join(cacheRoot, cacheKey, "index.cjs");
+  fs.mkdirSync(path.dirname(loader), { recursive: true });
+  fs.writeFileSync(loader, "module.exports = {};\n");
   const pack = path.join(cacheRoot, "pack/sagejs_native_kernel_pack.node");
   fs.mkdirSync(path.dirname(pack), { recursive: true });
   fs.writeFileSync(pack, "preferred-pack-v1");
+  const writeManifest = () => fs.writeFileSync(
+    path.join(cacheRoot, "pack/index.json"),
+    JSON.stringify({
+      schema: "sagejs.native-pack/v2",
+      packKey,
+      sha256: sha256(fs.readFileSync(pack)),
+      bytes: fs.statSync(pack).size,
+    }),
+  );
+  writeManifest();
   const present = candidateRuntimeClosure(directory);
-  assert.equal(present.preferred_native_pack.present, true);
-  assert.equal(present.preferred_native_pack.sha256, sha256("preferred-pack-v1"));
-  assert.notEqual(present.sha256, absent.sha256);
+  assert.equal(present.production_native_pack.pack_key, packKey);
+  assert.equal(present.production_native_pack.sha256, sha256("preferred-pack-v1"));
   fs.writeFileSync(pack, "preferred-pack-v2");
+  assert.throws(
+    () => candidateRuntimeClosure(directory),
+    /inconsistent production native pack/,
+  );
+  writeManifest();
   assert.notEqual(candidateRuntimeClosure(directory).sha256, present.sha256);
+  fs.unlinkSync(pack);
+  assert.throws(() => candidateRuntimeClosure(directory), /ENOENT/);
 });
 
 test("output reservation is exclusive, publishable, and retained after failure", (t) => {

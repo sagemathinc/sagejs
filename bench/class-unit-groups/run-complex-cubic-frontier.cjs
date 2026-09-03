@@ -306,10 +306,7 @@ function candidateDirectEnvironmentIdentity(root = ROOT) {
       SAGEJS_USE_SOURCE: "1",
       SAGEJS_NATIVE_MODE: "auto",
       SAGEJS_NATIVE_AUTOLOAD: "1",
-      SAGEJS_NATIVE_CACHE_DIR: path.join(
-        root,
-        "src/lib/sagejs/number_fields/.sagejs-native-kernels",
-      ),
+      SAGEJS_NATIVE_CACHE_DIR: path.join(root, "dist/native-kernels"),
       SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: path.join(root, "dist/module-cache"),
       SAGEJS_PRECOMPILED_DYNAMIC_CACHE_DIR: `${cacheHome}/precompiled-dynamic`,
       SAGEJS_DYNAMIC_CACHE_DIR: `${cacheHome}/dynamic`,
@@ -365,68 +362,60 @@ function candidateRuntimeClosure(root = ROOT) {
     "dist/runtime-cache",
   ]) include(name);
 
-  const cacheRoot = "src/lib/sagejs/number_fields/.sagejs-native-kernels";
-  const cacheIndex = JSON.parse(fs.readFileSync(path.join(root, cacheRoot, "index.json"), "utf8"));
+  const cacheRoot = "dist/native-kernels";
+  const cacheIndex = JSON.parse(
+    fs.readFileSync(path.join(root, cacheRoot, "index.json"), "utf8"),
+  );
   const source = path.join(root, "src/lib/sagejs/number_fields/cubic_class_number_native.py");
   const selected = cacheIndex?.sources?.[source];
-  if (!selected || !/^[0-9a-f]{64}$/.test(selected.cacheKey || "")) {
-    throw new Error("candidate runtime closure has no compiled cubic class-group kernel");
+  const selectedPack = cacheIndex?.packs?.find(
+    (pack) => pack?.packKey === selected?.packKey,
+  );
+  if (
+    cacheIndex?.schema !== "sagejs.native-cache/v4" ||
+    cacheIndex?.complete !== true ||
+    !selected ||
+    !/^[0-9a-f]{64}$/.test(selected.cacheKey || "") ||
+    !/^[0-9a-f]{64}$/.test(selected.packKey || "") ||
+    !Array.isArray(selectedPack?.kernels) ||
+    !selectedPack.kernels.includes(selected.cacheKey)
+  ) {
+    throw new Error(
+      "candidate runtime closure has no production-packed cubic class-group kernel",
+    );
   }
   hash.update("native-cache-selection\0");
   hash.update(canonicalJson(selected));
   hash.update("\0");
-  const kernelRoot = path.posix.join(cacheRoot, selected.cacheKey);
-  for (const name of [
-    "binding.gyp",
-    "index.cjs",
-    "kernel.c",
-    "kernel_core.c",
-    "kernel_core.h",
-    "manifest.json",
-    "build/Release/sagejs_native_kernel.node",
-  ]) include(path.posix.join(kernelRoot, name));
-
-  // Generated kernel loaders prefer this sibling pack over their standalone
-  // addon. Its absence is therefore as significant as its bytes.
-  const preferredPackName = path.posix.join(
+  const packManifestName = path.posix.join(cacheRoot, "pack/index.json");
+  const packName = path.posix.join(
     cacheRoot,
     "pack/sagejs_native_kernel_pack.node",
   );
-  const preferredPackFilename = path.join(root, preferredPackName);
-  let preferredPack;
-  hash.update("optional-preferred-native-pack\0");
-  hash.update(preferredPackName);
-  hash.update("\0");
-  if (fs.existsSync(preferredPackFilename)) {
-    const status = fs.lstatSync(preferredPackFilename);
-    if (!status.isFile()) {
-      throw new Error("candidate runtime closure rejects non-file preferred native pack");
-    }
-    const bytes = fs.readFileSync(preferredPackFilename);
-    if (bytes.length === 0) {
-      throw new Error("candidate runtime closure rejects an empty preferred native pack");
-    }
-    const packSha256 = sha256(bytes);
-    hash.update("present\0");
-    hash.update(bytes);
-    hash.update("\0");
-    fileCount += 1;
-    totalBytes += bytes.length;
-    preferredPack = {
-      path: preferredPackName,
-      present: true,
-      sha256: packSha256,
-      bytes: String(bytes.length),
-    };
-  } else {
-    hash.update("absent\0");
-    preferredPack = {
-      path: preferredPackName,
-      present: false,
-      sha256: null,
-      bytes: null,
-    };
+  const packFilename = path.join(root, packName);
+  const packStatus = fs.lstatSync(packFilename);
+  if (!packStatus.isFile() || packStatus.size === 0) {
+    throw new Error("candidate runtime closure requires a nonempty production native pack");
   }
+  const packBytes = fs.readFileSync(packFilename);
+  const packSha256 = sha256(packBytes);
+  const packManifest = JSON.parse(
+    fs.readFileSync(path.join(root, packManifestName), "utf8"),
+  );
+  if (
+    packManifest?.schema !== "sagejs.native-pack/v2" ||
+    packManifest?.packKey !== selected.packKey ||
+    packManifest?.sha256 !== packSha256 ||
+    packManifest?.bytes !== packBytes.length
+  ) {
+    throw new Error("candidate runtime closure rejects an inconsistent production native pack");
+  }
+  for (const name of [
+    path.posix.join(cacheRoot, "index.json"),
+    path.posix.join(cacheRoot, selected.cacheKey, "index.cjs"),
+    packManifestName,
+    packName,
+  ]) include(name);
 
   const directEnvironment = candidateDirectEnvironmentIdentity(root);
   hash.update("direct-process-environment\0");
@@ -434,12 +423,17 @@ function candidateRuntimeClosure(root = ROOT) {
   hash.update("\0");
 
   return {
-    schema: "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v1",
+    schema: "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v2",
     sha256: hash.digest("hex"),
     file_count: fileCount,
     total_bytes: String(totalBytes),
     native_cache_key: selected.cacheKey,
-    preferred_native_pack: preferredPack,
+    production_native_pack: {
+      path: packName,
+      pack_key: selected.packKey,
+      sha256: packSha256,
+      bytes: String(packBytes.length),
+    },
     direct_process_environment: directEnvironment,
   };
 }
