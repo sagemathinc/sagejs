@@ -349,6 +349,7 @@
     "bench:modular:brandt-ideal-classes:competitive": "node bench/modular/brandt-ideal-classes/competitive.cjs",
     "bench:modular:brandt-ideal-classes:profile": "node bench/modular/brandt-ideal-classes/profile.cjs",
     "bench:modular:classical-object-layer": "node bench/modular/classical-object-layer/benchmark.cjs",
+    "bench:modular:classical-character-object-layer": "node bench/modular/classical-character-object-layer/benchmark.cjs",
     "bench:modular:qexp-algebra": "node bench/modular/qexp-algebra/benchmark.cjs",
     "bench:graphs": "node bench/compare-graphs.cjs",
     "bench:wasm-graph-components": "node bench/wasm-graph-components.cjs --json",

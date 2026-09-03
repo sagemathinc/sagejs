@@ -5766,9 +5766,10 @@ ModularForms(group: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=T
 
 Construct the implemented ambient space of modular forms.
 
-`group` is a level or congruence subgroup, `weight` is nonnegative,
-and `prec` controls the default displayed q-expansion precision.
-Initial ambient spaces are exact over `QQ`.
+`group` is a level, congruence subgroup, or Dirichlet character; `weight`
+is nonnegative, and `prec` controls the default displayed q-expansion
+precision. Trivial and quadratic characters are exact over `QQ`, while
+higher-order characters use their minimal exact cyclotomic value field.
 
 ### Examples
 
@@ -5780,9 +5781,9 @@ sage: M.cuspidal_subspace().dimension()
 1
 ```
 
-This foundation currently provides exact dimensions, cusp/Eisenstein
-subspaces, and Eisenstein q-expansions.  It is not yet SageMath's complete
-Hecke-module implementation.
+The returned cusp, Eisenstein, old, new, and ambient spaces share one
+parented exact element contract, including exact Hecke action and
+Sturm-certified coordinate recovery.
 
 ### Metadata
 

@@ -89,14 +89,22 @@ function encodeParent(value: unknown, context: EncodeContext): WireValue {
         isCuspidal,
       });
     }
-    case "ModularForms":
-      return context.encode({
+    case "ModularForms": {
+      const character = Reflect.get(Object(value), "_character");
+      const data: Record<string, unknown> = {
         kind: "ModularForms",
         group: Reflect.get(Object(value), "_group"),
         weight: Reflect.get(Object(value), "_weight"),
         base: Reflect.get(Object(value), "_base"),
         precision: Reflect.get(Object(value), "_precision"),
-      });
+      };
+      // Keep the established trivial-character wire format byte-for-byte
+      // stable while authenticating character parents explicitly.
+      if (character !== null && character !== undefined) {
+        data.character = character;
+      }
+      return context.encode(data);
+    }
     case "ModularFormsSubspace":
     case "EisensteinSubspace":
       return context.encode({
@@ -148,10 +156,11 @@ function decodeParent(payload: WireValue, context: DecodeContext): unknown {
         data.basis,
         data.subspaceKind,
         data.sign,
+        data.isCuspidal,
       ]);
     case "ModularForms":
       return callGlobal("ModularForms", [
-        data.group,
+        data.character ?? data.group,
         data.weight,
         data.base,
         true,
@@ -227,6 +236,14 @@ function decodeOperator(payload: WireValue, context: DecodeContext): unknown {
 
 function encodeElement(value: unknown, context: EncodeContext): WireValue {
   const parent = Reflect.get(Object(value), "_parent");
+  if (kind(value) === "NormalizedNewform") {
+    return context.encode({
+      kind: "NormalizedNewform",
+      parent,
+      constituent: Reflect.get(Object(value), "_constituent"),
+      name: Reflect.get(Object(value), "_name"),
+    });
+  }
   switch (kind(parent)) {
     case "DirichletGroup":
       return context.encode({
@@ -298,6 +315,11 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
         data.coordinates,
         data.displayPrecision,
       ]);
+    case "NormalizedNewform":
+      return callMethod(data.parent, "_from_serialized_newform", [
+        data.constituent,
+        data.name,
+      ]);
     default:
       throw new SageSerializationError(
         `unsupported modular-forms element ${String(data.kind)}`,
@@ -326,7 +348,7 @@ const parentCodec: SageCodec = {
 const elementCodec: SageCodec = {
   type: "sage.modular_forms.element",
   version: 1,
-  test: (value) => [
+  test: (value) => kind(value) === "NormalizedNewform" || [
     "DirichletGroup",
     "ModularSymbols",
     "ModularFormsSubspace",

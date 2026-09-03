@@ -1,4 +1,4 @@
-r"""Parented classical modular forms for the initial $\Gamma_0/\QQ$ domain.
+r"""Parented classical modular forms for fixed-character $\Gamma_0$ spaces.
 
 The public mathematical state is a parent and an exact coordinate vector.
 Power-series expansions are deterministic, extendable realizations obtained
@@ -65,11 +65,14 @@ def _ambient(space: Any) -> Any:
 
 def _ambient_signature(space: Any) -> tuple[Any, ...]:
     ambient = _ambient(space)
+    character = runtime.reflect.get(ambient, "_character")
+    character_number = 1 if character is None else character.conrey_number()
     return (
         ambient.group()._family,
         ambient.level(),
         ambient.weight(),
         ambient.base_ring(),
+        character_number,
     )
 
 
@@ -81,6 +84,7 @@ def _same_ambient(left: Any, right: Any) -> bool:
         and left_signature[1] == right_signature[1]
         and left_signature[2] == right_signature[2]
         and left_signature[3] is right_signature[3]
+        and left_signature[4] == right_signature[4]
     )
 
 
@@ -99,9 +103,9 @@ def _sturm_precision(space: Any) -> int:
     return max(1, _nonnegative(space.sturm_bound(), "Sturm bound") + 1)
 
 
-def _zero_series(precision: int, variable: str = "q") -> Any:
+def _zero_series(space: Any, precision: int, variable: str = "q") -> Any:
     ring = _global("PowerSeriesRing")(
-        sage.QQ,
+        space.base_ring(),
         variable,
         default_prec=max(1, precision),
     )
@@ -114,13 +118,24 @@ def _series_precision(series: Any) -> int:
     return _nonnegative(series.precision_absolute(), "series precision")
 
 
-def _matrix_from_series(series: list[Any], precision: int) -> Any:
+def _matrix_from_series(
+    series: list[Any],
+    precision: int,
+    coefficient_ring: Any = None,
+) -> Any:
     matrix = _global("matrix")
+    if coefficient_ring is None:
+        coefficient_ring = (
+            sage.QQ if len(series) == 0 else series[0].parent().base_ring()
+        )
     if len(series) == 0:
-        return matrix(sage.QQ, 0, precision)
+        return matrix(coefficient_ring, 0, precision)
     return matrix(
-        sage.QQ,
-        [[sage.QQ(form[index]) for index in range(precision)] for form in series],
+        coefficient_ring,
+        [
+            [coefficient_ring(form[index]) for index in range(precision)]
+            for form in series
+        ],
     )
 
 
@@ -222,11 +237,15 @@ def q_expansion_basis(
 
 
 def _basis_matrix(space: Any, precision: int) -> Any:
-    return _matrix_from_series(_space_q_expansion_basis(space, precision), precision)
+    return _matrix_from_series(
+        _space_q_expansion_basis(space, precision),
+        precision,
+        space.base_ring(),
+    )
 
 
 def _coordinate_vector(space: Any, values: Any) -> Any:
-    answer = _global("vector")(sage.QQ, values)
+    answer = _global("vector")(space.base_ring(), values)
     if len(answer) != space.dimension():
         raise ValueError(
             "coordinate vector has length "
@@ -285,9 +304,10 @@ def _recover_coordinates(space: Any, value: Any) -> Any:
         precision = required
         series = _series_from_value(value, precision)
     basis = _basis_matrix(space, precision)
+    coefficient_ring = space.base_ring()
     target = _global("vector")(
-        sage.QQ,
-        [sage.QQ(series[index]) for index in range(precision)],
+        coefficient_ring,
+        [coefficient_ring(series[index]) for index in range(precision)],
     )
     if space.dimension() == 0:
         if any(coefficient != 0 for coefficient in target):
@@ -311,9 +331,10 @@ def coordinates(space: Any, value: Any) -> Any:
         if not _same_ambient(space, value.parent()):
             raise TypeError("modular form has a different ambient space")
     if runtime.is_exact_integer(value) and value == 0:
+        coefficient_ring = space.base_ring()
         return _coordinate_vector(
             space,
-            [sage.QQ(0) for _index in range(space.dimension())],
+            [coefficient_ring(0) for _index in range(space.dimension())],
         )
     if _looks_like_coordinates(space, value):
         return _coordinate_vector(space, value)
@@ -348,18 +369,20 @@ def basis(space: Any, prec: Any = None) -> list[ClassicalModularFormElement]:
     precision = _display_precision(space, prec)
     _space_q_expansion_basis(space, _sturm_precision(space))
     result = []
+    coefficient_ring = space.base_ring()
     for row in range(space.dimension()):
-        values = [sage.QQ(0) for _column in range(space.dimension())]
-        values[row] = sage.QQ(1)
+        values = [coefficient_ring(0) for _column in range(space.dimension())]
+        values[row] = coefficient_ring(1)
         result.append(ClassicalModularFormElement(space, values, precision))
     return result
 
 
 def zero(space: Any) -> ClassicalModularFormElement:
     """Return the zero element of `space`."""
+    coefficient_ring = space.base_ring()
     return ClassicalModularFormElement(
         space,
-        [sage.QQ(0) for _index in range(space.dimension())],
+        [coefficient_ring(0) for _index in range(space.dimension())],
         space.precision(),
     )
 
@@ -386,10 +409,17 @@ def _as_classical(value: Any, precision: int) -> ClassicalModularFormElement:
         return value
     if not all(hasattr(value, name) for name in ["level", "weight", "q_expansion"]):
         raise TypeError("expected a classical modular form")
+    character = value.character() if hasattr(value, "character") else None
+    defining_data = (
+        character
+        if runtime.reflect.get(runtime.reflect.get(character, "_parent"), "_kind")
+        == "DirichletGroup"
+        else value.level()
+    )
     parent = _global("ModularForms")(
-        value.level(),
+        defining_data,
         value.weight(),
-        sage.QQ,
+        value.base_ring() if hasattr(value, "base_ring") else sage.QQ,
         True,
         precision,
     )
@@ -399,6 +429,28 @@ def _as_classical(value: Any, precision: int) -> ClassicalModularFormElement:
 def _lcm(left: int, right: int) -> int:
     gcd = runtime.number(_global("gcd")(left, right))
     return left * right // gcd
+
+
+def _induced_character(character: Any, level: int) -> Any:
+    """Return the character induced to a divisible target modulus."""
+    if level % runtime.number(character.modulus()) != 0:
+        raise ValueError("target level must be divisible by the character modulus")
+    group = _global("DirichletGroup")(level)
+    units = group.unit_gens()
+    for candidate in group:
+        if all(
+            runtime.flint_backend().qqbarEqual(
+                candidate(unit)._native,
+                character(unit)._native,
+            )
+            for unit in units
+        ):
+            return candidate
+    raise ArithmeticError("could not induce the Dirichlet character")
+
+
+def _product_character(left: Any, right: Any, level: int) -> Any:
+    return _induced_character(left, level) * _induced_character(right, level)
 
 
 @runtime.lightweight_math_class
@@ -434,10 +486,10 @@ class ClassicalModularFormElement(sage.Element):
         return self.ambient_space().weight()
 
     def base_ring(self) -> Any:
-        return sage.QQ
+        return self.ambient_space().base_ring()
 
     def character(self) -> Any:
-        return _global("DirichletGroup")(self.level())(1)
+        return self.ambient_space().character()
 
     def vector(self) -> Any:
         return self._coordinates
@@ -470,14 +522,15 @@ class ClassicalModularFormElement(sage.Element):
         if cached is not runtime.undefined:
             return cached
         basis_series = _space_q_expansion_basis(self._parent, precision, variable)
-        answer = _zero_series(precision, variable)
+        answer = _zero_series(self._parent, precision, variable)
         series_ring = answer.parent()
+        coefficient_ring = self.base_ring()
         for index in range(len(basis_series)):
             coefficient = self._coordinates[index]
             if coefficient != 0:
                 answer += series_ring(
                     [
-                        coefficient * sage.QQ(basis_series[index][exponent])
+                        coefficient * coefficient_ring(basis_series[index][exponent])
                         for exponent in range(precision)
                     ]
                 ).add_bigoh(precision)
@@ -558,7 +611,7 @@ class ClassicalModularFormElement(sage.Element):
     def __add__(self, other: Any) -> ClassicalModularFormElement:
         if not isinstance(other, ClassicalModularFormElement):
             try:
-                scalar = sage.QQ(other)
+                scalar = self.base_ring()(other)
             except Exception:
                 scalar = None
             if scalar is not None:
@@ -583,7 +636,7 @@ class ClassicalModularFormElement(sage.Element):
         if isinstance(other, ClassicalModularFormElement):
             return self.__add__(-other)
         try:
-            scalar = sage.QQ(other)
+            scalar = self.base_ring()(other)
         except Exception:
             return self.__add__(-self._classical_other(other))
         if scalar == 0:
@@ -605,7 +658,7 @@ class ClassicalModularFormElement(sage.Element):
     def __mul__(self, other: Any) -> ClassicalModularFormElement:
         if not isinstance(other, ClassicalModularFormElement):
             try:
-                scalar = sage.QQ(other)
+                scalar = self.base_ring()(other)
                 return ClassicalModularFormElement(
                     self._parent,
                     self._coordinates * scalar,
@@ -615,15 +668,29 @@ class ClassicalModularFormElement(sage.Element):
                 other = self._classical_other(other)
         level = _lcm(self.level(), other.level())
         display_precision = min(self._display_precision, other.precision())
+        character = _product_character(self.character(), other.character(), level)
         target = _global("ModularForms")(
-            level,
+            character,
             self.weight() + other.weight(),
-            sage.QQ,
+            None,
             True,
             display_precision,
         )
         proof_precision = _sturm_precision(target)
-        product = self.q_expansion(proof_precision) * other.q_expansion(proof_precision)
+        target_ring = target.base_ring()
+        power_series_ring = _global("PowerSeriesRing")(
+            target_ring,
+            "q",
+            default_prec=max(1, proof_precision),
+        )
+        left = self.q_expansion(proof_precision)
+        right = other.q_expansion(proof_precision)
+        product = power_series_ring(
+            [target_ring(left[index]) for index in range(proof_precision)]
+        ) * power_series_ring(
+            [target_ring(right[index]) for index in range(proof_precision)]
+        )
+        product = product.add_bigoh(proof_precision)
         return construct_element(target, product, display_precision)
 
     def __rmul__(self, other: Any) -> ClassicalModularFormElement:
@@ -634,12 +701,12 @@ class ClassicalModularFormElement(sage.Element):
             other, "q_expansion"
         ):
             raise TypeError("division by a modular form is not holomorphic arithmetic")
-        scalar = sage.QQ(other)
+        scalar = self.base_ring()(other)
         if scalar == 0:
             raise sage.ZeroDivisionError("division by zero")
         return ClassicalModularFormElement(
             self._parent,
-            self._coordinates * (sage.QQ(1) / scalar),
+            self._coordinates * (self.base_ring()(1) / scalar),
             self._display_precision,
         )
 
@@ -685,6 +752,7 @@ class ClassicalModularFormElement(sage.Element):
             (
                 self.level(),
                 self.weight(),
+                self.character().conrey_number(),
                 tuple(str(value) for value in coordinates_value),
             )
         )
@@ -706,23 +774,43 @@ def _hecke_image_matrix(space: Any, index: int, precision: int) -> Any:
     level = space.level()
     divisors = _global("divisors")
     gcd = _global("gcd")
+    coefficient_ring = space.base_ring()
+    character = space.character()
     for form in source:
         row = []
         for exponent in range(precision):
             common = index if exponent == 0 else runtime.number(gcd(index, exponent))
-            coefficient = sage.QQ(0)
+            coefficient = coefficient_ring(0)
             for divisor_value in divisors(common):
                 divisor = runtime.number(divisor_value)
                 if runtime.number(gcd(divisor, level)) != 1:
                     continue
                 source_index = exponent * index // (divisor * divisor)
-                coefficient += sage.ZZ(divisor) ** (weight - 1) * form[source_index]
+                character_value = character(divisor)
+                if coefficient_ring is sage.QQ:
+                    if character_value.is_zero():
+                        character_value = sage.QQ(0)
+                    elif character_value.is_one():
+                        character_value = sage.QQ(1)
+                    elif (-character_value).is_one():
+                        character_value = sage.QQ(-1)
+                    else:
+                        raise ArithmeticError(
+                            "a rational character produced a nonrational value"
+                        )
+                else:
+                    character_value = coefficient_ring(character_value)
+                coefficient += (
+                    character_value
+                    * sage.ZZ(divisor) ** (weight - 1)
+                    * form[source_index]
+                )
             row.append(coefficient)
         rows.append(row)
     return (
-        _global("matrix")(sage.QQ, rows)
+        _global("matrix")(coefficient_ring, rows)
         if rows
-        else _global("matrix")(sage.QQ, 0, precision)
+        else _global("matrix")(coefficient_ring, 0, precision)
     )
 
 
@@ -733,6 +821,8 @@ def _modular_symbols_qexp_source(space: Any) -> Any:
         return space._modular_symbols_cusp_space()
     if kind != "Cuspidal":
         return None
+    if runtime.reflect.get(_ambient(space), "_character") is not None:
+        return space._modular_symbols_cusp_space()
     if space.level() != 1:
         dimension = space.dimension()
         divisors = [runtime.number(value) for value in sage.divisors(space.level())]
@@ -797,7 +887,7 @@ def hecke_matrix(space: Any, index: Any) -> Any:
     basis_matrix = _basis_matrix(space, precision)
     image_matrix = _hecke_image_matrix(space, hecke_index, precision)
     if space.dimension() == 0:
-        answer = _global("matrix")(sage.QQ, 0, 0)
+        answer = _global("matrix")(space.base_ring(), 0, 0)
     else:
         try:
             answer = basis_matrix.solve_left(image_matrix)
@@ -904,8 +994,9 @@ runtime.register_doc(
         },
         "limitations": [
             (
-                "This initial object layer is restricted to integral-weight "
-                "Gamma0 spaces over QQ with trivial character."
+                "The current object layer supports integral-weight Gamma0 "
+                "spaces with trivial or Dirichlet character; weight one and "
+                "general Gamma1/GammaH parents remain outside this slice."
             ),
         ],
     },
