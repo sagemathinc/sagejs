@@ -1,0 +1,86 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerics-evidence",
+  "title": "Numerical qualification and receipt harness",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement source-bound backend-neutral corpus, benchmark, portability and capability receipt tooling across P0-P8 without claiming unmeasured evidence",
+  "base_commit": "61f7eef664f2d43615a50340a7d509357499d4a5",
+  "claims": [
+    "scripts/numerical-computing/",
+    "test/numerics/evidence/",
+    "bench/numerical-computing/evidence/",
+    "docs/numerical-computing/qualification/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Self-verifying receipt schemas, fixture tamper tests and exact source/artifact hashes"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test test/numerics/evidence/qualification.cjs",
+    "node scripts/numerical-computing/qualify.cjs corpus validate bench/numerical-computing/evidence/self-test.corpus.json",
+    "node scripts/numerical-computing/qualify.cjs corpus discover bench/numerical-computing/evidence"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/numerics/evidence/qualification.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.69,
+      "started_at": "2026-08-31T13:54:50.445Z",
+      "commit": "9f435eb4807ef6b76402cff1c73ad99a3d1888f1",
+      "workspace_fingerprint": "753c846f56e94ddd1a06127340cf75589b0c831909d35695be516e360bc50c04",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/numerical-computing/qualify.cjs corpus validate bench/numerical-computing/evidence/self-test.corpus.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.054,
+      "started_at": "2026-08-31T13:55:01.089Z",
+      "commit": "9f435eb4807ef6b76402cff1c73ad99a3d1888f1",
+      "workspace_fingerprint": "753c846f56e94ddd1a06127340cf75589b0c831909d35695be516e360bc50c04",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/numerical-computing/qualify.cjs corpus discover bench/numerical-computing/evidence",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.054,
+      "started_at": "2026-08-31T13:55:01.801Z",
+      "commit": "9f435eb4807ef6b76402cff1c73ad99a3d1888f1",
+      "workspace_fingerprint": "753c846f56e94ddd1a06127340cf75589b0c831909d35695be516e360bc50c04",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented a registry-free P0-P8 numerical qualification framework on 9f435eb48. Backend-neutral corpora declare exact source closures, roadmap phases, workload tiers, deterministic campaigns, expected domain outcomes, and independently evaluated correctness/validation checks. Capability manifests bind corpus, source, adapter, and artifact hashes; immutable receipts bind those inputs to the real Git state, physical host, collector and exercised runtime while retaining warmup/sample wall time, adapter phase telemetry and counters, sampled/process RSS, startup, and installed payload. Explicit matrix policies preserve missing or duplicate host/runtime rows as failures and require passing phase/layer/capability/artifact evidence. The 13-test portable adversarial suite executes the five-case harness corpus end to end, including expected failure, fixed-seed fuzz, and metamorphic witnesses, and rejects tampering, stale bindings, duplicate JSON keys, forged platforms, unavailable capabilities, missing evidence, and receipt overwrite attempts.",
+    "risks": [
+      "No product or non-Linux capability receipt is fabricated here: the checked-in self-test proves only the portable harness, and actual Linux ARM64, macOS ARM64, native Windows x64, browser, worker, SEA, memory-pressure, cancellation, long-duration, payload, and performance rows remain missing until domain lanes collect them on the named runtimes and hosts.",
+      "The agreed numerical integration base has a stale optimizer-opportunity manifest, so the mandatory global architecture gate is not passable in this claimed lane. Merging current origin/main also requires a combined shared architecture/native-boundaries.json regeneration because the numerical callback probe and new msolve files both change the inventory; central integration owns that unclaimed resolution.",
+      "Receipt content IDs prove internal integrity and exact byte binding, not physical-host authorship. Release automation must preserve trusted host/job transport provenance or add external signatures. The documented 5 ms RSS sampler can miss short synchronous spikes, so process high-water RSS is retained separately."
+    ],
+    "next_steps": [
+      "Central integration should merge current main, regenerate the combined shared inventories, run the three mandatory global validations with parallel:run on the integrated candidate, and then move this task from active to review.",
+      "Each numerical domain should add an in-claim corpus and adapter, explicitly check independent oracle/residual, campaign trial, failure, fuzz/metamorphic, cancellation, and memory-pressure evidence, then collect immutable receipts on every required physical host and exercised runtime.",
+      "The release coordinator should author an exact-digest matrix policy only after representative startup, memory, payload, and performance measurements exist; absent rows and budgets must remain absent rather than inferred from this self-test."
+    ]
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/diagnostic.schema.json",
+  "title": "Sage.js NumericalDiagnostic",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "code",
+    "severity",
+    "phase",
+    "message",
+    "suggested_actions",
+    "details"
+  ],
+  "properties": {
+    "code": {
+      "enum": [
+        "backend_fallback",
+        "callback_error",
+        "cancelled",
+        "discontinuity_suspected",
+        "finite_difference_derivative",
+        "ill_conditioned",
+        "invalid_bracket",
+        "loss_of_significance",
+        "maximum_elapsed_time",
+        "maximum_evaluations",
+        "maximum_iterations",
+        "non_replayable_callback",
+        "nonfinite_evaluation",
+        "stagnation",
+        "trace_truncated",
+        "validation_failed",
+        "zero_derivative"
+      ]
+    },
+    "severity": {
+      "enum": ["info", "warning", "error"]
+    },
+    "phase": {
+      "type": "string",
+      "minLength": 1
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "suggested_actions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "details": {
+      "type": "object"
+    }
+  }
+}

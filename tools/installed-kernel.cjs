@@ -137,6 +137,16 @@ class SageSession extends EventEmitter {
       this.emit("stdout", message.text, { evaluationId: message.id });
       return;
     }
+    if (message.type === "output-event") {
+      pending.onEvent?.(message.event);
+      this.emit("output", message.event, { evaluationId: message.id });
+      return;
+    }
+    if (message.type === "comm-event") {
+      pending.onComm?.(message.event);
+      this.emit("comm", message.event, { evaluationId: message.id });
+      return;
+    }
     if (message.type !== "result") return;
     this.pending.delete(message.id);
     if (message.ok) {
@@ -167,12 +177,12 @@ class SageSession extends EventEmitter {
     return this;
   }
 
-  async request(type, data = {}, kind = "request", onOutput) {
+  async request(type, data = {}, kind = "request", callbacks = {}) {
     if (this.closed) throw new SageSessionClosedError();
     await this.ready();
     const id = ++this.nextId;
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { kind, output: "", onOutput, resolve, reject });
+      this.pending.set(id, { kind, output: "", ...callbacks, resolve, reject });
       this.child.stdin.write(
         `${JSON.stringify({ protocol: PROTOCOL, id, type, ...data })}\n`,
         (error) => {
@@ -188,8 +198,16 @@ class SageSession extends EventEmitter {
     if (typeof source !== "string") {
       return Promise.reject(new TypeError("Sage.js source must be a string"));
     }
-    const { filename = "<embedded>", timeout, language = this.mode, onOutput } =
-      options;
+    const {
+      filename = "<embedded>",
+      timeout,
+      language = this.mode,
+      onOutput,
+      onEvent,
+      onComm,
+      parentId,
+      structuredResult = false,
+    } = options;
     if (timeout !== undefined && (!Number.isFinite(timeout) || timeout <= 0)) {
       return Promise.reject(
         new TypeError("Sage.js timeout must be a positive number"),
@@ -197,14 +215,22 @@ class SageSession extends EventEmitter {
     }
     return this.request(
       "evaluate",
-      { source, filename, timeout, language },
+      { source, filename, timeout, language, parentId, structuredResult },
       "evaluate",
-      onOutput,
+      { onOutput, onEvent, onComm },
     );
   }
 
   eval(source, options) {
     return this.evaluate(source, options);
+  }
+
+  async evaluateJSON(source, options = {}) {
+    const result = await this.evaluate(source, {
+      ...options,
+      structuredResult: true,
+    });
+    return result.json;
   }
 
   complete(source, cursorPosition) {
@@ -217,6 +243,14 @@ class SageSession extends EventEmitter {
 
   documentation() {
     return this.request("documentation");
+  }
+
+  comm(event) {
+    return this.request("comm", { event });
+  }
+
+  commInfo(targetName) {
+    return this.request("commInfo", { targetName });
   }
 
   isComplete(source, { language = this.mode } = {}) {

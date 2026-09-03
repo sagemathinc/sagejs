@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "external-backend-tests",
+  "title": "External backend observability regression tests",
+  "lane": "numerical-optimization",
+  "status": "review",
+  "owner": "user",
+  "objective": "Add focused portable and qualified-backend regression coverage for authentic cminpack and NLopt progress semantics and independently recomputed curve-fit diagnostics",
+  "base_commit": "fa793b4a422638e82fe678e8be2412fda6082fd8",
+  "claims": [
+    "test/numerics/optimization/external-backend-observability.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Dynamic least-squares/minimization semantics and independent linear-algebra checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_EXTERNAL_TEST_ROOT=/home/user/sagejs node --test test/numerics/optimization/external-backend-observability.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.817,
+      "started_at": "2026-09-02T22:32:32.475Z",
+      "commit": "cd251bea44dd914bcf0625ad67dd338d0b63799b",
+      "workspace_fingerprint": "fd76eb8d62f9b4dbbd1fd5c788b75bc9631d6eaee2216fbf6cec6872cbe64274",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added focused portable and qualified-runtime regressions for the external optimization progress contract introduced by bf35e82ca. Ordinary CPython execution retains algorithm-iteration labels. Real cminpack lmdif execution proves that every retained state is an evaluated residual callback, that residual/progress/backend callback counts agree while differing from the solver iteration count, and that animation discloses callback semantics without replaying the model. A centered two-parameter curve fit independently checks the terminal covariance, standard errors, rank, and 1-norm condition estimate against an analytic J^T J oracle; a duplicated-column lmder fit must fail closed as rank deficient. Real NLopt execution similarly checks every objective callback value, running incumbent, acceptance flag, all backend counters, the unavailable iteration contract, and callback-labeled no-replay animation. The focused suite passed both from the integration checkout and after a clean exact-commit build on bench-1.",
+    "risks": [
+      "The two external-backend assertions skip together when either qualified Wasm runtime is absent; the ordinary-Python semantic regression always runs and the skip reason is explicit.",
+      "The exact base commit has unrelated pre-existing gate failures: strict baselib reports an unsorted optimization __init__ import, architecture reports a stale optimizer dashboard, and the full numerics run stops in root-performance executable-envelope coverage. The new focused suite itself passes 2/2 with a clean exact-commit build."
+    ],
+    "next_steps": [
+      "Cherry-pick this test-only commit after the shared integration lane repairs its current strict, generated-dashboard, and root-performance gate failures, then rerun the complete numerical and architecture gates."
+    ]
+  }
+}

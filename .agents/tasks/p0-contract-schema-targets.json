@@ -1,0 +1,61 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p0-contract-schema-targets",
+  "title": "Complete P0 numerical schemas and capability targets",
+  "lane": "numerical-contracts",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make numerical diagnostic schemas enforceable, validate common records with Draft 2020-12, give every implemented method honest nonempty implementation targets, and classify deferred Tier-A operations",
+  "base_commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+  "claims": [
+    ".agents/lanes.json",
+    "docs/numerical-computing/diagnostic.schema.json",
+    "docs/numerical-computing/plan.schema.json",
+    "docs/numerical-computing/result.schema.json",
+    "docs/numerical-computing/trace.schema.json",
+    "docs/numerical-computing/surface.json",
+    "package.json",
+    "pnpm-lock.yaml",
+    "scripts/check-numerical-surface.cjs",
+    "src/lib/sagejs/numerics/capabilities.py",
+    "src/lib/sagejs/numerics/approximation/capabilities.py",
+    "src/lib/sagejs/numerics/integration/adaptive.py",
+    "src/lib/sagejs/numerics/linear_algebra/capabilities.py",
+    "src/lib/sagejs/numerics/ode/capabilities.py",
+    "src/lib/sagejs/numerics/spectral/__init__.py",
+    "src/lib/sagejs/numerics/statistics/capabilities.py",
+    "test/numerics/contracts/common-contracts.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Draft 2020-12 schemas against live runtime records",
+      "exhaustive public capability registry"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/numerics/contracts/common-contracts.cjs test/numerics/capability-facade.cjs test/numerics/approximation/approximation-laboratory.test.cjs test/numerics/integration/test.cjs test/numerics/linear_algebra/linear-algebra.cjs test/numerics/ode/ode-laboratory.cjs test/numerics/spectral/spectral-laboratory.cjs test/numerics/statistics/test.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:numerics",
+    "pnpm architecture:packages",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

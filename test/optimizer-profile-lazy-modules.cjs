@@ -99,7 +99,14 @@ test("transitive lazy modules publish exact current-source maps and script bindi
     result.observation.evidence.sampling.mapBindings.length,
     result.sourceMaps.length,
   );
-  assert.ok(result.observation.positionTickAccounting.attributed > 0);
+  // This small workload must authenticate at least one function sample from
+  // the transitive lazy-module closure. V8's optional line-level
+  // `positionTicks` can legitimately be empty for a particular source span
+  // (observed intermittently on Windows), so the dedicated large-workload
+  // attribution test is responsible for requiring loop position ticks.
+  assert.ok(result.observation.sampleAccounting.attributed > 0);
+  const ticks = result.observation.positionTickAccounting;
+  assert.equal(ticks.total, ticks.attributed + ticks.ambiguous + ticks.unmatched);
   assert.match(result.afterError.message, /profile-instrumented lazy modules.*closed/);
 });
 

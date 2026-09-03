@@ -22,13 +22,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  iphone-ipad:
-    name: Exact runtime on iPhone and iPad simulators
-    runs-on: macos-15
-    timeout-minutes: 180
+  numerical-product:
+    name: Canonical authenticated numerical runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           submodules: recursive
       - uses: pnpm/action-setup@v6
         with:
@@ -38,6 +39,58 @@ jobs:
           node-version: 26.5.1
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - id: toolchain
+        run: |
+          path="$(node packages/wasm-toolchain/scripts/toolchain.cjs cache-path)"
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          echo "identity=${path##*/}" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.toolchain.outputs.path }}
+          key: sagejs-wasm-toolchain-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.identity }}
+      - name: Build and bind the canonical numerical runtime
+        run: |
+          node packages/wasm-toolchain/scripts/toolchain.cjs prepare
+          node packages/wasm-toolchain/scripts/probe.cjs
+          node packages/flint-wasm/numerical/scripts/build-all.cjs
+          node scripts/numerical-product.cjs publish \
+            --output build/authenticated-numerical-product
+      - name: Preserve the exact source-bound numerical runtime
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-mobile-numerical-product
+          path: build/authenticated-numerical-product
+          if-no-files-found: error
+          retention-days: 3
+
+  iphone-ipad:
+    name: Exact runtime on iPhone and iPad simulators
+    needs: numerical-product
+    runs-on: macos-15
+    timeout-minutes: 180
+    env:
+      SAGEJS_NUMERICAL_PRODUCT_ROOT: ${{ github.workspace }}/build/authenticated-numerical-product
+      SAGEJS_NUMERICAL_RUNTIME_REQUIRED: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Restore the canonical authenticated numerical runtime
+        uses: actions/download-artifact@v8
+        with:
+          name: sagejs-mobile-numerical-product
+          path: build/authenticated-numerical-product
+      - name: Validate and install the exact source-bound numerical runtime
+        run: node scripts/numerical-product.cjs install --input "$SAGEJS_NUMERICAL_PRODUCT_ROOT"
       - id: toolchain
         run: |
           path="$(node packages/wasm-toolchain/scripts/toolchain.cjs cache-path)"

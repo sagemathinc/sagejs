@@ -7,6 +7,10 @@ on:
         description: Successful "Sage.js WebAssembly reproducible release" run to deploy
         required: true
         type: string
+      qualification_run_id:
+        description: Successful same-SHA Sage.js CI run containing the numerical release gate
+        required: true
+        type: string
       target:
         description: Cloudflare Worker and R2 deployment target
         required: true
@@ -44,12 +48,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          QUALIFICATION_RUN_ID: ${{ inputs.qualification_run_id }}
           TARGET: ${{ inputs.target }}
           PREVIEW_NAME: ${{ inputs.preview_name }}
         run: |
           set -euo pipefail
           [[ "$SOURCE_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
             echo "source_run_id must be a positive GitHub Actions run id" >&2
+            exit 1
+          }
+          [[ "$QUALIFICATION_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
+            echo "qualification_run_id must be a positive GitHub Actions run id" >&2
             exit 1
           }
           run_metadata="$(gh api "repos/${GH_REPO}/actions/runs/${SOURCE_RUN_ID}")"
@@ -87,26 +96,36 @@ jobs:
           release_gate="$(jq -r \
             '[.jobs[] | select(.name == "Browser release gates") | .conclusion] | first // "missing"' \
             <<<"$jobs")"
-          if [[ "$release_gate" == "missing" ]]; then
-            # Releases produced before the sharded-gate aggregation migration
-            # remain deployable only when every legacy engine parity gate passed.
-            for required in \
-              "Public parity (chromium)" \
-              "Public parity (firefox)" \
-              "Public parity (webkit)"
-            do
-              conclusion="$(jq -r --arg name "$required" \
-                '[.jobs[] | select(.name == $name) | .conclusion] | first // "missing"' \
-                <<<"$jobs")"
-              [[ "$conclusion" == "success" ]] || {
-                echo "Required legacy release job '$required' concluded '$conclusion'" >&2
-                exit 1
-              }
-            done
-          elif [[ "$release_gate" != "success" ]]; then
+          if [[ "$release_gate" != "success" ]]; then
             echo "Required release job 'Browser release gates' concluded '$release_gate'" >&2
             exit 1
           fi
+
+          qualification_metadata="$(gh api \
+            "repos/${GH_REPO}/actions/runs/${QUALIFICATION_RUN_ID}")"
+          [[ "$(jq -r .path <<<"$qualification_metadata")" == ".github/workflows/ci.yml" ]] || {
+            echo "The qualification run did not execute Sage.js CI" >&2
+            exit 1
+          }
+          [[ "$(jq -r .event <<<"$qualification_metadata")" == "push" ]]
+          [[ "$(jq -r .conclusion <<<"$qualification_metadata")" == "success" ]] || {
+            echo "The qualification run did not succeed" >&2
+            exit 1
+          }
+          qualification_sha="$(jq -r .head_sha <<<"$qualification_metadata")"
+          [[ "$qualification_sha" == "$source_sha" ]] || {
+            echo "Wasm run $source_sha and numerical qualification $qualification_sha differ" >&2
+            exit 1
+          }
+          qualification_jobs="$(gh api --paginate \
+            "repos/${GH_REPO}/actions/runs/${QUALIFICATION_RUN_ID}/jobs?per_page=100")"
+          numerical_gate="$(jq -r \
+            '[.jobs[] | select(.name == "Numerical release qualification gate") | .conclusion] | first // "missing"' \
+            <<<"$qualification_jobs")"
+          [[ "$numerical_gate" == "success" ]] || {
+            echo "Required numerical release gate concluded '$numerical_gate'" >&2
+            exit 1
+          }
 
           if [[ "$TARGET" == "production" ]]; then
             deploy_branch="main"
@@ -210,6 +229,32 @@ jobs:
           test -f build/prebuilt/packages/flint-wasm/dist/build-receipt.json
           rm -rf packages/flint-wasm/dist
           cp -a build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist
+
+      - name: Rebuild and authenticate the same-candidate numerical release gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          QUALIFICATION_RUN_ID: ${{ inputs.qualification_run_id }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          gh run download "$QUALIFICATION_RUN_ID" \
+            --repo "$GH_REPO" \
+            --name numerical-release-gate \
+            --dir build/validated-numerical-gate
+          gh run download "$QUALIFICATION_RUN_ID" \
+            --repo "$GH_REPO" \
+            --name numerical-release-evidence \
+            --dir build/numerical-qualification
+          pnpm release:qualify:numerics:gate -- \
+            --candidate "$SOURCE_SHA" \
+            --input build/numerical-qualification \
+            --output build/numerical-qualification/gate
+          pnpm release:qualify:numerics:authenticate -- \
+            --candidate "$SOURCE_SHA" \
+            --gate build/validated-numerical-gate/release-gate.json \
+            --rebuilt-gate build/numerical-qualification/gate/release-gate.json \
+            --browser-distribution packages/flint-wasm/dist
 
       - name: Verify the receipt and stage the credential-free application
         run: |

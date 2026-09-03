@@ -15,6 +15,8 @@ import { importPath, libraryPath } from "./utils";
 import { basename, dirname, extname } from "path";
 import { runStdioKernel } from "./stdio-kernel";
 import { SAGEJS_VERSION_INFO } from "./version-info";
+import { createHash } from "node:crypto";
+import { getAsset, getAssetKeys, isSea } from "node:sea";
 
 const executable = basename(process.argv[1]);
 const executableStem = basename(executable, extname(executable)).toLowerCase();
@@ -33,6 +35,7 @@ interface SeaArguments {
     | "jupyter-kernel"
     | "jupyter-self-test"
     | "embedded-kernel"
+    | "qualification-resource-digests"
     | "pytest";
   execute: boolean;
   sage: boolean;
@@ -61,6 +64,10 @@ interface SeaArguments {
   tag?: string;
   jupyter_args?: string[];
   pytest_args?: string[];
+  inspect_foreign?: boolean;
+  language?: string;
+  source?: string;
+  inspect_usage_error?: string;
 }
 
 function usage(): void {
@@ -70,6 +77,7 @@ Run Sage.js from a self-contained executable. With no program, start a REPL.
 
   ${executable} docs <search|show|export|coverage> [query]
   ${executable} pytest [pytest options] [paths]
+  ${executable} inspect-foreign --language LANGUAGE [--source SOURCE | FILE]
   ${executable} --install-jupyter-kernel [--jupyter-kernel-mode sage|python]
   ${executable} --uninstall-jupyter-kernel [--jupyter-kernel-mode sage|python]
 
@@ -120,6 +128,14 @@ function parseArguments(): SeaArguments {
     tokens: false,
   };
   const rawArguments = process.argv.slice(2);
+  if (
+    rawArguments.length === 1 &&
+    rawArguments[0] === "--qualification-resource-digests" &&
+    isSea()
+  ) {
+    args.mode = "qualification-resource-digests";
+    return args;
+  }
   if (rawArguments.includes("--embedded-kernel")) {
     const allowed = new Set(["--embedded-kernel", "--python", "--sage"]);
     const unexpected = rawArguments.find((argument) => !allowed.has(argument));
@@ -238,6 +254,64 @@ function parseArguments(): SeaArguments {
     args.pytest_args = rawArguments.slice(1);
     return args;
   }
+  if (rawArguments[0] === "inspect-foreign") {
+    args.mode = "compile";
+    args.inspect_foreign = true;
+    const reject = (message: string): void => {
+      if (args.inspect_usage_error === undefined) {
+        args.inspect_usage_error = message;
+      }
+    };
+    let optionsEnded = false;
+    for (let index = 1; index < rawArguments.length; index += 1) {
+      const argument = rawArguments[index];
+      if (!optionsEnded && argument === "--") {
+        optionsEnded = true;
+      } else if (!optionsEnded && argument === "--language") {
+        const value = rawArguments[++index];
+        if (value === undefined) reject("--language requires a value");
+        else if (args.language !== undefined) {
+          reject("--language may be specified only once");
+        } else args.language = value;
+      } else if (!optionsEnded && argument.startsWith("--language=")) {
+        if (args.language !== undefined) {
+          reject("--language may be specified only once");
+        } else args.language = argument.slice("--language=".length);
+      } else if (!optionsEnded && argument === "--source") {
+        const value = rawArguments[++index];
+        if (value === undefined) reject("--source requires a value");
+        else if (args.source !== undefined) {
+          reject("--source may be specified only once");
+        } else args.source = value;
+      } else if (!optionsEnded && argument.startsWith("--source=")) {
+        if (args.source !== undefined) {
+          reject("--source may be specified only once");
+        } else args.source = argument.slice("--source=".length);
+      } else if (
+        !optionsEnded && (argument === "--help" || argument === "-h")
+      ) {
+        console.log(
+          `Usage: ${executable} inspect-foreign --language LANGUAGE ` +
+            "[--source SOURCE | FILE]\n\n" +
+            "Lower foreign-language source without executing it and emit " +
+            "one JSON record. With no source or file, read standard input.",
+        );
+        process.exit(0);
+      } else if (
+        !optionsEnded && (argument === "--version" || argument === "-V")
+      ) {
+        console.log(`sagejs ${SAGEJS_VERSION_INFO.version}`);
+        process.exit(0);
+      } else if (!optionsEnded && argument === "-") {
+        args.files.push(argument);
+      } else if (!optionsEnded && argument.startsWith("-")) {
+        reject(`unknown inspect-foreign option ${JSON.stringify(argument)}`);
+      } else {
+        args.files.push(argument);
+      }
+    }
+    return args;
+  }
   let optionsEnded = false;
   for (let argumentIndex = 0; argumentIndex < rawArguments.length; argumentIndex += 1) {
     const argument = rawArguments[argumentIndex];
@@ -324,6 +398,31 @@ const argv = parseArguments();
 const sageMode = argv.sage;
 
 async function main(): Promise<void> {
+  if (argv.mode === "qualification-resource-digests") {
+    const names = [
+      "numerical/cminpack.wasm",
+      "numerical/nlopt-methods.wasm",
+    ] as const;
+    const available = new Set(getAssetKeys());
+    const resources = names.map((name) => {
+      if (!available.has(name)) {
+        throw new Error(`single-executable qualification resource is missing ${name}`);
+      }
+      const bytes = Buffer.from(getAsset(name));
+      return {
+        name,
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+        bytes: bytes.length,
+      };
+    });
+    process.stdout.write(`${JSON.stringify({
+      schema: "sagejs.sea-qualification-resource-digests/v1",
+      schema_version: 1,
+      platform: { os: process.platform, arch: process.arch },
+      resources,
+    })}\n`);
+    return;
+  }
   if (argv.mode === "embedded-kernel") {
     await runStdioKernel(argv.sage ? "sage" : "python");
     return;

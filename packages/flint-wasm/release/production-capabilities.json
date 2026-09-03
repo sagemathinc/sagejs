@@ -1,6 +1,20 @@
 {
   "schema": "sagejs.wasm-production-capabilities/v1",
   "modules": {
+    "cminpack": {
+      "artifact": "cminpack.wasm",
+      "capabilities": [],
+      "additionalCapabilities": [
+        "wasm-library:cminpack:least-squares-explicit"
+      ]
+    },
+    "nlopt": {
+      "artifact": "nlopt-methods.wasm",
+      "capabilities": [],
+      "additionalCapabilities": [
+        "wasm-library:nlopt:derivative-free-explicit"
+      ]
+    },
     "flint": {
       "artifact": "flint-factor.wasm",
       "additionalCapabilities": [
