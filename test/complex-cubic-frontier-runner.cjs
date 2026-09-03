@@ -37,6 +37,7 @@ const {
   interpretAdapterProcessResult,
   makeTimingEvent,
   mergeCensusInvocations,
+  nativeTrivialTranscriptIsValid,
   normalizePariInvariants,
   parseArguments,
   parseGpCensus,
@@ -87,6 +88,35 @@ function sourceRecord(label, selection, classNumber, classGroup) {
     unit_signature_rank: 1,
   };
 }
+
+test("conditional trivial receipts require a complete exact transcript shape", () => {
+  const receipt = {
+    proof_status: "exact-trivial-presentation-conditional-grh",
+    factor_base_size: "2",
+    relation_count: "3",
+    trivial_relation_transcript: {
+      schema: "sagejs.number-fields/complex-cubic-trivial-relation-transcript-v1",
+      factor_ideal_hnf_order_coordinates: [
+        [["2", "0", "0"], ["0", "1", "0"], ["0", "0", "1"]],
+        [["3", "0", "0"], ["0", "1", "0"], ["0", "0", "1"]],
+      ],
+      relation_rows: [["1", "0"], ["0", "1"], ["1", "1"]],
+      principal_element_order_coordinates: [
+        ["1", "0", "0"], ["0", "1", "0"], ["1", "1", "0"],
+      ],
+    },
+  };
+  assert.equal(nativeTrivialTranscriptIsValid(receipt), true);
+  const malformed = structuredClone(receipt);
+  malformed.trivial_relation_transcript.relation_rows[0].pop();
+  assert.equal(nativeTrivialTranscriptIsValid(malformed), false);
+  const negative = structuredClone(receipt);
+  negative.trivial_relation_transcript.relation_rows[1][0] = "-1";
+  assert.equal(nativeTrivialTranscriptIsValid(negative), false);
+  assert.equal(nativeTrivialTranscriptIsValid({
+    proof_status: "exact-relations-conditional-grh",
+  }), true);
+});
 
 function groupFor(stratum) {
   if (stratum.endsWith("h0-trivial")) return ["1", []];
@@ -336,7 +366,7 @@ test("verified Sage singleton checkpoints publish atomically and resume exactly"
   const batch = censusBatchPlan(corpus, tool)[0];
   const record = batch.corpus.records[0];
   const receipt = {
-    schema: "sagejs.number-fields/certified-complex-cubic-native-v2",
+    schema: "sagejs.number-fields/certified-complex-cubic-native-v3",
     polynomial_coefficients: record.coefficients,
     class_number: record.class_number,
     invariants: record.class_group_invariants,
@@ -365,7 +395,7 @@ test("verified Sage singleton checkpoints publish atomically and resume exactly"
       native_receipt_authenticated: true,
       independent_exact_replay: true,
       independent_exact_replay_contract:
-        "ordinary-object-engine-bypassing-closed-cubic-program-proof-false",
+        "ordinary-object-exact-replay-bypassing-closed-cubic-authority",
       fallback_verified: null,
       receipt_digest: receiptDigest,
       receipt,
@@ -854,7 +884,7 @@ test("Sage sources classify and replay outside timing and use contiguous roots",
   assert.match(census, /receipt\.verify_conditional_grh\(field\)/);
   assert.match(
     census,
-    /ordinary-object-engine-bypassing-closed-cubic-program-proof-false/,
+    /ordinary-object-exact-replay-bypassing-closed-cubic-authority/,
   );
   assert.match(census, /native-decline-fallback-pass/);
 

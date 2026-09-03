@@ -75,11 +75,14 @@ test("closed native cubic receipts survive declines and authenticate targets", {
     zeros(512), zeros(4), zeros(9), zeros(16),
     zeros(16), zeros(144), zeros(48), zeros(109),
   ];
+  const directTranscriptBuffers = [zeros(1), zeros(1), zeros(1)];
   const directReceipt = (coefficients) => {
     assert.equal(directKernel(
       directOutput,
       directKernel.packIntegerBuffer(coefficients),
       ...directBuffers,
+      ...directTranscriptBuffers,
+      0,
       1,
       1048576,
       2097152,
@@ -164,7 +167,7 @@ for index, (coefficients, order, invariants) in enumerate(cases):
         assert max(abs(value).bit_length() for value in receipt.unit_coordinates) == 519
     assert K.class_number(proof=False) == order
     detached = receipt.to_dict()
-    assert detached["schema"] == "sagejs.number-fields/certified-complex-cubic-native-v2"
+    assert detached["schema"] == "sagejs.number-fields/certified-complex-cubic-native-v3"
     assert detached["class_number"] == order
     assert tuple(detached["invariants"]) == invariants
     assert detached["proof_status"] == "exact-relations-conditional-grh"
@@ -201,6 +204,58 @@ for index, coefficients in enumerate(((1, 0, -1, 1), (-8, -1, 0, 1), (-55, 9, 0,
     assert receipt.verify_conditional_grh()
     assert receipt.verify()
 
+# A BDF-trivial receipt publishes the finite relation proof used by the
+# native finder. Once detached, ordinary replay must neither invoke that
+# finder again nor trust any factor lattice, row, or principal element.
+K = NumberField(x**3 - x**2 + 2*x - 6, "transcript")
+receipt = certified_complex_cubic_class_number(K)
+assert receipt is not None
+assert receipt.proof_status == "exact-trivial-presentation-conditional-grh"
+detached = receipt.to_dict()
+transcript = detached["trivial_relation_transcript"]
+assert transcript["schema"] == (
+    "sagejs.number-fields/complex-cubic-trivial-relation-transcript-v1"
+)
+assert len(transcript["factor_ideal_hnf_order_coordinates"]) == receipt.factor_base_size
+assert len(transcript["relation_rows"]) == receipt.relation_count
+native_runtime = __import__(
+    "sagejs.number_fields.cubic_class_number_native_runtime",
+    fromlist=["cubic_class_number_native_runtime"],
+)
+original_kernel = native_runtime.certified_complex_cubic_class_group_v1
+def forbidden_finder(*args):
+    raise AssertionError("ordinary transcript replay called the closed cubic finder")
+native_runtime.certified_complex_cubic_class_group_v1 = forbidden_finder
+try:
+    assert receipt.verify_conditional_grh()
+finally:
+    native_runtime.certified_complex_cubic_class_group_v1 = original_kernel
+
+original_transcript = receipt._trivial_relation_transcript
+
+def bind_transcript(value):
+    receipt.__dict__["_trivial_relation_transcript"] = value
+    receipt.__dict__["_snapshot"] = receipt._authentication_snapshot()
+
+factor_rows, relation_rows, relation_elements = original_transcript
+bad_elements = tuple(
+    (row[0] + 1, row[1], row[2]) for row in relation_elements
+)
+bind_transcript((factor_rows, relation_rows, bad_elements))
+assert not receipt.verify_conditional_grh()
+
+bad_factor = list(factor_rows[0])
+bad_factor[0] += 1
+bind_transcript(((tuple(bad_factor),) + factor_rows[1:], relation_rows, relation_elements))
+assert not receipt.verify_conditional_grh()
+
+bad_rows = tuple((row[0] + 1,) + row[1:] for row in relation_rows)
+bind_transcript((factor_rows, bad_rows, relation_elements))
+assert not receipt.verify_conditional_grh()
+
+bind_transcript(original_transcript)
+assert receipt.verify_conditional_grh()
+
 # A hostile same-order mutation must not pass replay merely because C4 and
 # C2 x C2 both have order four. This bypasses the public immutability guard to
 # exercise the verifier's semantic binding, not a supported mutation path.
@@ -211,11 +266,7 @@ assert receipt.invariants == (4,)
 values = list(receipt._values)
 values[2:5] = [2, 2, 2]
 receipt.__dict__["_values"] = tuple(values)
-receipt.__dict__["_snapshot"] = (
-    id(K),
-    receipt.polynomial_coefficients,
-    receipt._values,
-)
+receipt.__dict__["_snapshot"] = receipt._authentication_snapshot()
 assert receipt.matches(K)
 assert receipt.class_number == 4
 assert receipt.invariants == (2, 2)

@@ -152,7 +152,7 @@ function corpusFixture() {
 
 function nativeObservation(record) {
   const receipt = {
-    schema: "sagejs.number-fields/certified-complex-cubic-native-v2",
+    schema: "sagejs.number-fields/certified-complex-cubic-native-v3",
     polynomial_coefficients: record.coefficients,
     class_number: record.class_number,
     invariants: record.class_group_invariants,
@@ -174,7 +174,7 @@ function nativeObservation(record) {
     native_receipt_authenticated: true,
     independent_exact_replay: true,
     independent_exact_replay_contract:
-      "ordinary-object-engine-bypassing-closed-cubic-program-proof-false",
+      "ordinary-object-exact-replay-bypassing-closed-cubic-authority",
     fallback_verified: null,
     receipt_digest: sha256(JSON.stringify(JSON.parse(canonicalJson(receipt)))),
     receipt,

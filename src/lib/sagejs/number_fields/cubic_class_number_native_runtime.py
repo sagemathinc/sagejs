@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import sagejs.runtime as runtime
+
 from sagejs.number_fields.class_group_proof_contracts import (
     BDF_CLASS_CHARACTER_GRH,
     BELABAS_FRIEDMAN_ZETA_GRH,
@@ -24,6 +26,7 @@ from sagejs.number_fields.cubic_class_number_native import (
     _CUBIC_ANALYSIS_PROOF_CAPACITY,
     _CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT,
     _CUBIC_MAX_FACTORS,
+    _CUBIC_MAX_GRH_BOUND_SEARCH,
     _CUBIC_MAX_GROUPS,
     _CUBIC_MAX_ORDER_WITNESSES,
     _CUBIC_MAX_RELATIONS,
@@ -51,6 +54,9 @@ _resident_coefficients: tuple[Any, tuple[int, int, int, int], Any] | None = None
 _resident_native_module: Any | None = None
 _resident_call_active = False
 _CERTIFIED_CUBIC_RECEIPT_TOKEN = object()
+_TRIVIAL_RELATION_TRANSCRIPT_SCHEMA = (
+    "sagejs.number-fields/complex-cubic-trivial-relation-transcript-v1"
+)
 
 
 def _integral_monic_cubic_coefficients(field: Any) -> tuple[int, int, int, int] | None:
@@ -198,6 +204,219 @@ def _checked_native_values(
         return None
 
 
+def _checked_trivial_relation_transcript(
+    value: Any,
+    factor_count: int,
+    relation_count: int,
+) -> (
+    tuple[
+        tuple[tuple[int, ...], ...],
+        tuple[tuple[int, ...], ...],
+        tuple[tuple[int, int, int], ...],
+    ]
+    | None
+):
+    """Authenticate only the bounded shape and exact scalar encoding.
+
+    Mathematical authentication is intentionally separate: the ordinary
+    object replay reconstructs the theorem-qualified prime ideals, checks
+    principal-ideal equalities, and proves that the relation lattice is all
+    of `ZZ^factor_count`.
+    """
+    try:
+        factor_rows, relation_rows, relation_elements = value
+        if (
+            len(factor_rows) != factor_count
+            or len(relation_rows) != relation_count
+            or len(relation_elements) != relation_count
+        ):
+            return None
+
+        def exact_row(raw: Any, width: int) -> tuple[int, ...] | None:
+            if not isinstance(raw, (list, tuple)) or len(raw) != width:
+                return None
+            row: list[int] = []
+            for entry in raw:
+                if isinstance(entry, (bool, float, str, bytes, bytearray)):
+                    return None
+                exact = int(entry)
+                if exact != entry:
+                    return None
+                row.append(exact)
+            return tuple(row)
+
+        checked_factors: list[tuple[int, ...]] = []
+        for raw in factor_rows:
+            checked = exact_row(raw, 9)
+            if checked is None:
+                return None
+            checked_factors.append(checked)
+        checked_relations: list[tuple[int, ...]] = []
+        for raw in relation_rows:
+            checked = exact_row(raw, factor_count)
+            if checked is None or any(entry < 0 for entry in checked):
+                return None
+            checked_relations.append(checked)
+        checked_elements: list[tuple[int, int, int]] = []
+        for raw in relation_elements:
+            checked = exact_row(raw, 3)
+            if checked is None:
+                return None
+            checked_elements.append((checked[0], checked[1], checked[2]))
+        return (
+            tuple(checked_factors),
+            tuple(checked_relations),
+            tuple(checked_elements),
+        )
+    except (OverflowError, TypeError, ValueError):
+        return None
+
+
+def _extract_trivial_relation_transcript(
+    receipt: Any,
+) -> (
+    tuple[
+        tuple[tuple[int, ...], ...],
+        tuple[tuple[int, ...], ...],
+        tuple[tuple[int, int, int], ...],
+    ]
+    | None
+):
+    """Rerun the proof finder once into exact-sized, audit-only buffers."""
+    global _resident_call_active, _resident_coefficients
+    if receipt._values[35] != _CUBIC_PROOF_TRIVIAL_GRH:
+        return None
+    factor_count = receipt.factor_base_size
+    relation_count = receipt.relation_count
+    if factor_count == 0:
+        return ((), (), ())
+    try:
+        kernel = certified_complex_cubic_class_group_v1
+        native_module = _resident_native_module
+        if (
+            _resident_call_active
+            or native_module is None
+            or _resident_buffers is None
+            or _resident_buffers[0] is not kernel
+            or not native_module.is_compiled(kernel)
+        ):
+            return None
+        (
+            _kernel,
+            output,
+            analysis_proof,
+            verification_polynomial,
+            verification_numerator,
+            verification_primes,
+            verification_radical_dimensions,
+            verification_radicals,
+            verification_selectors,
+            verification_workspace,
+            _unused_factor_rows,
+            _unused_relation_rows,
+            _unused_relation_elements,
+        ) = _resident_buffers
+        factor_output = native_module.kernel_integer_zeros(
+            kernel,
+            runtime.number(9 * factor_count),
+            _CUBIC_BUFFER_WORD_CAPACITY,
+        )
+        relation_output = native_module.kernel_integer_zeros(
+            kernel,
+            runtime.number(relation_count * factor_count),
+            _CUBIC_BUFFER_WORD_CAPACITY,
+        )
+        element_output = native_module.kernel_integer_zeros(
+            kernel,
+            runtime.number(3 * relation_count),
+            _CUBIC_BUFFER_WORD_CAPACITY,
+        )
+        coefficients = receipt.polynomial_coefficients
+        if (
+            _resident_coefficients is None
+            or _resident_coefficients[0] is not kernel
+            or _resident_coefficients[1] != coefficients
+        ):
+            packed_coefficients = native_module.kernel_integer_buffer(
+                kernel, coefficients
+            )
+            _resident_coefficients = kernel, coefficients, packed_coefficients
+        else:
+            packed_coefficients = _resident_coefficients[2]
+        _resident_call_active = True
+        try:
+            accepted = kernel(
+                output,
+                packed_coefficients,
+                analysis_proof,
+                verification_polynomial,
+                verification_numerator,
+                verification_primes,
+                verification_radical_dimensions,
+                verification_radicals,
+                verification_selectors,
+                verification_workspace,
+                factor_output,
+                relation_output,
+                element_output,
+                1,
+                receipt.relation_effort,
+                _CUBIC_ARENA_MEMORY_LIMIT,
+                _CUBIC_ARENA_TEMPORARY_LIMIT,
+            )
+        finally:
+            _resident_call_active = False
+        if accepted is not True:
+            return None
+        values = _checked_native_values(
+            coefficients, native_module.integer_buffer_values(output)
+        )
+        if values != receipt._values:
+            return None
+        flat_factors = tuple(
+            int(value) for value in native_module.integer_buffer_values(factor_output)
+        )
+        flat_relations = tuple(
+            int(value) for value in native_module.integer_buffer_values(relation_output)
+        )
+        flat_elements = tuple(
+            int(value) for value in native_module.integer_buffer_values(element_output)
+        )
+        transcript = (
+            tuple(
+                flat_factors[index * 9 : (index + 1) * 9]
+                for index in range(factor_count)
+            ),
+            tuple(
+                flat_relations[index * factor_count : (index + 1) * factor_count]
+                for index in range(relation_count)
+            ),
+            tuple(
+                (
+                    flat_elements[3 * index],
+                    flat_elements[3 * index + 1],
+                    flat_elements[3 * index + 2],
+                )
+                for index in range(relation_count)
+            ),
+        )
+        return _checked_trivial_relation_transcript(
+            transcript, factor_count, relation_count
+        )
+    except (
+        AttributeError,
+        ImportError,
+        IndexError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        ArithmeticError,
+    ):
+        _resident_call_active = False
+        return None
+
+
 class CertifiedComplexCubicClassNumber:
     """Immutable live receipt for one rigorously certified native result."""
 
@@ -207,14 +426,20 @@ class CertifiedComplexCubicClassNumber:
         field: Any,
         coefficients: tuple[int, int, int, int],
         values: tuple[int, ...],
+        relation_effort: int,
     ) -> None:
         if token is not _CERTIFIED_CUBIC_RECEIPT_TOKEN:
             raise TypeError("certified cubic receipts are adapter-issued")
+        if relation_effort < 1 or relation_effort > max(_CUBIC_RELATION_EFFORTS):
+            raise ValueError("a cubic receipt has an invalid relation effort")
         state = self.__dict__
         state["field"] = field
         state["_coefficients"] = coefficients
         state["_values"] = values
-        state["_snapshot"] = (id(field), coefficients, values)
+        state["_relation_effort"] = relation_effort
+        state["_trivial_relation_transcript"] = None
+        state["_transcript_attempted"] = False
+        state["_snapshot"] = self._authentication_snapshot()
         state["_frozen"] = True
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -223,7 +448,30 @@ class CertifiedComplexCubicClassNumber:
         self.__dict__[name] = value
 
     def _authentication_snapshot(self) -> tuple[Any, ...]:
-        return id(self.field), self._coefficients, self._values
+        return (
+            id(self.field),
+            self._coefficients,
+            self._values,
+            self._relation_effort,
+            self._transcript_attempted,
+            self._trivial_relation_transcript,
+        )
+
+    @property
+    def relation_effort(self) -> int:
+        return self._relation_effort
+
+    def _ensure_trivial_relation_transcript(self) -> Any:
+        if self._values[35] != _CUBIC_PROOF_TRIVIAL_GRH:
+            return None
+        state = self.__dict__
+        if not state["_transcript_attempted"]:
+            state["_trivial_relation_transcript"] = (
+                _extract_trivial_relation_transcript(self)
+            )
+            state["_transcript_attempted"] = True
+            state["_snapshot"] = self._authentication_snapshot()
+        return state["_trivial_relation_transcript"]
 
     @property
     def polynomial_coefficients(self) -> tuple[int, int, int, int]:
@@ -382,6 +630,133 @@ class CertifiedComplexCubicClassNumber:
             and tuple(presentation.invariants) == self.invariants
         )
 
+    def _verify_trivial_relation_transcript(self, selected: Any) -> bool:
+        """Check a trivial presentation under its exact generator theorem.
+
+        The closed program merely found this transcript.  Authority comes
+        from rebuilding the maximal order and factor base through ordinary
+        objects, checking a sufficient set of principal-ideal equalities, and
+        independently proving that their exact row lattice is `ZZ^n`.
+        """
+        transcript = self._ensure_trivial_relation_transcript()
+        checked = _checked_trivial_relation_transcript(
+            transcript,
+            self.factor_base_size,
+            self.relation_count,
+        )
+        if checked is None:
+            return False
+        factor_rows, relation_rows, relation_elements = checked
+        order = selected.maximal_order()
+        if order.discriminant() != self.field_discriminant:
+            return False
+
+        factor_module = __import__(
+            "sagejs.number_fields.class_group_factor_base",
+            fromlist=["class_group_factor_base"],
+        )
+        relation_module = __import__(
+            "sagejs.number_fields.class_group_relations",
+            fromlist=["class_group_relations"],
+        )
+        matrix_module = __import__(
+            "sagejs.number_fields.class_group_matrix",
+            fromlist=["class_group_matrix"],
+        )
+        conditional = self._values[35] == _CUBIC_PROOF_TRIVIAL_GRH
+        plan = factor_module.factor_base_plan(
+            order,
+            proof=not conditional,
+            theorem="bdf" if conditional else "minkowski",
+            max_bound=_CUBIC_MAX_GRH_BOUND_SEARCH,
+        )
+        plan.require_feasible()
+        if (
+            int(plan.bound) != self.generator_bound
+            or abs(int(plan.bound_result.discriminant)) != abs(self.field_discriminant)
+            or tuple(plan.assumptions) != self.assumptions
+            or (conditional and plan.theorem != "Belabas--Diaz y Diaz--Friedman")
+            or (not conditional and plan.theorem != "Minkowski")
+        ):
+            return False
+        records = factor_module.build_factor_base(plan)
+        if len(records) != self.factor_base_size:
+            return False
+
+        unmatched = [record.prime_ideal for record in records]
+        order_basis = tuple(order.basis())
+        if len(order_basis) != 3:
+            return False
+        factors: list[Any] = []
+        for fingerprint in factor_rows:
+            generators: list[Any] = []
+            for row_index in range(3):
+                generator = selected(0)
+                for column_index in range(3):
+                    generator += (
+                        fingerprint[3 * row_index + column_index]
+                        * order_basis[column_index]
+                    )
+                generators.append(generator)
+            transcript_ideal = order.ideal(generators)
+            matches = [
+                index
+                for index, prime_ideal in enumerate(unmatched)
+                if prime_ideal == transcript_ideal
+            ]
+            if len(matches) != 1:
+                return False
+            factors.append(unmatched.pop(matches[0]))
+        if unmatched:
+            return False
+        if not factors:
+            return self.relation_count == 0
+
+        identity_basis = tuple(
+            tuple(int(row == column) for column in range(len(factors)))
+            for row in range(len(factors))
+        )
+        selected_rows: list[tuple[int, ...]] = []
+        selected_indices: list[int] = []
+        basis: tuple[tuple[int, ...], ...] = ()
+        for index, row in enumerate(relation_rows):
+            candidate_rows = selected_rows + [row]
+            candidate_basis = matrix_module.exact_relation_hnf_basis(
+                candidate_rows,
+                len(factors),
+            )
+            if candidate_basis != basis:
+                selected_rows.append(row)
+                selected_indices.append(index)
+                basis = candidate_basis
+            if basis == identity_basis:
+                break
+        if basis != identity_basis:
+            return False
+
+        for row, index in zip(selected_rows, selected_indices, strict=True):
+            coordinates = relation_elements[index]
+            element = selected(0)
+            for coordinate, basis_element in zip(coordinates, order_basis, strict=True):
+                element += coordinate * basis_element
+            if element.is_zero():
+                return False
+            principal = order.ideal(element)
+            reconstructed = relation_module.reconstruct_factor_base_ideal(
+                order,
+                factors,
+                row,
+            )
+            if principal != reconstructed:
+                return False
+        return bool(
+            matrix_module.exact_relation_hnf_basis(
+                selected_rows,
+                len(factors),
+            )
+            == identity_basis
+        )
+
     def verify(self, field: Any | None = None) -> bool:
         """Replay this receipt through the ordinary exact cubic producer.
 
@@ -439,13 +814,15 @@ class CertifiedComplexCubicClassNumber:
         selected = self.field if field is None else field
         if not self.matches(selected):
             return False
-        # Empty bases and trivial presentations have no analytic completion
-        # hypothesis. Replay those through the stronger ordinary Minkowski
-        # checker instead of asking the full class/unit engine to do unrelated
-        # unit and residue work.
+        # Empty bases and trivial presentations need no analytic completion.
+        # Replay the exact relation transcript against the theorem-qualified
+        # generator base instead of rediscovering principality by a far larger
+        # Minkowski enumeration.
         if self.proof_status != "exact-relations-conditional-grh":
             try:
-                return self._verify_bounded_minkowski(selected)
+                if self._values[35] == _CUBIC_PROOF_TRIVIAL_MINKOWSKI:
+                    return self._verify_bounded_minkowski(selected)
+                return self._verify_trivial_relation_transcript(selected)
             except (
                 AttributeError,
                 ImportError,
@@ -520,8 +897,23 @@ class CertifiedComplexCubicClassNumber:
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-safe audit view of this live authenticated receipt."""
+        transcript = self._ensure_trivial_relation_transcript()
+        transcript_payload = None
+        if transcript is not None:
+            factor_rows, relation_rows, relation_elements = transcript
+            transcript_payload = {
+                "schema": _TRIVIAL_RELATION_TRANSCRIPT_SCHEMA,
+                "factor_ideal_hnf_order_coordinates": [
+                    [list(row[index : index + 3]) for index in range(0, 9, 3)]
+                    for row in factor_rows
+                ],
+                "relation_rows": [list(row) for row in relation_rows],
+                "principal_element_order_coordinates": [
+                    list(row) for row in relation_elements
+                ],
+            }
         return {
-            "schema": "sagejs.number-fields/certified-complex-cubic-native-v2",
+            "schema": "sagejs.number-fields/certified-complex-cubic-native-v3",
             "polynomial_coefficients": list(self.polynomial_coefficients),
             "class_number": self.class_number,
             "invariants": list(self.invariants),
@@ -533,6 +925,7 @@ class CertifiedComplexCubicClassNumber:
             "compound_multiplier_passes": self.compound_multiplier_passes,
             "factor_base_size": self.factor_base_size,
             "relation_count": self.relation_count,
+            "relation_effort": self.relation_effort,
             "regulator_interval": list(self.regulator_interval),
             "zeta_log_residue_interval": list(self.zeta_log_residue_interval),
             "index_log_interval": list(self.index_log_interval),
@@ -541,6 +934,7 @@ class CertifiedComplexCubicClassNumber:
             "proof_status": self.proof_status,
             "assumptions": list(self.assumptions),
             "theorem": self.theorem,
+            "trivial_relation_transcript": transcript_payload,
         }
 
 
@@ -608,6 +1002,15 @@ def certified_complex_cubic_class_number(
                 _CUBIC_ROUND2_WORKSPACE_LENGTH,
                 _CUBIC_BUFFER_WORD_CAPACITY,
             )
+            transcript_factor_rows = native_module.kernel_integer_zeros(
+                kernel, 1, _CUBIC_BUFFER_WORD_CAPACITY
+            )
+            transcript_relation_rows = native_module.kernel_integer_zeros(
+                kernel, 1, _CUBIC_BUFFER_WORD_CAPACITY
+            )
+            transcript_relation_elements = native_module.kernel_integer_zeros(
+                kernel, 1, _CUBIC_BUFFER_WORD_CAPACITY
+            )
             _resident_buffers = (
                 kernel,
                 output,
@@ -619,6 +1022,9 @@ def certified_complex_cubic_class_number(
                 verification_radicals,
                 verification_selectors,
                 verification_workspace,
+                transcript_factor_rows,
+                transcript_relation_rows,
+                transcript_relation_elements,
             )
         (
             _kernel,
@@ -631,6 +1037,9 @@ def certified_complex_cubic_class_number(
             verification_radicals,
             verification_selectors,
             verification_workspace,
+            transcript_factor_rows,
+            transcript_relation_rows,
+            transcript_relation_elements,
         ) = _resident_buffers
         # The defining polynomial is immutable native input.  Retain one
         # packed capsule so repeated computations for the same polynomial do
@@ -651,6 +1060,7 @@ def certified_complex_cubic_class_number(
         _resident_call_active = True
         try:
             accepted = False
+            accepted_effort = 0
             for relation_effort in _CUBIC_RELATION_EFFORTS:
                 accepted = kernel(
                     output,
@@ -663,11 +1073,16 @@ def certified_complex_cubic_class_number(
                     verification_radicals,
                     verification_selectors,
                     verification_workspace,
+                    transcript_factor_rows,
+                    transcript_relation_rows,
+                    transcript_relation_elements,
+                    0,
                     relation_effort,
                     _CUBIC_ARENA_MEMORY_LIMIT,
                     _CUBIC_ARENA_TEMPORARY_LIMIT,
                 )
                 if accepted is True:
+                    accepted_effort = relation_effort
                     break
                 # Only relation-rank, unit-rank, or analytic-index exhaustion
                 # can authorize broader adjacent or compound relation effort.
@@ -690,6 +1105,7 @@ def certified_complex_cubic_class_number(
             field,
             coefficients,
             values,
+            accepted_effort,
         )
         field._native_cubic_class_number_certificate = certificate
         return certificate

@@ -36,7 +36,7 @@ const MINIMUM_ROOT_NS = 1_200_000_000n;
 const RETAINED_ROUNDS = 11;
 const CENSUS_PARTS_SCHEMA = "sagejs.benchmark/complex-cubic-frontier-census-part-v1";
 const SAGE_CONDITIONAL_REPLAY_CONTRACT =
-  "ordinary-object-engine-bypassing-closed-cubic-program-proof-false";
+  "ordinary-object-exact-replay-bypassing-closed-cubic-authority";
 const BDF_CLASS_CHARACTER_GRH =
   "GRH: L(s, chi) is nonzero whenever Re(s) > 1/2 for every nontrivial character chi of Cl(K)";
 const BELABAS_FRIEDMAN_ZETA_GRH =
@@ -906,6 +906,36 @@ function nativeReceiptProofContractIsValid(receipt) {
   );
 }
 
+function nativeTrivialTranscriptIsValid(receipt) {
+  if (receipt?.proof_status !== "exact-trivial-presentation-conditional-grh") {
+    return true;
+  }
+  const transcript = receipt.trivial_relation_transcript;
+  const factorCount = Number(receipt.factor_base_size);
+  const relationCount = Number(receipt.relation_count);
+  const exactInteger = (value) =>
+    typeof value === "string" && /^-?(?:0|[1-9][0-9]*)$/.test(value);
+  return Number.isSafeInteger(factorCount) && factorCount > 0 &&
+    Number.isSafeInteger(relationCount) && relationCount >= factorCount &&
+    transcript && typeof transcript === "object" && !Array.isArray(transcript) &&
+    transcript.schema ===
+      "sagejs.number-fields/complex-cubic-trivial-relation-transcript-v1" &&
+    Array.isArray(transcript.factor_ideal_hnf_order_coordinates) &&
+    transcript.factor_ideal_hnf_order_coordinates.length === factorCount &&
+    transcript.factor_ideal_hnf_order_coordinates.every((matrix) =>
+      Array.isArray(matrix) && matrix.length === 3 && matrix.every((row) =>
+        Array.isArray(row) && row.length === 3 && row.every(exactInteger))) &&
+    Array.isArray(transcript.relation_rows) &&
+    transcript.relation_rows.length === relationCount &&
+    transcript.relation_rows.every((row) =>
+      Array.isArray(row) && row.length === factorCount && row.every((value) =>
+        exactInteger(value) && !value.startsWith("-"))) &&
+    Array.isArray(transcript.principal_element_order_coordinates) &&
+    transcript.principal_element_order_coordinates.length === relationCount &&
+    transcript.principal_element_order_coordinates.every((row) =>
+      Array.isArray(row) && row.length === 3 && row.every(exactInteger));
+}
+
 function validateCheckpointObservation(observed, expected) {
   if (!observed || observed.label !== expected.label ||
       !["native-pass", "native-decline-fallback-pass"].includes(observed.status) ||
@@ -924,7 +954,7 @@ function validateCheckpointObservation(observed, expected) {
         typeof observed.receipt_digest !== "string" ||
         !/^[0-9a-f]{64}$/.test(observed.receipt_digest) ||
         observed.receipt_digest !== sha256(compactCanonicalJson(receipt)) ||
-        receipt.schema !== "sagejs.number-fields/certified-complex-cubic-native-v2" ||
+        receipt.schema !== "sagejs.number-fields/certified-complex-cubic-native-v3" ||
         JSON.stringify(receipt.polynomial_coefficients) !==
           JSON.stringify(expected.coefficients) ||
         receipt.field_discriminant !== expected.discriminant ||
@@ -935,7 +965,8 @@ function validateCheckpointObservation(observed, expected) {
         receipt.class_number !== expected.class_number ||
         JSON.stringify(receipt.invariants) !== JSON.stringify(expected.class_group_invariants) ||
         receipt.proof_status !== observed.proof_status ||
-        !nativeReceiptProofContractIsValid(receipt)) {
+        !nativeReceiptProofContractIsValid(receipt) ||
+        !nativeTrivialTranscriptIsValid(receipt)) {
       throw new Error(`census checkpoint for ${expected.label} has an invalid native proof branch`);
     }
   } else if (typeof observed.proof_status !== "string" ||
@@ -2126,6 +2157,7 @@ module.exports = {
   makeTimingEvent,
   mergeCensusInvocations,
   normalizePariInvariants,
+  nativeTrivialTranscriptIsValid,
   pariCensusSource,
   pariTimingSource,
   portableCorpusIdentity,

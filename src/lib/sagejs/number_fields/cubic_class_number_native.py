@@ -4640,6 +4640,70 @@ def _cubic_small_relation_prefix_is_trivial(
     return False
 
 
+def _cubic_publish_trivial_relation_transcript(
+    workspace: NativeIntegerVector,
+    relation_matrix: FmpzMatrix,
+    relation_elements: FmpzMatrix,
+    relation_count: uint64,
+    factor_count: uint64,
+    transcript_factor_rows: IntegerBuffer,
+    transcript_relation_rows: IntegerBuffer,
+    transcript_relation_elements: IntegerBuffer,
+) -> bool:
+    """Publish the exact finite presentation used by a trivial quotient.
+
+    The caller requests this only on a separate, untimed audit run.  The
+    ordinary object layer treats every published integer as an untrusted
+    theorem witness: it reconstructs the theorem-qualified factor base,
+    checks every retained principal-ideal equality, and recomputes the row
+    lattice.  Exact-sized caller buffers keep this evidence out of the hot
+    scalar class-number boundary.
+    """
+    factor_values: uint64 = 9 * factor_count
+    relation_values: uint64 = relation_count * factor_count
+    element_values: uint64 = 3 * relation_count
+    if factor_values == 0:
+        factor_values = 1
+    if relation_values == 0:
+        relation_values = 1
+    if element_values == 0:
+        element_values = 1
+    if (
+        len(transcript_factor_rows) != factor_values
+        or len(transcript_relation_rows) != relation_values
+        or len(transcript_relation_elements) != element_values
+    ):
+        return False
+
+    factor_index: uint64 = 0
+    while factor_index < factor_count:
+        power_base: uint64 = _POWER_OFFSET + factor_index * _CUBIC_MAX_POWERS * 9
+        entry: uint64 = 0
+        while entry < 9:
+            transcript_factor_rows[9 * factor_index + entry] = workspace[
+                power_base + entry
+            ]
+            entry += 1
+        factor_index += 1
+
+    relation_index: uint64 = 0
+    while relation_index < relation_count:
+        factor_index = 0
+        while factor_index < factor_count:
+            transcript_relation_rows[relation_index * factor_count + factor_index] = (
+                relation_matrix[relation_index, factor_index]
+            )
+            factor_index += 1
+        coordinate: uint64 = 0
+        while coordinate < 3:
+            transcript_relation_elements[3 * relation_index + coordinate] = (
+                relation_elements[relation_index, coordinate]
+            )
+            coordinate += 1
+        relation_index += 1
+    return True
+
+
 @native
 def certified_complex_cubic_class_group_v1(
     output: IntegerBuffer,
@@ -4652,6 +4716,10 @@ def certified_complex_cubic_class_group_v1(
     verification_radicals: IntegerBuffer,
     verification_selectors: IntegerBuffer,
     verification_workspace: IntegerBuffer,
+    transcript_factor_rows: IntegerBuffer,
+    transcript_relation_rows: IntegerBuffer,
+    transcript_relation_elements: IntegerBuffer,
+    transcript_mode: uint64,
     relation_effort: uint64,
     memory_limit: uint64,
     temporary_limit: uint64,
@@ -4674,6 +4742,21 @@ def certified_complex_cubic_class_group_v1(
         or len(verification_radicals) != 9 * _CUBIC_MAX_ORDER_WITNESSES
         or len(verification_selectors) != 3 * _CUBIC_MAX_ORDER_WITNESSES
         or len(verification_workspace) != _CUBIC_ROUND2_WORKSPACE_LENGTH
+        or len(transcript_factor_rows) < 1
+        or len(transcript_factor_rows) > 9 * _CUBIC_MAX_FACTORS
+        or len(transcript_relation_rows) < 1
+        or len(transcript_relation_rows) > _CUBIC_MAX_RELATIONS * _CUBIC_MAX_FACTORS
+        or len(transcript_relation_elements) < 1
+        or len(transcript_relation_elements) > 3 * _CUBIC_MAX_RELATIONS
+        or transcript_mode > 1
+        or (
+            transcript_mode == 0
+            and (
+                len(transcript_factor_rows) != 1
+                or len(transcript_relation_rows) != 1
+                or len(transcript_relation_elements) != 1
+            )
+        )
         or relation_effort < 1
         or relation_effort > _CUBIC_MAX_RELATION_EFFORT
         or coefficients[3] != 1
@@ -5302,6 +5385,12 @@ def certified_complex_cubic_class_group_v1(
 
         # An empty proved generator base makes the class group trivial.
         if factor_count == 0:
+            if transcript_mode == 1 and (
+                len(transcript_factor_rows) != 1
+                or len(transcript_relation_rows) != 1
+                or len(transcript_relation_elements) != 1
+            ):
+                return False
             output_index: uint64 = 0
             while output_index < len(output):
                 output[output_index] = 0
@@ -6408,6 +6497,17 @@ def certified_complex_cubic_class_group_v1(
         # group. If that exact quotient is trivial, no unit or analytic index
         # calculation can strengthen the class-group conclusion.
         if class_number_upper == 1:
+            if transcript_mode == 1 and not _cubic_publish_trivial_relation_transcript(
+                workspace,
+                relation_matrix,
+                relation_elements,
+                relation_count,
+                factor_count,
+                transcript_factor_rows,
+                transcript_relation_rows,
+                transcript_relation_elements,
+            ):
+                return False
             output_index = 0
             while output_index < len(output):
                 output[output_index] = 0

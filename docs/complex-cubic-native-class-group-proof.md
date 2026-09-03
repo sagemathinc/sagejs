@@ -387,13 +387,19 @@ This is defense in depth; it cannot promote a declined native computation.
 
 ## Receipt, replay, and trusted base
 
-The version-two audit receipt records the polynomial, field discriminant,
+The version-three audit receipt records the polynomial, field discriminant,
 class invariants, unit coordinates, selected generator bound, factor-base and
 relation sizes, theorem name, and explicit assumptions. Full relation proofs
 also record the successful compound-multiplier prefix and dyadic analytic
 intervals. Empty-generator-base proofs leave those inapplicable fields zero.
-The receipt is a live authenticated audit record, not yet a standalone proof
-object: it does not contain all ideal relations or local Euler witnesses.
+For a nonempty BDF-conditional trivial presentation it additionally records an
+exact relation transcript: every native-order factor-ideal HNF, every collected
+relation row, and the corresponding principal element in maximal-order
+coordinates. This bounded transcript is extracted on the untimed audit path,
+detached from the reusable native buffers, and included in the receipt digest.
+Full nontrivial proofs do not yet contain all ideal relations or local Euler
+witnesses, so the general receipt remains a live authenticated audit record
+rather than a universally detached proof object.
 
 `receipt.verify()` is intentionally independent of the native program. It
 reconstructs the maximal order, checks the unit norm, and recomputes the class
@@ -407,12 +413,41 @@ bypasses the closed cubic program, reconstructs the maximal order, and checks
 the exact unit norm. Relation-lattice receipts recompute the complete class
 group through the ordinary object engine with `proof=False` and accept only an
 exact GRH-conditional result whose recorded hypotheses are no stronger than
-the receipt's, or the stronger unconditional result. Empty-base and
-trivial-presentation receipts use the ordinary bounded Minkowski checker,
-which is stronger and avoids introducing an analytic hypothesis absent from
-the receipt. The ordinary engine may use independently checked
-source-transparent native accelerators; it does not call the closed cubic
-implementation. The 1,000-field
+the receipt's, or the stronger unconditional result. An unconditional trivial
+presentation uses the ordinary bounded Minkowski checker, which remains cheap
+inside the native program's direct-Minkowski envelope.
+
+A BDF-conditional trivial presentation instead replays its finite transcript;
+it performs no relation discovery, unit search, Minkowski enumeration, or
+Belabas--Friedman residue calculation. The verifier independently recomputes
+the exact BDF bound and complete factor base. It reconstructs every published
+factor lattice as an ordinary ideal and matches the factors bijectively by
+exact ideal equality, so differing HNF conventions or coincident norms cannot
+identify the wrong prime. From the untrusted rows it retains only rows that
+change the canonical HNF. For each retained row $r_j$ and element $alpha_j$
+it then checks exactly
+
+$$
+  (\alpha_j)=\prod_i P_i^{r_{j,i}},
+$$
+
+and independently requires the retained row-HNF to be $I$. Under the stated
+BDF class-character GRH hypothesis, the map
+
+$$
+  \mathbb Z^n\longrightarrow\operatorname{Cl}(K),\qquad
+  e_i\longmapsto[P_i]
+$$
+
+is surjective. The verified rows lie in its kernel and span all of
+$\mathbb Z^n$, so the map is zero and the class group is trivial. The native
+program is therefore a proof finder, not the authority for this conclusion.
+An empty BDF factor base is checked directly by the independently reconstructed
+plan and needs no relation transcript.
+
+The ordinary replay layers may use independently checked source-transparent
+native accelerators; they do not call the closed cubic implementation as a
+correctness authority. The 1,000-field
 frontier census records this method and its contract explicitly. This avoids
 silently turning a conditional performance experiment into 1,000 unrelated
 unconditional class-group searches; `verify()` remains the stronger audit when

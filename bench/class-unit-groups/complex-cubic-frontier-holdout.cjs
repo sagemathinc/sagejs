@@ -75,7 +75,7 @@ const PROOF_CONTRACT = Object.freeze({
   lmfdb_oracle: "used_grh=false",
   receipt_carrier: "live-authenticated-with-independent-exact-recomputation",
   sagejs_independent_replay:
-    "ordinary-object-engine-bypassing-closed-cubic-program-proof-false",
+    "ordinary-object-exact-replay-bypassing-closed-cubic-authority",
 });
 
 function exactKeys(value, keys, label) {
