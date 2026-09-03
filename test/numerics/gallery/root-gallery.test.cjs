@@ -89,10 +89,10 @@ test("public manifest inventories every story and pins deployment resources", ()
   assert.equal(manifest.schema_version, 2);
   assert.equal(manifest.kind, "sagejs-numerical-gallery");
   assert.deepEqual(manifest.story_order, bundle.story_order);
-  assert.equal(manifest.stories.length, 9);
-  assert.equal(manifest.measurements.story_count, 9);
-  assert.equal(manifest.measurements.case_count, 18);
-  assert.equal(manifest.measurements.animated_case_count, 13);
+  assert.equal(manifest.stories.length, 10);
+  assert.equal(manifest.measurements.story_count, 10);
+  assert.equal(manifest.measurements.case_count, 20);
+  assert.equal(manifest.measurements.animated_case_count, 15);
   assert.deepEqual(manifest.budgets, bundle.budgets);
   for (const [entry, story] of manifest.stories.map((entry, index) => [
     entry,
@@ -128,6 +128,10 @@ test("public manifest inventories every story and pins deployment resources", ()
   );
   const rootEntry = manifest.stories.find((entry) => entry.id === "root-brent");
   assert.ok(rootEntry.capabilities.includes("retained-reference-method-comparison"));
+  const sweepEntry = manifest.stories.find((entry) =>
+    entry.id === "ode-parameter-sweep"
+  );
+  assert.ok(sweepEntry.capabilities.includes("retained-parameter-sweep-explanation"));
   for (const entry of manifest.stories.filter((entry) => entry.id !== "root-brent")) {
     assert.equal(
       entry.capabilities.includes("retained-reference-method-comparison"),
@@ -295,8 +299,8 @@ test(
       });
       await page.goto(host.url, { waitUntil: "networkidle" });
       await page.waitForSelector("html[data-gallery-ready='true']");
-      assert.equal(await page.locator(".js-plotly-plot").count(), 17);
-      assert.equal(await page.locator(".open-in-sage").count(), 9);
+      assert.equal(await page.locator(".js-plotly-plot").count(), 19);
+      assert.equal(await page.locator(".open-in-sage").count(), 10);
       assert.deepEqual(externalRequests, []);
       const timing = await page.evaluate(() => ({
         hydration: Number(document.documentElement.dataset.galleryHydrationMs),

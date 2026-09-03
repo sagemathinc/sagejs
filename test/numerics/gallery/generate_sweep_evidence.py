@@ -1,31 +1,25 @@
-#!/usr/bin/env node
-"use strict";
+#!/usr/bin/env python3
+"""Generate the ODE parameter-sweep lesson from retained public evidence."""
 
-const assert = require("node:assert/strict");
-const { existsSync, readFileSync, writeFileSync } = require("node:fs");
-const { spawnSync } = require("node:child_process");
-const { join, resolve } = require("node:path");
+from __future__ import annotations
 
-const root = resolve(__dirname, "../../..");
-const outputPath = join(
-  root,
-  "docs/numerical-computing/gallery/stories/ode-parameter-sweep.json",
-);
-
-const source = String.raw`
-import collections.abc
-import hashlib
+import collections.abc  # noqa: F401 -- needed by the Sage.js CPython shim
+import hashlib  # noqa: F401 -- preload stdlib before src/lib shadows it
 import json
 import math
 import sys
-import typing
+import typing  # noqa: F401 -- preload stdlib before src/lib shadows it
+from pathlib import Path
+from typing import Any
 
-sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "src" / "lib"))
 
 from sagejs.numerics.ode import ode_problem, run_ode_parameter_sweep
 from sagejs.numerics.sweeps import SweepBudget
-from sagejs.plotting import lower_plot_animation, lower_plot_spec
+from sagejs.plotting import lower_plot_animation
 
+SCHEMA = "sagejs.numerics.gallery.story/v1"
 PARAMETERS = [
     {"rate": 0.25},
     {"rate": 0.5},
@@ -33,7 +27,7 @@ PARAMETERS = [
     {"rate": 2.0},
     {"rate": 4.0},
 ]
-BUDGET = SweepBudget(
+SWEEP_BUDGET = SweepBudget(
     max_items=8,
     max_concurrency=2,
     max_evaluations=10_000,
@@ -46,18 +40,19 @@ BUDGET = SweepBudget(
 )
 
 
-def normalize_elapsed(value):
+def _normalize_elapsed(value: Any) -> Any:
+    """Remove nondeterministic clocks without changing computed evidence."""
     if isinstance(value, dict):
         return {
-            key: (0.0 if key == "elapsed_ms" else normalize_elapsed(item))
+            key: (0.0 if key == "elapsed_ms" else _normalize_elapsed(item))
             for key, item in value.items()
         }
     if isinstance(value, list):
-        return [normalize_elapsed(item) for item in value]
+        return [_normalize_elapsed(item) for item in value]
     return value
 
 
-def canonical_bytes(value):
+def _canonical_bytes(value: Any) -> int:
     return len(
         json.dumps(
             value,
@@ -69,17 +64,17 @@ def canonical_bytes(value):
     )
 
 
-def stable_sweep_record(result):
-    """Normalize clocks, then repair byte receipts over normalized evidence."""
-    record = normalize_elapsed(result.to_dict())
+def _stable_sweep_result(result: Any) -> dict[str, Any]:
+    """Normalize clocks and repair byte receipts over the normalized record."""
+    record = _normalize_elapsed(result.to_dict())
     result_bytes = 0
     trace_bytes = 0
     for item in record["items"]:
         trace = item["trace"]
-        retained_bytes = sum(canonical_bytes(event) for event in trace["events"])
+        retained_bytes = sum(_canonical_bytes(event) for event in trace["events"])
         trace["retained_bytes"] = retained_bytes
         item["measurements"]["trace_bytes"] = retained_bytes
-        item_result_bytes = canonical_bytes(item["value"]) if item["success"] else 0
+        item_result_bytes = _canonical_bytes(item["value"]) if item["success"] else 0
         item["measurements"]["result_bytes"] = item_result_bytes
         result_bytes += item_result_bytes
         trace_bytes += retained_bytes
@@ -92,15 +87,15 @@ def stable_sweep_record(result):
     return record
 
 
-def make_factory(callback_counts, failed_rate=None):
-    def factory(parameter, limits):
+def _make_factory(callback_counts: dict[str, int], failed_rate: float | None = None):
+    def factory(parameter: dict[str, float], limits: Any) -> Any:
         rate = float(parameter["rate"])
 
-        def field(_time, state):
+        def field(_time: float, state: list[float]) -> list[float]:
             callback_counts["field"] += 1
             return [-rate * state[0]]
 
-        def reference(time):
+        def reference(time: float) -> list[float]:
             callback_counts["reference"] += 1
             return [math.exp(-rate * time)]
 
@@ -132,7 +127,7 @@ def make_factory(callback_counts, failed_rate=None):
     return factory
 
 
-def independent_oracle(result):
+def _independent_oracle(result: Any) -> dict[str, Any]:
     checks = []
     for item in result.items:
         if not item.success:
@@ -161,9 +156,14 @@ def independent_oracle(result):
     }
 
 
-def presentation(result, callback_counts):
+def _presentation(
+    result: Any,
+    callback_counts: dict[str, int],
+    stable_result: dict[str, Any],
+) -> dict[str, Any]:
     before = callback_counts["field"] + callback_counts["reference"]
-    explanation = result.explanation()
+    explanation = _normalize_elapsed(result.explanation())
+    explanation["evidence"]["measurements"] = stable_result["measurements"]
     static = result.to_plot_spec(
         x_path="/parameter/rate",
         y_path="/value/value/0",
@@ -175,11 +175,10 @@ def presentation(result, callback_counts):
         y_path="/value/value/0",
         x_label="decay rate",
         y_label="retained y(2)",
-        max_frames=8,
+        max_frames=6,
         frame_duration_ms=500,
     )
     plotly = lower_plot_animation(animation)
-    static_plotly = lower_plot_spec(static)
     after = callback_counts["field"] + callback_counts["reference"]
     return {
         "source": "SweepResult explanation and exact retained-item prefixes",
@@ -187,24 +186,31 @@ def presentation(result, callback_counts):
         "callback_reevaluated": before != after,
         "callback_count_before": before,
         "callback_count_after": after,
-        "explanation": normalize_elapsed(explanation),
+        "public_surface_gap": None,
+        "static_description": static.alt_text(),
+        "explanation": explanation,
         "plot_spec": static.to_dict(),
         "plot_animation": animation.to_dict(),
         "plotly": {
             "schema": "plotly-compatible/v1",
             "source": "sagejs.plotting.lower_plot_animation",
-            "static_figure": static_plotly,
+            "shared_lowering": {"status": "available", "diagnostics": []},
             "figure": plotly,
         },
     }
 
 
-def run_case(case_id, title, kind, failed_rate):
+def _run_case(
+    case_id: str,
+    title: str,
+    kind: str,
+    failed_rate: float | None,
+) -> dict[str, Any]:
     callback_counts = {"field": 0, "reference": 0}
     result = run_ode_parameter_sweep(
         PARAMETERS,
-        make_factory(callback_counts, failed_rate=failed_rate),
-        budget=BUDGET,
+        _make_factory(callback_counts, failed_rate=failed_rate),
+        budget=SWEEP_BUDGET,
         mode="collect",
         seed=20260902,
         concurrency=1,
@@ -215,10 +221,7 @@ def run_case(case_id, title, kind, failed_rate):
             "replayable": True,
         },
     )
-    stable_result = stable_sweep_record(result)
-    view = presentation(result, callback_counts)
-    view["explanation"]["evidence"]["measurements"] = stable_result["measurements"]
-    oracle = independent_oracle(result)
+    stable_result = _stable_sweep_result(result)
     return {
         "id": case_id,
         "title": title,
@@ -234,7 +237,7 @@ def run_case(case_id, title, kind, failed_rate):
             else "Four validated terminal states remain visible. The rate-2 item has a retained callback_error and no fabricated coordinate."
         ),
         "result": stable_result,
-        "independent_oracle": oracle,
+        "independent_oracle": _independent_oracle(result),
         "evidence": [
             "/result/counts",
             "/result/items",
@@ -242,61 +245,36 @@ def run_case(case_id, title, kind, failed_rate):
             "/presentation/explanation/evidence/failures",
             "/independent_oracle/checks",
         ],
-        "presentation": view,
+        "presentation": _presentation(result, callback_counts, stable_result),
     }
 
 
-def count_scalars(value):
-    if isinstance(value, dict):
-        return sum(count_scalars(item) for item in value.values())
-    if isinstance(value, list):
-        return sum(count_scalars(item) for item in value)
-    return 1
-
-
-def case_measurements(case):
-    animation = case["presentation"]["plot_animation"]
-    plotly = case["presentation"]["plotly"]
+def sweep_story() -> dict[str, Any]:
+    """Return one complete success/failure parameter-sweep lesson."""
     return {
-        "result_bytes": len(json.dumps(case["result"], separators=(",", ":")).encode()),
-        "animation_frames": len(animation["frames"]),
-        "max_frame_scalars": max(count_scalars(frame) for frame in animation["frames"]),
-        "semantic_animation_bytes": len(json.dumps(animation, separators=(",", ":")).encode()),
-        "plotly_bytes": len(json.dumps(plotly, separators=(",", ":")).encode()),
-    }
-
-
-cases = [
-    run_case("validated-decay-family", "A family of validated decay curves", "success", None),
-    run_case("one-budgeted-failure", "One parameter exhausts its local budget", "failure", 2.0),
-]
-for case in cases:
-    case["measurements"] = case_measurements(case)
-
-story = {
-    "schema": "sagejs.numerics.gallery.sweep-story/v1",
-    "id": "ode-parameter-sweep",
-    "domain": "ode",
-    "operation": "parameter_sweep",
-    "title": "A parameter sweep is a collection of evidence, not a smooth promise",
-    "summary": "Vary a decay rate, validate every completed ODE endpoint independently, and retain a bounded failure without manufacturing a missing curve point.",
-    "learning_objectives": [
-        "Read a sweep as ordered item-level evidence with aggregate resource accounting.",
-        "Compare validated numerical endpoints with the analytic decay law.",
-        "Distinguish a missing failed result from an interpolated or fabricated value.",
-        "Use Play, Pause, Step, Restart, Speed, and the slider over exact retained prefixes.",
-    ],
-    "method_assumptions": [
-        "The scalar decay model y'=-rate*y has the analytic solution y(t)=exp(-rate*t).",
-        "Every successful nested ODE result must retain passing independent validation evidence.",
-        "Sweep ordering is input ordering; animation order does not imply adaptive sampling in parameter space.",
-        "Failures have no plot coordinate unless the failed result retained a validated numeric value.",
-    ],
-    "canonical_python": """import math
+        "schema": SCHEMA,
+        "id": "ode-parameter-sweep",
+        "domain": "ode",
+        "operation": "parameter_sweep",
+        "title": "A parameter sweep is evidence, not a smooth promise",
+        "summary": "Vary a decay rate, validate every completed ODE endpoint independently, and retain a bounded failure without manufacturing a missing curve point.",
+        "learning_objectives": [
+            "Read a sweep as ordered item-level evidence with aggregate resource accounting.",
+            "Compare validated numerical endpoints with the analytic decay law.",
+            "Distinguish a missing failed result from an interpolated or fabricated value.",
+            "Use Play, Pause, Step, Restart, Speed, and the slider over exact retained prefixes.",
+        ],
+        "method_assumptions": [
+            "The scalar decay model y'=-rate*y has the analytic solution y(t)=exp(-rate*t).",
+            "Every successful nested ODE result must retain passing independent validation evidence.",
+            "Sweep ordering is input ordering; animation order does not imply adaptive sampling in parameter space.",
+            "Failures have no plot coordinate unless the failed result retained a validated numeric value.",
+        ],
+        "canonical_python": """import math
 from sagejs.numerics.ode import ode_problem, run_ode_parameter_sweep
 
 def make_problem(parameter, limits):
-    rate = float(parameter[\"rate\"])
+    rate = float(parameter["rate"])
     return ode_problem(
         lambda t, y: [-rate*y[0]],
         (0.0, 2.0),
@@ -307,62 +285,39 @@ def make_problem(parameter, limits):
     )
 
 result = run_ode_parameter_sweep(
-    [{\"rate\": 0.25}, {\"rate\": 0.5}, {\"rate\": 1.0}, {\"rate\": 2.0}],
+    [
+        {"rate": float("0.25")},
+        {"rate": float("0.5")},
+        {"rate": float("1.0")},
+        {"rate": float("2.0")},
+    ],
     make_problem,
 )
 result""",
-    "generation_policy": "deterministic single-worker sweep; elapsed times normalized; no callback replay; no interpolation",
-    "budgets": {
-        "max_story_bytes": 1_000_000,
-        "max_result_bytes": 250_000,
-        "max_animation_frames": 8,
-        "max_scalars_per_frame": 4096,
-        "max_semantic_animation_bytes": 250_000,
-        "max_plotly_bytes": 500_000,
-    },
-    "cases": cases,
-    "measurements": {"story_bytes": 0},
-}
-while True:
-    measured = len(json.dumps(story, sort_keys=True, separators=(",", ":")).encode()) + 1
-    if measured == story["measurements"]["story_bytes"]:
-        break
-    story["measurements"]["story_bytes"] = measured
+        "cases": [
+            _run_case(
+                "validated-decay-family",
+                "A family of validated decay curves",
+                "success",
+                None,
+            ),
+            _run_case(
+                "one-budgeted-failure",
+                "One parameter exhausts its local budget",
+                "failure",
+                2.0,
+            ),
+        ],
+    }
 
-print(json.dumps(story, allow_nan=False, sort_keys=True, separators=(",", ":")))
-`;
 
-function generate() {
-  const executable = process.env.PYTHON ||
-    (process.platform === "win32" ? "python" : "python3");
-  const result = spawnSync(executable, ["-I", "-c", source], {
-    cwd: root,
-    encoding: "utf8",
-    env: { ...process.env, PYTHONHASHSEED: "0", SAGEJS_NATIVE_DISABLE: "1" },
-    timeout: 180_000,
-    maxBuffer: 8 * 1024 * 1024,
-  });
-  if (result.error) throw result.error;
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  return `${result.stdout.trim()}\n`;
-}
-
-function main(argv = process.argv.slice(2)) {
-  const output = generate();
-  if (argv.includes("--write")) {
-    writeFileSync(outputPath, output);
-    process.stdout.write(`wrote ${outputPath} (${Buffer.byteLength(output)} bytes)\n`);
-    return output;
-  }
-  assert.ok(existsSync(outputPath), `${outputPath} is missing; run with --write`);
-  assert.equal(
-    readFileSync(outputPath, "utf8"),
-    output,
-    "ODE parameter-sweep story is stale; regenerate with --write",
-  );
-  return output;
-}
-
-if (require.main === module) main();
-
-module.exports = { generate, main, outputPath };
+if __name__ == "__main__":
+    print(
+        json.dumps(
+            sweep_story(),
+            allow_nan=False,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    )

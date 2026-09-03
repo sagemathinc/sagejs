@@ -60,18 +60,18 @@ evaluator.
 
 ## ODE teaching story
 
-The generated
-[`ode-parameter-sweep.json`](../gallery/stories/ode-parameter-sweep.json)
-varies the rate in `y' = -rate*y` and compares each retained endpoint with the
-independent identity `y(2) = exp(-2*rate)`. Its second case deliberately gives
-the rate-2 solve only one evaluation. Four validated endpoints remain visible,
-while the failed item retains `OdeSweepSolveError` and no plotted point.
+The generated [cross-domain gallery](../gallery/) includes an
+`ode-parameter-sweep` story. It varies the rate in `y' = -rate*y` and compares
+each retained endpoint with the independent identity
+`y(2) = exp(-2*rate)`. Its second case deliberately gives the rate-2 solve only
+one evaluation. Four validated endpoints remain visible, while the failed item
+retains `OdeSweepSolveError` and no plotted point.
 
 Regenerate and verify the story with:
 
 ```sh
-node test/numerics/gallery/generate-sweep-story.cjs --write
-node --test test/numerics/gallery/sweep-gallery.test.cjs
+node test/numerics/gallery/generate-cross-domain-gallery.cjs --write
+node --test test/numerics/gallery/cross-domain-gallery.test.cjs
 ```
 
 The checked artifact records result, animation, Plotly, scalar, frame, and

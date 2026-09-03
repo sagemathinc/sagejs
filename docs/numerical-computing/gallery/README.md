@@ -5,7 +5,7 @@ explanation layer for the current numerical product:
 
 - [`index.html`](index.html) is a complete static lesson and the progressively
   enhanced gallery entry point;
-- [`evidence.json`](evidence.json) contains nine stories and eighteen success
+- [`evidence.json`](evidence.json) contains ten stories and twenty success
   or failure cases generated from current public numerical results;
 - [`gallery.mjs`](gallery.mjs) validates resource receipts, renders the
   Plotly-compatible exports, and creates PlotSpec, Plotly JSON, and static HTML
@@ -21,8 +21,9 @@ The gallery is published at
 the same generator; CI rejects drift between the checked evidence and public
 assets. It covers scalar roots, nonlinear fitting, ODE adaptivity, linear
 refinement, adaptive quadrature, polynomial approximation, eigensystems,
-local optimization, and robust regression. Every story contains both normal
-success and a mathematically instructive failure. The failure category is not
+local optimization, robust regression, and bounded ODE parameter sweeps. Every
+story contains both normal success and a mathematically instructive failure.
+The failure category is not
 synonymous with `result.success == false`: the Runge story is deliberately a
 successful, validated interpolation construction that is nevertheless a poor
 between-node approximation.
@@ -41,7 +42,7 @@ ceilings. Generation, validation, static export, whole-page hydration, and
 individual Plotly render times also have generous fail-closed release ceilings
 in `evidence.json`. They catch hangs and algorithmic regressions without being
 used as performance targets. The benchmark separately reports every phase and
-a real Chromium render of all seventeen visual presentations.
+a real Chromium render of all nineteen visual presentations.
 
 ## Evidence and replay contract
 
@@ -90,6 +91,12 @@ metadata, and focused tests freeze callback counts across presentation.
   iterations, evaluations, callback calls, and the agreement test; it does not
   reconstruct a comparison from a picture or rerun either callback while
   rendering.
+- The parameter-sweep story retains five separately validated ODE solves and a
+  second run with one intentionally exhausted item budget. Its explanation,
+  static PlotSpec, and six-frame animation are all derived after freezing the
+  callback count. The six frames are the empty prefix followed by all five
+  exact completed-item prefixes; a failed item adds
+  diagnostic evidence without acquiring a fabricated plot coordinate.
 - Every animation retains its quantitative trace table. Playback never starts
   automatically. A reduced-motion preference disables timed Play and Speed
   while Step, Restart, and the Iteration slider remain usable with zero-duration
