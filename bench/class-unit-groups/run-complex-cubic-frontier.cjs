@@ -279,13 +279,41 @@ function validateDirectSagejsTool(tool, root = ROOT) {
 }
 
 const CANDIDATE_DIRECT_ENVIRONMENT_SCHEMA =
-  "sagejs.benchmark/complex-cubic-direct-environment-v1";
+  "sagejs.benchmark/complex-cubic-direct-environment-v2";
+
+function prepareCandidateDirectEnvironment(root = ROOT) {
+  const cacheHome = path.join(
+    root,
+    "dist/runtime-cache/complex-cubic-frontier-xdg",
+  );
+  const historyDirectory = path.join(cacheHome, "sagejs");
+  const historyFilename = path.join(historyDirectory, "history-python");
+  fs.mkdirSync(historyDirectory, { recursive: true });
+  if (!fs.existsSync(historyFilename)) {
+    const descriptor = fs.openSync(historyFilename, "wx", 0o600);
+    fs.closeSync(descriptor);
+  }
+  const status = fs.lstatSync(historyFilename);
+  if (!status.isFile() || status.isSymbolicLink() || status.size !== 0) {
+    throw new Error(
+      "candidate direct environment requires an empty regular noninteractive history file",
+    );
+  }
+  return cacheHome;
+}
 
 function candidateDirectEnvironmentIdentity(root = ROOT) {
   const nodeExecutable = fs.realpathSync(process.execPath);
   const sitePackages = "/nonexistent/sagejs-complex-cubic-frontier-site-packages";
-  const cacheHome = "/nonexistent/sagejs-complex-cubic-frontier-cache";
-  if (fs.existsSync(sitePackages) || fs.existsSync(cacheHome)) {
+  const dynamicCache = "/nonexistent/sagejs-complex-cubic-frontier-dynamic";
+  const precompiledDynamicCache =
+    "/nonexistent/sagejs-complex-cubic-frontier-precompiled-dynamic";
+  const cacheHome = prepareCandidateDirectEnvironment(root);
+  if (
+    fs.existsSync(sitePackages) ||
+    fs.existsSync(dynamicCache) ||
+    fs.existsSync(precompiledDynamicCache)
+  ) {
     throw new Error("candidate direct environment requires controlled absent paths");
   }
   const payload = {
@@ -307,9 +335,8 @@ function candidateDirectEnvironmentIdentity(root = ROOT) {
       SAGEJS_NATIVE_MODE: "auto",
       SAGEJS_NATIVE_AUTOLOAD: "1",
       SAGEJS_NATIVE_CACHE_DIR: path.join(root, "dist/native-kernels"),
-      SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: path.join(root, "dist/module-cache"),
-      SAGEJS_PRECOMPILED_DYNAMIC_CACHE_DIR: `${cacheHome}/precompiled-dynamic`,
-      SAGEJS_DYNAMIC_CACHE_DIR: `${cacheHome}/dynamic`,
+      SAGEJS_PRECOMPILED_DYNAMIC_CACHE_DIR: precompiledDynamicCache,
+      SAGEJS_DYNAMIC_CACHE_DIR: dynamicCache,
       SAGEJS_SITE_PACKAGES: sitePackages,
     },
   };
@@ -317,6 +344,7 @@ function candidateDirectEnvironmentIdentity(root = ROOT) {
 }
 
 function candidateRuntimeClosure(root = ROOT) {
+  prepareCandidateDirectEnvironment(root);
   const hash = crypto.createHash("sha256");
   let fileCount = 0;
   let totalBytes = 0;
@@ -1458,14 +1486,18 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
   const directSagejs = tool.system === "sagejs" &&
     tool.adapter_kind === "generated-sagejs-python";
   if (directSagejs) validateDirectSagejsTool(tool);
-  const directEnvironment = directSagejs ? candidateDirectEnvironmentIdentity() : null;
+  const directEnvironment = directSagejs
+    ? options.directEnvironmentIdentity ?? candidateDirectEnvironmentIdentity()
+    : null;
   const launchedExecutable = directEnvironment === null
     ? tool.executable
     : directEnvironment.node_executable.path;
   if (directEnvironment !== null) args = [tool.executable, ...args];
   const processResult = await runFreshProcess(pinnedSpec(launchedExecutable, args, input, {
     ...options,
-    env: directProcessEnvironment(tool),
+    env: directEnvironment === null
+      ? directProcessEnvironment(tool)
+      : { ...directEnvironment.environment },
     replaceEnv: directSagejs,
   }));
   const { response, runtimeIdentity, responseValidationError } = interpretAdapterProcessResult(
@@ -2299,6 +2331,8 @@ async function main(argv = process.argv.slice(2)) {
   ].join(":"));
   const corpus = loadFrozenSurveyCorpus(options.corpus, options.assetDir);
   const source = sourceIdentity(options.allowDirty);
+  options.directEnvironmentIdentity =
+    source.candidate_runtime_closure.direct_process_environment;
   const tools = toolPlan(options);
   for (const cpu of options.censusCpus) hostIdentity(cpu);
   const plan = {
@@ -2364,6 +2398,7 @@ module.exports = {
   THREAD_ENV,
   candidateDirectEnvironmentIdentity,
   candidateRuntimeClosure,
+  prepareCandidateDirectEnvironment,
   combineCensus,
   censusBatchPlan,
   censusPartFilename,

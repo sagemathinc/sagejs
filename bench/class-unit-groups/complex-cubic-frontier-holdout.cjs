@@ -34,6 +34,7 @@ const {
   invokeAdapter,
   pariCensusSource,
   pariTimingSource,
+  prepareCandidateDirectEnvironment,
   recordLabelsDigest,
   sageCensusSource,
   sageTimingSource,
@@ -936,6 +937,8 @@ async function runHoldoutCensus(holdout, artifact, options, dependencies = {}) {
         timeoutSeconds: options.timeoutSeconds,
         executionEpoch,
         censusShard: index,
+        directEnvironmentIdentity:
+          sourceBefore.candidate_runtime_closure.direct_process_environment,
       },
     );
     processes.push(validateHoldoutInvocation({
@@ -1182,6 +1185,7 @@ function loadPredecessorInputs(options) {
 
 async function main(argv = process.argv.slice(2)) {
   const options = parseArguments(argv);
+  prepareCandidateDirectEnvironment(ROOT);
   const inputs = loadPredecessorInputs(options);
   if (options.mode === "freeze") {
     const candidateSource = currentSourceIdentity(false);

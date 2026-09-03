@@ -940,9 +940,14 @@ test("direct Sage.js execution is ROOT-bound and forced to source mode", () => {
   assert.equal(environment.SAGEJS_NATIVE_MODE, "auto");
   assert.equal(environment.SAGEJS_NATIVE_AUTOLOAD, "1");
   assert.equal(
+    environment.XDG_CACHE_HOME,
+    path.join(root, "dist/runtime-cache/complex-cubic-frontier-xdg"),
+  );
+  assert.equal(
     environment.SAGEJS_NATIVE_CACHE_DIR,
     path.join(root, "dist/native-kernels"),
   );
+  assert.equal(environment.SAGEJS_PRECOMPILED_MODULE_CACHE_DIR, undefined);
   assert.equal(
     environment.SAGEJS_SITE_PACKAGES,
     "/nonexistent/sagejs-complex-cubic-frontier-site-packages",
