@@ -25,7 +25,13 @@ function parseHeadersFile(source) {
       continue;
     }
     if (!current) throw new Error("header occurs before a path pattern");
-    const match = line.trim().match(/^([^:]+):\s*(.+)$/);
+    const directive = line.trim();
+    const detached = directive.match(/^!\s+([^\s:]+)$/);
+    if (detached) {
+      current.headers.set(detached[1].toLowerCase(), null);
+      continue;
+    }
+    const match = directive.match(/^([^:]+):\s*(.+)$/);
     if (!match) throw new Error(`invalid _headers line ${JSON.stringify(raw)}`);
     current.headers.set(match[1].toLowerCase(), match[2]);
   }
