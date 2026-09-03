@@ -38,8 +38,8 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
-    "pnpm test:numerics",
-    "pnpm test:integration",
+    "node --test test/numerics/code-roundtrip/executable-roundtrip.cjs test/numerics/code-roundtrip/external-target-contracts.cjs test/numerics/multilingual/numerical-catalog.cjs",
+    "pnpm merge:check",
     "pnpm architecture:numerics"
   ],
   "runs": [
@@ -81,6 +81,16 @@
       "started_at": "2026-09-02T23:51:00.398Z",
       "commit": "aaccf91a89600358f3e83594d4bece37311629a6",
       "workspace_fingerprint": "c5df496ee6f09889672342e675cfda936f780590d49253b0c7ed9e5e9e8bbe80",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/code-roundtrip/executable-roundtrip.cjs test/numerics/code-roundtrip/external-target-contracts.cjs test/numerics/multilingual/numerical-catalog.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.92,
+      "started_at": "2026-09-03T00:03:09.926Z",
+      "commit": "07c6f45bbfb3aa59f84fd9d835ef189d57e653d4",
+      "workspace_fingerprint": "d3eab2c15ff78b1cf6ed65cd85cd8fdb442a67b2a0e52575b63c6f4bdcf9cdd4",
       "platform": "linux-x64"
     }
   ],
