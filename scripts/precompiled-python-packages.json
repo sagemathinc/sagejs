@@ -12,6 +12,7 @@
     "sagejs_elliptic_descent",
     "sagejs.compiler",
     "sagejs.interacts",
+    "sagejs.intervals",
     "sagejs.widgets.comm_backend",
     "sagejs.elliptic_curves.analytic_rank",
     "sagejs.elliptic_curves.lseries",
