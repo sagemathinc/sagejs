@@ -78,6 +78,11 @@ export interface DocumentationSearchOptions {
   tag?: string;
 }
 
+export interface DocumentationCatalogOptions {
+  /** Include the documented lazy numerical entry points not present in the live registry. */
+  includeNumericalFlagships?: boolean;
+}
+
 const NUMERICAL_FLAGSHIPS: ReadonlyArray<{
   name: string;
   module: string;
@@ -418,6 +423,7 @@ function references(value: unknown): DocumentationReference[] {
 
 export function documentationCatalogFromRegistry(
   registry: unknown,
+  options: DocumentationCatalogOptions = {},
 ): DocumentationCatalog {
   const byName = new Map<string, DocumentationEntry>();
   if (!Array.isArray(registry)) {
@@ -478,9 +484,11 @@ export function documentationCatalogFromRegistry(
     };
     byName.set(name, normalized);
   }
-  for (const flagship of NUMERICAL_FLAGSHIPS) {
-    if (!byName.has(flagship.name)) {
-      byName.set(flagship.name, numericalFlagshipEntry(flagship));
+  if (options.includeNumericalFlagships) {
+    for (const flagship of NUMERICAL_FLAGSHIPS) {
+      if (!byName.has(flagship.name)) {
+        byName.set(flagship.name, numericalFlagshipEntry(flagship));
+      }
     }
   }
   return {

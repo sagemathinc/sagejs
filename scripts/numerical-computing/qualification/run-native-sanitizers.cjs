@@ -44,7 +44,7 @@ function usage() {
     "",
     "Runs source-bound native component harnesses under ASAN, UBSAN, and LSAN.",
     "This is native C component evidence, not a claim that Wasm ran under a native sanitizer.",
-    "Build both locked Wasm backends first so their source-closure reports and extracted", 
+    "Build both locked Wasm backends first so their source-closure reports and extracted",
     "upstream sources are available. The output path is immutable.",
     "",
   ].join("\n");
