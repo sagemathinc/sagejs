@@ -690,7 +690,13 @@ class CertifiedComplexCubicClassNumber:
             (BDF_CLASS_CHARACTER_GRH,) if conditional_generators else ()
         )
         bound_matches = (
-            int(plan.bound) == self.generator_bound
+            # The native program uses deliberately small rational enclosures
+            # for the BDF constants and can therefore certify a conservative
+            # cutoff one or more integers above the sharp ordinary cutoff.
+            # The exact factor count and ideal-by-ideal bijection below still
+            # require the transcript to contain precisely the complete factor
+            # base independently rebuilt at the sharper proven bound.
+            int(plan.bound) <= self.generator_bound
             if conditional_generators
             else (
                 int(plan.bound) <= self.generator_bound

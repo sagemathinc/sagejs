@@ -422,11 +422,22 @@ enumeration. It independently recomputes the exact BDF or Minkowski bound and
 complete factor base. It reconstructs every published factor lattice as an
 ordinary ideal and matches the factors bijectively by exact ideal equality, so
 differing HNF conventions or coincident norms cannot identify the wrong prime.
-The BDF cutoff must agree exactly. The native Minkowski cutoff is deliberately
-an integral safe ceiling derived from a ceiling square root, while the ordinary
-planner can return the sharp floor; replay requires the sharp bound to be no
-larger than that authenticated ceiling and still requires a bijection with the
-complete factor base built at the sharp bound.
+The native BDF cutoff can conservatively exceed the sharper cutoff proved by
+the ordinary planner because the closed program uses small rational enclosures
+for its analytic constants. Replay requires the sharp BDF bound to be no
+larger than the authenticated native bound. The native Minkowski cutoff is
+likewise deliberately an integral safe ceiling derived from a ceiling square
+root, while the ordinary planner can return the sharp floor. In both cases,
+replay still requires the transcript's factor count and exact ideal-by-ideal
+bijection to equal the complete factor base built at the independently proved
+sharp bound; a larger cutoff that actually introduces another factor therefore
+fails closed.
+The closed program copies those factor lattices to the caller-owned audit
+buffer before its analytic phase reuses the exact-power workspace for dense
+Euler coefficients and terms. Relation rows and their principal elements are
+published after analytic acceptance from the compact matrices that actually
+define the reported quotient. Thus phase-local workspace reuse cannot alter
+the finite evidence later checked by the ordinary replay.
 An exact HNF transform identifies a set of source rows that spans the complete
 row lattice. For each retained row $r_j$ and element $\alpha_j$ it checks
 exactly

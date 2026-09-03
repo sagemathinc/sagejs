@@ -4640,39 +4640,16 @@ def _cubic_small_relation_prefix_is_trivial(
     return False
 
 
-def _cubic_publish_relation_transcript(
+def _cubic_publish_relation_factor_rows(
     workspace: NativeIntegerVector,
-    relation_matrix: FmpzMatrix,
-    relation_elements: FmpzMatrix,
-    relation_count: uint64,
     factor_count: uint64,
     transcript_factor_rows: IntegerBuffer,
-    transcript_relation_rows: IntegerBuffer,
-    transcript_relation_elements: IntegerBuffer,
 ) -> bool:
-    """Publish the exact finite presentation used by the native quotient.
-
-    The caller requests this only on a separate, untimed audit run.  The
-    ordinary object layer treats every published integer as an untrusted
-    theorem witness: it reconstructs the theorem-qualified factor base,
-    checks every retained principal-ideal equality, and recomputes the row
-    lattice.  Exact-sized caller buffers keep this evidence out of the hot
-    scalar class-number boundary.
-    """
+    """Publish factor lattices before phase-local workspace reuse."""
     factor_values: uint64 = 9 * factor_count
-    relation_values: uint64 = relation_count * factor_count
-    element_values: uint64 = 3 * relation_count
     if factor_values == 0:
         factor_values = 1
-    if relation_values == 0:
-        relation_values = 1
-    if element_values == 0:
-        element_values = 1
-    if (
-        len(transcript_factor_rows) != factor_values
-        or len(transcript_relation_rows) != relation_values
-        or len(transcript_relation_elements) != element_values
-    ):
+    if len(transcript_factor_rows) != factor_values:
         return False
 
     factor_index: uint64 = 0
@@ -4685,10 +4662,41 @@ def _cubic_publish_relation_transcript(
             ]
             entry += 1
         factor_index += 1
+    return True
+
+
+def _cubic_publish_relation_rows(
+    relation_matrix: FmpzMatrix,
+    relation_elements: FmpzMatrix,
+    relation_count: uint64,
+    factor_count: uint64,
+    transcript_relation_rows: IntegerBuffer,
+    transcript_relation_elements: IntegerBuffer,
+) -> bool:
+    """Publish the exact principal rows used by the native quotient.
+
+    The caller requests this only on a separate, untimed audit run.  The
+    ordinary object layer treats every published integer as an untrusted
+    theorem witness: it reconstructs the theorem-qualified factor base,
+    checks every retained principal-ideal equality, and recomputes the row
+    lattice.  Exact-sized caller buffers keep this evidence out of the hot
+    scalar class-number boundary.
+    """
+    relation_values: uint64 = relation_count * factor_count
+    element_values: uint64 = 3 * relation_count
+    if relation_values == 0:
+        relation_values = 1
+    if element_values == 0:
+        element_values = 1
+    if (
+        len(transcript_relation_rows) != relation_values
+        or len(transcript_relation_elements) != element_values
+    ):
+        return False
 
     relation_index: uint64 = 0
     while relation_index < relation_count:
-        factor_index = 0
+        factor_index: uint64 = 0
         while factor_index < factor_count:
             transcript_relation_rows[relation_index * factor_count + factor_index] = (
                 relation_matrix[relation_index, factor_index]
@@ -6497,17 +6505,22 @@ def certified_complex_cubic_class_group_v1(
         # group. If that exact quotient is trivial, no unit or analytic index
         # calculation can strengthen the class-group conclusion.
         if class_number_upper == 1:
-            if transcript_mode == 1 and not _cubic_publish_relation_transcript(
-                workspace,
-                relation_matrix,
-                relation_elements,
-                relation_count,
-                factor_count,
-                transcript_factor_rows,
-                transcript_relation_rows,
-                transcript_relation_elements,
-            ):
-                return False
+            if transcript_mode == 1:
+                if not _cubic_publish_relation_factor_rows(
+                    workspace,
+                    factor_count,
+                    transcript_factor_rows,
+                ):
+                    return False
+                if not _cubic_publish_relation_rows(
+                    relation_matrix,
+                    relation_elements,
+                    relation_count,
+                    factor_count,
+                    transcript_relation_rows,
+                    transcript_relation_elements,
+                ):
+                    return False
             output_index = 0
             while output_index < len(output):
                 output[output_index] = 0
@@ -7239,6 +7252,18 @@ def certified_complex_cubic_class_group_v1(
             return False
         output[63] = 5
 
+        # The exact-power region spans all 64 possible factors and is reused
+        # below for dense analytic coefficient and term storage.  Preserve the
+        # factor lattices in their caller-owned audit buffer before that phase
+        # overlap; rereading the power region afterward would corrupt factor
+        # fingerprints beginning at factor index 20.
+        if transcript_mode == 1 and not _cubic_publish_relation_factor_rows(
+            workspace,
+            factor_count,
+            transcript_factor_rows,
+        ):
+            return False
+
         # Build the exact local Euler data for the fixed BF cutoff.  The
         # coefficient at n is the number of prime ideals of norm n minus the
         # rational-zeta contribution at rational primes.  At index primes the
@@ -7732,13 +7757,11 @@ def certified_complex_cubic_class_group_v1(
         ):
             return False
 
-        if transcript_mode == 1 and not _cubic_publish_relation_transcript(
-            workspace,
+        if transcript_mode == 1 and not _cubic_publish_relation_rows(
             compact_relation_matrix,
             compact_relation_elements,
             relation_count,
             factor_count,
-            transcript_factor_rows,
             transcript_relation_rows,
             transcript_relation_elements,
         ):

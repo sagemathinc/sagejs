@@ -204,6 +204,44 @@ for index, coefficients in enumerate(((1, 0, -1, 1), (-8, -1, 0, 1), (-55, 9, 0,
     assert receipt.verify_conditional_grh()
     assert receipt.verify()
 
+# LMFDB 3.1.91099.1 is a boundary case for the deliberately small native
+# rational enclosures in the BDF cutoff proof. The native program safely
+# certifies 16 while the ordinary exact planner proves the sharper cutoff 15.
+# Both cutoffs give exactly the same complete factor base, so the exact factor
+# bijection and relation replay remain authoritative.
+K = NumberField(x**3 - x**2 + x + 174, "conservative_bdf")
+receipt = certified_complex_cubic_class_number(K)
+assert receipt is not None
+assert receipt.class_number == 14
+assert receipt.invariants == (14,)
+assert receipt.generator_bound == 16
+factor_module = __import__(
+    "sagejs.number_fields.class_group_factor_base",
+    fromlist=["class_group_factor_base"],
+)
+ordinary_plan = factor_module.factor_base_plan(
+    K.maximal_order(), proof=False, theorem="bdf", max_bound=256
+)
+assert int(ordinary_plan.bound) == 15
+assert len(factor_module.build_factor_base(ordinary_plan)) == receipt.factor_base_size == 9
+assert receipt.verify_conditional_grh()
+
+# LMFDB 3.1.2827276.3 has 21 factor ideals. Its last factor fingerprint begins
+# inside the workspace region later reused by the analytic phase, so audit
+# publication must preserve every factor lattice before that phase transition.
+K = NumberField(x**3 - x**2 - 187*x + 1101, "wide_factor_transcript")
+receipt = certified_complex_cubic_class_number(K)
+assert receipt is not None
+assert receipt.class_number == 30
+assert receipt.invariants == (30,)
+assert receipt.factor_base_size == 21
+assert receipt.verify_conditional_grh()
+assert len(
+    receipt.to_dict()["relation_transcript"][
+        "factor_ideal_hnf_order_coordinates"
+    ]
+) == 21
+
 # A BDF-trivial receipt publishes the finite relation proof used by the
 # native finder. Once detached, ordinary replay must neither invoke that
 # finder again nor trust any factor lattice, row, or principal element.
