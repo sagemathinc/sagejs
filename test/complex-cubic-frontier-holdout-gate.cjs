@@ -26,6 +26,8 @@ const {
 const {
   DIRECT_CENSUS_PARTITIONS,
   THREAD_ENV,
+  WARMUP_ATTESTATION_SCHEMA,
+  WARMUP_SCHEMA,
   candidateDirectEnvironmentIdentity,
   candidateRuntimeClosure,
   combineCensus,
@@ -35,6 +37,7 @@ const {
   pariTimingSource,
   recordLabelsDigest,
   sageCensusSource,
+  sageWarmupSource,
   sageTimingSource,
   shardRecords,
   systemOrder,
@@ -293,6 +296,7 @@ function sourceIdentity(
   treeCharacter = "b",
   receiptCharacter = "c",
   runtimeCharacter = null,
+  records = null,
 ) {
   const tree = treeCharacter.repeat(40);
   const source = {
@@ -340,6 +344,43 @@ function sourceIdentity(
       },
       direct_process_environment: candidateDirectEnvironmentIdentity(),
     };
+    source.candidate_runtime_warmup = {
+      schema: WARMUP_ATTESTATION_SCHEMA,
+      program_sha256: "1".repeat(64),
+      record_count: 1000,
+      observations_sha256: "2".repeat(64),
+      pass_count: 2,
+      response_sha256_by_pass: ["3".repeat(64), "3".repeat(64)],
+      runtime_closure_sha256_by_pass: [
+        runtimeCharacter.repeat(64), runtimeCharacter.repeat(64),
+      ],
+    };
+    if (records !== null) {
+      const observations = records.map((record) => ({
+        label: record.label,
+        discriminant: record.discriminant,
+        class_number: record.class_number,
+        class_group_invariants: record.class_group_invariants,
+      }));
+      const response = {
+        schema: WARMUP_SCHEMA,
+        record_count: records.length,
+        native_pass_count: records.length,
+        observations_sha256:
+          sha256(JSON.stringify(JSON.parse(canonicalJson(observations)))),
+      };
+      source.candidate_runtime_warmup = {
+        schema: WARMUP_ATTESTATION_SCHEMA,
+        program_sha256: sha256(sageWarmupSource(records)),
+        record_count: records.length,
+        observations_sha256: response.observations_sha256,
+        pass_count: 2,
+        response_sha256_by_pass: [canonicalDigest(response), canonicalDigest(response)],
+        runtime_closure_sha256_by_pass: [
+          runtimeCharacter.repeat(64), runtimeCharacter.repeat(64),
+        ],
+      };
+    }
   }
   return source;
 }
@@ -531,7 +572,7 @@ function completeFixture() {
     BigInt(left.discriminant_absolute) < BigInt(right.discriminant_absolute) ? -1 : 1)[0];
   const timing = timingFixture(corpus, census, censusBytes, tools, source, slowRecord.label);
   const timingBytes = Buffer.from(`${canonicalJson(timing)}\n`);
-  const candidateSource = sourceIdentity("d", "e", "f", "8");
+  const candidateSource = sourceIdentity("d", "e", "f", "8", corpus.records);
   const candidateTools = structuredClone(tools);
   candidateTools[0].executable_sha256 = "5".repeat(64);
   const candidateHost = {
@@ -750,7 +791,7 @@ test("candidate source and tool mismatches fail before holdout disclosure", () =
     });
   };
 
-  const differentSource = sourceIdentity("6", "7", "8", "7");
+  const differentSource = sourceIdentity("6", "7", "8", "7", fixture.corpus.records);
   assert.throws(() => attempt({
     currentSourceIdentity: () => differentSource,
     toolPlan: () => fixture.candidateTools,
@@ -801,6 +842,9 @@ test("candidate source and tool mismatches fail before holdout disclosure", () =
 
   const wrongClosure = structuredClone(fixture.candidateSource);
   wrongClosure.candidate_runtime_closure.sha256 = "6".repeat(64);
+  wrongClosure.candidate_runtime_warmup.runtime_closure_sha256_by_pass = [
+    "6".repeat(64), "6".repeat(64),
+  ];
   assert.throws(() => attempt({
     currentSourceIdentity: () => wrongClosure,
     toolPlan: () => fixture.candidateTools,

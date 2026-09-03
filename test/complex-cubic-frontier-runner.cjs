@@ -27,6 +27,10 @@ const {
   DIRECT_CENSUS_PARTITIONS,
   MINIMUM_ROOT_NS,
   READY_MARKER,
+  WARMUP_ATTESTATION_SCHEMA,
+  WARMUP_MARKER,
+  WARMUP_SCHEMA,
+  bindWarmedRuntimeClosure,
   censusBatchPlan,
   censusPartFilename,
   censusPartKey,
@@ -49,14 +53,18 @@ const {
   runFreshProcess,
   runtimeClosureDigest,
   sageCensusSource,
+  sageWarmupSource,
   sageTimingSource,
   shardRecords,
   systemOrder,
   selectFrontierCandidate,
   sourceIdentitiesMatchForTiming,
   timingMetrics,
+  validateRuntimeWarmupAttestation,
+  validateWarmupResponse,
   validateCensusProcessTopology,
   validateRuntimeIdentity,
+  warmCandidateDirectEnvironment,
 } = require("../bench/class-unit-groups/run-complex-cubic-frontier.cjs");
 
 const root = path.resolve(__dirname, "..");
@@ -898,6 +906,15 @@ test("Sage sources classify and replay outside timing and use contiguous roots",
   );
   assert.match(census, /native-decline-fallback-pass/);
 
+  const warmup = sageWarmupSource(corpus.records);
+  assert.ok(warmup.includes(WARMUP_MARKER));
+  assert.match(warmup, /class_number\(proof=False\)/);
+  assert.match(warmup, /receipt\.matches\(field\)/);
+  assert.match(warmup, /receipt\.verify_conditional_grh\(field\)/);
+  assert.match(warmup, /receipt\.to_dict\(\)/);
+  assert.match(warmup, /warmup class-group disagreement/);
+  assert.doesNotMatch(warmup, /"receipt": receipt_payload/);
+
   const timing = sageTimingSource(corpus, ["scalar-prepared", "fresh-complete"], 0, 17n);
   assert.doesNotMatch(timing, /from sage\.all import/);
   assert.match(timing, /field\.maximal_order\(\)/);
@@ -908,6 +925,88 @@ test("Sage sources classify and replay outside timing and use contiguous roots",
   assert.match(timing, /if root_ns >= minimum_ns:/);
   assert.match(timing, /retained repetition safety limit exceeded/);
   assert.doesNotMatch(timing, /root_ns\s*=\s*sum/);
+});
+
+test("full-survey warmup is a two-pass, content-bound runtime fixed point", () => {
+  const corpus = corpusFixture();
+  const observations = corpus.records.map((record) => ({
+    label: record.label,
+    discriminant: record.discriminant,
+    class_number: record.class_number,
+    class_group_invariants: record.class_group_invariants,
+  }));
+  const response = {
+    schema: WARMUP_SCHEMA,
+    record_count: 1000,
+    native_pass_count: 1000,
+    observations_sha256: sha256(JSON.stringify(JSON.parse(canonicalJson(observations)))),
+  };
+  assert.equal(validateWarmupResponse(response, corpus.records), response);
+  assert.throws(() => validateWarmupResponse({ ...response, extra: true }, corpus.records),
+    /disagrees/);
+  assert.throws(() => validateWarmupResponse({
+    ...response, observations_sha256: "0".repeat(64),
+  }, corpus.records), /disagrees/);
+
+  let spawnCount = 0;
+  let closureCount = 0;
+  const closure = { schema: "unit-runtime", sha256: "a".repeat(64), files: 3 };
+  const expectedWarmupProgram = sageWarmupSource(corpus.records);
+  const warmup = warmCandidateDirectEnvironment(corpus, "/candidate", {
+    candidateDirectEnvironmentIdentity: () => ({
+      node_executable: { path: "/node" }, environment: { UNIT: "1" },
+    }),
+    candidateRuntimeClosure: () => {
+      closureCount += 1;
+      return structuredClone(closure);
+    },
+    sageWarmupSource: () => expectedWarmupProgram,
+    spawnSync: (executable, args, options) => {
+      spawnCount += 1;
+      assert.equal(executable, "/node");
+      assert.deepEqual(args, ["/candidate/bin/sagejs", "--python", "-"]);
+      assert.equal(options.input, expectedWarmupProgram);
+      return {
+        error: null,
+        status: 0,
+        signal: null,
+        stderr: "",
+        stdout: `${WARMUP_MARKER}${JSON.stringify(response)}\n`,
+      };
+    },
+  });
+  assert.equal(spawnCount, 2);
+  assert.equal(closureCount, 2);
+  assert.deepEqual(warmup.candidate_runtime_closure, closure);
+  assert.equal(warmup.attestation.schema, WARMUP_ATTESTATION_SCHEMA);
+  assert.equal(warmup.attestation.pass_count, 2);
+  assert.deepEqual(warmup.attestation.response_sha256_by_pass,
+    [canonicalDigest(response), canonicalDigest(response)]);
+
+  const source = { candidate_runtime_closure: structuredClone(closure) };
+  const bound = bindWarmedRuntimeClosure(warmup, source, corpus.records);
+  assert.deepEqual(bound.candidate_runtime_warmup, warmup.attestation);
+  assert.equal(validateRuntimeWarmupAttestation(
+    bound.candidate_runtime_warmup, closure, corpus.records,
+  ), bound.candidate_runtime_warmup);
+  assert.throws(() => bindWarmedRuntimeClosure(warmup, {
+    candidate_runtime_closure: { ...closure, files: 4 },
+  }, corpus.records), /changed after/);
+
+  let unstableClosureCall = 0;
+  assert.throws(() => warmCandidateDirectEnvironment(corpus, "/candidate", {
+    candidateDirectEnvironmentIdentity: () => ({
+      node_executable: { path: "/node" }, environment: {},
+    }),
+    candidateRuntimeClosure: () => ({
+      ...closure, files: ++unstableClosureCall,
+    }),
+    sageWarmupSource: () => expectedWarmupProgram,
+    spawnSync: () => ({
+      error: null, status: 0, signal: null, stderr: "",
+      stdout: `${WARMUP_MARKER}${JSON.stringify(response)}\n`,
+    }),
+  }), /stable runtime closure/);
 });
 
 test("eleven left rotations balance every system position", () => {

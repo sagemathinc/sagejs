@@ -29,6 +29,10 @@ const {
 const ROOT = path.resolve(__dirname, "../..");
 const READY_MARKER = "SAGEJS_COMPLEX_CUBIC_FRONTIER_READY";
 const RESPONSE_MARKER = "SAGEJS_COMPLEX_CUBIC_FRONTIER_RESPONSE|";
+const WARMUP_MARKER = "SAGEJS_COMPLEX_CUBIC_FRONTIER_WARMUP|";
+const WARMUP_SCHEMA = "sagejs.benchmark/complex-cubic-frontier-warmup-v1";
+const WARMUP_ATTESTATION_SCHEMA =
+  "sagejs.benchmark/complex-cubic-frontier-warmup-attestation-v1";
 const RUNTIME_IDENTITY_SCHEMA =
   "sagejs.benchmark/complex-cubic-frontier-runtime-identity-v1";
 const GP_CENSUS_MARKER = "SAGEJS_COMPLEX_CUBIC_GP_CENSUS|";
@@ -645,19 +649,100 @@ function candidateRuntimeClosure(root = ROOT) {
   };
 }
 
-function warmCandidateDirectEnvironment(corpus, root = ROOT) {
-  const record = corpus?.records?.[0];
-  if (!record) {
-    throw new Error("candidate direct environment warmup requires one frozen survey field");
+function expectedWarmupObservations(records) {
+  return records.map((record) => ({
+    label: record.label,
+    discriminant: record.discriminant,
+    class_number: record.class_number,
+    class_group_invariants: record.class_group_invariants,
+  }));
+}
+
+function expectedWarmupResponse(records) {
+  const expected = expectedWarmupObservations(records);
+  return {
+    schema: WARMUP_SCHEMA,
+    record_count: records.length,
+    native_pass_count: records.length,
+    observations_sha256: sha256(compactCanonicalJson(expected)),
+  };
+}
+
+function validateWarmupResponse(response, records) {
+  const expected = expectedWarmupResponse(records);
+  if (!hasExactKeys(response, [
+    "schema", "record_count", "native_pass_count", "observations_sha256",
+  ]) || canonicalDigest(response) !== canonicalDigest(expected)) {
+    throw new Error("candidate direct environment warmup disagrees with the frozen survey");
   }
+  return response;
+}
+
+function validateRuntimeWarmupAttestation(attestation, runtimeClosure, records = null) {
+  if (!hasExactKeys(attestation, [
+    "schema", "program_sha256", "record_count", "observations_sha256", "pass_count",
+    "response_sha256_by_pass", "runtime_closure_sha256_by_pass",
+  ]) || attestation.schema !== WARMUP_ATTESTATION_SCHEMA ||
+      attestation.record_count !== 1000 || attestation.pass_count !== 2 ||
+      !/^[0-9a-f]{64}$/.test(attestation.program_sha256 || "") ||
+      !/^[0-9a-f]{64}$/.test(attestation.observations_sha256 || "") ||
+      !Array.isArray(attestation.response_sha256_by_pass) ||
+      attestation.response_sha256_by_pass.length !== 2 ||
+      !Array.isArray(attestation.runtime_closure_sha256_by_pass) ||
+      attestation.runtime_closure_sha256_by_pass.length !== 2 ||
+      attestation.response_sha256_by_pass.some((digest) =>
+        !/^[0-9a-f]{64}$/.test(digest)) ||
+      attestation.runtime_closure_sha256_by_pass.some((digest) =>
+        digest !== runtimeClosure?.sha256)) {
+    throw new Error("candidate runtime warmup attestation is malformed");
+  }
+  if (records !== null) {
+    const expectedResponse = expectedWarmupResponse(records);
+    const expectedResponseDigest = canonicalDigest(expectedResponse);
+    if (attestation.program_sha256 !== sha256(sageWarmupSource(records)) ||
+        attestation.observations_sha256 !== expectedResponse.observations_sha256 ||
+        attestation.response_sha256_by_pass.some((digest) =>
+          digest !== expectedResponseDigest)) {
+      throw new Error("candidate runtime warmup attestation disagrees with the frozen survey");
+    }
+  } else if (attestation.response_sha256_by_pass[0] !==
+      attestation.response_sha256_by_pass[1]) {
+    throw new Error("candidate runtime warmup passes did not agree");
+  }
+  return attestation;
+}
+
+function bindWarmedRuntimeClosure(warmup, source, records) {
+  const warmedRuntimeClosure = warmup?.candidate_runtime_closure;
+  const recordedRuntimeClosure = source?.candidate_runtime_closure;
+  if (!warmedRuntimeClosure || !recordedRuntimeClosure ||
+      canonicalDigest(warmedRuntimeClosure) !== canonicalDigest(recordedRuntimeClosure)) {
+    throw new Error("candidate runtime closure changed after its warm fixed-point proof");
+  }
+  validateRuntimeWarmupAttestation(warmup.attestation, recordedRuntimeClosure, records);
+  return { ...source, candidate_runtime_warmup: warmup.attestation };
+}
+
+function warmCandidateDirectEnvironment(corpus, root = ROOT, dependencies = {}) {
+  const records = corpus?.records;
+  if (!Array.isArray(records) || records.length !== 1000) {
+    throw new Error("candidate direct environment warmup requires the full frozen survey");
+  }
+  const identifyEnvironment = dependencies.candidateDirectEnvironmentIdentity ||
+    candidateDirectEnvironmentIdentity;
+  const identifyClosure = dependencies.candidateRuntimeClosure || candidateRuntimeClosure;
+  const spawn = dependencies.spawnSync || childProcess.spawnSync;
+  const makeSource = dependencies.sageWarmupSource || sageWarmupSource;
+  const generatedSource = makeSource(records);
+  const responses = [];
   const run = () => {
-    const identity = candidateDirectEnvironmentIdentity(root);
-    const result = childProcess.spawnSync(
+    const identity = identifyEnvironment(root);
+    const result = spawn(
       identity.node_executable.path,
       [path.join(root, "bin/sagejs"), "--python", "-"],
       {
         cwd: root,
-        input: sageCensusSource([record]),
+        input: generatedSource,
         encoding: "utf8",
         env: identity.environment,
         timeout: 600_000,
@@ -671,23 +756,32 @@ function warmCandidateDirectEnvironment(corpus, root = ROOT) {
             `status=${result.status} signal=${result.signal}`),
       );
     }
-    const response = responseFromStdout(result.stdout);
-    validateAdapterResponse(response, { mode: "census", system: "sagejs" });
-    const observed = response.payload?.records?.[0];
-    validateCheckpointObservation(observed, record);
-    if (observed.status !== "native-pass") {
-      throw new Error("candidate direct environment warmup did not use native execution");
-    }
+    const line = result.stdout.split(/\r?\n/).find((entry) =>
+      entry.startsWith(WARMUP_MARKER));
+    if (!line) throw new Error("candidate direct environment warmup emitted no result marker");
+    const response = JSON.parse(line.slice(WARMUP_MARKER.length));
+    validateWarmupResponse(response, records);
+    responses.push(response);
   };
 
   run();
-  const before = candidateRuntimeClosure(root);
+  const before = identifyClosure(root);
   run();
-  const after = candidateRuntimeClosure(root);
-  if (before.sha256 !== after.sha256) {
+  const after = identifyClosure(root);
+  if (canonicalDigest(before) !== canonicalDigest(after)) {
     throw new Error("candidate direct environment did not reach a stable runtime closure");
   }
-  return after;
+  const attestation = {
+    schema: WARMUP_ATTESTATION_SCHEMA,
+    program_sha256: sha256(generatedSource),
+    record_count: records.length,
+    observations_sha256: responses[0].observations_sha256,
+    pass_count: responses.length,
+    response_sha256_by_pass: responses.map(canonicalDigest),
+    runtime_closure_sha256_by_pass: [before.sha256, after.sha256],
+  };
+  validateRuntimeWarmupAttestation(attestation, after, records);
+  return { attestation, candidate_runtime_closure: after };
 }
 
 function sourceIdentity(allowDirty = false) {
@@ -787,13 +881,20 @@ function sourceIdentitiesMatchForTiming(recorded, current) {
     (recordedRuntime === undefined && currentRuntime === undefined) ||
     (recordedRuntime !== undefined && currentRuntime !== undefined &&
       canonicalDigest(recordedRuntime) === canonicalDigest(currentRuntime));
+  const recordedWarmup = recorded?.candidate_runtime_warmup;
+  const currentWarmup = current?.candidate_runtime_warmup;
+  const warmupMatches =
+    (recordedWarmup === undefined && currentWarmup === undefined) ||
+    (recordedWarmup !== undefined && currentWarmup !== undefined &&
+      canonicalDigest(recordedWarmup) === canonicalDigest(currentWarmup));
   return Boolean(recorded && current && recorded.clean === true && current.clean === true &&
     recorded.promotion_eligible === true && current.promotion_eligible === true &&
     recorded.candidate_tree === current.candidate_tree &&
     recorded.source_closure_sha256 === current.source_closure_sha256 &&
     recorded.build_receipt?.current === true && current.build_receipt?.current === true &&
     typeof recorded.build_receipt.sha256 === "string" &&
-    recorded.build_receipt.sha256 === current.build_receipt.sha256 && runtimeMatches);
+    recorded.build_receipt.sha256 === current.build_receipt.sha256 && runtimeMatches &&
+    warmupMatches);
 }
 
 function toolPlan(options) {
@@ -922,6 +1023,64 @@ for record in records:
 print(${pythonLiteral(RESPONSE_MARKER)} + json.dumps({
     "schema": ${pythonLiteral(ADAPTER_SCHEMA)}, "mode": "census", "system": "sagejs",
     "status": "ok", "proof": "conditional-grh", "payload": {"records": payload},
+}, sort_keys=True, separators=(",", ":")), flush=True)
+`;
+}
+
+function sageWarmupSource(records) {
+  const fields = records.map((record) => ({
+    label: record.label,
+    coefficients: record.coefficients,
+    discriminant: record.discriminant,
+    class_number: record.class_number,
+    class_group_invariants: record.class_group_invariants,
+  }));
+  return `import hashlib
+import json
+
+def exact_json(value):
+    if value is None or isinstance(value, (bool, str)):
+        return value
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, (list, tuple)):
+        return [exact_json(entry) for entry in value]
+    if isinstance(value, dict):
+        return {str(key): exact_json(entry) for key, entry in value.items()}
+    raise TypeError("native receipt contains a non-JSON audit value: " + type(value).__name__)
+
+records = json.loads(${pythonLiteral(JSON.stringify(fields))})
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+print(${pythonLiteral(READY_MARKER)}, flush=True)
+observations = []
+for record in records:
+    polynomial = sum(int(value) * x**index for index, value in enumerate(record["coefficients"]))
+    field = NumberField(polynomial, "a_" + record["label"].replace(".", "_"))
+    discriminant = str(field.maximal_order().discriminant())
+    class_number = str(field.class_number(proof=False))
+    receipt = getattr(field, "_native_cubic_class_number_certificate", None)
+    invariants = [] if receipt is None else [str(value) for value in receipt.invariants]
+    if discriminant != record["discriminant"]:
+        raise AssertionError("warmup discriminant disagreement at " + record["label"])
+    if class_number != record["class_number"] or invariants != record["class_group_invariants"]:
+        raise AssertionError("warmup class-group disagreement at " + record["label"])
+    if receipt is None or not receipt.matches(field):
+        raise AssertionError("warmup has no authenticated native receipt at " + record["label"])
+    if not receipt.verify_conditional_grh(field):
+        raise AssertionError("warmup exact replay failed at " + record["label"])
+    receipt_payload = exact_json(receipt.to_dict())
+    json.dumps(receipt_payload, sort_keys=True, separators=(",", ":"))
+    observations.append({
+        "label": record["label"], "discriminant": discriminant,
+        "class_number": class_number, "class_group_invariants": invariants,
+    })
+observations_sha256 = hashlib.sha256(json.dumps(
+    observations, sort_keys=True, separators=(",", ":")
+).encode()).hexdigest()
+print(${pythonLiteral(WARMUP_MARKER)} + json.dumps({
+    "schema": ${pythonLiteral(WARMUP_SCHEMA)}, "record_count": len(observations),
+    "native_pass_count": len(observations), "observations_sha256": observations_sha256,
 }, sort_keys=True, separators=(",", ":")), flush=True)
 `;
 }
@@ -2560,8 +2719,9 @@ async function main(argv = process.argv.slice(2)) {
     os.hostname(),
   ].join(":"));
   const corpus = loadFrozenSurveyCorpus(options.corpus, options.assetDir);
-  if (!options.dryRun) warmCandidateDirectEnvironment(corpus);
-  const source = sourceIdentity(options.allowDirty);
+  const warmup = options.dryRun ? null : warmCandidateDirectEnvironment(corpus);
+  let source = sourceIdentity(options.allowDirty);
+  if (warmup) source = bindWarmedRuntimeClosure(warmup, source, corpus.records);
   options.directEnvironmentIdentity =
     source.candidate_runtime_closure.direct_process_environment;
   options.launchWrapperIdentity =
@@ -2627,10 +2787,14 @@ module.exports = {
   MINIMUM_ROOT_NS,
   READY_MARKER,
   RESPONSE_MARKER,
+  WARMUP_MARKER,
+  WARMUP_SCHEMA,
+  WARMUP_ATTESTATION_SCHEMA,
   RETAINED_ROUNDS,
   THREAD_ENV,
   candidateDirectEnvironmentIdentity,
   candidateRuntimeClosure,
+  bindWarmedRuntimeClosure,
   prepareCandidateDirectEnvironment,
   warmCandidateDirectEnvironment,
   combineCensus,
@@ -2662,6 +2826,7 @@ module.exports = {
   runBoundedCensusBatches,
   runCensusBatchWithCheckpoint,
   sageCensusSource,
+  sageWarmupSource,
   sageTimingSource,
   shardRecords,
   systemOrder,
@@ -2678,4 +2843,6 @@ module.exports = {
   validateCensusProcessTopology,
   validateDirectSagejsTool,
   validateRuntimeIdentity,
+  validateRuntimeWarmupAttestation,
+  validateWarmupResponse,
 };

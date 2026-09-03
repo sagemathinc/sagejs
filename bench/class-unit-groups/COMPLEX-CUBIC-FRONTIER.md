@@ -260,9 +260,16 @@ hashed Node executable (not the wrapper's `env` shebang), with only a fixed
 locale/time zone, the fixed single-thread environment, source mode, the exact
 candidate production native pack, a closure-bound noninteractive module cache,
 and controlled nonexistent dynamic-cache and site-package roots. Before source
-identity is recorded, two identical native warmups must leave that runtime
-closure unchanged; the second pass proves that lazy compilation has reached a
-fixed point. This applies to the survey census and timing commands too. The
+identity is recorded, two identical untimed passes traverse all 1,000 exposed
+survey fields. Every field must reproduce its frozen class group through an
+authenticated native receipt and independent exact replay; only a compact
+observation digest crosses the process boundary. The generated-program digest,
+both response digests, both closure digests, and pass count form a compact
+warmup attestation retained in the source identity. The complete runtime closure
+is hashed after each pass and must be unchanged; the separately recorded source
+closure must equal that fixed point. Thus the second pass proves that every
+survey-exercised lazy path has stabilized, without a post-warm identity gap.
+This applies to the survey census and timing commands too. The
 runtime closure records the full environment and launch identity, the complete
 production cache index, the selected cubic loader, and the manifest and exact
 bytes of its required native pack. It rejects the loader's standalone-addon

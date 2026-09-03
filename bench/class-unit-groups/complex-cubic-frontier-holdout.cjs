@@ -26,6 +26,7 @@ const {
 const {
   RETAINED_ROUNDS,
   THREAD_ENV,
+  bindWarmedRuntimeClosure,
   candidateDirectEnvironmentIdentity,
   candidateRuntimeClosure,
   combineCensus,
@@ -48,6 +49,7 @@ const {
   validateCensusProcessTopology,
   validateCheckpointObservation,
   validateDirectSagejsTool,
+  validateRuntimeWarmupAttestation,
   warmCandidateDirectEnvironment,
 } = require("./run-complex-cubic-frontier.cjs");
 
@@ -186,6 +188,7 @@ function validateCandidateSourceIdentity(source) {
         canonicalDigest(candidateDirectEnvironmentIdentity())) {
     throw new Error("candidate source requires an authenticated runtime/build-output closure");
   }
+  validateRuntimeWarmupAttestation(source.candidate_runtime_warmup, closure);
   return source;
 }
 
@@ -441,6 +444,11 @@ function validateCandidateQualification({
   selectedLabel,
   frozenAt,
 }) {
+  validateRuntimeWarmupAttestation(
+    candidateSource?.candidate_runtime_warmup,
+    candidateSource?.candidate_runtime_closure,
+    corpus.records,
+  );
   isoTimestamp(qualification?.recorded_at, "qualification.recorded_at");
   if (Date.parse(qualification.recorded_at) > Date.parse(frozenAt)) {
     throw new Error("candidate qualification cannot be recorded after frozen_at");
@@ -497,6 +505,7 @@ function projectCandidateSource(source) {
   return {
     ...projectSource(source),
     candidate_runtime_closure: source.candidate_runtime_closure,
+    candidate_runtime_warmup: source.candidate_runtime_warmup,
   };
 }
 
@@ -842,7 +851,7 @@ function validateFreezeThenLoadHoldout({
   return makeHoldoutCorpus(inputs.corpus, artifact, records);
 }
 
-function currentSourceIdentity(allowDirty = false) {
+function currentSourceIdentity(allowDirty = false, warmup = null, records = null) {
   const git = (args) => childProcess.execFileSync("git", ["-C", ROOT, ...args], {
     encoding: "utf8",
   }).trim();
@@ -852,7 +861,7 @@ function currentSourceIdentity(allowDirty = false) {
   if (dirty && !allowDirty) throw new Error("holdout census requires a clean Git worktree");
   const build = inspectBuildReceipt(ROOT);
   const receiptPath = path.join(ROOT, "dist/build-receipt.json");
-  const identity = {
+  let identity = {
     candidate_commit: candidateCommit,
     candidate_tree: candidateTree,
     clean: dirty === "",
@@ -866,6 +875,7 @@ function currentSourceIdentity(allowDirty = false) {
     },
     candidate_runtime_closure: candidateRuntimeClosure(ROOT),
   };
+  if (warmup !== null) identity = bindWarmedRuntimeClosure(warmup, identity, records);
   if (!allowDirty) validateCandidateSourceIdentity(identity);
   return identity;
 }
@@ -1215,9 +1225,11 @@ async function main(argv = process.argv.slice(2)) {
   const options = parseArguments(argv);
   prepareCandidateDirectEnvironment(ROOT);
   const inputs = loadPredecessorInputs(options);
-  warmCandidateDirectEnvironment(inputs.corpus);
+  const warmup = warmCandidateDirectEnvironment(inputs.corpus);
+  const identifyWarmedSource = () =>
+    currentSourceIdentity(false, warmup, inputs.corpus.records);
   if (options.mode === "freeze") {
-    const candidateSource = currentSourceIdentity(false);
+    const candidateSource = identifyWarmedSource();
     const candidateTools = toolPlan({
       systems: REQUIRED_SYSTEMS,
       adapters: {},
@@ -1236,7 +1248,10 @@ async function main(argv = process.argv.slice(2)) {
     return;
   }
   const artifact = readFreezeFile(options.freeze);
-  const execution = preflightHoldoutExecution(artifact, inputs, options);
+  const execution = preflightHoldoutExecution(artifact, inputs, options, {
+    currentSourceIdentity: identifyWarmedSource,
+  });
+  execution.currentSourceIdentity = identifyWarmedSource;
   try {
     const holdout = validateFreezeThenLoadHoldout({
       artifact,
