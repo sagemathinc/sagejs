@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "87a9f0041ad3cb29efd0b719d71f0c17161b8868010ae4e5e401026e906d6c6a",
+  "source_sha256": "bfbda475231786996c22f2f39318e552ca767fd7480ef3cd5f15f1ccbfbd5c25",
   "counts": {
     "total": 1049,
     "by_kind": {
@@ -184,8 +184,7 @@
       "ffi:flint:fmpz_matrix_right_kernel"
     ],
     "symbolic-numerical-kernels": [
-      "specialist:symbolic-numerical-integral-wasm",
-      "specialist:symbolic-find-root-wasm"
+      "specialist:symbolic-numerical-integral-wasm"
     ]
   },
   "capabilities": [

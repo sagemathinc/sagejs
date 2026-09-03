@@ -20,11 +20,11 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "82b4adc424d3ec0d1ff863d5c4c3f47dffb48d57ad652477867a587f5cd31db4"
+      "sha256": "88117a071e818d3bef7da9bd8be1247832d1c48120b8f1e563333ba8d5d00be3"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "60f61afc5bd09ac83b5c5a2a3477376c62975c22fb66900b3c21627373ddf002"
+      "sha256": "cd543bff96e95b98e854b5281c6a82ec78841ce6f42148d282267d3b845ac15a"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
@@ -75,7 +75,7 @@
   },
   "route_classes": {
     "expected_requirements": {
-      "wasm-library": 94,
+      "wasm-library": 93,
       "wasm-compiled-source": 16,
       "portable-orchestration": 5,
       "portable-computation": 5
@@ -1660,15 +1660,6 @@
       "expected_routes": [
         {
           "capability_id": "specialist:symbolic-numerical-integral-wasm",
-          "legacy_route": "receipt-backed-wasm-artifact",
-          "route_class": "wasm-library",
-          "reviewed": true,
-          "review": null,
-          "capability_status": "available",
-          "capability_disposition": "shared-core"
-        },
-        {
-          "capability_id": "specialist:symbolic-find-root-wasm",
           "legacy_route": "receipt-backed-wasm-artifact",
           "route_class": "wasm-library",
           "reviewed": true,

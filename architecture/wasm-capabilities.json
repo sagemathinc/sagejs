@@ -680,8 +680,7 @@
       "ffi:flint:fmpz_matrix_right_kernel"
     ],
     "symbolic-numerical-kernels": [
-      "specialist:symbolic-numerical-integral-wasm",
-      "specialist:symbolic-find-root-wasm"
+      "specialist:symbolic-numerical-integral-wasm"
     ]
   },
   "capabilities": [

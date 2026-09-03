@@ -826,6 +826,15 @@ test("kernel Python globals cannot overwrite host or compiler bindings", async (
     )).repr,
     "[False, False, False, False, False, False, False]",
   );
+  assert.equal(
+    (await session.evaluate(
+      "(runtime.reflect.has(__builtins__, 'eval'), " +
+        "runtime.reflect.get(__builtins__, 'eval') is not " +
+        "runtime.reflect.get(runtime.global_object, 'eval'), " +
+        "runtime.reflect.get(__builtins__, 'eval')('value + 2', {'value': 40}))",
+    )).repr,
+    "(True, True, 42)",
+  );
   await session.evaluate(
     "Object = 'Object-value'\n" +
       "Reflect = 'Reflect-value'\n" +

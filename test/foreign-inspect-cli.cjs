@@ -328,7 +328,11 @@ function qualifiedNonExecution(run) {
       ]),
       0,
     );
-    assertSafe(lowered, "matlab", /_matlab\.call_or_index\(open,/);
+    assertSafe(
+      lowered,
+      "matlab",
+      /_matlab\.call_or_index_named\(["']open["'], globals\(\),/,
+    );
     assert.equal(existsSync(marker), false, "inspection executed lowered source");
   } finally {
     rmSync(directory, { recursive: true, force: true });

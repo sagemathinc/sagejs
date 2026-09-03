@@ -378,6 +378,14 @@ export function runRuntimeBootstrap(
       __name__: "builtins",
       __package__: "",
       __loader__: null,
+      // `eval` is a reserved JavaScript binding, so the compiler publishes
+      // the Python implementation under its internal `ρσ_eval` name instead
+      // of adding an `eval` entry to the generated facade.  Expose that exact
+      // implementation explicitly: falling through to `globalThis.eval`
+      // would leak the JavaScript host primitive into Python, while omitting
+      // it breaks ordinary `import builtins; builtins.eval(...)` consumers
+      // such as `inspect.signature(..., eval_str=True)` and Traitlets.
+      eval: Reflect.get(globalThis, "ρσ_eval"),
       __spec__: {
         name: "builtins",
         parent: "",

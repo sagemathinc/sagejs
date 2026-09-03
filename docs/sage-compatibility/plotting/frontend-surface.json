@@ -14,23 +14,23 @@
   "sources": [
     {
       "path": "tools/wolfram/frontend.ts",
-      "sha256": "fcd6205a36621831723d486892ea5c3a64c2e5c7de4d8a623be0723d62635063"
+      "sha256": "7e970d967b0940f83790b3f7140943e7e1e8b520f6f793063f5d77942c6a8246"
     },
     {
       "path": "src/lib/wolfram.py",
-      "sha256": "97cebe4414d1666657cfc57bef52db17b2305b8c03cff0bce30f66cbc6e24ea5"
+      "sha256": "19cef7cd9540e32aa793d1ed13adcdae13da4a475bf310e01a756c991cb24813"
     },
     {
       "path": "tools/matlab/frontend.ts",
-      "sha256": "d73857027109b715ec9e05013b5f08670f08970c5de5b3af1f6b163d8956d987"
+      "sha256": "e1da7454a198fd1631d1776308e83a0215c8447a69a123a40dc52c5659a589ec"
     },
     {
       "path": "src/lib/matlab.py",
-      "sha256": "7dcb362f9f748e599cb721aff3adc3e78ac694124295429b9d25d997203fe588"
+      "sha256": "f47bf159f63a4c54459b24fbb3fc5db53c8c5ab52788686077d2cca1a08d469f"
     },
     {
       "path": "tools/kernel.ts",
-      "sha256": "88024f31a00304399ce83507c9866d5ba5ab3b3bc27587e7ddfb5a7cb4c03cbd"
+      "sha256": "ff1938e5b713e88e3690050e0351a04936c4c9e1f42e85400f5b1076f3dfba0f"
     },
     {
       "path": "test/graphics.cjs",
@@ -356,6 +356,7 @@
         "arrayfun",
         "axes",
         "call_or_index",
+        "call_or_index_named",
         "class_name",
         "colon",
         "conv",
@@ -392,6 +393,7 @@
         "mpower",
         "mrdivide",
         "mtimes",
+        "named_handle",
         "numel",
         "numerical_code",
         "numerical_intent",
@@ -418,6 +420,7 @@
         "title",
         "ttest",
         "ttest2",
+        "validate_callback_names",
         "xlabel",
         "xlim",
         "ylabel",

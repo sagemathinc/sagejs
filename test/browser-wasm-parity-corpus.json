@@ -448,8 +448,7 @@
       "workflow": "symbolic-numerical-kernels",
       "tier": "release",
       "requires": [
-        { "id": "specialist:symbolic-numerical-integral-wasm", "route": "receipt-backed-wasm-artifact" },
-        { "id": "specialist:symbolic-find-root-wasm", "route": "receipt-backed-wasm-artifact" }
+        { "id": "specialist:symbolic-numerical-integral-wasm", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "x=var('x')\nintegral=numerical_integral(exp(x^2),1,2,eps_abs=1e-12,eps_rel=1e-12)\nroot=(x^2-2).find_root(1,2)\nprint(float(integral[0]),float(root))",
       "timeout_ms": 30000,

@@ -100,7 +100,7 @@ normal_rhs = np.matmul(basis.T, noisy)
 coefficients = np.linalg.solve(normal_matrix, normal_rhs)
 fit = np.matmul(basis, coefficients)
 residual = np.subtract(fit, clean)
-rmse = np.sqrt(np.mean(np.multiply(residual, residual))).item()
+rmse = float(np.sqrt(np.mean(np.multiply(residual, residual))))
 
 print("recovered coefficients:", np.round(coefficients, 3).tolist())
 print("fit RMSE:", round(rmse, 6))`,
