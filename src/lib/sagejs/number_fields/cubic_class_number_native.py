@@ -59,7 +59,10 @@ _CUBIC_NARROW_ADJACENT_MAX_FACTORS = 11
 _CUBIC_RELATION_REDUNDANCY_TAIL = 6
 _CUBIC_RELATION_RECOVERY_TAIL = 18
 _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES = 500
-_CUBIC_REDUCED_ENUMERATION_MAX_COORDINATE = 32
+# Exact LLL-reduced T2 ellipsoids can be quite anisotropic even in degree
+# three.  A coordinate limit of 64 admits the observed 41-by-2-by-2 regime;
+# the independent total-candidate cap below still bounds accepted work.
+_CUBIC_REDUCED_ENUMERATION_MAX_COORDINATE = 64
 # Bound binary exponent reconstruction independently of the exact-coordinate
 # publication capacity.  Both envelopes are fixed and fail closed so arena and
 # output storage remain reviewable; exact norm checks remain authoritative.
@@ -2440,6 +2443,9 @@ def _cubic_prepare_reduced_ideal_ellipsoid(
     parameter_row: uint64,
 ) -> bool:
     """Store an exact coefficient box containing PARI's reduced ellipsoid."""
+    # Private fail-closed diagnostics.  The caller copies this row only when
+    # preparation declines; successful publication clears the result buffer.
+    parameters[parameter_row, 10] = 1
     g00 = 0
     g01 = 0
     g02 = 0
@@ -2514,6 +2520,10 @@ def _cubic_prepare_reduced_ideal_ellipsoid(
     limit_zero = _cubic_ceil_sqrt(limit_zero_square)
     limit_one = _cubic_ceil_sqrt(limit_one_square)
     limit_two = _cubic_ceil_sqrt(limit_two_square)
+    parameters[parameter_row, 7] = limit_zero
+    parameters[parameter_row, 8] = limit_one
+    parameters[parameter_row, 9] = limit_two
+    parameters[parameter_row, 10] = 2
     if (
         limit_zero < 0
         or limit_one < 0
@@ -2533,6 +2543,7 @@ def _cubic_prepare_reduced_ideal_ellipsoid(
     parameters[parameter_row, 7] = limit_zero
     parameters[parameter_row, 8] = limit_one
     parameters[parameter_row, 9] = limit_two
+    parameters[parameter_row, 10] = 0
     return True
 
 
@@ -5447,6 +5458,7 @@ def certified_complex_cubic_class_group_v1(
         )
         unit_found = small_unit_status == 1
         unit_box = 9
+        output[63] = 31
 
         # Plan exact prime-power storage before materializing it.
         relation_box = 2
@@ -5641,6 +5653,7 @@ def certified_complex_cubic_class_group_v1(
                     compound_source_index += 1
                 compound_multiplier_count += 1
             compound_multiplier_index += 1
+        output[63] = 32
         adjacent_embedding_source = arena.foreign_resource(fmpz_matrix, 3, 3)
         adjacent_embedding_reduced = arena.foreign_resource(fmpz_matrix, 3, 3)
         adjacent_embedding_transform = arena.foreign_resource(fmpz_matrix, 3, 3)
@@ -5684,6 +5697,7 @@ def certified_complex_cubic_class_group_v1(
         ) = _cubic_complex_root_approximations(coefficients, analytic_scale)
         if adjacent_ideal_count > 0 and adjacent_root_status != 1:
             return False
+        output[63] = 33
         group_index: uint64 = 0
         while group_index < group_count:
             group_base: uint64 = _GROUP_OFFSET + _GROUP_STRIDE * group_index
@@ -5742,6 +5756,8 @@ def certified_complex_cubic_class_group_v1(
         while adjacent_factor_index < factor_count:
             factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
             if workspace[factor_base + 9] != 0:
+                output[62] = adjacent_factor_index
+                output[63] = 34
                 power_base = (
                     _POWER_OFFSET + adjacent_factor_index * _CUBIC_MAX_POWERS * 9
                 )
@@ -5766,6 +5782,7 @@ def certified_complex_cubic_class_group_v1(
                     adjacent_embedding_source,
                 ):
                     return False
+                output[63] = 35
                 adjacent_transform_row: uint64 = 3 * adjacent_factor_index
                 transform_row: uint64 = 0
                 while transform_row < 3:
@@ -5782,6 +5799,7 @@ def certified_complex_cubic_class_group_v1(
                     workspace[factor_base + 8] == 1 or relation_effort >= 3
                 )
                 if use_adjacent_ellipsoid:
+                    output[63] = 36
                     if not _cubic_prepare_reduced_ideal_ellipsoid(
                         workspace,
                         adjacent_basis,
@@ -5791,7 +5809,20 @@ def certified_complex_cubic_class_group_v1(
                         adjacent_ellipsoid_parameters,
                         adjacent_factor_index,
                     ):
+                        output[58] = adjacent_ellipsoid_parameters[
+                            adjacent_factor_index, 7
+                        ]
+                        output[59] = adjacent_ellipsoid_parameters[
+                            adjacent_factor_index, 8
+                        ]
+                        output[60] = adjacent_ellipsoid_parameters[
+                            adjacent_factor_index, 9
+                        ]
+                        output[61] = adjacent_ellipsoid_parameters[
+                            adjacent_factor_index, 10
+                        ]
                         return False
+                    output[63] = 37
                     adjacent_ellipsoid_count: uint64 = (
                         _cubic_plan_reduced_ideal_ellipsoid(
                             workspace,
@@ -5803,11 +5834,14 @@ def certified_complex_cubic_class_group_v1(
                             group_count,
                         )
                     )
+                    output[63] = 38
                     if (
                         adjacent_ellipsoid_count
                         > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES
                     ):
+                        output[61] = adjacent_ellipsoid_count
                         return False
+                    output[63] = 39
                     adjacent_ellipsoid_parameters[adjacent_factor_index, 10] = (
                         adjacent_ellipsoid_count
                     )
@@ -5891,6 +5925,7 @@ def certified_complex_cubic_class_group_v1(
                     else:
                         workspace[factor_base + 9] = adjacent_best_pair + 1
             adjacent_factor_index += 1
+        output[63] = 40
 
         # Retain PARI's compound norm target, but do not construct any product
         # ideals yet.  The ordinary relation prefix first gets an exact unit-
@@ -7337,84 +7372,57 @@ def certified_complex_cubic_class_group_v1(
                             ] += 1
                         analytic_local_degree += analytic_remaining_degree
                 else:
-                    # Exhausting the two free images is deliberately capped.
-                    # A field outside this transparent envelope declines and
-                    # uses the exact dynamic implementation.
-                    if analytic_prime > 31:
-                        return False
-                    analytic_identity_pivot: uint64 = 0
-                    while (
-                        analytic_identity_pivot < 3
-                        and _cubic_positive_mod(
-                            workspace[_IDENTITY_OFFSET + analytic_identity_pivot],
+                    # The factor-base pass has already enumerated every
+                    # degree-one map at primes inside its proved generator
+                    # bound.  Reuse that exact splitting signature instead of
+                    # repeating the quadratic residue-map search during the
+                    # analytic phase.  An index prime beyond the factor base
+                    # uses the same general maximal-order algebra routine; it
+                    # is no reason for an arbitrary small-prime decline.
+                    analytic_map_count: uint64 = 0
+                    if analytic_prime <= factor_search_bound:
+                        analytic_group_index: uint64 = 0
+                        analytic_group_found = False
+                        while analytic_group_index < group_count:
+                            analytic_group_base: uint64 = (
+                                _GROUP_OFFSET + _GROUP_STRIDE * analytic_group_index
+                            )
+                            if workspace[analytic_group_base] == analytic_prime:
+                                if analytic_group_found:
+                                    return False
+                                analytic_group_found = True
+                                analytic_group_factor_start: uint64 = checked_uint64(
+                                    workspace[analytic_group_base + 1]
+                                )
+                                analytic_group_factor_count: uint64 = checked_uint64(
+                                    workspace[analytic_group_base + 2]
+                                )
+                                analytic_factor_index: uint64 = 0
+                                while (
+                                    analytic_factor_index < analytic_group_factor_count
+                                ):
+                                    analytic_factor_base: uint64 = (
+                                        _FACTOR_OFFSET
+                                        + _FACTOR_STRIDE
+                                        * (
+                                            analytic_group_factor_start
+                                            + analytic_factor_index
+                                        )
+                                    )
+                                    if workspace[analytic_factor_base + 2] == 1:
+                                        analytic_map_count += 1
+                                    analytic_factor_index += 1
+                            analytic_group_index += 1
+                    else:
+                        analytic_map_count = _cubic_degree_one_prime_count(
+                            workspace,
+                            coefficients,
+                            equation_order_index,
+                            identity_zero,
+                            identity_one,
+                            identity_two,
                             analytic_prime,
                         )
-                        == 0
-                    ):
-                        analytic_identity_pivot += 1
-                    if analytic_identity_pivot == 3:
-                        return False
-                    analytic_pivot_value = _cubic_positive_mod(
-                        workspace[_IDENTITY_OFFSET + analytic_identity_pivot],
-                        analytic_prime,
-                    )
-                    analytic_pivot_inverse = _cubic_inverse_mod(
-                        analytic_pivot_value,
-                        analytic_prime,
-                    )
-                    if analytic_pivot_inverse == 0:
-                        return False
-                    analytic_first_free: uint64 = 0
-                    while analytic_first_free == analytic_identity_pivot:
-                        analytic_first_free += 1
-                    analytic_second_free: uint64 = analytic_first_free + 1
-                    while analytic_second_free == analytic_identity_pivot:
-                        analytic_second_free += 1
-                    analytic_map_count: uint64 = 0
-                    analytic_first_value = 0
-                    while analytic_first_value < analytic_prime:
-                        analytic_second_value = 0
-                        while analytic_second_value < analytic_prime:
-                            analytic_map_zero = 0
-                            analytic_map_one = 0
-                            analytic_map_two = 0
-                            if analytic_first_free == 0:
-                                analytic_map_zero = analytic_first_value
-                            elif analytic_first_free == 1:
-                                analytic_map_one = analytic_first_value
-                            else:
-                                analytic_map_two = analytic_first_value
-                            if analytic_second_free == 0:
-                                analytic_map_zero = analytic_second_value
-                            elif analytic_second_free == 1:
-                                analytic_map_one = analytic_second_value
-                            else:
-                                analytic_map_two = analytic_second_value
-                            analytic_identity_sum = (
-                                identity_zero * analytic_map_zero
-                                + identity_one * analytic_map_one
-                                + identity_two * analytic_map_two
-                            )
-                            analytic_pivot_image = _cubic_positive_mod(
-                                (1 - analytic_identity_sum) * analytic_pivot_inverse,
-                                analytic_prime,
-                            )
-                            if analytic_identity_pivot == 0:
-                                analytic_map_zero = analytic_pivot_image
-                            elif analytic_identity_pivot == 1:
-                                analytic_map_one = analytic_pivot_image
-                            else:
-                                analytic_map_two = analytic_pivot_image
-                            if _cubic_map_is_multiplicative(
-                                workspace,
-                                analytic_map_zero,
-                                analytic_map_one,
-                                analytic_map_two,
-                                analytic_prime,
-                            ):
-                                analytic_map_count += 1
-                            analytic_second_value += 1
-                        analytic_first_value += 1
                     if analytic_map_count == 0:
                         analytic_local_degree = 3
                         analytic_norm = analytic_prime * analytic_prime * analytic_prime

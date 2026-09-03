@@ -211,6 +211,21 @@ for case in fixture["cases"]:
 # The pure cubic exercises authentication of ramified and split prime records.
 pure_plan = plans["pure-cubic-minus108"]
 pure_records = build_factor_base(pure_plan)
+# The theorem cutoff and the exact enumeration cutoff are deliberately
+# distinct.  A conservative native real enclosure may enumerate a strict
+# superset without changing the theorem or its assumptions.
+extended_plan = pure_plan.with_enumeration_bound(pure_plan.bound + 1)
+assert extended_plan.bound == pure_plan.bound
+assert extended_plan.bound_result is pure_plan.bound_result
+assert extended_plan.enumeration_bound == pure_plan.bound + 1
+assert extended_plan.to_dict()["enumeration_bound"] == pure_plan.bound + 1
+assert extended_plan.progress()["enumeration_bound"] == pure_plan.bound + 1
+assert extended_plan.estimated_rational_primes >= pure_plan.estimated_rational_primes
+try:
+    pure_plan.with_enumeration_bound(pure_plan.bound - 1)
+    raise AssertionError("an enumeration bound omitted proven generators")
+except ValueError:
+    pass
 record = pure_records[0]
 restored = factor_base_prime_from_dict(pure_plan.order, record.to_dict())
 assert restored.to_dict() == record.to_dict()
@@ -444,8 +459,9 @@ assert quintic_plan._retained_memory_bytes == sum(
     quintic_plan._record_memory_bytes.values()
 )
 assert quintic_plan.progress() == {
-    "schema": "sagejs.number-fields/factor-base-progress-v1",
+    "schema": "sagejs.number-fields/factor-base-progress-v2",
     "bound": 38,
+    "enumeration_bound": 38,
     "splitting_scan_complete": True,
     "factor_base_complete": True,
     "eligible_rational_primes": 8,

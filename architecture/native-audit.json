@@ -355,8 +355,8 @@
     },
     {
       "path": "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
-      "lines": 1220,
-      "bytes": 49217,
+      "lines": 1250,
+      "bytes": 50492,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [

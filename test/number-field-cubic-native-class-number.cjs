@@ -242,6 +242,17 @@ assert len(
     ]
 ) == 21
 
+# LMFDB 3.1.47391719.2 has equation-order index 37.  The factor-base pass
+# already retains its exact split signature, so the analytic Euler phase must
+# reuse it instead of declining at an unrelated small-prime envelope.
+K = NumberField(x**3 - x**2 - 272*x + 49141, "index_prime_37")
+receipt = certified_complex_cubic_class_number(K)
+assert receipt is not None
+assert receipt.class_number == 36
+assert receipt.invariants == (6, 6)
+assert receipt.factor_base_size == 30
+assert receipt.verify_conditional_grh()
+
 # A BDF-trivial receipt publishes the finite relation proof used by the
 # native finder. Once detached, ordinary replay must neither invoke that
 # finder again nor trust any factor lattice, row, or principal element.
@@ -364,8 +375,9 @@ print("cubic-native-independent-replay-ok")
 test("native cubic receipts agree with the pinned nontrivial LMFDB corpus", {
   timeout: 240_000,
 }, () => {
-  const output = runPython(String.raw`
+const output = runPython(String.raw`
 from sagejs.number_fields.cubic_class_number_native_runtime import certified_complex_cubic_class_number
+from sagejs.number_fields.class_group_factor_base import build_factor_base, factor_base_plan
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -429,6 +441,16 @@ cases = (
     # paying for a structurally narrow three-ideal call that cannot certify
     # this C2-cubed presentation.
     ("3.1.1802479.1", (-149, 67, 0, 1), 8, (2, 2, 2), 0),
+    # The native BDF enclosure conservatively reaches 47 while the independent
+    # sharp proof stops at 46.  Replay authenticates the complete 19-ideal
+    # superset, whose first 18 ideals already generate by the theorem.
+    ("3.1.23018700.1", (-13850, 0, 0, 1), 21, (21,), 0),
+    # A strongly anisotropic reduced ideal has exact ellipsoid-coordinate
+    # limits 41-by-2-by-2, within the general 64-coordinate native tier.
+    ("3.1.99084027.1", (-40229, 0, 0, 1), 3, (3,), 0),
+    # Residual perfect-power normalization proves the discriminant factor
+    # 1229^2 without increasing the bounded trial-division policy.
+    ("3.1.40781907.1", (-1229, 0, 0, 1), 2, (2,), 0),
 )
 for index, (label, coefficients, expected_order, expected_invariants, expected_passes) in enumerate(cases):
     polynomial = R(0)
@@ -511,6 +533,26 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
         assert receipt.generator_bound == 41, label
         assert receipt.factor_base_size == 16, label
         assert receipt.relation_count == 26, label
+    if label == "3.1.23018700.1":
+        assert receipt.generator_bound == 47, label
+        assert receipt.factor_base_size == 19, label
+        sharp_plan = factor_base_plan(
+            K.maximal_order(), proof=False, theorem="bdf", max_bound=10000
+        )
+        assert sharp_plan.bound == 46, label
+        assert len(build_factor_base(sharp_plan)) == 18, label
+    if label == "3.1.99084027.1":
+        assert receipt.generator_bound == 62, label
+        assert receipt.factor_base_size == 18, label
+    if label == "3.1.40781907.1":
+        assert receipt.generator_bound == 78, label
+        assert receipt.factor_base_size == 20, label
+    if label in (
+        "3.1.23018700.1",
+        "3.1.99084027.1",
+        "3.1.40781907.1",
+    ):
+        assert receipt.verify_conditional_grh(), label
     assert receipt.matches(K), label
 print("cubic-native-lmfdb-corpus-ok")
 `);
@@ -547,6 +589,10 @@ cases = (
     ("3.1.12876435.1", (-2311, -192, 0, 1), 2, (2,)),
     ("3.1.13374423.1", (-21112, 87, 0, 1), 6, (6,)),
     ("3.1.13525380.3", (-3762, 297, 0, 1), 3, (3,)),
+    # This field's fundamental unit has 8615-bit integral-basis coordinates.
+    # Only the small result record uses the wider bounded publication tier;
+    # relation-transcript entries remain in their compact tier.
+    ("3.1.69305231.3", (48016, 134, -1, 1), 3, (3,)),
 )
 for label, coefficients, class_number, invariants in cases:
     polynomial = sum(coefficient * x**exponent for exponent, coefficient in enumerate(coefficients))
@@ -558,6 +604,9 @@ for label, coefficients, class_number, invariants in cases:
     basis = K.maximal_order().basis()
     unit = sum(coordinate * element for coordinate, element in zip(receipt.unit_coordinates, basis))
     assert abs(unit.norm()) == 1
+    if label == "3.1.69305231.3":
+        assert max(abs(value).bit_length() for value in receipt.unit_coordinates) == 8615
+        assert receipt.verify_conditional_grh()
 print("cubic-native-large-regulator-survey-ok")
 `, 240_000);
   assert.equal(output, "cubic-native-large-regulator-survey-ok");

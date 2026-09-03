@@ -72,6 +72,13 @@ occur to exponent at least two in the equation-order discriminant, so checking
 all such primes proves global maximality. The compact FLINT projection is only
 a representation producer; it is not this proof authority.
 
+After bounded trial division, the analyzer repeatedly extracts exact perfect
+powers from the residual discriminant factor before applying deterministic
+word-primality. Thus, for example, the residual $1229^2$ in the equation-order
+discriminant of $x^3-1229$ is certified without raising a global trial-division
+limit. A residual that cannot be proved prime or decomposed exactly still
+causes a decline.
+
 ### 2. The factor base generates the class group
 
 For a complex cubic, Minkowski's theorem gives an integral ideal in every
@@ -125,8 +132,13 @@ $\gamma>H_{32}-\log 32-1/64$. This is tight enough to retain genuinely
 field-specific cutoffs near the theorem boundary without importing a decimal
 table or trusting binary floating-point comparisons.
 
-The factor base contains every degree-one prime ideal needed up to the selected
-proved bound.
+Let $B$ denote the theorem-certified generator bound. The native interval
+calculation may safely produce a conservative integer enumeration bound
+$G\geq B$. The factor base contains every required prime ideal through $G$;
+in particular, it contains the complete theorem-qualified generating subset
+through $B$. Enlarging a generating set preserves surjectivity, but does not
+change the theorem, its sharp cutoff, or its assumptions.
+
 This suffices in degree three. An inert degree-three prime ideal is $(p)$ and
 is principal. In splitting type $(1,2)$, the degree-two prime class is the
 inverse of the degree-one prime class because their product is $(p)$.
@@ -134,7 +146,8 @@ Completely split and ramified degree-one primes are represented by all exact
 multiplicative maps $\mathcal O \to \mathbb F_p$. Thus the free group on the
 retained factor base surjects onto $\operatorname{Cl}(\mathcal O)$.
 The degree-two factor in type $(1,2)$ is retained only when its norm $p^2$ is
-within the proved bound; this rule is identical for Minkowski and GRH bounds.
+within $G$; the complete subset through $B$ is what the generator theorem
+requires.
 
 The factor base is allowed to be empty. If every rational prime through the
 selected generator bound is inert, its unique prime ideal is $(p)$ and is
@@ -220,6 +233,14 @@ therefore influences only which candidates are proposed. Exact norm evaluation,
 smoothness, ideal containment, and the independent proof replay remain the
 correctness authority for every admitted relation.
 
+The current source-transparent machine accepts coordinate limits through $64$
+and at most $500$ retained candidates per reduced ideal. These are resource
+envelopes, not mathematical heuristics: exceeding either causes a decline.
+LMFDB field `3.1.99084027.1`, defined by $x^3-40229$, exercises the first newly
+measured anisotropic regime, with coordinate limits $41,2,2$. It remains well
+inside the independent candidate cap and yields an authenticated $C_3$
+presentation.
+
 Relation compaction retains the class-lattice support plus a bounded tail of
 six redundant witnesses. Those extra rows preserve ordinary short unit
 dependencies without making every HNF transform operate on the full collection
@@ -273,12 +294,15 @@ for a positive integer unit index $q$ and the true regulator $R$.
 
 The relation-dependency reconstruction uses two independent, bounded native
 resource envelopes. A normalized archimedean reconstruction may shift its
-binary exponent by at most $4096$ steps. The public adapter's publication
-buffers separately permit at most $4096$ bits in each exact integral-basis
-coordinate. There is no theorem that bounds the second quantity by the first,
-so exhausting either resource causes a decline. Neither bound is an acceptance
-criterion: a published candidate must still pass the exact norm check, the
-rigorous regulator overlap, and the final index-one argument below.
+binary exponent by at most $4096$ steps. Proof and relation-transcript buffers
+separately permit at most $4096$ bits per integer, while the small scalar result
+record permits $16384$ bits per integer. There is no theorem that bounds exact
+unit-coordinate size by the archimedean exponent, so exhausting any tier causes
+a decline. Neither bound is an acceptance criterion: a published candidate
+must still pass the exact norm check, the rigorous regulator overlap, and the
+final index-one argument below. The separate result tier is exercised by LMFDB
+field `3.1.69305231.3`, whose authenticated fundamental-unit coordinates reach
+$8615$ bits while its relation transcript remains within the compact tier.
 
 This distinction matters for LMFDB field `3.1.685935.1`, defined by
 $x^3+243x-644$. Its regulator is approximately $358.1523273$, so the binary
@@ -324,7 +348,12 @@ Let $\kappa_K$ be the residue of $\zeta_K(s)$ at $s=1$. At the fixed cutoff
 $X=997$, the program computes the required prime-ideal-power terms from the
 exact multiplication algebra of the certified maximal order. In particular,
 index primes are not analyzed from the possibly misleading defining
-polynomial.
+polynomial. If an index prime lies within the retained factor-base scan, the
+analytic phase reuses the already certified count of residue-degree-one prime
+ideals. Otherwise it invokes the same exact maximal-order algebra routine
+directly. There is no small-prime cutoff; LMFDB field `3.1.47391719.2`, whose
+equation order has index $37$, exercises this path with three distinct
+degree-one primes above $37$.
 
 Belabas--Friedman Theorem 1 states, under the residue hypothesis above and for
 $X \geq 69$, that $\log \kappa_K$ differs from their explicit finite
@@ -427,11 +456,15 @@ the ordinary planner because the closed program uses small rational enclosures
 for its analytic constants. Replay requires the sharp BDF bound to be no
 larger than the authenticated native bound. The native Minkowski cutoff is
 likewise deliberately an integral safe ceiling derived from a ceiling square
-root, while the ordinary planner can return the sharp floor. In both cases,
-replay still requires the transcript's factor count and exact ideal-by-ideal
-bijection to equal the complete factor base built at the independently proved
-sharp bound; a larger cutoff that actually introduces another factor therefore
-fails closed.
+root, while the ordinary planner can return the sharp floor. In both cases the
+ordinary planner retains the sharp theorem bound $B$, constructs the complete
+factor base through the authenticated enumeration bound $G$, and requires the
+transcript's factor count and exact ideal-by-ideal bijection to match that
+complete superset. Since $G\geq B$, the authenticated superset still contains
+every theorem-qualified generator. This distinction is essential for LMFDB
+field `3.1.23018700.1`: ordinary BDF proves $B=46$, the conservative native
+enclosure gives $G=47$, and the additional degree-one ideal above $47$ is a
+valid nineteenth generator column rather than a certificate failure.
 The closed program copies those factor lattices to the caller-owned audit
 buffer before its analytic phase reuses the exact-power workspace for dense
 Euler coefficients and terms. Relation rows and their principal elements are

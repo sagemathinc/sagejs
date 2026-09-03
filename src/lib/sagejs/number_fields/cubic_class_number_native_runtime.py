@@ -39,13 +39,13 @@ from sagejs.number_fields.cubic_class_number_native import (
 
 
 _CUBIC_OUTPUT_LENGTH = 64
-# Published exact units can be exponentially larger than their field
-# discriminants.  Keep the bounded public buffers aligned with the closed
-# program's 4096-bit archimedean reconstruction envelope.
-# Exact-coordinate size is not mathematically bounded by the archimedean
-# exponent.  This independent publication envelope is deliberately the same
-# numerical size; a larger coordinate raises OverflowError and declines.
+# Order proofs and relation transcripts stay in the compact 4096-bit tier.
 _CUBIC_BUFFER_WORD_CAPACITY = (_CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT + 63) // 64
+# Exact unit coordinates are not bounded by the number of archimedean
+# reconstruction steps.  Give only the small scalar result record a separate
+# 16384-bit publication tier: a larger result still declines fail closed,
+# while wide transcripts do not pay this capacity at every entry.
+_CUBIC_OUTPUT_WORD_CAPACITY = 256
 _CUBIC_ARENA_MEMORY_LIMIT = 1_048_576
 _CUBIC_ARENA_TEMPORARY_LIMIT = 2_097_152
 _CUBIC_RELATION_EFFORTS = (1, 2, 3, 4, 5, 6, 7, 8)
@@ -693,9 +693,10 @@ class CertifiedComplexCubicClassNumber:
             # The native program uses deliberately small rational enclosures
             # for the BDF constants and can therefore certify a conservative
             # cutoff one or more integers above the sharp ordinary cutoff.
-            # The exact factor count and ideal-by-ideal bijection below still
-            # require the transcript to contain precisely the complete factor
-            # base independently rebuilt at the sharper proven bound.
+            # A complete factor base through the conservative cutoff contains
+            # the sharp theorem-qualified generator base and hence generates
+            # the same class group.  The exact factor count and ideal-by-ideal
+            # bijection below replay precisely that published superset.
             int(plan.bound) <= self.generator_bound
             if conditional_generators
             else (
@@ -714,7 +715,9 @@ class CertifiedComplexCubicClassNumber:
             or (not conditional_generators and plan.theorem != "Minkowski")
         ):
             return None
-        records = factor_module.build_factor_base(plan)
+        transcript_plan = plan.with_enumeration_bound(self.generator_bound)
+        transcript_plan.require_feasible()
+        records = factor_module.build_factor_base(transcript_plan)
         if len(records) != self.factor_base_size:
             return None
 
@@ -1014,7 +1017,7 @@ def certified_complex_cubic_class_number(
             output = native_module.kernel_integer_zeros(
                 kernel,
                 _CUBIC_OUTPUT_LENGTH,
-                _CUBIC_BUFFER_WORD_CAPACITY,
+                _CUBIC_OUTPUT_WORD_CAPACITY,
             )
             analysis_proof = native_module.kernel_integer_zeros(
                 kernel,

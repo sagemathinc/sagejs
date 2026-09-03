@@ -29,7 +29,8 @@ _prime_ideals = __import__(
 _maximal = __import__("sagejs.number_fields.maximal_order", fromlist=["maximal_order"])
 
 BOUND_SCHEMA = "sagejs.number-fields/factor-base-bound-v1"
-PLAN_SCHEMA = "sagejs.number-fields/factor-base-plan-v1"
+PLAN_SCHEMA = "sagejs.number-fields/factor-base-plan-v2"
+PLAN_PROGRESS_SCHEMA = "sagejs.number-fields/factor-base-progress-v2"
 PRIME_RECORD_SCHEMA = "sagejs.number-fields/factor-base-prime-v1"
 _SECOND_GENERATOR_UNSET = object()
 
@@ -51,6 +52,18 @@ _scalar_log_two_cache: dict[int, _Interval] = {}
 _bound_cache: list[tuple[Any, str, Any]] = []
 _bdf_interval_kernel_override: Any = None
 _bdf_search_hint_override: Any = None
+
+
+def _exact_integer(value: Any, purpose: str) -> int:
+    if isinstance(value, (bool, float, str, bytes, bytearray)):
+        raise TypeError(purpose + " must be an exact integer")
+    try:
+        answer = int(value)
+    except (TypeError, ValueError, OverflowError) as error:
+        raise TypeError(purpose + " must be an exact integer") from error
+    if answer != value:
+        raise TypeError(purpose + " must be an exact integer")
+    return answer
 
 
 def _gcd(left: int, right: int) -> int:
@@ -1502,28 +1515,17 @@ def factor_base_prime_from_dict(
         raise ValueError("unsupported factor-base prime schema")
     order = _as_maximal_order(order_value)
 
-    def exact_integer(value: Any, purpose: str) -> int:
-        if isinstance(value, (bool, float, str, bytes, bytearray)):
-            raise TypeError(purpose + " must be an exact integer")
-        try:
-            answer = int(value)
-        except (TypeError, ValueError, OverflowError) as error:
-            raise TypeError(purpose + " must be an exact integer") from error
-        if answer != value:
-            raise TypeError(purpose + " must be an exact integer")
-        return answer
-
     prime = _prime_ideals._normalize_prime(
-        exact_integer(data["prime"], "the factor-base rational prime")
+        _exact_integer(data["prime"], "the factor-base rational prime")
     )
-    residue_degree = exact_integer(data["f"], "the factor-base residue degree")
+    residue_degree = _exact_integer(data["f"], "the factor-base residue degree")
     if residue_degree < 1 or residue_degree > order.degree():
         raise ValueError("factor-base residue degree is out of range")
     fingerprint = tuple(
         tuple(
             (
-                exact_integer(entry[0], "an HNF numerator"),
-                exact_integer(entry[1], "an HNF denominator"),
+                _exact_integer(entry[0], "an HNF numerator"),
+                _exact_integer(entry[1], "an HNF denominator"),
             )
             for entry in row
         )
@@ -1543,7 +1545,7 @@ def factor_base_prime_from_dict(
             second_generator = None
             if two_generator is not None:
                 if (
-                    exact_integer(
+                    _exact_integer(
                         two_generator.get("rational_prime", 0),
                         "the two-generator rational prime",
                     )
@@ -1559,7 +1561,7 @@ def factor_base_prime_from_dict(
                         "two-generator metadata does not reproduce the prime ideal"
                     )
             record = FactorBasePrimeRecord(
-                exact_integer(data["index"], "the factor-base index"),
+                _exact_integer(data["index"], "the factor-base index"),
                 prime_ideal,
                 second_generator=second_generator,
             )
@@ -1584,12 +1586,23 @@ class FactorBasePlan:
         max_rational_primes: int,
         max_prime_ideals: int,
         max_memory_bytes: int,
+        enumeration_bound: int | None = None,
     ) -> None:
         self.order = order
         self.bound_result = bound_result
         self.theorem = bound_result.theorem
         self.assumptions = bound_result.assumptions
         self.bound = bound_result.bound
+        self.enumeration_bound = (
+            self.bound
+            if enumeration_bound is None
+            else _exact_integer(enumeration_bound, "the factor-base enumeration bound")
+        )
+        if self.enumeration_bound < self.bound:
+            raise ValueError(
+                "the factor-base enumeration bound must contain the proven "
+                "generator bound"
+            )
         self.degree = bound_result.degree
         self.max_bound = max_bound
         self.max_rational_primes = max_rational_primes
@@ -1601,24 +1614,31 @@ class FactorBasePlan:
         self._record_cache: dict[tuple[int, int, int, int], Any] = {}
         self._record_memory_bytes: dict[tuple[int, int, int, int], int] = {}
         self._retained_memory_bytes = 0
-        maximum_degree = 0 if self.bound < 2 else self.bound.bit_length() - 1
+        maximum_degree = (
+            0 if self.enumeration_bound < 2 else self.enumeration_bound.bit_length() - 1
+        )
         self.degree_filters = tuple(range(1, min(self.degree, maximum_degree) + 1))
         # There is one even prime and every other rational prime is odd.  This
         # elementary bound is exact enough for portable preflight policy and
         # halves the former all-integers estimate without a sieve allocation.
-        self.estimated_rational_primes = 0 if self.bound < 2 else (self.bound + 1) // 2
+        self.estimated_rational_primes = (
+            0 if self.enumeration_bound < 2 else (self.enumeration_bound + 1) // 2
+        )
         self.estimated_prime_ideals = self.degree * self.estimated_rational_primes
-        self.presentation_coefficient_bits = _coefficient_height_bits(
-            order, bound_result
+        self.presentation_coefficient_bits = max(
+            _coefficient_height_bits(order, bound_result),
+            self.enumeration_bound.bit_length(),
         )
         self.estimated_record_bytes = _preflight_record_bytes(
-            self.degree, self.presentation_coefficient_bits, self.bound
+            self.degree,
+            self.presentation_coefficient_bits,
+            self.enumeration_bound,
         )
         self.estimated_memory_bytes = (
             self.estimated_prime_ideals * self.estimated_record_bytes
         )
         failures = []
-        if self.bound > self.max_bound:
+        if self.enumeration_bound > self.max_bound:
             failures.append("bound")
         if self.estimated_rational_primes > self.max_rational_primes:
             failures.append("rational-primes")
@@ -1635,10 +1655,30 @@ class FactorBasePlan:
                 "factor-base plan exceeds caps: " + ", ".join(self.cap_failures)
             )
 
+    def with_enumeration_bound(self, enumeration_bound: int) -> "FactorBasePlan":
+        """Return this theorem-qualified plan with a larger exact scan bound.
+
+        If the prime ideals of norm at most `self.bound` generate the class
+        group, any factor base containing them also generates it.  This keeps
+        the theorem's sharp generator bound immutable while allowing a native
+        producer with conservative real enclosures to publish and replay the
+        exact, slightly larger factor base it actually enumerated.
+        """
+        return FactorBasePlan(
+            self.order,
+            self.bound_result,
+            self.max_bound,
+            self.max_rational_primes,
+            self.max_prime_ideals,
+            self.max_memory_bytes,
+            enumeration_bound=enumeration_bound,
+        )
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema": PLAN_SCHEMA,
             "bound": self.bound_result.to_dict(),
+            "enumeration_bound": self.enumeration_bound,
             "degree_filters": list(self.degree_filters),
             "estimates": {
                 "rational_primes_upper_bound": self.estimated_rational_primes,
@@ -1667,8 +1707,9 @@ class FactorBasePlan:
             rational_primes = len({descriptor[1] for descriptor in descriptors})
             prime_ideals = len(descriptors)
         return {
-            "schema": "sagejs.number-fields/factor-base-progress-v1",
+            "schema": PLAN_PROGRESS_SCHEMA,
             "bound": self.bound,
+            "enumeration_bound": self.enumeration_bound,
             "splitting_scan_complete": descriptors is not None,
             "factor_base_complete": factor_base is not None,
             "eligible_rational_primes": rational_primes,
@@ -1732,11 +1773,13 @@ def _eligible_descriptors(plan: FactorBasePlan) -> list[tuple[int, int, int, int
     """Return `(norm,p,f,occurrence)` descriptors without ideal lattices."""
     if plan._descriptor_cache is not None:
         return list(plan._descriptor_cache)
-    if plan.bound < 2:
+    if plan.enumeration_bound < 2:
         plan._descriptor_cache = ()
         return []
     descriptors: list[tuple[int, int, int, int]] = []
-    for splitting in _prime_ideals.splitting_records(plan.order, 2, plan.bound + 1):
+    for splitting in _prime_ideals.splitting_records(
+        plan.order, 2, plan.enumeration_bound + 1
+    ):
         prime = int(splitting["prime"])
         factors = tuple(splitting["factors"])
         # If `p` is inert and unramified, its unique prime ideal is exactly
@@ -1757,7 +1800,7 @@ def _eligible_descriptors(plan: FactorBasePlan) -> list[tuple[int, int, int, int
             occurrence = occurrences.get(residue_degree, 0)
             occurrences[residue_degree] = occurrence + 1
             norm = prime**residue_degree
-            if norm <= plan.bound:
+            if norm <= plan.enumeration_bound:
                 descriptors.append((norm, prime, residue_degree, occurrence))
     descriptors.sort()
     plan._descriptor_cache = tuple(descriptors)
@@ -1898,6 +1941,7 @@ def build_factor_base(plan: FactorBasePlan) -> tuple[FactorBasePrimeRecord, ...]
 __all__ = [
     "BOUND_SCHEMA",
     "PLAN_SCHEMA",
+    "PLAN_PROGRESS_SCHEMA",
     "PRIME_RECORD_SCHEMA",
     "FactorBaseBound",
     "FactorBasePlan",

@@ -228,6 +228,15 @@ try {
   assert.deepEqual(unresolved.components, [[2n, 2n, 0n], [1022117n, 1n, 1n]]);
   assert.equal(unresolved.index, 2n, "partial word-prime HNF was discarded");
 
+  const residualPower = decode(report.residualPower);
+  assert.equal(residualPower.status, 0);
+  assert.equal(residualPower.resolved, 2);
+  assert.equal(residualPower.native, 2);
+  assert.deepEqual(residualPower.components, [[3n, 3n, 0n], [1229n, 2n, 0n]]);
+  assert.equal(residualPower.index, 1n);
+  assert.equal(residualPower.equationDiscriminant, -40781907n);
+  assert.equal(residualPower.orderDiscriminant, -40781907n);
+
   const arbitrary = decode(report.arbitrary);
   assert.equal(arbitrary.status, 2);
   assert.equal(arbitrary.resolved, 1);

@@ -1090,12 +1090,42 @@ static inline int sagejs_number_field_analyze_resource(
     uint32_t status = SAGEJS_NF_ANALYSIS_COMPLETE_CANDIDATE;
     if (!fmpz_is_one(remaining))
     {
-        fmpz_set(fmpz_mat_entry(components, component_count, 0), remaining);
-        fmpz_one(fmpz_mat_entry(components, component_count, 1));
-        if (fmpz_abs_fits_ui(remaining) && n_is_prime(fmpz_get_ui(remaining)))
+        fmpz *residual_base =
+            fmpz_mat_entry(components, component_count, 0);
+        fmpz *residual_exponent =
+            fmpz_mat_entry(components, component_count, 1);
+        fmpz_set(residual_base, remaining);
+        fmpz_one(residual_exponent);
+
+        /* Trial division deliberately has a modest fixed cutoff.  A residual
+         * such as q^2 with q just beyond it is nevertheless completely
+         * certifiable: normalize the residual to a primitive perfect-power
+         * base before applying the existing deterministic word-prime test.
+         * FLINT does not promise that one extraction returns a primitive
+         * root, so repeat exactly as the public exact-vector primitive does. */
+        int residual_power = 0;
+        while ((residual_power =
+                fmpz_is_perfect_power(prime_value, residual_base)) != 0)
+        {
+            if (residual_power < 2 ||
+                fmpz_cmpabs(prime_value, residual_base) >= 0)
+            {
+                status = SAGEJS_NF_ANALYSIS_FALLBACK_UNRESOLVED;
+                break;
+            }
+            fmpz_set(residual_base, prime_value);
+            fmpz_mul_ui(
+                residual_exponent, residual_exponent, (ulong) residual_power);
+        }
+
+        if (status == SAGEJS_NF_ANALYSIS_COMPLETE_CANDIDATE &&
+            fmpz_abs_fits_ui(residual_base) &&
+            n_is_prime(fmpz_get_ui(residual_base)))
             fmpz_set_ui(fmpz_mat_entry(components, component_count, 2),
                 SAGEJS_NF_ANALYSIS_COMPONENT_PROVEN_WORD_PRIME);
-        else if (!fmpz_abs_fits_ui(remaining) && fmpz_is_probabprime(remaining))
+        else if (status == SAGEJS_NF_ANALYSIS_COMPLETE_CANDIDATE &&
+            !fmpz_abs_fits_ui(residual_base) &&
+            fmpz_is_probabprime(residual_base))
         {
             fmpz_set_ui(fmpz_mat_entry(components, component_count, 2),
                 SAGEJS_NF_ANALYSIS_COMPONENT_ARBITRARY_PRIME);
