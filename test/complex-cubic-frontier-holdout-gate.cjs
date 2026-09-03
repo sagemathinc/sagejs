@@ -310,7 +310,7 @@ function sourceIdentity(
   };
   if (runtimeCharacter !== null) {
     source.candidate_runtime_closure = {
-      schema: "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v2",
+      schema: "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v3",
       sha256: runtimeCharacter.repeat(64),
       file_count: 42,
       total_bytes: "123456",
@@ -320,6 +320,16 @@ function sourceIdentity(
         pack_key: "8".repeat(64),
         sha256: "7".repeat(64),
         bytes: "1234",
+      },
+      standalone_native_addon: {
+        path: `dist/native-kernels/${"9".repeat(64)}/build/Release/sagejs_native_kernel.node`,
+        required_absent: true,
+      },
+      flint_runtime: {
+        declaration_identity: `flint@${"6".repeat(64)}`,
+        resolved_loader: "packages/flint/index.cjs",
+        generated_addon_sha256: "5".repeat(64),
+        direct_addon_sha256: "4".repeat(64),
       },
       direct_process_environment: candidateDirectEnvironmentIdentity(),
     };
@@ -939,6 +949,10 @@ test("direct Sage.js execution is ROOT-bound and forced to source mode", () => {
   assert.equal(environment.SAGEJS_USE_SOURCE, "1");
   assert.equal(environment.SAGEJS_NATIVE_MODE, "auto");
   assert.equal(environment.SAGEJS_NATIVE_AUTOLOAD, "1");
+  assert.equal(environment.SAGEJS_NATIVE_REQUIRED, "1");
+  assert.equal(environment.SAGEJS_MODULE_CACHE_AUTO_CLEANUP, "0");
+  assert.equal(identity.launch_wrappers.schema,
+    "sagejs.benchmark/complex-cubic-launch-wrappers-v1");
   assert.equal(
     environment.XDG_CACHE_HOME,
     path.join(root, "dist/runtime-cache/complex-cubic-frontier-xdg"),
@@ -1002,7 +1016,14 @@ test("candidate runtime closure requires and binds the production native pack", 
     schema: "sagejs.native-cache/v4",
     complete: true,
     packs: [{ packKey, kernels: [cacheKey] }],
-    sources: { [source]: { cacheKey, packKey } },
+    sources: { [source]: {
+      cacheKey,
+      packKey,
+      foreignDeclarations: [{
+        dynamicPackage: "@sagemath/sagejs-flint",
+        declarationIdentity: `flint@${"6".repeat(64)}`,
+      }],
+    } },
   }));
   const loader = path.join(cacheRoot, cacheKey, "index.cjs");
   fs.mkdirSync(path.dirname(loader), { recursive: true });
@@ -1020,9 +1041,68 @@ test("candidate runtime closure requires and binds the production native pack", 
     }),
   );
   writeManifest();
+  const flint = path.join(directory, "packages/flint");
+  const generatedAddon = path.join(
+    flint,
+    "build/generated-ffi/sagejs_flint_ffi.node",
+  );
+  const directAddon = path.join(flint, "build/Release/sagejs_flint.node");
+  fs.mkdirSync(path.dirname(generatedAddon), { recursive: true });
+  fs.mkdirSync(path.dirname(directAddon), { recursive: true });
+  fs.writeFileSync(path.join(flint, "index.cjs"), "module.exports = {};\n");
+  fs.writeFileSync(path.join(flint, "package.json"), JSON.stringify({
+    name: "@sagemath/sagejs-flint",
+    main: "index.cjs",
+  }));
+  fs.writeFileSync(generatedAddon, "generated-flint-addon");
+  fs.writeFileSync(directAddon, "direct-flint-addon");
+  fs.writeFileSync(
+    path.join(flint, "build/generated-ffi/manifest.json"),
+    JSON.stringify({
+      schema: "sagejs.ffi/generated-host-adapter-v1",
+      library: `flint@${"6".repeat(64)}`,
+      addon: "sagejs_flint_ffi.node",
+      addon_hash: sha256(fs.readFileSync(generatedAddon)),
+    }),
+  );
+  fs.writeFileSync(
+    path.join(flint, "build/Release/sagejs_flint.manifest.json"),
+    JSON.stringify({
+      schema: "sagejs.flint/direct-addon-v1",
+      addon: "build/Release/sagejs_flint.node",
+      addon_hash: sha256(fs.readFileSync(directAddon)),
+    }),
+  );
+  const packageLink = path.join(
+    directory,
+    "node_modules/@sagemath/sagejs-flint",
+  );
+  fs.mkdirSync(path.dirname(packageLink), { recursive: true });
+  fs.symlinkSync("../../packages/flint", packageLink);
   const present = candidateRuntimeClosure(directory);
   assert.equal(present.production_native_pack.pack_key, packKey);
   assert.equal(present.production_native_pack.sha256, sha256("preferred-pack-v1"));
+  assert.equal(present.flint_runtime.resolved_loader, "packages/flint/index.cjs");
+  assert.equal(
+    present.flint_runtime.generated_addon_sha256,
+    sha256("generated-flint-addon"),
+  );
+  assert.deepEqual(present.standalone_native_addon, {
+    path: `dist/native-kernels/${cacheKey}/build/Release/sagejs_native_kernel.node`,
+    required_absent: true,
+  });
+  const standalone = path.join(
+    cacheRoot,
+    cacheKey,
+    "build/Release/sagejs_native_kernel.node",
+  );
+  fs.mkdirSync(path.dirname(standalone), { recursive: true });
+  fs.writeFileSync(standalone, "unbound-fallback");
+  assert.throws(
+    () => candidateRuntimeClosure(directory),
+    /rejects the standalone native-addon fallback/,
+  );
+  fs.unlinkSync(standalone);
   fs.writeFileSync(pack, "preferred-pack-v2");
   assert.throws(
     () => candidateRuntimeClosure(directory),

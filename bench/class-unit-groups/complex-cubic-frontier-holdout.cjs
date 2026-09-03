@@ -148,7 +148,7 @@ function validateCandidateSourceIdentity(source) {
   validateSourceIdentity(source, "candidate source");
   const closure = source.candidate_runtime_closure;
   if (!closure ||
-      closure.schema !== "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v2" ||
+      closure.schema !== "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v3" ||
       !/^[0-9a-f]{64}$/.test(closure.sha256 || "") ||
       !Number.isSafeInteger(closure.file_count) || closure.file_count < 1 ||
       typeof closure.total_bytes !== "string" || !/^[1-9][0-9]*$/.test(closure.total_bytes) ||
@@ -159,6 +159,19 @@ function validateCandidateSourceIdentity(source) {
       !/^[0-9a-f]{64}$/.test(closure.production_native_pack.pack_key || "") ||
       !/^[0-9a-f]{64}$/.test(closure.production_native_pack.sha256 || "") ||
       !/^[1-9][0-9]*$/.test(closure.production_native_pack.bytes || "") ||
+      closure.standalone_native_addon?.path !==
+        `dist/native-kernels/${closure.native_cache_key}/build/Release/sagejs_native_kernel.node` ||
+      closure.standalone_native_addon?.required_absent !== true ||
+      closure.flint_runtime?.resolved_loader !== "packages/flint/index.cjs" ||
+      !/^flint@[0-9a-f]{64}$/.test(
+        closure.flint_runtime?.declaration_identity || "",
+      ) ||
+      !/^[0-9a-f]{64}$/.test(
+        closure.flint_runtime?.generated_addon_sha256 || "",
+      ) ||
+      !/^[0-9a-f]{64}$/.test(
+        closure.flint_runtime?.direct_addon_sha256 || "",
+      ) ||
       canonicalDigest(closure.direct_process_environment) !==
         canonicalDigest(candidateDirectEnvironmentIdentity())) {
     throw new Error("candidate source requires an authenticated runtime/build-output closure");
@@ -940,6 +953,8 @@ async function runHoldoutCensus(holdout, artifact, options, dependencies = {}) {
         censusShard: index,
         directEnvironmentIdentity:
           sourceBefore.candidate_runtime_closure.direct_process_environment,
+        launchWrapperIdentity:
+          sourceBefore.candidate_runtime_closure.direct_process_environment.launch_wrappers,
       },
     );
     processes.push(validateHoldoutInvocation({
@@ -967,6 +982,8 @@ async function runHoldoutCensus(holdout, artifact, options, dependencies = {}) {
     timeoutSeconds: options.timeoutSeconds,
     directRuntimeClosureSha256,
     executionEpoch,
+    launchWrapperIdentity:
+      sourceBefore.candidate_runtime_closure.direct_process_environment.launch_wrappers,
   });
   processes.push(validateHoldoutInvocation({
     invocation: pariInvocation,

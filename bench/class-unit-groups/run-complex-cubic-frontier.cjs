@@ -266,6 +266,33 @@ function resolveExecutable(requested) {
   return null;
 }
 
+function pinnedLaunchWrapperIdentity() {
+  const identify = (filename) => {
+    if (!fs.existsSync(filename)) return null;
+    const status = fs.lstatSync(filename);
+    if (!status.isFile() || status.isSymbolicLink()) {
+      throw new Error(`frontier launch wrapper must be a regular file: ${filename}`);
+    }
+    fs.accessSync(filename, fs.constants.X_OK);
+    const bytes = fs.readFileSync(filename);
+    return {
+      path: filename,
+      sha256: sha256(bytes),
+      bytes: String(bytes.length),
+    };
+  };
+  const payload = {
+    schema: "sagejs.benchmark/complex-cubic-launch-wrappers-v1",
+    taskset: identify("/usr/bin/taskset"),
+    time: identify("/usr/bin/time"),
+  };
+  return {
+    ...payload,
+    available: payload.taskset !== null && payload.time !== null,
+    sha256: canonicalDigest(payload),
+  };
+}
+
 function expectedDirectSagejsExecutable(root = ROOT) {
   return fs.realpathSync(path.join(root, "bin/sagejs"));
 }
@@ -279,7 +306,7 @@ function validateDirectSagejsTool(tool, root = ROOT) {
 }
 
 const CANDIDATE_DIRECT_ENVIRONMENT_SCHEMA =
-  "sagejs.benchmark/complex-cubic-direct-environment-v2";
+  "sagejs.benchmark/complex-cubic-direct-environment-v3";
 
 function prepareCandidateDirectEnvironment(root = ROOT) {
   const cacheHome = path.join(
@@ -334,11 +361,14 @@ function candidateDirectEnvironmentIdentity(root = ROOT) {
       SAGEJS_USE_SOURCE: "1",
       SAGEJS_NATIVE_MODE: "auto",
       SAGEJS_NATIVE_AUTOLOAD: "1",
+      SAGEJS_NATIVE_REQUIRED: "1",
       SAGEJS_NATIVE_CACHE_DIR: path.join(root, "dist/native-kernels"),
+      SAGEJS_MODULE_CACHE_AUTO_CLEANUP: "0",
       SAGEJS_PRECOMPILED_DYNAMIC_CACHE_DIR: precompiledDynamicCache,
       SAGEJS_DYNAMIC_CACHE_DIR: dynamicCache,
       SAGEJS_SITE_PACKAGES: sitePackages,
     },
+    launch_wrappers: pinnedLaunchWrapperIdentity(),
   };
   return { ...payload, sha256: canonicalDigest(payload) };
 }
@@ -364,8 +394,9 @@ function candidateRuntimeClosure(root = ROOT) {
     hash.update(normalized);
     hash.update("\0");
     if (status.isSymbolicLink()) {
-      hash.update("symlink\0");
-      hash.update(fs.readlinkSync(filename));
+      throw new Error(
+        `candidate runtime closure rejects symbolic-link input ${normalized}`,
+      );
     } else if (status.isFile()) {
       const bytes = fs.readFileSync(filename);
       hash.update("file\0");
@@ -412,6 +443,68 @@ function candidateRuntimeClosure(root = ROOT) {
       "candidate runtime closure has no production-packed cubic class-group kernel",
     );
   }
+  const standaloneAddonName = path.posix.join(
+    cacheRoot,
+    selected.cacheKey,
+    "build/Release/sagejs_native_kernel.node",
+  );
+  if (fs.existsSync(path.join(root, standaloneAddonName))) {
+    throw new Error(
+      "candidate runtime closure rejects the standalone native-addon fallback",
+    );
+  }
+  const flintDeclaration = selected.foreignDeclarations?.find(
+    (declaration) => declaration?.dynamicPackage === "@sagemath/sagejs-flint",
+  );
+  if (!flintDeclaration ||
+      !/^flint@[0-9a-f]{64}$/.test(flintDeclaration.declarationIdentity || "")) {
+    throw new Error("candidate runtime closure has no declared FLINT package boundary");
+  }
+  const loaderDirectory = path.join(root, cacheRoot, selected.cacheKey);
+  const expectedFlintLoader = path.join(root, "packages/flint/index.cjs");
+  let resolvedFlintLoader;
+  try {
+    resolvedFlintLoader = require.resolve("@sagemath/sagejs-flint", {
+      paths: [loaderDirectory],
+    });
+  } catch (error) {
+    throw new Error(`candidate runtime closure cannot resolve declared FLINT: ${error.message}`);
+  }
+  if (fs.realpathSync(resolvedFlintLoader) !== expectedFlintLoader) {
+    throw new Error(
+      "candidate runtime closure rejects a shadowed or retargeted FLINT package",
+    );
+  }
+  const flintManifestName = "packages/flint/build/generated-ffi/manifest.json";
+  const flintDirectManifestName =
+    "packages/flint/build/Release/sagejs_flint.manifest.json";
+  const flintManifest = JSON.parse(
+    fs.readFileSync(path.join(root, flintManifestName), "utf8"),
+  );
+  const flintDirectManifest = JSON.parse(
+    fs.readFileSync(path.join(root, flintDirectManifestName), "utf8"),
+  );
+  if (flintManifest?.schema !== "sagejs.ffi/generated-host-adapter-v1" ||
+      flintManifest.library !== flintDeclaration.declarationIdentity ||
+      typeof flintManifest.addon !== "string" ||
+      !/^[A-Za-z0-9_.-]+\.node$/.test(flintManifest.addon) ||
+      !/^[0-9a-f]{64}$/.test(flintManifest.addon_hash || "")) {
+    throw new Error("candidate runtime closure rejects the generated FLINT manifest");
+  }
+  const flintGeneratedAddonName = path.posix.join(
+    "packages/flint/build/generated-ffi",
+    flintManifest.addon,
+  );
+  const flintDirectAddonName = "packages/flint/build/Release/sagejs_flint.node";
+  if (flintDirectManifest?.schema !== "sagejs.flint/direct-addon-v1" ||
+      flintDirectManifest.addon !== "build/Release/sagejs_flint.node" ||
+      !/^[0-9a-f]{64}$/.test(flintDirectManifest.addon_hash || "") ||
+      sha256(fs.readFileSync(path.join(root, flintGeneratedAddonName))) !==
+        flintManifest.addon_hash ||
+      sha256(fs.readFileSync(path.join(root, flintDirectAddonName))) !==
+        flintDirectManifest.addon_hash) {
+    throw new Error("candidate runtime closure rejects inconsistent FLINT addons");
+  }
   hash.update("native-cache-selection\0");
   hash.update(canonicalJson(selected));
   hash.update("\0");
@@ -443,6 +536,12 @@ function candidateRuntimeClosure(root = ROOT) {
     path.posix.join(cacheRoot, selected.cacheKey, "index.cjs"),
     packManifestName,
     packName,
+    "packages/flint/package.json",
+    "packages/flint/index.cjs",
+    flintManifestName,
+    flintGeneratedAddonName,
+    flintDirectManifestName,
+    flintDirectAddonName,
   ]) include(name);
 
   const directEnvironment = candidateDirectEnvironmentIdentity(root);
@@ -451,11 +550,25 @@ function candidateRuntimeClosure(root = ROOT) {
   hash.update("\0");
 
   return {
-    schema: "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v2",
+    schema: "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v3",
     sha256: hash.digest("hex"),
     file_count: fileCount,
     total_bytes: String(totalBytes),
     native_cache_key: selected.cacheKey,
+    standalone_native_addon: {
+      path: standaloneAddonName,
+      required_absent: true,
+    },
+    flint_runtime: {
+      declaration_identity: flintDeclaration.declarationIdentity,
+      resolved_loader: "packages/flint/index.cjs",
+      generated_manifest: flintManifestName,
+      generated_addon: flintGeneratedAddonName,
+      generated_addon_sha256: flintManifest.addon_hash,
+      direct_manifest: flintDirectManifestName,
+      direct_addon: flintDirectAddonName,
+      direct_addon_sha256: flintDirectManifest.addon_hash,
+    },
     production_native_pack: {
       path: packName,
       pack_key: selected.packKey,
@@ -1076,13 +1189,19 @@ function runFreshProcess(spec, options = {}) {
 }
 
 function pinnedSpec(executable, args, input, options) {
-  const taskset = process.platform === "linux" ? resolveExecutable("taskset") : null;
-  if (!taskset) throw new Error("retained frontier evidence requires Linux taskset affinity");
-  const time = fs.existsSync("/usr/bin/time") ? "/usr/bin/time" : null;
-  if (!time) throw new Error("retained frontier evidence requires /usr/bin/time for peak RSS");
+  const wrappers = pinnedLaunchWrapperIdentity();
+  if (!wrappers.available) {
+    throw new Error(
+      "retained frontier evidence requires /usr/bin/taskset and /usr/bin/time",
+    );
+  }
+  if (!options.launchWrapperIdentity ||
+      canonicalDigest(options.launchWrapperIdentity) !== canonicalDigest(wrappers)) {
+    throw new Error("retained frontier launch wrappers changed after source binding");
+  }
   return {
-    executable: time,
-    args: ["-f", "SAGEJS_COMPLEX_CUBIC_FRONTIER_MAX_RSS_KIB|%M", taskset,
+    executable: wrappers.time.path,
+    args: ["-f", "SAGEJS_COMPLEX_CUBIC_FRONTIER_MAX_RSS_KIB|%M", wrappers.taskset.path,
       "-c", String(options.cpu), executable, ...args],
     input,
     env: options.env || {},
@@ -2379,6 +2498,8 @@ async function main(argv = process.argv.slice(2)) {
   const source = sourceIdentity(options.allowDirty);
   options.directEnvironmentIdentity =
     source.candidate_runtime_closure.direct_process_environment;
+  options.launchWrapperIdentity =
+    source.candidate_runtime_closure.direct_process_environment.launch_wrappers;
   const tools = toolPlan(options);
   for (const cpu of options.censusCpus) hostIdentity(cpu);
   const plan = {
