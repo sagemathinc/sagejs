@@ -152,17 +152,27 @@ function corpusFixture() {
 
 function nativeObservation(record) {
   const receipt = {
-    schema: "sagejs.number-fields/certified-complex-cubic-native-v3",
+    schema: "sagejs.number-fields/certified-complex-cubic-native-v4",
     polynomial_coefficients: record.coefficients,
     class_number: record.class_number,
     invariants: record.class_group_invariants,
     field_discriminant: record.discriminant,
     equation_order_index: "1",
+    factor_base_size: "1",
+    relation_count: "1",
     proof_status: "exact-relations-conditional-grh",
     assumptions: [
       "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
     ],
     theorem: "minkowski-generators-plus-belabas-friedman-index-one",
+    relation_transcript: {
+      schema: "sagejs.number-fields/complex-cubic-relation-transcript-v1",
+      factor_ideal_hnf_order_coordinates: [
+        [["2", "0", "0"], ["0", "1", "0"], ["0", "0", "1"]],
+      ],
+      relation_rows: [["2"]],
+      principal_element_order_coordinates: [["2", "0", "0"]],
+    },
   };
   return {
     label: record.label,

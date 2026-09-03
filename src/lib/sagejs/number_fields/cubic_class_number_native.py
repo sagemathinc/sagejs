@@ -4640,7 +4640,7 @@ def _cubic_small_relation_prefix_is_trivial(
     return False
 
 
-def _cubic_publish_trivial_relation_transcript(
+def _cubic_publish_relation_transcript(
     workspace: NativeIntegerVector,
     relation_matrix: FmpzMatrix,
     relation_elements: FmpzMatrix,
@@ -4650,7 +4650,7 @@ def _cubic_publish_trivial_relation_transcript(
     transcript_relation_rows: IntegerBuffer,
     transcript_relation_elements: IntegerBuffer,
 ) -> bool:
-    """Publish the exact finite presentation used by a trivial quotient.
+    """Publish the exact finite presentation used by the native quotient.
 
     The caller requests this only on a separate, untimed audit run.  The
     ordinary object layer treats every published integer as an untrusted
@@ -6497,7 +6497,7 @@ def certified_complex_cubic_class_group_v1(
         # group. If that exact quotient is trivial, no unit or analytic index
         # calculation can strengthen the class-group conclusion.
         if class_number_upper == 1:
-            if transcript_mode == 1 and not _cubic_publish_trivial_relation_transcript(
+            if transcript_mode == 1 and not _cubic_publish_relation_transcript(
                 workspace,
                 relation_matrix,
                 relation_elements,
@@ -7729,6 +7729,18 @@ def certified_complex_cubic_class_group_v1(
             index_log_upper < 0
             or index_log_upper >= log_two_lower
             or log_two_upper < log_two_lower
+        ):
+            return False
+
+        if transcript_mode == 1 and not _cubic_publish_relation_transcript(
+            workspace,
+            compact_relation_matrix,
+            compact_relation_elements,
+            relation_count,
+            factor_count,
+            transcript_factor_rows,
+            transcript_relation_rows,
+            transcript_relation_elements,
         ):
             return False
 

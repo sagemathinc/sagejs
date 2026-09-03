@@ -37,7 +37,7 @@ const {
   interpretAdapterProcessResult,
   makeTimingEvent,
   mergeCensusInvocations,
-  nativeTrivialTranscriptIsValid,
+  nativeRelationTranscriptIsValid,
   normalizePariInvariants,
   parseArguments,
   parseGpCensus,
@@ -89,13 +89,13 @@ function sourceRecord(label, selection, classNumber, classGroup) {
   };
 }
 
-test("conditional trivial receipts require a complete exact transcript shape", () => {
+test("conditional native receipts require a complete exact transcript shape", () => {
   const receipt = {
     proof_status: "exact-trivial-presentation-conditional-grh",
     factor_base_size: "2",
     relation_count: "3",
-    trivial_relation_transcript: {
-      schema: "sagejs.number-fields/complex-cubic-trivial-relation-transcript-v1",
+    relation_transcript: {
+      schema: "sagejs.number-fields/complex-cubic-relation-transcript-v1",
       factor_ideal_hnf_order_coordinates: [
         [["2", "0", "0"], ["0", "1", "0"], ["0", "0", "1"]],
         [["3", "0", "0"], ["0", "1", "0"], ["0", "0", "1"]],
@@ -106,16 +106,16 @@ test("conditional trivial receipts require a complete exact transcript shape", (
       ],
     },
   };
-  assert.equal(nativeTrivialTranscriptIsValid(receipt), true);
+  assert.equal(nativeRelationTranscriptIsValid(receipt), true);
   const malformed = structuredClone(receipt);
-  malformed.trivial_relation_transcript.relation_rows[0].pop();
-  assert.equal(nativeTrivialTranscriptIsValid(malformed), false);
+  malformed.relation_transcript.relation_rows[0].pop();
+  assert.equal(nativeRelationTranscriptIsValid(malformed), false);
   const negative = structuredClone(receipt);
-  negative.trivial_relation_transcript.relation_rows[1][0] = "-1";
-  assert.equal(nativeTrivialTranscriptIsValid(negative), false);
-  assert.equal(nativeTrivialTranscriptIsValid({
+  negative.relation_transcript.relation_rows[1][0] = "-1";
+  assert.equal(nativeRelationTranscriptIsValid(negative), false);
+  assert.equal(nativeRelationTranscriptIsValid({
     proof_status: "exact-relations-conditional-grh",
-  }), true);
+  }), false);
 });
 
 function groupFor(stratum) {
@@ -366,17 +366,27 @@ test("verified Sage singleton checkpoints publish atomically and resume exactly"
   const batch = censusBatchPlan(corpus, tool)[0];
   const record = batch.corpus.records[0];
   const receipt = {
-    schema: "sagejs.number-fields/certified-complex-cubic-native-v3",
+    schema: "sagejs.number-fields/certified-complex-cubic-native-v4",
     polynomial_coefficients: record.coefficients,
     class_number: record.class_number,
     invariants: record.class_group_invariants,
     field_discriminant: record.discriminant,
     equation_order_index: "3",
+    factor_base_size: "1",
+    relation_count: "1",
     proof_status: "exact-relations-conditional-grh",
     assumptions: [
       "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
     ],
     theorem: "minkowski-generators-plus-belabas-friedman-index-one",
+    relation_transcript: {
+      schema: "sagejs.number-fields/complex-cubic-relation-transcript-v1",
+      factor_ideal_hnf_order_coordinates: [
+        [["2", "0", "0"], ["0", "1", "0"], ["0", "0", "1"]],
+      ],
+      relation_rows: [["2"]],
+      principal_element_order_coordinates: [["2", "0", "0"]],
+    },
   };
   const receiptDigest = sha256(JSON.stringify(JSON.parse(canonicalJson(receipt))));
   const response = {

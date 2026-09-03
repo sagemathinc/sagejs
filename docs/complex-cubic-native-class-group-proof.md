@@ -387,19 +387,19 @@ This is defense in depth; it cannot promote a declined native computation.
 
 ## Receipt, replay, and trusted base
 
-The version-three audit receipt records the polynomial, field discriminant,
+The version-four audit receipt records the polynomial, field discriminant,
 class invariants, unit coordinates, selected generator bound, factor-base and
 relation sizes, theorem name, and explicit assumptions. Full relation proofs
 also record the successful compound-multiplier prefix and dyadic analytic
 intervals. Empty-generator-base proofs leave those inapplicable fields zero.
-For a nonempty BDF-conditional trivial presentation it additionally records an
-exact relation transcript: every native-order factor-ideal HNF, every collected
-relation row, and the corresponding principal element in maximal-order
-coordinates. This bounded transcript is extracted on the untimed audit path,
-detached from the reusable native buffers, and included in the receipt digest.
-Full nontrivial proofs do not yet contain all ideal relations or local Euler
-witnesses, so the general receipt remains a live authenticated audit record
-rather than a universally detached proof object.
+Every conditional relation proof additionally records an exact relation
+transcript: every native-order factor-ideal HNF, every collected relation row,
+and the corresponding principal element in maximal-order coordinates. This
+bounded transcript is extracted on the untimed audit path, detached from the
+reusable native buffers, and included in the receipt digest. It is sufficient
+for an ordinary-object verifier to reconstruct the exact finite presentation;
+the receipt remains live because extraction is a second authenticated run of
+the evidence finder, not because the native result is a proof premise.
 
 `receipt.verify()` is intentionally independent of the native program. It
 reconstructs the maximal order, checks the unit norm, and recomputes the class
@@ -408,42 +408,52 @@ result for the particular field. External agreement is also tested against a
 versioned LMFDB corpus and PARI/Magma/Hecke oracles, but those comparisons are
 regressions, not premises in the proof above.
 
-`receipt.verify_conditional_grh()` is the matching conditional audit. It also
-bypasses the closed cubic program, reconstructs the maximal order, and checks
-the exact unit norm. Relation-lattice receipts recompute the complete class
-group through the ordinary object engine with `proof=False` and accept only an
-exact GRH-conditional result whose recorded hypotheses are no stronger than
-the receipt's, or the stronger unconditional result. An unconditional trivial
-presentation uses the ordinary bounded Minkowski checker, which remains cheap
-inside the native program's direct-Minkowski envelope.
+`receipt.verify_conditional_grh()` is the matching conditional audit. Its first
+call may rerun the closed cubic program only to extract untrusted finite
+evidence. It then reconstructs the maximal order and factor base through
+ordinary objects, checks the exact unit norm and enough principal relations to
+span the complete published relation lattice, and recomputes that lattice's
+HNF and SNF. An unconditional trivial presentation uses the ordinary bounded
+Minkowski checker, which remains cheap inside the native program's
+direct-Minkowski envelope.
 
-A BDF-conditional trivial presentation instead replays its finite transcript;
-it performs no relation discovery, unit search, Minkowski enumeration, or
-Belabas--Friedman residue calculation. The verifier independently recomputes
-the exact BDF bound and complete factor base. It reconstructs every published
-factor lattice as an ordinary ideal and matches the factors bijectively by
-exact ideal equality, so differing HNF conventions or coincident norms cannot
-identify the wrong prime. From the untrusted rows it retains only rows that
-change the canonical HNF. For each retained row $r_j$ and element $alpha_j$
-it then checks exactly
+The verifier performs no relation discovery, unit search, or Minkowski
+enumeration. It independently recomputes the exact BDF or Minkowski bound and
+complete factor base. It reconstructs every published factor lattice as an
+ordinary ideal and matches the factors bijectively by exact ideal equality, so
+differing HNF conventions or coincident norms cannot identify the wrong prime.
+The BDF cutoff must agree exactly. The native Minkowski cutoff is deliberately
+an integral safe ceiling derived from a ceiling square root, while the ordinary
+planner can return the sharp floor; replay requires the sharp bound to be no
+larger than that authenticated ceiling and still requires a bijection with the
+complete factor base built at the sharp bound.
+An exact HNF transform identifies a set of source rows that spans the complete
+row lattice. For each retained row $r_j$ and element $\alpha_j$ it checks
+exactly
 
 $$
   (\alpha_j)=\prod_i P_i^{r_{j,i}},
 $$
 
-and independently requires the retained row-HNF to be $I$. Under the stated
-BDF class-character GRH hypothesis, the map
+and independently recomputes the retained rows' HNF and SNF. Under the stated
+generator theorem, the map
 
 $$
   \mathbb Z^n\longrightarrow\operatorname{Cl}(K),\qquad
   e_i\longmapsto[P_i]
 $$
 
-is surjective. The verified rows lie in its kernel and span all of
-$\mathbb Z^n$, so the map is zero and the class group is trivial. The native
-program is therefore a proof finder, not the authority for this conclusion.
-An empty BDF factor base is checked directly by the independently reconstructed
-plan and needs no relation transcript.
+is surjective. For a trivial presentation, the verified row lattice is
+$\mathbb Z^n$, so the map is zero immediately. For a nontrivial presentation,
+the independently recovered quotient has the receipt's order $\widehat h$ and
+invariants. The verifier encloses the regulator $\widehat R$ of the published
+exact unit and independently reruns the Belabas--Friedman zeta-residue bound.
+The analytic class-number formula then isolates the positive integer product
+$rq$ as $1$, proving simultaneously that the quotient is the complete class
+group and the unit is fundamental. The native program is therefore a proof
+finder, not the authority for either conclusion. An empty BDF factor base is
+checked directly by the independently reconstructed plan and has an empty
+transcript.
 
 The ordinary replay layers may use independently checked source-transparent
 native accelerators; they do not call the closed cubic implementation as a

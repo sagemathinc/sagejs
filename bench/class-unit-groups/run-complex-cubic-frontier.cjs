@@ -906,20 +906,22 @@ function nativeReceiptProofContractIsValid(receipt) {
   );
 }
 
-function nativeTrivialTranscriptIsValid(receipt) {
-  if (receipt?.proof_status !== "exact-trivial-presentation-conditional-grh") {
+function nativeRelationTranscriptIsValid(receipt) {
+  if (!["exact-trivial-presentation-conditional-grh",
+    "exact-empty-generator-base-conditional-grh",
+    "exact-relations-conditional-grh"].includes(receipt?.proof_status)) {
     return true;
   }
-  const transcript = receipt.trivial_relation_transcript;
+  const transcript = receipt.relation_transcript;
   const factorCount = Number(receipt.factor_base_size);
   const relationCount = Number(receipt.relation_count);
   const exactInteger = (value) =>
     typeof value === "string" && /^-?(?:0|[1-9][0-9]*)$/.test(value);
-  return Number.isSafeInteger(factorCount) && factorCount > 0 &&
+  return Number.isSafeInteger(factorCount) && factorCount >= 0 &&
     Number.isSafeInteger(relationCount) && relationCount >= factorCount &&
     transcript && typeof transcript === "object" && !Array.isArray(transcript) &&
     transcript.schema ===
-      "sagejs.number-fields/complex-cubic-trivial-relation-transcript-v1" &&
+      "sagejs.number-fields/complex-cubic-relation-transcript-v1" &&
     Array.isArray(transcript.factor_ideal_hnf_order_coordinates) &&
     transcript.factor_ideal_hnf_order_coordinates.length === factorCount &&
     transcript.factor_ideal_hnf_order_coordinates.every((matrix) =>
@@ -954,7 +956,7 @@ function validateCheckpointObservation(observed, expected) {
         typeof observed.receipt_digest !== "string" ||
         !/^[0-9a-f]{64}$/.test(observed.receipt_digest) ||
         observed.receipt_digest !== sha256(compactCanonicalJson(receipt)) ||
-        receipt.schema !== "sagejs.number-fields/certified-complex-cubic-native-v3" ||
+        receipt.schema !== "sagejs.number-fields/certified-complex-cubic-native-v4" ||
         JSON.stringify(receipt.polynomial_coefficients) !==
           JSON.stringify(expected.coefficients) ||
         receipt.field_discriminant !== expected.discriminant ||
@@ -966,7 +968,7 @@ function validateCheckpointObservation(observed, expected) {
         JSON.stringify(receipt.invariants) !== JSON.stringify(expected.class_group_invariants) ||
         receipt.proof_status !== observed.proof_status ||
         !nativeReceiptProofContractIsValid(receipt) ||
-        !nativeTrivialTranscriptIsValid(receipt)) {
+        !nativeRelationTranscriptIsValid(receipt)) {
       throw new Error(`census checkpoint for ${expected.label} has an invalid native proof branch`);
     }
   } else if (typeof observed.proof_status !== "string" ||
@@ -2157,7 +2159,7 @@ module.exports = {
   makeTimingEvent,
   mergeCensusInvocations,
   normalizePariInvariants,
-  nativeTrivialTranscriptIsValid,
+  nativeRelationTranscriptIsValid,
   pariCensusSource,
   pariTimingSource,
   portableCorpusIdentity,

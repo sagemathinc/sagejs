@@ -54,8 +54,8 @@ _resident_coefficients: tuple[Any, tuple[int, int, int, int], Any] | None = None
 _resident_native_module: Any | None = None
 _resident_call_active = False
 _CERTIFIED_CUBIC_RECEIPT_TOKEN = object()
-_TRIVIAL_RELATION_TRANSCRIPT_SCHEMA = (
-    "sagejs.number-fields/complex-cubic-trivial-relation-transcript-v1"
+_RELATION_TRANSCRIPT_SCHEMA = (
+    "sagejs.number-fields/complex-cubic-relation-transcript-v1"
 )
 
 
@@ -204,7 +204,7 @@ def _checked_native_values(
         return None
 
 
-def _checked_trivial_relation_transcript(
+def _checked_relation_transcript(
     value: Any,
     factor_count: int,
     relation_count: int,
@@ -272,7 +272,7 @@ def _checked_trivial_relation_transcript(
         return None
 
 
-def _extract_trivial_relation_transcript(
+def _extract_relation_transcript(
     receipt: Any,
 ) -> (
     tuple[
@@ -284,7 +284,10 @@ def _extract_trivial_relation_transcript(
 ):
     """Rerun the proof finder once into exact-sized, audit-only buffers."""
     global _resident_call_active, _resident_coefficients
-    if receipt._values[35] != _CUBIC_PROOF_TRIVIAL_GRH:
+    if receipt._values[35] not in (
+        _CUBIC_PROOF_ANALYTIC_GRH,
+        _CUBIC_PROOF_TRIVIAL_GRH,
+    ):
         return None
     factor_count = receipt.factor_base_size
     relation_count = receipt.relation_count
@@ -400,9 +403,7 @@ def _extract_trivial_relation_transcript(
                 for index in range(relation_count)
             ),
         )
-        return _checked_trivial_relation_transcript(
-            transcript, factor_count, relation_count
-        )
+        return _checked_relation_transcript(transcript, factor_count, relation_count)
     except (
         AttributeError,
         ImportError,
@@ -437,7 +438,7 @@ class CertifiedComplexCubicClassNumber:
         state["_coefficients"] = coefficients
         state["_values"] = values
         state["_relation_effort"] = relation_effort
-        state["_trivial_relation_transcript"] = None
+        state["_relation_transcript"] = None
         state["_transcript_attempted"] = False
         state["_snapshot"] = self._authentication_snapshot()
         state["_frozen"] = True
@@ -454,24 +455,25 @@ class CertifiedComplexCubicClassNumber:
             self._values,
             self._relation_effort,
             self._transcript_attempted,
-            self._trivial_relation_transcript,
+            self._relation_transcript,
         )
 
     @property
     def relation_effort(self) -> int:
         return self._relation_effort
 
-    def _ensure_trivial_relation_transcript(self) -> Any:
-        if self._values[35] != _CUBIC_PROOF_TRIVIAL_GRH:
+    def _ensure_relation_transcript(self) -> Any:
+        if self._values[35] not in (
+            _CUBIC_PROOF_ANALYTIC_GRH,
+            _CUBIC_PROOF_TRIVIAL_GRH,
+        ):
             return None
         state = self.__dict__
         if not state["_transcript_attempted"]:
-            state["_trivial_relation_transcript"] = (
-                _extract_trivial_relation_transcript(self)
-            )
+            state["_relation_transcript"] = _extract_relation_transcript(self)
             state["_transcript_attempted"] = True
             state["_snapshot"] = self._authentication_snapshot()
-        return state["_trivial_relation_transcript"]
+        return state["_relation_transcript"]
 
     @property
     def polynomial_coefficients(self) -> tuple[int, int, int, int]:
@@ -630,26 +632,39 @@ class CertifiedComplexCubicClassNumber:
             and tuple(presentation.invariants) == self.invariants
         )
 
-    def _verify_trivial_relation_transcript(self, selected: Any) -> bool:
-        """Check a trivial presentation under its exact generator theorem.
+    def _verified_relation_transcript(self, selected: Any) -> Any:
+        """Return an independently verified relation presentation and unit.
 
-        The closed program merely found this transcript.  Authority comes
-        from rebuilding the maximal order and factor base through ordinary
-        objects, checking a sufficient set of principal-ideal equalities, and
-        independently proving that their exact row lattice is `ZZ^n`.
+        The closed program merely finds the transcript.  Authority comes from
+        rebuilding the maximal order and theorem-qualified factor base through
+        ordinary objects, checking exact principal-ideal equalities for a set
+        of source rows spanning the published lattice, and independently
+        recomputing its HNF and SNF.
         """
-        transcript = self._ensure_trivial_relation_transcript()
-        checked = _checked_trivial_relation_transcript(
+        transcript = self._ensure_relation_transcript()
+        checked = _checked_relation_transcript(
             transcript,
             self.factor_base_size,
             self.relation_count,
         )
         if checked is None:
-            return False
+            return None
         factor_rows, relation_rows, relation_elements = checked
         order = selected.maximal_order()
         if order.discriminant() != self.field_discriminant:
-            return False
+            return None
+        order_basis = tuple(order.basis())
+        if len(order_basis) != 3:
+            return None
+        unit = selected(0)
+        for coordinate, basis_element in zip(
+            self.unit_coordinates,
+            order_basis,
+            strict=True,
+        ):
+            unit += coordinate * basis_element
+        if abs(unit.norm()) != 1:
+            return None
 
         factor_module = __import__(
             "sagejs.number_fields.class_group_factor_base",
@@ -663,30 +678,41 @@ class CertifiedComplexCubicClassNumber:
             "sagejs.number_fields.class_group_matrix",
             fromlist=["class_group_matrix"],
         )
-        conditional = self._values[35] == _CUBIC_PROOF_TRIVIAL_GRH
+        conditional_generators = self._uses_bdf_generator_bound()
         plan = factor_module.factor_base_plan(
             order,
-            proof=not conditional,
-            theorem="bdf" if conditional else "minkowski",
+            proof=not conditional_generators,
+            theorem="bdf" if conditional_generators else "minkowski",
             max_bound=_CUBIC_MAX_GRH_BOUND_SEARCH,
         )
         plan.require_feasible()
+        expected_generator_assumptions = (
+            (BDF_CLASS_CHARACTER_GRH,) if conditional_generators else ()
+        )
+        bound_matches = (
+            int(plan.bound) == self.generator_bound
+            if conditional_generators
+            else (
+                int(plan.bound) <= self.generator_bound
+                and self.generator_bound == self._minkowski_bound()
+            )
+        )
         if (
-            int(plan.bound) != self.generator_bound
+            not bound_matches
             or abs(int(plan.bound_result.discriminant)) != abs(self.field_discriminant)
-            or tuple(plan.assumptions) != self.assumptions
-            or (conditional and plan.theorem != "Belabas--Diaz y Diaz--Friedman")
-            or (not conditional and plan.theorem != "Minkowski")
+            or tuple(plan.assumptions) != expected_generator_assumptions
+            or (
+                conditional_generators
+                and plan.theorem != "Belabas--Diaz y Diaz--Friedman"
+            )
+            or (not conditional_generators and plan.theorem != "Minkowski")
         ):
-            return False
+            return None
         records = factor_module.build_factor_base(plan)
         if len(records) != self.factor_base_size:
-            return False
+            return None
 
         unmatched = [record.prime_ideal for record in records]
-        order_basis = tuple(order.basis())
-        if len(order_basis) != 3:
-            return False
         factors: list[Any] = []
         for fingerprint in factor_rows:
             generators: list[Any] = []
@@ -705,36 +731,32 @@ class CertifiedComplexCubicClassNumber:
                 if prime_ideal == transcript_ideal
             ]
             if len(matches) != 1:
-                return False
+                return None
             factors.append(unmatched.pop(matches[0]))
         if unmatched:
-            return False
+            return None
         if not factors:
-            return self.relation_count == 0
+            if self.relation_count != 0 or self.class_number != 1 or self.invariants:
+                return None
+            return order, unit, None
 
-        identity_basis = tuple(
-            tuple(int(row == column) for column in range(len(factors)))
-            for row in range(len(factors))
+        basis, support = matrix_module.exact_relation_hnf_support(
+            relation_rows,
+            len(factors),
         )
-        selected_rows: list[tuple[int, ...]] = []
-        selected_indices: list[int] = []
-        basis: tuple[tuple[int, ...], ...] = ()
-        for index, row in enumerate(relation_rows):
-            candidate_rows = selected_rows + [row]
-            candidate_basis = matrix_module.exact_relation_hnf_basis(
-                candidate_rows,
+        if len(basis) != len(factors) or not support:
+            return None
+        selected_rows = [relation_rows[index] for index in support]
+        if (
+            matrix_module.exact_relation_hnf_basis(
+                selected_rows,
                 len(factors),
             )
-            if candidate_basis != basis:
-                selected_rows.append(row)
-                selected_indices.append(index)
-                basis = candidate_basis
-            if basis == identity_basis:
-                break
-        if basis != identity_basis:
-            return False
+            != basis
+        ):
+            return None
 
-        for row, index in zip(selected_rows, selected_indices, strict=True):
+        for row, index in zip(selected_rows, support, strict=True):
             coordinates = relation_elements[index]
             element = selected(0)
             for coordinate, basis_element in zip(coordinates, order_basis, strict=True):
@@ -748,14 +770,76 @@ class CertifiedComplexCubicClassNumber:
                 row,
             )
             if principal != reconstructed:
-                return False
-        return bool(
-            matrix_module.exact_relation_hnf_basis(
-                selected_rows,
-                len(factors),
-            )
-            == identity_basis
+                return None
+        presentation = matrix_module.extract_relation_presentation(
+            selected_rows,
+            len(factors),
+            require_full_rank=True,
         )
+        if (
+            not presentation.verify()
+            or presentation.order != self.class_number
+            or tuple(presentation.invariants) != self.invariants
+        ):
+            return None
+        return order, unit, presentation
+
+    def _verify_relation_transcript(self, selected: Any) -> bool:
+        """Verify the finite class presentation without analytic completion."""
+        return self._verified_relation_transcript(selected) is not None
+
+    def _verify_analytic_index_one(
+        self,
+        selected: Any,
+        order: Any,
+        unit: Any,
+    ) -> bool:
+        """Independently prove the class and unit indices have product one."""
+        analytic = __import__(
+            "sagejs.number_fields.class_unit_analytic",
+            fromlist=["class_unit_analytic"],
+        )
+        factored = __import__(
+            "sagejs.number_fields.factored_elements",
+            fromlist=["factored_elements"],
+        )
+        embeddings = __import__(
+            "sagejs.number_fields.embeddings",
+            fromlist=["embeddings"],
+        )
+        units = __import__(
+            "sagejs.number_fields.units",
+            fromlist=["units"],
+        )
+        signature = tuple(int(value) for value in embeddings.exact_signature(selected))
+        if signature != (1, 1):
+            return False
+        torsion = units.roots_of_unity(selected)
+        if not torsion.complete or not torsion.verify() or int(torsion.order) != 2:
+            return False
+        factored_unit = factored.FactoredNumberFieldElement.from_element(
+            selected,
+            unit,
+        )
+        regulator = analytic.regulator_from_factored_units(
+            (factored_unit,),
+            unit_rank=1,
+            precision_bits=128,
+            absolute_tolerance_bits=64,
+            maximum_precision_bits=4096,
+        )
+        _zeta, index, _history = analytic.adaptive_hr_index(
+            signature=signature,
+            discriminant=int(order.discriminant()),
+            degree=3,
+            class_number=self.class_number,
+            roots_of_unity=2,
+            regulator=regulator,
+            splitting_provider=order.splitting_records,
+            initial_absolute_error="1",
+            precision_bits=128,
+        )
+        return bool(index.rigorous and index.index_one and index.unique_index == 1)
 
     def verify(self, field: Any | None = None) -> bool:
         """Replay this receipt through the ordinary exact cubic producer.
@@ -803,13 +887,14 @@ class CertifiedComplexCubicClassNumber:
     def verify_conditional_grh(self, field: Any | None = None) -> bool:
         """Independently recompute the result under the receipt's GRH contract.
 
-        This audit does not invoke the closed native program.  It uses the
-        ordinary object implementation to reconstruct the maximal order, check
-        the published unit exactly, and compute the complete class group with
-        `proof=False`.  The accepted result is therefore exact under the same
-        explicit GRH assumptions as the native receipt.  Use `verify()` when
-        the stronger, potentially much more expensive unconditional replay is
-        required.
+        A first audit can rerun the closed program solely to extract untrusted
+        finite evidence.  Mathematical authority comes from ordinary objects:
+        they reconstruct the maximal order and theorem-qualified factor base,
+        authenticate enough principal relations to reproduce the exact
+        quotient, check the published unit, and independently prove the global
+        class/unit index is one by the analytic class-number formula.  Use
+        `verify()` for the stronger, potentially much more expensive
+        unconditional replay.
         """
         selected = self.field if field is None else field
         if not self.matches(selected):
@@ -822,7 +907,7 @@ class CertifiedComplexCubicClassNumber:
             try:
                 if self._values[35] == _CUBIC_PROOF_TRIVIAL_MINKOWSKI:
                     return self._verify_bounded_minkowski(selected)
-                return self._verify_trivial_relation_transcript(selected)
+                return self._verify_relation_transcript(selected)
             except (
                 AttributeError,
                 ImportError,
@@ -835,54 +920,13 @@ class CertifiedComplexCubicClassNumber:
             ):
                 return False
         try:
-            order = selected.maximal_order()
-            if order.discriminant() != self.field_discriminant:
+            verified = self._verified_relation_transcript(selected)
+            if verified is None:
                 return False
-            basis = tuple(order.basis())
-            if len(basis) != 3:
+            order, unit, presentation = verified
+            if presentation is None:
                 return False
-            unit = (
-                self.unit_coordinates[0] * basis[0]
-                + self.unit_coordinates[1] * basis[1]
-                + self.unit_coordinates[2] * basis[2]
-            )
-            if abs(unit.norm()) != 1:
-                return False
-            general = __import__(
-                "sagejs.number_fields.class_unit_groups",
-                fromlist=["class_unit_groups"],
-            )
-            algorithm = (
-                "minkowski"
-                if self.assumptions == (BELABAS_FRIEDMAN_ZETA_GRH,)
-                else "auto"
-            )
-            computation = general.compute_class_unit_group(
-                selected,
-                proof=False,
-                algorithm=algorithm,
-            )
-            proof_state = getattr(computation.context, "proof_state", None)
-            replay_assumptions = tuple(getattr(proof_state, "assumptions", ()))
-            assumptions_covered = set(replay_assumptions).issubset(
-                set(self.assumptions)
-            )
-            return bool(
-                computation.complete
-                and computation.proof_status
-                in ("exact-relations-conditional-grh", "exact-unconditional")
-                and proof_state is not None
-                and getattr(proof_state, "label", None) == computation.proof_status
-                and (
-                    computation.proof_status == "exact-unconditional"
-                    and replay_assumptions == ()
-                    or computation.proof_status == "exact-relations-conditional-grh"
-                    and bool(replay_assumptions)
-                    and assumptions_covered
-                )
-                and computation.class_number() == self.class_number
-                and tuple(computation.class_group().invariants()) == self.invariants
-            )
+            return self._verify_analytic_index_one(selected, order, unit)
         except (
             AttributeError,
             ImportError,
@@ -897,12 +941,12 @@ class CertifiedComplexCubicClassNumber:
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-safe audit view of this live authenticated receipt."""
-        transcript = self._ensure_trivial_relation_transcript()
+        transcript = self._ensure_relation_transcript()
         transcript_payload = None
         if transcript is not None:
             factor_rows, relation_rows, relation_elements = transcript
             transcript_payload = {
-                "schema": _TRIVIAL_RELATION_TRANSCRIPT_SCHEMA,
+                "schema": _RELATION_TRANSCRIPT_SCHEMA,
                 "factor_ideal_hnf_order_coordinates": [
                     [list(row[index : index + 3]) for index in range(0, 9, 3)]
                     for row in factor_rows
@@ -913,7 +957,7 @@ class CertifiedComplexCubicClassNumber:
                 ],
             }
         return {
-            "schema": "sagejs.number-fields/certified-complex-cubic-native-v3",
+            "schema": "sagejs.number-fields/certified-complex-cubic-native-v4",
             "polynomial_coefficients": list(self.polynomial_coefficients),
             "class_number": self.class_number,
             "invariants": list(self.invariants),
@@ -934,7 +978,7 @@ class CertifiedComplexCubicClassNumber:
             "proof_status": self.proof_status,
             "assumptions": list(self.assumptions),
             "theorem": self.theorem,
-            "trivial_relation_transcript": transcript_payload,
+            "relation_transcript": transcript_payload,
         }
 
 

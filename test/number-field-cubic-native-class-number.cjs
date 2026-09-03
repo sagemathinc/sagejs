@@ -167,7 +167,7 @@ for index, (coefficients, order, invariants) in enumerate(cases):
         assert max(abs(value).bit_length() for value in receipt.unit_coordinates) == 519
     assert K.class_number(proof=False) == order
     detached = receipt.to_dict()
-    assert detached["schema"] == "sagejs.number-fields/certified-complex-cubic-native-v3"
+    assert detached["schema"] == "sagejs.number-fields/certified-complex-cubic-native-v4"
     assert detached["class_number"] == order
     assert tuple(detached["invariants"]) == invariants
     assert detached["proof_status"] == "exact-relations-conditional-grh"
@@ -212,9 +212,9 @@ receipt = certified_complex_cubic_class_number(K)
 assert receipt is not None
 assert receipt.proof_status == "exact-trivial-presentation-conditional-grh"
 detached = receipt.to_dict()
-transcript = detached["trivial_relation_transcript"]
+transcript = detached["relation_transcript"]
 assert transcript["schema"] == (
-    "sagejs.number-fields/complex-cubic-trivial-relation-transcript-v1"
+    "sagejs.number-fields/complex-cubic-relation-transcript-v1"
 )
 assert len(transcript["factor_ideal_hnf_order_coordinates"]) == receipt.factor_base_size
 assert len(transcript["relation_rows"]) == receipt.relation_count
@@ -231,10 +231,10 @@ try:
 finally:
     native_runtime.certified_complex_cubic_class_group_v1 = original_kernel
 
-original_transcript = receipt._trivial_relation_transcript
+original_transcript = receipt._relation_transcript
 
 def bind_transcript(value):
-    receipt.__dict__["_trivial_relation_transcript"] = value
+    receipt.__dict__["_relation_transcript"] = value
     receipt.__dict__["_snapshot"] = receipt._authentication_snapshot()
 
 factor_rows, relation_rows, relation_elements = original_transcript
@@ -255,6 +255,52 @@ assert not receipt.verify_conditional_grh()
 
 bind_transcript(original_transcript)
 assert receipt.verify_conditional_grh()
+
+# Before extraction, the native program may find evidence but has no replay
+# authority. If that evidence-finding rerun is unavailable, verification must
+# decline rather than silently falling back to the original native scalar.
+K = NumberField(x**3 - x**2 + 2*x - 6, "unextracted")
+unextracted = certified_complex_cubic_class_number(K)
+assert unextracted is not None
+native_runtime.certified_complex_cubic_class_group_v1 = forbidden_finder
+try:
+    assert not unextracted.verify_conditional_grh()
+finally:
+    native_runtime.certified_complex_cubic_class_group_v1 = original_kernel
+
+# This was the first out-of-sample census failure: the ordinary relation
+# search stops at tentative C2 x C2, while the native transcript presents C2.
+# The verifier now authenticates that exact nontrivial presentation and closes
+# the class/unit index independently through the analytic formula.
+K = NumberField(x**3 + 18*x - 1016, "rank7")
+receipt = certified_complex_cubic_class_number(K)
+assert receipt is not None
+assert receipt.class_number == 2
+assert receipt.invariants == (2,)
+assert receipt.proof_status == "exact-relations-conditional-grh"
+detached = receipt.to_dict()
+assert detached["relation_transcript"] is not None
+assert detached["relation_transcript"]["schema"] == (
+    "sagejs.number-fields/complex-cubic-relation-transcript-v1"
+)
+native_runtime.certified_complex_cubic_class_group_v1 = forbidden_finder
+try:
+    assert receipt.verify_conditional_grh()
+finally:
+    native_runtime.certified_complex_cubic_class_group_v1 = original_kernel
+
+rank7_transcript = receipt._relation_transcript
+factor_rows, relation_rows, relation_elements = rank7_transcript
+bad_elements = tuple(
+    (row[0] + 1, row[1], row[2]) for row in relation_elements
+)
+receipt.__dict__["_relation_transcript"] = (
+    factor_rows,
+    relation_rows,
+    bad_elements,
+)
+receipt.__dict__["_snapshot"] = receipt._authentication_snapshot()
+assert not receipt.verify_conditional_grh()
 
 # A hostile same-order mutation must not pass replay merely because C4 and
 # C2 x C2 both have order four. This bypasses the public immutability guard to
