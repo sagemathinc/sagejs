@@ -13,6 +13,7 @@
     "src/lib/sagejs/numerics/frontends/roundtrip.py",
     "src/lib/sagejs/numerics/frontends/scalar_root.py",
     "test/numerics/code-roundtrip/",
+    "test/numerics/multilingual/numerical-catalog.cjs",
     "docs/numerical-computing/multilingual-roundtrip/",
     "docs/numerical-computing/multilingual/support-matrix.json",
     "docs/numerical-computing/surface.json"
@@ -70,6 +71,16 @@
       "started_at": "2026-09-02T23:49:03.667Z",
       "commit": "7760e839f04b2a411d473715c088e4078ec8ca9d",
       "workspace_fingerprint": "1f1df32df534d8b5d298549f0c5d86cc37292ea3d9cfccbbc8d54bddf1f83c03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 668.054,
+      "started_at": "2026-09-02T23:51:00.398Z",
+      "commit": "aaccf91a89600358f3e83594d4bece37311629a6",
+      "workspace_fingerprint": "c5df496ee6f09889672342e675cfda936f780590d49253b0c7ed9e5e9e8bbe80",
       "platform": "linux-x64"
     }
   ],

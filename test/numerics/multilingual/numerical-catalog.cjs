@@ -183,7 +183,7 @@ unsupported_targets = {
     "nonlinear_least_squares": {"wolfram"},
     "linear_fit": {"wolfram"},
     "initial_value_problem": {"wolfram"},
-    "descriptive_statistics": {"wolfram"},
+    "descriptive_statistics": {"matlab", "wolfram"},
     "one_sample_t_test": {"matlab", "wolfram"},
     "two_sample_t_test": {"matlab", "wolfram"},
     "linear_regression": {"matlab", "wolfram"},
