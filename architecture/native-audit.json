@@ -355,18 +355,18 @@
     },
     {
       "path": "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
-      "lines": 1250,
-      "bytes": 50492,
+      "lines": 1310,
+      "bytes": 53292,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
-        "bounded exact discriminant decomposition without eager full factorization",
+        "bounded exact discriminant decomposition with perfect-power normalization and a fail-closed 16-bit-prime continuation for word residuals",
         "partial word-prime Round-2 dispatch over an immutable sealed polynomial",
         "canonical compact source, component, and HNF evidence ownership",
         "terminal local fixed-point witness construction after final HNF rebasing",
         "proof-carrying packing of independently checked local terminal witnesses in caller-prime order"
       ],
-      "rationale": "This fuses discriminant, cheap decomposition, and partial local-order work into one native call while preserving every lazy residual exactly. The handwritten FLINT representation boundary is a measured compiler exception: the source-transparent degree-64 O(n^4) replay took 18.185s, versus 2.356s for a three-prime FLINT resource producer. A later standalone full-12-prime verifier measured 3.776s and made the combined vector429 path 6.247s, so its production FFI/API was removed; its negative receipt and ordinary mathematical oracle remain. Proof-carrying construction instead packs the independently checked terminal state already published by each local worker without replaying enlargement. The optimized vector429 boundary measured 2.399s total, including 0.237s native proof overhead and 0.299s current projection. The ordinary source remains the independent mathematical oracle.",
+      "rationale": "This fuses discriminant, cheap decomposition, and partial local-order work into one native call while preserving every lazy residual exactly. After the cheap caller-selected trial pass it normalizes exact perfect powers, then continues word-sized residuals only through the fixed 16-bit-prime table; any remaining composite is retained and declined. This closes the measured 1277*1699 and 1153*2927 frontier gaps without calling a general factor engine that can terminate on failure. Published factors remain untrusted discoveries: source-transparent replay proves deterministic word primality, coprimality, and exact discriminant reconstruction. The handwritten FLINT representation boundary is a measured compiler exception: the source-transparent degree-64 O(n^4) replay took 18.185s, versus 2.356s for a three-prime FLINT resource producer. A later standalone full-12-prime verifier measured 3.776s and made the combined vector429 path 6.247s, so its production FFI/API was removed; its negative receipt and ordinary mathematical oracle remain. Proof-carrying construction instead packs the independently checked terminal state already published by each local worker without replaying enlargement. The optimized vector429 boundary measured 2.399s total, including 0.237s native proof overhead and 0.299s current projection. The ordinary source remains the independent mathematical oracle.",
       "fallback": "Externally supplied, copied, or malformed packed proofs are never directly trusted: the ordinary-Python checker recomputes the polynomial discriminant, HNF/index/order closure, each local exact multiplication table and fixed point, and the coprime merge into the final order. Linear authentication exists only synchronously around the actual current generated construction call and binds its nested order bytes, polynomial, complete caller-prime tuple, witness shapes, and final basis before sealing. Worker allocation is bounded to five lanes under 512 MiB, pthread-creation failure runs the missing lane synchronously, and native Windows uses the exact sequential path.",
       "oracles": [
         "CPython",

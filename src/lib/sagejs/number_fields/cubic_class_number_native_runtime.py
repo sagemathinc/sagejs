@@ -22,6 +22,7 @@ from sagejs.number_fields.cubic_class_number_native import (
     _CUBIC_ANALYTIC_MAX_TERMS,
     _CUBIC_ANALYTIC_MAX_VALUES,
     _CUBIC_ANALYTIC_PRECISION,
+    _CUBIC_ANALYTIC_REFINED_THRESHOLD,
     _CUBIC_ANALYTIC_THRESHOLD,
     _CUBIC_ANALYSIS_PROOF_CAPACITY,
     _CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT,
@@ -171,7 +172,11 @@ def _checked_native_values(
             return None
         if proof_mode == _CUBIC_PROOF_ANALYTIC_GRH:
             if (
-                exact[36] != _CUBIC_ANALYTIC_THRESHOLD
+                exact[36]
+                not in (
+                    _CUBIC_ANALYTIC_THRESHOLD,
+                    _CUBIC_ANALYTIC_REFINED_THRESHOLD,
+                )
                 or exact[37] < 1
                 or exact[37] > _CUBIC_ANALYTIC_MAX_TERMS
                 or exact[38] < 5

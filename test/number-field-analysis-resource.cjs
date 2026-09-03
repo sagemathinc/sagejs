@@ -221,12 +221,17 @@ try {
   assert.equal(cubic.equationDiscriminant, -2012n);
   assert.equal(cubic.orderDiscriminant, -503n);
 
-  const unresolved = decode(report.unresolved);
-  assert.equal(unresolved.status, 1);
-  assert.equal(unresolved.resolved, 1);
-  assert.equal(unresolved.native, 1);
-  assert.deepEqual(unresolved.components, [[2n, 2n, 0n], [1022117n, 1n, 1n]]);
-  assert.equal(unresolved.index, 2n, "partial word-prime HNF was discarded");
+  const wordComposite = decode(report.wordComposite);
+  assert.equal(wordComposite.status, 0);
+  assert.equal(wordComposite.resolved, 3);
+  assert.equal(wordComposite.native, 1);
+  assert.deepEqual(wordComposite.components, [
+    [2n, 2n, 0n],
+    [1009n, 1n, 0n],
+    [1013n, 1n, 0n],
+  ]);
+  assert.equal(wordComposite.index, 2n);
+  assert.equal(wordComposite.orderDiscriminant, 1022117n);
 
   const residualPower = decode(report.residualPower);
   assert.equal(residualPower.status, 0);
@@ -236,6 +241,45 @@ try {
   assert.equal(residualPower.index, 1n);
   assert.equal(residualPower.equationDiscriminant, -40781907n);
   assert.equal(residualPower.orderDiscriminant, -40781907n);
+
+  const compositeResidualPower = decode(report.compositeResidualPower);
+  assert.equal(compositeResidualPower.status, 0);
+  assert.equal(compositeResidualPower.resolved, 4);
+  assert.equal(compositeResidualPower.native, 3);
+  assert.deepEqual(compositeResidualPower.components, [
+    [2n, 2n, 0n],
+    [3n, 1n, 0n],
+    [1009n, 2n, 0n],
+    [1013n, 2n, 0n],
+  ]);
+  assert.equal(compositeResidualPower.index, 1022117n);
+  assert.equal(compositeResidualPower.equationDiscriminant, 12536677940268n);
+  assert.equal(compositeResidualPower.orderDiscriminant, 12n);
+
+  const cubicResidual2169623 = decode(report.cubicResidual2169623);
+  assert.equal(cubicResidual2169623.status, 0);
+  assert.equal(cubicResidual2169623.resolved, 4);
+  assert.equal(cubicResidual2169623.native, 2);
+  assert.deepEqual(cubicResidual2169623.components, [
+    [3n, 2n, 0n],
+    [5n, 2n, 0n],
+    [1277n, 1n, 0n],
+    [1699n, 1n, 0n],
+  ]);
+  assert.equal(cubicResidual2169623.index, 15n);
+  assert.equal(cubicResidual2169623.orderDiscriminant, -2169623n);
+
+  const cubicResidual3374831 = decode(report.cubicResidual3374831);
+  assert.equal(cubicResidual3374831.status, 0);
+  assert.equal(cubicResidual3374831.resolved, 3);
+  assert.equal(cubicResidual3374831.native, 1);
+  assert.deepEqual(cubicResidual3374831.components, [
+    [2n, 6n, 0n],
+    [1153n, 1n, 0n],
+    [2927n, 1n, 0n],
+  ]);
+  assert.equal(cubicResidual3374831.index, 8n);
+  assert.equal(cubicResidual3374831.orderDiscriminant, -3374831n);
 
   const arbitrary = decode(report.arbitrary);
   assert.equal(arbitrary.status, 2);

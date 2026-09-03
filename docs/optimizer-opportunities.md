@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `45b7e2f1e71275eec70209436c35d338297414fb0ab3ec61445a6511cc4b8b4e` (515 files, 11135525 bytes).
-Analyzed source bundle: `sha256:4ae3ae1f8a60c85bd60b2f3fdcae47b98d8467a449239cdf93214f5cd9acd3dc`; compiler identity: `sha256:d0751cac5c56b078c21b5d268efaddca6c79c141d7cd675518ed1c81ca16f73b`.
+Input identity: `4f6cafa7239afb6c271cba452b619ab2ba019b763763519203ebda89a83384ab` (515 files, 11139886 bytes).
+Analyzed source bundle: `sha256:ef27b924de705aeffff3f9b70c8eeb0850f57ea1f24645bc1d2c14aa2115f148`; compiler identity: `sha256:d0751cac5c56b078c21b5d268efaddca6c79c141d7cd675518ed1c81ca16f73b`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -35,8 +35,8 @@ pnpm optimizer:opportunities:query -- sha256:<digest>
 | Source modules compiled | 432 / 432 |
 | Library modules compiled | 419 / 419 |
 | Explicit control sources compiled | 13 / 13 |
-| Functions and methods compiled | 11798 |
-| Loop-bearing functions and methods | 3771 |
+| Functions and methods compiled | 11800 |
+| Loop-bearing functions and methods | 3773 |
 | Loops in functions | 10944 |
 | Selected optimized loops | 50 |
 | Compiler-rejected loops | 3127 |
@@ -49,11 +49,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 75717
-- Collection-allocation sites: 8762
-- Known coercion sites: 17220
+- Potential object-result sites: 75723
+- Collection-allocation sites: 8769
+- Known coercion sites: 17219
 - Potential boundary-call sites: 86
-- Unresolved call sites: 37749
+- Unresolved call sites: 37748
 - Selected-target allocations: 3 known; 46 runtime-dependent
 - Selected-target representation conversions: 3 known; 48 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent

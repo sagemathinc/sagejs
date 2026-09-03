@@ -72,12 +72,25 @@ occur to exponent at least two in the equation-order discriminant, so checking
 all such primes proves global maximality. The compact FLINT projection is only
 a representation producer; it is not this proof authority.
 
-After bounded trial division, the analyzer repeatedly extracts exact perfect
-powers from the residual discriminant factor before applying deterministic
-word-primality. Thus, for example, the residual $1229^2$ in the equation-order
-discriminant of $x^3-1229$ is certified without raising a global trial-division
-limit. A residual that cannot be proved prime or decomposed exactly still
-causes a decline.
+After the caller-selected cheap trial pass, the analyzer repeatedly extracts
+exact perfect powers from the residual discriminant factor. If the primitive
+residual fits one machine word, it continues exact trial division through the
+fixed $16$-bit-prime table, stopping as soon as the remaining cofactor is
+proved prime or the next prime exceeds its exact square root. The machine-word
+trial loop is finite and allocation-free. It completely decomposes every
+primitive residual below $65537^2$ and can also complete larger residuals with
+sufficiently small factors. Thus the residuals $1229^2$, $1277\cdot1699$, and
+$1153\cdot2927$ are all covered without raising the caller's global trial
+limit.
+
+The factor-discovery loop is not trusted. The packed proof publishes every
+prime and exponent, and the separate source-transparent checker proves each
+word prime deterministically, checks pairwise coprimality, and reconstructs the
+absolute discriminant exactly. If the bounded continuation leaves a composite
+cofactor, that exact cofactor is marked unresolved and the whole native program
+declines. Consequently the continuation can extend performance coverage but
+cannot enlarge the set of accepted mathematical conclusions without an exact
+certificate.
 
 ### 2. The factor base generates the class group
 
@@ -344,9 +357,14 @@ still decline rather than inheriting PARI's nonfatal unit omission.
 
 ### 5. Belabas--Friedman encloses the zeta residue under GRH
 
-Let $\kappa_K$ be the residue of $\zeta_K(s)$ at $s=1$. At the fixed cutoff
-$X=997$, the program computes the required prime-ideal-power terms from the
-exact multiplication algebra of the certified maximal order. In particular,
+Let $\kappa_K$ be the residue of $\zeta_K(s)$ at $s=1$. The program first uses
+the fixed cutoff $X=997$. If every exact algebraic and interval check succeeds
+but the resulting enclosure cannot yet distinguish the positive integral
+index from $2$, it makes one bounded refinement at $X=1494$. The retry rebuilds
+the Euler plan and rigorous enclosure from scratch in the same resident arena;
+it is not allowed after malformed data or a resource failure. At either cutoff,
+the program computes the required prime-ideal-power terms from the exact
+multiplication algebra of the certified maximal order. In particular,
 index primes are not analyzed from the possibly misleading defining
 polynomial. If an index prime lies within the retained factor-base scan, the
 analytic phase reuses the already certified count of residue-degree-one prime
@@ -371,7 +389,12 @@ $$
 where $n=[K:\mathbb Q]=3$ here.
 
 The implementation evaluates the finite expression and this error bound with
-outward-rounded dyadic intervals.
+outward-rounded dyadic intervals. Both cutoffs use the identical strict
+index-one criterion below. Thus $X=1494$ is only a bounded proof-search
+schedule, not an additional mathematical assumption. LMFDB field
+`3.1.93074700.2`, defined by $x^3-5570$, exercises the refinement: the native
+program obtains the same exact $C_{42}$ presentation and unit at $X=997$, then
+publishes only after the $X=1494$ enclosure proves index one.
 
 ### 6. The analytic class-number formula proves both indices are one
 

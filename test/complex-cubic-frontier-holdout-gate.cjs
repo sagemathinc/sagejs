@@ -8,6 +8,8 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
+const root = path.resolve(__dirname, "..");
+
 const frozen = require("../bench/optimization-engine/complex-cubic-frontier-corpus.cjs");
 const {
   ADAPTER_SCHEMA,
@@ -23,8 +25,12 @@ const {
 } = require("../bench/class-unit-groups/load-complex-cubic-frontier-survey.cjs");
 const {
   DIRECT_CENSUS_PARTITIONS,
+  THREAD_ENV,
+  candidateDirectEnvironmentIdentity,
+  candidateRuntimeClosure,
   combineCensus,
   corpusIdentity,
+  directProcessEnvironment,
   pariCensusSource,
   pariTimingSource,
   recordLabelsDigest,
@@ -33,16 +39,22 @@ const {
   shardRecords,
   systemOrder,
   timingMetrics,
+  validateDirectSagejsTool,
 } = require("../bench/class-unit-groups/run-complex-cubic-frontier.cjs");
 const {
   FREEZE_SCHEMA,
   HOLDOUT_COUNT,
   PROOF_CONTRACT,
   SELECTION_MECHANISM,
+  closeOutputReservation,
   expectedTimingAnswerDigest,
   freezeFilename,
   makeFreezeArtifact,
+  parseArguments,
+  preflightHoldoutExecution,
+  publishReservedOutput,
   readFreezeFile,
+  reserveOutput,
   runHoldoutCensus,
   validateFreezeThenLoadHoldout,
   writeFreezeExclusive,
@@ -202,6 +214,23 @@ function pariObservation(record) {
   };
 }
 
+function fallbackObservation(record) {
+  return {
+    label: record.label,
+    status: "native-decline-fallback-pass",
+    discriminant: record.discriminant,
+    class_number: record.class_number,
+    class_group_invariants: record.class_group_invariants,
+    proof_status: "exact-relations-conditional-grh",
+    native_receipt_authenticated: null,
+    independent_exact_replay: null,
+    independent_exact_replay_contract: null,
+    fallback_verified: true,
+    receipt_digest: null,
+    receipt: null,
+  };
+}
+
 function adapterResponse(system, records) {
   return {
     schema: ADAPTER_SCHEMA,
@@ -242,10 +271,32 @@ function censusProcess(system, shard, records, response, ordinal) {
   };
 }
 
-function sourceIdentity() {
-  const tree = "b".repeat(40);
-  return {
-    candidate_commit: "a".repeat(40),
+function holdoutProcess(tool, selected, response, options, ordinal) {
+  const processEvidence = censusProcess(
+    tool.system,
+    tool.system === "sagejs" ? options.censusShard : null,
+    selected.records,
+    response,
+    ordinal,
+  );
+  processEvidence.execution_epoch = options.executionEpoch;
+  processEvidence.affinity_logical_cpus = [options.cpu];
+  processEvidence.timeout_seconds = options.timeoutSeconds;
+  if (tool.system === "sagejs") {
+    processEvidence.runtime_closure_sha256 = candidateDirectEnvironmentIdentity().sha256;
+  }
+  return processEvidence;
+}
+
+function sourceIdentity(
+  commitCharacter = "a",
+  treeCharacter = "b",
+  receiptCharacter = "c",
+  runtimeCharacter = null,
+) {
+  const tree = treeCharacter.repeat(40);
+  const source = {
+    candidate_commit: commitCharacter.repeat(40),
     candidate_tree: tree,
     clean: true,
     promotion_eligible: true,
@@ -254,9 +305,27 @@ function sourceIdentity() {
       current: true,
       reason: "unit-test",
       path: "/tmp/build-receipt.json",
-      sha256: "c".repeat(64),
+      sha256: receiptCharacter.repeat(64),
     },
   };
+  if (runtimeCharacter !== null) {
+    source.candidate_runtime_closure = {
+      schema: "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v1",
+      sha256: runtimeCharacter.repeat(64),
+      file_count: 42,
+      total_bytes: "123456",
+      native_cache_key: "9".repeat(64),
+      preferred_native_pack: {
+        path: "src/lib/sagejs/number_fields/.sagejs-native-kernels/pack/" +
+          "sagejs_native_kernel_pack.node",
+        present: false,
+        sha256: null,
+        bytes: null,
+      },
+      direct_process_environment: candidateDirectEnvironmentIdentity(),
+    };
+  }
+  return source;
 }
 
 function censusFixture(corpus, tools, source) {
@@ -270,7 +339,10 @@ function censusFixture(corpus, tools, source) {
   let ordinal = 0;
   corpus.records.forEach((record, shard) => {
     const response = adapterResponse("sagejs", [sage[shard]]);
-    processes.push(censusProcess("sagejs", shard, [record], response, ordinal++));
+    const processEvidence = censusProcess("sagejs", shard, [record], response, ordinal++);
+    processEvidence.runtime_closure_sha256 =
+      source.candidate_runtime_closure?.direct_process_environment?.sha256 ?? null;
+    processes.push(processEvidence);
   });
   shardRecords(corpus).forEach((records, shard) => {
     const response = adapterResponse("pari", records.map(pariObservation));
@@ -423,8 +495,8 @@ function completeFixture() {
   const tools = [{
     system: "sagejs",
     adapter_kind: "generated-sagejs-python",
-    requested: "/tmp/sagejs",
-    executable: "/tmp/sagejs",
+    requested: path.join(root, "bin/sagejs"),
+    executable: fs.realpathSync(path.join(root, "bin/sagejs")),
     executable_sha256: "3".repeat(64),
     version: "0.4.1",
     status: "available",
@@ -443,6 +515,34 @@ function completeFixture() {
     BigInt(left.discriminant_absolute) < BigInt(right.discriminant_absolute) ? -1 : 1)[0];
   const timing = timingFixture(corpus, census, censusBytes, tools, source, slowRecord.label);
   const timingBytes = Buffer.from(`${canonicalJson(timing)}\n`);
+  const candidateSource = sourceIdentity("d", "e", "f", "8");
+  const candidateTools = structuredClone(tools);
+  candidateTools[0].executable_sha256 = "5".repeat(64);
+  const candidateHost = {
+    platform: "linux",
+    architecture: "x64",
+    release: "unit-test-release",
+    hostname: "unit-test-host",
+    logical_cpu_count: 4,
+    selected_logical_cpu: 0,
+    selected_cpu_model: "unit-test-cpu",
+    node: process.version,
+    thread_environment_sha256: canonicalDigest(THREAD_ENV),
+  };
+  const qualification = censusFixture(corpus, candidateTools, candidateSource);
+  qualification.host = {
+    platform: candidateHost.platform,
+    architecture: candidateHost.architecture,
+    release: candidateHost.release,
+    hostname: candidateHost.hostname,
+    total_memory_bytes: "17179869184",
+    logical_cpu_count: candidateHost.logical_cpu_count,
+    selected_logical_cpu: candidateHost.selected_logical_cpu,
+    selected_cpu_model: candidateHost.selected_cpu_model,
+    node: candidateHost.node,
+    thread_environment: structuredClone(THREAD_ENV),
+  };
+  const qualificationBytes = Buffer.from(`${canonicalJson(qualification)}\n`);
   cached = {
     corpus,
     manifest,
@@ -453,6 +553,12 @@ function completeFixture() {
     timingBytes,
     timingFilename: "/tmp/timing.json",
     slowRecord,
+    candidateSource,
+    candidateTools,
+    candidateHost,
+    qualification,
+    qualificationBytes,
+    qualificationFilename: "/tmp/candidate-qualification.json",
   };
   return cached;
 }
@@ -491,7 +597,27 @@ test("freeze uses the stable-slowdown selector and binds all predecessors", () =
   assert.equal(artifact.selection.candidate.slower_rounds, 11);
   assert.equal(artifact.predecessor_evidence.census.sha256, sha256(fixture.censusBytes));
   assert.equal(artifact.predecessor_evidence.timing.sha256, sha256(fixture.timingBytes));
-  assert.equal(artifact.source.candidate_commit, fixture.census.source.candidate_commit);
+  assert.equal(
+    artifact.predecessor_source.candidate_commit,
+    fixture.census.source.candidate_commit,
+  );
+  assert.equal(
+    artifact.candidate_source.candidate_commit,
+    fixture.candidateSource.candidate_commit,
+  );
+  assert.notEqual(
+    artifact.predecessor_source.candidate_commit,
+    artifact.candidate_source.candidate_commit,
+  );
+  assert.equal(
+    artifact.candidate_tools[0].executable_sha256,
+    fixture.candidateTools[0].executable_sha256,
+  );
+  assert.equal(artifact.candidate_host.selected_logical_cpu, 0);
+  assert.equal(
+    artifact.candidate_qualification.census.sha256,
+    sha256(fixture.qualificationBytes),
+  );
   assert.equal(artifact.holdout.first_rank, 51);
   assert.equal(artifact.holdout.last_rank, 70);
   assert.equal(artifact.holdout.field_count, 20);
@@ -529,6 +655,9 @@ test("holdout bytes cannot be loaded before a valid predecessor freeze", () => {
   assert.throws(() => validateFreezeThenLoadHoldout({
     artifact: tampered,
     inputs: fixture,
+    candidateSource: fixture.candidateSource,
+    candidateTools: fixture.candidateTools,
+    candidateHost: fixture.candidateHost,
     assetDirectory: "/unopened",
     loadAsset() {
       reads += 1;
@@ -540,6 +669,9 @@ test("holdout bytes cannot be loaded before a valid predecessor freeze", () => {
   const holdout = validateFreezeThenLoadHoldout({
     artifact,
     inputs: fixture,
+    candidateSource: fixture.candidateSource,
+    candidateTools: fixture.candidateTools,
+    candidateHost: fixture.candidateHost,
     assetDirectory: "/opened-after-validation",
     loadAsset() {
       reads += 1;
@@ -561,9 +693,390 @@ test("holdout bytes cannot be loaded before a valid predecessor freeze", () => {
   assert.throws(() => validateFreezeThenLoadHoldout({
     artifact,
     inputs: fixture,
+    candidateSource: fixture.candidateSource,
+    candidateTools: fixture.candidateTools,
+    candidateHost: fixture.candidateHost,
     assetDirectory: "/opened-after-validation",
     loadAsset: () => missing,
   }), /exactly frozen-stratum ranks 51-70/);
+});
+
+test("candidate source and tool mismatches fail before holdout disclosure", () => {
+  const fixture = completeFixture();
+  const artifact = makeFreezeArtifact({
+    ...fixture,
+    frozenAt: "2026-09-01T03:00:00.000Z",
+  });
+  const options = {
+    sagejs: "/tmp/sagejs",
+    gp: "/tmp/gp",
+    cpu: 0,
+    output: "/tmp/unwritten-holdout.json",
+  };
+  let reads = 0;
+  const attempt = (dependencies) => {
+    const execution = preflightHoldoutExecution(artifact, fixture, options, {
+      hostExecutionIdentity: () => fixture.candidateHost,
+      reserveOutput: () => ({ descriptor: 1, filename: options.output }),
+      ...dependencies,
+    });
+    return validateFreezeThenLoadHoldout({
+      artifact,
+      inputs: fixture,
+      candidateSource: execution.source,
+      candidateTools: execution.tools,
+      candidateHost: execution.host,
+      assetDirectory: "/must-remain-unopened",
+      loadAsset() {
+        reads += 1;
+        return holdoutRecords(fixture.manifest);
+      },
+    });
+  };
+
+  const differentSource = sourceIdentity("6", "7", "8", "7");
+  assert.throws(() => attempt({
+    currentSourceIdentity: () => differentSource,
+    toolPlan: () => fixture.candidateTools,
+  }), /candidate-source qualification census/);
+  assert.equal(reads, 0);
+
+  const wrongQualificationHost = structuredClone(fixture);
+  wrongQualificationHost.qualification = structuredClone(fixture.qualification);
+  wrongQualificationHost.qualification.host.selected_logical_cpu = 1;
+  assert.throws(() => makeFreezeArtifact({
+    ...wrongQualificationHost,
+    frozenAt: "2026-09-01T03:00:00.000Z",
+  }), /qualification host does not match/);
+
+  const wrongQualificationEnvironment = structuredClone(fixture);
+  wrongQualificationEnvironment.qualification = structuredClone(fixture.qualification);
+  wrongQualificationEnvironment.qualification.host.thread_environment.FLINT_NUM_THREADS = "2";
+  assert.throws(() => makeFreezeArtifact({
+    ...wrongQualificationEnvironment,
+    frozenAt: "2026-09-01T03:00:00.000Z",
+  }), /qualification host has an invalid deterministic environment/);
+
+  const lateQualification = structuredClone(fixture);
+  lateQualification.qualification = structuredClone(fixture.qualification);
+  lateQualification.qualification.recorded_at = "2026-09-01T04:00:00.000Z";
+  assert.throws(() => makeFreezeArtifact({
+    ...lateQualification,
+    frozenAt: "2026-09-01T03:00:00.000Z",
+  }), /qualification cannot be recorded after frozen_at/);
+
+  const staleBuild = structuredClone(fixture.candidateSource);
+  staleBuild.build_receipt.current = false;
+  staleBuild.promotion_eligible = false;
+  assert.throws(() => attempt({
+    currentSourceIdentity: () => staleBuild,
+    toolPlan: () => fixture.candidateTools,
+  }), /clean promotable source and current build receipt/);
+  assert.equal(reads, 0);
+
+  const dirtySource = structuredClone(fixture.candidateSource);
+  dirtySource.clean = false;
+  dirtySource.promotion_eligible = false;
+  assert.throws(() => attempt({
+    currentSourceIdentity: () => dirtySource,
+    toolPlan: () => fixture.candidateTools,
+  }), /clean promotable source and current build receipt/);
+  assert.equal(reads, 0);
+
+  const wrongClosure = structuredClone(fixture.candidateSource);
+  wrongClosure.candidate_runtime_closure.sha256 = "6".repeat(64);
+  assert.throws(() => attempt({
+    currentSourceIdentity: () => wrongClosure,
+    toolPlan: () => fixture.candidateTools,
+  }), /candidate-source qualification census/);
+  assert.equal(reads, 0);
+
+  const crossCheckout = structuredClone(fixture.candidateTools);
+  crossCheckout[0].executable = "/tmp/other-checkout/bin/sagejs";
+  assert.throws(() => attempt({
+    currentSourceIdentity: () => fixture.candidateSource,
+    toolPlan: () => crossCheckout,
+  }), /must execute ROOT\/bin\/sagejs/);
+  assert.equal(reads, 0);
+
+  const wrongSage = structuredClone(fixture.candidateTools);
+  wrongSage[0].executable_sha256 = "6".repeat(64);
+  assert.throws(() => attempt({
+    currentSourceIdentity: () => fixture.candidateSource,
+    toolPlan: () => wrongSage,
+  }), /candidate qualification tools/);
+  assert.equal(reads, 0);
+
+  const wrongPari = structuredClone(fixture.candidateTools);
+  wrongPari[1].executable_sha256 = "6".repeat(64);
+  assert.throws(() => attempt({
+    currentSourceIdentity: () => fixture.candidateSource,
+    toolPlan: () => wrongPari,
+  }), /predecessor PARI executable and version/);
+  assert.equal(reads, 0);
+
+  const unavailable = structuredClone(fixture.candidateTools);
+  unavailable[0].status = "unavailable";
+  assert.throws(() => attempt({
+    currentSourceIdentity: () => fixture.candidateSource,
+    toolPlan: () => unavailable,
+  }), /must identify an available executable/);
+  assert.equal(reads, 0);
+
+  const failedVersion = structuredClone(fixture.candidateTools);
+  failedVersion[1].version = "version-probe-failed";
+  assert.throws(() => attempt({
+    currentSourceIdentity: () => fixture.candidateSource,
+    toolPlan: () => failedVersion,
+  }), /has no authenticated version/);
+  assert.equal(reads, 0);
+
+  const blankVersion = structuredClone(fixture.candidateTools);
+  blankVersion[1].version = "   ";
+  assert.throws(() => attempt({
+    currentSourceIdentity: () => fixture.candidateSource,
+    toolPlan: () => blankVersion,
+  }), /has no authenticated version/);
+  assert.equal(reads, 0);
+
+  const holdout = attempt({
+    currentSourceIdentity: () => fixture.candidateSource,
+    toolPlan: () => fixture.candidateTools,
+  });
+  assert.equal(reads, 1);
+  assert.equal(holdout.records.length, 20);
+});
+
+test("CPU and output gates fail before holdout disclosure", () => {
+  const fixture = completeFixture();
+  const artifact = makeFreezeArtifact({
+    ...fixture,
+    frozenAt: "2026-09-01T03:00:00.000Z",
+  });
+  const options = {
+    sagejs: "/tmp/sagejs",
+    gp: "/tmp/gp",
+    cpu: 4,
+    output: "/tmp/existing-holdout.json",
+  };
+  const common = {
+    currentSourceIdentity: () => fixture.candidateSource,
+    toolPlan: () => fixture.candidateTools,
+    hostExecutionIdentity: () => fixture.candidateHost,
+  };
+  let reads = 0;
+  const load = (execution) => validateFreezeThenLoadHoldout({
+    artifact,
+    inputs: fixture,
+    candidateSource: execution.source,
+    candidateTools: execution.tools,
+    candidateHost: execution.host,
+    assetDirectory: "/must-remain-unopened",
+    loadAsset() {
+      reads += 1;
+      return holdoutRecords(fixture.manifest);
+    },
+  });
+
+  assert.throws(() => load(preflightHoldoutExecution(artifact, fixture, options, {
+    ...common,
+    reserveOutput: () => ({ descriptor: 1, filename: options.output }),
+  })), /requested CPU does not match the frozen CPU/);
+  assert.equal(reads, 0);
+
+  const wrongHost = structuredClone(fixture.candidateHost);
+  wrongHost.selected_cpu_model = "different-cpu";
+  assert.throws(() => load(preflightHoldoutExecution(artifact, fixture, {
+    ...options,
+    cpu: 0,
+  }, {
+    ...common,
+    hostExecutionIdentity: () => wrongHost,
+    reserveOutput: () => ({ descriptor: 1, filename: options.output }),
+  })), /qualification host does not match/);
+  assert.equal(reads, 0);
+
+  assert.throws(() => load(preflightHoldoutExecution(artifact, fixture, {
+    ...options,
+    cpu: 0,
+  }, {
+    ...common,
+    reserveOutput: () => {
+      throw new Error("holdout census cannot reserve output (EEXIST)");
+    },
+  })), /cannot reserve output \(EEXIST\)/);
+  assert.equal(reads, 0);
+});
+
+test("dirty mode is forbidden for freeze and holdout", () => {
+  assert.throws(() => parseArguments([
+    "--freeze", "--allow-dirty", "--corpus", "/tmp/manifest.json",
+    "--asset-dir", "/tmp/assets", "--census", "/tmp/census.json",
+    "--timing", "/tmp/timing.json", "--qualification", "/tmp/qualification.json",
+    "--output-dir", "/tmp/freezes",
+  ]), /require a clean candidate source/);
+
+  const options = parseArguments([
+    "--freeze", "--corpus", "/tmp/manifest.json", "--asset-dir", "/tmp/assets",
+    "--census", "/tmp/census.json", "--timing", "/tmp/timing.json",
+    "--qualification", "/tmp/qualification.json",
+    "--sagejs", "/tmp/candidate-sagejs", "--gp", "/tmp/pari-gp",
+    "--output-dir", "/tmp/freezes",
+  ]);
+  assert.equal(options.sagejs, "/tmp/candidate-sagejs");
+  assert.equal(options.gp, "/tmp/pari-gp");
+});
+
+test("direct Sage.js execution is ROOT-bound and forced to source mode", () => {
+  const fixture = completeFixture();
+  assert.equal(validateDirectSagejsTool(fixture.candidateTools[0]), fixture.candidateTools[0]);
+  const identity = candidateDirectEnvironmentIdentity();
+  const environment = directProcessEnvironment(fixture.candidateTools[0]);
+  assert.deepEqual(environment, identity.environment);
+  for (const name of [
+    "PATH", "HOME", "XDG_DATA_HOME", "NODE_OPTIONS", "NODE_PATH", "PYLANGPATH",
+    "PYTHONPATH", "LD_PRELOAD", "LD_LIBRARY_PATH",
+  ]) assert.equal(environment[name], undefined, name);
+  assert.equal(environment.SAGEJS_USE_SOURCE, "1");
+  assert.equal(environment.SAGEJS_NATIVE_MODE, "auto");
+  assert.equal(environment.SAGEJS_NATIVE_AUTOLOAD, "1");
+  assert.equal(
+    environment.SAGEJS_SITE_PACKAGES,
+    "/nonexistent/sagejs-complex-cubic-frontier-site-packages",
+  );
+  assert.equal(identity.node_executable.path, fs.realpathSync(process.execPath));
+  assert.equal(
+    identity.node_executable.sha256,
+    sha256(fs.readFileSync(process.execPath)),
+  );
+  assert.deepEqual(identity.node_executable.argv_prefix, [
+    fs.realpathSync(path.join(root, "bin/sagejs")),
+  ]);
+  for (const [name, value] of Object.entries(THREAD_ENV)) {
+    assert.equal(environment[name], value, name);
+  }
+  assert.equal(
+    fixture.candidateSource.candidate_runtime_closure.direct_process_environment.sha256,
+    candidateDirectEnvironmentIdentity().sha256,
+  );
+  assert.deepEqual(directProcessEnvironment(fixture.candidateTools[1]), {});
+  const other = structuredClone(fixture.candidateTools[0]);
+  other.executable = "/tmp/other-checkout/bin/sagejs";
+  assert.throws(() => validateDirectSagejsTool(other), /must execute ROOT\/bin\/sagejs/);
+});
+
+test("candidate runtime closure binds preferred native-pack absence and bytes", (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-frontier-closure-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const requiredFiles = [
+    "bin/sagejs",
+    "bin/sagejs-source.cjs",
+    "bin/native-launcher.cjs",
+    "bin/wasm-launcher.cjs",
+    "dist/build-receipt.json",
+  ];
+  for (const name of requiredFiles) {
+    const filename = path.join(directory, name);
+    fs.mkdirSync(path.dirname(filename), { recursive: true });
+    fs.writeFileSync(filename, `${name}\n`);
+  }
+  for (const name of ["dist/compiler", "dist/tools", "dist/module-cache", "dist/runtime-cache"]) {
+    const filename = path.join(directory, name, "sentinel");
+    fs.mkdirSync(path.dirname(filename), { recursive: true });
+    fs.writeFileSync(filename, `${name}\n`);
+  }
+  const cacheKey = "7".repeat(64);
+  const cacheRoot = path.join(
+    directory,
+    "src/lib/sagejs/number_fields/.sagejs-native-kernels",
+  );
+  const source = path.join(directory, "src/lib/sagejs/number_fields/cubic_class_number_native.py");
+  fs.mkdirSync(cacheRoot, { recursive: true });
+  fs.writeFileSync(path.join(cacheRoot, "index.json"), JSON.stringify({
+    sources: { [source]: { cacheKey } },
+  }));
+  for (const name of [
+    "binding.gyp", "index.cjs", "kernel.c", "kernel_core.c", "kernel_core.h",
+    "manifest.json", "build/Release/sagejs_native_kernel.node",
+  ]) {
+    const filename = path.join(cacheRoot, cacheKey, name);
+    fs.mkdirSync(path.dirname(filename), { recursive: true });
+    fs.writeFileSync(filename, `${name}\n`);
+  }
+
+  const absent = candidateRuntimeClosure(directory);
+  assert.equal(absent.preferred_native_pack.present, false);
+  assert.equal(absent.preferred_native_pack.sha256, null);
+  const pack = path.join(cacheRoot, "pack/sagejs_native_kernel_pack.node");
+  fs.mkdirSync(path.dirname(pack), { recursive: true });
+  fs.writeFileSync(pack, "preferred-pack-v1");
+  const present = candidateRuntimeClosure(directory);
+  assert.equal(present.preferred_native_pack.present, true);
+  assert.equal(present.preferred_native_pack.sha256, sha256("preferred-pack-v1"));
+  assert.notEqual(present.sha256, absent.sha256);
+  fs.writeFileSync(pack, "preferred-pack-v2");
+  assert.notEqual(candidateRuntimeClosure(directory).sha256, present.sha256);
+});
+
+test("output reservation is exclusive, publishable, and retained after failure", (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-holdout-output-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const output = path.join(directory, "evidence.json");
+  const reservation = reserveOutput(output);
+  assert.equal(fs.readFileSync(output, "utf8"), "");
+  assert.throws(() => reserveOutput(output), /cannot reserve output \(EEXIST\)/);
+  publishReservedOutput(reservation, "{\"complete\":true}\n");
+  assert.equal(fs.readFileSync(output, "utf8"), "{\"complete\":true}\n");
+
+  const failed = reserveOutput(path.join(directory, "failed.json"));
+  closeOutputReservation(failed);
+  assert.equal(fs.readFileSync(failed.filename, "utf8"), "");
+
+  const denied = Object.assign(new Error("permission denied"), { code: "EACCES" });
+  assert.throws(() => reserveOutput(path.join(directory, "denied.json"), {
+    mkdir: () => {},
+    open: () => { throw denied; },
+  }), /cannot reserve output \(EACCES\)/);
+
+  const attacked = path.join(directory, "attacked.json");
+  const displaced = path.join(directory, "attacked-reservation.json");
+  const attackedReservation = reserveOutput(attacked);
+  assert.throws(() => publishReservedOutput(
+    attackedReservation,
+    "{\"authentic\":true}\n",
+    {
+      write(descriptor, bytes) {
+        fs.writeFileSync(descriptor, bytes);
+        fs.renameSync(attacked, displaced);
+        fs.writeFileSync(attacked, "{\"attacker\":true}\n");
+      },
+    },
+  ), /reservation lost ownership/);
+  closeOutputReservation(attackedReservation);
+  assert.equal(fs.readFileSync(displaced, "utf8"), "{\"authentic\":true}\n");
+  assert.equal(fs.readFileSync(attacked, "utf8"), "{\"attacker\":true}\n");
+
+  if (process.platform === "linux") {
+    const symlinked = path.join(directory, "symlinked.json");
+    const symlinkReservation = reserveOutput(symlinked);
+    const displacedSymlink = path.join(directory, "symlinked-reservation.json");
+    fs.renameSync(symlinked, displacedSymlink);
+    fs.symlinkSync(`/proc/self/fd/${symlinkReservation.descriptor}`, symlinked);
+    assert.throws(() => publishReservedOutput(
+      symlinkReservation,
+      "{\"authentic\":true}\n",
+    ), /reservation lost ownership/);
+    closeOutputReservation(symlinkReservation);
+  }
+
+  let directorySyncs = 0;
+  const synced = reserveOutput(path.join(directory, "synced.json"), {
+    fsyncParentDirectory() { directorySyncs += 1; },
+  });
+  publishReservedOutput(synced, "{\"durable\":true}\n", {
+    fsyncParentDirectory() { directorySyncs += 1; },
+  });
+  assert.equal(directorySyncs, 2);
 });
 
 test("freeze files are canonical, exclusive, and content-addressed", (t) => {
@@ -584,6 +1097,89 @@ test("freeze files are canonical, exclusive, and content-addressed", (t) => {
   assert.throws(() => readFreezeFile(renamed), /filename is not content-addressed/);
 });
 
+test("holdout process evidence and native generalization fail closed", async () => {
+  const fixture = completeFixture();
+  const artifact = makeFreezeArtifact({
+    ...fixture,
+    frozenAt: "2026-09-01T03:00:00.000Z",
+  });
+  const holdout = validateFreezeThenLoadHoldout({
+    artifact,
+    inputs: fixture,
+    candidateSource: fixture.candidateSource,
+    candidateTools: fixture.candidateTools,
+    candidateHost: fixture.candidateHost,
+    assetDirectory: "/opened-after-validation",
+    loadAsset: () => holdoutRecords(fixture.manifest),
+  });
+  const options = {
+    sagejs: fixture.candidateTools[0].executable,
+    gp: fixture.candidateTools[1].executable,
+    cpu: 0,
+    timeoutSeconds: 3600,
+    allowDirty: false,
+  };
+  const runWith = (mutate) => {
+    let ordinal = 0;
+    return runHoldoutCensus(holdout, artifact, options, {
+      toolPlan: () => fixture.candidateTools,
+      currentSourceIdentity: () => fixture.candidateSource,
+      invokeAdapter: async (tool, selected, _mode, invokeOptions) => {
+        ordinal += 1;
+        const records = tool.system === "sagejs"
+          ? selected.records.map(nativeObservation)
+          : selected.records.map(pariObservation);
+        const response = adapterResponse(tool.system, records);
+        const invocation = {
+          response,
+          process: holdoutProcess(tool, selected, response, invokeOptions, ordinal),
+        };
+        mutate(invocation, tool, selected, ordinal);
+        if (invocation.process) {
+          invocation.process.response_sha256 = canonicalDigest(invocation.response);
+        }
+        return invocation;
+      },
+    });
+  };
+
+  await assert.rejects(() => runWith((invocation, tool, _selected, ordinal) => {
+    if (tool.system === "sagejs" && ordinal === 1) invocation.process = null;
+  }), /schema-valid census process evidence/);
+
+  await assert.rejects(() => runWith((invocation, tool, _selected, ordinal) => {
+    if (tool.system === "sagejs" && ordinal === 1) {
+      invocation.process.affinity_logical_cpus = [1];
+    }
+  }), /not bound to its exact invocation/);
+
+  await assert.rejects(() => runWith((invocation, tool, _selected, ordinal) => {
+    if (tool.system === "sagejs" && ordinal === 1) {
+      invocation.process.generated_program_sha256 = "0".repeat(64);
+    }
+  }), /not bound to its exact invocation/);
+
+  await assert.rejects(() => runWith((invocation, tool, _selected, ordinal) => {
+    if (tool.system === "sagejs" && ordinal === 1) {
+      invocation.process.runtime_closure_sha256 = "0".repeat(64);
+    }
+  }), /not bound to its exact invocation/);
+
+  await assert.rejects(() => runWith((invocation, tool, _selected, ordinal) => {
+    if (tool.system === "sagejs" && ordinal === 2) {
+      invocation.process.launched_monotonic_nanoseconds = "105";
+      invocation.process.ended_monotonic_nanoseconds = "115";
+      invocation.process.process_wall_nanoseconds = "10";
+    }
+  }), /processes overlap on logical CPU 0/);
+
+  await assert.rejects(() => runWith((invocation, tool, selected, ordinal) => {
+    if (tool.system === "sagejs" && ordinal === 1) {
+      invocation.response = adapterResponse("sagejs", [fallbackObservation(selected.records[0])]);
+    }
+  }), /declined native execution/);
+});
+
 test("holdout census reuses receipt replay and checks PARI against LMFDB", async () => {
   const fixture = completeFixture();
   const artifact = makeFreezeArtifact({
@@ -593,11 +1189,14 @@ test("holdout census reuses receipt replay and checks PARI against LMFDB", async
   const holdout = validateFreezeThenLoadHoldout({
     artifact,
     inputs: fixture,
+    candidateSource: fixture.candidateSource,
+    candidateTools: fixture.candidateTools,
+    candidateHost: fixture.candidateHost,
     assetDirectory: "/opened-after-validation",
     loadAsset: () => holdoutRecords(fixture.manifest),
   });
   const calls = [];
-  const source = sourceIdentity();
+  const source = fixture.candidateSource;
   const evidence = await runHoldoutCensus(holdout, artifact, {
     sagejs: "/tmp/sagejs",
     gp: "/tmp/gp",
@@ -605,16 +1204,17 @@ test("holdout census reuses receipt replay and checks PARI against LMFDB", async
     timeoutSeconds: 3600,
     allowDirty: false,
   }, {
-    toolPlan: () => fixture.census.tools,
+    toolPlan: () => fixture.candidateTools,
     currentSourceIdentity: () => source,
-    invokeAdapter: async (tool, selected, mode) => {
+    invokeAdapter: async (tool, selected, mode, invokeOptions) => {
       calls.push([tool.system, selected.records.length, mode]);
       const records = tool.system === "sagejs"
         ? selected.records.map(nativeObservation)
         : selected.records.map(pariObservation);
+      const response = adapterResponse(tool.system, records);
       return {
-        response: adapterResponse(tool.system, records),
-        process: null,
+        response,
+        process: holdoutProcess(tool, selected, response, invokeOptions, calls.length),
       };
     },
   });
@@ -635,18 +1235,23 @@ test("holdout census reuses receipt replay and checks PARI against LMFDB", async
     timeoutSeconds: 3600,
     allowDirty: false,
   }, {
-    toolPlan: () => fixture.census.tools,
+    toolPlan: () => fixture.candidateTools,
     currentSourceIdentity: () => source,
-    invokeAdapter: async (tool, selected) => {
+    invokeAdapter: async (tool, selected, _mode, invokeOptions) => {
       if (tool.system === "pari") {
         const records = selected.records.map(pariObservation);
         records[0].class_number = "999";
-        return { response: adapterResponse("pari", records), process: null };
+        const response = adapterResponse("pari", records);
+        return {
+          response,
+          process: holdoutProcess(tool, selected, response, invokeOptions, index + 1),
+        };
       }
       index += 1;
+      const response = adapterResponse("sagejs", selected.records.map(nativeObservation));
       return {
-        response: adapterResponse("sagejs", selected.records.map(nativeObservation)),
-        process: null,
+        response,
+        process: holdoutProcess(tool, selected, response, invokeOptions, index),
       };
     },
   }), /PARI holdout result disagrees with LMFDB/);

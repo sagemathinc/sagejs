@@ -94,11 +94,16 @@ _ROW_SCRATCH_OFFSET = 7880
 _NORM_FORM_OFFSET = 7944
 
 _CUBIC_ANALYTIC_THRESHOLD = 997
+_CUBIC_ANALYTIC_REFINED_THRESHOLD = 1494
 _CUBIC_ANALYTIC_COEFFICIENT_OFFSET = 3000
-_CUBIC_ANALYTIC_TERM_OFFSET = 4026
+_CUBIC_ANALYTIC_TERM_OFFSET = 4500
 _CUBIC_ANALYTIC_TERM_STRIDE = 5
-_CUBIC_ANALYTIC_MAX_TERMS = 256
-_CUBIC_ANALYTIC_VALUE_OFFSET = 5306
+# Across every cubic splitting pattern, the two BF finite sums at X=1494 and
+# X/9 contain at most 329 prime-power terms.  The 238 rational primes plus the
+# five possible inert p^3 supports and five fixed inputs require at most 248 values.
+# These larger round capacities therefore remain complete, not merely observed.
+_CUBIC_ANALYTIC_MAX_TERMS = 384
+_CUBIC_ANALYTIC_VALUE_OFFSET = 6420
 _CUBIC_ANALYTIC_MAX_VALUES = 256
 _CUBIC_ANALYTIC_PRECISION = 64
 _CUBIC_PROOF_ANALYTIC_GRH = 1
@@ -4334,6 +4339,276 @@ def _cubic_bf_finite_bounds(
     )
 
 
+def _cubic_prepare_bf_plan(
+    workspace: NativeIntegerVector,
+    coefficients: IntegerBuffer,
+    denominator: int,
+    constant: int,
+    linear: int,
+    quadratic: int,
+    absolute_discriminant: int,
+    factor_search_bound: int,
+    group_count: uint64,
+    equation_order_index: int,
+    identity_zero: int,
+    identity_one: int,
+    identity_two: int,
+    class_number_upper: int,
+    analytic_threshold: uint64,
+) -> tuple[bool, uint64, uint64]:
+    """Build one bounded exact Belabas--Friedman prime-power plan."""
+    zero: uint64 = 0
+    if (
+        analytic_threshold != _CUBIC_ANALYTIC_THRESHOLD
+        and analytic_threshold != _CUBIC_ANALYTIC_REFINED_THRESHOLD
+    ):
+        return (False, zero, zero)
+    analytic_index: uint64 = 0
+    while analytic_index < analytic_threshold:
+        workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_index] = 0
+        analytic_index += 1
+    analytic_prime: uint64 = 2
+    while analytic_prime < analytic_threshold:
+        analytic_is_prime = True
+        analytic_divisor: uint64 = 2
+        while analytic_divisor * analytic_divisor <= analytic_prime:
+            if analytic_prime % analytic_divisor == 0:
+                analytic_is_prime = False
+            analytic_divisor += 1
+        if analytic_is_prime:
+            workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime] -= 1
+            analytic_local_degree: uint64 = 0
+            analytic_norm: uint64 = 1
+            if denominator % analytic_prime != 0:
+                analytic_constant_mod: uint64 = constant % analytic_prime
+                analytic_linear_mod: uint64 = linear % analytic_prime
+                analytic_quadratic_mod: uint64 = quadratic % analytic_prime
+                analytic_root: uint64 = 0
+                analytic_multiplicity_sum: uint64 = 0
+                while analytic_root < analytic_prime:
+                    analytic_root_square: uint64 = (
+                        analytic_root * analytic_root
+                    ) % analytic_prime
+                    analytic_value: uint64 = (
+                        analytic_constant_mod
+                        + analytic_linear_mod * analytic_root
+                        + analytic_quadratic_mod * analytic_root_square
+                        + analytic_root_square * analytic_root
+                    ) % analytic_prime
+                    if analytic_value == 0:
+                        analytic_first_hasse: uint64 = (
+                            analytic_linear_mod
+                            + 2 * analytic_quadratic_mod * analytic_root
+                            + 3 * analytic_root_square
+                        ) % analytic_prime
+                        analytic_second_hasse: uint64 = (
+                            analytic_quadratic_mod + 3 * analytic_root
+                        ) % analytic_prime
+                        analytic_root_multiplicity: uint64 = 1
+                        if analytic_first_hasse == 0:
+                            analytic_root_multiplicity = 2
+                            if analytic_second_hasse == 0:
+                                analytic_root_multiplicity = 3
+                        analytic_multiplicity_sum += analytic_root_multiplicity
+                        analytic_local_degree += analytic_root_multiplicity
+                        workspace[
+                            _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime
+                        ] += 1
+                    analytic_root += 1
+                if analytic_multiplicity_sum > 3:
+                    return (False, zero, zero)
+                analytic_remaining_degree: uint64 = 3 - analytic_multiplicity_sum
+                if analytic_remaining_degree > 0:
+                    analytic_norm = 1
+                    analytic_degree_index: uint64 = 0
+                    while analytic_degree_index < analytic_remaining_degree:
+                        analytic_norm *= analytic_prime
+                        analytic_degree_index += 1
+                    if analytic_norm < analytic_threshold:
+                        workspace[
+                            _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_norm
+                        ] += 1
+                    analytic_local_degree += analytic_remaining_degree
+            else:
+                # Index primes must use the certified maximal-order algebra.
+                analytic_map_count: uint64 = 0
+                if analytic_prime <= factor_search_bound:
+                    analytic_group_index: uint64 = 0
+                    analytic_group_found = False
+                    while analytic_group_index < group_count:
+                        analytic_group_base: uint64 = (
+                            _GROUP_OFFSET + _GROUP_STRIDE * analytic_group_index
+                        )
+                        if workspace[analytic_group_base] == analytic_prime:
+                            if analytic_group_found:
+                                return (False, zero, zero)
+                            analytic_group_found = True
+                            analytic_group_factor_start: uint64 = checked_uint64(
+                                workspace[analytic_group_base + 1]
+                            )
+                            analytic_group_factor_count: uint64 = checked_uint64(
+                                workspace[analytic_group_base + 2]
+                            )
+                            analytic_factor_index: uint64 = 0
+                            while analytic_factor_index < analytic_group_factor_count:
+                                analytic_factor_base: uint64 = (
+                                    _FACTOR_OFFSET
+                                    + _FACTOR_STRIDE
+                                    * (
+                                        analytic_group_factor_start
+                                        + analytic_factor_index
+                                    )
+                                )
+                                if workspace[analytic_factor_base + 2] == 1:
+                                    analytic_map_count += 1
+                                analytic_factor_index += 1
+                        analytic_group_index += 1
+                else:
+                    analytic_map_count = _cubic_degree_one_prime_count(
+                        workspace,
+                        coefficients,
+                        equation_order_index,
+                        identity_zero,
+                        identity_one,
+                        identity_two,
+                        analytic_prime,
+                    )
+                if analytic_map_count == 0:
+                    analytic_local_degree = 3
+                    analytic_norm = analytic_prime * analytic_prime * analytic_prime
+                    if analytic_norm < analytic_threshold:
+                        workspace[
+                            _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_norm
+                        ] += 1
+                elif analytic_map_count == 1:
+                    workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime] += 1
+                    analytic_local_degree = 3
+                    if absolute_discriminant % analytic_prime != 0:
+                        analytic_norm = analytic_prime * analytic_prime
+                        if analytic_norm < analytic_threshold:
+                            workspace[
+                                _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_norm
+                            ] += 1
+                elif analytic_map_count == 2:
+                    if absolute_discriminant % analytic_prime != 0:
+                        return (False, zero, zero)
+                    workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime] += 2
+                    analytic_local_degree = 3
+                elif analytic_map_count == 3:
+                    workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime] += 3
+                    analytic_local_degree = 3
+                else:
+                    return (False, zero, zero)
+            if analytic_local_degree != 3:
+                return (False, zero, zero)
+        analytic_prime += 1
+
+    analytic_value_count: uint64 = 5
+    workspace[_CUBIC_ANALYTIC_VALUE_OFFSET] = analytic_threshold
+    workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 1] = analytic_threshold // 9
+    workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 2] = 3 * analytic_threshold
+    workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 3] = absolute_discriminant
+    workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 4] = class_number_upper
+    analytic_term_count: uint64 = 0
+    analytic_scale_index: uint64 = 0
+    while analytic_scale_index < 2:
+        analytic_cutoff: uint64 = analytic_threshold
+        if analytic_scale_index == 1:
+            analytic_cutoff = analytic_threshold // 9
+        analytic_norm_index: uint64 = 2
+        while analytic_norm_index < analytic_cutoff:
+            analytic_multiplicity = workspace[
+                _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_norm_index
+            ]
+            if analytic_scale_index == 1:
+                analytic_multiplicity = -analytic_multiplicity
+            if analytic_multiplicity != 0:
+                analytic_exponent: uint64 = 1
+                analytic_power: uint64 = analytic_norm_index
+                while analytic_power < analytic_cutoff:
+                    if analytic_term_count >= _CUBIC_ANALYTIC_MAX_TERMS:
+                        return (False, zero, zero)
+                    analytic_value_index: uint64 = 0
+                    while (
+                        analytic_value_index < analytic_value_count
+                        and workspace[
+                            _CUBIC_ANALYTIC_VALUE_OFFSET + analytic_value_index
+                        ]
+                        != analytic_norm_index
+                    ):
+                        analytic_value_index += 1
+                    if analytic_value_index == analytic_value_count:
+                        if analytic_value_count >= _CUBIC_ANALYTIC_MAX_VALUES:
+                            return (False, zero, zero)
+                        workspace[
+                            _CUBIC_ANALYTIC_VALUE_OFFSET + analytic_value_count
+                        ] = analytic_norm_index
+                        analytic_value_count += 1
+                    analytic_term_base: uint64 = (
+                        _CUBIC_ANALYTIC_TERM_OFFSET
+                        + _CUBIC_ANALYTIC_TERM_STRIDE * analytic_term_count
+                    )
+                    workspace[analytic_term_base] = analytic_multiplicity
+                    workspace[analytic_term_base + 1] = analytic_scale_index
+                    workspace[analytic_term_base + 2] = analytic_norm_index
+                    workspace[analytic_term_base + 3] = analytic_exponent
+                    workspace[analytic_term_base + 4] = analytic_value_index
+                    analytic_term_count += 1
+                    analytic_exponent += 1
+                    if analytic_power > (analytic_cutoff - 1) // analytic_norm_index:
+                        analytic_power = analytic_cutoff
+                    else:
+                        analytic_power *= analytic_norm_index
+            analytic_norm_index += 1
+        analytic_scale_index += 1
+    if analytic_term_count < 1:
+        return (False, zero, zero)
+    return (True, analytic_term_count, analytic_value_count)
+
+
+def _cubic_evaluate_bf_plan(
+    workspace: NativeIntegerVector,
+    analytic_values: FmpzMatrix,
+    analytic_endpoints: FmpzMatrix,
+    analytic_term_count: uint64,
+    analytic_value_count: uint64,
+    analytic_scale: int,
+) -> tuple[bool, int, int, int]:
+    """Evaluate one prepared BF plan with rigorous resident intervals."""
+    analytic_index: uint64 = 0
+    while analytic_index < analytic_value_count:
+        analytic_values[analytic_index, 0] = workspace[
+            _CUBIC_ANALYTIC_VALUE_OFFSET + analytic_index
+        ]
+        analytic_index += 1
+    if not integer_log_sqrt_balls_resource(
+        analytic_endpoints,
+        analytic_values,
+        _CUBIC_ANALYTIC_PRECISION,
+    ):
+        return (False, 0, 0, 0)
+    tail_lower, tail_upper = _cubic_bf_tail_bounds(
+        analytic_endpoints,
+        analytic_scale,
+    )
+    finite_lower, finite_upper = _cubic_bf_finite_bounds(
+        workspace,
+        analytic_values,
+        analytic_endpoints,
+        analytic_term_count,
+        analytic_value_count,
+        analytic_scale,
+    )
+    if tail_lower < 0 or tail_upper < tail_lower or finite_upper < finite_lower:
+        return (False, 0, 0, 0)
+    return (
+        True,
+        finite_lower - tail_upper,
+        finite_upper + tail_upper,
+        tail_upper,
+    )
+
+
 def _cubic_map_is_multiplicative(
     workspace: NativeIntegerVector,
     map_zero: int,
@@ -7299,236 +7574,34 @@ def certified_complex_cubic_class_group_v1(
         ):
             return False
 
-        # Build the exact local Euler data for the fixed BF cutoff.  The
-        # coefficient at n is the number of prime ideals of norm n minus the
-        # rational-zeta contribution at rational primes.  At index primes the
-        # resident maximal-order algebra, rather than the defining polynomial,
-        # supplies the degree-one maps.
+        # Build and evaluate the first exact Belabas--Friedman plan through
+        # the same closed native helpers used by the bounded refinement.
         analytic_threshold: uint64 = _CUBIC_ANALYTIC_THRESHOLD
-        analytic_index: uint64 = 0
-        while analytic_index < analytic_threshold:
-            workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_index] = 0
-            analytic_index += 1
-        analytic_prime: uint64 = 2
-        while analytic_prime < analytic_threshold:
-            analytic_is_prime = True
-            analytic_divisor: uint64 = 2
-            while analytic_divisor * analytic_divisor <= analytic_prime:
-                if analytic_prime % analytic_divisor == 0:
-                    analytic_is_prime = False
-                analytic_divisor += 1
-            if analytic_is_prime:
-                workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime] -= 1
-                analytic_local_degree: uint64 = 0
-                analytic_norm: uint64 = 1
-                if denominator % analytic_prime != 0:
-                    analytic_constant_mod: uint64 = constant % analytic_prime
-                    analytic_linear_mod: uint64 = linear % analytic_prime
-                    analytic_quadratic_mod: uint64 = quadratic % analytic_prime
-                    analytic_root: uint64 = 0
-                    analytic_multiplicity_sum: uint64 = 0
-                    while analytic_root < analytic_prime:
-                        analytic_root_square: uint64 = (
-                            analytic_root * analytic_root
-                        ) % analytic_prime
-                        analytic_value: uint64 = (
-                            analytic_constant_mod
-                            + analytic_linear_mod * analytic_root
-                            + analytic_quadratic_mod * analytic_root_square
-                            + analytic_root_square * analytic_root
-                        ) % analytic_prime
-                        if analytic_value == 0:
-                            analytic_first_hasse: uint64 = (
-                                analytic_linear_mod
-                                + 2 * analytic_quadratic_mod * analytic_root
-                                + 3 * analytic_root_square
-                            ) % analytic_prime
-                            analytic_second_hasse: uint64 = (
-                                analytic_quadratic_mod + 3 * analytic_root
-                            ) % analytic_prime
-                            analytic_root_multiplicity: uint64 = 1
-                            if analytic_first_hasse == 0:
-                                analytic_root_multiplicity = 2
-                                if analytic_second_hasse == 0:
-                                    analytic_root_multiplicity = 3
-                            analytic_multiplicity_sum += analytic_root_multiplicity
-                            analytic_local_degree += analytic_root_multiplicity
-                            workspace[
-                                _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime
-                            ] += 1
-                        analytic_root += 1
-                    if analytic_multiplicity_sum > 3:
-                        return False
-                    analytic_remaining_degree: uint64 = 3 - analytic_multiplicity_sum
-                    if analytic_remaining_degree > 0:
-                        analytic_norm = 1
-                        analytic_degree_index: uint64 = 0
-                        while analytic_degree_index < analytic_remaining_degree:
-                            analytic_norm *= analytic_prime
-                            analytic_degree_index += 1
-                        if analytic_norm < analytic_threshold:
-                            workspace[
-                                _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_norm
-                            ] += 1
-                        analytic_local_degree += analytic_remaining_degree
-                else:
-                    # The factor-base pass has already enumerated every
-                    # degree-one map at primes inside its proved generator
-                    # bound.  Reuse that exact splitting signature instead of
-                    # repeating the quadratic residue-map search during the
-                    # analytic phase.  An index prime beyond the factor base
-                    # uses the same general maximal-order algebra routine; it
-                    # is no reason for an arbitrary small-prime decline.
-                    analytic_map_count: uint64 = 0
-                    if analytic_prime <= factor_search_bound:
-                        analytic_group_index: uint64 = 0
-                        analytic_group_found = False
-                        while analytic_group_index < group_count:
-                            analytic_group_base: uint64 = (
-                                _GROUP_OFFSET + _GROUP_STRIDE * analytic_group_index
-                            )
-                            if workspace[analytic_group_base] == analytic_prime:
-                                if analytic_group_found:
-                                    return False
-                                analytic_group_found = True
-                                analytic_group_factor_start: uint64 = checked_uint64(
-                                    workspace[analytic_group_base + 1]
-                                )
-                                analytic_group_factor_count: uint64 = checked_uint64(
-                                    workspace[analytic_group_base + 2]
-                                )
-                                analytic_factor_index: uint64 = 0
-                                while (
-                                    analytic_factor_index < analytic_group_factor_count
-                                ):
-                                    analytic_factor_base: uint64 = (
-                                        _FACTOR_OFFSET
-                                        + _FACTOR_STRIDE
-                                        * (
-                                            analytic_group_factor_start
-                                            + analytic_factor_index
-                                        )
-                                    )
-                                    if workspace[analytic_factor_base + 2] == 1:
-                                        analytic_map_count += 1
-                                    analytic_factor_index += 1
-                            analytic_group_index += 1
-                    else:
-                        analytic_map_count = _cubic_degree_one_prime_count(
-                            workspace,
-                            coefficients,
-                            equation_order_index,
-                            identity_zero,
-                            identity_one,
-                            identity_two,
-                            analytic_prime,
-                        )
-                    if analytic_map_count == 0:
-                        analytic_local_degree = 3
-                        analytic_norm = analytic_prime * analytic_prime * analytic_prime
-                        if analytic_norm < analytic_threshold:
-                            workspace[
-                                _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_norm
-                            ] += 1
-                    elif analytic_map_count == 1:
-                        workspace[
-                            _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime
-                        ] += 1
-                        if absolute_discriminant % analytic_prime == 0:
-                            analytic_local_degree = 3
-                        else:
-                            analytic_local_degree = 3
-                            analytic_norm = analytic_prime * analytic_prime
-                            if analytic_norm < analytic_threshold:
-                                workspace[
-                                    _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_norm
-                                ] += 1
-                    elif analytic_map_count == 2:
-                        if absolute_discriminant % analytic_prime != 0:
-                            return False
-                        workspace[
-                            _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime
-                        ] += 2
-                        analytic_local_degree = 3
-                    elif analytic_map_count == 3:
-                        workspace[
-                            _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime
-                        ] += 3
-                        analytic_local_degree = 3
-                    else:
-                        return False
-                if analytic_local_degree != 3:
-                    return False
-            analytic_prime += 1
         output[63] = 6
-
-        # Aggregate the BF prime-power plan and deduplicate its transcendental
-        # inputs before allocating the two resident FLINT matrices.
-        analytic_value_count: uint64 = 5
-        workspace[_CUBIC_ANALYTIC_VALUE_OFFSET] = analytic_threshold
-        workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 1] = analytic_threshold // 9
-        workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 2] = 3 * analytic_threshold
-        workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 3] = absolute_discriminant
-        workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 4] = class_number_upper
-        analytic_term_count: uint64 = 0
-        analytic_scale_index: uint64 = 0
-        while analytic_scale_index < 2:
-            analytic_cutoff: uint64 = analytic_threshold
-            if analytic_scale_index == 1:
-                analytic_cutoff = analytic_threshold // 9
-            analytic_norm_index: uint64 = 2
-            while analytic_norm_index < analytic_cutoff:
-                analytic_multiplicity = workspace[
-                    _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_norm_index
-                ]
-                if analytic_scale_index == 1:
-                    analytic_multiplicity = -analytic_multiplicity
-                if analytic_multiplicity != 0:
-                    analytic_exponent: uint64 = 1
-                    analytic_power: uint64 = analytic_norm_index
-                    while analytic_power < analytic_cutoff:
-                        if analytic_term_count >= _CUBIC_ANALYTIC_MAX_TERMS:
-                            return False
-                        analytic_value_index: uint64 = 0
-                        while (
-                            analytic_value_index < analytic_value_count
-                            and workspace[
-                                _CUBIC_ANALYTIC_VALUE_OFFSET + analytic_value_index
-                            ]
-                            != analytic_norm_index
-                        ):
-                            analytic_value_index += 1
-                        if analytic_value_index == analytic_value_count:
-                            if analytic_value_count >= _CUBIC_ANALYTIC_MAX_VALUES:
-                                return False
-                            workspace[
-                                _CUBIC_ANALYTIC_VALUE_OFFSET + analytic_value_count
-                            ] = analytic_norm_index
-                            analytic_value_count += 1
-                        analytic_term_base: uint64 = (
-                            _CUBIC_ANALYTIC_TERM_OFFSET
-                            + _CUBIC_ANALYTIC_TERM_STRIDE * analytic_term_count
-                        )
-                        workspace[analytic_term_base] = analytic_multiplicity
-                        workspace[analytic_term_base + 1] = analytic_scale_index
-                        workspace[analytic_term_base + 2] = analytic_norm_index
-                        workspace[analytic_term_base + 3] = analytic_exponent
-                        workspace[analytic_term_base + 4] = analytic_value_index
-                        analytic_term_count += 1
-                        analytic_exponent += 1
-                        if (
-                            analytic_power
-                            > (analytic_cutoff - 1) // analytic_norm_index
-                        ):
-                            analytic_power = analytic_cutoff
-                        else:
-                            analytic_power *= analytic_norm_index
-                analytic_norm_index += 1
-            analytic_scale_index += 1
-        if analytic_term_count < 1:
+        (
+            analytic_plan_ready,
+            analytic_term_count,
+            analytic_value_count,
+        ) = _cubic_prepare_bf_plan(
+            workspace,
+            coefficients,
+            denominator,
+            constant,
+            linear,
+            quadratic,
+            absolute_discriminant,
+            factor_search_bound,
+            group_count,
+            equation_order_index,
+            identity_zero,
+            identity_one,
+            identity_two,
+            class_number_upper,
+            analytic_threshold,
+        )
+        if not analytic_plan_ready:
             return False
         output[63] = 7
-
         analytic_values = arena.foreign_resource(
             fmpz_matrix,
             analytic_value_count,
@@ -7539,25 +7612,12 @@ def certified_complex_cubic_class_group_v1(
             4 * analytic_value_count,
             one_column,
         )
-        analytic_index = 0
-        while analytic_index < analytic_value_count:
-            analytic_values[analytic_index, 0] = workspace[
-                _CUBIC_ANALYTIC_VALUE_OFFSET + analytic_index
-            ]
-            analytic_index += 1
-        analytic_precision: uint64 = _CUBIC_ANALYTIC_PRECISION
-        if not integer_log_sqrt_balls_resource(
-            analytic_endpoints,
-            analytic_values,
-            analytic_precision,
-        ):
-            return False
-
-        tail_lower, tail_upper = _cubic_bf_tail_bounds(
-            analytic_endpoints,
-            analytic_scale,
-        )
-        finite_lower, finite_upper = _cubic_bf_finite_bounds(
+        (
+            analytic_ready,
+            zeta_lower,
+            zeta_upper,
+            tail_upper,
+        ) = _cubic_evaluate_bf_plan(
             workspace,
             analytic_values,
             analytic_endpoints,
@@ -7565,10 +7625,9 @@ def certified_complex_cubic_class_group_v1(
             analytic_value_count,
             analytic_scale,
         )
-        if tail_lower < 0 or tail_upper < tail_lower or finite_upper < finite_lower:
+        if not analytic_ready:
             return False
-        zeta_lower = finite_lower - tail_upper
-        zeta_upper = finite_upper + tail_upper
+        analytic_precision: uint64 = _CUBIC_ANALYTIC_PRECISION
         log_regulator_lower, log_regulator_upper = _cubic_log_interval_bounds(
             log_numerators,
             log_denominators,
@@ -7593,7 +7652,9 @@ def certified_complex_cubic_class_group_v1(
             log_regulator_upper < log_regulator_lower
             or log_two_pi_upper < log_two_pi_lower
             or log_discriminant_lower <= 0
+            or log_discriminant_upper < log_discriminant_lower
             or log_class_lower < 0
+            or log_class_upper < log_class_lower
         ):
             return False
         half_discriminant_lower = log_discriminant_lower // 2
@@ -7741,6 +7802,97 @@ def certified_complex_cubic_class_group_v1(
                 index_log_upper = algebraic_upper - zeta_lower
                 saturation_attempts += 1
                 saturation_search_active = index_log_upper >= log_two_lower
+
+        # Most fields close at the established X=997 boundary.  If all exact
+        # algebraic and interval checks succeeded but the resulting upper
+        # endpoint still cannot distinguish the positive integral index from
+        # two, make one bounded resident refinement.  This is a schedule, not
+        # a proof premise: the second BF enclosure must satisfy exactly the
+        # same index-one inequality below, and any exhausted resource declines.
+        if index_log_upper < 0 or log_two_upper < log_two_lower:
+            return False
+        if index_log_upper >= log_two_lower:
+            analytic_threshold = _CUBIC_ANALYTIC_REFINED_THRESHOLD
+            (
+                refined_plan_ready,
+                analytic_term_count,
+                analytic_value_count,
+            ) = _cubic_prepare_bf_plan(
+                workspace,
+                coefficients,
+                denominator,
+                constant,
+                linear,
+                quadratic,
+                absolute_discriminant,
+                factor_search_bound,
+                group_count,
+                equation_order_index,
+                identity_zero,
+                identity_one,
+                identity_two,
+                class_number_upper,
+                analytic_threshold,
+            )
+            if not refined_plan_ready:
+                return False
+            output[63] = 6
+            refined_analytic_values = arena.foreign_resource(
+                fmpz_matrix,
+                analytic_value_count,
+                one_column,
+            )
+            refined_analytic_endpoints = arena.foreign_resource(
+                fmpz_matrix,
+                4 * analytic_value_count,
+                one_column,
+            )
+            (
+                refined_analytic_ready,
+                zeta_lower,
+                zeta_upper,
+                tail_upper,
+            ) = _cubic_evaluate_bf_plan(
+                workspace,
+                refined_analytic_values,
+                refined_analytic_endpoints,
+                analytic_term_count,
+                analytic_value_count,
+                analytic_scale,
+            )
+            if not refined_analytic_ready:
+                return False
+            output[63] = 7
+            log_discriminant_lower = refined_analytic_endpoints[12, 0]
+            log_discriminant_upper = refined_analytic_endpoints[13, 0]
+            log_class_lower = refined_analytic_endpoints[16, 0]
+            log_class_upper = refined_analytic_endpoints[17, 0]
+            if (
+                log_discriminant_lower <= 0
+                or log_discriminant_upper < log_discriminant_lower
+                or log_class_lower < 0
+                or log_class_upper < log_class_lower
+            ):
+                return False
+            half_discriminant_lower = log_discriminant_lower // 2
+            half_discriminant_upper = _cubic_dyadic_ceiling_quotient(
+                log_discriminant_upper,
+                2,
+            )
+            algebraic_lower = (
+                log_class_lower
+                + log_regulator_lower
+                + log_two_pi_lower
+                - half_discriminant_upper
+            )
+            algebraic_upper = (
+                log_class_upper
+                + log_regulator_upper
+                + log_two_pi_upper
+                - half_discriminant_lower
+            )
+            index_log_lower = algebraic_lower - zeta_upper
+            index_log_upper = algebraic_upper - zeta_lower
         output[40] = regulator_lower
         output[41] = regulator_upper
         output[42] = zeta_lower

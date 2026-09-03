@@ -25,9 +25,10 @@
  * The input polynomial is already the normalized monic integral equation
  * polynomial; scale records the relation between its generator and the public
  * field generator.  This boundary computes the polynomial discriminant,
- * extracts cheap certified word-prime components, retains one exact lazy
- * residual component, and computes the canonical HNF order at every extracted
- * word prime with square discriminant support.  No field object, host callback,
+ * extracts cheap certified word-prime components, applies a bounded
+ * decomposition to a word-sized residual through FLINT, retains any exact
+ * unresolved residual component, and computes the canonical HNF order at
+ * every extracted word prime with square discriminant support.  No field object, host callback,
  * multiplication table, or cached cross-field result participates.
  *
  * The output is one copied byte payload.  It contains the source polynomial
@@ -1062,7 +1063,11 @@ static inline int sagejs_number_field_analyze_resource(
         goto invalid;
     fmpz_abs(remaining, equation_discriminant);
 
-    const uint64_t maximum_components = trial_bound / 2 + 2;
+    /* At most trial_bound / 2 + 1 components come from the explicit trial
+     * pass.  A residual machine word has at most
+     * FLINT_MAX_FACTORS_IN_LIMB distinct prime factors. */
+    const uint64_t maximum_components = trial_bound / 2 + UINT64_C(2) +
+        (uint64_t) FLINT_MAX_FACTORS_IN_LIMB;
     if (maximum_components > (uint64_t) WORD_MAX)
         goto invalid;
     fmpz_mat_t components;
@@ -1119,10 +1124,64 @@ static inline int sagejs_number_field_analyze_resource(
         }
 
         if (status == SAGEJS_NF_ANALYSIS_COMPLETE_CANDIDATE &&
-            fmpz_abs_fits_ui(residual_base) &&
-            n_is_prime(fmpz_get_ui(residual_base)))
-            fmpz_set_ui(fmpz_mat_entry(components, component_count, 2),
-                SAGEJS_NF_ANALYSIS_COMPONENT_PROVEN_WORD_PRIME);
+            fmpz_abs_fits_ui(residual_base))
+        {
+            /* Continue trial division through FLINT's fixed 16-bit-prime
+             * table.  The machine-word trial loop is a bounded,
+             * allocation-free continuation of the cheap caller-selected pass
+             * and is complete for residuals below
+             * 65537^2.  It also handles larger words whenever the remaining
+             * cofactor becomes prime.  Unlike unrestricted n_factor, this
+             * path has no exceptional "factorization failed" exit that could
+             * terminate the host process. */
+            ulong cofactor = fmpz_get_ui(residual_base);
+            ulong candidate = prime;
+            fmpz_t residual_exponent_copy;
+            fmpz_init_set(residual_exponent_copy, residual_exponent);
+            while (cofactor > UWORD(1) &&
+                   candidate < FLINT_FACTOR_TRIAL_PRIMES_PRIME &&
+                   candidate <= cofactor / candidate)
+            {
+                const int exponent = n_remove(&cofactor, candidate);
+                if (exponent > 0)
+                {
+                    fmpz_set_ui(
+                        fmpz_mat_entry(components, component_count, 0),
+                        candidate);
+                    fmpz_mul_ui(
+                        fmpz_mat_entry(components, component_count, 1),
+                        residual_exponent_copy, (ulong) exponent);
+                    fmpz_set_ui(
+                        fmpz_mat_entry(components, component_count, 2),
+                        SAGEJS_NF_ANALYSIS_COMPONENT_PROVEN_WORD_PRIME);
+                    component_count++;
+                }
+                candidate = n_nextprime(candidate, 1);
+            }
+            if (cofactor > UWORD(1))
+            {
+                fmpz_set_ui(
+                    fmpz_mat_entry(components, component_count, 0), cofactor);
+                fmpz_set(
+                    fmpz_mat_entry(components, component_count, 1),
+                    residual_exponent_copy);
+                if (n_is_prime(cofactor))
+                {
+                    fmpz_set_ui(
+                        fmpz_mat_entry(components, component_count, 2),
+                        SAGEJS_NF_ANALYSIS_COMPONENT_PROVEN_WORD_PRIME);
+                }
+                else
+                {
+                    fmpz_set_ui(
+                        fmpz_mat_entry(components, component_count, 2),
+                        SAGEJS_NF_ANALYSIS_COMPONENT_UNRESOLVED);
+                    status = SAGEJS_NF_ANALYSIS_FALLBACK_UNRESOLVED;
+                }
+                component_count++;
+            }
+            fmpz_clear(residual_exponent_copy);
+        }
         else if (status == SAGEJS_NF_ANALYSIS_COMPLETE_CANDIDATE &&
             !fmpz_abs_fits_ui(residual_base) &&
             fmpz_is_probabprime(residual_base))
@@ -1130,14 +1189,15 @@ static inline int sagejs_number_field_analyze_resource(
             fmpz_set_ui(fmpz_mat_entry(components, component_count, 2),
                 SAGEJS_NF_ANALYSIS_COMPONENT_ARBITRARY_PRIME);
             status = SAGEJS_NF_ANALYSIS_FALLBACK_ARBITRARY_PRIME;
+            component_count++;
         }
         else
         {
             fmpz_set_ui(fmpz_mat_entry(components, component_count, 2),
                 SAGEJS_NF_ANALYSIS_COMPONENT_UNRESOLVED);
             status = SAGEJS_NF_ANALYSIS_FALLBACK_UNRESOLVED;
+            component_count++;
         }
-        component_count++;
     }
 
     uint64_t proven_components = 0;

@@ -110,11 +110,19 @@ test("closed native cubic receipts survive declines and authenticate targets", {
   const output = runPython(String.raw`
 from sagejs.number_fields.cubic_class_number_native import certified_complex_cubic_class_group_v1
 from sagejs.number_fields.cubic_class_number_native import _CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT
+from sagejs.number_fields.cubic_class_number_native import _CUBIC_ANALYTIC_REFINED_THRESHOLD
+from sagejs.number_fields.cubic_class_number_native import _CUBIC_ANALYTIC_THRESHOLD
+from sagejs.number_fields.cubic_class_number_native import _CUBIC_ANALYTIC_MAX_TERMS
+from sagejs.number_fields.cubic_class_number_native import _CUBIC_ANALYTIC_MAX_VALUES
 from sagejs.number_fields.cubic_class_number_native import _CUBIC_DIRECT_MINKOWSKI_MAX_BOUND
-from sagejs.number_fields.cubic_class_number_native_runtime import certified_complex_cubic_class_number
+from sagejs.number_fields.cubic_class_number_native_runtime import _checked_native_values, certified_complex_cubic_class_number
 
 assert _CUBIC_DIRECT_MINKOWSKI_MAX_BOUND == 8
 assert _CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT == 4096
+assert _CUBIC_ANALYTIC_THRESHOLD == 997
+assert _CUBIC_ANALYTIC_REFINED_THRESHOLD == 1494
+assert _CUBIC_ANALYTIC_MAX_TERMS >= 329
+assert _CUBIC_ANALYTIC_MAX_VALUES >= 248
 from sagejs.native import is_compiled
 
 assert is_compiled(certified_complex_cubic_class_group_v1)
@@ -140,6 +148,10 @@ cases = (
     # by this native reconstruction has 519-bit integral-basis coordinates,
     # exercising the bounded large-unit regime rather than the former decline.
     ((-644, 243, 0, 1), 2, (2,)),
+    # LMFDB 3.1.93074700.2 reaches the exact C42 presentation and fundamental
+    # unit at the ordinary boundary, but X=997 leaves the rigorous analytic
+    # interval just too wide. The bounded X=1494 retry proves index one.
+    ((-5570, 0, 0, 1), 42, (42,)),
 )
 for index, (coefficients, order, invariants) in enumerate(cases):
     K = field(coefficients, "a" + str(index))
@@ -148,7 +160,7 @@ for index, (coefficients, order, invariants) in enumerate(cases):
     assert receipt.class_number == order
     assert receipt.invariants == invariants
     assert receipt.proof_status == "exact-relations-conditional-grh"
-    if coefficients in ((-55, 9, 0, 1), (-644, 243, 0, 1)):
+    if coefficients in ((-55, 9, 0, 1), (-644, 243, 0, 1), (-5570, 0, 0, 1)):
         assert receipt.theorem == (
             "belabas-diaz-y-diaz-friedman-generators-plus-"
             "belabas-friedman-index-one"
@@ -165,6 +177,16 @@ for index, (coefficients, order, invariants) in enumerate(cases):
     assert receipt.matches(K)
     if coefficients == (-644, 243, 0, 1):
         assert max(abs(value).bit_length() for value in receipt.unit_coordinates) == 519
+    if coefficients == (-5570, 0, 0, 1):
+        assert receipt.analytic_threshold == _CUBIC_ANALYTIC_REFINED_THRESHOLD
+        assert receipt._values[37] == 156
+        assert receipt._values[38] == 126
+        assert receipt.verify_conditional_grh()
+        forged = list(receipt._values)
+        forged[36] = _CUBIC_ANALYTIC_REFINED_THRESHOLD + 1
+        assert _checked_native_values(coefficients, forged) is None
+    else:
+        assert receipt.analytic_threshold == _CUBIC_ANALYTIC_THRESHOLD
     assert K.class_number(proof=False) == order
     detached = receipt.to_dict()
     assert detached["schema"] == "sagejs.number-fields/certified-complex-cubic-native-v4"
@@ -451,6 +473,13 @@ cases = (
     # Residual perfect-power normalization proves the discriminant factor
     # 1229^2 without increasing the bounded trial-division policy.
     ("3.1.40781907.1", (-1229, 0, 0, 1), 2, (2,), 0),
+    # The cheap trial pass leaves 1277*1699.  Bounded word-residual
+    # decomposition proves both factors and reaches the existing native C2xC4
+    # class-group regime without moving the caller's trial cutoff.
+    ("3.1.2169623.1", (-4269, 94, -1, 1), 8, (2, 4), 0),
+    # Likewise, the residual 1153*2927 is decomposed before the order and
+    # relation phases; the unchanged resident algorithm then proves C52.
+    ("3.1.3374831.1", (256, 376, -1, 1), 52, (52,), 0),
 )
 for index, (label, coefficients, expected_order, expected_invariants, expected_passes) in enumerate(cases):
     polynomial = R(0)
@@ -547,10 +576,20 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.40781907.1":
         assert receipt.generator_bound == 78, label
         assert receipt.factor_base_size == 20, label
+    if label == "3.1.2169623.1":
+        assert receipt.generator_bound == 38, label
+        assert receipt.factor_base_size == 12, label
+        assert receipt.relation_count == 19, label
+    if label == "3.1.3374831.1":
+        assert receipt.generator_bound == 49, label
+        assert receipt.factor_base_size == 12, label
+        assert receipt.relation_count == 18, label
     if label in (
         "3.1.23018700.1",
         "3.1.99084027.1",
         "3.1.40781907.1",
+        "3.1.2169623.1",
+        "3.1.3374831.1",
     ):
         assert receipt.verify_conditional_grh(), label
     assert receipt.matches(K), label

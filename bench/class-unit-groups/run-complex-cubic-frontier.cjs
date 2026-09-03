@@ -2,6 +2,7 @@
 "use strict";
 
 const childProcess = require("node:child_process");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -265,6 +266,184 @@ function resolveExecutable(requested) {
   return null;
 }
 
+function expectedDirectSagejsExecutable(root = ROOT) {
+  return fs.realpathSync(path.join(root, "bin/sagejs"));
+}
+
+function validateDirectSagejsTool(tool, root = ROOT) {
+  if (tool?.system !== "sagejs" || tool.adapter_kind !== "generated-sagejs-python" ||
+      tool.executable !== expectedDirectSagejsExecutable(root)) {
+    throw new Error("direct frontier evidence must execute ROOT/bin/sagejs");
+  }
+  return tool;
+}
+
+const CANDIDATE_DIRECT_ENVIRONMENT_SCHEMA =
+  "sagejs.benchmark/complex-cubic-direct-environment-v1";
+
+function candidateDirectEnvironmentIdentity(root = ROOT) {
+  const nodeExecutable = fs.realpathSync(process.execPath);
+  const sitePackages = "/nonexistent/sagejs-complex-cubic-frontier-site-packages";
+  const cacheHome = "/nonexistent/sagejs-complex-cubic-frontier-cache";
+  if (fs.existsSync(sitePackages) || fs.existsSync(cacheHome)) {
+    throw new Error("candidate direct environment requires controlled absent paths");
+  }
+  const payload = {
+    schema: CANDIDATE_DIRECT_ENVIRONMENT_SCHEMA,
+    inheritance: "none",
+    node_executable: {
+      path: nodeExecutable,
+      sha256: sha256(fs.readFileSync(nodeExecutable)),
+      version: process.version,
+      argv_prefix: [fs.realpathSync(path.join(root, "bin/sagejs"))],
+    },
+    environment: {
+      LANG: "C.UTF-8",
+      LC_ALL: "C.UTF-8",
+      TZ: "UTC",
+      XDG_CACHE_HOME: cacheHome,
+      ...THREAD_ENV,
+      SAGEJS_USE_SOURCE: "1",
+      SAGEJS_NATIVE_MODE: "auto",
+      SAGEJS_NATIVE_AUTOLOAD: "1",
+      SAGEJS_NATIVE_CACHE_DIR: path.join(
+        root,
+        "src/lib/sagejs/number_fields/.sagejs-native-kernels",
+      ),
+      SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: path.join(root, "dist/module-cache"),
+      SAGEJS_PRECOMPILED_DYNAMIC_CACHE_DIR: `${cacheHome}/precompiled-dynamic`,
+      SAGEJS_DYNAMIC_CACHE_DIR: `${cacheHome}/dynamic`,
+      SAGEJS_SITE_PACKAGES: sitePackages,
+    },
+  };
+  return { ...payload, sha256: canonicalDigest(payload) };
+}
+
+function candidateRuntimeClosure(root = ROOT) {
+  const hash = crypto.createHash("sha256");
+  let fileCount = 0;
+  let totalBytes = 0;
+  const include = (relativeName) => {
+    const normalized = relativeName.replaceAll("\\", "/");
+    const filename = path.join(root, normalized);
+    if (!fs.existsSync(filename)) {
+      throw new Error(`candidate runtime closure is missing ${normalized}`);
+    }
+    const status = fs.lstatSync(filename);
+    if (status.isDirectory()) {
+      for (const name of fs.readdirSync(filename).sort()) {
+        include(path.posix.join(normalized, name));
+      }
+      return;
+    }
+    hash.update(normalized);
+    hash.update("\0");
+    if (status.isSymbolicLink()) {
+      hash.update("symlink\0");
+      hash.update(fs.readlinkSync(filename));
+    } else if (status.isFile()) {
+      const bytes = fs.readFileSync(filename);
+      hash.update("file\0");
+      hash.update(bytes);
+      fileCount += 1;
+      totalBytes += bytes.length;
+    } else {
+      throw new Error(`candidate runtime closure rejects non-file ${normalized}`);
+    }
+    hash.update("\0");
+  };
+
+  for (const name of [
+    "bin/sagejs",
+    "bin/sagejs-source.cjs",
+    "bin/native-launcher.cjs",
+    "bin/wasm-launcher.cjs",
+    "dist/build-receipt.json",
+    "dist/compiler",
+    "dist/tools",
+    "dist/module-cache",
+    "dist/runtime-cache",
+  ]) include(name);
+
+  const cacheRoot = "src/lib/sagejs/number_fields/.sagejs-native-kernels";
+  const cacheIndex = JSON.parse(fs.readFileSync(path.join(root, cacheRoot, "index.json"), "utf8"));
+  const source = path.join(root, "src/lib/sagejs/number_fields/cubic_class_number_native.py");
+  const selected = cacheIndex?.sources?.[source];
+  if (!selected || !/^[0-9a-f]{64}$/.test(selected.cacheKey || "")) {
+    throw new Error("candidate runtime closure has no compiled cubic class-group kernel");
+  }
+  hash.update("native-cache-selection\0");
+  hash.update(canonicalJson(selected));
+  hash.update("\0");
+  const kernelRoot = path.posix.join(cacheRoot, selected.cacheKey);
+  for (const name of [
+    "binding.gyp",
+    "index.cjs",
+    "kernel.c",
+    "kernel_core.c",
+    "kernel_core.h",
+    "manifest.json",
+    "build/Release/sagejs_native_kernel.node",
+  ]) include(path.posix.join(kernelRoot, name));
+
+  // Generated kernel loaders prefer this sibling pack over their standalone
+  // addon. Its absence is therefore as significant as its bytes.
+  const preferredPackName = path.posix.join(
+    cacheRoot,
+    "pack/sagejs_native_kernel_pack.node",
+  );
+  const preferredPackFilename = path.join(root, preferredPackName);
+  let preferredPack;
+  hash.update("optional-preferred-native-pack\0");
+  hash.update(preferredPackName);
+  hash.update("\0");
+  if (fs.existsSync(preferredPackFilename)) {
+    const status = fs.lstatSync(preferredPackFilename);
+    if (!status.isFile()) {
+      throw new Error("candidate runtime closure rejects non-file preferred native pack");
+    }
+    const bytes = fs.readFileSync(preferredPackFilename);
+    if (bytes.length === 0) {
+      throw new Error("candidate runtime closure rejects an empty preferred native pack");
+    }
+    const packSha256 = sha256(bytes);
+    hash.update("present\0");
+    hash.update(bytes);
+    hash.update("\0");
+    fileCount += 1;
+    totalBytes += bytes.length;
+    preferredPack = {
+      path: preferredPackName,
+      present: true,
+      sha256: packSha256,
+      bytes: String(bytes.length),
+    };
+  } else {
+    hash.update("absent\0");
+    preferredPack = {
+      path: preferredPackName,
+      present: false,
+      sha256: null,
+      bytes: null,
+    };
+  }
+
+  const directEnvironment = candidateDirectEnvironmentIdentity(root);
+  hash.update("direct-process-environment\0");
+  hash.update(canonicalJson(directEnvironment));
+  hash.update("\0");
+
+  return {
+    schema: "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v1",
+    sha256: hash.digest("hex"),
+    file_count: fileCount,
+    total_bytes: String(totalBytes),
+    native_cache_key: selected.cacheKey,
+    preferred_native_pack: preferredPack,
+    direct_process_environment: directEnvironment,
+  };
+}
+
 function sourceIdentity(allowDirty = false) {
   const run = (args) => childProcess.execFileSync("git", ["-C", ROOT, ...args], {
     encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
@@ -287,6 +466,7 @@ function sourceIdentity(allowDirty = false) {
       path: fs.existsSync(receiptPath) ? receiptPath : null,
       sha256: fs.existsSync(receiptPath) ? sha256(fs.readFileSync(receiptPath)) : null,
     },
+    candidate_runtime_closure: candidateRuntimeClosure(ROOT),
   };
 }
 
@@ -355,13 +535,19 @@ function corpusIdentitiesMatch(recorded, current) {
 }
 
 function sourceIdentitiesMatchForTiming(recorded, current) {
+  const recordedRuntime = recorded?.candidate_runtime_closure;
+  const currentRuntime = current?.candidate_runtime_closure;
+  const runtimeMatches =
+    (recordedRuntime === undefined && currentRuntime === undefined) ||
+    (recordedRuntime !== undefined && currentRuntime !== undefined &&
+      canonicalDigest(recordedRuntime) === canonicalDigest(currentRuntime));
   return Boolean(recorded && current && recorded.clean === true && current.clean === true &&
     recorded.promotion_eligible === true && current.promotion_eligible === true &&
     recorded.candidate_tree === current.candidate_tree &&
     recorded.source_closure_sha256 === current.source_closure_sha256 &&
     recorded.build_receipt?.current === true && current.build_receipt?.current === true &&
     typeof recorded.build_receipt.sha256 === "string" &&
-    recorded.build_receipt.sha256 === current.build_receipt.sha256);
+    recorded.build_receipt.sha256 === current.build_receipt.sha256 && runtimeMatches);
 }
 
 function toolPlan(options) {
@@ -386,7 +572,7 @@ function toolPlan(options) {
         }
       } else version = "external-protocol-adapter";
     }
-    return {
+    const tool = {
       system,
       adapter_kind: options.adapters[system] ? "json-protocol" :
         system === "sagejs" ? "generated-sagejs-python" :
@@ -397,6 +583,10 @@ function toolPlan(options) {
       version,
       status: executable ? "available" : "unavailable",
     };
+    if (system === "sagejs" && !options.adapters[system] && executable) {
+      validateDirectSagejsTool(tool);
+    }
+    return tool;
   });
 }
 
@@ -770,7 +960,9 @@ function runFreshProcess(spec, options = {}) {
     const launched = nowNs();
     const child = spawn(spec.executable, spec.args, {
       cwd: ROOT,
-      env: { ...process.env, ...THREAD_ENV, ...spec.env },
+      env: spec.replaceEnv
+        ? { ...spec.env }
+        : { ...process.env, ...THREAD_ENV, ...spec.env },
       detached: process.platform !== "win32",
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -826,9 +1018,17 @@ function pinnedSpec(executable, args, input, options) {
     args: ["-f", "SAGEJS_COMPLEX_CUBIC_FRONTIER_MAX_RSS_KIB|%M", taskset,
       "-c", String(options.cpu), executable, ...args],
     input,
-    env: {},
+    env: options.env || {},
+    replaceEnv: options.replaceEnv === true,
     timeoutSeconds: options.timeoutSeconds,
   };
+}
+
+function directProcessEnvironment(tool, root = ROOT) {
+  if (tool.system !== "sagejs" || tool.adapter_kind !== "generated-sagejs-python") {
+    return {};
+  }
+  return { ...candidateDirectEnvironmentIdentity(root).environment };
 }
 
 function responseFromStdout(stdout) {
@@ -869,10 +1069,14 @@ function censusPartKey(corpus, tool, source, options, batch) {
     source_closure_sha256: source.source_closure_sha256,
     candidate_tree: source.candidate_tree,
     build_receipt_sha256: source.build_receipt.sha256,
+    candidate_runtime_closure_sha256:
+      source.candidate_runtime_closure?.sha256 ?? null,
     adapter_kind: tool.adapter_kind,
     executable_sha256: tool.executable_sha256,
     generated_program_sha256: directCensusProgramDigest("sagejs", [record]),
     thread_environment_sha256: canonicalDigest(THREAD_ENV),
+    direct_process_environment_sha256:
+      source.candidate_runtime_closure?.direct_process_environment?.sha256 ?? null,
     platform: host.platform,
     architecture: host.architecture,
     direct_cpus: options.censusCpus,
@@ -996,7 +1200,8 @@ function validateSuccessfulCensusInvocation(invocation, expected, batch, options
       processEvidence.affinity_logical_cpus?.length !== 1 ||
       !options.censusCpus.includes(processEvidence.affinity_logical_cpus[0]) ||
       processEvidence.runtime_identity !== null ||
-      processEvidence.runtime_closure_sha256 !== null ||
+      processEvidence.runtime_closure_sha256 !==
+        expected.key.direct_process_environment_sha256 ||
       !Array.isArray(records) || records.length !== 1) {
     throw new Error(`census checkpoint for shard ${batch.shard} is not a verified success`);
   }
@@ -1256,7 +1461,19 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
     throw new Error(`${tool.system} requires --adapter ${tool.system}=PATH`);
   }
   if (expectedProgramSha256 === null) expectedProgramSha256 = sha256(input);
-  const processResult = await runFreshProcess(pinnedSpec(tool.executable, args, input, options));
+  const directSagejs = tool.system === "sagejs" &&
+    tool.adapter_kind === "generated-sagejs-python";
+  if (directSagejs) validateDirectSagejsTool(tool);
+  const directEnvironment = directSagejs ? candidateDirectEnvironmentIdentity() : null;
+  const launchedExecutable = directEnvironment === null
+    ? tool.executable
+    : directEnvironment.node_executable.path;
+  if (directEnvironment !== null) args = [tool.executable, ...args];
+  const processResult = await runFreshProcess(pinnedSpec(launchedExecutable, args, input, {
+    ...options,
+    env: directProcessEnvironment(tool),
+    replaceEnv: directSagejs,
+  }));
   const { response, runtimeIdentity, responseValidationError } = interpretAdapterProcessResult(
     tool, corpus, mode, options, processResult, expectedProgramSha256,
   );
@@ -1287,7 +1504,7 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
     stderr_sha256: sha256(processResult.stderr),
     runtime_identity: runtimeIdentity,
     runtime_closure_sha256: runtimeIdentity === null
-      ? null
+      ? directEnvironment?.sha256 ?? null
       : runtimeClosureDigest(runtimeIdentity),
   };
   return { response, process: processEvidence };
@@ -1613,6 +1830,10 @@ function validateCensusProcessTopology(census, corpus, tools) {
     }
 
     const directShards = directCensusShardRecords(corpus, tool.system);
+    const expectedDirectRuntimeClosure = tool.system === "sagejs" &&
+      census.source?.candidate_runtime_closure?.direct_process_environment?.sha256
+      ? census.source.candidate_runtime_closure.direct_process_environment.sha256
+      : null;
     if (matching.length !== directShards.length) {
       throw new Error(
         `timing requires exactly ${directShards.length} ${tool.system} census shard processes`,
@@ -1623,7 +1844,8 @@ function validateCensusProcessTopology(census, corpus, tools) {
       if (!Number.isSafeInteger(process.census_shard) || process.census_shard < 0 ||
           process.census_shard >= directShards.length || byShard.has(process.census_shard) ||
           process.status !== "ok" || process.response_validation_error != null ||
-          process.runtime_identity !== null || process.runtime_closure_sha256 !== null) {
+          process.runtime_identity !== null ||
+          process.runtime_closure_sha256 !== expectedDirectRuntimeClosure) {
         throw new Error(`${tool.system} census shard process topology is invalid`);
       }
       byShard.set(process.census_shard, process);
@@ -2146,11 +2368,14 @@ module.exports = {
   RESPONSE_MARKER,
   RETAINED_ROUNDS,
   THREAD_ENV,
+  candidateDirectEnvironmentIdentity,
+  candidateRuntimeClosure,
   combineCensus,
   censusBatchPlan,
   censusPartFilename,
   censusPartKey,
   directCensusShardRecords,
+  directProcessEnvironment,
   externalCensusProgramDigest,
   corpusIdentitiesMatch,
   corpusIdentity,
@@ -2186,6 +2411,8 @@ module.exports = {
   sourceIdentitiesMatchForTiming,
   toolPlan,
   runtimeClosureDigest,
+  validateCensusProcessEvidence,
   validateCensusProcessTopology,
+  validateDirectSagejsTool,
   validateRuntimeIdentity,
 };

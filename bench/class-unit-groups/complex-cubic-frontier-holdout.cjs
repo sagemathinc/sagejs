@@ -9,6 +9,7 @@ const path = require("node:path");
 const { inspectBuildReceipt } = require("../../scripts/build-receipt.cjs");
 const frozen = require("../optimization-engine/complex-cubic-frontier-corpus.cjs");
 const {
+  ADAPTER_SCHEMA,
   BOUNDARIES,
   CENSUS_SCHEMA,
   TIMING_SCHEMA,
@@ -24,12 +25,17 @@ const {
 } = require("./load-complex-cubic-frontier-survey.cjs");
 const {
   RETAINED_ROUNDS,
+  THREAD_ENV,
+  candidateDirectEnvironmentIdentity,
+  candidateRuntimeClosure,
   combineCensus,
   corpusIdentitiesMatch,
   corpusIdentity,
   invokeAdapter,
+  pariCensusSource,
   pariTimingSource,
   recordLabelsDigest,
+  sageCensusSource,
   sageTimingSource,
   selectFrontierCandidate,
   shardRecords,
@@ -37,12 +43,14 @@ const {
   systemOrder,
   timingMetrics,
   toolPlan,
+  validateCensusProcessEvidence,
   validateCensusProcessTopology,
   validateCheckpointObservation,
+  validateDirectSagejsTool,
 } = require("./run-complex-cubic-frontier.cjs");
 
 const ROOT = path.resolve(__dirname, "../..");
-const FREEZE_SCHEMA = "sagejs.benchmark/complex-cubic-frontier-freeze-v1";
+const FREEZE_SCHEMA = "sagejs.benchmark/complex-cubic-frontier-freeze-v2";
 const HOLDOUT_CORPUS_SCHEMA =
   "sagejs.benchmark/complex-cubic-frontier-frozen-holdout-v1";
 const HOLDOUT_CENSUS_SCHEMA =
@@ -134,6 +142,32 @@ function validateSourceIdentity(source, label) {
   return source;
 }
 
+function validateCandidateSourceIdentity(source) {
+  validateSourceIdentity(source, "candidate source");
+  const closure = source.candidate_runtime_closure;
+  if (!closure ||
+      closure.schema !== "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v1" ||
+      !/^[0-9a-f]{64}$/.test(closure.sha256 || "") ||
+      !Number.isSafeInteger(closure.file_count) || closure.file_count < 1 ||
+      typeof closure.total_bytes !== "string" || !/^[1-9][0-9]*$/.test(closure.total_bytes) ||
+      !/^[0-9a-f]{64}$/.test(closure.native_cache_key || "") ||
+      !closure.preferred_native_pack ||
+      closure.preferred_native_pack.path !==
+        "src/lib/sagejs/number_fields/.sagejs-native-kernels/pack/" +
+          "sagejs_native_kernel_pack.node" ||
+      typeof closure.preferred_native_pack.present !== "boolean" ||
+      (closure.preferred_native_pack.present
+        ? !/^[0-9a-f]{64}$/.test(closure.preferred_native_pack.sha256 || "") ||
+          !/^[1-9][0-9]*$/.test(closure.preferred_native_pack.bytes || "")
+        : closure.preferred_native_pack.sha256 !== null ||
+          closure.preferred_native_pack.bytes !== null) ||
+      canonicalDigest(closure.direct_process_environment) !==
+        canonicalDigest(candidateDirectEnvironmentIdentity())) {
+    throw new Error("candidate source requires an authenticated runtime/build-output closure");
+  }
+  return source;
+}
+
 function validateTools(census, timing) {
   if (JSON.stringify(census.systems) !== JSON.stringify(REQUIRED_SYSTEMS) ||
       !Array.isArray(census.tools) || census.tools.length !== REQUIRED_SYSTEMS.length ||
@@ -148,6 +182,49 @@ function validateTools(census, timing) {
     throw new Error("freeze requires the direct Sage.js and direct GP census/timing paths");
   }
   return census.tools;
+}
+
+function projectTool(tool, label) {
+  if (!tool || typeof tool !== "object" || tool.status !== "available" ||
+      !REQUIRED_SYSTEMS.includes(tool.system) ||
+      typeof tool.executable_sha256 !== "string" ||
+      !/^[0-9a-f]{64}$/.test(tool.executable_sha256) ||
+      typeof tool.version !== "string" || tool.version.length === 0) {
+    throw new Error(`${label} must identify an available executable`);
+  }
+  const expectedAdapter = tool.system === "sagejs"
+    ? "generated-sagejs-python"
+    : "generated-direct-gp";
+  if (tool.adapter_kind !== expectedAdapter) {
+    throw new Error(`${label} must use the direct ${tool.system} path`);
+  }
+  if (tool.version.trim() === "" || tool.version === "version-probe-failed") {
+    throw new Error(`${label} has no authenticated version`);
+  }
+  if (tool.system === "sagejs") validateDirectSagejsTool(tool);
+  return {
+    system: tool.system,
+    adapter_kind: tool.adapter_kind,
+    executable_sha256: tool.executable_sha256,
+    version: tool.version,
+  };
+}
+
+function projectCandidateTools(tools, predecessorTools) {
+  if (!Array.isArray(tools) || tools.length !== REQUIRED_SYSTEMS.length ||
+      tools.some((tool, index) => tool?.system !== REQUIRED_SYSTEMS[index])) {
+    throw new Error("candidate freeze requires available direct Sage.js and PARI tools");
+  }
+  const projected = tools.map((tool, index) =>
+    projectTool(tool, `candidate tool ${REQUIRED_SYSTEMS[index]}`));
+  const predecessorPari = projectTool(
+    predecessorTools?.find((tool) => tool.system === "pari"),
+    "predecessor PARI tool",
+  );
+  if (canonicalDigest(projected[1]) !== canonicalDigest(predecessorPari)) {
+    throw new Error("candidate freeze requires the predecessor PARI executable and version");
+  }
+  return projected;
 }
 
 function expectedTimingAnswerDigest(corpus, system, shard) {
@@ -169,13 +246,18 @@ function validateTimingProcesses(timing, corpus) {
   const seen = new Set();
   for (const process of timing.processes) {
     const key = `${process?.round}:${process?.system}`;
+    const expectedDirectRuntimeClosure = process?.system === "sagejs" &&
+      timing.source?.candidate_runtime_closure?.direct_process_environment?.sha256
+      ? timing.source.candidate_runtime_closure.direct_process_environment.sha256
+      : null;
     if (!process || process.mode !== "timing" ||
         !REQUIRED_SYSTEMS.includes(process.system) ||
         !Number.isSafeInteger(process.round) || process.round < 0 ||
         process.round >= RETAINED_ROUNDS || seen.has(key) ||
         process.status !== "ok" || process.response_validation_error !== null ||
         process.census_shard !== null || process.record_labels_sha256 !== null ||
-        process.runtime_identity !== null || process.runtime_closure_sha256 !== null ||
+        process.runtime_identity !== null ||
+        process.runtime_closure_sha256 !== expectedDirectRuntimeClosure ||
         !Array.isArray(process.affinity_logical_cpus) ||
         process.affinity_logical_cpus.length !== 1 ||
         process.affinity_logical_cpus[0] !== timing.host?.selected_logical_cpu) {
@@ -327,6 +409,60 @@ function validateAcceptedSurveyEvidence({
   };
 }
 
+function validateCandidateQualification({
+  qualification,
+  qualificationBytes,
+  qualificationFilename,
+  corpus,
+  candidateSource,
+  candidateTools,
+  candidateHost,
+  selectedLabel,
+  frozenAt,
+}) {
+  isoTimestamp(qualification?.recorded_at, "qualification.recorded_at");
+  if (Date.parse(qualification.recorded_at) > Date.parse(frozenAt)) {
+    throw new Error("candidate qualification cannot be recorded after frozen_at");
+  }
+  if (qualification?.schema !== CENSUS_SCHEMA || qualification.schema_version !== 1 ||
+      !corpusIdentitiesMatch(
+        qualification.corpus,
+        corpusIdentity("manifest.json", corpus),
+      ) || qualification.summary?.agreement !== true ||
+      qualification.summary?.coverage_complete !== true ||
+      canonicalDigest(qualification.proof_contract) !== canonicalDigest(PROOF_CONTRACT) ||
+      qualification.source?.candidate_commit !== candidateSource.candidate_commit ||
+      !qualification.source?.candidate_runtime_closure ||
+      canonicalDigest(qualification.source?.candidate_runtime_closure) !==
+        canonicalDigest(candidateSource.candidate_runtime_closure) ||
+      !sourceIdentitiesMatchForTiming(candidateSource, qualification.source)) {
+    throw new Error("freeze requires a complete candidate-source qualification census");
+  }
+  const qualificationTools = projectCandidateTools(qualification.tools, candidateTools);
+  const projectedCandidateTools = projectCandidateTools(candidateTools, qualification.tools);
+  if (canonicalDigest(qualificationTools) !== canonicalDigest(projectedCandidateTools)) {
+    throw new Error("candidate qualification tools do not match the frozen execution tools");
+  }
+  const qualificationHost = projectQualificationHost(qualification.host);
+  if (canonicalDigest(qualificationHost) !== canonicalDigest(candidateHost)) {
+    throw new Error("candidate qualification host does not match the frozen execution host");
+  }
+  validateCensusProcessTopology(qualification, corpus, qualification.tools);
+  const selected = qualification.records.find((record) => record.label === selectedLabel);
+  if (!selected || selected.status !== "native-pass" ||
+      selected.observations?.sagejs?.status !== "native-pass") {
+    throw new Error("selected frontier field lacks a native-pass candidate qualification");
+  }
+  return {
+    census: physicalEvidence(
+      qualificationFilename,
+      qualificationBytes,
+      qualification,
+    ),
+    selected_record_sha256: canonicalDigest(selected),
+  };
+}
+
 function projectSource(source) {
   return {
     candidate_commit: source.candidate_commit,
@@ -334,6 +470,72 @@ function projectSource(source) {
     source_closure_sha256: source.source_closure_sha256,
     build_receipt_sha256: source.build_receipt.sha256,
   };
+}
+
+function projectCandidateSource(source) {
+  return {
+    ...projectSource(source),
+    candidate_runtime_closure: source.candidate_runtime_closure,
+  };
+}
+
+function hostExecutionIdentity(cpu) {
+  const cpus = os.cpus();
+  if (!Number.isSafeInteger(cpu) || cpu < 0 || cpu >= cpus.length) {
+    throw new Error(`holdout census logical CPU ${cpu} does not exist`);
+  }
+  return {
+    platform: process.platform,
+    architecture: process.arch,
+    release: os.release(),
+    hostname: os.hostname(),
+    logical_cpu_count: cpus.length,
+    selected_logical_cpu: cpu,
+    selected_cpu_model: cpus[cpu].model,
+    node: process.version,
+    thread_environment_sha256: canonicalDigest(THREAD_ENV),
+  };
+}
+
+function projectQualificationHost(host) {
+  exactKeys(host, [
+    "platform", "architecture", "release", "hostname", "total_memory_bytes",
+    "logical_cpu_count", "selected_logical_cpu", "selected_cpu_model", "node",
+    "thread_environment",
+  ], "candidate qualification host");
+  if (typeof host.total_memory_bytes !== "string" ||
+      !/^[1-9][0-9]*$/.test(host.total_memory_bytes) ||
+      canonicalDigest(host.thread_environment) !== canonicalDigest(THREAD_ENV)) {
+    throw new Error("candidate qualification host has an invalid deterministic environment");
+  }
+  return validateHostExecutionIdentity({
+    platform: host.platform,
+    architecture: host.architecture,
+    release: host.release,
+    hostname: host.hostname,
+    logical_cpu_count: host.logical_cpu_count,
+    selected_logical_cpu: host.selected_logical_cpu,
+    selected_cpu_model: host.selected_cpu_model,
+    node: host.node,
+    thread_environment_sha256: canonicalDigest(host.thread_environment),
+  });
+}
+
+function validateHostExecutionIdentity(host) {
+  exactKeys(host, [
+    "platform", "architecture", "release", "hostname", "logical_cpu_count",
+    "selected_logical_cpu", "selected_cpu_model", "node", "thread_environment_sha256",
+  ], "candidate host");
+  if ([host.platform, host.architecture, host.release, host.hostname,
+    host.selected_cpu_model, host.node].some((value) =>
+    typeof value !== "string" || value.length === 0) ||
+      !Number.isSafeInteger(host.logical_cpu_count) || host.logical_cpu_count < 1 ||
+      !Number.isSafeInteger(host.selected_logical_cpu) || host.selected_logical_cpu < 0 ||
+      host.selected_logical_cpu >= host.logical_cpu_count ||
+      !/^[0-9a-f]{64}$/.test(host.thread_environment_sha256 || "")) {
+    throw new Error("candidate freeze requires a stable host and selected logical CPU");
+  }
+  return host;
 }
 
 function projectHoldoutAsset(asset) {
@@ -363,6 +565,12 @@ function makeFreezeArtifact({
   timing,
   timingBytes,
   timingFilename,
+  qualification,
+  qualificationBytes,
+  qualificationFilename,
+  candidateSource,
+  candidateTools,
+  candidateHost,
   frozenAt = new Date().toISOString(),
 }) {
   isoTimestamp(frozenAt, "frozen_at");
@@ -380,9 +588,23 @@ function makeFreezeArtifact({
   });
   const record = corpus.records.find((entry) => entry.label === accepted.candidate.label);
   if (!record) throw new Error("mechanically selected candidate is absent from the survey");
+  validateCandidateSourceIdentity(candidateSource);
+  const projectedCandidateTools = projectCandidateTools(candidateTools, accepted.tools);
+  validateHostExecutionIdentity(candidateHost);
+  const candidateQualification = validateCandidateQualification({
+    qualification,
+    qualificationBytes,
+    qualificationFilename,
+    corpus,
+    candidateSource,
+    candidateTools,
+    candidateHost,
+    selectedLabel: accepted.candidate.label,
+    frozenAt,
+  });
   const payload = {
     schema: FREEZE_SCHEMA,
-    schema_version: 1,
+    schema_version: 2,
     frozen_at: frozenAt,
     corpus: {
       manifest_id: corpus.manifest.id,
@@ -394,7 +616,11 @@ function makeFreezeArtifact({
       census: accepted.census,
       timing: accepted.timing,
     },
-    source: projectSource(accepted.source),
+    predecessor_source: projectSource(accepted.source),
+    candidate_source: projectCandidateSource(candidateSource),
+    candidate_tools: projectedCandidateTools,
+    candidate_host: candidateHost,
+    candidate_qualification: candidateQualification,
     selection: {
       mechanism: SELECTION_MECHANISM,
       parameters: SELECTION_PARAMETERS,
@@ -423,10 +649,11 @@ function freezeFilename(artifact) {
 
 function validateFreezeArtifact(artifact, inputs) {
   exactKeys(artifact, [
-    "schema", "schema_version", "frozen_at", "corpus", "predecessor_evidence", "source",
-    "selection", "holdout", "freeze_sha256",
+    "schema", "schema_version", "frozen_at", "corpus", "predecessor_evidence",
+    "predecessor_source", "candidate_source", "candidate_tools", "candidate_host",
+    "candidate_qualification", "selection", "holdout", "freeze_sha256",
   ], "freeze artifact");
-  if (artifact.schema !== FREEZE_SCHEMA || artifact.schema_version !== 1) {
+  if (artifact.schema !== FREEZE_SCHEMA || artifact.schema_version !== 2) {
     throw new Error("unsupported complex-cubic frontier freeze schema");
   }
   const { freeze_sha256: recorded, ...payload } = artifact;
@@ -462,6 +689,72 @@ function writeFreezeExclusive(directory, artifact) {
     if (error.code !== "EEXIST" || fs.readFileSync(filename, "utf8") !== bytes) throw error;
   }
   return filename;
+}
+
+function reserveOutput(filename, dependencies = {}) {
+  const mkdir = dependencies.mkdir || fs.mkdirSync;
+  const open = dependencies.open || fs.openSync;
+  const syncParent = dependencies.fsyncParentDirectory || fsyncParentDirectory;
+  if (typeof filename !== "string" || filename.length === 0) {
+    throw new Error("holdout census requires an output filename");
+  }
+  mkdir(path.dirname(filename), { recursive: true });
+  let descriptor;
+  try {
+    descriptor = open(filename, "wx", 0o600);
+    syncParent(filename);
+  } catch (error) {
+    if (descriptor !== undefined) fs.closeSync(descriptor);
+    const detail = error?.code ? ` (${error.code})` : "";
+    throw new Error(`holdout census cannot reserve output${detail}`);
+  }
+  return { filename, descriptor, published: false, closed: false };
+}
+
+function fsyncParentDirectory(filename) {
+  if (process.platform === "win32") return;
+  const descriptor = fs.openSync(path.dirname(filename), "r");
+  try {
+    fs.fsyncSync(descriptor);
+  } finally {
+    fs.closeSync(descriptor);
+  }
+}
+
+function assertReservationOwnership(reservation) {
+  const held = fs.fstatSync(reservation.descriptor);
+  const named = fs.lstatSync(reservation.filename);
+  if (!held.isFile() || !named.isFile() || named.isSymbolicLink() ||
+      held.dev !== named.dev || held.ino !== named.ino) {
+    throw new Error("holdout census output reservation lost ownership");
+  }
+  return { dev: held.dev, ino: held.ino };
+}
+
+function closeOutputReservation(reservation) {
+  if (reservation && !reservation.closed) {
+    fs.closeSync(reservation.descriptor);
+    reservation.closed = true;
+  }
+}
+
+function publishReservedOutput(reservation, bytes, dependencies = {}) {
+  if (!reservation || reservation.closed || reservation.published) {
+    throw new Error("holdout census output reservation is not live");
+  }
+  const write = dependencies.write || fs.writeFileSync;
+  const syncFile = dependencies.fsyncFile || fs.fsyncSync;
+  const syncParent = dependencies.fsyncParentDirectory || fsyncParentDirectory;
+  const before = assertReservationOwnership(reservation);
+  write(reservation.descriptor, bytes);
+  syncFile(reservation.descriptor);
+  const after = assertReservationOwnership(reservation);
+  if (before.dev !== after.dev || before.ino !== after.ino) {
+    throw new Error("holdout census output reservation lost ownership");
+  }
+  syncParent(reservation.filename);
+  reservation.published = true;
+  closeOutputReservation(reservation);
 }
 
 function makeHoldoutCorpus(corpus, artifact, records) {
@@ -507,11 +800,19 @@ function makeHoldoutCorpus(corpus, artifact, records) {
 function validateFreezeThenLoadHoldout({
   artifact,
   inputs,
+  candidateSource,
+  candidateTools,
+  candidateHost,
   assetDirectory,
   loadAsset = frozen.loadAsset,
 }) {
   // This validation deliberately precedes even resolution of the holdout filename.
-  validateFreezeArtifact(artifact, inputs);
+  validateFreezeArtifact(artifact, {
+    ...inputs,
+    candidateSource,
+    candidateTools,
+    candidateHost,
+  });
   const asset = inputs.manifest.release.assets[1];
   if (canonicalDigest(projectHoldoutAsset(asset)) !== canonicalDigest(artifact.holdout.asset)) {
     throw new Error("freeze does not bind the manifest holdout asset");
@@ -542,16 +843,72 @@ function currentSourceIdentity(allowDirty = false) {
       path: fs.existsSync(receiptPath) ? receiptPath : null,
       sha256: fs.existsSync(receiptPath) ? sha256(fs.readFileSync(receiptPath)) : null,
     },
+    candidate_runtime_closure: candidateRuntimeClosure(ROOT),
   };
-  if (!allowDirty) validateSourceIdentity(identity, "holdout census source");
+  if (!allowDirty) validateCandidateSourceIdentity(identity);
   return identity;
+}
+
+function validateHoldoutInvocation({
+  invocation,
+  system,
+  records,
+  shard,
+  executionEpoch,
+  cpu,
+  timeoutSeconds,
+  directRuntimeClosureSha256,
+}) {
+  const response = invocation?.response;
+  const processEvidence = invocation?.process;
+  validateCensusProcessEvidence(processEvidence);
+  const expectedProgram = system === "sagejs"
+    ? sha256(sageCensusSource(records))
+    : sha256(pariCensusSource(records));
+  if (!response || response.schema !== ADAPTER_SCHEMA || response.mode !== "census" ||
+      response.system !== system || response.status !== "ok" ||
+      response.proof !== "conditional-grh" ||
+      processEvidence.system !== system || processEvidence.mode !== "census" ||
+      processEvidence.execution_epoch !== executionEpoch ||
+      processEvidence.census_shard !== shard || processEvidence.status !== "ok" ||
+      processEvidence.response_validation_error !== null ||
+      processEvidence.response_sha256 !== canonicalDigest(response) ||
+      processEvidence.record_labels_sha256 !== recordLabelsDigest(records) ||
+      processEvidence.generated_program_sha256 !== expectedProgram ||
+      processEvidence.timeout_seconds !== timeoutSeconds ||
+      processEvidence.affinity_logical_cpus.length !== 1 ||
+      processEvidence.affinity_logical_cpus[0] !== cpu ||
+      processEvidence.runtime_identity !== null ||
+      processEvidence.runtime_closure_sha256 !==
+        (system === "sagejs" ? directRuntimeClosureSha256 : null)) {
+    throw new Error(`${system} holdout process is not bound to its exact invocation`);
+  }
+  return processEvidence;
+}
+
+function validateHoldoutProcessTopology(processes, executionEpoch, cpu) {
+  if (!Array.isArray(processes) || processes.length !== HOLDOUT_COUNT + 1 ||
+      processes.filter((process) => process.system === "sagejs").length !== HOLDOUT_COUNT ||
+      processes.filter((process) => process.system === "pari").length !== 1 ||
+      processes.some((process) => process.execution_epoch !== executionEpoch ||
+        process.affinity_logical_cpus[0] !== cpu)) {
+    throw new Error("holdout census requires exactly 20 Sage.js and one PARI process");
+  }
+  const intervals = processes.map((process) => ({
+    start: BigInt(process.launched_monotonic_nanoseconds),
+    end: BigInt(process.ended_monotonic_nanoseconds),
+  })).sort((left, right) => left.start < right.start ? -1 : left.start > right.start ? 1 : 0);
+  if (intervals.some((interval, index) =>
+    index > 0 && intervals[index - 1].end > interval.start)) {
+    throw new Error(`holdout census processes overlap on logical CPU ${cpu}`);
+  }
 }
 
 async function runHoldoutCensus(holdout, artifact, options, dependencies = {}) {
   const planTools = dependencies.toolPlan || toolPlan;
   const invoke = dependencies.invokeAdapter || invokeAdapter;
   const identifySource = dependencies.currentSourceIdentity || currentSourceIdentity;
-  const tools = planTools({
+  const tools = dependencies.tools || planTools({
     systems: REQUIRED_SYSTEMS,
     adapters: {},
     sagejs: options.sagejs,
@@ -560,7 +917,9 @@ async function runHoldoutCensus(holdout, artifact, options, dependencies = {}) {
   if (tools.some((tool) => tool.status !== "available")) {
     throw new Error("holdout census requires available Sage.js and direct GP executables");
   }
-  const sourceBefore = identifySource(options.allowDirty);
+  const sourceBefore = dependencies.source || identifySource(false);
+  const directRuntimeClosureSha256 =
+    sourceBefore.candidate_runtime_closure.direct_process_environment.sha256;
   const executionEpoch = sha256([
     process.pid,
     Date.now(),
@@ -583,20 +942,41 @@ async function runHoldoutCensus(holdout, artifact, options, dependencies = {}) {
         censusShard: index,
       },
     );
-    if (invocation.process) processes.push(invocation.process);
+    processes.push(validateHoldoutInvocation({
+      invocation,
+      system: "sagejs",
+      records: [record],
+      shard: index,
+      executionEpoch,
+      cpu: options.cpu,
+      timeoutSeconds: options.timeoutSeconds,
+      directRuntimeClosureSha256,
+    }));
     const observed = invocation.response.payload?.records?.[0];
     if (invocation.response.status !== "ok" || !observed) {
       throw new Error(`Sage.js holdout census failed at rank ${record.selection.stratum_rank}`);
     }
     validateCheckpointObservation(observed, record);
+    if (observed.status !== "native-pass") {
+      throw new Error(`Sage.js holdout rank ${record.selection.stratum_rank} declined native execution`);
+    }
     sageRecords.push(observed);
   }
   const pariInvocation = await invoke(tools[1], holdout, "census", {
     cpu: options.cpu,
     timeoutSeconds: options.timeoutSeconds,
+    directRuntimeClosureSha256,
     executionEpoch,
   });
-  if (pariInvocation.process) processes.push(pariInvocation.process);
+  processes.push(validateHoldoutInvocation({
+    invocation: pariInvocation,
+    system: "pari",
+    records: holdout.records,
+    shard: null,
+    executionEpoch,
+    cpu: options.cpu,
+    timeoutSeconds: options.timeoutSeconds,
+  }));
   if (pariInvocation.response.status !== "ok") {
     throw new Error("PARI holdout census did not complete");
   }
@@ -626,9 +1006,24 @@ async function runHoldoutCensus(holdout, artifact, options, dependencies = {}) {
   if (!combined.summary.agreement || !combined.summary.coverage_complete) {
     throw new Error("holdout census is incomplete or disagrees with LMFDB");
   }
-  const sourceAfter = identifySource(options.allowDirty);
+  validateHoldoutProcessTopology(processes, executionEpoch, options.cpu);
+  const sourceAfter = identifySource(false);
   if (canonicalDigest(sourceAfter) !== canonicalDigest(sourceBefore)) {
     throw new Error("holdout census source or build changed during execution");
+  }
+  const toolsAfter = planTools({
+    systems: REQUIRED_SYSTEMS,
+    adapters: {},
+    sagejs: options.sagejs,
+    gp: options.gp,
+  });
+  if (canonicalDigest(toolsAfter) !== canonicalDigest(tools)) {
+    throw new Error("holdout census executable identity changed during execution");
+  }
+  const hostAfter = hostExecutionIdentity(options.cpu);
+  if (dependencies.host &&
+      canonicalDigest(hostAfter) !== canonicalDigest(dependencies.host)) {
+    throw new Error("holdout census host identity changed during execution");
   }
   return {
     schema: HOLDOUT_CENSUS_SCHEMA,
@@ -655,6 +1050,38 @@ async function runHoldoutCensus(holdout, artifact, options, dependencies = {}) {
   };
 }
 
+function preflightHoldoutExecution(artifact, inputs, options, dependencies = {}) {
+  const identifySource = dependencies.currentSourceIdentity || currentSourceIdentity;
+  const planTools = dependencies.toolPlan || toolPlan;
+  const identifyHost = dependencies.hostExecutionIdentity || hostExecutionIdentity;
+  const reserve = dependencies.reserveOutput || reserveOutput;
+  if (options.cpu !== artifact.candidate_host?.selected_logical_cpu) {
+    throw new Error("holdout census requested CPU does not match the frozen CPU");
+  }
+  const candidateSource = identifySource(false);
+  const candidateTools = planTools({
+    systems: REQUIRED_SYSTEMS,
+    adapters: {},
+    sagejs: options.sagejs,
+    gp: options.gp,
+  });
+  const candidateHost = identifyHost(options.cpu);
+
+  validateFreezeArtifact(artifact, {
+    ...inputs,
+    candidateSource,
+    candidateTools,
+    candidateHost,
+  });
+  const outputReservation = reserve(options.output);
+  return {
+    source: candidateSource,
+    tools: candidateTools,
+    host: candidateHost,
+    outputReservation,
+  };
+}
+
 function parseArguments(argv) {
   const options = {
     mode: null,
@@ -662,6 +1089,7 @@ function parseArguments(argv) {
     assetDir: null,
     census: null,
     timing: null,
+    qualification: null,
     freeze: null,
     output: null,
     outputDir: null,
@@ -685,15 +1113,18 @@ function parseArguments(argv) {
     if (argument === "--help") {
       console.log(`Usage:
   ${path.relative(ROOT, __filename)} --freeze --corpus MANIFEST --asset-dir DIR \\
-    --census CENSUS.json --timing TIMING.json --output-dir DIR
+    --census CENSUS.json --timing TIMING.json --qualification CENSUS.json \\
+    --sagejs PATH --gp PATH --cpu N --output-dir DIR
   ${path.relative(ROOT, __filename)} --holdout-census --freeze-file FREEZE.json \\
     --corpus MANIFEST --asset-dir DIR --census CENSUS.json --timing TIMING.json \\
+    --qualification CENSUS.json \\
     --sagejs PATH --gp PATH --cpu N --output HOLDOUT-CENSUS.json`);
       process.exit(0);
     }
     const valued = [
-      "--corpus", "--asset-dir", "--census", "--timing", "--freeze-file", "--output",
-      "--output-dir", "--sagejs", "--gp", "--cpu", "--timeout-seconds",
+      "--corpus", "--asset-dir", "--census", "--timing", "--qualification",
+      "--freeze-file", "--output", "--output-dir", "--sagejs", "--gp", "--cpu",
+      "--timeout-seconds",
     ];
     if (!valued.includes(argument) || index + 1 >= argv.length) {
       throw new Error(`unknown or valueless argument ${argument}`);
@@ -703,6 +1134,7 @@ function parseArguments(argv) {
     else if (argument === "--asset-dir") options.assetDir = path.resolve(value);
     else if (argument === "--census") options.census = path.resolve(value);
     else if (argument === "--timing") options.timing = path.resolve(value);
+    else if (argument === "--qualification") options.qualification = path.resolve(value);
     else if (argument === "--freeze-file") options.freeze = path.resolve(value);
     else if (argument === "--output") options.output = path.resolve(value);
     else if (argument === "--output-dir") options.outputDir = path.resolve(value);
@@ -712,9 +1144,13 @@ function parseArguments(argv) {
     else options.timeoutSeconds = Number(value);
   }
   if (!options.mode || !options.corpus || !options.assetDir || !options.census ||
-      !options.timing || !Number.isSafeInteger(options.cpu) || options.cpu < 0 ||
+      !options.timing || !options.qualification ||
+      !Number.isSafeInteger(options.cpu) || options.cpu < 0 ||
       !Number.isSafeInteger(options.timeoutSeconds) || options.timeoutSeconds < 1) {
     throw new Error("mode, predecessor inputs, and valid execution limits are required");
+  }
+  if (options.allowDirty) {
+    throw new Error("frontier freeze and holdout census require a clean candidate source");
   }
   if (options.mode === "freeze" && (!options.outputDir || options.freeze || options.output)) {
     throw new Error("--freeze requires only --output-dir for its content-addressed output");
@@ -732,6 +1168,7 @@ function loadPredecessorInputs(options) {
   const corpus = loadFrozenSurveyCorpus(options.corpus, options.assetDir);
   const censusBytes = fs.readFileSync(options.census);
   const timingBytes = fs.readFileSync(options.timing);
+  const qualificationBytes = fs.readFileSync(options.qualification);
   return {
     corpus,
     manifest,
@@ -741,6 +1178,9 @@ function loadPredecessorInputs(options) {
     timing: parseJsonBytes(timingBytes, "survey timing"),
     timingBytes,
     timingFilename: options.timing,
+    qualification: parseJsonBytes(qualificationBytes, "candidate qualification census"),
+    qualificationBytes,
+    qualificationFilename: options.qualification,
   };
 }
 
@@ -748,21 +1188,45 @@ async function main(argv = process.argv.slice(2)) {
   const options = parseArguments(argv);
   const inputs = loadPredecessorInputs(options);
   if (options.mode === "freeze") {
-    const artifact = makeFreezeArtifact(inputs);
+    const candidateSource = currentSourceIdentity(false);
+    const candidateTools = toolPlan({
+      systems: REQUIRED_SYSTEMS,
+      adapters: {},
+      sagejs: options.sagejs,
+      gp: options.gp,
+    });
+    const candidateHost = hostExecutionIdentity(options.cpu);
+    const artifact = makeFreezeArtifact({
+      ...inputs,
+      candidateSource,
+      candidateTools,
+      candidateHost,
+    });
     const filename = writeFreezeExclusive(options.outputDir, artifact);
     console.log(`${filename}: ${artifact.freeze_sha256}`);
     return;
   }
   const artifact = readFreezeFile(options.freeze);
-  const holdout = validateFreezeThenLoadHoldout({
-    artifact,
-    inputs,
-    assetDirectory: options.assetDir,
-  });
-  const evidence = await runHoldoutCensus(holdout, artifact, options);
-  fs.mkdirSync(path.dirname(options.output), { recursive: true });
-  fs.writeFileSync(options.output, `${canonicalJson(evidence)}\n`, { flag: "wx" });
-  console.log(`${options.output}: ${evidence.schema}`);
+  const execution = preflightHoldoutExecution(artifact, inputs, options);
+  try {
+    const holdout = validateFreezeThenLoadHoldout({
+      artifact,
+      inputs,
+      candidateSource: execution.source,
+      candidateTools: execution.tools,
+      candidateHost: execution.host,
+      assetDirectory: options.assetDir,
+    });
+    const evidence = await runHoldoutCensus(holdout, artifact, options, execution);
+    publishReservedOutput(
+      execution.outputReservation,
+      `${canonicalJson(evidence)}\n`,
+    );
+    console.log(`${options.output}: ${evidence.schema}`);
+  } catch (error) {
+    closeOutputReservation(execution.outputReservation);
+    throw error;
+  }
 }
 
 if (require.main === module) {
@@ -783,16 +1247,24 @@ module.exports = {
   PROOF_CONTRACT,
   SELECTION_MECHANISM,
   SELECTION_PARAMETERS,
+  closeOutputReservation,
   expectedTimingAnswerDigest,
   freezeFilename,
   makeFreezeArtifact,
   makeHoldoutCorpus,
   parseArguments,
+  preflightHoldoutExecution,
+  publishReservedOutput,
+  projectCandidateTools,
+  projectTool,
   readFreezeFile,
+  reserveOutput,
   runHoldoutCensus,
   validateAcceptedSurveyEvidence,
   validateFreezeArtifact,
   validateFreezeThenLoadHoldout,
+  validateHoldoutInvocation,
+  validateHoldoutProcessTopology,
   validateTimingEvidence,
   writeFreezeExclusive,
 };
