@@ -1,9 +1,207 @@
 # Complex cubic competitive frontier
 
-This harness establishes a reproducible, out-of-sample frontier for class
-groups of complex cubic number fields. It deliberately separates correctness
-and route classification from timing. A fast answer is never allowed to become
-its own oracle, and a timeout limit is never substituted for an observation.
+This harness establishes reproducible survey performance and out-of-sample
+correctness frontiers for class groups of complex cubic number fields. It
+deliberately separates correctness and route classification from timing. A fast
+answer is never allowed to become its own oracle, and a timeout limit is never
+substituted for an observation.
+
+## Measured frontier on `opt`
+
+These results are scoped to complex cubic fields in the frozen 1,000-field
+survey, Sage.js commit
+`f34486c71dff5ba7f0728e4ac82f41271b59d6a9`, PARI/GP 2.17.4, and the
+single-threaded conditional-GRH protocol below. The machine was the dedicated
+Linux x64 `opt` VM with an AMD EPYC 7B13; retained candidate timing used logical
+CPU 0. Magma and Hecke were not included in these retained artifacts. The
+campaign establishes survey-qualified performance plus out-of-sample
+correctness generalization; it does not call the exposed-survey timing itself
+out of sample.
+
+### Correctness and native coverage
+
+The predecessor census at commit
+`2770f2a3d27db1b341b8ebba154e6900fd49fb5b` agreed with PARI and the
+`used_grh=false` LMFDB oracle on all 1,000 fields, but three fields declined
+from native execution and used the verified exact fallback. The candidate
+qualification census agreed on every class number and invariant factor and
+moved all 1,000 fields to authenticated native execution:
+
+| Source | Native pass | Verified fallback | Total agreement |
+|---|---:|---:|---:|
+| predecessor `2770f2a3` | 997 | 3 | 1,000/1,000 |
+| candidate `f34486c7` | 1,000 | 0 | 1,000/1,000 |
+
+Every candidate native result carried an authenticated receipt and passed
+ordinary-object certificate replay independent of the closed native result as
+the correctness authority. All 1,020 candidate census processes--1,000 isolated
+Sage.js field processes and 20 PARI stratum processes--completed successfully.
+The two complete 1,000-field native warm passes produced identical response
+bundles and identical runtime-closure digests. The resulting fixed runtime
+closure is
+`0e8fb37998db72a591121e3acdcfc7800154f788c0c606b3140952591e96936a`.
+
+The frozen predecessor selector chose LMFDB field `3.1.2169623.1`, defined by
+
+$$
+x^3-x^2+94x-4269,
+$$
+
+with class group $C_2\times C_4$. It was the smallest-discriminant native
+decline in the survey, at global survey rank 755 and rank 38 of stratum
+`d3-1e6-1e7:h4-noncyclic`. Its unresolved discriminant residual was
+$1277\cdot1699$. The intervention added allocation-bounded exact residual
+decomposition: perfect-power normalization followed by the fixed
+16-bit-prime continuation for word-sized residuals. Discovered factors remain
+untrusted until the source-transparent checker proves primality, coprimality,
+and exact reconstruction.
+
+The candidate now computes this field natively and publishes an
+ordinary-object-replayed $C_2\times C_4$ presentation with 12 factor-base
+ideals and 19 principal relations. The same general machinery also removed the
+other two predecessor declines; no field label or class-group answer is
+special-cased. The candidate additionally uses the independently checked second
+analytic cutoff $X=1494$ when the initial $X=997$ enclosure alone cannot isolate
+index one.
+
+### Retained PARI comparison
+
+Each row below reports the median of the 11 absolute 1,000-field corpus totals.
+The last two columns summarize the 220 paired retained shard roots and are the
+preferred distributional comparison. The predecessor and candidate runs were
+both pinned to logical CPU 0 on the same VM, but they occurred separately with
+different source and runtime closures, so their before/after difference is
+descriptive rather than a paired causal estimate.
+
+| Boundary and source | Sage.js corpus total (s) | PARI corpus total (s) | Ratio of totals | Paired-shard median | Paired-shard geometric mean |
+|---|---:|---:|---:|---:|---:|
+| scalar-prepared, predecessor | 50.089121952 | 1.270843750 | $39.414068\times$ | $12.968146\times$ | $17.371176\times$ |
+| scalar-prepared, candidate | 19.882846528 | 1.286687500 | $15.452739\times$ | $13.286221\times$ | $13.808502\times$ |
+| fresh-complete, predecessor | 67.564564096 | 1.687343750 | $40.041968\times$ | $20.819017\times$ | $25.756794\times$ |
+| fresh-complete, candidate | 37.554520576 | 1.711843750 | $21.938054\times$ | $20.622150\times$ | $21.309773\times$ |
+
+For the candidate scalar-prepared boundary, the paired-shard geometric-mean
+bootstrap interval was $[12.017655,16.032641]$, the 95th percentile was
+$29.077001\mathbin{\times}$, and 14 of 220 shard comparisons were within
+$10\mathbin{\times}$. For fresh-complete, the corresponding interval was
+$[20.080425,22.850621]$, the 95th percentile was
+$31.911423\mathbin{\times}$, and no shard comparison was within
+$10\mathbin{\times}$.
+
+The nested per-field clocks are diagnostic rather than timing authority. Their
+candidate medians were $11.487134\mathbin{\times}$ for scalar-prepared and
+$18.932972\mathbin{\times}$ for fresh-complete. Thus the structural coverage
+frontier is now the entire frozen survey, but Sage.js is not yet corpus-wide
+competitive with PARI. The candidate run's removal of the three extreme
+fallback routes coincided with a substantially smaller absolute corpus total;
+the remaining work is distributed across the native path.
+
+With no remaining native decline, the current timing selector identifies LMFDB
+field `3.1.10636.1`, defined by
+
+$$
+x^3-x^2+19x-31,
+$$
+
+as the next frontier. It has trivial class group and is the
+smallest-discriminant field with a stable scalar-prepared slowdown: median
+$5.554944\mathbin{\times}$, with Sage.js slower in all 11 retained rounds. This
+is the next structural investigation target, not a claim that it dominates
+aggregate runtime.
+
+### Explicit sub-10 ms target
+
+A separate hermetic public-API experiment used five fresh pinned processes and
+31 samples per process per field. Field construction occurred before the
+clock; the timed request was `field.class_number(proof=False)`. Receipt
+authentication and ordinary-object certificate replay were performed
+separately. All five process medians met the 10 ms target:
+
+| Polynomial | Class group | Samples | Pooled median | Maximum process median |
+|---|---:|---:|---:|---:|
+| $x^3+9x-55$ | $C_5$ | 155 | 9.786368 ms | 9.857536 ms |
+| $x^3-x^2+3x-4$ | $C_2$ | 155 | 5.211392 ms | 5.243648 ms |
+
+This artifact establishes the requested Sage.js latency boundary. It contains
+no direct PARI timings, so it is not by itself evidence of beating PARI on
+these two fields.
+
+### Frozen unseen holdout
+
+The content-addressed freeze was written before the holdout bytes were
+disclosed. It selected all and only ranks 51 through 70 of
+`d3-1e6-1e7:h4-noncyclic`, the stratum containing the predecessor decline. The
+candidate then returned `native-pass` on all 20 fields. Every native receipt
+was authenticated and passed ordinary-object certificate replay; Sage.js,
+PARI, and the stronger `used_grh=false` LMFDB records agreed exactly on every
+class number and invariant factor:
+
+| Rank | LMFDB label | Class group | Rank | LMFDB label | Class group |
+|---:|---|---|---:|---|---|
+| 51 | `3.1.1405075.6` | $C_3\times C_3$ | 61 | `3.1.1173207.2` | $C_3\times C_9$ |
+| 52 | `3.1.1717548.2` | $C_3\times C_3$ | 62 | `3.1.2713539.1` | $C_2\times C_{10}$ |
+| 53 | `3.1.2407979.1` | $C_2\times C_2$ | 63 | `3.1.2255063.1` | $C_2\times C_4$ |
+| 54 | `3.1.2217964.1` | $C_2\times C_4$ | 64 | `3.1.2686956.1` | $C_3\times C_9$ |
+| 55 | `3.1.1449655.1` | $C_2\times C_2$ | 65 | `3.1.3366920.1` | $C_2\times C_4$ |
+| 56 | `3.1.1641988.1` | $C_2\times C_2$ | 66 | `3.1.2419524.1` | $C_2\times C_2$ |
+| 57 | `3.1.2447035.1` | $C_2\times C_{10}$ | 67 | `3.1.1954823.3` | $C_3\times C_9$ |
+| 58 | `3.1.5639220.1` | $C_3\times C_6$ | 68 | `3.1.2632204.1` | $C_2\times C_8$ |
+| 59 | `3.1.1965940.1` | $C_2\times C_2$ | 69 | `3.1.1931372.1` | $C_2\times C_2$ |
+| 60 | `3.1.3115063.1` | $C_2\times C_{28}$ | 70 | `3.1.2615739.1` | $C_2\times C_2$ |
+
+The holdout used 20 isolated Sage.js processes and one 20-field PARI process,
+all pinned serially to logical CPU 0 and bound to one execution epoch. The
+artifact is explicitly `correctness-only-no-retained-timing`: it establishes
+out-of-sample native generalization, not a holdout speedup. Selection by
+discriminant and class-group stratum also does not assert that every neighbor
+traverses the selected field's residual-factorization branch.
+
+The original holdout artifact had accidentally been omitted when the survey
+asset was uploaded. The published GitHub release is immutable, so its holdout
+URL currently returns 404 and an attempted exact upload was rejected without
+changing the release. For this run, the original generator output was recovered
+locally and admitted only after its 16,677 bytes, gzip digest, canonical JSONL
+digest, record digest, label digest, source-record digest, and complete
+1,412-record offline corpus validation all matched the committed manifest. A
+future public repair must use a new, explicitly versioned corpus release rather
+than mutate this frozen experiment.
+
+### Evidence identities
+
+| Artifact | SHA-256 |
+|---|---|
+| predecessor census file | `c1dc062a6f67ad0e6b47f4b0233f82c89491e254eb19329df01d9a2ef873401e` |
+| predecessor retained-timing file | `9aeeedab4e04e5307c679ad7b1c0472464cf05aad6da1b4dd15d43f97068d20f` |
+| candidate qualification-census file | `daa2ec36e9d135e27d73502821360308067e77e44923de7e4dd88f349998121a` |
+| candidate retained-timing file | `5b286a0f77fadf7638fea8086d9833f7e5aff7687b05b7679d4ae3e4a7059a44` |
+| freeze canonical payload | `3defdca0a74293489b1f47af7f6625eda58b39a17b5c4b14bb11e0fcf72399e8` |
+| freeze file | `39620dd89657df3107eda756783000e3f1988c413636117399ac6cad6cdc53fe` |
+| hard-target evidence payload | `6043e4c54d2a6e7d38eb0a9c31c670586c550a1ec64e75c870d6fd582b0c5af3` |
+| hard-target evidence file | `973ae0b3d5394dc5a008be1df0ca29570b16377f13f0c191dde982401110c6a2` |
+| holdout corpus canonical JSONL | `bfc6f5dd69556014156cd75f13890a9bd6de5608546109b363472c7b72e1d4fa` |
+| holdout corpus gzip file | `990cf8d3d58a7aa84a7ae525a21e1823f0715dd5d7cc5f4e7a250ac69710e566` |
+| holdout census canonical payload | `13112e5c1a938569189f6557525752be25351356008f5306a471a32b46118bd1` |
+| holdout census file | `93c500fe8aa94c9dab1d0264068a7292e1bbd5f544fc8bc4d56a72c17f5fffeb` |
+
+### Interpretation and assumptions
+
+Sage.js requests `K.class_number(proof=False)` and records the precise GRH
+hypotheses used by each receipt. Direct PARI uses `bnfinit(P,0)`. The LMFDB
+records have `used_grh=false`, providing a stronger independent result oracle,
+but they are not the proof authority for Sage.js publication. Sage.js
+publication instead authenticates the native receipt and independently rebuilds
+and checks the maximal order, complete theorem-qualified factor base, principal
+relations, HNF/SNF presentation, and--when required--the analytic index-one
+argument. The complete hypotheses and acceptance argument are recorded in the
+[native complex-cubic proof ledger](../../docs/complex-cubic-native-class-group-proof.md).
+
+The timing comparison asks both systems for the same scalar observable under
+conditional-GRH mode, but PARI constructs a larger BNF object while Sage.js
+publishes a more explicit replayable certificate. It is therefore useful
+one-sided performance evidence, not an equal-certificate microbenchmark. These
+measurements establish only this frozen complex-cubic corpus, source tree,
+runtime closure, host, and proof mode; they make no claim yet about real cubics,
+higher degree, unconditional timing, other machines, Magma, or Hecke.
 
 ## Frozen corpus
 
