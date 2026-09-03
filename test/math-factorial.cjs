@@ -33,6 +33,23 @@ test("math.factorial matches CPython", async () => {
       (await session.evaluate("[factorial(k) for k in range(8)]")).repr,
       "[1, 1, 2, 6, 24, 120, 720, 5040]",
     );
+
+    // A source checkout and other portable hosts may intentionally omit the
+    // optional native FLINT addon.  The exact product-tree fallback must keep
+    // the same public behavior in that configuration.
+    await session.evaluate(
+      [
+        "import sagejs.runtime as _runtime",
+        "def _unavailable_flint_backend():",
+        "    raise RuntimeError('FLINT is intentionally unavailable')",
+        "_runtime.flint_backend = _unavailable_flint_backend",
+      ].join("\n"),
+    );
+    assert.equal(
+      (await session.evaluate("len(str(factorial(10000)))")).repr,
+      "35660",
+    );
+
     // CPython accepts the integer protocol, rejects floats by type, and
     // rejects negative integers by value.
     assert.equal(
@@ -53,6 +70,26 @@ test("math.factorial matches CPython", async () => {
         )
       ).repr,
       "[720, 'TypeError', 'ValueError']",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("Sage factorial has an exact portable fallback", async () => {
+  const session = await createSage({ mode: "sage" });
+  try {
+    await session.evaluate(
+      [
+        "import sagejs.runtime as _runtime",
+        "def _unavailable_flint_backend():",
+        "    raise RuntimeError('FLINT is intentionally unavailable')",
+        "_runtime.flint_backend = _unavailable_flint_backend",
+      ].join("\n"),
+    );
+    assert.equal(
+      (await session.evaluate("len(str(factorial(10000)))")).repr,
+      "35660",
     );
   } finally {
     await session.close();

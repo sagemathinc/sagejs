@@ -2982,7 +2982,8 @@
         "packages/flint/test/test.cjs",
         "src/baselib/builtins.py",
         "src/lib/math.py",
-        "src/lib/sagejs/hyperelliptic_curves/lseries.py"
+        "src/lib/sagejs/hyperelliptic_curves/lseries.py",
+        "test/math-factorial.cjs"
       ],
       "declared_ffi": null
     },

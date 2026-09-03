@@ -34978,9 +34978,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 8849,
+        "line": 8866,
         "excerpt": {
-          "start_line": 8837,
+          "start_line": 8854,
           "text": "            if use_default_types\n            else isinstance(value, ltypes)\n        )\n        if level < max_level and flatten_value:\n            nested = list(value)\n            for index in range(len(nested) - 1, -1, -1):\n                pending.append((nested[index], level + 1))\n        else:\n            answer.append(value)\n    return answer\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },

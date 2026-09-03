@@ -26,6 +26,17 @@ e = Math.E
 ########################################
 # Number-theoretic and representation functions
 ########################################
+def _factorial_product(start, stop):
+    """Return the balanced exact product of the integers in `[start, stop)`."""
+    if stop - start <= 24:
+        result = 1
+        for value in range(start, stop):
+            result *= value
+        return result
+    middle = (start + stop) // 2
+    return _factorial_product(start, middle) * _factorial_product(middle, stop)
+
+
 def ceil(x):
     return Math.ceil(x)
 
@@ -51,7 +62,11 @@ def factorial(x):
         raise ValueError("factorial() not defined for negative values")
     if integer > 4294967295:
         raise OverflowError("factorial() argument is too large")
-    return runtime.normalize_integer(runtime.flint_backend().factorial(integer))
+    try:
+        backend = runtime.flint_backend()
+    except Exception:
+        return _factorial_product(2, integer + 1)
+    return runtime.normalize_integer(backend.factorial(integer))
 
 
 def floor(x):

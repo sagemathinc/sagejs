@@ -7202,6 +7202,20 @@ def denominator(value: Any) -> Any:
     raise TypeError("denominator() is not defined for this value")
 
 
+def _factorial_product(start: _Int, stop: _Int) -> Any:
+    """Return the balanced exact product of the integers in `[start, stop)`."""
+    if stop - start <= 24:
+        result = runtime.bigint(1)
+        for value in range(start, stop):
+            result = runtime.native_mul(result, runtime.bigint(value))
+        return result
+    middle = (start + stop) // 2
+    return runtime.native_mul(
+        _factorial_product(start, middle),
+        _factorial_product(middle, stop),
+    )
+
+
 def factorial(value: Any) -> Any:
     if not runtime.is_exact_integer(value):
         raise TypeError("factorial() requires an integer")
@@ -7210,9 +7224,12 @@ def factorial(value: Any) -> Any:
         raise ValueError("factorial() is not defined for negative integers")
     if integer > runtime.bigint(4294967295):
         raise OverflowError("factorial() argument is too large")
-    return runtime.normalize_integer(
-        runtime.flint_backend().factorial(runtime.number(integer))
-    )
+    size = runtime.number(integer)
+    try:
+        backend = runtime.flint_backend()
+    except Exception:
+        return _factorial_product(2, size + 1)
+    return runtime.normalize_integer(backend.factorial(size))
 
 
 def binomial(n: Any, k: Any) -> Any:
