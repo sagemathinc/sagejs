@@ -135,6 +135,22 @@ function gateInputBindings(gate) {
   };
 }
 
+function browserArtifactReportBinding(reportPath) {
+  const bytes = fs.readFileSync(reportPath);
+  const report = JSON.parse(bytes);
+  if (report?.schema !== "sagejs.browser-wasm-release-artifact/v1") {
+    throw new Error(`unsupported browser artifact report schema ${report?.schema}`);
+  }
+  if (!/^sha256:[0-9a-f]{64}$/.test(report.artifact_identity ?? "")) {
+    throw new Error("browser artifact report lacks a valid artifact_identity");
+  }
+  return {
+    sha256: sha256(bytes),
+    bytes: bytes.length,
+    artifact_identity: report.artifact_identity,
+  };
+}
+
 function runGate(gate, temporary) {
   const beforeInputs = gateInputBindings(gate);
   const arguments_ = [...gate.arguments];
@@ -158,11 +174,7 @@ function runGate(gate, temporary) {
       `${gate.id} failed (${result.status ?? result.signal})\n${result.stdout}\n${result.stderr}`,
     );
   }
-  const report = reportPath === null ? null : {
-    sha256: sha256(fs.readFileSync(reportPath)),
-    bytes: fs.statSync(reportPath).size,
-    identity: JSON.parse(fs.readFileSync(reportPath, "utf8")).identity,
-  };
+  const report = reportPath === null ? null : browserArtifactReportBinding(reportPath);
   const afterInputs = gateInputBindings(gate);
   if (canonicalJson(afterInputs) !== canonicalJson(beforeInputs)) {
     throw new Error(`${gate.id} inputs changed while the gate executed`);
@@ -257,4 +269,12 @@ if (require.main === module) {
   }
 }
 
-module.exports = { GATES, SCHEMA, buildEvidence, main, parseArguments, usage };
+module.exports = {
+  GATES,
+  SCHEMA,
+  browserArtifactReportBinding,
+  buildEvidence,
+  main,
+  parseArguments,
+  usage,
+};

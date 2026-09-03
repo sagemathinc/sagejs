@@ -75,6 +75,11 @@ const {
   "../../../scripts/numerical-computing/qualification/run-wasm-destructive.cjs",
 );
 const {
+  browserArtifactReportBinding,
+} = require(
+  "../../../scripts/numerical-computing/qualification/run-structural-performance.cjs",
+);
+const {
   hasSkippedQualification,
 } = require(
   "../../../src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs",
@@ -342,7 +347,7 @@ function structuralEvidence() {
         ? [{ path: "dist", sha256: "4".repeat(64), content_sha256: "8".repeat(64) }]
         : [],
     report: id === "browser-artifact-payload-and-pack-topology"
-      ? { sha256: "5".repeat(64), identity: `sha256:${"6".repeat(64)}` }
+      ? { sha256: "5".repeat(64), artifact_identity: `sha256:${"6".repeat(64)}` }
       : null,
   }));
   return identified({
@@ -355,6 +360,29 @@ function structuralEvidence() {
     scope: { claim: "source-current-authoritative-structural-and-performance-gates" },
   });
 }
+
+test("structural evidence binds the browser report's artifact identity", (context) => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-structural-report-"));
+  context.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const filename = path.join(temporary, "report.json");
+  const report = {
+    schema: "sagejs.browser-wasm-release-artifact/v1",
+    artifact_identity: `sha256:${"6".repeat(64)}`,
+  };
+  const bytes = Buffer.from(`${JSON.stringify(report)}\n`);
+  fs.writeFileSync(filename, bytes);
+  assert.deepEqual(browserArtifactReportBinding(filename), {
+    sha256: sha256(bytes),
+    bytes: bytes.length,
+    artifact_identity: report.artifact_identity,
+  });
+
+  fs.writeFileSync(filename, JSON.stringify({ ...report, artifact_identity: undefined }));
+  assert.throws(
+    () => browserArtifactReportBinding(filename),
+    /lacks a valid artifact_identity/,
+  );
+});
 
 function evidenceRecords() {
   return [

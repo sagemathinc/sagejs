@@ -524,7 +524,8 @@ function structuralPerformanceClaims(evidence) {
   }
   const browser = gates.get("browser-artifact-payload-and-pack-topology");
   if (browser.artifacts?.length !== 1 || !browser.artifacts[0].sha256 ||
-      !browser.report?.sha256 || !browser.report?.identity) {
+      !browser.report?.sha256 ||
+      !/^sha256:[0-9a-f]{64}$/.test(browser.report?.artifact_identity ?? "")) {
     throw new Error("browser payload evidence does not bind the inspected distribution/report");
   }
   return [{ requirement: "startup-package-payload-closure", tokens }];
