@@ -1208,6 +1208,93 @@ def _eisenstein_basis_qexp(
     return (linear - constant * oldform).add_bigoh(precision)
 
 
+def _character_eisenstein_parameters(
+    character: Any,
+    weight: int,
+) -> list[tuple[Any, Any, int]]:
+    r"""Return deterministic standard parameters for $E_k(\chi,\psi)(q^t)$."""
+    level = runtime.number(character.modulus())
+    if character(-1) != character._parent._value_field(-1 if weight % 2 else 1):
+        return []
+    parameters = []
+    for left in character._parent:
+        left_order = runtime.number(left.order())
+        inverse = left ** (left_order - 1)
+        right = character * inverse
+        conductor_product = runtime.number(left.conductor()) * runtime.number(
+            right.conductor()
+        )
+        if level % conductor_product != 0:
+            continue
+        for inflation_value in sage.divisors(level // conductor_product):
+            inflation = runtime.number(inflation_value)
+            if (
+                weight == 2
+                and left.is_principal()
+                and right.is_principal()
+                and inflation == 1
+            ):
+                continue
+            parameters.append((left, right, inflation))
+    return parameters
+
+
+def _character_eisenstein_basis_qexp(
+    character: Any,
+    weight: int,
+    base_ring: Any,
+    dimension: int,
+    precision: int,
+    variable: str = "q",
+) -> list[Any]:
+    r"""Return the Sturm-certified echelon basis of $E_k(N,\varepsilon)$."""
+    if dimension == 0:
+        return []
+    proof_precision = max(
+        precision,
+        weight * Gamma0(character.modulus()).index() // 12 + 2,
+    )
+    rows = []
+    for left, right, inflation in _character_eisenstein_parameters(character, weight):
+        series = _qexp_module().character_eisenstein_series_qexp(
+            left,
+            right,
+            weight,
+            proof_precision,
+            inflation,
+            variable,
+            base_ring,
+            "linear",
+        )
+        rows.append([base_ring(series[index]) for index in range(proof_precision)])
+    matrix_constructor = runtime.reflect.get(runtime.global_object, "matrix")
+    candidate_matrix = (
+        matrix_constructor(base_ring, rows)
+        if len(rows)
+        else matrix_constructor(base_ring, 0, proof_precision)
+    )
+    basis_matrix = candidate_matrix.row_space().basis_matrix()
+    if basis_matrix.nrows() != dimension:
+        raise ArithmeticError(
+            "the character Eisenstein formulas have rank "
+            + str(basis_matrix.nrows())
+            + " instead of the certified dimension "
+            + str(dimension)
+        )
+    power_series_ring = runtime.reflect.get(runtime.global_object, "PowerSeriesRing")
+    ring = power_series_ring(
+        base_ring,
+        variable,
+        default_prec=max(1, proof_precision),
+    )
+    answer = [
+        ring(row.list()).add_bigoh(proof_precision) for row in basis_matrix.rows()
+    ]
+    if precision < proof_precision:
+        return [series.add_bigoh(precision) for series in answer]
+    return answer
+
+
 @runtime.callable_instance_class
 class ModularFormsSubspace(sage.Parent):
     def __init__(
@@ -1241,6 +1328,9 @@ class ModularFormsSubspace(sage.Parent):
     def group(self) -> CongruenceSubgroup:
         return self._ambient.group()
 
+    def character(self) -> Any:
+        return self._ambient.character()
+
     def base_ring(self) -> Any:
         return self._ambient.base_ring()
 
@@ -1268,13 +1358,18 @@ class ModularFormsSubspace(sage.Parent):
             raise NotImplementedError(
                 "modular-symbol q-expansions require a cuspidal or new subspace"
             )
-        if self.group()._family != "Gamma0" or self.base_ring() is not sage.QQ:
+        if self.group()._family != "Gamma0":
             raise NotImplementedError(
-                "modular-symbol q-expansions currently require Gamma0 over QQ"
+                "modular-symbol q-expansions currently require Gamma0"
             )
         if self._modular_symbols_cusp_space_cache is None:
+            defining_data = (
+                self.character()
+                if runtime.reflect.get(self._ambient, "_character") is not None
+                else self.level()
+            )
             self._modular_symbols_cusp_space_cache = ModularSymbols(
-                self.level(),
+                defining_data,
                 self.weight(),
                 1,
                 self.base_ring(),
@@ -1336,6 +1431,18 @@ class ModularFormsSubspace(sage.Parent):
             self,
             coordinates,
             display_precision,
+        )
+
+    def _from_serialized_newform(
+        self,
+        constituent: Any,
+        name: Any,
+    ) -> Any:
+        """Trusted deterministic constructor used by the SagePack codec."""
+        return _qexp_module().normalized_newform_from_data(
+            self,
+            constituent,
+            name,
         )
 
     def hecke_matrix(self, index: Any) -> Any:
@@ -1521,11 +1628,16 @@ class EisensteinSubspace(ModularFormsSubspace):
     ) -> None:
         level = ambient.level()
         weight = ambient.weight()
-        dimension = dimension_eis(ambient.group(), weight)
+        defining_data = (
+            ambient.character()
+            if runtime.reflect.get(ambient, "_character") is not None
+            else ambient.group()
+        )
+        dimension = dimension_eis(defining_data, weight)
         ModularFormsSubspace.__init__(self, ambient, "Eisenstein", dimension)
         self._kind = "EisensteinSubspace"
         self._precision = precision
-        basis_supported = (
+        basis_supported = runtime.reflect.get(ambient, "_character") is not None or (
             dimension == 0
             or (level == 1 and weight >= 4 and weight % 2 == 0)
             or (sage.is_prime(level) and weight >= 2 and weight % 2 == 0)
@@ -1593,6 +1705,15 @@ class EisensteinSubspace(ModularFormsSubspace):
             prec = self._precision
         precision = _exact_nonnegative_integer(prec, "precision")
         self._require_basis()
+        if runtime.reflect.get(self._ambient, "_character") is not None:
+            return _character_eisenstein_basis_qexp(
+                self.character(),
+                self.weight(),
+                self.base_ring(),
+                self.dimension(),
+                precision,
+                variable,
+            )
         return [
             _eisenstein_basis_qexp(
                 self.level(),
@@ -1623,6 +1744,7 @@ class ModularFormsSpace(sage.Parent):
         weight: int,
         base_ring: Any,
         precision: int,
+        character: Any = None,
     ) -> None:
         if group._family != "Gamma0":
             raise NotImplementedError("ModularForms currently supports Gamma0")
@@ -1630,6 +1752,7 @@ class ModularFormsSpace(sage.Parent):
         self._group = group
         self._weight = weight
         self._base = base_ring
+        self._character = character
         self._precision = precision
         self._classical_qexp_basis_cache = runtime.map()
         self._classical_hecke_cache = runtime.map()
@@ -1645,6 +1768,14 @@ class ModularFormsSpace(sage.Parent):
 
     def base_ring(self) -> Any:
         return self._base
+
+    def character(self) -> Any:
+        """Return the Dirichlet character defining this space."""
+        if self._character is not None:
+            return self._character
+        return runtime.reflect.get(runtime.global_object, "DirichletGroup")(
+            self.level()
+        )(1)
 
     def sturm_bound(self) -> int:
         r"""Return the q-expansion precision required by the Sturm bound.
@@ -1668,15 +1799,17 @@ class ModularFormsSpace(sage.Parent):
     prec = precision
 
     def dimension(self) -> int:
-        return dimension_modular_forms(self._group, self._weight)
+        defining_data = self._character if self._character is not None else self._group
+        return dimension_modular_forms(defining_data, self._weight)
 
     degree = dimension
 
     def cuspidal_subspace(self) -> ModularFormsSubspace:
+        defining_data = self._character if self._character is not None else self._group
         return ModularFormsSubspace(
             self,
             "Cuspidal",
-            dimension_cusp_forms(self._group, self._weight),
+            dimension_cusp_forms(defining_data, self._weight),
         )
 
     cusp_subspace = cuspidal_subspace
@@ -1807,13 +1940,46 @@ class ModularFormsSpace(sage.Parent):
                 self,
                 _exact_nonnegative_integer(precision, "precision"),
             )
+        expected_dimension = _exact_nonnegative_integer(dimension, "dimension")
+        if kind == "Cuspidal":
+            answer = self.cuspidal_subspace()
+            if answer.dimension() != expected_dimension:
+                raise ValueError("serialized cuspidal dimension is inconsistent")
+            return answer
+        if kind == "New":
+            answer = self.new_subspace()
+            if answer.dimension() != expected_dimension:
+                raise ValueError("serialized newspace dimension is inconsistent")
+            return answer
         return ModularFormsSubspace(
             self,
             kind,
-            _exact_nonnegative_integer(dimension, "dimension"),
+            expected_dimension,
         )
 
     def __repr__(self) -> str:
+        if self._character is not None:
+            values = []
+            for generator in self._character.parent().unit_gens():
+                value = self._character(generator)
+                if self._base is sage.QQ:
+                    if value.is_one():
+                        value = sage.QQ(1)
+                    elif (-value).is_one():
+                        value = sage.QQ(-1)
+                else:
+                    value = self._base(value)
+                values.append(value)
+            return (
+                "Modular Forms space of dimension "
+                + str(self.dimension())
+                + ", character "
+                + str(values)
+                + " and weight "
+                + str(self._weight)
+                + " over "
+                + str(self._base)
+            )
         return (
             "Modular Forms space of dimension "
             + str(self.dimension())
@@ -1839,9 +2005,10 @@ def ModularForms(
     r"""
     Construct the implemented ambient space of modular forms.
 
-    `group` is a level or congruence subgroup, `weight` is nonnegative,
-    and `prec` controls the default displayed q-expansion precision.
-    Initial ambient spaces are exact over `QQ`.
+    `group` is a level, congruence subgroup, or Dirichlet character; `weight`
+    is nonnegative, and `prec` controls the default displayed q-expansion
+    precision. Trivial and quadratic characters are exact over `QQ`, while
+    higher-order characters use their minimal exact cyclotomic value field.
 
     ### Examples
 
@@ -1853,24 +2020,48 @@ def ModularForms(
     1
     ```
 
-    This foundation currently provides exact dimensions, cusp/Eisenstein
-    subspaces, and Eisenstein q-expansions.  It is not yet SageMath's complete
-    Hecke-module implementation.
+    The returned cusp, Eisenstein, old, new, and ambient spaces share one
+    parented exact element contract, including exact Hecke action and
+    Sturm-certified coordinate recovery.
     """
     del use_cache
-    if runtime.is_exact_integer(group):
+    character = group if _is_dirichlet_character(group) else None
+    if character is not None:
+        if character.is_principal():
+            group = Gamma0(character.modulus())
+            character = None
+        else:
+            group = Gamma0(character.modulus())
+    elif runtime.is_exact_integer(group):
         group = Gamma0(group)
     if not isinstance(group, CongruenceSubgroup):
         raise TypeError("ModularForms requires a congruence subgroup")
     weight = _exact_nonnegative_integer(weight, "weight")
     precision = _exact_nonnegative_integer(prec, "precision")
+    if character is not None and weight < 2:
+        raise NotImplementedError(
+            "parented character spaces currently require weight at least 2"
+        )
     if base_ring is None:
-        base_ring = sage.QQ
-    if base_ring is not sage.QQ:
+        base_ring = (
+            sage.QQ
+            if character is None or character.order() <= 2
+            else character._minimal_base_ring()
+        )
+    base_kind = getattr(base_ring, "_kind", None)
+    if character is None and base_ring is not sage.QQ:
         raise NotImplementedError(
             "the initial modular-forms spaces are defined over QQ"
         )
-    return ModularFormsSpace(group, weight, base_ring, precision)
+    if character is not None:
+        if character.order() > 2 and base_ring is sage.QQ:
+            raise ValueError("the character values do not lie in Rational Field")
+        if base_ring is not sage.QQ and base_kind != "CyclotomicField":
+            raise NotImplementedError(
+                "character modular forms currently require QQ or an exact "
+                "cyclotomic field"
+            )
+    return ModularFormsSpace(group, weight, base_ring, precision, character)
 
 
 def EisensteinForms(
@@ -4481,9 +4672,23 @@ class ModularSymbolsSpace(sage.Parent):
         basis_matrix: Any,
         kind: str,
         sign: Any = None,
+        serialized_is_cuspidal: Any = None,
     ) -> ModularSymbolsSpace:
         if sign is None:
             sign = self._sign
+        if serialized_is_cuspidal is not None:
+            return ModularSymbolsSpace(
+                self._group,
+                self._weight,
+                sign,
+                self._base,
+                self._character,
+                self.ambient_module(),
+                basis_matrix,
+                kind,
+                basis_matrix.nrows(),
+                serialized_is_cuspidal,
+            )
         return ModularSymbolsSpace(
             self._group,
             self._weight,
@@ -5280,10 +5485,10 @@ def ModularSymbols(
         base_kind = getattr(base_ring, "_kind", None)
         if character.order() > 2 and base_ring is sage.QQ:
             raise ValueError("the character values do not lie in Rational Field")
-        if base_ring is not sage.QQ and base_kind not in ["CyclotomicField", "QQBAR"]:
+        if base_ring is not sage.QQ and base_kind != "CyclotomicField":
             raise NotImplementedError(
-                "character modular symbols currently require QQ, QQbar, "
-                "or a cyclotomic field"
+                "character modular symbols currently require QQ or an exact "
+                "cyclotomic field"
             )
     native_signed = (
         character is None

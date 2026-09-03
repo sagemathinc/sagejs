@@ -375,23 +375,27 @@ Linux arm64, macOS arm64, native Windows x64, and real-browser Chromium.
 ## P1: complete the classical modular-form object layer
 
 - [ ] General `ModularForms` spaces for $\Gamma_1(N)$ and $\Gamma_H(N)$.
-- [ ] General `ModularForms(chi,k)` spaces with nebentypus.
+- [x] General `ModularForms(chi,k)` and `CuspForms(chi,k)` parents in the
+  integral-weight $k\geq2$ Dirichlet-character domain, over $\QQ$ for
+  quadratic characters and exact cyclotomic fields for higher order.
 - [ ] Base change to number fields, cyclotomic orders, finite fields, and
   supported $p$-adic rings.
 - [x] First-class cusp, Eisenstein, oldform, newform, and ambient elements in
-  the initial integral-weight $\Gamma_0/\QQ$ domain.
+  the integral-weight $\Gamma_0/\QQ$ domain and its fixed-character exact
+  cyclotomic extension.
 - [x] Exact good- and bad-prime Hecke-module methods on those
   $\Gamma_0/\QQ$ spaces and elements.
-- [ ] Extend the common element and Hecke contracts to characters and general
-  supported coefficient rings.
-- [x] Exact parented addition, rational scalar arithmetic, products, equality,
-  and lazy extendable $q$-expansions in the initial $\Gamma_0/\QQ$ domain.
+- [x] Extend the common element, membership, coordinate, product, and Hecke
+  contracts to Dirichlet characters over $\QQ$ and exact cyclotomic fields.
+- [x] Exact parented addition, scalar arithmetic, products, equality, and lazy
+  extendable $q$-expansions over $\QQ$ and supported cyclotomic character
+  fields.
 - [ ] Extend the P0B exact expansion algebra from certified basis construction
   into a complete parented modular-form ring interface.
 - [ ] Quotients when holomorphic, derivatives, and general twists beyond the
   P0B domain.
 - [x] Sturm-certified membership and coordinate recovery from sufficiently
-  precise $q$-expansions in the initial $\Gamma_0/\QQ$ domain.
+  precise $q$-expansions over $\QQ$ and supported cyclotomic character fields.
 - [ ] Graded rings of classical modular forms.
 - [x] Victor Miller bases and efficient level-$1$ arithmetic.
 - [ ] Rankin--Cohen brackets.
@@ -404,8 +408,11 @@ The first object-layer vertical slice is specified in
 `docs/classical-modular-form-elements.md`.  Its combined source-freeze bundle
 has SHA-256
 `c471ec32acab41cb5cd66f12b0beb732ea68bc9389b8c8636d820aa21802672b`.
-Characters and coefficient-field scalars are deliberately the next slice,
-not alternate element hierarchies.
+The fixed-character extension is specified in
+`agents/classical-modular-forms-character-object-layer-plan.md`. It deliberately
+reuses the same element hierarchy and covers quadratic characters over $\QQ$,
+higher-order characters over exact cyclotomic fields, imprimitive old/new
+decomposition, exact eigenpackets, and authenticated serialization.
 
 ## P1: analytic modular-form functionality
 

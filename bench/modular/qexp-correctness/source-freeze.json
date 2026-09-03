@@ -59,7 +59,7 @@
     },
     {
       "path": "src/baselib/modular.py",
-      "sha256": "c36a638dcb8ce09a803d2266c12cf2f021e16e43f8dc0a4b03d84c93bf31257b"
+      "sha256": "a15f2ff38f86730f133d401b86b34d04cd0cca58a25719367bdca568ab19ad10"
     },
     {
       "path": "src/lib/sagejs/modular_forms/__init__.py",
@@ -75,19 +75,19 @@
     },
     {
       "path": "src/lib/sagejs/modular_forms/newforms.py",
-      "sha256": "5dc28cb5093ecdda9e53d3b1450bdb59642d72471032f290d73ff3a5dbc5abdf"
+      "sha256": "18d80b379c837ec94330423d0b85871d017ebf6acdb410145c1475efbd20f575"
     },
     {
       "path": "src/lib/sagejs/modular_forms/object_layer.py",
-      "sha256": "959d3967208d5d48d206b112ee074449f4fed9467447adc8d11823906dbfcf06"
+      "sha256": "8176b8b0a1b144ae0fe6e323ba7107c376232a00357c51b1242eb8489bf1fe3b"
     },
     {
       "path": "src/lib/sagejs/modular_forms/qexp.py",
-      "sha256": "f9ccd4de80ce58ecf45220d076f4622ddfaaed25819b6453a7ad19a8f8636eb5"
+      "sha256": "1ab99367e8e6e640aa6308d0f76d87503c47606d22109e4ecaadb6acaa017545"
     },
     {
       "path": "src/lib/sagejs/modular_forms/qexp_algebra.py",
-      "sha256": "3ddc79011522c36b944a57dd9c7b965c764cada0ab311a65bed44727049afc90"
+      "sha256": "50b1df5dc09b456e31223c0fe87c41c1cc2dfeb3b4e42ac953f2ff249e77bd46"
     },
     {
       "path": "test/classical-modular-form-elements.cjs",
@@ -127,7 +127,7 @@
     },
     {
       "path": "tools/serialization-codecs/modular-forms.ts",
-      "sha256": "3a1aa87ac379661345abf21612d9050950f228e7cbf0ac46e0bdec2c3c4cdedb"
+      "sha256": "0e1053e97df87edb5f76c17bea12edd78cb97f8f8d12d3041a662146ebd4ccd9"
     }
   ],
   "bundle_sha256": "2d224be85323555cbd541729b06c02e07c83bc7ad735fea9a04d6066f6230f93"

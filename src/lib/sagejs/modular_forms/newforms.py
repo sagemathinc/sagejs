@@ -1,10 +1,12 @@
 r"""Exact newforms and old/new decomposition from modular symbols.
 
-For a simple rational Hecke constituent $A$, a primitive Hecke operator
-$\theta$ identifies its commutative Hecke algebra with
-$K=\QQ[\theta]$.  Writing every $T_n$ uniquely in the power basis of
-$\theta$ recovers the normalized eigenvalue $a_n\in K$.  This is exact
-linear algebra over $\QQ$; numerical root choices never enter.
+For a simple Hecke constituent $A$ over its exact ground field $K$, a
+primitive Hecke operator $\theta$ identifies the commutative Hecke algebra
+with $K[\theta]$.  Writing every $T_n$ uniquely in the power basis of
+$\theta$ recovers the normalized eigenvalue $a_n$.  Over $\QQ$ this is
+represented by a simple number field.  Over a cyclotomic ground field, an
+exact compatible root is isolated in `QQbar` by restriction of scalars.
+Numerical root recognition never enters.
 """
 
 from __future__ import annotations
@@ -29,11 +31,15 @@ def _nonnegative(value: Any, label: str) -> int:
     return answer
 
 
-def _matrix_from_rows(rows: list[list[Any]], columns: int) -> Any:
+def _matrix_from_rows(
+    rows: list[list[Any]],
+    columns: int,
+    coefficient_ring: Any = sage.QQ,
+) -> Any:
     matrix_constructor = _global("matrix")
     if len(rows) == 0:
-        return matrix_constructor(sage.QQ, 0, columns)
-    return matrix_constructor(sage.QQ, rows)
+        return matrix_constructor(coefficient_ring, 0, columns)
+    return matrix_constructor(coefficient_ring, rows)
 
 
 def _series_from_matrix(matrix: Any, variable: str) -> list[Any]:
@@ -95,6 +101,84 @@ def _primitive_operator(constituent: Any) -> tuple[Any, Any, tuple[Any, ...]]:
     raise ArithmeticError("could not find a primitive Hecke operator")
 
 
+def _qqbar_value(value: Any) -> Any:
+    """Embed one exact scalar in Sage.js's canonical algebraic closure."""
+    algebraic_field = _global("QQbar")
+    native = runtime.reflect.get(value, "_native")
+    if native is not runtime.undefined:
+        return algebraic_field._from_native(native)
+    return algebraic_field(value)
+
+
+def _absolute_regular_matrix(source: Any, field: Any) -> Any:
+    r"""Restrict a matrix over a cyclotomic field to $\QQ$.
+
+    Rows and columns are ordered first by the module coordinate and then by
+    the power basis $1,\zeta,\ldots,\zeta^{[K:\QQ]-1}$.  The classical
+    modular-form object layer uses row-vector Hecke actions, so each row is
+    the image of the corresponding basis vector.
+    """
+    degree = runtime.number(field.degree())
+    dimension = source.nrows()
+    generator = field.gen()
+    powers = [field(1)]
+    for _index in range(1, degree):
+        powers.append(powers[-1] * generator)
+    rows = []
+    for source_index in range(dimension):
+        for field_index in range(degree):
+            row = [sage.QQ(0) for _index in range(dimension * degree)]
+            for target_index in range(dimension):
+                coordinates = list(
+                    field._serialization_coefficients(
+                        powers[field_index] * source[source_index, target_index]
+                    )
+                )
+                for coordinate_index in range(len(coordinates)):
+                    row[target_index * degree + coordinate_index] = coordinates[
+                        coordinate_index
+                    ]
+            rows.append(row)
+    return _global("matrix")(sage.QQ, rows)
+
+
+def _canonical_relative_root(primitive: Any, field: Any) -> Any:
+    r"""Choose an exact root compatible with the declared embedding of `field`.
+
+    Sage.js does not yet expose relative number-field parents.  We nevertheless
+    retain exact eigenforms: restrict the primitive Hecke operator to $\QQ$,
+    isolate all roots in `QQbar`, and keep precisely those roots for which the
+    original matrix over the *declared* cyclotomic embedding is singular.  The
+    presentation ordering of exact algebraic roots then makes the chosen
+    embedding deterministic and serializable.
+    """
+    absolute = _absolute_regular_matrix(primitive, field)
+    algebraic_field = _global("QQbar")
+    canonical = _global("matrix")(
+        algebraic_field,
+        [
+            [
+                _qqbar_value(primitive[row, column])
+                for column in range(primitive.ncols())
+            ]
+            for row in range(primitive.nrows())
+        ],
+    )
+    identity = _global("identity_matrix")(algebraic_field, primitive.nrows())
+    compatible = []
+    for root in absolute.eigenvalues():
+        if any(root == known for known in compatible):
+            continue
+        if (canonical - root * identity).rank() < primitive.nrows():
+            compatible.append(root)
+    if len(compatible) != primitive.nrows():
+        raise ArithmeticError(
+            "could not isolate the roots compatible with the cyclotomic "
+            "coefficient-field embedding"
+        )
+    return compatible[0]
+
+
 @runtime.lightweight_math_class
 class NormalizedNewform(sage.Element):
     """A normalized newform represented by its exact simple Hecke constituent."""
@@ -103,23 +187,34 @@ class NormalizedNewform(sage.Element):
         self._kind = "NormalizedNewform"
         self._parent = parent
         self._constituent = constituent
+        self._name = name
         self._dimension = constituent.dimension()
         primitive, polynomial, recipe = _primitive_operator(constituent)
         self._primitive_operator = primitive
         self._defining_polynomial = polynomial
         self._primitive_recipe = recipe
         self._coefficient_field: Any
+        ground_field = parent.base_ring()
         if self._dimension == 1:
-            self._coefficient_field = sage.QQ
+            self._coefficient_field = ground_field
+            self._primitive_root = None
         else:
-            self._coefficient_field = _global("NumberField")(polynomial, name)
-        identity = _global("identity_matrix")(sage.QQ, self._dimension)
+            if ground_field is sage.QQ:
+                self._coefficient_field = _global("NumberField")(polynomial, name)
+                self._primitive_root = None
+            else:
+                self._coefficient_field = _global("QQbar")
+                self._primitive_root = _canonical_relative_root(
+                    primitive,
+                    ground_field,
+                )
+        identity = _global("identity_matrix")(ground_field, self._dimension)
         powers = [identity]
         for _index in range(1, self._dimension):
             powers.append(powers[-1] * primitive)
         self._powers = runtime.math_tuple(powers)
         self._power_rows = _global("matrix")(
-            sage.QQ, [power.list() for power in powers]
+            ground_field, [power.list() for power in powers]
         )
         if self._power_rows.rank() != self._dimension:
             raise ArithmeticError("primitive Hecke powers are linearly dependent")
@@ -143,7 +238,7 @@ class NormalizedNewform(sage.Element):
         return self._parent.weight()
 
     def character(self) -> Any:
-        return _global("DirichletGroup")(self.level())(1)
+        return self._parent.character()
 
     def base_ring(self) -> Any:
         return self._coefficient_field
@@ -160,10 +255,11 @@ class NormalizedNewform(sage.Element):
         return self._constituent
 
     def _coordinates_for_operator(self, operator: Any) -> Any:
+        ground_field = self._parent.base_ring()
         solution = self._power_rows.solve_left(
-            _global("vector")(sage.QQ, operator.list())
+            _global("vector")(ground_field, operator.list())
         )
-        return _global("vector")(sage.QQ, solution.list())
+        return _global("vector")(ground_field, solution.list())
 
     def hecke_eigenvalue(self, index: Any) -> Any:
         index = _nonnegative(index, "Hecke index")
@@ -175,8 +271,14 @@ class NormalizedNewform(sage.Element):
         coordinates = self._coordinates_for_operator(
             self._constituent.hecke_matrix(index)
         )
-        if self._coefficient_field is sage.QQ:
+        if self._dimension == 1:
             answer = coordinates[0]
+        elif self._primitive_root is not None:
+            answer = self._coefficient_field(0)
+            power = self._coefficient_field(1)
+            for coefficient in coordinates:
+                answer += _qqbar_value(coefficient) * power
+                power *= self._primitive_root
         else:
             answer = self._coefficient_field._from_coefficients(coordinates.list())
         self._coefficient_cache.set(index, answer)
@@ -370,8 +472,14 @@ class NewformCertificate:
                 replay += form._powers[exponent] * coordinates[exponent]
             if replay != form.hecke_constituent().hecke_matrix(index):
                 return False
-            if form.coefficient_field() is sage.QQ:
+            if form._dimension == 1:
                 expected = coordinates[0]
+            elif form._primitive_root is not None:
+                expected = form.coefficient_field()(0)
+                power = form.coefficient_field()(1)
+                for coefficient in coordinates:
+                    expected += _qqbar_value(coefficient) * power
+                    power *= form._primitive_root
             else:
                 expected = form.coefficient_field()._from_coefficients(
                     coordinates.list()
@@ -389,18 +497,54 @@ class NewformCertificate:
     toString = __repr__
 
 
+def _descended_character(character: Any, lower_level: int) -> Any:
+    """Return the unique character at `lower_level` inducing `character`."""
+    level = runtime.number(character.modulus())
+    if level % lower_level != 0:
+        raise ValueError("lower character level must divide the source level")
+    if lower_level % runtime.number(character.conductor()) != 0:
+        raise ValueError("the character does not descend to the requested level")
+    group = _global("DirichletGroup")(lower_level)
+    for candidate in group:
+        agrees = True
+        for residue in range(1, level + 1):
+            if runtime.number(_global("gcd")(residue, level)) == 1 and (
+                not runtime.flint_backend().qqbarEqual(
+                    candidate(residue)._native,
+                    character(residue)._native,
+                )
+            ):
+                agrees = False
+                break
+        if agrees:
+            return candidate
+    raise ArithmeticError("could not descend the Dirichlet character")
+
+
 def _old_q_expansion_matrix(space: Any, precision: int) -> Any:
     rows: list[list[Any]] = []
     level = space.level()
+    coefficient_ring = space.base_ring()
     if level == 1:
-        return _matrix_from_rows(rows, precision)
+        return _matrix_from_rows(rows, precision, coefficient_ring)
+    ambient = space.ambient_space()
+    character = ambient.character()
+    has_character = runtime.reflect.get(ambient, "_character") is not None
+    conductor = runtime.number(character.conductor()) if has_character else 1
     for prime, _exponent in sage.factor(level):
         prime = runtime.number(prime)
         lower_level = level // prime
+        if lower_level % conductor != 0:
+            continue
+        defining_data = (
+            _descended_character(character, lower_level)
+            if has_character
+            else lower_level
+        )
         lower = _global("CuspForms")(
-            lower_level,
+            defining_data,
             space.weight(),
-            sage.QQ,
+            coefficient_ring,
             True,
             precision,
         )
@@ -408,8 +552,10 @@ def _old_q_expansion_matrix(space: Any, precision: int) -> Any:
         for form in lower.q_expansion_basis(precision, algorithm=algorithm):
             for factor in [1, prime]:
                 inflated = form._inflate(factor, precision)
-                rows.append([inflated[index] for index in range(precision)])
-    matrix = _matrix_from_rows(rows, precision)
+                rows.append(
+                    [coefficient_ring(inflated[index]) for index in range(precision)]
+                )
+    matrix = _matrix_from_rows(rows, precision, coefficient_ring)
     if matrix.nrows() == 0:
         return matrix
     return matrix.row_space().basis_matrix()
@@ -442,7 +588,10 @@ class OldModularFormsSubspace(sage.Parent):
         return self._cusp_space.group()
 
     def base_ring(self) -> Any:
-        return sage.QQ
+        return self._cusp_space.base_ring()
+
+    def character(self) -> Any:
+        return self._cusp_space.character()
 
     def dimension(self) -> int:
         return self._dimension
@@ -568,6 +717,7 @@ class NewOldDecompositionCertificate:
         self._new_matrix = _matrix_from_rows(
             [[form[index] for index in range(precision)] for form in new_basis],
             precision,
+            cusp_space.base_ring(),
         )
         full_basis = cusp_space.q_expansion_basis(
             precision,
@@ -576,6 +726,7 @@ class NewOldDecompositionCertificate:
         self._full_matrix = _matrix_from_rows(
             [[form[index] for index in range(precision)] for form in full_basis],
             precision,
+            cusp_space.base_ring(),
         )
         if not self.verify():
             raise ArithmeticError("old/new Sturm decomposition certificate failed")
@@ -599,7 +750,11 @@ class NewOldDecompositionCertificate:
     def verify(self) -> bool:
         combined_rows = [row.list() for row in self._old_matrix.rows()]
         combined_rows += [row.list() for row in self._new_matrix.rows()]
-        combined = _matrix_from_rows(combined_rows, self._precision)
+        combined = _matrix_from_rows(
+            combined_rows,
+            self._precision,
+            self._cusp_space.base_ring(),
+        )
         return (
             self._precision > self._sturm_bound
             and self._full_matrix.rank() == self._cusp_space.dimension()
@@ -623,7 +778,62 @@ class NewOldDecompositionCertificate:
 
 
 def modular_forms_new_subspace(space: Any, prime: Any = None) -> Any:
-    symbols = space._modular_symbols_cusp_space().new_submodule(prime)
+    if getattr(space, "_subspace_kind", None) == "New" and prime is None:
+        return space
+    source_symbols = space._modular_symbols_cusp_space()
+    try:
+        symbols = source_symbols.new_submodule(prime)
+    except NotImplementedError:
+        if prime is not None:
+            raise
+        precision = _sturm_precision(space)
+        old_matrix = _old_q_expansion_matrix(space, precision)
+        selected = []
+        for constituent in source_symbols.decomposition(anemic=False):
+            expansions = constituent.q_expansion_basis(precision)
+            rows = [[form[index] for index in range(precision)] for form in expansions]
+            constituent_matrix = _matrix_from_rows(
+                rows,
+                precision,
+                space.base_ring(),
+            )
+            combined_rows = [row.list() for row in old_matrix.rows()]
+            combined_rows += [row.list() for row in constituent_matrix.rows()]
+            combined = _matrix_from_rows(
+                combined_rows,
+                precision,
+                space.base_ring(),
+            )
+            if combined.rank() > old_matrix.rank():
+                selected.extend(constituent.basis_matrix().rows())
+        symbol_rows = [row.list() for row in selected]
+        symbol_basis = _matrix_from_rows(
+            symbol_rows,
+            source_symbols.ambient_module().dimension(),
+            space.base_ring(),
+        )
+        symbols = source_symbols._new_coordinate_subspace(symbol_basis, "New")
+        new_expansions = symbols.q_expansion_basis(precision)
+        new_matrix = _matrix_from_rows(
+            [[form[index] for index in range(precision)] for form in new_expansions],
+            precision,
+            space.base_ring(),
+        )
+        combined_rows = [row.list() for row in old_matrix.rows()]
+        combined_rows += [row.list() for row in new_matrix.rows()]
+        combined = _matrix_from_rows(
+            combined_rows,
+            precision,
+            space.base_ring(),
+        )
+        if (
+            old_matrix.rank() + new_matrix.rank() != space.dimension()
+            or combined.rank() != space.dimension()
+        ):
+            raise ArithmeticError(
+                "the full-Hecke decomposition did not certify the imprimitive "
+                "character old/new direct sum"
+            ) from None
     answer = space.__class__(space.ambient_space(), "New", symbols.dimension())
     answer._modular_symbols_cusp_space_cache = symbols
     return answer
@@ -644,6 +854,17 @@ def modular_forms_newforms(space: Any, names: str = "a") -> list[NormalizedNewfo
     return answer
 
 
+def normalized_newform_from_data(
+    parent: Any,
+    constituent: Any,
+    name: Any,
+) -> NormalizedNewform:
+    """Trusted deterministic constructor used by SagePack deserialization."""
+    if not isinstance(name, str) or len(name) == 0:
+        raise TypeError("newform generator name must be a nonempty string")
+    return NormalizedNewform(parent, constituent, name)
+
+
 __all__ = [
     "ModularFormLSeriesInput",
     "NewOldDecompositionCertificate",
@@ -653,4 +874,5 @@ __all__ = [
     "modular_forms_new_subspace",
     "modular_forms_newforms",
     "modular_forms_old_subspace",
+    "normalized_newform_from_data",
 ]

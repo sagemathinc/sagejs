@@ -2279,7 +2279,10 @@ class QExpansionAlgorithmReceipt:
 def _modular_symbols_auto_domain(space: Any) -> bool:
     return (
         space.group()._family == "Gamma0"
-        and space.base_ring() is sage.QQ
+        and (
+            space.base_ring() is sage.QQ
+            or runtime.reflect.get(space.ambient_space(), "_character") is not None
+        )
         and runtime.reflect.get(space, "_subspace_kind") in ["Cuspidal", "New"]
     )
 
@@ -2292,6 +2295,7 @@ def _formula_explicit_domain(space: Any) -> bool:
     return (
         space.group()._family == "Gamma0"
         and space.base_ring() is sage.QQ
+        and runtime.reflect.get(space.ambient_space(), "_character") is None
         and runtime.reflect.get(space, "_subspace_kind") == "Cuspidal"
     )
 

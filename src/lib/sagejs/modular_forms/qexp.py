@@ -986,7 +986,17 @@ def character_eisenstein_series_qexp(
             cache[residue] = target(0)
             return cache[residue]
         if coefficient_ring is not None:
-            cache[residue] = target(evaluated)
+            if coefficient_ring is sage.QQ:
+                if evaluated.is_one():
+                    cache[residue] = sage.QQ(1)
+                elif (-evaluated).is_one():
+                    cache[residue] = sage.QQ(-1)
+                else:
+                    raise ArithmeticError(
+                        "a rational character produced a nonrational value"
+                    )
+            else:
+                cache[residue] = target(evaluated)
         else:
             source_order = runtime.number(character._parent.zeta_order())
             exponent = runtime.number(evaluated._exponent)
@@ -1232,6 +1242,17 @@ def modular_forms_newforms(space: Any, names: str = "a") -> list[Any]:
     return construct(space, names)
 
 
+def normalized_newform_from_data(
+    parent: Any,
+    constituent: Any,
+    name: Any,
+) -> Any:
+    """Load a normalized newform from its exact constituent data."""
+    from .newforms import normalized_newform_from_data as construct
+
+    return construct(parent, constituent, name)
+
+
 def from_serialized_element(
     parent: Any,
     terms: Any,
@@ -1258,5 +1279,6 @@ __all__ = [
     "modular_forms_new_subspace",
     "modular_forms_newforms",
     "modular_forms_old_subspace",
+    "normalized_newform_from_data",
     "victor_miller_basis",
 ]

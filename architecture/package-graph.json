@@ -633,7 +633,7 @@
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 315000,
+      "max_source_bytes": 330000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",
@@ -647,7 +647,7 @@
       "id": "modular-form-expansions",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 115000,
+      "max_source_bytes": 130000,
       "depends_on": [
         "core-runtime", "python-stdlib", "arithmetic", "linear-algebra",
         "modular-forms"

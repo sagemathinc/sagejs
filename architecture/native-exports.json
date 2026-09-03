@@ -2943,6 +2943,7 @@
         "src/baselib/number_fields.py",
         "src/baselib/polynomial.py",
         "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
+        "src/lib/sagejs/modular_forms/newforms.py",
         "src/lib/sagejs/number_fields/prime_ideals.py",
         "src/lib/sagejs/polynomial_algorithms/ideal.py",
         "test/ffi.cjs"
@@ -11469,7 +11470,9 @@
         "packages/flint-wasm/test/algebraic-resource.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/dirichlet.py",
-        "src/baselib/number_fields.py"
+        "src/baselib/number_fields.py",
+        "src/lib/sagejs/modular_forms/newforms.py",
+        "src/lib/sagejs/modular_forms/object_layer.py"
       ],
       "declared_ffi": null
     },
