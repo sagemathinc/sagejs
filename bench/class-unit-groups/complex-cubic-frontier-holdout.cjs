@@ -48,6 +48,7 @@ const {
   validateCensusProcessTopology,
   validateCheckpointObservation,
   validateDirectSagejsTool,
+  warmCandidateDirectEnvironment,
 } = require("./run-complex-cubic-frontier.cjs");
 
 const ROOT = path.resolve(__dirname, "../..");
@@ -1187,6 +1188,7 @@ async function main(argv = process.argv.slice(2)) {
   const options = parseArguments(argv);
   prepareCandidateDirectEnvironment(ROOT);
   const inputs = loadPredecessorInputs(options);
+  warmCandidateDirectEnvironment(inputs.corpus);
   if (options.mode === "freeze") {
     const candidateSource = currentSourceIdentity(false);
     const candidateTools = toolPlan({

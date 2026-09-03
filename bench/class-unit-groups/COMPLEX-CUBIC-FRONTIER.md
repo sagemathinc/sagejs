@@ -258,12 +258,16 @@ Sage.js executable equal to this checkout's `bin/sagejs`. Direct Sage.js runs
 inherit no ambient environment at all. They are launched through the recorded,
 hashed Node executable (not the wrapper's `env` shebang), with only a fixed
 locale/time zone, the fixed single-thread environment, source mode, the exact
-candidate native/module caches, and controlled nonexistent dynamic-cache and
-site-package roots. This applies to the survey census and timing commands too.
-The runtime closure records the full environment and launch identity plus the
-presence or absence and exact bytes of the preferred sibling native-kernel
-pack, so an installed package, import path, loader injection, or cache/site-
-package override cannot silently replace the authenticated checkout.
+candidate production native pack, a closure-bound noninteractive module cache,
+and controlled nonexistent dynamic-cache and site-package roots. Before source
+identity is recorded, two identical native warmups must leave that runtime
+closure unchanged; the second pass proves that lazy compilation has reached a
+fixed point. This applies to the survey census and timing commands too. The
+runtime closure records the full environment and launch identity, the complete
+production cache index, the selected cubic loader, and the manifest and exact
+bytes of its required native pack, so an installed package, import path, loader
+injection, or cache/site-package override cannot silently replace the
+authenticated checkout.
 The output pathname is atomically claimed with exclusive creation before
 disclosure; a failed run deliberately leaves that claim rather than permitting
 an accidental retry to overwrite its history. Both the reservation and final

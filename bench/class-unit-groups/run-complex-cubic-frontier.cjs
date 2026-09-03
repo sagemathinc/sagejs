@@ -466,6 +466,51 @@ function candidateRuntimeClosure(root = ROOT) {
   };
 }
 
+function warmCandidateDirectEnvironment(corpus, root = ROOT) {
+  const record = corpus?.records?.[0];
+  if (!record) {
+    throw new Error("candidate direct environment warmup requires one frozen survey field");
+  }
+  const run = () => {
+    const identity = candidateDirectEnvironmentIdentity(root);
+    const result = childProcess.spawnSync(
+      identity.node_executable.path,
+      [path.join(root, "bin/sagejs"), "--python", "-"],
+      {
+        cwd: root,
+        input: sageCensusSource([record]),
+        encoding: "utf8",
+        env: identity.environment,
+        timeout: 600_000,
+        maxBuffer: 64 * 1024 * 1024,
+      },
+    );
+    if (result.error || result.status !== 0 || result.signal !== null) {
+      throw new Error(
+        "candidate direct environment warmup failed: " +
+          (result.error?.message || result.stderr ||
+            `status=${result.status} signal=${result.signal}`),
+      );
+    }
+    const response = responseFromStdout(result.stdout);
+    validateAdapterResponse(response, { mode: "census", system: "sagejs" });
+    const observed = response.payload?.records?.[0];
+    validateCheckpointObservation(observed, record);
+    if (observed.status !== "native-pass") {
+      throw new Error("candidate direct environment warmup did not use native execution");
+    }
+  };
+
+  run();
+  const before = candidateRuntimeClosure(root);
+  run();
+  const after = candidateRuntimeClosure(root);
+  if (before.sha256 !== after.sha256) {
+    throw new Error("candidate direct environment did not reach a stable runtime closure");
+  }
+  return after;
+}
+
 function sourceIdentity(allowDirty = false) {
   const run = (args) => childProcess.execFileSync("git", ["-C", ROOT, ...args], {
     encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
@@ -2330,6 +2375,7 @@ async function main(argv = process.argv.slice(2)) {
     os.hostname(),
   ].join(":"));
   const corpus = loadFrozenSurveyCorpus(options.corpus, options.assetDir);
+  if (!options.dryRun) warmCandidateDirectEnvironment(corpus);
   const source = sourceIdentity(options.allowDirty);
   options.directEnvironmentIdentity =
     source.candidate_runtime_closure.direct_process_environment;
@@ -2399,6 +2445,7 @@ module.exports = {
   candidateDirectEnvironmentIdentity,
   candidateRuntimeClosure,
   prepareCandidateDirectEnvironment,
+  warmCandidateDirectEnvironment,
   combineCensus,
   censusBatchPlan,
   censusPartFilename,
