@@ -23,6 +23,10 @@ const pagesWorkflow = fs.readFileSync(
   path.join(root, ".github/workflows/pages.yml"),
   "utf8",
 );
+const installerStager = fs.readFileSync(
+  path.join(root, "scripts/stage-website-installer.cjs"),
+  "utf8",
+);
 const stdlibCoverage = JSON.parse(
   fs.readFileSync(path.join(website, "coverage/python-stdlib.json"), "utf8"),
 );
@@ -218,7 +222,9 @@ test("dashboard covers the three questions and all install paths", () => {
   }
   assert.match(html, /@sagemath\/sagejs/);
   assert.match(html, /curl -fsSL https:\/\/sagejs\.org\/install\.sh \| sh/);
-  assert.match(pagesWorkflow, /cp install\.sh website\/install\.sh/);
+  assert.match(pagesWorkflow, /node scripts\/stage-website-installer\.cjs/);
+  assert.match(installerStager, /published-release\.json/);
+  assert.match(installerStager, /SAGEJS_VERSION/);
   assert.match(
     html,
     new RegExp(`Early alpha · v${publishedRelease.version.replaceAll(".", "\\.")}`),
