@@ -69,6 +69,14 @@ Worker smoke passed mathematics, plotting, the no-Singular algebraic-geometry
 tour, msolve Gröbner bases, `prime_pi`, partitions, numerical functions, and
 live examples.
 
+The PR's clean canonical rebuild measured the complete `eager-core` delivery
+group at 17,432,669 gzip bytes and 9,616,687 Brotli bytes. That is 32,669 and
+16,687 bytes above the preceding reviewed ceilings, respectively, and is the
+expected cost of making the new polynomial, ideal, scheme, morphism, and
+Jacobian modules reachable in the browser. The narrow packaging ratchet raises
+only this group's ceilings to 17,500,000 and 9,650,000 bytes. The global 5%
+compressed-growth gate and every specialist-group budget remain unchanged.
+
 The two skips are the explicitly unavailable Firefox and WebKit engines on the
 Linux qualification host; the Chromium browser path ran. A noncanonical
 supported-Node gzip-verifier defect remains tracked as
