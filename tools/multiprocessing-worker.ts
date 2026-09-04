@@ -1,11 +1,13 @@
 import { MessagePort, parentPort, workerData } from "node:worker_threads";
 import type { SageLanguageMode } from "./kernel-evaluator";
-import { createTaskEvaluator } from "./task-evaluator";
 import {
   decode as decodePacket,
   encodeForTransfer as encodePacket,
 } from "./serialization";
 import type { SagePacket } from "./serialization";
+import {
+  useSharedSingleExecutableNativeResourceDirectory,
+} from "./resources";
 
 interface EncodedFunction {
   __sagejs_multiprocessing__: "function";
@@ -58,6 +60,13 @@ const port = workerData.port as MessagePort;
 const state = new Int32Array(workerData.state as SharedArrayBuffer);
 const workerIndex = Number(workerData.workerIndex);
 let evaluator: ReturnType<typeof createTaskEvaluator> | undefined;
+
+useSharedSingleExecutableNativeResourceDirectory(
+  workerData.nativeResourceDirectory,
+);
+const { createTaskEvaluator } = require(
+  "./task-evaluator",
+) as typeof import("./task-evaluator");
 
 function signal(): void {
   Atomics.add(state, 0, 1);

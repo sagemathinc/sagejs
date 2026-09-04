@@ -139,7 +139,8 @@
           "ldflags": [
             "-Wl,--gc-sections",
             "-Wl,--exclude-libs,ALL",
-            "-Wl,--strip-all"
+            "-Wl,--strip-all",
+            "-Wl,-z,nodelete"
           ]
         }],
         ["OS=='linux' and target_arch=='arm64'", {
@@ -167,7 +168,8 @@
           "ldflags": [
             "-Wl,--gc-sections",
             "-Wl,--exclude-libs,ALL",
-            "-Wl,--strip-all"
+            "-Wl,--strip-all",
+            "-Wl,-z,nodelete"
           ]
         }],
         ["OS=='mac'", {

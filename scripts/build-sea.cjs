@@ -426,6 +426,26 @@ function collectNativeKernelAssets() {
   return assets;
 }
 
+function assertLinuxProcessLifetimeAddon(filename, label) {
+  if (process.platform !== "linux") return;
+  let dynamicSection;
+  try {
+    dynamicSection = execFileSync("readelf", ["-d", filename], {
+      encoding: "utf8",
+    });
+  } catch (error) {
+    throw new Error(
+      `unable to inspect ${label} ELF lifetime flags with readelf`,
+      { cause: error },
+    );
+  }
+  if (!/\(FLAGS_1\).*\bNODELETE\b/.test(dynamicSection)) {
+    throw new Error(
+      `${label} is unsafe for Node worker teardown: missing ELF NODELETE`,
+    );
+  }
+}
+
 function buildExecutable(name, withFlint, seaNode) {
   if (withFlint && !existsSync(flintAddon)) {
     throw new Error(
@@ -464,6 +484,15 @@ function buildExecutable(name, withFlint, seaNode) {
         `${relative(root, graphFfiManifest)}; ` +
         "run `pnpm --dir packages/graph build` first",
     );
+  }
+  if (withFlint) {
+    for (const [filename, label] of [
+      [flintAddon, "FLINT addon"],
+      [flintFfiAddon, "generated FLINT FFI addon"],
+      [productionPackAddon, "production native-kernel pack"],
+    ]) {
+      assertLinuxProcessLifetimeAddon(filename, label);
+    }
   }
   const output = join(outputDirectory, name);
   const assets = {

@@ -23,7 +23,10 @@ import {
   SageSourceLanguage,
 } from "./polyglot";
 import { DocumentationCatalog } from "./documentation";
-import { kernelWorkerPath } from "./resources";
+import {
+  kernelWorkerPath,
+  singleExecutableNativeResourceDirectory,
+} from "./resources";
 
 export interface SageDisplayData {
   /** MIME type understood by an embedding renderer. */
@@ -182,12 +185,18 @@ export class SageSession extends EventEmitter {
       new SharedArrayBuffer(2 * Int32Array.BYTES_PER_ELEMENT),
     );
     this.interruptState = interruptState;
+    const workerFilename = kernelWorkerPath(
+      join(__dirname, "kernel-worker.js"),
+    );
+    const nativeResourceDirectory =
+      singleExecutableNativeResourceDirectory();
     const worker = new Worker(
-      kernelWorkerPath(join(__dirname, "kernel-worker.js")),
+      workerFilename,
       {
         workerData: {
           mode: this.mode,
           interruptBuffer: interruptState.buffer,
+          nativeResourceDirectory,
         },
       },
     );
