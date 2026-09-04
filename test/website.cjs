@@ -7,10 +7,10 @@ const path = require("node:path");
 const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
-const packageVersion = JSON.parse(
-  fs.readFileSync(path.join(root, "package.json"), "utf8"),
-).version;
 const website = path.join(root, "website");
+const publishedRelease = JSON.parse(
+  fs.readFileSync(path.join(website, "published-release.json"), "utf8"),
+);
 const payload = JSON.parse(
   fs.readFileSync(path.join(website, "capabilities.json"), "utf8"),
 );
@@ -221,7 +221,11 @@ test("dashboard covers the three questions and all install paths", () => {
   assert.match(pagesWorkflow, /cp install\.sh website\/install\.sh/);
   assert.match(
     html,
-    new RegExp(`Early alpha · v${packageVersion.replaceAll(".", "\\.")}`),
+    new RegExp(`Early alpha · v${publishedRelease.version.replaceAll(".", "\\.")}`),
+  );
+  assert.match(
+    html,
+    new RegExp(`@sagemath/sagejs@${publishedRelease.version.replaceAll(".", "\\.")}`),
   );
   assert.match(html, /sagejs-windows-x64\.zip/);
   assert.match(html, /GPL-3\.0/);
