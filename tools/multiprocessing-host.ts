@@ -7,7 +7,10 @@ import {
 } from "node:worker_threads";
 
 import type { SageLanguageMode } from "./kernel-evaluator";
-import { multiprocessingWorkerPath } from "./resources";
+import {
+  multiprocessingWorkerPath,
+  singleExecutableNativeResourceDirectory,
+} from "./resources";
 import type { SagePacket } from "./serialization";
 
 interface EncodedFunction {
@@ -313,6 +316,8 @@ class SynchronousWorkerPool {
     const workerFilename = multiprocessingWorkerPath(
       join(__dirname, "multiprocessing-worker.js"),
     );
+    const nativeResourceDirectory =
+      singleExecutableNativeResourceDirectory();
     const initializerSpec =
       initializer === undefined || initializer === null
         ? undefined
@@ -329,6 +334,7 @@ class SynchronousWorkerPool {
           initializer: initializerSpec,
           initargs: encodedInitargs,
           precompiledNativeRuntime,
+          nativeResourceDirectory,
         },
         transferList: [channel.port2],
       });
