@@ -981,7 +981,7 @@ test("full-survey warmup is a two-pass, content-bound runtime fixed point", () =
     spawnSync: (executable, args, options) => {
       const shard = spawnCount % partitions.length;
       spawnCount += 1;
-      assert.equal(executable, path.resolve("/node"));
+      assert.equal(executable, "/node");
       assert.deepEqual(args, [path.resolve("/candidate/bin/sagejs"), "--python", "-"]);
       assert.equal(options.input, expectedWarmupPrograms[shard]);
       return {
