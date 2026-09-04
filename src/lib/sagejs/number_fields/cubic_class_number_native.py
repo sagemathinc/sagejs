@@ -92,6 +92,7 @@ _HNF_SCRATCH_OFFSET = 7840
 _MAP_SCRATCH_OFFSET = 7867
 _ROW_SCRATCH_OFFSET = 7880
 _NORM_FORM_OFFSET = 7944
+_COMPOUND_MULTIPLIER_POWER_OFFSET = 7954
 
 _CUBIC_ANALYTIC_THRESHOLD = 997
 _CUBIC_ANALYTIC_REFINED_THRESHOLD = 1494
@@ -855,20 +856,18 @@ def _cubic_ideal_product(
     return True
 
 
-def _cubic_compound_prime_ideal_basis(
+def _cubic_prime_ideal_power_basis(
     workspace: NativeIntegerVector,
     multiplier_factor_index: uint64,
-    source_factor_index: uint64,
     multiplier_exponent: uint64,
     output_offset: uint64,
 ) -> bool:
-    """Build `P_multiplier^e * P_source` in one reusable lattice slot."""
+    """Build one exact `P_multiplier^e` lattice for resident reuse."""
     if multiplier_exponent < 1 or output_offset + 9 > len(workspace):
         return False
     multiplier_offset: uint64 = (
         _POWER_OFFSET + multiplier_factor_index * _CUBIC_MAX_POWERS * 9
     )
-    source_offset: uint64 = _POWER_OFFSET + source_factor_index * _CUBIC_MAX_POWERS * 9
     entry: uint64 = 0
     while entry < 9:
         workspace[output_offset + entry] = workspace[multiplier_offset + entry]
@@ -883,9 +882,20 @@ def _cubic_compound_prime_ideal_basis(
         ):
             return False
         exponent_index += 1
+    return True
+
+
+def _cubic_compound_prime_ideal_basis(
+    workspace: NativeIntegerVector,
+    multiplier_power_offset: uint64,
+    source_factor_index: uint64,
+    output_offset: uint64,
+) -> bool:
+    """Build `P_multiplier^e * P_source` from a resident multiplier power."""
+    source_offset: uint64 = _POWER_OFFSET + source_factor_index * _CUBIC_MAX_POWERS * 9
     return _cubic_ideal_product(
         workspace,
-        output_offset,
+        multiplier_power_offset,
         source_offset,
         output_offset,
     )
@@ -5956,6 +5966,11 @@ def certified_complex_cubic_class_group_v1(
             compound_plan_rows,
             2,
         )
+        compound_bases = arena.foreign_resource(
+            fmpz_matrix,
+            compound_plan_rows,
+            9,
+        )
         compound_transform_rows: uint64 = 3 * compound_pair_count
         if compound_transform_rows == 0:
             compound_transform_rows = 1
@@ -6526,6 +6541,16 @@ def certified_complex_cubic_class_group_v1(
                 ):
                     compound_power_norm *= compound_multiplier_norm
                     compound_multiplier_exponent += 1
+                compound_multiplier_power_offset: uint64 = (
+                    _COMPOUND_MULTIPLIER_POWER_OFFSET + 9 * compound_multiplier_count
+                )
+                if not _cubic_prime_ideal_power_basis(
+                    workspace,
+                    compound_multiplier_index,
+                    compound_multiplier_exponent,
+                    compound_multiplier_power_offset,
+                ):
+                    return False
                 compound_source_index = compound_multiplier_index + 1
                 while compound_source_index < factor_count:
                     compound_source_base = (
@@ -6536,9 +6561,8 @@ def certified_complex_cubic_class_group_v1(
                             return False
                         if not _cubic_compound_prime_ideal_basis(
                             workspace,
-                            compound_multiplier_index,
+                            compound_multiplier_power_offset,
                             compound_source_index,
-                            compound_multiplier_exponent,
                             _MAP_SCRATCH_OFFSET,
                         ):
                             return False
@@ -6569,6 +6593,12 @@ def certified_complex_cubic_class_group_v1(
                             compound_multiplier_exponent
                         )
                         compound_plans[compound_plan_index, 1] = compound_pair_code
+                        compound_basis_entry: uint64 = 0
+                        while compound_basis_entry < 9:
+                            compound_bases[
+                                compound_plan_index, compound_basis_entry
+                            ] = workspace[_MAP_SCRATCH_OFFSET + compound_basis_entry]
+                            compound_basis_entry += 1
                         compound_plan_index += 1
                     compound_source_index += 1
                 compound_multiplier_count += 1
@@ -6653,15 +6683,16 @@ def certified_complex_cubic_class_group_v1(
                             != compound_admission_exponent
                             or compound_admission_pair_code < 1
                             or compound_admission_pair_code > 3
-                            or not _cubic_compound_prime_ideal_basis(
-                                workspace,
-                                compound_multiplier_index,
-                                compound_source_index,
-                                compound_admission_exponent,
-                                _MAP_SCRATCH_OFFSET,
-                            )
                         ):
                             return False
+                        compound_basis_entry = 0
+                        while compound_basis_entry < 9:
+                            workspace[_MAP_SCRATCH_OFFSET + compound_basis_entry] = (
+                                compound_bases[
+                                    compound_plan_index, compound_basis_entry
+                                ]
+                            )
+                            compound_basis_entry += 1
                         compound_transform_row = 3 * compound_plan_index
                         compound_pair = compound_admission_pair_code - 1
                         compound_first: uint64 = 0
