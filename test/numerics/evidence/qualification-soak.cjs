@@ -75,6 +75,8 @@ test("soak CLI defaults to the bounded release profile", () => {
   ]);
   assert.equal(parsed.profile, "release");
   assert.equal(parsed.requireClean, true);
+  assert.equal(PROFILES.release.maximum_blocks, 32);
+  assert.equal(PROFILES.release.session_timeout_ms, 240_000);
   assert.throws(
     () => parseArguments(["--candidate", "x", "--artifact", "dist", "--output", "x", "--profile", "forever"]),
     /unsupported --profile/,
