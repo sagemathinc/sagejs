@@ -70,6 +70,17 @@ function rootOption(argv) {
   return path.resolve(value(argv, "--root") ?? defaultRoot);
 }
 
+function reportReceiptRecord(filename, root = defaultRoot) {
+  const resolvedRoot = path.resolve(root);
+  const absolute = path.resolve(filename);
+  const relative = path.relative(resolvedRoot, absolute);
+  const receipt = repositoryPath(resolvedRoot, relative, "report receipt");
+  return {
+    path: receipt.relative,
+    value: readJson(receipt.absolute),
+  };
+}
+
 function positional(argv, skippedOptions) {
   const skip = new Set(skippedOptions);
   const result = [];
@@ -234,10 +245,8 @@ async function main(argv = process.argv.slice(2)) {
       ...values(argv, "--receipt-dir").flatMap(receiptFilesFromDirectory),
     ];
     const unique = [...new Set(filenames)].sort();
-    const report = buildReport(policy, unique.map((filename) => ({
-      path: filename,
-      value: readJson(filename),
-    })));
+    const report = buildReport(policy, unique.map((filename) =>
+      reportReceiptRecord(filename)));
     const jsonOutput = value(argv, "--json");
     const markdownOutput = value(argv, "--markdown");
     if (jsonOutput !== null) writeDerived(jsonOutput, pretty(report));
@@ -262,6 +271,7 @@ if (require.main === module) {
 module.exports = {
   discoverCorpora,
   main,
+  reportReceiptRecord,
   receiptFilesFromDirectory,
   usage,
 };
