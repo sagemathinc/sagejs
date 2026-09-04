@@ -1,6 +1,7 @@
 # Algebraic geometry without Singular
 
-- Status: implementation plan
+- Status: complete; see the
+  [completion audit](no-singular-algebraic-geometry-completion-audit.md)
 - Date: 2026-09-04
 - Sage.js baseline: `c9f039ed0269aa45140eb7f59a6f4e9c1cca7713`
 - Scope: every item classified as easy, small, or moderate in the
@@ -922,45 +923,45 @@ Each PR description must state:
 
 The no-Singular roadmap is complete only when all of the following hold:
 
-- [ ] `AffineSpace(QQ, 2)` and `AffineSpace(2, QQ)` both work.
-- [ ] Affine and projective spaces, rational points, and closed subschemes have
+- [x] `AffineSpace(QQ, 2)` and `AffineSpace(2, QQ)` both work.
+- [x] Affine and projective spaces, rational points, and closed subschemes have
       documented Sage-compatible basic APIs.
-- [ ] Polynomial evaluation, simultaneous substitution, derivatives,
+- [x] Polynomial evaluation, simultaneous substitution, derivatives,
       homogenization, and dehomogenization are exact and portable.
-- [ ] Quotient rings expose canonical normal-form elements and the existing
+- [x] Quotient rings expose canonical normal-form elements and the existing
       zero-dimensional linear-algebra tools through one API.
-- [ ] Ideal intersection, colon, saturation, elimination, containment, sum,
+- [x] Ideal intersection, colon, saturation, elimination, containment, sum,
       and membership pass independent differential and metamorphic tests.
-- [ ] Hilbert series, Hilbert polynomial, dimension, codimension, and
+- [x] Hilbert series, Hilbert polynomial, dimension, codimension, and
       projective degree work in their documented graded scope.
-- [ ] Scheme intersections, unions, affine patches, and projective closures
+- [x] Scheme intersections, unions, affine patches, and projective closures
       preserve scheme structure.
-- [ ] Polynomial morphisms support evaluation, composition, graphs, fibers,
+- [x] Polynomial morphisms support evaluation, composition, graphs, fibers,
       inverse images, and supported scheme-theoretic image closures.
-- [ ] Tangent spaces, supported smoothness tests, and supported singular
+- [x] Tangent spaces, supported smoothness tests, and supported singular
       subschemes handle characteristic `p` and nonreduced examples correctly.
-- [ ] Plane curves expose degree, arithmetic genus, patches/closure,
+- [x] Plane curves expose degree, arithmetic genus, patches/closure,
       tangents, and singular computations without claiming geometric genus.
-- [ ] Zero-dimensional radical and primary decomposition work over `QQ` and
+- [x] Zero-dimensional radical and primary decomposition work over `QQ` and
       prime fields, exactly recompose, and reject positive-dimensional input.
-- [ ] Every algorithm respects `proof.polynomial()` and an explicit
+- [x] Every algorithm respects `proof.polynomial()` and an explicit
       `proof=` override.
-- [ ] Every unsupported case produces a concise capability error rather than
+- [x] Every unsupported case produces a concise capability error rather than
       a backend stack trace.
-- [ ] Public scheme and curve code contains no `QQ`/prime-field backend
+- [x] Public scheme and curve code contains no `QQ`/prime-field backend
       dispatch; coefficient-specific choices live behind polynomial and ideal
       capabilities.
-- [ ] Field identity, proof state, order, backend, and resource policy are all
+- [x] Field identity, proof state, order, backend, and resource policy are all
       represented in serialization descriptors and cache keys.
-- [ ] `GF(p^d)` and number fields remain explicitly unsupported by this
+- [x] `GF(p^d)` and number fields remain explicitly unsupported by this
       milestone and point to `agents/no-singular-extension-fields-plan.md`.
-- [ ] Strict Python, architecture, portable, native, Node-Wasm, and browser
+- [x] Strict Python, architecture, portable, native, Node-Wasm, and browser
       tests pass.
-- [ ] Linux x64, Linux ARM64, macOS ARM64, and native Windows x64 qualification
+- [x] Linux x64, Linux ARM64, macOS ARM64, and native Windows x64 qualification
       passes for the exact integration candidate.
-- [ ] npm, SEA, and browser artifact audits confirm that no Singular or other
+- [x] npm, SEA, and browser artifact audits confirm that no Singular or other
       external CAS runtime is shipped or required.
-- [ ] User documentation includes working affine, projective, curve, image,
+- [x] User documentation includes working affine, projective, curve, image,
       Hilbert, and zero-dimensional decomposition examples plus an honest
       limitations table.
 
