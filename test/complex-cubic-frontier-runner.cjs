@@ -32,6 +32,7 @@ const {
   WARMUP_SCHEMA,
   assertRuntimeClosureUnchanged,
   bindWarmedRuntimeClosure,
+  candidateDirectEnvironmentIdentity,
   censusBatchPlan,
   censusPartFilename,
   censusPartKey,
@@ -297,7 +298,15 @@ test("census isolates Sage fields while retaining PARI timing strata", () => {
 
 test("census CPU lists are explicit and never affect retained timing", () => {
   const required = ["--corpus", "/tmp/corpus.json", "--output", "/tmp/output.json"];
-  assert.deepEqual(parseArguments(["--census", ...required, "--cpu", "2"]).censusCpus, [2]);
+  const defaults = parseArguments(["--census", ...required, "--cpu", "2"]);
+  assert.deepEqual(defaults.censusCpus, [2]);
+  assert.equal(defaults.sagejsIntegerBackend, "auto");
+  assert.equal(parseArguments([
+    "--census", ...required, "--sagejs-integer-backend", "fmpz",
+  ]).sagejsIntegerBackend, "fmpz");
+  assert.throws(() => parseArguments([
+    "--census", ...required, "--sagejs-integer-backend", "tagged",
+  ]), /must be one of auto,gmp,fmpz/);
   assert.deepEqual(
     parseArguments(["--census", ...required, "--cpu", "2", "--census-cpus", "0,3,1"])
       .censusCpus,
@@ -325,6 +334,35 @@ test("census CPU lists are explicit and never affect retained timing", () => {
   assert.throws(() => parseArguments([
     "--census", ...required, "--no-census-parts", "--census-parts-dir", "/tmp/parts",
   ]), /conflicts/);
+});
+
+test("candidate runtime identity authenticates the requested exact backend", () => {
+  const automatic = candidateDirectEnvironmentIdentity(root);
+  const forcedGmp = candidateDirectEnvironmentIdentity(root, "gmp");
+  const forcedFmpz = candidateDirectEnvironmentIdentity(root, "fmpz");
+  assert.equal(automatic.schema,
+    "sagejs.benchmark/complex-cubic-direct-environment-v4");
+  assert.deepEqual(automatic.exact_integer_backend, {
+    requested: "auto",
+    selected: "per-function-qualified-policy",
+    enforcement: "compiler-qualified-automatic-selection",
+  });
+  assert.equal(automatic.environment.SAGEJS_NATIVE_INTEGER_BACKEND, "auto");
+  for (const [identity, backend] of [[forcedGmp, "gmp"], [forcedFmpz, "fmpz"]]) {
+    assert.deepEqual(identity.exact_integer_backend, {
+      requested: backend,
+      selected: backend,
+      enforcement: "requested-backend-or-fail-closed",
+    });
+    assert.equal(identity.environment.SAGEJS_NATIVE_INTEGER_BACKEND, backend);
+    const { sha256: recorded, ...payload } = identity;
+    assert.equal(recorded, canonicalDigest(payload));
+    assert.notEqual(recorded, automatic.sha256);
+  }
+  assert.throws(
+    () => candidateDirectEnvironmentIdentity(root, "tagged"),
+    /must be auto, gmp, or fmpz/,
+  );
 });
 
 test("bounded census workers dynamically refill CPUs and preserve shard order", async () => {
@@ -1216,6 +1254,27 @@ test("timing accepts only clean matching source and current build closures", () 
     mutate(changed);
     assert.equal(sourceIdentitiesMatchForTiming(source, changed), false);
   }
+
+  const automatic = {
+    ...source,
+    candidate_runtime_closure: {
+      direct_process_environment: {
+        exact_integer_backend: {
+          requested: "auto",
+          selected: "per-function-qualified-policy",
+          enforcement: "compiler-qualified-automatic-selection",
+        },
+      },
+    },
+  };
+  const forcedFmpz = structuredClone(automatic);
+  forcedFmpz.candidate_runtime_closure.direct_process_environment
+    .exact_integer_backend = {
+      requested: "fmpz",
+      selected: "fmpz",
+      enforcement: "requested-backend-or-fail-closed",
+    };
+  assert.equal(sourceIdentitiesMatchForTiming(automatic, forcedFmpz), false);
 });
 
 test("metrics retain absolute round totals and paired shard/field summaries", () => {
