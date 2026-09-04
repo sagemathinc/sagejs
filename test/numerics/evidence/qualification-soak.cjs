@@ -77,6 +77,7 @@ test("soak CLI defaults to the bounded release profile", () => {
   assert.equal(parsed.requireClean, true);
   assert.equal(PROFILES.release.maximum_blocks, 32);
   assert.equal(PROFILES.release.session_timeout_ms, 240_000);
+  assert.equal(THRESHOLDS.maximum_rss_slope_bytes_per_operation, 96 * 1024);
   assert.throws(
     () => parseArguments(["--candidate", "x", "--artifact", "dist", "--output", "x", "--profile", "forever"]),
     /unsupported --profile/,
@@ -238,7 +239,7 @@ test("a child session cannot stop before its bounded memory tail settles", () =>
   const options = {
     memorySlopeWindowSamples: 6,
     maximumHeapSlopeBytesPerOperation: 32 * 1024,
-    maximumRssSlopeBytesPerOperation: 64 * 1024,
+    maximumRssSlopeBytesPerOperation: 96 * 1024,
   };
   const growing = sampleSession().memory_samples.map((sample, index) => ({
     ...sample,
