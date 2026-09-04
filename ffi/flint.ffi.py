@@ -3947,6 +3947,37 @@ def fmpz_matrix_hnf_into(hermite: Writable[FmpzMatrix], source: FmpzMatrix) -> b
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixHnfPrefixInto",
+    symbol="sagejs_fmpz_matrix_hnf_prefix_into",
+    returns=int,
+    abi=[
+        in_("hermite", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["hermite"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix HNF logical-prefix bounds or aliases are invalid",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_hnf_prefix_into(
+    hermite: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixSnf",
     symbol="sagejs_fmpz_matrix_snf",
     returns=int,
@@ -3986,6 +4017,37 @@ def fmpz_matrix_snf_into(smith: Writable[FmpzMatrix], source: FmpzMatrix) -> boo
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixSnfPrefixInto",
+    symbol="sagejs_fmpz_matrix_snf_prefix_into",
+    returns=int,
+    abi=[
+        in_("smith", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["smith"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix SNF logical-prefix bounds or aliases are invalid",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_snf_prefix_into(
+    smith: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixHnfTransform",
     symbol="sagejs_fmpz_matrix_hnf_transform",
     returns=int,
@@ -4015,6 +4077,41 @@ def fmpz_matrix_hnf_transform(
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixHnfTransformPrefix",
+    symbol="sagejs_fmpz_matrix_hnf_transform_prefix",
+    returns=int,
+    abi=[
+        in_("hermite", sagejs_fmpz_matrix_t),
+        in_("transform", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["hermite", "transform"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message=(
+            "integer matrix HNF transform logical-prefix bounds or aliases are invalid"
+        ),
+    ),
+    wasm=False,
+)
+def fmpz_matrix_hnf_transform_prefix(
+    hermite: Writable[FmpzMatrix],
+    transform: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixLllTransform",
     symbol="sagejs_fmpz_matrix_lll_transform",
     returns=int,
@@ -4040,6 +4137,41 @@ def fmpz_matrix_lll_transform(
     reduced: Writable[FmpzMatrix],
     transform: Writable[FmpzMatrix],
     source: FmpzMatrix,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixLllTransformPrefix",
+    symbol="sagejs_fmpz_matrix_lll_transform_prefix",
+    returns=int,
+    abi=[
+        in_("reduced", sagejs_fmpz_matrix_t),
+        in_("transform", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["reduced", "transform"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message=(
+            "integer matrix LLL transform logical-prefix bounds or aliases are invalid"
+        ),
+    ),
+    wasm=False,
+)
+def fmpz_matrix_lll_transform_prefix(
+    reduced: Writable[FmpzMatrix],
+    transform: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
 ) -> bool: ...
 
 

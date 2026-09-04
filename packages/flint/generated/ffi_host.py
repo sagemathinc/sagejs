@@ -208,10 +208,14 @@ from sagejs.ffi.flint import (
     fmpz_matrix_trace as _ffi_fmpz_matrix_trace,
     fmpz_matrix_hnf as _ffi_fmpz_matrix_hnf,
     fmpz_matrix_hnf_into as _ffi_fmpz_matrix_hnf_into,
+    fmpz_matrix_hnf_prefix_into as _ffi_fmpz_matrix_hnf_prefix_into,
     fmpz_matrix_snf as _ffi_fmpz_matrix_snf,
     fmpz_matrix_snf_into as _ffi_fmpz_matrix_snf_into,
+    fmpz_matrix_snf_prefix_into as _ffi_fmpz_matrix_snf_prefix_into,
     fmpz_matrix_hnf_transform as _ffi_fmpz_matrix_hnf_transform,
+    fmpz_matrix_hnf_transform_prefix as _ffi_fmpz_matrix_hnf_transform_prefix,
     fmpz_matrix_lll_transform as _ffi_fmpz_matrix_lll_transform,
+    fmpz_matrix_lll_transform_prefix as _ffi_fmpz_matrix_lll_transform_prefix,
     fmpz_matrix_snf_transform as _ffi_fmpz_matrix_snf_transform,
     fmpz_matrix_right_kernel as _ffi_fmpz_matrix_right_kernel,
     fmpz_matrix_charpoly as _ffi_fmpz_matrix_charpoly,
@@ -2314,6 +2318,21 @@ def ffiFmpzMatrixHnfInto(
 
 
 @native
+def ffiFmpzMatrixHnfPrefixInto(
+    hermite: FmpzMatrix,
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_matrix_hnf_prefix_into(
+        hermite,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
 def ffiFmpzMatrixSnf(
     source: FmpzMatrix,
 ) -> FmpzMatrix:
@@ -2334,6 +2353,21 @@ def ffiFmpzMatrixSnfInto(
 
 
 @native
+def ffiFmpzMatrixSnfPrefixInto(
+    smith: FmpzMatrix,
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_matrix_snf_prefix_into(
+        smith,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
 def ffiFmpzMatrixHnfTransform(
     hermite: FmpzMatrix,
     transform: FmpzMatrix,
@@ -2347,6 +2381,23 @@ def ffiFmpzMatrixHnfTransform(
 
 
 @native
+def ffiFmpzMatrixHnfTransformPrefix(
+    hermite: FmpzMatrix,
+    transform: FmpzMatrix,
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_matrix_hnf_transform_prefix(
+        hermite,
+        transform,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
 def ffiFmpzMatrixLllTransform(
     reduced: FmpzMatrix,
     transform: FmpzMatrix,
@@ -2356,6 +2407,23 @@ def ffiFmpzMatrixLllTransform(
         reduced,
         transform,
         source,
+    )
+
+
+@native
+def ffiFmpzMatrixLllTransformPrefix(
+    reduced: FmpzMatrix,
+    transform: FmpzMatrix,
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_matrix_lll_transform_prefix(
+        reduced,
+        transform,
+        source,
+        rows,
+        columns,
     )
 
 
