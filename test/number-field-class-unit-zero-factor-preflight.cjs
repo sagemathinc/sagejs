@@ -45,6 +45,12 @@ function runPublic(source, timeout = 240_000) {
 test("an authenticated empty cubic factor base bypasses only the stale specialized probe", () => {
   const output = runPublic(String.raw`
 import sagejs.number_fields.cubic_class_number as cubic_module
+import sagejs.number_fields.cubic_class_number_native_runtime as native_cubic_runtime
+
+# This test specifies the bounded Python producer's authenticated empty-factor
+# artifact.  The resident conditional scalar frontier has independent receipt
+# tests and may otherwise satisfy proof=False without producing that artifact.
+native_cubic_runtime.certified_complex_cubic_class_number = lambda field: None
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -57,7 +63,12 @@ for proof in (False, True):
     artifact = K._bounded_cubic_class_number_artifact
     assert cubic_module.authenticated_cubic_class_number(artifact, K) == 1
     assert artifact.__dict__["_live_authentication"].factor_base_size == 0
-    assert result.complete and result.proof_status == "exact-unconditional"
+    assert result.complete
+    assert result.proof_status == (
+        "exact-unconditional"
+        if proof
+        else "exact-relations-conditional-grh"
+    )
     assert result.class_number() == 1
     assert result.class_group().invariants() == ()
     assert result.unit_group().complete and result.unit_group().unit_rank == 1

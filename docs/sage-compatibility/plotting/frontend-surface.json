@@ -18,7 +18,7 @@
     },
     {
       "path": "src/lib/wolfram.py",
-      "sha256": "19cef7cd9540e32aa793d1ed13adcdae13da4a475bf310e01a756c991cb24813"
+      "sha256": "ecba36da4791214f5ad3316137daf8d87f26c15d0fa705c570e11334370a5fa9"
     },
     {
       "path": "tools/matlab/frontend.ts",
@@ -30,11 +30,11 @@
     },
     {
       "path": "tools/kernel.ts",
-      "sha256": "ff1938e5b713e88e3690050e0351a04936c4c9e1f42e85400f5b1076f3dfba0f"
+      "sha256": "5153b1b99525a9ff5ecc02e291f993c121f292a065266e5e6b4114dc58f40aef"
     },
     {
       "path": "test/graphics.cjs",
-      "sha256": "ed3eafb4b8280dfa55a38492997f30cc96ebdfbf3a4727b29f1e9183a2c917ba"
+      "sha256": "eae84bd7b111ff010dda8d1b08bd08ec6237324976ed36d1b8703bbd98054d39"
     }
   ],
   "summary": {

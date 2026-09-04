@@ -316,7 +316,29 @@ for fixture in fixtures:
     assert selected is not None
     selected_indices = tuple(entry[1][0] for entry in selected)
     assert selected_rank == stable.rank
-    assert selected_indices == stable.selected_candidate_indices
+    reverse_stable = matrix.stable_exact_relation_hnf_selection(
+        initial, reversed(candidates), columns
+    )
+    assert reverse_stable.basis == stable.basis
+    assert reverse_stable.rank == stable.rank
+    reverse_indices = tuple(sorted(
+        len(candidates) - 1 - index
+        for index in reverse_stable.selected_candidate_indices
+    ))
+    early_bits = sum(
+        abs(int(triples[index][2])).bit_length()
+        for index in stable.selected_candidate_indices
+    )
+    late_bits = sum(
+        abs(int(triples[index][2])).bit_length()
+        for index in reverse_indices
+    )
+    expected_indices = (
+        stable.selected_candidate_indices
+        if 20 * early_bits <= 17 * late_bits
+        else reverse_indices
+    )
+    assert selected_indices == expected_indices
 
     for backend in ('native', 'javascript'):
         answer = matrix.resident_exact_relation_hnf_selection(

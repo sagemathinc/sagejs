@@ -109,11 +109,11 @@ assert len(collector._keys) == len(result.relation_records)
 assert len(collector._admission_receipts) == len(result.relation_records)
 assert not hasattr(certificate, "_detached_encoding")
 
-# The detached body and hash are the unchanged 411344bb canonical payload for
-# this fixed field instance, and detached replay still checks the exact proof.
+# The detached body and hash bind the height-aware support selected for this
+# fixed field instance, and detached replay still checks the exact proof.
 payload = certificate.to_dict()
 assert certificate.stable_hash() == (
-    "ce189cbccbe4078ba95286d62b4d501b2e7a5b842f376234da572406881a564e"
+    "85f1619dd0afe5d6e05cfa50fc8fb1264fe6e10fcb428887c54e527d7beff4f5"
 )
 # A self-consistent caller encoding with forged provenance would pass the old
 # cache-trusting verify; live encoding now ignores both obsolete cache state
