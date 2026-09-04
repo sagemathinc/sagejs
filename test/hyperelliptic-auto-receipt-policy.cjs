@@ -210,7 +210,7 @@ test("the checked-in release policy disables stale entries until receipts are re
   assert.equal(policy.enabled, true);
   assert.equal(
     policy.source_bundle.sha256,
-    "4c90a23b20dae09ce61fecaf385a140ff583a673aa3ae7a9ed824789a2483b8a",
+    "a8f11bb9fbd6cbd85a62a0f2c4866879ab6767f23b70ad9d0c83e9d3ad87db34",
   );
   assert.deepEqual(
     policy.entries.map((entry) => entry.id),
