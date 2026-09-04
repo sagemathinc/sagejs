@@ -1078,7 +1078,7 @@ function taggedIntegerProof(fn, effects) {
   };
 }
 
-function liveExactWorkspaceAnalysis(fn) {
+function liveExactWorkspaceAnalysis(fn, backend) {
   const scopes = [];
   walkStatements(fn.body, {
     loop() {},
@@ -1133,7 +1133,9 @@ function liveExactWorkspaceAnalysis(fn) {
               : child.type === "NativeIntegerVector"
                 ? {
                     owner: child.owner,
-                    storage: "mpz-vector",
+                    storage: backend?.kind === "fmpz"
+                      ? "inline-promoting-fmpz-vector"
+                      : "mpz-vector",
                     capacity: child.capacity,
                     maximumBits: child.maximumBits,
                   }
@@ -1194,6 +1196,154 @@ function liveExactWorkspaceAnalysis(fn) {
       ? "declared-resident-capacity-plus-receipt-audited-library-temporaries"
       : "reported-by-receipt-not-semantic-limit",
     automaticSelection: "receipt-gated",
+  };
+}
+
+const FMPZ_OPERATION_KINDS = new Set([
+  "bool.binary",
+  "bool.compare",
+  "bool.constant",
+  "bool.copy",
+  "bool.not",
+  "bool.short_circuit",
+  "ffi.arena.resource.allocate",
+  "ffi.call",
+  "integer.abs",
+  "integer.arena.vector.allocate",
+  "integer.binary",
+  "integer.compare",
+  "integer.constant",
+  "integer.copy",
+  "integer.divmod",
+  "integer.from_uint64",
+  "integer.neg",
+  "integer.pow_uint",
+  "integer.truth",
+  "integer.vector.addmul",
+  "integer.vector.borrow",
+  "integer.vector.get",
+  "integer.vector.length",
+  "integer.vector.set",
+  "integer.vector.submul",
+  "integer.vector.swap",
+  "raise",
+  "return",
+  "uint64.binary",
+  "uint64.compare",
+  "uint64.constant",
+  "uint64.copy",
+  "uint64.truth",
+  "value.discard",
+]);
+
+const FMPZ_FFI_DECLARATIONS = new Set([
+  "flint:fmpz_matrix",
+  "flint:fmpz_matrix_entry",
+  "flint:fmpz_matrix_set_entry",
+]);
+
+/**
+ * Qualify the first deliberately small fmpz representation slice.
+ *
+ * The semantic type remains Integer.  This proof only admits one closed
+ * arena, unbounded exact vectors, ordinary structured control, and the direct
+ * fmpz matrix round-trip declarations.  Anything outside this list continues
+ * through the mature GMP backend.
+ */
+function fmpzBackendPolicy(fn) {
+  if (fn.returnType !== "Integer" || fn.dependencies.length !== 0) return null;
+  if (!fn.params.every((param) =>
+    ["Integer", "uint64", "bool"].includes(param.type)
+  )) return null;
+  if (!fn.locals.every((local) =>
+    ["Integer", "uint64", "bool", "NativeExactArena", "NativeIntegerVector"]
+      .includes(local.type) ||
+    (fn.foreignResources || []).some((resource) =>
+      (resource.compiler_type || resource.python_name) === local.type &&
+      resource.id === "fmpz_matrix"
+    )
+  )) return null;
+
+  const constants = new Map();
+  let arenas = 0;
+  let vectors = 0;
+  let eligible = true;
+  function visit(statements) {
+    for (const statement of statements || []) {
+      if (statement.kind === "if") {
+        visit(statement.condition.operations);
+        visit(statement.body);
+        visit(statement.alternative);
+        continue;
+      }
+      if (statement.kind === "while") {
+        visit(statement.condition.operations);
+        visit(statement.body);
+        continue;
+      }
+      if (statement.kind === "loop.range") {
+        visit(statement.body);
+        continue;
+      }
+      if (statement.kind === "integer.arena.scope") {
+        arenas += 1;
+        if (!statement.children.every((child) =>
+          child.type === "NativeIntegerVector" ||
+          (child.childKind === "foreign-resource" &&
+            child.resourceId === "fmpz_matrix")
+        )) eligible = false;
+        visit(statement.setup);
+        visit(statement.body);
+        continue;
+      }
+      if (!FMPZ_OPERATION_KINDS.has(statement.kind)) eligible = false;
+      if (statement.kind === "uint64.constant") {
+        constants.set(statement.target, statement.value);
+      }
+      if (statement.kind === "integer.arena.vector.allocate") {
+        vectors += 1;
+      }
+      if (statement.kind.startsWith("integer.vector.") &&
+          statement.kind !== "integer.vector.length") {
+        if (statement.indexType !== undefined &&
+            statement.indexType !== "uint64") eligible = false;
+        if (statement.leftType !== undefined &&
+            statement.leftType !== "uint64") eligible = false;
+        if (statement.rightType !== undefined &&
+            statement.rightType !== "uint64") eligible = false;
+      }
+      if ((statement.kind === "ffi.call" ||
+          statement.kind === "ffi.arena.resource.allocate") &&
+          !FMPZ_FFI_DECLARATIONS.has(statement.foreign?.declarationId)) {
+        eligible = false;
+      }
+      if (statement.kind === "bool.short_circuit") {
+        visit(statement.right.operations);
+      }
+    }
+  }
+  visit(fn.body);
+  if (!eligible || arenas !== 1 || vectors === 0) return null;
+
+  let zeroBoundedVectors = true;
+  walkStatements(fn.body, {
+    loop() {},
+    operation(operation) {
+      if (operation.kind === "integer.arena.vector.allocate" &&
+          constants.get(operation.maximumBits) !== "0") {
+        zeroBoundedVectors = false;
+      }
+    },
+    read() {},
+    write() {},
+  });
+  if (!zeroBoundedVectors) return null;
+  return {
+    kind: "fmpz",
+    reason:
+      "a closed unbounded exact arena is qualified for inline-promoting FLINT fmpz storage",
+    requiresExactWorkspace: true,
+    qualification: "direct-fmpz-vector-matrix-v1",
   };
 }
 
@@ -1265,6 +1415,8 @@ function residentCodeQualityAnalysis(fn) {
 }
 
 function backendPolicy(fn, profile, recursive) {
+  const fmpz = fmpzBackendPolicy(fn);
+  if (fmpz !== null) return fmpz;
   if (fn.params.some((param) => param.type === "NativeIntegerVector")) {
     return {
       kind: "gmp",
@@ -1451,8 +1603,20 @@ function analyzeExactModule(functions) {
       effects: effect,
       taggedInteger: taggedIntegerProof(fn, effect),
       ...(profile.liveExactScopes > 0
-        ? { liveExactWorkspace: liveExactWorkspaceAnalysis(fn) }
+        ? { liveExactWorkspace: liveExactWorkspaceAnalysis(fn, backend) }
         : {}),
+      ...(backend.kind === "fmpz" ? {
+        fmpzExact: {
+          semanticType: "Integer",
+          representation: "flint-fmpz-inline-word-with-gmp-promotion",
+          residentContainers: "inline-promoting-fmpz-vector",
+          promotion: "transparent-and-owning",
+          ffiBoundary: "direct-fmpz_t",
+          hostBoundary: "one-mpz-fmpz-conversion-on-entry-and-exit",
+          cleanup: "clear-promoted-values-before-flint-cache-drain-and-arena-rewind",
+          qualification: backend.qualification,
+        },
+      } : {}),
       ...(residentCodeQuality === undefined ? {} : { residentCodeQuality }),
       ...(hasUint64Bitwise(fn.body) ? { uint64: UINT64_SEMANTICS } : {}),
     };
@@ -1476,5 +1640,6 @@ module.exports = {
   primeSourceEffectAnalyses,
   storageAnalysis,
   taggedIntegerProof,
+  fmpzBackendPolicy,
   residentCodeQualityAnalysis,
 };

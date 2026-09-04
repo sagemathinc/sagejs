@@ -10,6 +10,9 @@ const {
   generateTaggedFunctions,
 } = require("./tagged-backend.cjs");
 const {
+  generateFmpzFunctions,
+} = require("./fmpz-backend.cjs");
+const {
   fitsInt64,
   generateWordFunctions,
   int64Constant,
@@ -43,6 +46,9 @@ const {
   generateExactCoreRuntime,
   generateExactNodeHelpers,
 } = require("./exact-runtime.cjs");
+const {
+  FMPZ_EXACT_RUNTIME_C_SOURCE,
+} = require("./fmpz-runtime.cjs");
 const {
   GMP_CHECKPOINT_ALLOCATOR_C_SOURCE,
 } = require("./gmp-checkpoint-allocator.cjs");
@@ -1981,7 +1987,7 @@ function resourceFailureRefreshStatements(fn, parameterValue = wrapperValue) {
   );
 }
 
-function emitTaggedWrapper(fn) {
+function emitTaggedWrapper(fn, options = {}) {
   const identifiers = wrapperIdentifierContext(fn);
   const parameterValue = (param) => identifiers.parameter(param);
   const wrapperStatus = identifiers.fresh("sagejs_wrapper_status");
@@ -2156,7 +2162,8 @@ function emitTaggedWrapper(fn) {
     declarations,
   );
   return `
-static napi_value compiled_${fn.name}(napi_env env, napi_callback_info info)
+static napi_value ${options.wrapper || `compiled_${fn.name}`}(
+    napi_env env, napi_callback_info info)
 {
     napi_value args[${Math.max(1, fn.params.length)}];
     size_t argc = ${fn.params.length};
@@ -2186,7 +2193,7 @@ ${cleanup.join("\n")}
 }`;
 }
 
-function emitExactWrapper(fn) {
+function emitExactWrapper(fn, options = {}) {
   const identifiers = wrapperIdentifierContext(fn);
   const parameterValue = (param) => identifiers.parameter(param);
   const wrapperStatus = identifiers.fresh("sagejs_wrapper_status");
@@ -2352,7 +2359,8 @@ function emitExactWrapper(fn) {
   const failureRefresh = resourceFailureRefreshStatements(fn, parameterValue);
   const execution = exactWrapperExecution(
     fn,
-    `native_${fn.name}(&${wrapperStatus}, ${resultArguments.join(", ")}` +
+    `${options.call || `native_${fn.name}`}(&${wrapperStatus}, ` +
+      `${resultArguments.join(", ")}` +
       `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""})`,
     wrapperStatus,
     failureRefresh,
@@ -2360,7 +2368,8 @@ function emitExactWrapper(fn) {
     declarations,
   );
   return `
-static napi_value compiled_${fn.name}_gmp(napi_env env, napi_callback_info info)
+static napi_value ${options.wrapper || `compiled_${fn.name}_gmp`}(
+    napi_env env, napi_callback_info info)
 {
     napi_value args[${Math.max(1, fn.params.length)}];
     size_t argc = ${fn.params.length};
@@ -2391,6 +2400,18 @@ ${cleanup.join("\n")}
 }
 
 function emitExactWrappers(fn) {
+  if (fn.analysis?.backend?.kind === "fmpz") {
+    return [
+      emitExactWrapper(fn, {
+        wrapper: `compiled_${fn.name}`,
+        call: `sagejs_kernel_${fn.name}`,
+      }),
+      emitTaggedWrapper(fn, {
+        wrapper: `compiled_${fn.name}_tagged`,
+      }),
+      emitExactWrapper(fn),
+    ].join("\n\n");
+  }
   return [emitTaggedWrapper(fn), emitExactWrapper(fn)].join("\n\n");
 }
 
@@ -3608,6 +3629,41 @@ function publicCoreSignature(fn, prototype = false) {
 }
 
 function publicCoreFunction(fn) {
+  if (fn.analysis?.backend?.kind === "fmpz") {
+    const declarations = [
+      "    int sagejs_core_ok;",
+      "    fmpz_t sagejs_fmpz_result;",
+    ];
+    const initialization = ["    fmpz_init(sagejs_fmpz_result);"];
+    const cleanup = ["    fmpz_clear(sagejs_fmpz_result);"];
+    const arguments_ = [];
+    for (const param of fn.params) {
+      if (param.type !== "Integer") {
+        arguments_.push(`sagejs_arg_${param.name}`);
+        continue;
+      }
+      const value = `sagejs_core_arg_${cName(param.name)}`;
+      declarations.push(`    fmpz_t ${value};`);
+      initialization.push(
+        `    fmpz_init(${value});`,
+        `    fmpz_set_mpz(${value}, sagejs_arg_${param.name});`,
+      );
+      cleanup.unshift(`    fmpz_clear(${value});`);
+      arguments_.push(value);
+    }
+    return `${publicCoreSignature(fn)}
+{
+${declarations.join("\n")}
+    sagejs_native_status_reset(status);
+${initialization.join("\n")}
+    sagejs_core_ok = fmpz_native_${fn.name}(status, sagejs_fmpz_result` +
+      `${arguments_.length ? `, ${arguments_.join(", ")}` : ""});
+    if (sagejs_core_ok)
+        fmpz_get_mpz(sagejs_native_output, sagejs_fmpz_result);
+${cleanup.join("\n")}
+    return sagejs_core_ok;
+}`;
+  }
   if (fn.analysis?.backend?.kind === "tagged") {
     const declarations = ["    int sagejs_core_ok;"];
     const initialization = [];
@@ -3885,6 +3941,7 @@ function generateHostCore(ir, options = {}) {
     fn.kernelKind === "prime-field-matrix"
   );
   const functionMap = new Map(exact.map((fn) => [fn.name, fn]));
+  const fmpz = generateFmpzFunctions(exact);
   const tagged = generateTaggedFunctions(exactEntries);
   const wordFunctions = exactEntries.filter((fn) =>
     ![fn.returnType, ...fn.params.map((param) => param.type)].some((type) =>
@@ -3910,13 +3967,16 @@ function generateHostCore(ir, options = {}) {
     generateStatusRuntime(),
     exact.length > 0 ? GMP_CHECKPOINT_ALLOCATOR_C_SOURCE : "",
     exact.length > 0 ? generateExactCoreRuntime() : "",
+    fmpz.selected.length > 0 ? FMPZ_EXACT_RUNTIME_C_SOURCE : "",
     usesInt64Buffers ? generateInt64BufferCoreSupport() : "",
     usesIntegerBuffers ? generateIntegerBufferCoreSupport() : "",
     exact.map((fn) => internalSignature(fn, true)).join("\n"),
+    fmpz.prototypes,
     word.prototypes,
     tagged.prototypes,
     word.functions,
     tagged.functions,
+    fmpz.functions,
     ...exact.map((fn) => emitExactInternalFunction(fn, functionMap)),
     ...exactEntries.map(publicCoreFunction),
     ...floats.map(emitFloat64CoreFunction),
@@ -3944,6 +4004,7 @@ function generateHostCore(ir, options = {}) {
 #endif
 
 ${exact.length > 0 ? "#include <gmp.h>" : ""}
+${fmpz.selected.length > 0 ? "#include <flint/fmpz.h>" : ""}
 ${fields.some((fn) => fn.kernelKind === "real-field") ? "#include <mpfr.h>" : ""}
 ${fields.some((fn) => fn.kernelKind === "complex-field") ? "#include <mpc.h>" : ""}
 ${primeSources.length + primeFields.length > 0
@@ -4104,6 +4165,10 @@ static int get_precision(
     return fn.kernelKind === "integer"
       ? [
         ordinary,
+        ...(fn.analysis?.backend?.kind === "fmpz" ? [
+          `        {${cString(`${fn.name}$tagged`)}, NULL, ` +
+            `compiled_${fn.name}_tagged, NULL, NULL, NULL, napi_default, NULL}`,
+        ] : []),
         `        {${cString(`${fn.name}$gmp`)}, NULL, ` +
           `compiled_${fn.name}_gmp, NULL, NULL, NULL, napi_default, NULL}`,
       ]

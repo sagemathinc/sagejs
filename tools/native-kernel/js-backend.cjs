@@ -875,7 +875,7 @@ function exactNativeExpression(fn, backend) {
 
 function backendDecision(fn) {
   const policy = fn.analysis.backend;
-  if (["tagged", "gmp", "bigint"].includes(policy.kind)) {
+  if (["tagged", "fmpz", "gmp", "bigint"].includes(policy.kind)) {
     return `  return ${jsString(policy.kind)};`;
   }
   if (policy.kind === "iterations") {
@@ -1006,6 +1006,14 @@ ${normalized.join("\n")}
   }
   return ${exactReturn(fn, exactNativeExpression(fn, '"gmp"'))};
 };
+${fn.analysis.backend.kind === "fmpz" ? `${fn.name}.fmpz = function (${declaredParams}) {
+  validate_${fn.name}(${params});
+${normalized.join("\n")}
+  if (nativeAddon === null) {
+    throw new Error("fmpz native backend is not available");
+  }
+  return ${exactReturn(fn, exactNativeExpression(fn, '"fmpz"'))};
+};` : ""}
 ${fn.name}.backendFor = function (${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
@@ -2760,7 +2768,13 @@ function nativeRaise(name, message) {
 
 function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) {
   try {
-    const property = backend === "gmp" ? name + "$gmp" : name;
+    const taggedProperty = name + "$tagged";
+    const property = backend === "gmp"
+      ? name + "$gmp"
+      : backend === "tagged" &&
+          Object.prototype.hasOwnProperty.call(nativeAddon, taggedProperty)
+        ? taggedProperty
+        : name;
     return nativeAddon[property](...args);
   } catch (error) {
     const message = String(error && error.message || error);
