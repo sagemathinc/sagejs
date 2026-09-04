@@ -783,6 +783,19 @@ function lowerUint64Operand(node, context, operations) {
   return lowerExpression(node, context, operations, "uint64");
 }
 
+/* UInt64Buffer stores uint64 values, but its subscript still has ordinary
+ * Python sequence semantics.  Negative and oversized integer literals are
+ * exact indices rather than invalid uint64 literals, so they reach the
+ * runtime bounds check and raise IndexError.  In-range nonnegative literals,
+ * uint64 symbols, and contextual uint64 arithmetic retain compact word IR. */
+function lowerUInt64BufferIndex(node, context, operations) {
+  const literal = integerLiteral(node);
+  return literal !== undefined &&
+      (literal < 0n || literal > 18446744073709551615n)
+    ? lowerExpression(node, context, operations)
+    : lowerUint64Operand(node, context, operations);
+}
+
 /*
  * Python integer literals have no fixed-width type of their own.  Keep them
  * exact unless their enclosing native operation supplies a uint64 context.
@@ -1801,7 +1814,7 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
     if (BORROWED_BUFFER_TYPES.has(bufferType)) {
       const buffer = lowerExpression(node.expression, context, operations);
       const loweredIndex = buffer.type === "UInt64Buffer"
-        ? lowerUint64Operand(node.property, context, operations)
+        ? lowerUInt64BufferIndex(node.property, context, operations)
         : lowerExpression(node.property, context, operations);
       const index = buffer.type === "UInt64Buffer"
         ? loweredIndex
@@ -2283,7 +2296,7 @@ function lowerBufferAssignment(item, right, operator, context) {
     "indexed exact assignment requires an exact integer or UInt64Buffer",
   );
   const loweredIndex = buffer.type === "UInt64Buffer"
-    ? lowerUint64Operand(item.property, context, operations)
+    ? lowerUInt64BufferIndex(item.property, context, operations)
     : lowerExpression(item.property, context, operations);
   const index = buffer.type === "UInt64Buffer"
     ? loweredIndex

@@ -1222,6 +1222,7 @@ const FMPZ_OPERATION_KINDS = new Set([
   "integer.copy",
   "integer.divmod",
   "integer.from_uint64",
+  "integer.mod_uint64",
   "integer.neg",
   "integer.pow_uint",
   "integer.truth",
@@ -1236,9 +1237,14 @@ const FMPZ_OPERATION_KINDS = new Set([
   "raise",
   "return",
   "uint64.binary",
+  "uint64.buffer.copy",
+  "uint64.buffer.get",
+  "uint64.buffer.length",
+  "uint64.buffer.set",
   "uint64.compare",
   "uint64.constant",
   "uint64.copy",
+  "uint64.from_integer_checked",
   "uint64.truth",
   "value.discard",
 ]);
@@ -1273,16 +1279,20 @@ function inspectFmpzFunction(fn) {
       .map((resource) => resource.compiler_type || resource.python_name),
   );
   const scalarParameter = (param) =>
-    ["Integer", "uint64", "bool", "IntegerBuffer"].includes(param.type);
+    ["Integer", "uint64", "bool", "IntegerBuffer", "UInt64Buffer"]
+      .includes(param.type);
   const borrowedAggregateParameter = (param) =>
     param.type === "IntegerBuffer" ||
+    param.type === "UInt64Buffer" ||
     param.type === "NativeIntegerVector" || fmpzResourceTypes.has(param.type);
   if (!fn.params.every((param) =>
     scalarParameter(param) || borrowedAggregateParameter(param)
   )) return null;
   if (!fn.locals.every((local) =>
-    ["Integer", "uint64", "bool", "NativeExactArena", "NativeIntegerVector"]
-      .includes(local.type) ||
+    [
+      "Integer", "uint64", "bool", "UInt64Buffer", "NativeExactArena",
+      "NativeIntegerVector",
+    ].includes(local.type) ||
     (fn.foreignResources || []).some((resource) =>
       (resource.compiler_type || resource.python_name) === local.type &&
       resource.id === "fmpz_matrix"
@@ -1331,15 +1341,23 @@ function inspectFmpzFunction(fn) {
       if (statement.kind.startsWith("integer.vector.") &&
           statement.kind !== "integer.vector.length") {
         if (statement.indexType !== undefined &&
-            statement.indexType !== "uint64") eligible = false;
+            !["Integer", "uint64"].includes(statement.indexType)) eligible = false;
         if (statement.leftType !== undefined &&
-            statement.leftType !== "uint64") eligible = false;
+            !["Integer", "uint64"].includes(statement.leftType)) eligible = false;
         if (statement.rightType !== undefined &&
-            statement.rightType !== "uint64") eligible = false;
+            !["Integer", "uint64"].includes(statement.rightType)) eligible = false;
       }
       if (statement.kind.startsWith("integer.buffer.")) {
         if (statement.bufferType !== "IntegerBuffer") eligible = false;
         if (statement.kind !== "integer.buffer.length" &&
+            !["Integer", "uint64"].includes(statement.indexType)) {
+          eligible = false;
+        }
+      }
+      if (statement.kind.startsWith("uint64.buffer.")) {
+        if (statement.bufferType !== "UInt64Buffer" &&
+            statement.kind !== "uint64.buffer.copy") eligible = false;
+        if (["uint64.buffer.get", "uint64.buffer.set"].includes(statement.kind) &&
             !["Integer", "uint64"].includes(statement.indexType)) {
           eligible = false;
         }
@@ -1381,7 +1399,7 @@ function inspectFmpzFunction(fn) {
       borrowedAggregateParameter(param)
     ) &&
     fn.locals.every((local) =>
-      ["Integer", "uint64", "bool"].includes(local.type)
+      ["Integer", "uint64", "bool", "UInt64Buffer"].includes(local.type)
     )
   ) {
     return {
@@ -1744,7 +1762,8 @@ function analyzeExactModule(functions) {
     const effect = effects.get(fn.name);
     const residentCodeQuality = residentCodeQualityAnalysis(fn);
     const borrowedFmpzAggregates = fn.params.some((param) =>
-      (profile.liveExactScopes === 0 && param.type === "IntegerBuffer") ||
+      (profile.liveExactScopes === 0 &&
+        ["IntegerBuffer", "UInt64Buffer"].includes(param.type)) ||
       param.type === "NativeIntegerVector" ||
       (fn.foreignResources || []).some((resource) =>
         resource.id === "fmpz_matrix" &&
