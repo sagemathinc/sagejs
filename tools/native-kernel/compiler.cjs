@@ -635,7 +635,9 @@ function resolveForeignCompilationInputs(ir, digestStore) {
           fingerprint: sha256(JSON.stringify(value)),
         });
       });
-  if (ir.functions.some((fn) => fn.analysis?.backend?.kind === "fmpz")) {
+  if ((ir.functions || []).some(
+    (fn) => fn.analysis?.backend?.kind === "fmpz"
+  )) {
     const headers = Object.freeze([
       Object.freeze({
         name: "flint/fmpz.h",
