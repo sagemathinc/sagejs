@@ -1,0 +1,89 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fmpz-word-containers",
+  "title": "fmpz exact word and container closure",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Complete the next fail-closed resident-fmpz slice by supporting exact NativeIntegerVector indices, checked fmpz-to-uint64 conversion, borrowed UInt64Buffer operations with Python indexing semantics, and exact integer modulo uint64 without mpz bridges, with differential and sanitizer evidence",
+  "base_commit": "6826abaca8508d21382da60a25afe172cec9a3df",
+  "claims": [
+    "tools/native-kernel/fmpz-runtime.cjs",
+    "tools/native-kernel/fmpz-backend.cjs",
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/integer-ir.cjs",
+    "tools/native-kernel/test/fmpz-backend.cjs",
+    "tools/native-kernel/test/fmpz-borrowed-aggregates.cjs",
+    "tools/native-kernel/test/fmpz-call-graph.cjs",
+    "tools/native-kernel/test/fmpz-word-containers.cjs"
+  ],
+  "dependencies": [
+    "fmpz-borrowed-aggregates"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "dynamic JavaScript, GMP, tagged, word, and fmpz differential execution",
+      "generated fmpz internal code contains no mpz conversion or host callback"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test tools/native-kernel/test/fmpz-word-containers.cjs tools/native-kernel/test/fmpz-backend.cjs tools/native-kernel/test/fmpz-call-graph.cjs tools/native-kernel/test/fmpz-borrowed-aggregates.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm run architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.534,
+      "started_at": "2026-09-04T10:56:44.735Z",
+      "commit": "6826abaca8508d21382da60a25afe172cec9a3df",
+      "workspace_fingerprint": "a3048bc6c923e9b2a8503f24d4984a9abea2218e04875282ab9480bb542a1b0d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.197,
+      "started_at": "2026-09-04T10:57:28.358Z",
+      "commit": "6826abaca8508d21382da60a25afe172cec9a3df",
+      "workspace_fingerprint": "a3048bc6c923e9b2a8503f24d4984a9abea2218e04875282ab9480bb542a1b0d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/fmpz-word-containers.cjs tools/native-kernel/test/fmpz-backend.cjs tools/native-kernel/test/fmpz-call-graph.cjs tools/native-kernel/test/fmpz-borrowed-aggregates.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.835,
+      "started_at": "2026-09-04T10:58:19.521Z",
+      "commit": "6826abaca8508d21382da60a25afe172cec9a3df",
+      "workspace_fingerprint": "a3048bc6c923e9b2a8503f24d4984a9abea2218e04875282ab9480bb542a1b0d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds allocation-free direct-fmpz checked uint64 conversion and floor modulo, exact NativeIntegerVector indices with pre-mutation validation, and borrowed UInt64Buffer get/set/length with Python negative indexing. Generated internal fmpz functions remain free of mpz bridges and host callbacks. Focused differential tests cover fmpz/GMP/tagged/JavaScript plus ordinary CPython, immutable input leases, aliasing, promoted and 4096-bit values, boundary failures with unchanged outputs, and ASan/UBSan checks of direct vector helpers. The obsolete checked-uint64 fail-closed witnesses now use exact range, which remains deliberately unsupported for the next serialized lane.",
+    "risks": [
+      "The portable modulus helper is compiled and directly checked on a 64-bit FLINT host for moduli above 32-bit range, but actual FLINT_BITS=32 execution depends on downstream cross-platform CI.",
+      "pnpm test:changed passed its full build plus native-architecture and WebAssembly audit subchecks, then stopped because the merge-owned optimizer-opportunity artifact manifest is stale after compiler changes; it did not reach the remaining unit/native/Wasm test umbrellas, and this lane does not claim or regenerate that shared artifact."
+    ],
+    "next_steps": [
+      "The exact-range/ownership lane should use this word/container support to remove the remaining borrowed-vector GMP ownership blocker in the 83-function cubic closure.",
+      "Integration should regenerate the optimizer-opportunity artifacts, rerun the mandatory full architecture/native validation, and exercise Linux arm64, macOS arm64, and Windows x64 CI."
+    ]
+  }
+}
