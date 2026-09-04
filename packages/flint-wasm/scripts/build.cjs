@@ -167,6 +167,9 @@ const serializationOutput = path.join(
   "serialization.mjs",
 );
 const plotlyOutput = path.join(outputDirectory, "plotly.min.js");
+const katexOutput = path.join(outputDirectory, "katex.min.js");
+const katexCssOutput = path.join(outputDirectory, "katex.min.css");
+const katexFontsOutput = path.join(outputDirectory, "fonts");
 const capabilityApiOutput = path.join(outputDirectory, "wasm-capability-api.mjs");
 const capabilityReportOutput = path.join(outputDirectory, "wasm-capabilities-report.json");
 const autoReceiptPolicySource = path.join(
@@ -998,6 +1001,13 @@ fs.copyFileSync(
   plotlyOutput,
 );
 const plotlySource = require.resolve("plotly.js-dist-min/plotly.min.js");
+const katexSource = require.resolve("katex/dist/katex.min.js");
+const katexDirectory = path.dirname(katexSource);
+fs.copyFileSync(katexSource, katexOutput);
+fs.copyFileSync(path.join(katexDirectory, "katex.min.css"), katexCssOutput);
+fs.cpSync(path.join(katexDirectory, "fonts"), katexFontsOutput, {
+  recursive: true,
+});
 const wasmPackLoaderSource = path.join(
   repositoryRoot,
   "tools",

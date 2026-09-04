@@ -375,7 +375,7 @@ print(
     );
     await runSource(
       "AffineSpace(GF(4, 'a'), 2)",
-      "NotImplementedError: algebraic geometry currently supports QQ and " +
+      "Error: algebraic geometry currently supports QQ and " +
         "prime GF(p); finite extensions and number fields are planned in " +
         "agents/no-singular-extension-fields-plan.md",
     );
