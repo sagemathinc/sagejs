@@ -3635,6 +3635,58 @@ class P1List:
             native,
         )
 
+    def character_hecke_selected_rows(
+        self,
+        weight: Any,
+        sign: Any,
+        character: Any,
+        base_ring: Any,
+        source: Any,
+        indices: Any,
+    ) -> Any:
+        r"""Return selected exact rows of character Hecke operators.
+
+        This is an internal high-precision capability used by the Gamma1
+        character-descent path. A backend without the capability returns
+        `None`, leaving the direct fixed-character algorithm available.
+        """
+        weight = _positive_integer(weight, "modular-symbol weight")
+        sign = _exact_integer(sign, "sign")
+        source = _exact_nonnegative_integer(source, "Hecke source row")
+        hecke_indices = [
+            _positive_integer(index, "Hecke index") for index in list(indices)
+        ]
+        if character.order() <= 2:
+            return None
+        presentation = self.character_presentation(weight, sign, character, base_ring)
+        if source >= presentation.dimension():
+            raise IndexError("Hecke source row out of range")
+        backend = runtime.flint_backend()
+        method = runtime.reflect.get(backend, "p1ListCharacterHeckeSelectedRows")
+        if runtime.jstype(method) != "function":
+            return None
+        native = runtime.reflect.apply(
+            method,
+            backend,
+            [
+                self._native,
+                weight,
+                sign,
+                source,
+                hecke_indices,
+                character._parent._native,
+                character._index,
+                presentation._native,
+            ],
+        )
+        matrix_space = MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+            base_ring, 1, presentation.dimension()
+        )
+        return [
+            Matrix(matrix_space, native[position])  # type: ignore[name-defined]  # noqa: F821
+            for position in range(len(hecke_indices))
+        ]
+
     def _hecke_matrix(
         self,
         prime: Any,
@@ -4021,6 +4073,7 @@ class ModularSymbolsSpace(sage.Parent):
         self._q_expansion_signed_cusp_space_cache = None
         self._q_expansion_data_cache = runtime.map()
         self._q_expansion_basis_cache = runtime.map()
+        self._prefer_selected_character_hecke_rows = False
         if serialized_dimension is not None:
             self._dimension = _exact_nonnegative_integer(
                 serialized_dimension, "serialized dimension"
@@ -4247,6 +4300,13 @@ class ModularSymbolsSpace(sage.Parent):
         analogue of the direct Hecke-image strategy used by Sage's optimized
         nonquadratic-character code.
         """
+        if self._prefer_selected_character_hecke_rows:
+            selected = self._character_hecke_selected_rows(
+                functional_index, list(range(1, precision))
+            )
+            if selected is not None:
+                return selected.rows()
+
         native_images = runtime.reflect.get(
             runtime.flint_backend(), "p1ListCharacterHeckeImages"
         )
@@ -4298,6 +4358,47 @@ class ModularSymbolsSpace(sage.Parent):
             rows.append(image)
         return rows
 
+    def _character_hecke_selected_rows(
+        self,
+        functional_index: int,
+        indices: list[int],
+    ) -> Any:
+        """Return selected rows of several $T_n$ using retained coordinates."""
+        ambient = self.ambient_module()
+        if not ambient._supports_native_character():
+            return None
+        basis = self.basis_matrix()
+        coefficients = basis.row(functional_index).list()
+        nonzero_sources = []
+        for source, coefficient in enumerate(coefficients):
+            if coefficient != 0:
+                nonzero_sources.append((source, coefficient))
+        answer = None
+        for source, coefficient in nonzero_sources:
+            images = ambient.p1list().character_hecke_selected_rows(
+                ambient.weight(),
+                ambient.sign(),
+                ambient._character,
+                ambient.base_ring(),
+                source,
+                indices,
+            )
+            if images is None:
+                return None
+            rows = images[0]
+            for image in images[1:]:
+                rows = rows.stack(image)
+            if coefficient != 1:
+                rows = rows * coefficient
+            answer = rows if answer is None else answer + rows
+        if answer is None:
+            answer = matrix(  # type: ignore[name-defined]  # noqa: F821
+                ambient.base_ring(), len(indices), ambient.dimension()
+            )
+        if self.is_ambient():
+            return answer
+        return answer.matrix_from_columns(list(basis.pivots()))
+
     def _q_expansion_row_basis(self, rows: list[Any]) -> tuple[Any, Any]:
         r"""Return the canonical row basis and its exact lift from `rows`.
 
@@ -4311,7 +4412,11 @@ class ModularSymbolsSpace(sage.Parent):
         """
         coefficient_ring = self.base_ring()
         raw_matrix = matrix(coefficient_ring, rows)  # type: ignore[name-defined]  # noqa: F821
-        if self._character is not None and not self.character().is_real():
+        if (
+            self._character is not None
+            and not self.character().is_real()
+            and coefficient_ring.degree() > 2
+        ):
             kernel = raw_matrix.right_kernel().basis_matrix()
             coefficient_basis = kernel.right_kernel().basis_matrix()
             lift_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821

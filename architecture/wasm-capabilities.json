@@ -16483,6 +16483,25 @@
       "public_explanation": "Higher-character q-expansions use the exact portable Hecke recurrence when the native bulk power-basis adapter is unavailable."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeSelectedRows",
+      "kind": "napi-export",
+      "family": "modular-symbols",
+      "source": "packages/flint/src/p1.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/modular.py"
+      ],
+      "tests": [
+        "modular-symbols-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Node selected-row power-basis adapter is optional; browser execution retains the exact direct character image and prime-power recurrence paths.",
+      "public_explanation": "Gamma1 character descent uses the exact direct or portable Hecke recurrence when the selected-row native adapter is unavailable."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",
       "kind": "napi-export",
       "family": "modular-symbols",

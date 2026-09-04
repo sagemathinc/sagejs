@@ -4,7 +4,7 @@
   "counts": {
     "declared-ffi": 7,
     "migrate-to-declared-ffi": 238,
-    "migrate-to-typed-python": 35,
+    "migrate-to-typed-python": 36,
     "retain-differential-oracle": 6,
     "retain-host-adapter": 35,
     "retain-representation-primitive": 33
@@ -181,7 +181,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 3209,
+        "line": 3223,
         "lines": 177,
         "sha256": "125ad758282200c67e5a8235148b58f4dfde1eef8828bddc5406c2705557cf48",
         "calls": [
@@ -237,7 +237,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 3031,
+        "line": 3045,
         "lines": 22,
         "sha256": "7693c0f71428eebd9d05d21feb4382500a51de0e8594cb7fca3adc7efc9a028d",
         "calls": [
@@ -5162,7 +5162,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 2858,
+        "line": 2872,
         "lines": 18,
         "sha256": "6f1847c1e1389798d0a47ce0db4dd3e336446861410b4c6a59ebca85b7d08f86",
         "calls": [
@@ -5655,7 +5655,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 4929,
+        "line": 5157,
         "lines": 49,
         "sha256": "d48c8088271b7e1902d6b8939db1c30c1b13a91d4968316cb7122ca1a7cabc0e",
         "calls": [
@@ -5696,7 +5696,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 5013,
+        "line": 5241,
         "lines": 33,
         "sha256": "c39cd70877426672189f37d31a3591edfe206db625f5baa424fb4635a2e204ce",
         "calls": [
@@ -5737,7 +5737,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 4979,
+        "line": 5207,
         "lines": 33,
         "sha256": "da3781394739f6f61f092a0552c5c63a790c42208587d65518ff346f637a498d",
         "calls": [
@@ -9045,7 +9045,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 296,
+        "line": 301,
         "lines": 32,
         "sha256": "62ea3cb2b7231234ccf28bfddae55f89bb3c461e2cb79400db240a6bf0df3c2d",
         "calls": [
@@ -9091,7 +9091,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 446,
+        "line": 451,
         "lines": 4,
         "sha256": "189a6008aabe01fb3723dc4f145e09a7040c0c95d12e60bb089e5b26d4794c67",
         "calls": [
@@ -9123,7 +9123,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 456,
+        "line": 461,
         "lines": 4,
         "sha256": "4ddf28c61546a53d394c2bd187cae662f2db92d437dce8d99d011de9d0f530f6",
         "calls": [
@@ -9157,7 +9157,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 451,
+        "line": 456,
         "lines": 4,
         "sha256": "f7cb1aed24a56506dae2c310c6948d52ea8a24689213798a2d953ebc03ad3391",
         "calls": [
@@ -9191,7 +9191,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 461,
+        "line": 466,
         "lines": 4,
         "sha256": "06959ddcf758e5aef078485a865fc75c16ac394195ed0574019b029c3c9d7b65",
         "calls": [
@@ -9223,7 +9223,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 858,
+        "line": 863,
         "lines": 48,
         "sha256": "d6cb800ec9d1d98bf23ee9ff807f9b572d925bc6c4fce8bdd035e794eaaa9eb8",
         "calls": [
@@ -9270,7 +9270,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 4448,
+        "line": 4676,
         "lines": 435,
         "sha256": "3679dea47eb2dcdc467d8546a1d4c249e10398fe87347c48125da032fd112860",
         "calls": [
@@ -9342,7 +9342,6 @@
         "PARI/GP"
       ],
       "consumers": [
-        "packages/flint/test/modular.cjs",
         "src/baselib/modular.py"
       ],
       "declared_ffi": null
@@ -9357,9 +9356,9 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 4179,
+        "line": 4265,
         "lines": 262,
-        "sha256": "9fa3857cefcc4f35c2ba01ad961aea76e36509143c202ca412965ab8ab89d0ec",
+        "sha256": "1bd5b0f854946a4c3bffdfe458ea76e68de28cfa3a65caaadf55b0fe29063b67",
         "calls": [
           "_qqbar_vec_clear",
           "_qqbar_vec_init",
@@ -9424,6 +9423,62 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeSelectedRows",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListCharacterHeckeSelectedRows",
+      "callback": "sagejs_p1list_character_hecke_selected_rows",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/p1.c",
+        "line": 4535,
+        "lines": 134,
+        "sha256": "3399879d8f215eeb5f1b3e86a31e0d44934d64a7d399c8b219cce0f4de743e7e",
+        "calls": [
+          "dirichlet_char_clear",
+          "free",
+          "gr_mat_clear",
+          "gr_mat_init",
+          "n_is_prime",
+          "napi_create_array_with_length",
+          "napi_get_array_length",
+          "napi_get_cb_info",
+          "napi_get_element",
+          "napi_is_array",
+          "napi_set_element",
+          "napi_throw_error",
+          "napi_throw_range_error",
+          "napi_throw_type_error",
+          "p1_bigint_to_ulong",
+          "p1_character_hecke_cyclotomic",
+          "p1_character_presentation_unwrap",
+          "p1_check_napi",
+          "p1_heilbronn_cremona",
+          "p1_heilbronn_merel",
+          "p1_safe_integer",
+          "p1_unwrap",
+          "sagejs_cyclotomic_matrix_clear",
+          "sagejs_dirichlet_character_init_native",
+          "sagejs_qqbar_matrix_from_cyclotomic_gr_mat"
+        ]
+      },
+      "family": "modular-symbols",
+      "decision": "migrate-to-typed-python",
+      "note": null,
+      "rationale": "P1 and modular-symbol exports combine packed representation primitives, retained C oracles, and Sage.js-owned algorithms.",
+      "fallback": "Strict Python modular-symbol code and source-transparent P1 kernels provide the semantic fallback.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "PARI/GP"
+      ],
+      "consumers": [
+        "packages/flint/test/modular.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListCharacterPresentation",
@@ -9433,7 +9488,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 2877,
+        "line": 2891,
         "lines": 87,
         "sha256": "a9774abae881ab630d8e84405a91f9b2885076fd5362223209fdd1a05611a1a0",
         "calls": [
@@ -9486,7 +9541,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 341,
+        "line": 346,
         "lines": 12,
         "sha256": "717be63b42099b81076880f4699e121e528ce253055220ad22d7e3cda0bfbfc3",
         "calls": [
@@ -9525,7 +9580,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 907,
+        "line": 912,
         "lines": 36,
         "sha256": "f2d551f52559d4e82b03738d1cc63fe48fef6197d73e5d8c8e54f014fc685d84",
         "calls": [
@@ -9568,7 +9623,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 761,
+        "line": 766,
         "lines": 69,
         "sha256": "a05918b5d0c9c56810d17ca41fb11c972f5ef64e8bfe180d929b6658dd8698b5",
         "calls": [
@@ -9611,7 +9666,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 354,
+        "line": 359,
         "lines": 11,
         "sha256": "968348feb64467b0dca62de5f6791c7eacbf6a82f665458087a8820edb19689a",
         "calls": [
@@ -9649,7 +9704,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 717,
+        "line": 722,
         "lines": 43,
         "sha256": "391696a10bf8384e79deb5da34844254bea483f4cff54b2bbb331dbce9c2efc0",
         "calls": [
@@ -9695,7 +9750,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 3750,
+        "line": 3764,
         "lines": 165,
         "sha256": "561536e1149226ba256fd4e2531e738455385283e6cc0810457890962def33da",
         "calls": [
@@ -9751,7 +9806,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 3606,
+        "line": 3620,
         "lines": 143,
         "sha256": "5f40c26b66d29fd0a11658c5fced19b18112bfbba51137b1a2d34f3859b6c505",
         "calls": [
@@ -9810,7 +9865,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 2783,
+        "line": 2797,
         "lines": 74,
         "sha256": "7dfc8c2e5813a9accbecf20bec3acc61c9b71242adbb381973375b56b6163307",
         "calls": [
@@ -9859,7 +9914,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 390,
+        "line": 395,
         "lines": 20,
         "sha256": "4384650579d44a9ea120ee63087c2db5fff6cc539da8f75de1185bc40f5521b4",
         "calls": [
@@ -9899,7 +9954,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 329,
+        "line": 334,
         "lines": 11,
         "sha256": "af2dc68ee2bf278c02362f3fea82bd7f355d8109a2cfa5a66c4f44fe14386b1c",
         "calls": [
@@ -9935,7 +9990,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 664,
+        "line": 669,
         "lines": 52,
         "sha256": "4c1bb47642e374f592c916e06ff94902a41c6c5b470daefd3df210c078cd9c22",
         "calls": [
@@ -9977,7 +10032,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 620,
+        "line": 625,
         "lines": 35,
         "sha256": "9be8a304033a74993016be49e5947792465b5d95d4ef87aef51ddaabfbd97c69",
         "calls": [
@@ -10021,7 +10076,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 366,
+        "line": 371,
         "lines": 23,
         "sha256": "d12bab8b9482edf68ea691301cea46d1743b0e4676a4b76b43c677792a8fdbfc",
         "calls": [
@@ -10059,7 +10114,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 4884,
+        "line": 5112,
         "lines": 44,
         "sha256": "dc666c997ca4ffbcf433bf9d66b22744414f5c5336948a61d51c93ac0f7bda13",
         "calls": [
@@ -10102,7 +10157,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 1554,
+        "line": 1559,
         "lines": 84,
         "sha256": "3e21ce5965fce7504b6861b5fbb3d15cd3ce83917361f52b9211bfab60957c94",
         "calls": [
@@ -10153,7 +10208,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 944,
+        "line": 949,
         "lines": 34,
         "sha256": "46c27f22f6001b3b0a157d91b2598fadadd79d3392dac676e3b6f47e3f11c5af",
         "calls": [

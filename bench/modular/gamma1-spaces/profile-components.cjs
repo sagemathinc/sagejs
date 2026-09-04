@@ -25,7 +25,7 @@ async function main() {
     for (let index = 0; index < count; index += 1) {
       const cuspElapsed = await measure(
         session,
-        `F=A[${index}].fixed_character_space()\nCS${index}=F.cuspidal_subspace()\nBC${index}=CS${index}.q_expansion_basis(precision)`,
+        `F=A[${index}].fixed_character_space()\nCS${index}=F.cuspidal_subspace()\nMS${index}=CS${index}._modular_symbols_cusp_space()\nMS${index}._prefer_selected_character_hecke_rows=True\nBC${index}=CS${index}.q_expansion_basis(precision)`,
       );
       console.log(`cuspidal basis component ${index}: ${cuspElapsed.toFixed(1)} ms`);
       const eisensteinElapsed = await measure(

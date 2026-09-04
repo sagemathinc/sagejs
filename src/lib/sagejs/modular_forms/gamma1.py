@@ -263,6 +263,15 @@ def descended_dimension(
 
 def _fixed_basis(component: Gamma1CharacterComponent, precision: int) -> list[Any]:
     fixed_space = component.fixed_character_space()
+    subspace_kind = getattr(fixed_space, "_subspace_kind", None)
+    cusp_space = None
+    if subspace_kind == "Cuspidal":
+        cusp_space = fixed_space
+    elif subspace_kind is None and hasattr(fixed_space, "cuspidal_subspace"):
+        cusp_space = fixed_space.cuspidal_subspace()
+    if cusp_space is not None:
+        symbols = cusp_space._modular_symbols_cusp_space()
+        symbols._prefer_selected_character_hecke_rows = True
     return list(fixed_space.q_expansion_basis(precision))
 
 

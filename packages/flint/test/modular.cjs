@@ -134,7 +134,7 @@ test("native character Manin presentations retain cyclotomic scalars", () => {
     p1, 2, 0, 2, group, 2n,
   );
   assert.equal(flint.matrixEqual(t2, legacyT2), true);
-  const images = flint.p1ListCharacterHeckeImages(
+  const images = flint.p1ListCharacterHeckeSelectedRows(
     p1, 2, 0, 0, [1, 2, 3, 4, 5, 6], group, 2n, full,
   );
   assert.equal(images.length, 6);
@@ -170,7 +170,7 @@ test("native character Manin presentations retain cyclotomic scalars", () => {
     );
   }
   assert.throws(
-    () => flint.p1ListCharacterHeckeImages(
+    () => flint.p1ListCharacterHeckeSelectedRows(
       p1, 2, 0, full.dimension, [1], group, 2n, full,
     ),
     /valid source row/,

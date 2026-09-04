@@ -850,7 +850,7 @@ def _modular_symbols_q_expansion_data(
     source_space: Any,
     precision: int,
     use_cache: bool = True,
-) -> tuple[Any, Any, Any, Any, Any, Any]:
+) -> tuple[Any, Any, Any, Any, Any]:
     """Return the Hecke-dual basis and its exact modular-symbol lift."""
     return source_space._q_expansion_data(precision, use_cache)
 

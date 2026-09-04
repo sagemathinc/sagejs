@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "e119bc32aa904b622349cb667aae116db7119802e4699b81fc2ef722a4608a94",
+  "source_sha256": "afdb26b825f57e4c0b56ed7f96114d6b331685cabab96b8f31bd6f87e40f5090",
   "counts": {
-    "total": 1081,
+    "total": 1082,
     "by_kind": {
       "declared-ffi-function": 463,
       "declared-ffi-resource": 34,
-      "napi-export": 354,
+      "napi-export": 355,
       "production-kernel": 55,
       "runtime-intrinsic": 147,
       "specialist-capability": 28
@@ -16,13 +16,13 @@
       "compiled-source": 55,
       "desktop-only": 47,
       "generated-wasm": 363,
-      "portable-fallback": 566,
+      "portable-fallback": 567,
       "shared-core": 50
     },
     "by_status": {
       "available": 609,
       "desktop-only": 47,
-      "fallback": 425
+      "fallback": 426
     }
   },
   "workflow_aliases": {
@@ -9499,6 +9499,18 @@
         "src/baselib/modular.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeSelectedRows",
+      "family": "modular-symbols",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/modular.py"
+      ],
+      "explanation": "Gamma1 character descent uses the exact direct or portable Hecke recurrence when the selected-row native adapter is unavailable."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",

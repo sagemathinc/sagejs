@@ -156,10 +156,19 @@ the basis in $0.63$ seconds.
 
 The larger $N=53$, $k=2$ receipt includes two degree-$12$ character
 components.  Sage.js constructs the complete $143$-dimensional rational basis
-in $45.80$ seconds, versus $152.46$ seconds in SageMath and $2.80$ seconds in
-Magma.  Its first $T_2$ takes $11.87$ seconds in Sage.js versus $151.73$ seconds
-in SageMath.  Exact cyclotomic divisor sieves and coordinate-preserving matrix
-arithmetic make Sage.js $3.33\times$ faster than SageMath for the basis and
-$12.8\times$ faster for first Hecke action at this level.  Magma remains the
+in $46.29$ seconds, versus $152.46$ seconds in SageMath and $2.80$ seconds in
+Magma.  Its first $T_2$ takes $14.07$ seconds in Sage.js versus $151.73$ seconds
+in SageMath.  Exact cyclotomic divisor sieves, selected-row Hecke traversal,
+and coordinate-preserving matrix arithmetic make Sage.js $3.29\times$ faster
+than SageMath for the basis and $10.8\times$ faster for first Hecke action at
+this level.
+
+At $N=73$, $k=2$, Sage.js constructs the complete $258$-dimensional basis
+through Sturm precision $890$ and its first cuspidal $T_2$ in $330.50$
+seconds.  The matched SageMath computation exceeded the $1800$-second bound,
+giving a conservative end-to-end speedup greater than $5.45\times$.  The
+dispatcher uses direct reduction for the few rows over quadratic coefficient
+fields and native double-kernel reconstruction for higher-degree fields,
+avoiding a large artificial kernel at this scale.  Magma remains the
 performance target.  See the committed receipt for exact commands, host
-details, the level-$73$ bounded scaling observation, and operator timings.
+details, and operator timings.

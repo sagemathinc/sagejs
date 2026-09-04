@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5402,
-      "bytes": 178147,
+      "lines": 5405,
+      "bytes": 178306,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -128,8 +128,8 @@
     },
     {
       "path": "packages/flint/src/p1.c",
-      "lines": 5045,
-      "bytes": 181412,
+      "lines": 5273,
+      "bytes": 190508,
       "decision": "typed-remediation-pilot",
       "priority": "critical",
       "responsibilities": [
