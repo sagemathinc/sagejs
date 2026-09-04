@@ -23,6 +23,7 @@ Start with:
 - [Polyglot execution](../POLYGLOT.md)
 - [Python standard library compatibility](python-standard-library.md)
 - [Portable modern Gröbner bases](groebner-bases.md)
+- [Algebraic geometry without Singular](algebraic-geometry.md)
 - [Certified number-field maximal orders](number-field-maximal-orders.md)
 - [General number-field class and unit groups](number-field-class-unit-groups.md)
 - [Plotting](../PLOTTING.md)

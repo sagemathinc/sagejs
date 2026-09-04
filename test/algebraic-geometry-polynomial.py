@@ -1,4 +1,5 @@
 # sagejs-test-tier: portable
+# DISABLED: full-runtime lazy-package fixture, run by algebraic-geometry.cjs
 """Polynomial calculus and canonical quotient-ring acceptance."""
 
 R = PolynomialRing(QQ, names=("x", "y"))
@@ -41,6 +42,18 @@ assert Q.basis() == (Q(1), Q(y), Q(x), Q(x * y))
 assert Q.coordinates(qx * qy + 2) == (QQ(2), QQ(0), QQ(0), QQ(1))
 assert Q.multiplication_matrix(qx).nrows() == 4
 assert Q.minpoly(qy) == PolynomialRing(QQ, "t")([-1, 0, 1])
+assert qx * qy + 2 == Q(x * y + 2)
+
+# A second quotient of the same cover ring must neither create an ambiguous
+# common parent nor change ordinary polynomial/scalar arithmetic.
+Q2 = R.ideal(x, y).quotient_ring()
+assert Q2(x + 1) == 1
+assert x + 1 == R(x + 1)
+try:
+    qx + Q2(x)
+    raise AssertionError("different quotient parents must not coerce")
+except TypeError:
+    pass
 
 positive = R.ideal(x * y).quotient_ring()
 try:

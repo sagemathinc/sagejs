@@ -19,6 +19,7 @@ _arbitrary_prime_public_module_cache = runtime.undefined
 _polynomial_ideal_algorithms_module_cache = runtime.undefined
 _polynomial_ideal_operations_module_cache = runtime.undefined
 _polynomial_hilbert_module_cache = runtime.undefined
+_polynomial_zero_dimensional_module_cache = runtime.undefined
 _polynomial_quotient_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
 _generated_flint_resources_available_cache = runtime.undefined
@@ -69,6 +70,17 @@ def _polynomial_hilbert() -> Any:
             fromlist=["hilbert_series"],
         )
     return _polynomial_hilbert_module_cache
+
+
+def _polynomial_zero_dimensional() -> Any:
+    """Load exact zero-dimensional decomposition algorithms lazily."""
+    global _polynomial_zero_dimensional_module_cache
+    if _polynomial_zero_dimensional_module_cache is runtime.undefined:
+        _polynomial_zero_dimensional_module_cache = __import__(
+            "sagejs.polynomial_algorithms.zero_dimensional",
+            fromlist=["radical"],
+        )
+    return _polynomial_zero_dimensional_module_cache
 
 
 def _closed_field_horner(base: Any, coefficients: Any, value: Any) -> Any:
@@ -5255,7 +5267,7 @@ class PolynomialIdeal:
         proof: Any = None,
     ) -> bool:
         """Return whether this is the unit ideal."""
-        return self.normal_form(1, algorithm=algorithm, proof=proof) == 0
+        return self.normal_form(1, algorithm=algorithm, proof=proof) == self._ring(0)
 
     def _require_same_ring(self, other: Any) -> PolynomialIdeal:
         if not isinstance(other, PolynomialIdeal) or other._ring is not self._ring:
@@ -5607,18 +5619,38 @@ class PolynomialIdeal:
                 return [1, pure[1], mixed[1], mixed[0]]
         return runtime.undefined
 
-    def primary_decomposition(self) -> list[PolynomialIdeal]:
-        """
-        Return the primary components of a two-variable monomial staircase.
+    def radical(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> PolynomialIdeal:
+        """Return the exact radical in the supported zero-dimensional scope."""
+        return _polynomial_zero_dimensional().radical(self, algorithm, proof)
 
-        For `I=(x^a,x^b*y^c)` with `0 < b < a`, this uses the exact
-        identity `I=(x^b) intersection (x^a,y^c)`.
+    def is_radical(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> bool:
+        """Return whether a supported zero-dimensional ideal is radical."""
+        return _polynomial_zero_dimensional().is_radical(self, algorithm, proof)
+
+    def primary_decomposition(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> list[PolynomialIdeal]:
+        """Return primary components in the supported exact scope.
+
+        Zero-dimensional ideals over `QQ` and prime fields use quotient-
+        algebra splitting with exact recomposition. The historical exact
+        two-variable monomial-staircase case remains available in positive
+        dimension. Other positive-dimensional ideals are rejected.
         """
         data = self._two_generator_monomial_staircase()
         if data is runtime.undefined:
-            raise NotImplementedError(
-                "primary decomposition currently supports two-generator "
-                "monomial staircases in two variables"
+            return _polynomial_zero_dimensional().primary_decomposition(
+                self, algorithm, proof
             )
         pure_index, pure_power, shared_power, other_power = data
         other_index = 1 - pure_index
@@ -5632,13 +5664,16 @@ class PolynomialIdeal:
             ),
         ]
 
-    def associated_primes(self) -> list[PolynomialIdeal]:
-        """Return radicals of the supported monomial primary components."""
+    def associated_primes(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> list[PolynomialIdeal]:
+        """Return the associated primes in the supported exact scope."""
         data = self._two_generator_monomial_staircase()
         if data is runtime.undefined:
-            raise NotImplementedError(
-                "associated primes currently support two-generator "
-                "monomial staircases in two variables"
+            return _polynomial_zero_dimensional().associated_primes(
+                self, algorithm, proof
             )
         pure_index = data[0]
         other_index = 1 - pure_index
@@ -5815,231 +5850,6 @@ def ideal(*generators: Any) -> PolynomialIdeal:
     if not isinstance(first, MultivariatePolynomialElement):
         raise TypeError("the prototype ideal constructor needs polynomial generators")
     return first._parent.ideal(selected)
-
-
-@runtime.callable_instance_class
-class AffineSpaceParent(sage.Parent):
-    def __init__(
-        self,
-        dimension: int,
-        base: sage.Parent,
-        names: Any = "x",
-    ) -> None:
-        if not runtime.is_exact_integer(dimension):
-            raise TypeError("affine-space dimension must be an integer")
-        dimension = int(dimension)
-        if dimension < 0:
-            raise ValueError("affine-space dimension must be nonnegative")
-        self._dimension = dimension
-        self._base = base
-        self._coordinate_ring = PolynomialRing(base, dimension, names=names)
-
-    def dimension(self) -> int:
-        return self._dimension
-
-    def base_ring(self) -> sage.Parent:
-        return self._base
-
-    def coordinate_ring(self) -> Any:
-        return self._coordinate_ring
-
-    def gens(self) -> Any:
-        return self._coordinate_ring.gens()
-
-    def __repr__(self) -> str:
-        return (
-            "Affine Space of dimension "
-            + str(self._dimension)
-            + " over "
-            + str(self._base)
-        )
-
-    __str__ = __repr__
-    toString = __repr__
-
-
-def AffineSpace(
-    dimension: int,
-    base: sage.Parent,
-    names: Any = "x",
-) -> AffineSpaceParent:
-    """
-    Construct affine space with the requested coordinate names.
-
-    ### Example
-
-    ```sage
-    sage: A = AffineSpace(2, QQ, 'xy')
-    sage: A
-    Affine Space of dimension 2 over Rational Field
-    sage: A.gens()
-    (x, y)
-    ```
-
-    The coordinate ring is a FLINT-backed multivariate polynomial ring.
-    """
-    return AffineSpaceParent(dimension, base, names)
-
-
-@runtime.callable_instance_class
-class ClosedSubscheme:
-    def __init__(
-        self,
-        ambient: AffineSpaceParent,
-        equations: Any,
-    ) -> None:
-        self._ambient = ambient
-        ring = ambient.coordinate_ring()
-        self._equations = runtime.math_tuple([ring(equation) for equation in equations])
-
-    def ambient_space(self) -> AffineSpaceParent:
-        return self._ambient
-
-    def defining_polynomials(self) -> Any:
-        return self._equations
-
-    def irreducible_components(self) -> list[ClosedSubscheme]:
-        ring = self._ambient.coordinate_ring()
-        if (
-            len(self._equations) != 2
-            or ring.ngens() != 2
-            or ring.base_ring() is not sage.QQ
-        ):
-            raise NotImplementedError(
-                "irreducible components of general closed subschemes "
-                "require primary decomposition"
-            )
-        first = self._equations[0]
-        second = self._equations[1]
-        elimination = first.resultant(second, ring.gen(0))
-        factors = elimination.irreducible_factors()
-        ordered = []
-        for factor_value in factors:
-            insert_at = len(ordered)
-            for index in range(len(ordered)):
-                if factor_value.total_degree() < ordered[index].total_degree() or (
-                    factor_value.total_degree() == ordered[index].total_degree()
-                    and repr(factor_value) > repr(ordered[index])
-                ):
-                    insert_at = index
-                    break
-            ordered.insert(insert_at, factor_value)
-        answer = []
-        for factor_value in ordered:
-            basis = ring.ideal(first, second, factor_value).groebner_basis()
-            squarefree_basis = []
-            for polynomial in basis:
-                product = ring(1)
-                for irreducible in polynomial.irreducible_factors():
-                    product = product * irreducible
-                squarefree_basis.append(product)
-            answer.append(ClosedSubscheme(self._ambient, squarefree_basis))
-        return answer
-
-    def __repr__(self) -> str:
-        lines = ["Closed subscheme of " + str(self._ambient) + " defined by:"]
-        equations = list(self._equations)
-        if (
-            len(equations) == 2
-            and equations[0].total_degree() == 1
-            and equations[1].total_degree() == 1
-        ):
-            equations.reverse()
-        for index in range(len(equations)):
-            suffix = "," if index + 1 < len(self._equations) else ""
-            lines.append("  " + repr(equations[index]) + suffix)
-        return "\n".join(lines)
-
-    __str__ = __repr__
-    toString = __repr__
-
-
-@runtime.callable_instance_class
-class AffinePlaneCurve:
-    def __init__(self, polynomial: MultivariatePolynomialElement) -> None:
-        ring = polynomial._parent
-        if ring.ngens() != 2:
-            raise ValueError(
-                "an affine plane curve needs a polynomial in two variables"
-            )
-        self._polynomial = polynomial
-        self._ambient = AffineSpaceParent(2, ring.base_ring(), ring.variable_names())
-
-    def defining_polynomial(self) -> MultivariatePolynomialElement:
-        return self._polynomial
-
-    def ambient_space(self) -> AffineSpaceParent:
-        return self._ambient
-
-    def __add__(self, other: object) -> AffinePlaneCurve:
-        if not isinstance(other, AffinePlaneCurve):
-            raise TypeError("curves can only be added to curves")
-        if self._polynomial._parent is not other._polynomial._parent:
-            raise TypeError("curves have different ambient spaces")
-        return AffinePlaneCurve(self._polynomial * other._polynomial)
-
-    def intersection(self, other: object) -> ClosedSubscheme:
-        if not isinstance(other, AffinePlaneCurve):
-            raise TypeError("curve intersection needs another curve")
-        if self._polynomial._parent is not other._polynomial._parent:
-            raise TypeError("curves have different ambient spaces")
-        return ClosedSubscheme(
-            self._ambient,
-            [self._polynomial, other._polynomial],
-        )
-
-    def irreducible_components(self) -> list[ClosedSubscheme]:
-        factors = self._polynomial.irreducible_factors()
-        ordered = []
-        for factor_value in factors:
-            insert_at = len(ordered)
-            for index in range(len(ordered)):
-                if factor_value.total_degree() < ordered[index].total_degree() or (
-                    factor_value.total_degree() == ordered[index].total_degree()
-                    and repr(factor_value) < repr(ordered[index])
-                ):
-                    insert_at = index
-                    break
-            ordered.insert(insert_at, factor_value)
-        answer = []
-        for factor_value in ordered:
-            answer.append(ClosedSubscheme(self._ambient, [factor_value]))
-        return answer
-
-    def __repr__(self) -> str:
-        return (
-            "Affine Plane Curve over "
-            + str(self._polynomial._parent.base_ring())
-            + " defined by\n   "
-            + repr(self._polynomial)
-        )
-
-    __str__ = __repr__
-    toString = __repr__
-
-
-def Curve(polynomial: Any) -> AffinePlaneCurve:
-    """
-    Construct an affine plane curve from a multivariate polynomial.
-
-    ### Example
-
-    ```sage
-    sage: x, y = AffineSpace(2, QQ, 'xy').gens()
-    sage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))
-    sage: C.irreducible_components()
-    [Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
-      x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
-      x^3 + y^3 - 1]
-    ```
-
-    Hypersurface components use FLINT multivariate factorization. Plane-curve
-    intersections over `QQ` use a resultant followed by factorization and
-    Gröbner bases. General primary decomposition is not yet implemented.
-    """
-    if not isinstance(polynomial, MultivariatePolynomialElement):
-        raise TypeError("the current Curve constructor needs a multivariate polynomial")
-    return AffinePlaneCurve(polynomial)
 
 
 @runtime.callable_instance_class
@@ -6558,52 +6368,3 @@ runtime.register_doc(
         ],
     },
 )
-
-for _geometry_name, _geometry_value in [
-    ("AffineSpace", AffineSpace),
-    ("Curve", Curve),
-]:
-    runtime.register_doc(
-        _geometry_name,
-        _geometry_value,
-        {
-            "kind": "function",
-            "module": "sage.schemes",
-            "tags": [
-                "algebraic geometry",
-                "affine schemes",
-                "curves",
-                "multivariate polynomials",
-            ],
-            "backends": ["FLINT", "Sage.js algebraic geometry layer"],
-            "sage_compatibility": {
-                "status": "partial",
-                "notes": (
-                    "Affine plane curves, hypersurface components, and "
-                    "rational plane-curve intersections are supported. "
-                    "General schemes and primary decomposition remain "
-                    "outside the current implementation."
-                ),
-            },
-            "provenance": [
-                {
-                    "kind": "sage-derived",
-                    "source": "SageMath schemes and plane curves API",
-                    "url": ("https://doc.sagemath.org/html/en/reference/curves/"),
-                    "license": "GPL-2.0-or-later",
-                },
-                {
-                    "kind": "library-backed",
-                    "source": "FLINT multivariate polynomial arithmetic",
-                    "url": "https://flintlib.org/doc/",
-                },
-            ],
-            "limitations": [
-                (
-                    "General primary decomposition is not implemented, and "
-                    "complete Gröbner-fan enumeration currently covers the "
-                    "twisted-cubic determinantal ideal."
-                ),
-            ],
-        },
-    )

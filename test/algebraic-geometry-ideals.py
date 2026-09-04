@@ -1,4 +1,5 @@
 # sagejs-test-tier: portable
+# DISABLED: full-runtime lazy-package fixture, run by algebraic-geometry.cjs
 """Exact ideal operations and standard-graded Hilbert data."""
 
 R = PolynomialRing(QQ, names=("x", "y", "z"))

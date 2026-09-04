@@ -12,12 +12,10 @@ import sagejs.runtime as runtime
 
 
 def _resolve_polynomial_proof(value: Any) -> bool:
-    if value is None:
-        proof_module = __import__("sagejs._baselib.proof", fromlist=["proof"])
-        return bool(proof_module.proof.polynomial())
-    if not isinstance(value, bool):
-        raise TypeError("polynomial proof flag must be a boolean or None")
-    return value
+    proof_module = __import__(
+        "sagejs._baselib.proof", fromlist=["resolve_polynomial_proof"]
+    )
+    return bool(proof_module.resolve_polynomial_proof(value))
 
 
 @runtime.callable_instance_class
@@ -128,25 +126,10 @@ class PolynomialQuotientRing(sage.Parent):
             "proof": self._proof,
         }
 
-        def coerce_into_quotient(value: Any) -> PolynomialQuotientElement:
-            return self(value)
-
-        runtime.coercion_model.register(
-            cover_ring,
-            self,
-            coerce_into_quotient,
-        )
-        runtime.coercion_model.register(
-            cover_ring.base_ring(),
-            self,
-            coerce_into_quotient,
-        )
-        if cover_ring.base_ring() is not sage.ZZ:
-            runtime.coercion_model.register(
-                sage.ZZ,
-                self,
-                coerce_into_quotient,
-            )
+        # Quotient elements coerce operands explicitly in their arithmetic.
+        # Registering every quotient globally would create competing common
+        # parents for unrelated polynomial/scalar operations once two
+        # quotients of the same cover ring exist.
 
     def cover_ring(self) -> Any:
         return self._cover_ring

@@ -14,6 +14,7 @@ import sagejs.runtime as runtime
 
 _MAX_GENERATORS = 128
 _MAX_SATURATION_STEPS = 32
+_MAX_EXACT_QUOTIENT_STEPS = 1000000
 
 
 def _fresh_variable_name(ring: Any, prefix: str) -> str:
@@ -64,6 +65,59 @@ def _validate_pair(left: Any, right: Any) -> Any:
     return right
 
 
+def _monomial_divides(divisor: Any, dividend: Any) -> bool:
+    for index in range(len(divisor)):
+        if divisor[index] > dividend[index]:
+            return False
+    return True
+
+
+def _exact_polynomial_quotient(dividend: Any, divisor: Any) -> Any:
+    """Return an exact field-polynomial quotient using sparse long division.
+
+    Ideal intersection guarantees exact divisibility in the principal-colon
+    construction below.  Keeping this small operation at the public sparse
+    polynomial boundary is important: native FLINT exposes general exact
+    multivariate division, but the reviewed browser/Wasm slice does not.
+    """
+    ring = dividend.parent()
+    divisor = ring(divisor)
+    divisor_terms = divisor.terms()
+    if len(divisor_terms) == 0:
+        raise ZeroDivisionError("polynomial division by zero")
+    divisor_coefficient, divisor_exponents = divisor_terms[0]
+    pending = ring(dividend)
+    quotient = ring(0)
+    step = 0
+    while pending != ring(0):
+        if step >= _MAX_EXACT_QUOTIENT_STEPS:
+            raise OverflowError("exact polynomial quotient exceeds the step limit")
+        step += 1
+        dividend_coefficient, dividend_exponents = pending.terms()[0]
+        if not _monomial_divides(divisor_exponents, dividend_exponents):
+            raise ArithmeticError("polynomial quotient is not exact")
+        quotient_exponents = []
+        for index in range(len(divisor_exponents)):
+            quotient_exponents.append(
+                dividend_exponents[index] - divisor_exponents[index]
+            )
+        quotient_term = ring._from_sparse_terms(
+            [
+                runtime.math_tuple(
+                    [
+                        dividend_coefficient / divisor_coefficient,
+                        runtime.math_tuple(quotient_exponents),
+                    ]
+                )
+            ]
+        )
+        quotient += quotient_term
+        pending -= quotient_term * divisor
+    if quotient * divisor != dividend:
+        raise ArithmeticError("polynomial quotient verification failed")
+    return quotient
+
+
 def intersection(
     left: Any,
     right: Any,
@@ -105,7 +159,7 @@ def _principal_colon(
     common = intersection(ideal, principal, algorithm=algorithm, proof=proof)
     quotients = []
     for generator in common.gens():
-        quotients.append(generator // polynomial)
+        quotients.append(_exact_polynomial_quotient(generator, polynomial))
     return ring.ideal(quotients)
 
 

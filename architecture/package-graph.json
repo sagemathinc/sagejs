@@ -83,7 +83,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 780000,
+      "max_source_bytes": 800000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -93,6 +93,7 @@
         "src/baselib/number_fields.py",
         "src/baselib/padics.py",
         "src/baselib/polynomial.py",
+        "src/baselib/polynomial_quotient.py",
         "src/baselib/proof.py",
         "src/baselib/real_complex.py",
         "src/baselib/series.py",
@@ -329,7 +330,7 @@
       "id": "polynomial-algorithms",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 250000,
+      "max_source_bytes": 260000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -344,6 +345,32 @@
         "src/lib/sage/databases/conway.py"
       ],
       "prefixes": ["src/lib/sagejs/polynomial_algorithms/"]
+    },
+    {
+      "id": "algebraic-geometry-shell",
+      "layer": 3,
+      "startup": "bootstrap",
+      "max_source_bytes": 50000,
+      "depends_on": ["core-runtime", "arithmetic"],
+      "files": ["src/baselib/schemes.py"],
+      "prefixes": []
+    },
+    {
+      "id": "algebraic-geometry-algorithms",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 25000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "algebraic-geometry-shell",
+        "polynomial-algorithms",
+        "python-stdlib"
+      ],
+      "modules": ["sagejs.schemes"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/schemes/"]
     },
     {
       "id": "mathematical-databases",

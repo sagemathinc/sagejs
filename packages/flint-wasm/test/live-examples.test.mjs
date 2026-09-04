@@ -11,6 +11,7 @@ test("every live dropdown example executes verbatim in production Node-Wasm", as
     "complex-plot",
     "cape-man",
     "exact-matrices",
+    "algebraic-geometry",
     "numpy-signal-recovery",
     "modular-symbols",
     "python-language",

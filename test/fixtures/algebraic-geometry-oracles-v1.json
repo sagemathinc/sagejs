@@ -1,0 +1,99 @@
+{
+  "schema": "sagejs.algebraic-geometry-oracles/v1",
+  "purpose": "normalized mathematical values and reproducible commands for the no-Singular algebraic-geometry core",
+  "source_revisions": {
+    "sagemath": "6cd06ec1acdec7a4516ed9928bd575b7a63999b8",
+    "singular": "cca73e3ef1deb1b75c8bbd112dab699fd4fcb888",
+    "cocoa": "9cb5ce485bb5ec56d426747a9c7db2fbf9888d2d",
+    "macaulay2": "1a37f6fe95badb1e5f99707a485503d213fd9d49",
+    "oscar": "63ed738cd9192d9561f79f39a4004c9472d7290b"
+  },
+  "normalization": "Ideals are compared by both containments; displayed generator order is not oracle data.",
+  "cases": [
+    {
+      "id": "affine-parabola",
+      "hypotheses": { "field": "QQ", "ambient": "A^2", "ideal": ["y-x^2"] },
+      "expected": { "dimension": 1, "codimension": 1, "contains": ["(2,4)"], "excludes": ["(2,3)"] },
+      "oracles": [
+        { "system": "sagemath", "command": "A.<x,y> = AffineSpace(QQ,2); X=A.subscheme([y-x^2]); (X.dimension(), X.codimension(), A(2,4) in X, A(2,3) in X)" },
+        { "system": "oscar", "command": "R,(x,y)=polynomial_ring(QQ,[\"x\",\"y\"]); X=Spec(R/ideal(R,[y-x^2])); dim(X)" }
+      ],
+      "sagejs_test": "test/algebraic-geometry-affine.py"
+    },
+    {
+      "id": "intersection-colon-saturation",
+      "hypotheses": { "field": "QQ", "ring": "QQ[x,y]" },
+      "expected": { "intersection": ["x*y"], "colon": ["x", "y"], "saturation": ["y"] },
+      "oracles": [
+        { "system": "singular", "command": "ring r=0,(x,y),dp; ideal A=x; ideal B=y; intersect(A,B); quotient(ideal(x2,xy),A); sat(ideal(xy),A)[1];" },
+        { "system": "cocoa", "command": "Use R ::= QQ[x,y]; intersection(ideal(x),ideal(y)); colon(ideal(x^2,x*y),ideal(x)); saturation(ideal(x*y),ideal(x));" },
+        { "system": "macaulay2", "command": "R=QQ[x,y]; (ideal x) intersect (ideal y); (ideal(x^2,x*y)) : (ideal x); saturate(ideal(x*y),ideal x)" }
+      ],
+      "sagejs_test": "test/algebraic-geometry-ideals.py"
+    },
+    {
+      "id": "hilbert-complete-intersection",
+      "hypotheses": { "field": "QQ", "ring": "QQ[x,y,z] standard graded", "ideal": ["x^2", "y^3"] },
+      "expected": { "h_vector": [1, 2, 2, 1], "hilbert_polynomial": "6", "dimension": 1, "degree": 6 },
+      "oracles": [
+        { "system": "cocoa", "command": "Use R ::= QQ[x,y,z]; I := ideal(x^2,y^3); HilbertSeries(R/I); HilbertPoly(R/I); multiplicity(R/I);" },
+        { "system": "macaulay2", "command": "R=QQ[x,y,z]; I=ideal(x^2,y^3); hilbertSeries(R/I); hilbertPolynomial(R/I); degree I" },
+        { "system": "oscar", "command": "R,(x,y,z)=graded_polynomial_ring(QQ,[\"x\",\"y\",\"z\"]); I=ideal(R,[x^2,y^3]); hilbert_series(I); degree(I)" }
+      ],
+      "sagejs_test": "test/algebraic-geometry-ideals.py"
+    },
+    {
+      "id": "projective-cubic",
+      "hypotheses": { "field": "QQ", "ambient": "P^2", "ideal": ["y^2*z-x^3-x*z^2"] },
+      "expected": { "dimension": 1, "degree": 3, "arithmetic_genus": 1, "affine_patch_2": ["y^2-x^3-x"] },
+      "oracles": [
+        { "system": "sagemath", "command": "P.<x,y,z>=ProjectiveSpace(QQ,2); C=P.subscheme([y^2*z-x^3-x*z^2]); (C.dimension(),C.degree(),C.affine_patch(2))" },
+        { "system": "oscar", "command": "P=projective_space(QQ,2); x,y,z=gens(homogeneous_coordinate_ring(P)); C=subscheme(P,[y^2*z-x^3-x*z^2]); (dim(C),degree(C))" }
+      ],
+      "sagejs_test": "test/algebraic-geometry-projective.py"
+    },
+    {
+      "id": "parabola-image",
+      "hypotheses": { "field": "QQ", "map": "A^1 -> A^2, t |-> (t,t^2)" },
+      "expected": { "image_ideal": ["y-x^2"], "graph_dimension": 1 },
+      "oracles": [
+        { "system": "sagemath", "command": "A1.<t>=AffineSpace(QQ,1); A2.<x,y>=AffineSpace(QQ,2); A1.hom([t,t^2],A2).scheme_theoretic_image()" },
+        { "system": "singular", "command": "ring r=0,(t,x,y),lp; eliminate(ideal(x-t,y-t2),t);" },
+        { "system": "macaulay2", "command": "R=QQ[t,x,y,MonomialOrder=>Eliminate 1]; eliminate({t},ideal(x-t,y-t^2))" }
+      ],
+      "sagejs_test": "test/algebraic-geometry-morphisms.py"
+    },
+    {
+      "id": "cusp-jacobian",
+      "hypotheses": { "field": "QQ", "ambient": "A^2", "ideal": ["y^2-x^3"] },
+      "expected": { "singular_ideal": ["x", "y"], "origin_tangent_dimension": 2, "origin_smooth": false },
+      "oracles": [
+        { "system": "sagemath", "command": "A.<x,y>=AffineSpace(QQ,2); C=A.subscheme([y^2-x^3]); (C.Jacobian(),C.singular_subscheme(),C.is_smooth(A(0,0)))" },
+        { "system": "oscar", "command": "R,(x,y)=polynomial_ring(QQ,[\"x\",\"y\"]); X=Spec(R/ideal(R,[y^2-x^3])); singular_locus(X)" }
+      ],
+      "sagejs_test": "test/algebraic-geometry-jacobian.py"
+    },
+    {
+      "id": "nonreduced-zero-dimensional-decomposition",
+      "hypotheses": { "field": "QQ", "ring": "QQ[x,y]", "ideal": ["intersection((x-1)^2,y ; x+1,y^3)"] },
+      "expected": { "component_count": 2, "radical": ["x^2-1", "y"], "quotient_dimension": 5 },
+      "oracles": [
+        { "system": "cocoa", "command": "Use R ::= QQ[x,y]; I := intersection(ideal((x-1)^2,y),ideal(x+1,y^3)); radical(I); PrimaryDecomposition(I);" },
+        { "system": "macaulay2", "command": "R=QQ[x,y]; I=intersect(ideal((x-1)^2,y),ideal(x+1,y^3)); radical I; primaryDecomposition I" },
+        { "system": "singular", "command": "ring r=0,(x,y),dp; ideal I=intersect(ideal((x-1)^2,y),ideal(x+1,y3)); radical(I); primdecGTZ(I);" }
+      ],
+      "sagejs_test": "test/algebraic-geometry-zero-dimensional.py"
+    },
+    {
+      "id": "finite-nonsplit-component",
+      "hypotheses": { "field": "GF(3)", "ring": "GF(3)[u,v]", "ideal": ["(u^2+1)*(u-1)", "v-u"] },
+      "expected": { "component_count": 2, "base_field_rational_point_count": 1, "retains_degree_two_residue_component": true },
+      "oracles": [
+        { "system": "cocoa", "command": "Use R ::= ZZ/(3)[u,v]; I := ideal((u^2+1)*(u-1),v-u); PrimaryDecomposition(I);" },
+        { "system": "macaulay2", "command": "R=GF(3)[u,v]; I=ideal((u^2+1)*(u-1),v-u); primaryDecomposition I" },
+        { "system": "singular", "command": "ring r=3,(u,v),dp; ideal I=(u2+1)*(u-1),v-u; primdecGTZ(I);" }
+      ],
+      "sagejs_test": "test/algebraic-geometry-zero-dimensional.py"
+    }
+  ]
+}
