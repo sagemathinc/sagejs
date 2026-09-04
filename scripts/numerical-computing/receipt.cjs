@@ -415,6 +415,23 @@ function memoryMeasurement(subject) {
   const timer = setInterval(sample, sample_interval_ms);
   timer.unref();
   return {
+    executionStarted() {
+      // The initial boundary sample necessarily runs before an adapter has
+      // launched its subject.  Give a genuinely asynchronous adapter one turn
+      // to create its child, then take an eager process-tree sample.  This is
+      // especially important on Windows: a warmed Node/SEA invocation can
+      // finish before the first 50 ms interval fires, while the CIM snapshot
+      // itself is still authoritative once it has begun.  A synchronous
+      // adapter cannot exploit this hook because its runCase call does not
+      // return until the hidden child has already exited.
+      if (!processTree) return Promise.resolve();
+      return new Promise((resolve) => {
+        setImmediate(() => {
+          sample();
+          resolve();
+        });
+      });
+    },
     finish() {
       clearInterval(timer);
       sample();
@@ -448,7 +465,7 @@ async function measuredSample(adapter, caseContract, kind, index, subject) {
   const started = process.hrtime.bigint();
   let observation;
   try {
-    observation = await adapter.runCase({
+    const execution = adapter.runCase({
       id: caseContract.id,
       program_phase: caseContract.program_phase,
       layer: caseContract.layer,
@@ -458,6 +475,8 @@ async function measuredSample(adapter, caseContract, kind, index, subject) {
       sample_kind: kind,
       sample_index: index,
     });
+    await authenticatedMemory.executionStarted();
+    observation = await execution;
   } catch (error) {
     observation = adapterExceptionObservation(error);
   } finally {
