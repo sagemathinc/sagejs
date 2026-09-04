@@ -17,6 +17,8 @@ _packed_polynomial_flint_module_cache = runtime.undefined
 _polynomial_structural_public_module_cache = runtime.undefined
 _arbitrary_prime_public_module_cache = runtime.undefined
 _polynomial_ideal_algorithms_module_cache = runtime.undefined
+_polynomial_ideal_operations_module_cache = runtime.undefined
+_polynomial_hilbert_module_cache = runtime.undefined
 _polynomial_quotient_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
 _generated_flint_resources_available_cache = runtime.undefined
@@ -45,6 +47,28 @@ def _polynomial_quotient_module() -> Any:
             fromlist=["PolynomialQuotientRing"],
         )
     return _polynomial_quotient_module_cache
+
+
+def _polynomial_ideal_operations() -> Any:
+    """Load exact elimination-based ideal operations lazily."""
+    global _polynomial_ideal_operations_module_cache
+    if _polynomial_ideal_operations_module_cache is runtime.undefined:
+        _polynomial_ideal_operations_module_cache = __import__(
+            "sagejs.polynomial_algorithms.ideal_operations",
+            fromlist=["intersection"],
+        )
+    return _polynomial_ideal_operations_module_cache
+
+
+def _polynomial_hilbert() -> Any:
+    """Load exact monomial Hilbert combinatorics lazily."""
+    global _polynomial_hilbert_module_cache
+    if _polynomial_hilbert_module_cache is runtime.undefined:
+        _polynomial_hilbert_module_cache = __import__(
+            "sagejs.polynomial_algorithms.hilbert",
+            fromlist=["hilbert_series"],
+        )
+    return _polynomial_hilbert_module_cache
 
 
 def _closed_field_horner(base: Any, coefficients: Any, value: Any) -> Any:
@@ -5289,6 +5313,47 @@ class PolynomialIdeal:
                 generators.append(left * right)
         return self._ring.ideal(generators)
 
+    def intersection(
+        self,
+        other: Any,
+        algorithm: str = "buchberger",
+        proof: Any = None,
+    ) -> PolynomialIdeal:
+        """Return the exact intersection with another ideal."""
+        other = self._require_same_ring(other)
+        return _polynomial_ideal_operations().intersection(
+            self, other, algorithm, proof
+        )
+
+    intersect = intersection
+
+    def colon(
+        self,
+        other: Any,
+        algorithm: str = "buchberger",
+        proof: Any = None,
+    ) -> PolynomialIdeal:
+        """Return the exact ideal quotient `(self : other)`."""
+        other = self._require_same_ring(other)
+        return _polynomial_ideal_operations().colon(self, other, algorithm, proof)
+
+    ideal_quotient = colon
+
+    def saturation(
+        self,
+        other: Any,
+        algorithm: str = "buchberger",
+        proof: Any = None,
+        max_steps: int = 32,
+    ) -> PolynomialIdeal:
+        """Return the exact saturation `(self : other^infinity)`."""
+        other = self._require_same_ring(other)
+        return _polynomial_ideal_operations().saturation(
+            self, other, algorithm, proof, max_steps
+        )
+
+    saturate = saturation
+
     def groebner_basis(
         self,
         algorithm: str = "auto",
@@ -5362,6 +5427,42 @@ class PolynomialIdeal:
     ) -> int:
         """Return the Krull dimension using the leading monomial ideal."""
         return _polynomial_ideal_algorithms().dimension(self, algorithm, proof)
+
+    def hilbert_series(
+        self,
+        variable: str = "t",
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return the normalized Hilbert series of a homogeneous ideal."""
+        return _polynomial_hilbert().hilbert_series(self, variable, algorithm, proof)
+
+    def hilbert_polynomial(
+        self,
+        variable: str = "t",
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return the exact eventual Hilbert polynomial."""
+        return _polynomial_hilbert().hilbert_polynomial(
+            self, variable, algorithm, proof
+        )
+
+    def h_vector(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return the numerator coefficients of the reduced Hilbert series."""
+        return _polynomial_hilbert().h_vector(self, algorithm, proof)
+
+    def hilbert_data(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> dict[str, Any]:
+        """Return exact normalized Hilbert metadata."""
+        return _polynomial_hilbert().data(self, algorithm, proof)
 
     def is_zero_dimensional(
         self,
@@ -5462,7 +5563,14 @@ class PolynomialIdeal:
         proof: Any = None,
     ) -> int:
         """Return the degree of a zero-dimensional ideal."""
-        return _polynomial_ideal_algorithms().degree(self, algorithm, proof)
+        dimension = self.dimension(algorithm, proof)
+        if dimension <= 0:
+            return _polynomial_ideal_algorithms().degree(self, algorithm, proof)
+        if all(generator.is_homogeneous() for generator in self._generators):
+            return _polynomial_hilbert().degree(self, algorithm, proof)
+        raise NotImplementedError(
+            "positive-dimensional degree requires a homogeneous ideal"
+        )
 
     def groebner_fan(self) -> GroebnerFan:
         """Return the Gröbner-fan computation attached to this ideal."""
