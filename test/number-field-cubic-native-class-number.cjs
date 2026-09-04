@@ -240,7 +240,15 @@ from sagejs.number_fields.cubic_class_number_native_runtime import certified_com
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-for index, coefficients in enumerate(((1, 0, -1, 1), (-8, -1, 0, 1), (-55, 9, 0, 1), (-4, 3, -1, 1))):
+for index, coefficients in enumerate((
+    (1, 0, -1, 1),
+    (-8, -1, 0, 1),
+    (-55, 9, 0, 1),
+    (-4, 3, -1, 1),
+    # LMFDB 3.1.12763.1 has class group C2 x C4.  This guards exact replay of
+    # the first adjacent-ideal regime whose invariants are noncyclic.
+    (-22, 1, -1, 1),
+)):
     polynomial = R(0)
     for exponent, coefficient in enumerate(coefficients):
         polynomial += coefficient * x**exponent
