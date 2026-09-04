@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `76792464ad458805be52c5aec49506a28e82f8aed9f3d4f92f143c747a114c93` (707 files, 14389884 bytes).
-Analyzed source bundle: `sha256:b5659070b4eda83ae2fd5b422295646207bba2eee1dc1fe25b3e7351a88e7662`; compiler identity: `sha256:bdb46ae526739a9c7d80e930d6d15a1c0ec67d337f0b00134f4e86e15c837d81`.
+Input identity: `c8ee267c13148583a569f15391b18bfb77dc96e043025ef2a8d39e6f7b198f50` (707 files, 14390395 bytes).
+Analyzed source bundle: `sha256:e362f02a969d1da71d3e8d4d21a5faf5b7b397b25887bbef8f61bb086cda1c9b`; compiler identity: `sha256:bdb46ae526739a9c7d80e930d6d15a1c0ec67d337f0b00134f4e86e15c837d81`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -49,9 +49,9 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 94972
+- Potential object-result sites: 94970
 - Collection-allocation sites: 11465
-- Known coercion sites: 19680
+- Known coercion sites: 19681
 - Potential boundary-call sites: 100
 - Unresolved call sites: 48058
 - Selected-target allocations: 3 known; 51 runtime-dependent
@@ -137,7 +137,7 @@ convenience, not a performance ranking.
 | `bounded-integer.unsupported-operation:+=` | 1052 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `dashboard.unsupported-while-loop` | 834 | Prove a finite progress measure and transactional exits before lowering a `while` loop. |
 | `bounded-integer.unsupported-operation:%` | 823 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:<` | 529 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:<` | 528 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation://` | 363 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:>` | 344 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:&&` | 285 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
@@ -147,7 +147,7 @@ convenience, not a performance ranking.
 | `bounded-integer.unsupported-operation:*=` | 208 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation://=` | 182 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:<=` | 146 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:-=` | 129 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:-=` | 130 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-power` | 115 | Expand a small fixed power into ordered multiplications or add an exact bounded-power proof. |
 | `bounded-integer.unsupported-operation:===` | 103 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:/` | 91 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
