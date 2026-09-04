@@ -181,6 +181,8 @@ function operationInputs(operation) {
       return operation.arguments.map((argument) => argument.name);
     case "return":
       return operation.values || [operation.value];
+    case "range.validate_step":
+      return [operation.step];
     default:
       return [];
   }
@@ -216,16 +218,27 @@ function walkStatements(statements, handlers) {
     }
     if (statement.kind === "loop.range" ||
         statement.kind === "loop.range_exact") {
-      handlers.loop("range");
+      handlers.loop("range", statement);
       handlers.enterLoop?.("range");
-      if (statement.kind === "loop.range_exact") {
+      if (statement.iterator !== undefined) {
+        handlers.read(statement.start);
+        handlers.read(statement.stop);
+        handlers.read(statement.step);
+        handlers.write(statement.iterator);
+        handlers.read(statement.iterator);
+        handlers.write(statement.index);
+      } else if (statement.kind === "loop.range_exact") {
         handlers.read(statement.start);
         handlers.read(statement.stop);
         handlers.write(statement.index);
         handlers.read(statement.index);
       }
       walkStatements(statement.body, handlers);
-      if (statement.kind === "loop.range_exact") {
+      if (statement.iterator !== undefined) {
+        handlers.read(statement.iterator);
+        handlers.read(statement.step);
+        handlers.write(statement.iterator);
+      } else if (statement.kind === "loop.range_exact") {
         handlers.read(statement.index);
         handlers.write(statement.index);
       }
@@ -594,6 +607,9 @@ function localEffects(fn) {
       if (operation.kind === "integer.round_sqrt") {
         mayRaise.add("ValueError");
         mayRaise.add("OverflowError");
+      }
+      if (operation.kind === "range.validate_step") {
+        mayRaise.add("ValueError");
       }
       if (operation.kind === "integer.sequence.get") {
         mayRaise.add("IndexError");
@@ -1234,6 +1250,7 @@ const FMPZ_OPERATION_KINDS = new Set([
   "integer.vector.submul",
   "integer.vector.swap",
   "native.call",
+  "range.validate_step",
   "raise",
   "return",
   "uint64.binary",
@@ -1316,7 +1333,8 @@ function inspectFmpzFunction(fn) {
         visit(statement.body);
         continue;
       }
-      if (statement.kind === "loop.range") {
+      if (statement.kind === "loop.range" ||
+          statement.kind === "loop.range_exact") {
         visit(statement.body);
         continue;
       }

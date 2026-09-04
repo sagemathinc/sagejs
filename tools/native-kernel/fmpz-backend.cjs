@@ -124,6 +124,23 @@ function emitFmpzOperation(operation, context, indent) {
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
+  if (operation.kind === "range.validate_step") {
+    const step = fmpzValue(operation.step, context);
+    const condition = operation.stepType === "Integer"
+      ? `fmpz_is_zero(${step})`
+      : `${step} == 0`;
+    return [
+      `${indent}if (${condition})`,
+      `${indent}{`,
+      statusFailure(
+        "range",
+        "range() arg 3 must not be zero",
+        `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.copy") {
     return `${indent}fmpz_set(${target}, ` +
       `${fmpzValue(operation.source, context)});`;
@@ -631,15 +648,43 @@ function emitFmpzStatements(statements, context, indent) {
     }
     if (statement.kind === "loop.range") {
       const index = fmpzValue(statement.index, context);
-      const bound = fmpzValue(statement.count, context);
-      const condition = statement.boundIsStop
-        ? `${index} < ${bound}`
-        : `(${index} - UINT64_C(${statement.start})) < ${bound}`;
+      const iterator = fmpzValue(statement.iterator, context);
+      const start = fmpzValue(statement.start, context);
+      const stop = fmpzValue(statement.stop, context);
+      const step = fmpzValue(statement.step, context);
       lines.push(
-        `${indent}for (${index} = UINT64_C(${statement.start}); ` +
-          `${condition}; ${index} += UINT64_C(${statement.step || 1}))`,
+        `${indent}${iterator} = ${start};`,
+        `${indent}while (${iterator} < ${stop})`,
         `${indent}{`,
+        `${indent}    ${index} = ${iterator};`,
         emitFmpzStatements(statement.body, context, `${indent}    `),
+        `${indent}    if (${step} >= ${stop} - ${iterator})`,
+        `${indent}        break;`,
+        `${indent}    ${iterator} += ${step};`,
+        `${indent}}`,
+      );
+      continue;
+    }
+    if (statement.kind === "loop.range_exact") {
+      const index = fmpzValue(statement.index, context);
+      const iterator = fmpzValue(statement.iterator, context);
+      const start = fmpzValue(statement.start, context);
+      const stop = fmpzValue(statement.stop, context);
+      const step = fmpzValue(statement.step, context);
+      lines.push(
+        `${indent}fmpz_set(${iterator}, ${start});`,
+        `${indent}for (;;)`,
+        `${indent}{`,
+        `${indent}    if (fmpz_sgn(${step}) > 0)`,
+        `${indent}    {`,
+        `${indent}        if (fmpz_cmp(${iterator}, ${stop}) >= 0)`,
+        `${indent}            break;`,
+        `${indent}    }`,
+        `${indent}    else if (fmpz_cmp(${iterator}, ${stop}) <= 0)`,
+        `${indent}        break;`,
+        `${indent}    fmpz_set(${index}, ${iterator});`,
+        emitFmpzStatements(statement.body, context, `${indent}    `),
+        `${indent}    fmpz_add(${iterator}, ${iterator}, ${step});`,
         `${indent}}`,
       );
       continue;

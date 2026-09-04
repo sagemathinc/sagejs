@@ -897,6 +897,7 @@ function lowerExactSum(node, args, context, operations) {
     "native sum() accepts an exact comprehension and optional start",
   );
   const comprehension = args[0];
+  const eager = nodeType(comprehension) === "AST_ListComprehension";
   expect(
     context,
     comprehension,
@@ -927,15 +928,20 @@ function lowerExactSum(node, args, context, operations) {
   const range = lowerRange(iterable, context);
   operations.push(...range.operations);
   const initialOperations = [];
-  let initial = args.length === 2
-    ? lowerExpression(args[1], context, initialOperations)
-    : emitConstant(context, node, initialOperations, 0n);
-  initial = coerceInteger(
-    initial,
-    context,
-    args[1] || node,
-    initialOperations,
-  );
+  let initial;
+  if (eager) {
+    initial = emitConstant(context, node, initialOperations, 0n);
+  } else {
+    initial = args.length === 2
+      ? lowerExpression(args[1], context, initialOperations)
+      : emitConstant(context, node, initialOperations, 0n);
+    initial = coerceInteger(
+      initial,
+      context,
+      args[1] || node,
+      initialOperations,
+    );
+  }
   operations.push(...initialOperations);
   const accumulator = temporary(context, node, "Integer");
   operations.push({
@@ -945,6 +951,7 @@ function lowerExactSum(node, args, context, operations) {
   });
 
   const hiddenIndex = temporary(context, indexNode, range.indexType);
+  const hiddenIterator = temporary(context, indexNode, range.indexType);
   const sourceIndex = indexNode.name;
   const previousAlias = context.symbolAliases.get(sourceIndex);
   const initializedBefore = new Set(context.initialized);
@@ -1009,16 +1016,37 @@ function lowerExactSum(node, args, context, operations) {
   operations.push(...hoisted, {
     kind: range.kind,
     index: hiddenIndex,
-    ...(range.kind === "loop.range"
-      ? {
-          start: range.start,
-          count: range.count,
-          step: range.step,
-          boundIsStop: range.boundIsStop,
-        }
-      : { start: range.start, stop: range.stop }),
+    iterator: hiddenIterator,
+    start: range.start,
+    stop: range.stop,
+    step: range.step,
     body,
   });
+  if (eager) {
+    // Exact Integer addition is associative and side-effect free, so the list
+    // need not be materialized merely to preserve Python's eager call order.
+    // Its producer is fully evaluated first; only then is sum's optional
+    // start expression evaluated and combined with the exact subtotal.
+    const eagerInitialOperations = [];
+    let eagerInitial = args.length === 2
+      ? lowerExpression(args[1], context, eagerInitialOperations)
+      : emitConstant(context, node, eagerInitialOperations, 0n);
+    eagerInitial = coerceInteger(
+      eagerInitial,
+      context,
+      args[1] || node,
+      eagerInitialOperations,
+    );
+    const result = temporary(context, node, "Integer");
+    operations.push(...eagerInitialOperations, {
+      kind: "integer.binary",
+      operation: "add",
+      target: result,
+      left: eagerInitial.name,
+      right: accumulator,
+    });
+    return { name: result, type: "Integer" };
+  }
   return { name: accumulator, type: "Integer" };
 }
 
@@ -2905,7 +2933,68 @@ function lowerBlock(block, context) {
   return lowerStatements([block], context);
 }
 
-function lowerRange(node, context) {
+function directUint64RangeArgument(node, context) {
+  const literal = integerLiteral(node);
+  if (literal !== undefined) {
+    return literal >= 0n && literal <= 18446744073709551615n;
+  }
+  if (nodeType(node) !== "AST_SymbolRef") return false;
+  const name = resolvedSymbol(context, node.name);
+  if (context.variables.get(name) === "uint64") return true;
+  const constant = context.integerConstants.get(name);
+  return constant !== undefined && constant >= 0n &&
+    constant <= 18446744073709551615n;
+}
+
+function directUint64RangeVariable(node, context) {
+  return nodeType(node) === "AST_SymbolRef" &&
+    context.variables.get(resolvedSymbol(context, node.name)) === "uint64";
+}
+
+function freezeRangeValue(value, node, context, operations, type) {
+  if (type === "Integer") {
+    value = coerceInteger(value, context, node, operations);
+  } else {
+    expect(
+      context,
+      node,
+      value.type === "uint64",
+      `native uint64 range argument has type ${value.type}`,
+    );
+  }
+  const target = temporary(context, node, type);
+  operations.push({
+    kind: type === "Integer" ? "integer.copy" : "uint64.copy",
+    target,
+    source: value.name,
+  });
+  return target;
+}
+
+function freezeRangeArgument(node, context, operations, type) {
+  let value = lowerExpression(
+    node,
+    context,
+    operations,
+    type === "uint64" ? "uint64" : undefined,
+  );
+  return freezeRangeValue(value, node, context, operations, type);
+}
+
+/*
+ * A range is an immutable value even though its source expressions need not
+ * be.  Evaluate and snapshot each supplied argument in Python's left-to-right
+ * order, before evaluating the next one.  The loop operation subsequently
+ * owns a separate hidden iterator and copies each yielded value into the
+ * visible target; assignments to that target therefore cannot perturb the
+ * sequence.
+ *
+ * The compact uint64 form is deliberately limited to direct nonnegative
+ * values.  More general expressions retain ordinary exact-Integer semantics
+ * instead of acquiring fixed-width overflow merely because they occur in a
+ * range call.
+ */
+function lowerRange(node, context, targetName = undefined) {
   expect(
     context,
     node,
@@ -2921,71 +3010,60 @@ function lowerRange(node, context) {
     args.length >= 1 && args.length <= 3,
     "native range currently accepts one through three arguments",
   );
-  const start = args.length === 1 ? 0n : integerLiteral(args[0]);
-  const countNode = args.length === 1 ? args[0] : args[1];
-  const step = args.length === 3 ? integerLiteral(args[2]) : 1n;
-  expect(
-    context,
-    args[2] || node,
-    step !== undefined && step > 0n &&
-      step <= BigInt(Number.MAX_SAFE_INTEGER),
-    "native range step must be a positive integer literal",
-  );
-  let countName;
-  let boundIsStop = false;
-  if (
-    start !== undefined && start >= 0n &&
-    start <= BigInt(Number.MAX_SAFE_INTEGER) &&
-    nodeType(countNode) === "AST_SymbolRef" &&
-    context.variables.get(resolvedSymbol(context, countNode.name)) === "uint64"
-  ) {
-    countName = resolvedSymbol(context, countNode.name);
-    boundIsStop = true;
-  } else if (
-    start !== undefined && start >= 0n &&
-    start <= BigInt(Number.MAX_SAFE_INTEGER) &&
-    nodeType(countNode) === "AST_Binary" &&
-    countNode.operator === "+" &&
-    nodeType(countNode.left) === "AST_SymbolRef" &&
-    context.variables.get(
-      resolvedSymbol(context, countNode.left.name),
-    ) === "uint64" &&
-    integerLiteral(countNode.right) === start
-  ) {
-    countName = resolvedSymbol(context, countNode.left.name);
-  }
-  if (countName !== undefined) {
-    return {
-      kind: "loop.range",
-      start: Number(start),
-      count: countName,
-      boundIsStop,
-      step: Number(step),
-      indexType: "uint64",
-      operations: [],
-    };
-  }
-
-  expect(
-    context,
-    args[2] || node,
-    step === 1n,
-    "native range step currently requires a uint64 stop",
-  );
-
   const operations = [];
   const startNode = args.length === 1 ? null : args[0];
-  let startValue = startNode === null
-    ? emitConstant(context, node, operations, 0n)
-    : lowerExpression(startNode, context, operations);
-  let stopValue = lowerExpression(countNode, context, operations);
-  startValue = coerceInteger(startValue, context, startNode || node, operations);
-  stopValue = coerceInteger(stopValue, context, countNode, operations);
+  const stopNode = args.length === 1 ? args[0] : args[1];
+  const stepNode = args.length === 3 ? args[2] : null;
+  const existingTargetType = targetName === undefined
+    ? undefined
+    : context.variables.get(targetName);
+  const supplied = args;
+  const useUint64 = existingTargetType !== "Integer" &&
+    (existingTargetType === "uint64" ||
+      supplied.some((argument) => directUint64RangeVariable(argument, context))) &&
+    supplied.every((argument) => directUint64RangeArgument(argument, context));
+  const type = useUint64 ? "uint64" : "Integer";
+
+  let start;
+  let stop;
+  let step;
+  if (args.length === 1) {
+    const zero = type === "uint64"
+      ? emitUint64Constant(context, node, operations, 0n)
+      : emitConstant(context, node, operations, 0n);
+    start = freezeRangeValue(zero, node, context, operations, type);
+    stop = freezeRangeArgument(stopNode, context, operations, type);
+  } else {
+    start = freezeRangeArgument(startNode, context, operations, type);
+    stop = freezeRangeArgument(stopNode, context, operations, type);
+  }
+  if (stepNode === null) {
+    const one = type === "uint64"
+      ? emitUint64Constant(context, node, operations, 1n)
+      : emitConstant(context, node, operations, 1n);
+    step = temporary(context, node, type);
+    operations.push({
+      kind: type === "Integer" ? "integer.copy" : "uint64.copy",
+      target: step,
+      source: one.name,
+    });
+  } else {
+    step = freezeRangeArgument(stepNode, context, operations, type);
+  }
+  const stepLiteral = stepNode === null ? 1n : integerLiteral(stepNode);
+  if (stepLiteral === undefined || stepLiteral === 0n) {
+    operations.push({
+      kind: "range.validate_step",
+      step,
+      stepType: type,
+    });
+  }
   return {
-    kind: "loop.range_exact",
-    start: startValue.name,
-    stop: stopValue.name,
-    indexType: "Integer",
+    kind: useUint64 ? "loop.range" : "loop.range_exact",
+    start,
+    stop,
+    step,
+    indexType: type,
     operations,
   };
 }
@@ -3331,8 +3409,9 @@ function lowerStatements(statements, context) {
         "native range loop requires a local-name index",
       );
       const index = statement.init.name;
-      const range = lowerRange(statement.object, context);
+      const range = lowerRange(statement.object, context, index);
       ensureVariable(context, statement.init, index, range.indexType);
+      const iterator = temporary(context, statement.init, range.indexType);
       const before = new Set(context.initialized);
       context.initialized.add(index);
       context.controlDepth += 1;
@@ -3356,14 +3435,10 @@ function lowerStatements(statements, context) {
       const operations = [...range.operations, ...hoisted, {
         kind: range.kind,
         index,
-        ...(range.kind === "loop.range"
-          ? {
-              start: range.start,
-              count: range.count,
-              step: range.step,
-              boundIsStop: range.boundIsStop,
-            }
-          : { start: range.start, stop: range.stop }),
+        iterator,
+        start: range.start,
+        stop: range.stop,
+        step: range.step,
         body: loopBody,
       }];
       annotateOperations(operations, sourceSpan(statement, context.filename));
