@@ -391,7 +391,7 @@ assert result.proof_status == "exact-relations-conditional-grh"
 assert result.class_group().invariants() == (3, 3)
 assert resources["cubic_reduced_ideal_sieve_uses"] == 1
 assert resources["cubic_reduced_ideal_sieve_candidates"] == 37
-assert resources["cubic_reduced_ideal_sieve_relations"] == 5
+assert resources["cubic_reduced_ideal_sieve_relations"] == 4
 assert resources["cubic_reduced_ideal_sieve_dependency_relations"] == 8
 assert resources["cubic_reduced_ideal_sieve_source_norm"] == 19
 assert resources["cubic_packed_factor_base_uses"] == 1
@@ -401,9 +401,9 @@ assert resources["cubic_relation_selector_candidate_rows"] == 38
 assert resources["cubic_relation_selector_total_rows"] == 43
 assert resources["cubic_relation_selector_columns"] == 9
 assert resources["cubic_relation_selector_maximum_entry_bits"] == 3
-assert resources["cubic_relation_selector_deletion_trials"] == 38
-assert resources["cubic_relation_selector_hnf_calls"] == 39
-assert resources["cubic_relation_selector_native_boundary_calls"] == 1
+assert resources["cubic_relation_selector_deletion_trials"] == 76
+assert resources["cubic_relation_selector_hnf_calls"] == 78
+assert resources["cubic_relation_selector_native_boundary_calls"] == 2
 assert resources["cubic_relation_selector_library_boundary_calls"] == 0
 assert resources["cubic_relation_selector_flint_basis_deletion_uses"] == 0
 assert resources["relation_attempts"] == 0

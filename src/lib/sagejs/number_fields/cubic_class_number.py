@@ -2817,12 +2817,20 @@ def _select_cubic_relation_candidates(
     tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None,
     int,
 ]:
-    """Select original rows supporting one resident exact HNF basis.
+    """Select a bounded, height-aware support for one resident exact HNF basis.
 
     The provisional packed rows are not proof evidence. The matrix boundary
     authenticates the HNF transform, exact replay, source support, and bounded
     deletion schedule before any selected proposal proceeds to the independent
-    ideal-containment admission boundary.
+    ideal-containment admission boundary.  We obtain the two deterministic
+    edge-minimal supports by presenting candidates in each order.  Later
+    relations often give useful unit dependencies and shorter class-group
+    coordinates, so that support remains the default.  We choose the earlier
+    support only when the sum of its principal-norm bit lengths is at least
+    twenty percent smaller.  That conservative height test avoids pathological
+    proof generators without making a small incidental difference discard the
+    established unit-friendly support.  Both supports must authenticate the
+    same canonical lattice basis.
     """
     if selection_receipt is not None:
         source_rows = initial_rows + tuple(entry[0] for entry in candidates)
@@ -2852,30 +2860,72 @@ def _select_cubic_relation_candidates(
     if not candidates:
         return (), 0
     try:
-        selection = matrix_module.stable_exact_relation_hnf_selection(
+        early_selection = matrix_module.stable_exact_relation_hnf_selection(
             initial_rows,
             (entry[0] for entry in candidates),
             width,
         )
+        late_selection = matrix_module.stable_exact_relation_hnf_selection(
+            initial_rows,
+            (entry[0] for entry in reversed(candidates)),
+            width,
+        )
+        selections = (early_selection, late_selection)
         if selection_receipt is not None:
             selection_receipt.update(
                 {
-                    "completed": int(selection.deletion_complete),
-                    "rank": int(selection.rank),
-                    "deletion_trials": int(selection.deletion_trials),
-                    "hnf_calls": int(selection.hnf_calls),
-                    "native_boundary_calls": int(selection.boundary_calls),
-                    "library_boundary_calls": int(selection.library_boundary_calls),
-                    "flint_basis_deletions": int(
-                        selection.backend.endswith("flint-basis-deletions")
+                    "completed": int(
+                        all(selection.deletion_complete for selection in selections)
+                    ),
+                    "rank": int(early_selection.rank),
+                    "deletion_trials": sum(
+                        int(selection.deletion_trials) for selection in selections
+                    ),
+                    "hnf_calls": sum(
+                        int(selection.hnf_calls) for selection in selections
+                    ),
+                    "native_boundary_calls": sum(
+                        int(selection.boundary_calls) for selection in selections
+                    ),
+                    "library_boundary_calls": sum(
+                        int(selection.library_boundary_calls)
+                        for selection in selections
+                    ),
+                    "flint_basis_deletions": sum(
+                        int(selection.backend.endswith("flint-basis-deletions"))
+                        for selection in selections
                     ),
                 }
             )
-        if selection.rank < 1 or not selection.deletion_complete:
+        if (
+            early_selection.rank < 1
+            or late_selection.rank != early_selection.rank
+            or late_selection.basis != early_selection.basis
+            or not early_selection.deletion_complete
+            or not late_selection.deletion_complete
+        ):
             return None, 0
+        early_indices = tuple(early_selection.selected_candidate_indices)
+        candidate_count = len(candidates)
+        late_indices = tuple(
+            sorted(
+                candidate_count - 1 - index
+                for index in late_selection.selected_candidate_indices
+            )
+        )
+        early_norm_bits = sum(
+            abs(int(candidates[index][2])).bit_length() for index in early_indices
+        )
+        late_norm_bits = sum(
+            abs(int(candidates[index][2])).bit_length() for index in late_indices
+        )
+        # Cross-multiply to avoid floating-point policy at this exact boundary.
+        selected_indices = (
+            early_indices if 5 * early_norm_bits <= 4 * late_norm_bits else late_indices
+        )
         return (
-            tuple(candidates[index] for index in selection.selected_candidate_indices),
-            selection.rank,
+            tuple(candidates[index] for index in selected_indices),
+            early_selection.rank,
         )
     except (ArithmeticError, TypeError, ValueError):
         return None, 0
