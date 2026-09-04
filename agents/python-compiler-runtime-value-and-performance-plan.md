@@ -21,13 +21,16 @@ The program has four equal concerns:
    exceptions rather than inscrutable JavaScript failures.
 4. **Performance.** The same suites should expose expensive compiler and
    runtime paths. Fixing a shared object-model or import hot path is more
-   valuable than hand-optimizing one benchmark.
+   valuable than hand-optimizing one benchmark. Correct behavior can still be
+   incompatibly slow: this plan names and gates **performance-cliff
+   incompatibilities** separately from semantic failures.
 
 The initial semantic target is the portable, public behavior of Python 3.14.
 Use the current stable CPython 3.14 release as the primary oracle. Tests from
-MicroPython, PyPy, RustPython, and later alternative implementations contribute
-excellent cases, but do not independently define Sage.js behavior. CPython
-`main` is a forward-looking grammar probe, not the release oracle.
+MicroPython, PyPy, RustPython, GraalPy, IronPython, and later alternative
+implementations contribute excellent cases, but do not independently define
+Sage.js behavior. CPython `main` is a forward-looking grammar probe, not the
+release oracle.
 
 This plan deliberately sets Sage.js's own rules. Exact CPython behavior is
 valuable when users or packages observe it. CPython bytecode, reference counts,
@@ -140,12 +143,16 @@ ship their full repositories.
 | CPython `main` | observed commit `7b4364de251265b7920ae9692bf7cde250956af1` | non-gating forward grammar/AST report | future signal only |
 | PyPy | tag `release-pypy3.11-v7.3.23`, commit `194f9f44b50552d75484d67cda6e2b36607dee0c` | selected `apptest_*` and portable `extra_tests` edge cases | test source; revalidate with CPython 3.14 |
 | RustPython | commit `59453b9b2505600dcfc5de06aafedeba260b600d` | 221 compact functional snippets, then selected library tests | test source; revalidate with CPython 3.14 |
+| GraalPy | commit `992e0053563c2f73876c0e47d2cc7d14b0505699` | selected pure-Python language tests plus interpreter/warmup benchmark ideas | test source; revalidate with CPython 3.14 |
+| IronPython 3 | commit `b32412cc16f2a917b854021360f1c4b1c8815c2a` | selected binding, object-model, bigint, import, formatting, and traceback tests | test source; revalidate with CPython 3.14 |
 
 Record the relevant PSF, MIT, and other notices beside every vendored
-selection. A sync tool must copy only reviewed files (or reviewed individual
-test cases), record upstream path and SHA-256, and fail if the requested commit
-does not match. CI and release artifacts must not include the approximately
-1.6 GB of upstream Git checkouts.
+selection. GraalPy files can carry notices which differ from the repository's
+top-level UPL license, so synchronization must retain and audit per-file
+headers. A sync tool must copy only reviewed files (or reviewed individual test
+cases), record upstream path and SHA-256, and fail if the requested commit does
+not match. CI and release artifacts must not include the more than 2 GB of
+upstream Git checkouts.
 
 The pins above are bootstrap choices, not permanent claims that old releases
 are ideal. Updating a suite is an explicit reviewed change with a generated
@@ -236,13 +243,51 @@ Use CPython `main` only for a non-gating report of new syntax and AST shapes.
 Nothing from that report changes Sage.js's declared 3.14 target without an
 explicit language-version decision.
 
+### GraalPy
+
+GraalPy is especially useful because it is another modern non-CPython runtime
+with a substantial suite of small Python tests. Its core test tree contains
+focused cases for arithmetic boundaries, calls, classes, closures,
+comprehensions, descriptors, generators, imports, scopes, exceptions,
+collections, standard-library modules, and parser behavior. Its interpreter
+and warmup benchmark directories are also promising sources for
+performance-cliff discovery.
+
+Select pure-Python, public-language tests from
+`graalpython/com.oracle.graal.python.test/src/tests` at individual-test
+granularity. Exclude `cpyext`, Graal/JVM interop, Truffle internals, Java array
+behavior, JIT/intrinsification expectations, and Graal-specific sandbox or
+startup contracts. A test whose filename mentions an optimization may still
+contain a useful portable semantic case, but the optimization itself is not a
+Sage.js requirement.
+
+Do not build GraalPy merely to adopt these tests. Revalidate each case and
+benchmark answer with CPython 3.14. Preserve every file's actual copyright and
+license header rather than assuming the top-level UPL applies uniformly.
+
+### IronPython 3
+
+IronPython provides a valuable independent object model and a long history of
+finding dynamic-language binding corners. Prioritize pure cases involving
+argument binding, closures and name lookup, classes and metaclasses,
+descriptors and properties, special-method dispatch, arbitrary-size integers,
+strings/Unicode/formatting, imports, generators, exceptions, and tracebacks.
+
+The checked-out project still states Python 3.4 as its compatibility target,
+although individual cases include later behavior. Therefore IronPython tests
+are ideas, not even a version-matched oracle: each selected method must first
+pass or receive a version analysis under CPython 3.14. Exclude CLR/.NET
+interop, hosting, compiled assemblies, Dynamic Language Runtime behavior,
+IronPython-only modules, and obsolete version expectations. Provide only the
+small honest portion of `iptest` needed to run selected portable cases; never
+make `is_cli` true or turn IronPython-only skips into Sage.js assertions.
+
 ### Later independent sources
 
-After the three locally available suites are productive, consider selected
-pure-language cases from IronPython, GraalPy, Brython, and Pyodide. Their chief
-value is independent object-model coverage and browser/host-boundary tests.
-They are not prerequisites for the initial program and must not create five
-nearly identical suite adapters.
+After these initial suites are productive, consider selected
+pure-language cases from Brython and Pyodide. Their chief value is independent
+browser and host-boundary coverage. They are not prerequisites for the initial
+program and must not create another suite-specific orchestration layer.
 
 Use Hypothesmith for parser acceptance/rejection fuzzing. Because arbitrary
 generated programs can have destructive effects or undefined resource use, use
@@ -250,9 +295,9 @@ a separate bounded AST generator for execution differential testing. Use a
 selected `pyperformance` subset only after behavior probes establish equivalent
 work.
 
-## Compatibility is two axes, not one percentage
+## Compatibility evidence has three axes, not one percentage
 
-Publish results along two independent axes.
+Publish results along three independent axes.
 
 ### Semantic outcome
 
@@ -289,13 +334,107 @@ not silently become a wrong result under an old `intentional-difference`
 record. A previously missing module which starts importing must be re-evaluated,
 not counted as permanently unsupported.
 
-Never collapse all dispositions into a vanity “Python compatibility percent.”
+### Performance compatibility
+
+Semantic success is not the end of compatibility. A program which is correct
+but takes seconds where ordinary Python takes a fraction of a second changes
+what programs users and agents can reasonably write. Record a third,
+independent performance status for semantically passing cases.
+
+Before assigning a measured status, the case must be valid under pinned
+CPython 3.14, exercise portable
+semantics that make sense for the declared Sage.js host, and produce the same
+checked result and relevant side effects in Sage.js. A reference-count,
+garbage-collector scheduling, CPython C-ABI, unavailable host-capability, or
+otherwise different-work case is `not-comparable`, not a performance cliff.
+
+- `not-measured`: no performance claim has been made for this semantic case;
+- `within-envelope`: no material measured divergence;
+- `watch`: slower enough to investigate but below the product-cliff threshold;
+- `performance-cliff`: a confirmed user-visible or throughput incompatibility;
+- `critical-performance-cliff`: timeout-scale, memory-exhaustion-scale, or at
+  least 50-fold confirmed time divergence; and
+- `not-comparable`: the two runtimes do materially different work or no stable
+  reference measurement exists.
+
+For a named execution scope, let:
+
+```text
+C = median time under pinned CPython 3.14
+S = median time under Sage.js
+R = S / C
+D = S - C
+```
+
+The scopes are separate: `cold-cli`, `source-compile`, `cold-import`,
+`cached-import`, `first-call`, and `warm-throughput`. Do not divide a Sage.js
+cold compile by a CPython warm function call or hide compiler time inside a
+throughput claim.
+
+The initial threshold policy is:
+
+1. **Watch:** `R >= 5` and `D >= 25 ms` for a representative workload.
+2. **Default performance cliff:** `R >= 10` and `D >= 100 ms` for a stable,
+   representative workload whose CPython measurement is above the timer/noise
+   floor.
+3. **Interactive-latency cliff:** even when `R < 10`, `S >= 1 second`,
+   `D >= 500 ms`, and `R >= 3` for an operation a user or agent waits for
+   directly, such as startup, import, first evaluation, or first traceback.
+4. **Critical cliff:** `R >= 50` with `D >= 100 ms`, Sage.js takes at least 10
+   seconds while CPython takes at most 1 second, or the equivalent bounded
+   program times out or exhausts the declared memory budget only in Sage.js.
+
+Version these thresholds in the report schema. The first broad corpus may
+justify lowering or refining them, but changing them requires a reviewed policy
+decision and a before/after reclassification report. “Calibration” may estimate
+noise and representative loop sizes; it may not raise a threshold merely to
+make existing cliffs disappear.
+
+Ten-fold is intentionally the default threshold. Twenty- or fifty-fold would
+miss important, fixable runtime defects. For example, an import taking roughly
+7.2 seconds in Sage.js and 0.65 seconds in CPython is about 11-fold slower and
+is plainly a product incompatibility; this sort of investigation already
+revealed a class-`__dict__` path which could be made roughly 146 times faster.
+Conversely, 1 microsecond versus 11 microseconds is not automatically a product
+cliff. It becomes a formal watch item only if a calibrated loop or real
+workflow proves at least 25 ms of representative cost, and becomes a cliff
+only when that cost reaches the 100 ms threshold.
+
+A measurement is **confirmed** only when:
+
+- both runtimes produce the same checked result and side effects;
+- source, input, host, CPU allocation, runtime versions, and execution scope
+  are recorded;
+- warmup and at least seven recorded samples (or a justified import/startup
+  protocol) give stable medians and dispersion;
+- neither side failed early, used a stub, skipped work, or reused an
+  incomparable cache;
+- the candidate reproduces in a second run on `bench-1` or an equivalently idle
+  qualified host; and
+- the absolute and ratio bounds remain true with confidence intervals or a
+  robust noise allowance.
+
+The threshold classifies the evidence; it does not force every obscure 10-fold
+case ahead of common functionality. A cliff in an `agent-core`, package
+dependency, teaching, or common mathematical workflow is P1. A low-frequency
+case may be P2/P3 or a documented current limitation. A critical cliff which
+causes hangs, timeouts, or practical denial of service is P0/P1 according to
+reachability.
+
+Also maintain same-runtime regression budgets. A Sage.js change which makes a
+stable workflow at least 20% and 50 ms slower deserves review even if Sage.js
+remains under the CPython-relative cliff threshold.
+
+Never collapse semantic outcomes, reviewed dispositions, and performance
+status into a vanity “Python compatibility percent.”
+
 Useful published measures include:
 
 - required cases passing by capability area;
 - unclassified cases (must always be zero in a gating corpus);
 - silent wrong-result count (must always be zero);
 - high-value blockers and the packages/workflows they block;
+- confirmed performance cliffs by execution scope and value tag;
 - intentional differences with user-facing explanations;
 - standard-library modules at tested support tiers;
 - real package suites/workflows passing; and
@@ -395,6 +534,14 @@ upstream-tests/python-compat/
       SOURCE.json
       LICENSE
       selected/
+    graalpy/
+      SOURCE.json
+      LICENSES/
+      selected/
+    ironpython3/
+      SOURCE.json
+      LICENSE
+      selected/
   baselines/
     node-linux-x64.json
     portable.json
@@ -433,6 +580,7 @@ Each adopted case records at least:
   "targets": ["node", "sea", "browser"],
   "timeoutMs": 5000,
   "comparison": "assertion-exit",
+  "performanceScopes": ["source-compile", "warm-throughput"],
   "priority": "P1"
 }
 ```
@@ -508,6 +656,34 @@ test harness:
 - preserve the complete failure artifact outside the console summary;
 - terminate process trees rather than only the immediate child; and
 - make Windows cleanup and path behavior first-class.
+
+Run broad generated-program and full fuzz campaigns in a rootless container
+inside a native VM, not directly in the development container or on a checkout
+host. The `bench-1` SSH target is currently a native x86-64 Ubuntu VM with
+rootless Podman, 8 CPUs, about 32 GB RAM, and enough disk for a deliberately
+small pinned image. Use that facility before installing another container
+runtime.
+
+The fuzz image should pin Node, CPython, and the exact Sage.js artifact. Run as
+an unprivileged user with a read-only root filesystem, no network, all
+capabilities dropped, no-new-privileges, bounded PIDs/CPU/memory/output, and a
+size-limited temporary filesystem. Do not mount a developer checkout, home,
+SSH agent, credentials, or package cache writable into the container. Copy in
+only the immutable corpus/artifact and copy out only structured results and
+minimal reducers. Use fresh interpreter processes within bounded container
+shards, then destroy each shard. For higher-risk campaigns, use a disposable
+VM or restore/recreate the VM after the run; a container is strong
+defense-in-depth, not a claim that arbitrary hostile code is harmless.
+
+The development home has automatic rolling read-only snapshots under
+`$HOME/.snapshots`, nominally created every 15 minutes. Treat those as a
+valuable recovery and audit layer for accidental file damage, never as the
+execution sandbox: snapshots do not stop credential disclosure, network
+access, resource exhaustion, or damage before the next snapshot. Probe and
+record snapshot availability before a campaign—the current `bench-1` home does
+not itself expose `$HOME/.snapshots`—and never mount snapshots into the fuzz
+container. Keep coherent work committed and pushed so recovery does not depend
+on snapshot timing.
 
 Suite synchronization must display additions, deletions, license changes, and
 source hashes for review. It must not execute newly discovered upstream files
@@ -671,17 +847,28 @@ Separate at least these costs:
 
 Report both absolute time and comparison ratio. Ratios become meaningless for
 microsecond baselines, while a small ratio can still hide multi-second user
-latency. A slow-outlier rule should require a calibrated combination such as an
-absolute floor plus a ratio, and ratcheted budgets should apply only to stable,
-representative workloads.
+latency. Apply the explicit watch/cliff/critical thresholds in
+“Performance compatibility” above, and ratchet only stable representative
+workloads. For primitive operations, calibrate an identical loop so CPython's
+recorded body takes enough time to measure reliably, then report both total
+workload time and estimated time per operation. For import, startup, and first
+evaluation, use fresh processes or fresh immutable caches instead of pretending
+that repeated reload is the same operation.
+
+A confirmed cliff is a compatibility result and must appear in the same
+blocker graph as semantic failures, tagged with its execution scope, absolute
+penalty, ratio, affected workflows, suspected root mechanism, and priority.
+Closing it requires both a semantic receipt and a before/after performance
+receipt. Moving a cost from `cold-import` to `first-call` does not close the
+cliff unless the user-visible workflow improves.
 
 ### Workload sources
 
 Use four layers:
 
 1. reduced semantic cases which isolate a runtime primitive;
-2. compact RustPython/MicroPython/PyPy/CPython benchmark snippets after behavior
-   validation;
+2. compact RustPython, MicroPython, PyPy, GraalPy, IronPython, and CPython
+   benchmark/test snippets after behavior validation;
 3. a selected portable `pyperformance` subset; and
 4. real workflows: compiler bootstrap, pytest collection, importing traitlets
    and ipywidgets, package installation/import, symbolic/matrix code, and PREP
@@ -773,7 +960,11 @@ bounded domains:
 
 Generate a safe closed AST subset for execution: no external network, arbitrary
 paths, unbounded allocation, subprocesses, or wall-clock dependence. Run each
-case in an isolated process with deterministic seeds and resource limits.
+case in an isolated process with deterministic seeds and resource limits. The
+closed subset may run as a small routine CI corpus; broad, mutation-based, or
+not-yet-reviewed generated programs must run through the rootless
+Podman-inside-VM fuzz tier described above. Do not relax that tier merely
+because `$HOME/.snapshots` offers recovery from some filesystem mistakes.
 
 Compare typed result trees rather than only `repr` when possible, but test
 `repr` separately because interactive work and snapshot tests depend on it.
@@ -790,10 +981,12 @@ accepting a program says nothing about safe or terminating execution.
 1. Approve the public positioning text and intentional-difference policy.
 2. Record current Sage.js, MicroPython, grammar, pytest, package, startup, size,
    and Python hot-path results without changing behavior.
-3. Pin the CPython 3.14, PyPy, and RustPython revisions and licenses above.
+3. Pin the CPython 3.14, PyPy, RustPython, GraalPy, and IronPython revisions
+   and exact applicable licenses above.
 4. Audit `sys.implementation`, language-version reporting, environment markers,
    and wheel tags for truthfulness.
-5. Define capability names and the two-axis result/disposition vocabulary.
+5. Define capability names and the three-axis semantic/disposition/performance
+   vocabulary.
 
 Acceptance:
 
@@ -843,23 +1036,31 @@ Acceptance:
 - all required adopted cases pass, with zero silent wrong results; and
 - no fix detects RustPython filenames or packages.
 
-### Phase 3 — Add PyPy's adversarial object-model cases
+### Phase 3 — Add independent-runtime adversarial cases
 
 1. Inventory the 32 application-level files and portable public-behavior
-   `extra_tests` cases.
+   `extra_tests` cases from PyPy.
 2. Select descriptors, operators, classes/MRO, scopes, generators, exceptions,
    strings/bytes, buffers, and container behavior first.
 3. Add a narrow adapter for application-level pytest cases without emulating a
    PyPy object space.
-4. Revalidate semantics with CPython 3.14 and classify implementation-specific
-   cases explicitly.
-5. Fix cross-suite root causes and update the blocker graph.
+4. Inventory GraalPy's focused pure-Python language tests and interpreter/warmup
+   benchmarks; select a first tranche covering calls, arithmetic boundaries,
+   classes, closures, descriptors, generators, imports, and scopes.
+5. Inventory IronPython's pure test suite; select a first tranche covering
+   binding, bigint, classes, names, formatting, imports, and tracebacks.
+6. Revalidate every selected behavior with CPython 3.14 and classify
+   implementation- or old-version-specific cases explicitly.
+7. Fix cross-suite root causes and update the blocker graph.
 
 Acceptance:
 
 - every initial `apptest_*` candidate is reviewed;
 - adopted tests run at individual-test granularity;
-- no PyPy JIT/internal dependency enters the Sage.js runtime; and
+- the initial GraalPy and IronPython candidate tranches have reviewed
+  dispositions and exact per-file licenses;
+- no PyPy JIT, Graal/JVM/C-extension, or CLR/.NET dependency enters the Sage.js
+  runtime; and
 - fixes preserve the MicroPython and RustPython gates.
 
 ### Phase 4 — Adopt selected CPython 3.14 tests
@@ -921,7 +1122,9 @@ Acceptance:
 ### Phase 7 — Turn compatibility workloads into a performance engine
 
 1. Add behavior-gated phase timings and warm/cold execution modes.
-2. Calibrate stable absolute-plus-ratio outlier thresholds on `bench-1`.
+2. Implement the 5-fold watch, 10-fold/default, interactive-latency, 50-fold
+   critical, and same-runtime regression policies above; calibrate their noise
+   allowances on `bench-1` without weakening the stated thresholds.
 3. Add selected portable upstream and `pyperformance` workloads.
 4. Profile compiler bootstrap, pytest, traitlets/ipywidgets, and package imports.
 5. Attach source-attributed dossiers to the existing compiler optimization
@@ -933,6 +1136,8 @@ Acceptance:
 
 - every benchmark verifies equivalent behavior before timing;
 - parse, compile, load, first, and warm costs are reported separately;
+- every confirmed 10-fold or interactive cliff appears as a compatibility
+  blocker rather than only a benchmark row;
 - the dashboard identifies root mechanisms and affected workflows;
 - at least one independent rerun confirms each promoted major speedup; and
 - no optimized path weakens the adopted semantic corpus.
@@ -943,14 +1148,20 @@ Acceptance:
 2. Compare typed results and exception structures with CPython 3.14.
 3. Minimize and permanently retain each unique failure.
 4. Add import-graph and stateful-session generation.
-5. Run larger seeded campaigns outside ordinary PR CI.
+5. Build the pinned rootless Podman fuzz image and resource/network policy on
+   `bench-1`.
+6. Run larger seeded campaigns outside ordinary PR CI, retaining only
+   structured receipts and minimized reproducers.
 
 Acceptance:
 
 - fixed seeds are reproducible on Linux, macOS, and Windows;
 - generator time/resource bounds are enforced;
-- duplicate failures cluster by stable root fingerprint; and
-- no fuzzed program can access credentials, the real home, or external network.
+- duplicate failures cluster by stable root fingerprint;
+- no fuzzed program can access credentials, the real home, or external network;
+  and
+- recovery does not depend on `$HOME/.snapshots`, though available snapshots
+  and pushed commits provide an additional recovery trail.
 
 ### Phase 9 — Four-platform and browser qualification
 
@@ -997,8 +1208,8 @@ Acceptance:
 Use several time budgets rather than putting every suite in every command:
 
 - **change-focused:** reducer plus directly connected first-party/upstream cases;
-- **routine PR:** MicroPython, core RustPython/PyPy/CPython selections, negative
-  diagnostics, and key package workflows;
+- **routine PR:** MicroPython, core RustPython/PyPy/GraalPy/IronPython/CPython
+  selections, negative diagnostics, and key package workflows;
 - **full PR/pre-merge:** all adopted cases and supported package suites on the
   primary Linux host;
 - **nightly:** generated tests, full selected package suites, alternate
@@ -1019,7 +1230,9 @@ CI must fail on:
 - a newly passing result awaiting review;
 - a missing upstream license/provenance/hash;
 - an undeclared network/process/home access;
-- a ratcheted startup, size, memory, or stable performance regression; or
+- a ratcheted startup, size, memory, or stable performance regression;
+- a confirmed required-workflow performance cliff which disappears from the
+  report without a reviewed resolution; or
 - disagreement between source and cached/precompiled execution.
 
 ## Risks and mitigations
@@ -1068,6 +1281,13 @@ real tooling.
 Mitigation: behavior probes precede benchmarks, fast and generic paths run
 differential tests, and optimizations include mutation/invalidation cases.
 
+### Ratio noise labels trivial microseconds incompatible
+
+Mitigation: require both the 10-fold ratio and 100 ms representative absolute
+penalty, provide a separate interactive-latency rule, confirm on an idle host,
+and classify 50-fold cases separately. Keep the 5-fold watch list visible
+without presenting it as failed compatibility.
+
 ### Cross-platform skips conceal Unix assumptions
 
 Mitigation: capabilities are declared before execution, Windows is first-class,
@@ -1077,6 +1297,9 @@ and portable cases must agree across the release matrix.
 
 Mitigation: separate grammar from execution generation, use a closed safe AST,
 scrub environments, isolate directories/processes, and enforce strict bounds.
+Run broad campaigns in rootless Podman inside a native VM with no writable
+checkout or credentials. Treat rolling read-only home snapshots as recovery,
+not containment.
 
 ### Agents learn stale or overstated capabilities
 
@@ -1088,9 +1311,10 @@ and make runtime implementation/language/capability identity queryable.
 This program's first major completion point is reached when:
 
 1. one manifest-driven engine runs the existing MicroPython corpus plus the
-   reviewed RustPython, PyPy, and selected CPython 3.14 cases;
+   reviewed RustPython, PyPy, GraalPy, IronPython, and selected CPython 3.14
+   cases;
 2. every adopted case has exact provenance, license, value tags, capabilities,
-   semantic outcome, and reviewed disposition;
+   semantic outcome, reviewed disposition, and applicable performance status;
 3. all required P0/P1 cases pass on their declared targets, with zero silent
    wrong results and zero unclassified outcomes;
 4. the agent usability workflows above have end-to-end regression tests;
@@ -1105,11 +1329,18 @@ This program's first major completion point is reached when:
    reproducible environments;
 9. compatibility workloads produce behavior-gated parse/compile/load/first/warm
    performance evidence and have driven general measured improvements;
-10. test sources and package caches add nothing to shipped payloads, and all
+10. no `agent-core`, package-foundation, teaching, or common mathematical
+    workflow retains a confirmed default or critical performance cliff without
+    an explicit reviewed product decision, and every remaining cliff is
+    published by execution scope;
+11. broad generated-program campaigns run in the container-inside-VM safety
+    tier and produce reproducible minimized cases without access to real homes,
+    credentials, or external networks;
+12. test sources and package caches add nothing to shipped payloads, and all
     existing startup, size, architecture, and memory gates remain satisfied;
-11. the portable corpus is qualified on Linux x64, Linux arm64, macOS arm64,
+13. the portable corpus is qualified on Linux x64, Linux arm64, macOS arm64,
     and Windows x64, with a real-browser subset; and
-12. README, website, CLI help, and machine-readable capability output use the
+14. README, website, CLI help, and machine-readable capability output use the
     independent-implementation wording and link every intentional difference.
 
 Completion does **not** mean that every CPython test passes, every standard
@@ -1127,12 +1358,15 @@ Land these as small pushed commits rather than one long-lived mega-change:
 2. unified runner with exact MicroPython parity;
 3. RustPython inventory and first portable builtins/protocol tranche;
 4. fixes for the highest-fanout P0/P1 root causes found by that tranche;
-5. PyPy descriptor/operator/scope tranche;
+5. PyPy descriptor/operator/scope tranche plus focused GraalPy and IronPython
+   independent-runtime tranches;
 6. selected CPython syntax/builtins/object-model harness;
 7. structured diagnostics and capability identity;
-8. first full upstream package-suite qualification tranche; and
-9. behavior-gated performance dashboard with one independently confirmed
-   general runtime speedup.
+8. first full upstream package-suite qualification tranche;
+9. behavior-gated performance dashboard with an explicit 5x/10x/50x cliff
+   ledger; and
+10. one independently confirmed general runtime speedup which closes a real
+    high-value performance-cliff incompatibility.
 
 This sequence produces useful improvements early, exercises the hardest harness
 decisions before copying a large corpus, and leaves every milestone valuable
