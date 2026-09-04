@@ -798,6 +798,11 @@ function bindingGyp(
         "-Wl,--gc-sections",
         "-Wl,--exclude-libs,ALL",
         ...(profileSymbols ? [] : ["-Wl,--strip-all"]),
+        // FLINT-family addons may embed OpenBLAS, whose process-wide atfork
+        // handlers cannot be deregistered safely while another Node thread is
+        // entering fork/uv_spawn. Worker isolates release DLibs asynchronously,
+        // so retain Linux ELF images until process exit.
+        ...(platform === "linux" ? ["-Wl,-z,nodelete"] : []),
       ];
     }
   }
