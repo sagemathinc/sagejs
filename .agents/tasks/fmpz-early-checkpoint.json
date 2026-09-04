@@ -32,6 +32,7 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test tools/native-kernel/test/fmpz-early-checkpoint.cjs",
     "pnpm architecture:check",
     "pnpm test:baselib:strict",
     "pnpm test:native"
@@ -156,11 +157,39 @@
       "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
       "workspace_fingerprint": "255e63e79b7354beb62e311b60a3490d8ab651f9f6f8128cccb30a7052138757",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/fmpz-early-checkpoint.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.484,
+      "started_at": "2026-09-04T16:07:21.783Z",
+      "commit": "e75c35c6f8cf60dfbb991e71209e21052b5b12b2",
+      "workspace_fingerprint": "72226e691d01e1e8d1f62742523a6470c90bda569e757765cf966b1e184ff650",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.465,
+      "started_at": "2026-09-04T16:07:51.669Z",
+      "commit": "e75c35c6f8cf60dfbb991e71209e21052b5b12b2",
+      "workspace_fingerprint": "72226e691d01e1e8d1f62742523a6470c90bda569e757765cf966b1e184ff650",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Eligible closed fmpz NativeExactArena scopes now carry an explicit nonescaping/no-rewind lifetime certificate and begin their allocation checkpoint immediately after arena initialization, before all owned child vectors and resources. Entry drains FLINT promotion caches so promoted limbs are checkpoint-owned; success and failure clear all children in reverse order before ending the checkpoint. The current complex cubic root remains fmpz-qualified, and generated-C evidence places all 55 current children inside the checkpoint. Focused differential, sentinel, capacity, allocator-provenance, and ASan/UBSan coverage passes, as do all 26 fmpz tests, the canonical native compiler harness, architecture checks, strict baselib, and generic exact-arena tests.",
+    "risks": [
+      "Validation was executed on linux-x64; the focused harness contains the macOS-specific UBSan/link path but cross-platform CI remains authoritative for macOS, Windows, and arm64.",
+      "A broad pnpm test:native attempt found the now-fixed generic analysis-shape regression caused by an undefined checkpointLifetime property; the complete broad command was not rerun after that fix, while its focused generic suite and the full canonical compiler harness both pass.",
+      "The concurrent wasm32 qualification lane also touches exact-analysis.cjs and fmpz-backend.cjs, so integration must serialize those commits and resolve the overlap deliberately."
+    ],
+    "next_steps": [
+      "Integrate after the wasm32 qualification change with a semantic merge preserving both capability gating and this lifetime certificate.",
+      "Run the complete pnpm test:native gate and cross-platform CI on the integrated commit.",
+      "Measure the resident cubic program separately after integration; this lane deliberately did not use the dedicated opt benchmark VM."
+    ]
   }
 }
