@@ -1,0 +1,12 @@
+# The production `dist` tree is intentionally ignored by Git but is a required
+# part of both the browser package and the root `@sagemath/sagejs` package.
+build/
+numerical/build/
+src/
+test/
+scripts/
+demo/
+dist/kernel-pack-build/
+dist/*.metafile.json
+dist/elliptic-lseries-core.c
+dist/kernel-flint-resource-adapter.c

@@ -74,6 +74,19 @@ print("arithmetic genus:", projective.arithmetic_genus())
 projective`,
   },
   {
+    id: "numerical-laboratory",
+    title: "Validated numerical root",
+    description:
+      "Solve, independently validate, explain, and visualize a root-finding computation.",
+    source: `from sagejs.numerics import find_root
+
+result = find_root(lambda x: x^3 - 2, 1.0, 2.0,
+                   method="brent", trace="iterations")
+print(result.explain())
+print(result.to_json())
+result.plot()`,
+  },
+  {
     id: "numpy-signal-recovery",
     title: "NumPy spectral signal recovery",
     description: "Recover two noisy frequencies with vectorized arrays, a real FFT, and a least-squares linear solve.",
@@ -105,7 +118,7 @@ normal_rhs = np.matmul(basis.T, noisy)
 coefficients = np.linalg.solve(normal_matrix, normal_rhs)
 fit = np.matmul(basis, coefficients)
 residual = np.subtract(fit, clean)
-rmse = np.sqrt(np.mean(np.multiply(residual, residual))).item()
+rmse = float(np.sqrt(np.mean(np.multiply(residual, residual))))
 
 print("recovered coefficients:", np.round(coefficients, 3).tolist())
 print("fit RMSE:", round(rmse, 6))`,

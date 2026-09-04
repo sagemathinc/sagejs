@@ -1,0 +1,117 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "sea-foreign-inspect",
+  "title": "Sea Foreign Inspect",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Expose a non-executing, machine-readable foreign-language lowering inspection contract in the source CLI and relocated SEA executables",
+  "base_commit": "9ab9c9c7d5fda5b8c0dffb0a2dd38e758833b9bd",
+  "claims": [
+    "tools/foreign/inspect.ts",
+    "tools/sea-entry.ts",
+    "tools/cli.js",
+    "tools/compile.ts",
+    "test/foreign-inspect-cli.cjs",
+    "docs/foreign-lowering-inspection.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Source CLI and relocated SEA JSON equality for valid and invalid MATLAB/Wolfram inputs"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "node scripts/build-sea.cjs --all",
+    "node --test test/foreign-inspect-cli.cjs test/numerical-multilingual-parsers.cjs",
+    "pnpm test:compiler",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:numerics",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 525.61,
+      "started_at": "2026-09-01T00:24:47.909Z",
+      "commit": "9ab9c9c7d5fda5b8c0dffb0a2dd38e758833b9bd",
+      "workspace_fingerprint": "097c20275b0c9cce64a7d62cba21479574a2100da4aeead74fc5965585f523df",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/build-sea.cjs --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.929,
+      "started_at": "2026-09-01T00:33:41.664Z",
+      "commit": "9ab9c9c7d5fda5b8c0dffb0a2dd38e758833b9bd",
+      "workspace_fingerprint": "097c20275b0c9cce64a7d62cba21479574a2100da4aeead74fc5965585f523df",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/foreign-inspect-cli.cjs test/numerical-multilingual-parsers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.294,
+      "started_at": "2026-09-01T00:34:07.831Z",
+      "commit": "9ab9c9c7d5fda5b8c0dffb0a2dd38e758833b9bd",
+      "workspace_fingerprint": "097c20275b0c9cce64a7d62cba21479574a2100da4aeead74fc5965585f523df",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.528,
+      "started_at": "2026-09-01T00:34:16.810Z",
+      "commit": "9ab9c9c7d5fda5b8c0dffb0a2dd38e758833b9bd",
+      "workspace_fingerprint": "097c20275b0c9cce64a7d62cba21479574a2100da4aeead74fc5965585f523df",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.224,
+      "started_at": "2026-09-01T00:34:20.911Z",
+      "commit": "9ab9c9c7d5fda5b8c0dffb0a2dd38e758833b9bd",
+      "workspace_fingerprint": "097c20275b0c9cce64a7d62cba21479574a2100da4aeead74fc5965585f523df",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.354,
+      "started_at": "2026-09-01T00:35:18.793Z",
+      "commit": "9ab9c9c7d5fda5b8c0dffb0a2dd38e758833b9bd",
+      "workspace_fingerprint": "097c20275b0c9cce64a7d62cba21479574a2100da4aeead74fc5965585f523df",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a stable non-executing foreign-language lowering inspection schema and CLI command, source/SEA argument handling with structured exit 0/1/2 diagnostics, relocated sagejs and sagepython qualification, and user documentation.",
+    "risks": [
+      "Repository-wide architecture:check reaches this lane's green numerical/native/Wasm checks but then fails on the shared base's stale optimizer opportunity dashboard; docs:check likewise reports shared generated reference documentation stale. This lane deliberately did not regenerate integration-owned artifacts.",
+      "The integration lane explicitly cancelled this lane's redundant full 354-file integration replay after precompile and initial scheduling; it will run that suite once on the final integrated source. Exact source/relocated-SEA, build, compiler, strict-Python, and numerical-architecture receipts are green."
+    ],
+    "next_steps": [
+      "P8 and package qualification can invoke inspect-foreign against relocated artifacts using schema sagejs.foreign-lowering-inspection/v1.",
+      "Integration should regenerate shared optimizer and reference-documentation artifacts after all numerical lanes land."
+    ]
+  }
+}

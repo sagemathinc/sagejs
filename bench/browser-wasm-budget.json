@@ -11,15 +11,15 @@
   },
   "artifact_baseline": {
     "totals": {
-      "bytes": 157135706,
-      "gzip_bytes": 22012985,
-      "brotli_bytes": 13741736
+      "bytes": 177582348,
+      "gzip_bytes": 24322203,
+      "brotli_bytes": 15090578
     }
   },
   "artifact_topology_limits": {
     "eager-core": {
-      "gzip_bytes": 15350000,
-      "brotli_bytes": 8500000
+      "gzip_bytes": 16600000,
+      "brotli_bytes": 9200000
     }
   },
   "performance_baseline": {

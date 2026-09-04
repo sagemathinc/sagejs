@@ -51,6 +51,7 @@ async function initialize(message) {
     throw new Error("Sage.js browser kernel is already initialized");
   }
   evaluatorPromise = instantiateSageEvaluator({
+    mode: message.mode,
     compiler: message.compiler,
     baselib: message.baselib,
     standardLibrary: message.standardLibrary,
@@ -61,6 +62,9 @@ async function initialize(message) {
     algebraic: message.algebraic,
     nativeKernels: message.nativeKernels,
     m4ri: message.m4ri,
+    numerical: message.numerical,
+    numericalNlopt: message.numericalNlopt,
+    nloptAdapter: message.nloptAdapter,
     symbolic: message.symbolic,
     compilerWorker: message.compilerWorker,
     compilerFrontend: message.compilerFrontend,

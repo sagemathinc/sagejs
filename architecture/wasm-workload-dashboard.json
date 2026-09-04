@@ -20,11 +20,11 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "24ee05185045006e06845fe69ab2c4c07bafa1fc7327a1ad7713f9ff04829df8"
+      "sha256": "88117a071e818d3bef7da9bd8be1247832d1c48120b8f1e563333ba8d5d00be3"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "be5814dc3a3f2b71b215da80b85cb6060d39dddbd3d5c7672ef40a1005f24174"
+      "sha256": "cd543bff96e95b98e854b5281c6a82ec78841ce6f42148d282267d3b845ac15a"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
@@ -42,24 +42,24 @@
     "parity_workloads": 41,
     "performance_workloads": 21,
     "capability_counts": {
-      "total": 1047,
+      "total": 1049,
       "by_kind": {
         "declared-ffi-function": 456,
         "declared-ffi-resource": 34,
         "napi-export": 331,
         "production-kernel": 53,
         "runtime-intrinsic": 147,
-        "specialist-capability": 26
+        "specialist-capability": 28
       },
       "by_disposition": {
         "compiled-source": 53,
         "desktop-only": 47,
         "generated-wasm": 339,
         "portable-fallback": 560,
-        "shared-core": 48
+        "shared-core": 50
       },
       "by_status": {
-        "available": 582,
+        "available": 584,
         "desktop-only": 47,
         "fallback": 418
       }
@@ -75,7 +75,7 @@
   },
   "route_classes": {
     "expected_requirements": {
-      "wasm-library": 94,
+      "wasm-library": 93,
       "wasm-compiled-source": 16,
       "portable-orchestration": 5,
       "portable-computation": 5
@@ -1660,15 +1660,6 @@
       "expected_routes": [
         {
           "capability_id": "specialist:symbolic-numerical-integral-wasm",
-          "legacy_route": "receipt-backed-wasm-artifact",
-          "route_class": "wasm-library",
-          "reviewed": true,
-          "review": null,
-          "capability_status": "available",
-          "capability_disposition": "shared-core"
-        },
-        {
-          "capability_id": "specialist:symbolic-find-root-wasm",
           "legacy_route": "receipt-backed-wasm-artifact",
           "route_class": "wasm-library",
           "reviewed": true,

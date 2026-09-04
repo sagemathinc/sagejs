@@ -1,0 +1,983 @@
+// sagejs-test-tier: unit
+"use strict";
+
+const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
+const test = require("node:test");
+const {
+  canonicalJson,
+  contentDigestPath,
+  contentId,
+  digestPath,
+  sha256,
+} = require("../../../scripts/numerical-computing/common.cjs");
+const {
+  authenticate,
+  authenticateBrowserDistribution,
+  authenticatePublicNpmRoot,
+  authenticateRebuiltGate,
+  parseArguments: parseAuthenticateArguments,
+} = require("../../../scripts/numerical-computing/qualification/authenticate-release-gate.cjs");
+const {
+  CANONICAL_INPUT,
+  CANONICAL_OUTPUT,
+  exactInputInventory,
+  expectedEvidence,
+  expectedSoakEvidence,
+  expectedRows,
+  parseArguments: parseGateArguments,
+  requireCanonicalLayout,
+} = require("../../../scripts/numerical-computing/qualification/assemble-release-gate.cjs");
+const {
+  parseArguments: parseBrowserArguments,
+} = require("../../../scripts/numerical-computing/qualification/collect-browser.cjs");
+const {
+  parseArguments: parsePlatformArguments,
+} = require("../../../scripts/numerical-computing/qualification/collect-platform.cjs");
+const {
+  options: parseOracleArguments,
+} = require("../../../scripts/numerical-computing/qualification/provision-scipy-oracle.cjs");
+const {
+  manifestBoundArtifacts,
+} = require("../../../scripts/numerical-computing/qualification/prepared-artifacts.cjs");
+const {
+  nodeArtifactSpecifications,
+} = require("../../../scripts/numerical-computing/qualification/prepare-node.cjs");
+const {
+  browserArtifactSpecifications,
+} = require("../../../scripts/numerical-computing/qualification/prepare-browser.cjs");
+const {
+  PUBLISHER,
+  REQUIRED_PRODUCERS,
+  selectRecoveryPublisher,
+} = require("../../../scripts/release/select-recovery-publisher.cjs");
+
+const root = path.resolve(__dirname, "..", "..", "..");
+const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
+const ci = read(".github/workflows/ci.yml");
+const manual = read(".github/workflows/publish-validated-release.yml");
+const deploy = read(".github/workflows/wasm-deploy-cloudflare.yml");
+const mobile = read(".github/workflows/mobile-simulators.yml");
+const numericalSoakWorkflow = read(".github/workflows/numerical-soak.yml");
+const browserCollector = read(
+  "scripts/numerical-computing/qualification/collect-browser.cjs",
+);
+const platformCollector = read(
+  "scripts/numerical-computing/qualification/collect-platform.cjs",
+);
+const browserMemoryCollector = read(
+  "scripts/numerical-computing/qualification/run-browser-memory.cjs",
+);
+const gateAssembler = read(
+  "scripts/numerical-computing/qualification/assemble-release-gate.cjs",
+);
+const packageJson = JSON.parse(read("package.json"));
+const template = JSON.parse(read(
+  "bench/numerical-computing/qualification/matrix/full-runtime.template.json",
+));
+const supplementalTemplate = JSON.parse(read(
+  "bench/numerical-computing/qualification/matrix/supplemental-evidence.template.json",
+));
+const scipyCatalog = JSON.parse(read(
+  "bench/numerical-computing/qualification/scipy-oracle-catalog.json",
+));
+
+const provenanceBuildWorkflows = [
+  ".github/workflows/mobile-simulators.yml",
+  ".github/workflows/wasm-candidate.yml",
+  ".github/workflows/wasm-release.yml",
+  ".github/workflows/wasm-routine.yml",
+];
+
+function workflowJobs(source) {
+  const headers = [...source.matchAll(/^  ([a-zA-Z0-9_-]+):\s*$/gm)];
+  return new Map(headers.map((match, index) => {
+    const start = match.index;
+    const end = headers[index + 1]?.index ?? source.length;
+    return [match[1], source.slice(start, end)];
+  }));
+}
+
+function jobNeeds(job) {
+  const lines = job.split("\n");
+  const index = lines.findIndex((line) => line.startsWith("    needs:"));
+  if (index === -1) return [];
+  const value = lines[index].slice("    needs:".length).trim();
+  const inline = value.match(/^\[([^\]]*)\]$/);
+  if (inline) {
+    return inline[1].split(",").map((name) => name.trim()).filter(Boolean);
+  }
+  if (value) return [value];
+  const dependencies = [];
+  for (const line of lines.slice(index + 1)) {
+    const item = line.match(/^      - ([a-zA-Z0-9_-]+)\s*$/);
+    if (item === null) break;
+    dependencies.push(item[1]);
+  }
+  return dependencies;
+}
+
+const ciJobs = workflowJobs(ci);
+const ciJob = (name) => {
+  assert.ok(ciJobs.has(name), `missing CI job ${name}`);
+  return ciJobs.get(name);
+};
+
+function rowFiles(rowId) {
+  const browser = rowId.startsWith("linux-x64-browser-");
+  const directory = browser
+    ? `build/numerical-qualification/browser/rows/${rowId}`
+    : `build/numerical-qualification/platform/${rowId.replace(/-(node|npm|sea)$/, "")}/${rowId}`;
+  const suffix = browser ? rowId.slice("linux-x64-browser-".length) : null;
+  const receipt = browser
+    ? suffix === "worker" ? "worker-chromium.receipt.json" : `browser-${suffix}.receipt.json`
+    : `${rowId.match(/(node|npm|sea)$/)[1]}.receipt.json`;
+  return { manifest: `${directory}/capabilities.json`, receipt: `${directory}/${receipt}` };
+}
+
+function validGate(candidate) {
+  let serial = 0;
+  const identity = (label) => contentId({ label, serial: serial++ });
+  const rows = template.rows.map((row) => row.id).sort();
+  const subjects = new Map(template.rows.map((row) => [row.platform, []]));
+  for (const row of template.rows) {
+    subjects.get(row.platform).push({
+      kind: row.subject.kind,
+      name: row.subject.name,
+      version: ["npm", "sea"].includes(row.subject.kind) ? packageJson.version : "test-version",
+      engine: row.subject.engine,
+    });
+  }
+  for (const records of subjects.values()) {
+    records.sort((left, right) => canonicalJson(left).localeCompare(canonicalJson(right)));
+  }
+  const supplemental = [
+    ["browser-memory-chromium", "sagejs.numerical-browser-memory-evidence/v1", "build/numerical-qualification/browser/supplemental/memory-browser-chromium/browser-chromium.memory-evidence.json"],
+    ["browser-memory-firefox", "sagejs.numerical-browser-memory-evidence/v1", "build/numerical-qualification/browser/supplemental/memory-browser-firefox/browser-firefox.memory-evidence.json"],
+    ["browser-memory-webkit", "sagejs.numerical-browser-memory-evidence/v1", "build/numerical-qualification/browser/supplemental/memory-browser-webkit/browser-webkit.memory-evidence.json"],
+    ["browser-memory-worker", "sagejs.numerical-browser-memory-evidence/v1", "build/numerical-qualification/browser/supplemental/memory-worker-chromium/worker-chromium.memory-evidence.json"],
+    ["native-sanitizers", "sagejs.numerical-native-sanitizer-evidence/v1", "build/numerical-qualification/browser/supplemental/native-sanitizers.evidence.json"],
+    ...["linux-arm64", "linux-x64", "macos-arm64", "windows-x64"].map((platform) => [
+      `numerical-soak-${platform}`,
+      "sagejs.numerical-soak-evidence/v1",
+      `build/numerical-qualification/platform/${platform}/${platform}-soak.evidence.json`,
+    ]),
+    ["structural-performance", "sagejs.numerical-structural-performance-evidence/v1", "build/numerical-qualification/browser/supplemental/structural-performance.evidence.json"],
+    ["wasm-destructive", "sagejs.numerical-wasm-destructive-evidence/v1", "build/numerical-qualification/browser/supplemental/wasm-destructive.evidence.json"],
+  ];
+  const core = {
+    schema: "sagejs.numerical-qualification-release-gate/v1",
+    candidate,
+    status: "passed",
+    matrix_report: {
+      path: "build/numerical-qualification/gate/full-runtime.report.json",
+      sha256: sha256("matrix-report"),
+      id: identity("matrix-report"),
+    },
+    matrix_receipts: rows.map((rowId) => ({
+      row_id: rowId,
+      path: rowFiles(rowId).receipt,
+      sha256: sha256(`receipt:${rowId}`),
+      id: identity(`receipt:${rowId}`),
+    })),
+    capability_manifests: rows.map((rowId) => ({
+      row_id: rowId,
+      path: rowFiles(rowId).manifest,
+      sha256: sha256(`manifest:${rowId}`),
+      id: identity(`manifest:${rowId}`),
+    })),
+    matrix_policy: {
+      path: "build/numerical-qualification/gate/full-runtime.policy.json",
+      sha256: sha256("matrix-policy"),
+      id: template.id,
+      rows: 16,
+    },
+    matrix_template: {
+      path: "bench/numerical-computing/qualification/matrix/full-runtime.template.json",
+      sha256: sha256(Buffer.from(read(
+        "bench/numerical-computing/qualification/matrix/full-runtime.template.json",
+      ))),
+      id: template.id,
+      rows: 16,
+    },
+    supplemental_report: {
+      id: identity("supplemental-report"),
+      template_sha256: sha256(canonicalJson(supplementalTemplate)),
+      rows: 6,
+      requirement_ids: supplementalTemplate.requirements.map((item) => item.id).sort(),
+    },
+    supplemental_evidence: supplemental.map(([category, schema, evidencePath]) => ({
+      category,
+      schema,
+      path: evidencePath,
+      sha256: sha256(`evidence:${category}`),
+      id: identity(`evidence:${category}`),
+    })),
+    artifact_coherence: {
+      cminpack_content_sha256: sha256("cminpack"),
+      nlopt_content_sha256: sha256("nlopt"),
+      linux_sea_content_sha256: sha256("linux-sea"),
+      browser_distribution_content_sha256: sha256("browser-dist"),
+      public_npm_root_content_sha256: sha256("public-root"),
+    },
+    scipy_oracle_coherence: {
+      catalog_id: scipyCatalog.id,
+      platform_bindings: [...subjects].sort(([left], [right]) => left.localeCompare(right))
+        .map(([platform, platformSubjects]) => ({
+          platform,
+          binding_id: identity(`scipy:${platform}`),
+          subjects: platformSubjects,
+        })),
+    },
+  };
+  return { ...core, id: contentId(core) };
+}
+
+function reidentify(gate, mutate) {
+  const copy = structuredClone(gate);
+  mutate(copy);
+  delete copy.id;
+  return { ...copy, id: contentId(copy) };
+}
+
+test("checked-in qualification commands expose fail-closed production entrypoints", () => {
+  assert.equal(template.rows.length, 16);
+  assert.equal(new Set(template.rows.map((row) => row.id)).size, 16);
+  for (const [name, filename] of [
+    ["release:qualify:numerics:platform", "collect-platform.cjs"],
+    ["release:qualify:numerics:browser", "collect-browser.cjs"],
+    ["release:qualify:numerics:gate", "assemble-release-gate.cjs"],
+  ]) {
+    assert.match(packageJson.scripts[name], new RegExp(filename.replace(".", "\\.")));
+    const source = read(`scripts/numerical-computing/qualification/${filename}`);
+    assert.match(source, /repositoryIdentity/);
+    assert.doesNotMatch(source, /--allow-dirty|--development/);
+  }
+  assert.match(
+    packageJson.scripts["release:qualify:numerics:oracle"],
+    /provision-scipy-oracle\.cjs/,
+  );
+  assert.match(
+    packageJson.scripts["release:qualify:numerics:authenticate"],
+    /authenticate-release-gate\.cjs/,
+  );
+});
+
+test("documented pnpm argument separators reach every numerical qualification CLI", () => {
+  const candidate = "1".repeat(40);
+  assert.deepEqual(parseOracleArguments([
+    "--", "--artifact-directory", "build/downloads", "--prefix", "build/prefix",
+    "--provenance", "build/provenance.json", "--download",
+  ]), {
+    artifact_directory: "build/downloads",
+    download: true,
+    prefix: "build/prefix",
+    provenance: "build/provenance.json",
+  });
+  assert.deepEqual(parsePlatformArguments([
+    "--", "--candidate", candidate, "--output", "build/output", "--subjects", "node",
+  ]), {
+    candidate,
+    help: false,
+    output: "build/output",
+    subjects: ["node"],
+  });
+  assert.deepEqual(parseBrowserArguments([
+    "--", "--candidate", candidate, "--output", "build/output",
+  ]), {
+    artifact: "packages/flint-wasm",
+    candidate,
+    help: false,
+    output: "build/output",
+  });
+  assert.deepEqual(parseGateArguments([
+    "--", "--candidate", candidate, "--input", CANONICAL_INPUT,
+    "--output", CANONICAL_OUTPUT,
+  ]), {
+    candidate,
+    help: false,
+    input: CANONICAL_INPUT,
+    output: CANONICAL_OUTPUT,
+  });
+  assert.deepEqual(parseAuthenticateArguments([
+    "--", "--candidate", candidate, "--gate", "build/gate.json",
+    "--rebuilt-gate", "build/rebuilt.json",
+    "--browser-distribution", "packages/flint-wasm/dist",
+  ]), {
+    browser_distribution: "packages/flint-wasm/dist",
+    candidate,
+    gate: "build/gate.json",
+    help: false,
+    rebuilt_gate: "build/rebuilt.json",
+  });
+});
+
+test("qualified Wasm builders fetch the promoted source-candidate ancestry", () => {
+  for (const relative of provenanceBuildWorkflows) {
+    const lines = read(relative).split("\n");
+    const checkouts = lines
+      .map((line, index) => line.includes("uses: actions/checkout@v7") ? index : -1)
+      .filter((index) => index >= 0);
+    assert.ok(checkouts.length > 0, `${relative} must check out the source`);
+    for (const index of checkouts) {
+      assert.match(
+        lines.slice(index, index + 5).join("\n"),
+        /fetch-depth: 0/,
+        `${relative}:${index + 1} must retain qualification ancestry`,
+      );
+    }
+  }
+
+  for (const stepName of [
+    "Check out the exact source candidate",
+    "Check out the exact tagged candidate",
+  ]) {
+    const start = ci.indexOf(`- name: ${stepName}`);
+    assert.notEqual(start, -1, `${stepName} is present in release CI`);
+    assert.match(
+      ci.slice(start, start + 240),
+      /uses: actions\/checkout@v7[\s\S]*?fetch-depth: 0/,
+      `${stepName} must retain qualification ancestry`,
+    );
+  }
+});
+
+test("mobile simulators consume one canonical source-bound numerical product", () => {
+  assert.match(mobile, /numerical-product:\n[\s\S]*?runs-on: ubuntu-24\.04/);
+  assert.match(
+    mobile,
+    /node scripts\/numerical-product\.cjs publish \\\n\s+--output build\/authenticated-numerical-product/,
+  );
+  assert.match(mobile, /iphone-ipad:\n[\s\S]*?needs: numerical-product/);
+  assert.match(
+    mobile,
+    /SAGEJS_NUMERICAL_PRODUCT_ROOT: \$\{\{ github\.workspace \}\}\/build\/authenticated-numerical-product/,
+  );
+  assert.match(
+    mobile,
+    /uses: actions\/download-artifact@v8[\s\S]*?name: sagejs-mobile-numerical-product/,
+  );
+  assert.match(
+    mobile,
+    /node scripts\/numerical-product\.cjs install --input "\$SAGEJS_NUMERICAL_PRODUCT_ROOT"/,
+  );
+});
+
+test("scheduled numerical soak is bounded, cancellable, and absent from routine pushes", () => {
+  assert.match(numericalSoakWorkflow, /schedule:\n\s+- cron: "41 3 \* \* 3"/);
+  assert.match(numericalSoakWorkflow, /workflow_dispatch:/);
+  assert.doesNotMatch(numericalSoakWorkflow, /^\s+(push|pull_request):/m);
+  assert.match(
+    numericalSoakWorkflow,
+    /concurrency:[\s\S]*?cancel-in-progress: true/,
+  );
+  assert.match(
+    numericalSoakWorkflow,
+    /numerical-soak:[\s\S]*?timeout-minutes: 120/,
+  );
+  assert.match(
+    numericalSoakWorkflow,
+    /run-soak\.cjs \\\n[\s\S]*?--candidate "\$\(git rev-parse HEAD\)" \\\n[\s\S]*?--profile scheduled/,
+  );
+  assert.match(numericalSoakWorkflow, /set -o pipefail/);
+  assert.match(
+    numericalSoakWorkflow,
+    /Preserve scheduled soak evidence and diagnostics\n\s+if: always\(\)/,
+  );
+});
+
+test("publisher authentication requires an intact exact gate inventory", () => {
+  const candidate = "1".repeat(40);
+  const gate = validGate(candidate);
+  assert.equal(authenticate(gate, candidate), gate);
+  assert.throws(() => authenticate(gate, "2".repeat(40)), /requested candidate/);
+  const forgeries = [
+    [(value) => { value.matrix_receipts[0].path = "../receipt.json"; }, /canonical/],
+    [(value) => { value.matrix_receipts[0].sha256 = "bad"; }, /SHA-256/],
+    [(value) => { value.matrix_receipts[0].id = value.matrix_receipts[1].id; }, /duplicate/],
+    [(value) => { value.matrix_receipts[0].row_id = value.matrix_receipts[1].row_id; }, /duplicates|omits/],
+    [(value) => { value.capability_manifests[0].extra = true; }, /unexpected field inventory/],
+    [(value) => { value.supplemental_evidence[0].category = value.supplemental_evidence[1].category; }, /duplicates|omits/],
+    [(value) => { value.supplemental_evidence[0].schema = "foreign"; }, /wrong schema/],
+    [(value) => { value.supplemental_evidence.find((item) =>
+      item.category === "numerical-soak-linux-x64").path =
+        "build/numerical-qualification/platform/linux-arm64/linux-arm64-soak.evidence.json"; }, /substitutes/],
+    [(value) => { value.supplemental_report.requirement_ids.pop(); }, /six requirement/],
+    [(value) => { value.scipy_oracle_coherence.catalog_id = contentId({ foreign: true }); }, /source-current catalog/],
+    [(value) => { value.scipy_oracle_coherence.platform_bindings[0].binding_id =
+      value.scipy_oracle_coherence.platform_bindings[1].binding_id; }, /binding IDs must be unique/],
+    [(value) => { value.scipy_oracle_coherence.platform_bindings[0].subjects[0].name = "foreign"; }, /canonical subject/],
+    [(value) => { value.scipy_oracle_coherence.platform_bindings[0].subjects[0].version = ""; }, /version must be nonempty/],
+    [(value) => { value.artifact_coherence.public_npm_root_content_sha256 = "bad"; }, /SHA-256/],
+  ];
+  for (const [mutate, pattern] of forgeries) {
+    assert.throws(() => authenticate(reidentify(gate, mutate), candidate), pattern);
+  }
+});
+
+test("raw-evidence rebuild rejects valid-looking recomputed compact substitutions", () => {
+  const candidate = "1".repeat(40);
+  const rebuilt = validGate(candidate);
+  const substitutions = [
+    (value) => {
+      value.matrix_receipts[0].sha256 = sha256("foreign receipt bytes");
+      value.matrix_receipts[0].id = contentId({ foreign: "receipt" });
+    },
+    (value) => {
+      value.supplemental_evidence[0].sha256 = sha256("foreign evidence bytes");
+      value.supplemental_evidence[0].id = contentId({ foreign: "evidence" });
+    },
+    (value) => {
+      value.matrix_report.sha256 = sha256("foreign matrix report bytes");
+      value.matrix_report.id = contentId({ foreign: "matrix-report" });
+    },
+    (value) => {
+      value.matrix_policy.sha256 = sha256("foreign matrix policy bytes");
+    },
+    (value) => {
+      value.scipy_oracle_coherence.platform_bindings[0].binding_id =
+        contentId({ foreign: "scipy-binding" });
+    },
+  ];
+  for (const substitute of substitutions) {
+    const forged = reidentify(rebuilt, substitute);
+    assert.doesNotThrow(() => authenticate(forged, candidate));
+    assert.throws(
+      () => authenticateRebuiltGate(forged, rebuilt, candidate),
+      /differs from the raw-evidence rebuild/,
+    );
+  }
+});
+
+test("publisher binds the selected public npm root bytes to all four npm rows", () => {
+  fs.mkdirSync(path.join(root, "build"), { recursive: true });
+  const directory = fs.mkdtempSync(path.join(root, "build", "public-root-binding-"));
+  const archive = path.join(directory, "sagejs.tgz");
+  try {
+    fs.writeFileSync(archive, "qualified public root");
+    const relative = path.relative(root, archive).split(path.sep).join("/");
+    const gate = validGate("1".repeat(40));
+    gate.artifact_coherence.public_npm_root_content_sha256 = sha256("qualified public root");
+    delete gate.id;
+    gate.id = contentId(gate);
+    assert.equal(authenticatePublicNpmRoot(gate, relative), sha256("qualified public root"));
+    fs.writeFileSync(archive, "substituted public root");
+    assert.throws(() => authenticatePublicNpmRoot(gate, relative), /differs from the four/);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("deployment binds the selected browser distribution bytes to the qualified rows", () => {
+  fs.mkdirSync(path.join(root, "build"), { recursive: true });
+  const directory = fs.mkdtempSync(path.join(root, "build", "browser-dist-binding-"));
+  try {
+    fs.mkdirSync(path.join(directory, "assets"));
+    fs.writeFileSync(path.join(directory, "production-manifest.json"), "{}\n");
+    fs.writeFileSync(path.join(directory, "assets", "runtime.mjs"), "export const x = 1;\n");
+    const relative = path.relative(root, directory).split(path.sep).join("/");
+    const expected = contentDigestPath(root, relative, "test browser distribution");
+    const gate = validGate("1".repeat(40));
+    gate.artifact_coherence.browser_distribution_content_sha256 = expected;
+    delete gate.id;
+    gate.id = contentId(gate);
+    assert.equal(authenticateBrowserDistribution(gate, relative), expected);
+    fs.writeFileSync(path.join(directory, "assets", "runtime.mjs"), "export const x = 2;\n");
+    assert.throws(
+      () => authenticateBrowserDistribution(gate, relative),
+      /differs from the numerically qualified browser distribution/,
+    );
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("aggregation accepts only the exact producer layout", () => {
+  fs.mkdirSync(path.join(root, "build"), { recursive: true });
+  const directory = fs.mkdtempSync(path.join(root, "build", "release-wiring-layout-"));
+  const relative = path.relative(root, directory).split(path.sep).join("/");
+  try {
+    for (const platform of ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]) {
+      for (const kind of ["node", "npm", "sea"]) {
+        const row = path.join(directory, "platform", platform, `${platform}-${kind}`);
+        fs.mkdirSync(row, { recursive: true });
+        fs.writeFileSync(path.join(row, "capabilities.json"), "{}\n");
+        fs.writeFileSync(path.join(row, `${kind}.receipt.json`), "{}\n");
+      }
+      fs.writeFileSync(
+        path.join(directory, "platform", platform, `${platform}-soak.evidence.json`),
+        "{}\n",
+      );
+    }
+    for (const [suffix, receipt] of [
+      ["chromium", "browser-chromium.receipt.json"],
+      ["firefox", "browser-firefox.receipt.json"],
+      ["webkit", "browser-webkit.receipt.json"],
+      ["worker", "worker-chromium.receipt.json"],
+    ]) {
+      const row = path.join(directory, "browser", "rows", `linux-x64-browser-${suffix}`);
+      fs.mkdirSync(row, { recursive: true });
+      fs.writeFileSync(path.join(row, "capabilities.json"), "{}\n");
+      fs.writeFileSync(path.join(row, receipt), "{}\n");
+    }
+    const supplemental = path.join(directory, "browser", "supplemental");
+    for (const filename of [
+      "native-sanitizers.evidence.json",
+      "wasm-destructive.evidence.json",
+      "structural-performance.evidence.json",
+    ]) {
+      fs.mkdirSync(supplemental, { recursive: true });
+      fs.writeFileSync(path.join(supplemental, filename), "{}\n");
+    }
+    for (const [directoryName, filename] of [
+      ["memory-browser-chromium", "browser-chromium.memory-evidence.json"],
+      ["memory-browser-firefox", "browser-firefox.memory-evidence.json"],
+      ["memory-browser-webkit", "browser-webkit.memory-evidence.json"],
+      ["memory-worker-chromium", "worker-chromium.memory-evidence.json"],
+    ]) {
+      fs.mkdirSync(path.join(supplemental, directoryName), { recursive: true });
+      fs.writeFileSync(path.join(supplemental, directoryName, filename), "{}\n");
+    }
+    const bindBrowserArtifact = (directory, receiptName) => {
+      const artifact = path.join(directory, "browser-artifact");
+      fs.mkdirSync(artifact, { recursive: true });
+      fs.writeFileSync(path.join(artifact, "package.json"), "{\"name\":\"fixture\"}\n");
+      const artifactRelative = path.relative(root, artifact).split(path.sep).join("/");
+      const binding = {
+        name: "sagejs-browser",
+        ...digestPath(root, artifactRelative),
+        content_sha256: contentDigestPath(root, artifactRelative),
+      };
+      fs.writeFileSync(path.join(directory, receiptName), JSON.stringify({ artifacts: [binding] }));
+    };
+    for (const [suffix, receipt] of [
+      ["chromium", "browser-chromium.receipt.json"],
+      ["firefox", "browser-firefox.receipt.json"],
+      ["webkit", "browser-webkit.receipt.json"],
+      ["worker", "worker-chromium.receipt.json"],
+    ]) {
+      bindBrowserArtifact(
+        path.join(directory, "browser", "rows", `linux-x64-browser-${suffix}`),
+        receipt,
+      );
+    }
+    for (const [directoryName, stem] of [
+      ["memory-browser-chromium", "browser-chromium"],
+      ["memory-browser-firefox", "browser-firefox"],
+      ["memory-browser-webkit", "browser-webkit"],
+      ["memory-worker-chromium", "worker-chromium"],
+    ]) {
+      bindBrowserArtifact(path.join(supplemental, directoryName), `${stem}.receipt.json`);
+    }
+    const rows = expectedRows(relative);
+    const browserEvidence = expectedEvidence(relative);
+    const soakEvidence = expectedSoakEvidence(relative);
+    const evidence = [...browserEvidence, ...soakEvidence];
+    assert.equal(rows.length, 16);
+    assert.equal(browserEvidence.length, 7);
+    assert.equal(soakEvidence.length, 4);
+    assert.equal(evidence.length, 11);
+    assert.ok(exactInputInventory(relative, rows, evidence).length > 27);
+    const foreignDirectory = path.join(directory, "browser", "supplemental", "Foreign");
+    fs.mkdirSync(foreignDirectory);
+    assert.throws(() => exactInputInventory(relative, rows, evidence), /foreign directory/);
+    fs.rmdirSync(foreignDirectory);
+    const foreignFile = path.join(directory, "foreign-duplicate.receipt.json");
+    fs.writeFileSync(foreignFile, "{}\n");
+    assert.throws(() => exactInputInventory(relative, rows, evidence), /foreign file/);
+    fs.unlinkSync(foreignFile);
+    const caseOne = path.join(directory, "browser", "rows", "case-probe");
+    const caseTwo = path.join(directory, "browser", "rows", "CASE-PROBE");
+    fs.mkdirSync(caseOne);
+    fs.mkdirSync(caseTwo);
+    assert.throws(() => exactInputInventory(relative, rows, evidence), /case-colliding paths/);
+    fs.rmdirSync(caseOne);
+    fs.rmdirSync(caseTwo);
+    const injected = path.join(
+      directory, "browser", "rows", "linux-x64-browser-chromium",
+      "browser-artifact", "injected.mjs",
+    );
+    fs.writeFileSync(injected, "export default 1;\n");
+    assert.throws(() => exactInputInventory(relative, rows, evidence), /differs from its authenticated/);
+    fs.unlinkSync(injected);
+    fs.rmSync(path.join(directory, "platform", "linux-arm64", "linux-arm64-sea", "sea.receipt.json"));
+    assert.throws(() => expectedRows(relative), /sea receipt/);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("real gate assembler is pinned to the exact reconstructible workflow layout", () => {
+  assert.deepEqual(requireCanonicalLayout(CANONICAL_INPUT, CANONICAL_OUTPUT), {
+    input: CANONICAL_INPUT,
+    output: CANONICAL_OUTPUT,
+  });
+  assert.throws(
+    () => requireCanonicalLayout(CANONICAL_INPUT, "build/rebuilt-numerical-gate"),
+    /canonical workflow layout/,
+  );
+  assert.throws(
+    () => requireCanonicalLayout("build/foreign-evidence", CANONICAL_OUTPUT),
+    /canonical workflow layout/,
+  );
+  const realAssembler = spawnSync(process.execPath, [
+    "scripts/numerical-computing/qualification/assemble-release-gate.cjs",
+    "--candidate", "1".repeat(40),
+    "--input", CANONICAL_INPUT,
+    "--output", "build/rebuilt-numerical-gate",
+  ], { cwd: root, encoding: "utf8" });
+  assert.notEqual(realAssembler.status, 0);
+  assert.match(realAssembler.stderr, /requires canonical workflow layout/);
+});
+
+test("platform collection cannot relabel subjects or omit their release artifacts", () => {
+  assert.throws(
+    () => parsePlatformArguments([
+      "--candidate", "1".repeat(40), "--output", "build/output", "--subjects", "node,node",
+    ]),
+    /unique comma-separated subset/,
+  );
+  assert.throws(
+    () => parsePlatformArguments([
+      "--candidate", "1".repeat(40), "--output", "build/output", "--subjects", "npm",
+    ]),
+    /requires --root-archive and --platform-archive/,
+  );
+  assert.throws(
+    () => parsePlatformArguments([
+      "--candidate", "1".repeat(40), "--output", "build/output", "--subjects", "sea",
+    ]),
+    /requires --sea-executable/,
+  );
+});
+
+test("collectors pass every manifest-bound prepared artifact to qualification", () => {
+  const prepared = (artifacts) => ({
+    artifacts,
+    manifest: {
+      bindings: {
+        artifacts: artifacts.map((specification) => ({
+          name: specification.slice(0, specification.indexOf("=")),
+        })),
+      },
+    },
+  });
+  const nodeArtifacts = nodeArtifactSpecifications({
+    artifactPath: "dist",
+    cminpackArtifactPath: "packages/cminpack-wasm/cminpack.wasm",
+    nloptArtifactPath: "packages/nlopt-wasm/nlopt.wasm",
+    scipyOracleBindingPath: "build/node/scipy-oracle.json",
+  });
+  assert.deepEqual(nodeArtifacts, [
+    "sagejs-dist=dist",
+    "cminpack-wasm=packages/cminpack-wasm/cminpack.wasm",
+    "nlopt-wasm=packages/nlopt-wasm/nlopt.wasm",
+    "scipy-oracle-binding=build/node/scipy-oracle.json",
+  ]);
+  const browserArtifacts = browserArtifactSpecifications({
+    stagedArtifactPath: "build/browser/artifact",
+    cminpackArtifactPath: "packages/cminpack-wasm/cminpack.wasm",
+    nloptArtifactPath: "packages/nlopt-wasm/nlopt.wasm",
+    browserExecutableBindingPath: "build/browser/browser-executable.json",
+    scipyOracleBindingPath: "build/browser/scipy-oracle.json",
+  });
+  assert.deepEqual(browserArtifacts, [
+    "sagejs-browser=build/browser/artifact",
+    "browser-dist=build/browser/artifact/dist",
+    "cminpack-wasm=packages/cminpack-wasm/cminpack.wasm",
+    "nlopt-wasm=packages/nlopt-wasm/nlopt.wasm",
+    "browser-executable-binding=build/browser/browser-executable.json",
+    "scipy-oracle-binding=build/browser/scipy-oracle.json",
+  ]);
+  assert.deepEqual(
+    manifestBoundArtifacts(prepared(nodeArtifacts), "linux-x64-node"),
+    nodeArtifacts,
+  );
+  assert.deepEqual(
+    manifestBoundArtifacts(prepared(browserArtifacts), "linux-x64-browser-chromium"),
+    browserArtifacts,
+  );
+  for (const source of [platformCollector, browserCollector]) {
+    assert.match(source, /manifestBoundArtifacts\(prepared, rowId\)/);
+  }
+  assert.match(
+    browserMemoryCollector,
+    /manifestBoundArtifacts\(\s*prepared,\s*`browser memory \$\{options\.kind\}\/\$\{options\.engine\}`/,
+  );
+});
+
+test("collectors fail closed when prepared artifacts differ from the manifest", () => {
+  const artifacts = [
+    "sagejs-browser=build/browser/artifact",
+    "browser-dist=build/browser/artifact/dist",
+    "cminpack-wasm=packages/cminpack-wasm/cminpack.wasm",
+    "nlopt-wasm=packages/nlopt-wasm/nlopt.wasm",
+    "browser-executable-binding=build/browser/browser-executable.json",
+    "scipy-oracle-binding=build/browser/scipy-oracle.json",
+  ];
+  const manifest = {
+    bindings: {
+      artifacts: artifacts.map((specification) => ({
+        name: specification.slice(0, specification.indexOf("=")),
+      })),
+    },
+  };
+  assert.throws(
+    () => manifestBoundArtifacts({ artifacts: artifacts.slice(0, -1), manifest }, "browser"),
+    /artifacts differ from its capability manifest bindings/,
+  );
+  assert.throws(
+    () => manifestBoundArtifacts({
+      artifacts: artifacts.filter((item) => !item.startsWith("browser-executable-binding=")),
+      manifest,
+    }, "browser"),
+    /artifacts differ from its capability manifest bindings/,
+  );
+  assert.throws(
+    () => manifestBoundArtifacts({
+      artifacts: [...artifacts, "sagejs-browser=build/browser/other"],
+      manifest,
+    }, "browser"),
+    /duplicate artifact names/,
+  );
+});
+
+test("tag CI collects 12 platform and four browser rows before publication", () => {
+  for (const platform of ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]) {
+    assert.match(ci, new RegExp(`numerical-qualification-${platform}`));
+    assert.match(ci, new RegExp(`platform/${platform.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+  }
+  for (const required of [
+    "Numerical browser and supplemental qualification",
+    "Numerical release qualification gate",
+    "numerical-release-evidence",
+    "release:qualify:numerics:browser",
+    "release:qualify:numerics:gate",
+  ]) assert.match(ci, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  for (const required of [
+    "native-sanitizers.evidence.json",
+    "wasm-destructive.evidence.json",
+    "structural-performance.evidence.json",
+    "memory-browser-chromium",
+    "memory-browser-firefox",
+    "memory-browser-webkit",
+    "memory-worker-chromium",
+  ]) {
+    assert.match(gateAssembler, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  for (const required of [
+    "run-native-sanitizers.cjs",
+    "run-wasm-destructive.cjs",
+    "run-browser-memory.cjs",
+    "run-structural-performance.cjs",
+  ]) assert.match(browserCollector, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(platformCollector, /run-soak\.cjs/);
+  assert.match(platformCollector, /"--profile", "release"/);
+  assert.match(gateAssembler, /expectedSoakEvidence/);
+  assert.match(
+    ci,
+    /publish-release:[\s\S]*?needs:\n\s+- numerical-release-gate[\s\S]*?Restore the mandatory numerical release gate/,
+  );
+  assert.match(
+    ci,
+    /Restore the complete raw numerical evidence inventory[\s\S]+name: numerical-release-evidence[\s\S]+path: build\/numerical-qualification/,
+  );
+  assert.doesNotMatch(ci, /merge-multiple:\s*true/);
+  const gate = ci.indexOf("- name: Rebuild and authenticate the gate and exact public npm root");
+  const draft = ci.indexOf("- name: Create or update the draft GitHub release", gate);
+  const npm = ci.indexOf("- name: Publish the platform and public npm packages", draft);
+  assert.ok(gate >= 0 && gate < draft && draft < npm);
+  const rawUpload = ci.slice(
+    ci.indexOf("name: numerical-release-evidence"),
+    ci.indexOf("retention-days: 90", ci.indexOf("name: numerical-release-evidence")),
+  );
+  assert.doesNotMatch(rawUpload, /numerical-qualification\/gate/);
+  const gateJob = ci.slice(
+    ci.indexOf("numerical-release-gate:"),
+    ci.indexOf("publish-release:"),
+  );
+  assert.equal(
+    [...gateJob.matchAll(/release:qualify:numerics:gate --/g)].length,
+    2,
+    "the tag gate must execute a real canonical second reconstruction",
+  );
+  assert.match(
+    gateJob,
+    /cp build\/numerical-qualification\/gate\/release-gate\.json[\s\S]+rm -rf build\/numerical-qualification\/gate[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json/,
+  );
+});
+
+test("tag CI packs one authenticated public npm root before every consumer", () => {
+  const producer = ciJob("public-npm-root");
+  assert.deepEqual(jobNeeds(producer), ["routine", "numerical-product"]);
+  const build = producer.indexOf("pnpm --dir packages/flint-wasm build");
+  const validate = producer.indexOf(
+    "node packages/flint-wasm/scripts/production-receipt.cjs validate",
+  );
+  const pack = producer.indexOf(
+    "SAGEJS_SKIP_PREPACK=1 pnpm pack --out build/release/npm/sagejs.tgz",
+  );
+  const compare = producer.indexOf(
+    "--compare build/packed-public-root/package/packages/flint-wasm/dist",
+  );
+  const upload = producer.indexOf("name: sagejs-public-npm-root", compare);
+  assert.ok(build >= 0 && build < validate && validate < pack && pack < compare && compare < upload);
+  assert.match(producer, /path: \|\n\s+build\/release\/npm\/sagejs\.tgz\n\s+packages\/flint-wasm\/dist/);
+  assert.equal(
+    [...ci.matchAll(/pnpm pack --out build\/release\/npm\/sagejs\.tgz/g)].length,
+    1,
+    "tag CI must create the public root tarball exactly once",
+  );
+
+  for (const name of ["linux-x64", "linux-arm64", "windows-x64", "macos-sign"]) {
+    const job = ciJob(name);
+    assert.ok(jobNeeds(job).includes("public-npm-root"), `${name} must wait for the public root`);
+    assert.match(job, /name: sagejs-public-npm-root\n\s+path: \./);
+    assert.match(job, /--root-archive build\/release\/npm\/sagejs\.tgz/);
+    assert.doesNotMatch(job, /pnpm pack --out/);
+  }
+
+  const browser = ciJob("numerical-browser-qualification");
+  assert.ok(jobNeeds(browser).includes("public-npm-root"));
+  assert.match(browser, /name: sagejs-public-npm-root\n\s+path: \./);
+  assert.doesNotMatch(browser, /pnpm --dir packages\/flint-wasm build/);
+
+  const gate = ciJob("numerical-release-gate");
+  assert.ok(jobNeeds(gate).includes("public-npm-root"));
+  assert.match(gate, /name: sagejs-public-npm-root\n\s+path: \./);
+  assert.match(gate, /--public-npm-root build\/release\/npm\/sagejs\.tgz/);
+  assert.match(gate, /--browser-distribution packages\/flint-wasm\/dist/);
+
+  const publisher = ciJob("publish-release");
+  assert.match(publisher, /name: sagejs-public-npm-root\n\s+path: \./);
+  assert.match(
+    publisher,
+    /cp build\/release\/npm\/sagejs\.tgz release\/npm\/sagejs\.tgz[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
+  );
+  assert.match(publisher, /--browser-distribution packages\/flint-wasm\/dist/);
+  assert.match(publisher, /publish_package release\/npm\/sagejs\.tgz latest/);
+});
+
+test("tag CI release artifact graph is acyclic", () => {
+  const visiting = new Set();
+  const visited = new Set();
+  function visit(name, chain = []) {
+    if (visiting.has(name)) {
+      assert.fail(`circular CI dependency: ${[...chain, name].join(" -> ")}`);
+    }
+    if (visited.has(name)) return;
+    visiting.add(name);
+    for (const dependency of jobNeeds(ciJob(name))) {
+      assert.ok(ciJobs.has(dependency), `${name} depends on missing job ${dependency}`);
+      visit(dependency, [...chain, name]);
+    }
+    visiting.delete(name);
+    visited.add(name);
+  }
+  for (const name of ciJobs.keys()) visit(name);
+  assert.ok(visited.has("publish-release"));
+});
+
+test("clean browser qualification builds source evidence before restoring the product", () => {
+  const browserJob = ci.slice(
+    ci.indexOf("numerical-browser-qualification:"),
+    ci.indexOf("numerical-release-gate:"),
+  );
+  const sourceBuild = browserJob.indexOf(
+    "node packages/flint-wasm/numerical/scripts/build-all.cjs",
+  );
+  const productInstall = browserJob.indexOf(
+    "node scripts/numerical-product.cjs install",
+  );
+  assert.ok(sourceBuild >= 0 && sourceBuild < productInstall);
+  assert.match(
+    browserJob,
+    /env -u SAGEJS_NUMERICAL_PRODUCT_ROOT \\\n+\s+-u SAGEJS_NUMERICAL_RUNTIME_REQUIRED \\\n+\s+node packages\/flint-wasm\/numerical\/scripts\/build-all\.cjs/,
+  );
+  assert.match(
+    browserJob,
+    /node scripts\/numerical-product\.cjs install[\s\S]+node scripts\/numerical-product\.cjs validate-installed/,
+  );
+});
+
+test("one trusted workflow publishes and recovery reruns its authenticated job", () => {
+  assert.match(ci, /Numerical release qualification gate|numerical-release-gate/);
+  assert.match(ci, /id-token:\s*write/);
+  assert.match(ci, /npm publish "\$archive"/);
+  assert.doesNotMatch(ci, /secrets\.NPM_TOKEN|pnpm publish "\$archive"/);
+  assert.match(
+    ci,
+    /release:qualify:numerics:gate[\s\S]+--input build\/numerical-qualification[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+release:qualify:numerics:authenticate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz[\s\S]+--browser-distribution packages\/flint-wasm\/dist/,
+  );
+  assert.match(ci, /recover-publish:[\s\S]+actions:\s*write/);
+  assert.match(ci, /jobs\?filter=all&per_page=100/);
+  assert.match(ci, /gh api --paginate[\s\S]+\| jq -s '\.' > "\$jobs_file"/);
+  assert.match(ci, /select-recovery-publisher\.cjs/);
+  assert.match(ci, /actions\/jobs\/\$\{publisher_id\}\/rerun/);
+  assert.match(ci, /Numerical release qualification gate/);
+  assert.match(ci, /npm view "\$\{name\}@\$\{version\}" dist\.integrity --json/);
+  assert.match(ci, /createHash\("sha512"\)/);
+  assert.match(ci, /\[\[ "\$version" == "\$package_version" \]\]/);
+  assert.match(ci, /\.head_branch \/\/ ""[\s\S]+== "\$RECOVERY_TAG"/);
+  assert.doesNotMatch(manual, /npm publish|pnpm publish|id-token:\s*write/);
+  assert.match(manual, /gh workflow run \.github\/workflows\/ci\.yml/);
+  assert.match(manual, /recovery_run_id="\$SOURCE_RUN_ID"/);
+  assert.match(manual, /recovery_tag="\$RELEASE_TAG"/);
+  assert.match(manual, /\^\[1-9\]\[0-9\]\*\$/);
+  const uploads = [...ci.matchAll(/uses: actions\/upload-artifact@v7[\s\S]*?with:\n([\s\S]*?)(?=\n\s{6}-|\n\s{2}\w|$)/g)];
+  assert.ok(uploads.length >= 13);
+  for (const upload of uploads) assert.match(upload[1], /overwrite:\s*true/);
+});
+
+test("recovery selects the latest exact job occurrence across rerun attempts", () => {
+  let id = 100;
+  const job = (name, runAttempt, conclusion) => ({
+    id: id++, name, run_attempt: runAttempt, conclusion,
+  });
+  const firstPage = {
+    jobs: [
+      ...REQUIRED_PRODUCERS.map((name) => job(name, 1, "success")),
+      job(PUBLISHER, 1, "failure"),
+    ],
+  };
+  const secondPage = { jobs: [job(PUBLISHER, 2, "failure")] };
+  const thirdPublisher = job(PUBLISHER, 3, "cancelled");
+  assert.deepEqual(selectRecoveryPublisher([firstPage, secondPage, { jobs: [thirdPublisher] }]), {
+    id: thirdPublisher.id,
+    run_attempt: 3,
+    conclusion: "cancelled",
+  });
+
+  const staleProducerSuccess = structuredClone([firstPage, secondPage]);
+  staleProducerSuccess[1].jobs.push(job(REQUIRED_PRODUCERS[0], 2, "failure"));
+  assert.throws(
+    () => selectRecoveryPublisher(staleProducerSuccess),
+    /latest source job.*attempt 2 concluded failure/,
+  );
+
+  const duplicateLatest = structuredClone([firstPage, secondPage]);
+  duplicateLatest[1].jobs.push(job(PUBLISHER, 2, "cancelled"));
+  assert.throws(
+    () => selectRecoveryPublisher(duplicateLatest),
+    /2 jobs.*latest attempt 2/,
+  );
+
+  const alreadyPublished = structuredClone([firstPage, secondPage]);
+  alreadyPublished[1].jobs[0].conclusion = "success";
+  assert.throws(() => selectRecoveryPublisher(alreadyPublished), /already succeeded/);
+});
+
+test("Cloudflare activation requires the same qualified source SHA", () => {
+  assert.match(deploy, /qualification_run_id:/);
+  assert.match(deploy, /\.github\/workflows\/ci\.yml/);
+  assert.match(deploy, /Numerical release qualification gate/);
+  assert.match(deploy, /qualification_sha[\s\S]+source_sha/);
+  assert.match(deploy, /--candidate "\$SOURCE_SHA"/);
+  assert.match(
+    deploy,
+    /--name numerical-release-evidence[\s\S]+release:qualify:numerics:gate[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json[\s\S]+--browser-distribution packages\/flint-wasm\/dist/,
+  );
+  assert.doesNotMatch(deploy, /Required legacy release job|if \[\[ "\$release_gate" == "missing" \]\]/);
+});

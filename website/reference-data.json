@@ -9,25 +9,40 @@
         "aliases": [],
         "kind": "function",
         "module": "sage.schemes",
-        "signature": "AffineSpace(first: Any, second: Any, names: Any='x') -> AffineSpaceParent",
-        "summary": "Construct affine space in either Sage-compatible argument order.",
-        "doc": "Construct affine space in either Sage-compatible argument order.",
+        "signature": "AffineSpace(dimension: int, base: sage.Parent, names: Any='x') -> AffineSpaceParent",
+        "summary": "Construct affine space with the requested coordinate names.",
+        "doc": "Construct affine space with the requested coordinate names.\n\n### Example\n\n```sage\nsage: A = AffineSpace(2, QQ, 'xy')\nsage: A\nAffine Space of dimension 2 over Rational Field\nsage: A.gens()\n(x, y)\n```\n\nThe coordinate ring is a FLINT-backed multivariate polynomial ring.",
         "tags": [
           "algebraic geometry",
           "affine schemes",
-          "projective schemes",
-          "curves"
+          "curves",
+          "multivariate polynomials"
         ],
         "backends": [
-          "Sage.js exact polynomial and ideal layers"
+          "FLINT",
+          "Sage.js algebraic geometry layer"
         ],
         "sage_compatibility": {
           "status": "partial",
-          "notes": "Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary."
+          "notes": "Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation."
         },
-        "provenance": [],
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath schemes and plane curves API",
+            "url": "https://doc.sagemath.org/html/en/reference/curves/",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT multivariate polynomial arithmetic",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
         "references": [],
-        "limitations": []
+        "limitations": [
+          "General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal."
+        ]
       },
       {
         "schema_version": 1,
@@ -954,23 +969,69 @@
         "aliases": [],
         "kind": "function",
         "module": "sage.schemes",
-        "signature": "Curve(polynomial: Any) -> Any",
-        "summary": "Construct an affine or projective plane curve from one polynomial.",
-        "doc": "Construct an affine or projective plane curve from one polynomial.",
+        "signature": "Curve(polynomial: Any) -> AffinePlaneCurve",
+        "summary": "Construct an affine plane curve from a multivariate polynomial.",
+        "doc": "Construct an affine plane curve from a multivariate polynomial.\n\n### Example\n\n```sage\nsage: x, y = AffineSpace(2, QQ, 'xy').gens()\nsage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))\nsage: C.irreducible_components()\n[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n```\n\nHypersurface components use FLINT multivariate factorization. Plane-curve\nintersections over `QQ` use a resultant followed by factorization and\nGröbner bases. General primary decomposition is not yet implemented.",
         "tags": [
           "algebraic geometry",
           "affine schemes",
-          "projective schemes",
-          "curves"
+          "curves",
+          "multivariate polynomials"
         ],
         "backends": [
-          "Sage.js exact polynomial and ideal layers"
+          "FLINT",
+          "Sage.js algebraic geometry layer"
         ],
         "sage_compatibility": {
           "status": "partial",
-          "notes": "Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary."
+          "notes": "Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation."
         },
-        "provenance": [],
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath schemes and plane curves API",
+            "url": "https://doc.sagemath.org/html/en/reference/curves/",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT multivariate polynomial arithmetic",
+            "url": "https://flintlib.org/doc/"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "curve_fit",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.optimization",
+        "signature": "curve_fit(function, xdata, ydata, p0, **options)",
+        "summary": "Fit a nonlinear model with residual diagnostics and parameter provenance.",
+        "doc": "Fit a nonlinear model with residual diagnostics and parameter provenance.\n\nImport from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "fitting",
+          "least-squares"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
         "references": [],
         "limitations": []
       },
@@ -2298,6 +2359,68 @@
         "limitations": [
           "The current compiler targets JavaScript numeric evaluation."
         ]
+      },
+      {
+        "schema_version": 1,
+        "name": "fft",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.spectral",
+        "signature": "fft(samples, **options)",
+        "summary": "Compute a radix-2 or Bluestein discrete Fourier transform.",
+        "doc": "Compute a radix-2 or Bluestein discrete Fourier transform.\n\nImport from `sagejs.numerics.spectral`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "spectral",
+          "fft"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "find_root",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics",
+        "signature": "find_root(function, a=None, b=None, *, x0=None, method=None, **options)",
+        "summary": "Find and independently validate a scalar root with diagnostics and bounded traces.",
+        "doc": "Find and independently validate a scalar root with diagnostics and bounded traces.\n\nImport from `sagejs.numerics`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "root-finding",
+          "validated"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
       },
       {
         "schema_version": 1,
@@ -7533,6 +7656,37 @@
       },
       {
         "schema_version": 1,
+        "name": "integrate",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.integration",
+        "signature": "integrate(function, a, b, *, method=None, **options)",
+        "summary": "Compute an adaptive numerical integral with error and budget diagnostics.",
+        "doc": "Compute an adaptive numerical integral with error and budget diagnostics.\n\nImport from `sagejs.numerics.integration`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "integration",
+          "quadrature"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
         "name": "is_prime",
         "aliases": [],
         "kind": "function",
@@ -8277,6 +8431,66 @@
         "limitations": [
           "Generic permutation and matrix groups are explicitly enumerated and are therefore intended for small orders."
         ]
+      },
+      {
+        "schema_version": 1,
+        "name": "minimize",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.optimization",
+        "signature": "minimize(function, x0, *, method=None, **options)",
+        "summary": "Minimize a multivariate objective and return a structured NumericalResult.",
+        "doc": "Minimize a multivariate objective and return a structured NumericalResult.\n\nImport from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "optimization"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "minimize_scalar",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.optimization",
+        "signature": "minimize_scalar(function, bounds=None, *, method=None, **options)",
+        "summary": "Minimize a scalar objective with explicit budgets and validation evidence.",
+        "doc": "Minimize a scalar objective with explicit budgets and validation evidence.\n\nImport from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "optimization"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
       },
       {
         "schema_version": 1,
@@ -11555,32 +11769,6 @@
       },
       {
         "schema_version": 1,
-        "name": "ProjectiveSpace",
-        "aliases": [],
-        "kind": "function",
-        "module": "sage.schemes",
-        "signature": "ProjectiveSpace(first: Any, second: Any, names: Any='x') -> ProjectiveSpaceParent",
-        "summary": "Construct projective space in either Sage-compatible argument order.",
-        "doc": "Construct projective space in either Sage-compatible argument order.",
-        "tags": [
-          "algebraic geometry",
-          "affine schemes",
-          "projective schemes",
-          "curves"
-        ],
-        "backends": [
-          "Sage.js exact polynomial and ideal layers"
-        ],
-        "sage_compatibility": {
-          "status": "partial",
-          "notes": "Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary."
-        },
-        "provenance": [],
-        "references": [],
-        "limitations": []
-      },
-      {
-        "schema_version": 1,
         "name": "Qp",
         "aliases": [
           "Zp"
@@ -12259,6 +12447,37 @@
       },
       {
         "schema_version": 1,
+        "name": "solve_ivp",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.ode",
+        "signature": "solve_ivp(function, t_span, y0, *, method=None, **options)",
+        "summary": "Solve and validate an initial-value ODE problem with adaptive-step traces.",
+        "doc": "Solve and validate an initial-value ODE problem with adaptive-step traces.\n\nImport from `sagejs.numerics.ode`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "ode",
+          "initial-value-problem"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
         "name": "Sp",
         "aliases": [],
         "kind": "function",
@@ -12521,6 +12740,37 @@
           "Auxiliary levels greater than one are not implemented.",
           "Composite-index and bad-prime Hecke operators are not implemented."
         ]
+      },
+      {
+        "schema_version": 1,
+        "name": "svd",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs.numerics.spectral",
+        "signature": "svd(matrix, *, trace='none', **options)",
+        "summary": "Compute and independently validate a singular-value decomposition.",
+        "doc": "Compute and independently validate a singular-value decomposition.\n\nImport from `sagejs.numerics.spectral`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+        "tags": [
+          "numerical",
+          "linear-algebra",
+          "spectral"
+        ],
+        "backends": [
+          "portable-python",
+          "browser-wasm",
+          "native-optional"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Agent-first structured numerical result contract."
+        },
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
+        "references": [],
+        "limitations": []
       },
       {
         "schema_version": 1,
@@ -13063,36 +13313,100 @@
       "aliases": [],
       "kind": "function",
       "module": "sage.schemes",
-      "signature": "AffineSpace(first: Any, second: Any, names: Any='x') -> AffineSpaceParent",
-      "summary": "Construct affine space in either Sage-compatible argument order.",
-      "doc": "Construct affine space in either Sage-compatible argument order.",
+      "signature": "AffineSpace(dimension: int, base: sage.Parent, names: Any='x') -> AffineSpaceParent",
+      "summary": "Construct affine space with the requested coordinate names.",
+      "doc": "Construct affine space with the requested coordinate names.\n\n### Example\n\n```sage\nsage: A = AffineSpace(2, QQ, 'xy')\nsage: A\nAffine Space of dimension 2 over Rational Field\nsage: A.gens()\n(x, y)\n```\n\nThe coordinate ring is a FLINT-backed multivariate polynomial ring.",
       "tags": [
         "algebraic geometry",
         "affine schemes",
-        "projective schemes",
-        "curves"
+        "curves",
+        "multivariate polynomials"
       ],
       "backends": [
-        "Sage.js exact polynomial and ideal layers"
+        "FLINT",
+        "Sage.js algebraic geometry layer"
       ],
       "sage_compatibility": {
         "status": "partial",
-        "notes": "Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary."
+        "notes": "Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation."
       },
-      "provenance": [],
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath schemes and plane curves API",
+          "url": "https://doc.sagemath.org/html/en/reference/curves/",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT multivariate polynomial arithmetic",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
       "references": [],
-      "limitations": [],
+      "limitations": [
+        "General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal."
+      ],
       "source": {
         "name": "AffineSpace",
         "qualified": "AffineSpace",
-        "path": "src/baselib/schemes.py",
-        "line": 487,
+        "path": "src/baselib/polynomial.py",
+        "line": 5507,
         "excerpt": {
-          "start_line": 475,
-          "text": "        if len(equations) == 0:\n            lines.append(\"  0\")\n        else:\n            for index, equation in enumerate(equations):\n                suffix = \",\" if index + 1 < len(equations) else \"\"\n                lines.append(\"  \" + repr(equation) + suffix)\n        return \"\\n\".join(lines)\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef AffineSpace(\n    first: Any,\n    second: Any,\n    names: Any = \"x\",\n) -> AffineSpaceParent:\n    \"\"\"Construct affine space in either Sage-compatible argument order.\"\"\"\n    base, dimension = _construction_arguments(first, second, \"affine-space\")\n    ring = sage.PolynomialRing(base, dimension, names=names, order=\"degrevlex\")\n    coordinate_names = ring.variable_names()\n    for cached in _affine_space_cache:\n        if (\n            cached.base_ring() is base\n            and cached.dimension() == dimension"
+          "start_line": 5495,
+          "text": "    def __repr__(self) -> str:\n        return (\n            \"Affine Space of dimension \"\n            + str(self._dimension)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef AffineSpace(\n    dimension: int,\n    base: sage.Parent,\n    names: Any = \"x\",\n) -> AffineSpaceParent:\n    \"\"\"\n    Construct affine space with the requested coordinate names.\n\n    ### Example\n\n    ```sage\n    sage: A = AffineSpace(2, QQ, 'xy')\n    sage: A"
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "src/baselib/polynomial.py#def14d007f6d9a12-e3b0c44298fc1c14",
+          "line": 5518,
+          "source": "A = AffineSpace(2, QQ, 'xy')",
+          "want": "",
+          "tags": [],
+          "owner": "AffineSpace",
+          "path": "src/baselib/polynomial.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/polynomial.py#def14d007f6d9a12-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/polynomial.py#559aead08264d579-febf41a036cd0868",
+          "line": 5519,
+          "source": "A",
+          "want": "Affine Space of dimension 2 over Rational Field\n",
+          "tags": [],
+          "owner": "AffineSpace",
+          "path": "src/baselib/polynomial.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/polynomial.py#559aead08264d579-febf41a036cd0868",
+            "status": "pass",
+            "actual": "Affine Space of dimension 2 over Rational Field\n"
+          }
+        },
+        {
+          "id": "src/baselib/polynomial.py#f319b20047dab08a-814095bbc622eed7",
+          "line": 5521,
+          "source": "A.gens()",
+          "want": "(x, y)\n",
+          "tags": [],
+          "owner": "AffineSpace",
+          "path": "src/baselib/polynomial.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/polynomial.py#f319b20047dab08a-814095bbc622eed7",
+            "status": "pass",
+            "actual": "(x, y)\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -14393,36 +14707,161 @@
       "aliases": [],
       "kind": "function",
       "module": "sage.schemes",
-      "signature": "Curve(polynomial: Any) -> Any",
-      "summary": "Construct an affine or projective plane curve from one polynomial.",
-      "doc": "Construct an affine or projective plane curve from one polynomial.",
+      "signature": "Curve(polynomial: Any) -> AffinePlaneCurve",
+      "summary": "Construct an affine plane curve from a multivariate polynomial.",
+      "doc": "Construct an affine plane curve from a multivariate polynomial.\n\n### Example\n\n```sage\nsage: x, y = AffineSpace(2, QQ, 'xy').gens()\nsage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))\nsage: C.irreducible_components()\n[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n```\n\nHypersurface components use FLINT multivariate factorization. Plane-curve\nintersections over `QQ` use a resultant followed by factorization and\nGröbner bases. General primary decomposition is not yet implemented.",
       "tags": [
         "algebraic geometry",
         "affine schemes",
-        "projective schemes",
-        "curves"
+        "curves",
+        "multivariate polynomials"
       ],
       "backends": [
-        "Sage.js exact polynomial and ideal layers"
+        "FLINT",
+        "Sage.js algebraic geometry layer"
       ],
       "sage_compatibility": {
         "status": "partial",
-        "notes": "Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary."
+        "notes": "Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation."
       },
-      "provenance": [],
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath schemes and plane curves API",
+          "url": "https://doc.sagemath.org/html/en/reference/curves/",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT multivariate polynomial arithmetic",
+          "url": "https://flintlib.org/doc/"
+        }
+      ],
       "references": [],
-      "limitations": [],
+      "limitations": [
+        "General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal."
+      ],
       "source": {
         "name": "Curve",
         "qualified": "Curve",
-        "path": "src/baselib/schemes.py",
-        "line": 1125,
+        "path": "src/baselib/polynomial.py",
+        "line": 5667,
         "excerpt": {
-          "start_line": 1113,
-          "text": "    def __repr__(self) -> str:\n        return (\n            \"Projective Plane Curve over \"\n            + str(self.base_ring())\n            + \" defined by\\n   \"\n            + repr(self._polynomial)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef Curve(polynomial: Any) -> Any:\n    \"\"\"Construct an affine or projective plane curve from one polynomial.\"\"\"\n    if not hasattr(polynomial, \"parent\"):\n        raise TypeError(\"Curve needs a multivariate polynomial\")\n    variables = polynomial.parent().ngens()\n    if variables == 2:\n        return AffinePlaneCurve(polynomial)\n    if variables == 3 and polynomial.is_homogeneous():\n        return ProjectivePlaneCurve(polynomial)\n    raise ValueError(\n        \"Curve currently supports affine two-variable or homogeneous \"\n        \"projective three-variable polynomials\"\n    )"
+          "start_line": 5655,
+          "text": "    def __repr__(self) -> str:\n        return (\n            \"Affine Plane Curve over \"\n            + str(self._polynomial._parent.base_ring())\n            + \" defined by\\n   \"\n            + repr(self._polynomial)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef Curve(polynomial: Any) -> AffinePlaneCurve:\n    \"\"\"\n    Construct an affine plane curve from a multivariate polynomial.\n\n    ### Example\n\n    ```sage\n    sage: x, y = AffineSpace(2, QQ, 'xy').gens()\n    sage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))\n    sage: C.irreducible_components()\n    [Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n      x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n      x^3 + y^3 - 1]"
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "src/baselib/polynomial.py#1d12daf28af8136a-e3b0c44298fc1c14",
+          "line": 5674,
+          "source": "x, y = AffineSpace(2, QQ, 'xy').gens()",
+          "want": "",
+          "tags": [],
+          "owner": "Curve",
+          "path": "src/baselib/polynomial.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/polynomial.py#1d12daf28af8136a-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/polynomial.py#2eddafb4d0f5672a-e3b0c44298fc1c14",
+          "line": 5675,
+          "source": "C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))",
+          "want": "",
+          "tags": [],
+          "owner": "Curve",
+          "path": "src/baselib/polynomial.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/polynomial.py#2eddafb4d0f5672a-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/polynomial.py#06c5e7960cda410c-5badf7217b080d99",
+          "line": 5676,
+          "source": "C.irreducible_components()",
+          "want": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n",
+          "tags": [],
+          "owner": "Curve",
+          "path": "src/baselib/polynomial.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/polynomial.py#06c5e7960cda410c-5badf7217b080d99",
+            "status": "pass",
+            "actual": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "curve_fit",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.optimization",
+      "signature": "curve_fit(function, xdata, ydata, p0, **options)",
+      "summary": "Fit a nonlinear model with residual diagnostics and parameter provenance.",
+      "doc": "Fit a nonlinear model with residual diagnostics and parameter provenance.\n\nImport from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "fitting",
+        "least-squares"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": null,
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#65881c7f41cc6e9f-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.optimization import curve_fit\n\nfit = curve_fit(\n    lambda x, parameters: parameters[0]*x + parameters[1],\n    [0.0, 1.0, 2.0, 3.0],\n    [1.0, 3.0, 5.0, 7.0],\n    [0.0, 0.0],\n    jacobian=lambda x, parameters: [x, 1.0],\n)\nfit.success and fit.validation.passed and abs(fit.value[0] - 2.0) < 1.0e-8 and abs(fit.value[1] - 1.0) < 1.0e-8",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "curve-fit",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#65881c7f41cc6e9f-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -16652,13 +17091,144 @@
         "name": "fast_callable",
         "qualified": "fast_callable",
         "path": "src/baselib/symbolic.py",
-        "line": 3411,
+        "line": 3423,
         "excerpt": {
-          "start_line": 3399,
+          "start_line": 3411,
           "text": ") -> Any:\n    if isinstance(value, Expression):\n        return value.n(prec=prec, digits=digits)\n    if hasattr(value, \"numerical_approx\"):\n        return value.numerical_approx(prec=prec, digits=digits)\n    return SR(value).n(prec=prec, digits=digits)\n\n\nn = numerical_approx\nN = numerical_approx\n\n\ndef fast_callable(\n    expression: Any,\n    vars: Sequence[Any] | None = None,\n) -> Any:\n    \"\"\"Compile a symbolic expression to a hot JavaScript numeric function.\"\"\"\n    symbolic_expression = SR(expression)\n    variables = symbolic_expression.variables() if vars is None else list(vars)\n    names = [_symbol_name(variable) for variable in variables]\n    return _call_backend(\"compile\", [symbolic_expression._tree, names])\n\n\npi = Expression(\"Pi\")\ne = Expression(\"ExponentialE\")"
         }
       },
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "fft",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.spectral",
+      "signature": "fft(samples, **options)",
+      "summary": "Compute a radix-2 or Bluestein discrete Fourier transform.",
+      "doc": "Compute a radix-2 or Bluestein discrete Fourier transform.\n\nImport from `sagejs.numerics.spectral`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "spectral",
+        "fft"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": null,
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#a14aed811b458915-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.spectral import fft\n\nspectrum = fft([1.0, 0.0, 0.0, 0.0])\nspectrum.success and spectrum.validation.passed and all(abs(value - 1.0) < 1.0e-10 for value in spectrum.value)",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "fft",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#a14aed811b458915-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "find_root",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics",
+      "signature": "find_root(function, a=None, b=None, *, x0=None, method=None, **options)",
+      "summary": "Find and independently validate a scalar root with diagnostics and bounded traces.",
+      "doc": "Find and independently validate a scalar root with diagnostics and bounded traces.\n\nImport from `sagejs.numerics`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "root-finding",
+        "validated"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "find_root",
+        "qualified": "Expression.find_root",
+        "path": "src/baselib/symbolic.py",
+        "line": 750,
+        "excerpt": {
+          "start_line": 738,
+          "text": "        point: Any,\n        degree: int,\n    ) -> Expression:\n        return taylor(self, variable, point, degree)\n\n    def limit(\n        self,\n        *args: Any,\n        **kwargs: Any,\n    ) -> Expression:\n        return limit(self, *args, **kwargs)\n\n    def find_root(\n        self,\n        lower: Any,\n        upper: Any,\n        maxiter: int = 100,\n        xtol: float = 1e-12,\n        method: str = \"auto\",\n        full_output: bool = False,\n        trace: str = \"iterations\",\n    ) -> Any:\n        expression = self\n        if (\n            runtime.array.isArray(self._tree)"
+        }
+      },
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#57920a98a0bed855-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics import find_root\n\nroot = find_root(lambda x: x*x - 2.0, 1.0, 2.0, method=\"brent\")\nroot.success and root.validation.passed and abs(root.value*root.value - 2.0) < 1.0e-10",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "find-root",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#57920a98a0bed855-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -28151,6 +28721,76 @@
     },
     {
       "schema_version": 1,
+      "name": "integrate",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.integration",
+      "signature": "integrate(function, a, b, *, method=None, **options)",
+      "summary": "Compute an adaptive numerical integral with error and budget diagnostics.",
+      "doc": "Compute an adaptive numerical integral with error and budget diagnostics.\n\nImport from `sagejs.numerics.integration`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "integration",
+        "quadrature"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "integrate",
+        "qualified": "Expression.integrate",
+        "path": "src/baselib/symbolic.py",
+        "line": 674,
+        "excerpt": {
+          "start_line": 662,
+          "text": "        return result\n\n    diff = derivative\n\n    def expand(self) -> Expression:\n        \"\"\"Expand products and integer powers in this expression.\"\"\"\n        return Expression(_call_backend(\"expand\", [self._tree]))\n\n    def factor(self) -> Expression:\n        \"\"\"Factor this expression over its exact coefficient domain.\"\"\"\n        return Expression(_call_backend(\"factor\", [self._tree]))\n\n    def integrate(\n        self,\n        variable: Any,\n        lower: Any = runtime.undefined,\n        upper: Any = runtime.undefined,\n    ) -> Expression:\n        if (\n            isinstance(variable, (list, tuple))\n            and lower is runtime.undefined\n            and upper is runtime.undefined\n        ):\n            bounds = list(variable)\n            if len(bounds) != 3:"
+        }
+      },
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#60922b0372e1f6b1-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.integration import integrate\n\nintegral = integrate(lambda x: x*x, 0.0, 1.0)\nintegral.success and integral.validation.passed and abs(integral.value - 1.0/3.0) < 1.0e-10",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "integrate",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#60922b0372e1f6b1-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "is_prime",
       "aliases": [],
       "kind": "function",
@@ -29202,6 +29842,126 @@
             "id": "src/baselib/groups.py#6f7ecbdb475e0987-eaa0689a095d4394",
             "status": "pass",
             "actual": "336\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "minimize",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.optimization",
+      "signature": "minimize(function, x0, *, method=None, **options)",
+      "summary": "Minimize a multivariate objective and return a structured NumericalResult.",
+      "doc": "Minimize a multivariate objective and return a structured NumericalResult.\n\nImport from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "optimization"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": null,
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#56e55a2c02e6318d-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.optimization import minimize\n\nminimum = minimize(\n    lambda point: (point[0] - 3.0)**2 + (point[1] + 1.0)**2,\n    [0.0, 0.0],\n    gradient=lambda point: [2.0*(point[0] - 3.0), 2.0*(point[1] + 1.0)],\n    method=\"bfgs\",\n)\nminimum.success and minimum.validation.passed and abs(minimum.value[0] - 3.0) < 1.0e-7 and abs(minimum.value[1] + 1.0) < 1.0e-7",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "minimize",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#56e55a2c02e6318d-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "minimize_scalar",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.optimization",
+      "signature": "minimize_scalar(function, bounds=None, *, method=None, **options)",
+      "summary": "Minimize a scalar objective with explicit budgets and validation evidence.",
+      "doc": "Minimize a scalar objective with explicit budgets and validation evidence.\n\nImport from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "optimization"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": null,
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#8bd27c89e6130059-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.optimization import minimize_scalar\n\nminimum = minimize_scalar(lambda x: (x - 2.0)**2, -1.0, 5.0)\nminimum.success and minimum.validation.passed and abs(minimum.value - 2.0) < 1.0e-8",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "minimize-scalar",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#8bd27c89e6130059-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
           }
         }
       ]
@@ -31277,9 +32037,9 @@
         "name": "numerical_integral",
         "qualified": "numerical_integral",
         "path": "src/baselib/symbolic.py",
-        "line": 2294,
+        "line": 2295,
         "excerpt": {
-          "start_line": 2282,
+          "start_line": 2283,
           "text": "        for index in range(len(parameters)):\n            runtime.reflect.set(\n                substitutions,\n                _symbol_name(variables[index + 1]),\n                _expression_tree(parameters[index]),\n            )\n        function_value = Expression(\n            _call_backend(\"substitute\", [function_value._tree, substitutions])\n        )\n    return function_value._tree, _symbol_name(variables[0])\n\n\ndef numerical_integral(\n    function_value: Any,\n    a: Any,\n    b: Any = None,\n    algorithm: str = \"qag\",\n    max_points: int = 87,\n    params: Any = None,\n    eps_abs: float = 1e-6,\n    eps_rel: float = 1e-6,\n    rule: int = 6,\n) -> tuple[float, float]:\n    r\"\"\"Numerically integrate a real function and estimate absolute error.\n"
         }
       },
@@ -34417,16 +35177,16 @@
         "name": "PolynomialRing",
         "qualified": "PolynomialRing",
         "path": "src/baselib/polynomial.py",
-        "line": 6061,
+        "line": 5897,
         "excerpt": {
-          "start_line": 6049,
+          "start_line": 5885,
           "text": "        ρσ_polynomial_ring_cache.set(base, by_variable)\n    cache_key = \",\".join(variables) + \"|multivariate|\" + order\n    parent = by_variable.get(cache_key)\n    if parent is runtime.undefined:\n        if approximate:\n            parent = ApproximatePolynomialRingParent(base, variables, order)\n        else:\n            parent = MultivariatePolynomialRingParent(base, variables, order)\n        by_variable.set(cache_key, parent)\n    return parent\n\n\ndef PolynomialRing(\n    base: sage.Parent,\n    variable: Any = None,\n    names: Any = None,\n    sparse: bool = False,\n    implementation: Any = None,\n    order: str = \"degrevlex\",\n) -> Any:\n    r\"\"\"\n    Construct a univariate or multivariate polynomial ring.\n\n    Coefficient rings currently include `ZZ`, `QQ`, prime and extension\n    finite fields, `Zmod(n)`, exact algebraic fields, and approximate real"
         }
       },
       "examples": [
         {
           "id": "src/baselib/polynomial.py#0589052cd70c5442-e3b0c44298fc1c14",
-          "line": 6081,
+          "line": 5917,
           "source": "R.<x> = QQ[]",
           "want": "",
           "tags": [],
@@ -34442,7 +35202,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#211d1a07c12a56d3-c3f7c1d6f3b011af",
-          "line": 6082,
+          "line": 5918,
           "source": "(x^4 - 1).factor()",
           "want": "(x + 1) * (x - 1) * (x^2 + 1)\n",
           "tags": [],
@@ -34458,7 +35218,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#879acf70128b6be0-e3b0c44298fc1c14",
-          "line": 6084,
+          "line": 5920,
           "source": "S.<x,y> = GF(4, 'a')[]",
           "want": "",
           "tags": [],
@@ -34474,7 +35234,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#2935ab1a54b6ef2c-050305b3ec2996f0",
-          "line": 6085,
+          "line": 5921,
           "source": "(x + y)^3",
           "want": "x^3 + x^2*y + x*y^2 + y^3\n",
           "tags": [],
@@ -34545,16 +35305,16 @@
         "name": "prime_pi",
         "qualified": "prime_pi",
         "path": "src/baselib/builtins.py",
-        "line": 6962,
+        "line": 6973,
         "excerpt": {
-          "start_line": 6950,
+          "start_line": 6961,
           "text": "\ndef latex(value: Any) -> LatexExpr:\n    \"\"\"Return a compact LaTeX expression for `value`.\"\"\"\n    if _builtins_member_is_function(value, \"_latex_\"):\n        return LatexExpr(_builtins_call_member(value, \"_latex_\", []))\n    return LatexExpr(value)\n\n\n_prime_pi_primes = None\n_prime_pi_checked_through = 1\n\n\ndef prime_pi(value: Any) -> Any:\n    r\"\"\"\n    Return the number of primes less than or equal to `value`.\n\n    Results are exact.  Moderate bounds are served by an incremental prime\n    cache, while large isolated bounds use Lehmer's combinatorial algorithm.\n    As in Sage, inputs are limited to integers below `2^63`.\n\n    ### Examples\n\n    ```sage\n    sage: prime_pi(10)\n    4"
         }
       },
       "examples": [
         {
           "id": "src/baselib/builtins.py#4c7d8330c2c79857-4b227777d4dd1fc6",
-          "line": 6973,
+          "line": 6984,
           "source": "prime_pi(10)",
           "want": "4\n",
           "tags": [],
@@ -34570,7 +35330,7 @@
         },
         {
           "id": "src/baselib/builtins.py#ca981138a8a22b10-b7a56873cd771f2c",
-          "line": 6975,
+          "line": 6986,
           "source": "prime_pi(100)",
           "want": "25\n",
           "tags": [],
@@ -34586,7 +35346,7 @@
         },
         {
           "id": "src/baselib/builtins.py#c0bc81d3429aebdb-0f03cde178fa9f37",
-          "line": 6977,
+          "line": 6988,
           "source": "prime_pi(10^12)",
           "want": "37607912018\n",
           "tags": [],
@@ -34652,43 +35412,6 @@
       },
       "limitations": [],
       "source": null,
-      "examples": []
-    },
-    {
-      "schema_version": 1,
-      "name": "ProjectiveSpace",
-      "aliases": [],
-      "kind": "function",
-      "module": "sage.schemes",
-      "signature": "ProjectiveSpace(first: Any, second: Any, names: Any='x') -> ProjectiveSpaceParent",
-      "summary": "Construct projective space in either Sage-compatible argument order.",
-      "doc": "Construct projective space in either Sage-compatible argument order.",
-      "tags": [
-        "algebraic geometry",
-        "affine schemes",
-        "projective schemes",
-        "curves"
-      ],
-      "backends": [
-        "Sage.js exact polynomial and ideal layers"
-      ],
-      "sage_compatibility": {
-        "status": "partial",
-        "notes": "Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary."
-      },
-      "provenance": [],
-      "references": [],
-      "limitations": [],
-      "source": {
-        "name": "ProjectiveSpace",
-        "qualified": "ProjectiveSpace",
-        "path": "src/baselib/schemes.py",
-        "line": 921,
-        "excerpt": {
-          "start_line": 909,
-          "text": "        if len(self._equations) == 0:\n            lines.append(\"  0\")\n        else:\n            for index, equation in enumerate(self._equations):\n                suffix = \",\" if index + 1 < len(self._equations) else \"\"\n                lines.append(\"  \" + repr(equation) + suffix)\n        return \"\\n\".join(lines)\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ProjectiveSpace(\n    first: Any,\n    second: Any,\n    names: Any = \"x\",\n) -> ProjectiveSpaceParent:\n    \"\"\"Construct projective space in either Sage-compatible argument order.\"\"\"\n    base, dimension = _construction_arguments(first, second, \"projective-space\")\n    ring = sage.PolynomialRing(base, dimension + 1, names=names, order=\"degrevlex\")\n    coordinate_names = ring.variable_names()\n    for cached in _projective_space_cache:\n        if (\n            cached.base_ring() is base\n            and cached.dimension() == dimension"
-        }
-      },
       "examples": []
     },
     {
@@ -34883,9 +35606,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 8678,
+        "line": 8712,
         "excerpt": {
-          "start_line": 8666,
+          "start_line": 8700,
           "text": "        return copier()\n    copier = getattr(value, \"copy\", None)\n    if callable(copier):\n        return copier()\n    if isinstance(value, (str, bytes, int, float, complex, tuple, frozenset)):\n        return value\n    try:\n        return type(value)(value)\n    except Exception:\n        raise TypeError(\"object does not support shallow copying\")  # noqa: B904\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
@@ -35648,16 +36371,16 @@
         "name": "solve",
         "qualified": "Expression.solve",
         "path": "src/baselib/symbolic.py",
-        "line": 716,
+        "line": 732,
         "excerpt": {
-          "start_line": 704,
+          "start_line": 720,
           "text": "            [self.derivative(variable) for variable in variable_values],\n        )\n\n    def hessian(self) -> Any:\n        variables = self.variables()\n        entries = []\n        for row_variable in variables:\n            first = self.derivative(row_variable)\n            for column_variable in variables:\n                entries.append(first.derivative(column_variable))\n        return SymbolicMatrix(len(variables), len(variables), entries, variables)\n\n    def solve(self, *variables: Any, **options: Any) -> Any:\n        return solve(self, *variables, **options)\n\n    def taylor(\n        self,\n        variable: Any,\n        point: Any,\n        degree: int,\n    ) -> Expression:\n        return taylor(self, variable, point, degree)\n\n    def limit(\n        self,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/symbolic.py#92a64902788254ae-9c10500612dcb6f1",
-          "line": 3258,
+          "line": 3259,
           "source": "solve(x^2 == 4, x)",
           "want": "[x == -2, x == 2]\n",
           "tags": [],
@@ -35669,6 +36392,67 @@
             "id": "src/baselib/symbolic.py#92a64902788254ae-9c10500612dcb6f1",
             "status": "pass",
             "actual": "[x == -2, x == 2]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "solve_ivp",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.ode",
+      "signature": "solve_ivp(function, t_span, y0, *, method=None, **options)",
+      "summary": "Solve and validate an initial-value ODE problem with adaptive-step traces.",
+      "doc": "Solve and validate an initial-value ODE problem with adaptive-step traces.\n\nImport from `sagejs.numerics.ode`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "ode",
+        "initial-value-problem"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": null,
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#57a23b91ef0cce9b-3cbc87c7681f34db",
+          "line": 1,
+          "source": "import math\nfrom sagejs.numerics.ode import solve_ivp\n\nsolution = solve_ivp(lambda t, y: [y[0]], (0.0, 1.0), [1.0])\nsolution.success and solution.validation.passed and abs(solution.value[0] - math.e) < 1.0e-5",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "solve-ivp",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#57a23b91ef0cce9b-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
           }
         }
       ]
@@ -36099,6 +36883,67 @@
             "id": "src/baselib/modular.py#959a51d353f2e5ad-63bd7e92de99d396",
             "status": "pass",
             "actual": "(3, 3, 3)\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "svd",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs.numerics.spectral",
+      "signature": "svd(matrix, *, trace='none', **options)",
+      "summary": "Compute and independently validate a singular-value decomposition.",
+      "doc": "Compute and independently validate a singular-value decomposition.\n\nImport from `sagejs.numerics.spectral`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.",
+      "tags": [
+        "numerical",
+        "linear-algebra",
+        "spectral"
+      ],
+      "backends": [
+        "portable-python",
+        "browser-wasm",
+        "native-optional"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Agent-first structured numerical result contract."
+      },
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": null,
+      "examples": [
+        {
+          "id": "docs/reference/fixtures/numerical.cjs#1d9812b101682f40-3cbc87c7681f34db",
+          "line": 1,
+          "source": "from sagejs.numerics.spectral import svd\n\ndecomposition = svd([[3.0, 0.0], [0.0, 2.0]])\nvalues = decomposition.value[\"singular_values\"]\ndecomposition.success and decomposition.validation.passed and abs(values[0] - 3.0) < 1.0e-10 and abs(values[1] - 2.0) < 1.0e-10",
+          "want": "True",
+          "tags": [
+            "numerical",
+            "portable",
+            "reference"
+          ],
+          "owner": "svd",
+          "path": "docs/reference/fixtures/numerical.cjs",
+          "origin": "sagejs-reference",
+          "provenance": {
+            "repository": "https://github.com/sagemathinc/sagejs",
+            "revision": "working-tree",
+            "path": "docs/reference/fixtures/numerical.cjs",
+            "license": "GPL-3.0-only",
+            "description": "Portable Sage.js numerical workflows with independent mathematical checks; verified by the public reference doctest pipeline."
+          },
+          "language": "sage",
+          "verification": {
+            "id": "docs/reference/fixtures/numerical.cjs#1d9812b101682f40-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
           }
         }
       ]
@@ -36954,27 +37799,23 @@
     },
     "documentation": {
       "schema_version": 1,
-      "registry_entries": 314,
-      "with_docstring": 314,
-      "with_summary": 314,
-      "with_tags": 314,
-      "with_backend": 314,
-      "with_provenance": 311,
-      "with_compatibility_notes": 314,
+      "registry_entries": 321,
+      "with_docstring": 321,
+      "with_summary": 321,
+      "with_tags": 321,
+      "with_backend": 321,
+      "with_provenance": 321,
+      "with_compatibility_notes": 321,
       "with_references": 94,
-      "markdown_docstrings": 314,
+      "markdown_docstrings": 321,
       "invalid_markdown_entries": [],
-      "incomplete_entries": [
-        "AffineSpace",
-        "Curve",
-        "ProjectiveSpace"
-      ]
+      "incomplete_entries": []
     },
     "examples": {
-      "entries_with_examples": 216,
-      "entries_without_examples": 98,
-      "documented": 216,
-      "verified": 210,
+      "entries_with_examples": 226,
+      "entries_without_examples": 95,
+      "documented": 230,
+      "verified": 224,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,

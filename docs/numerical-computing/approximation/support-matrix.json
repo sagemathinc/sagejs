@@ -1,0 +1,75 @@
+{
+  "schema": "sagejs.numerics.approximation.support/v1",
+  "numeric_type": "IEEE-754 binary64",
+  "implementation": "ordinary-python",
+  "platform_support": {
+    "linux-x64": "local_cpython_and_sagejs_corpus_passed",
+    "linux-arm64": "portable_source_pending_persistent_host_receipt",
+    "macos-arm64": "portable_source_pending_persistent_host_receipt",
+    "windows-x64": "portable_source_pending_persistent_host_receipt",
+    "browser": "portable_source_pending_integration_and_browser_receipt",
+    "node": "local_sagejs_runtime_passed",
+    "sea": "portable_source_pending_integration_and_sea_receipt"
+  },
+  "presentation": {
+    "explanation_schema": "sagejs.numerics.approximation.explanation/v1",
+    "static_type": "canonical_PlotSpec",
+    "animation_type": "canonical_PlotAnimation",
+    "renderer_dependency": "none",
+    "maximum_static_samples": 4097,
+    "maximum_animation_samples_per_frame": 257,
+    "maximum_animation_frames": 64,
+    "maximum_animation_data_scalars": 200000,
+    "maximum_animation_payload_bytes": 8388608
+  },
+  "discovery": {
+    "facade": ["capabilities", "supports", "plan"],
+    "operation_count": 5,
+    "callback_evaluations_during_planning": 0,
+    "records": "detached"
+  },
+  "operations": [
+    {
+      "id": "polynomial_interpolation",
+      "classification": "extension",
+      "methods": ["barycentric"],
+      "validation": ["node_reproduction", "off_node_newton_form_crosscheck"],
+      "known_limits": ["distinct_finite_real_nodes", "at_most_32_nodes", "global_polynomial_conditioning_remains_node_dependent"]
+    },
+    {
+      "id": "piecewise_interpolation",
+      "classification": "extension",
+      "methods": ["linear"],
+      "validation": ["node_reproduction"],
+      "known_limits": ["scalar_real_samples", "end_segment_extrapolation", "first_derivative_undefined_at_nonsmooth_interior_knots"]
+    },
+    {
+      "id": "cubic_spline",
+      "classification": "translated",
+      "methods": ["not-a-knot", "natural", "clamped", "periodic", "mixed_explicit"],
+      "validation": ["node_reproduction", "C1_continuity", "C2_continuity", "boundary_equations"],
+      "known_limits": ["scalar_real_samples", "strictly_increasing_finite_nodes", "representable_spacing_inverse_and_value_differences", "third_derivative_undefined_at_nonsmooth_knots"]
+    },
+    {
+      "id": "finite_difference_derivative",
+      "classification": "extension",
+      "methods": ["fornberg-central", "fornberg-forward", "fornberg-backward"],
+      "validation": ["defining_polynomial_moments", "step_halving", "roundoff_floor", "cancellation_index", "optional_analytic_reference_at_requested_tolerance"],
+      "known_limits": ["real_scalar_callback", "at_most_65_stencil_points", "finite_representable_sample_points", "binary64_error_estimate_is_not_an_enclosure"]
+    },
+    {
+      "id": "polynomial_approximation",
+      "classification": "extension",
+      "methods": ["chebyshev"],
+      "validation": ["independent_holdout_samples", "coefficient_tail_indicator"],
+      "known_limits": ["finite_real_interval", "fixed_degree_at_most_512", "heuristic_uniform_error_evidence", "derivative_interval_scale_must_be_representable"]
+    }
+  ],
+  "oracles": [
+    "analytic_polynomial_and_derivative_identities",
+    "SciPy_BarycentricInterpolator",
+    "SciPy_CubicSpline",
+    "NumPy_chebinterpolate",
+    "mpmath_80_digit_derivatives"
+  ]
+}

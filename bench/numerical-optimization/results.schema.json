@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/numerical-optimization-results-v1.json",
+  "title": "Sage.js numerical optimization result receipt",
+  "type": "object",
+  "required": [
+    "schema",
+    "corpus_schema",
+    "backend",
+    "environment",
+    "protocol",
+    "summary",
+    "results"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.numerical-optimization-results/v1" },
+    "corpus_schema": {
+      "const": "sagejs.numerical-optimization-corpus/v1"
+    },
+    "backend": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "subject_ref": { "type": ["string", "null"] },
+    "environment": { "type": "object" },
+    "protocol": { "type": "object" },
+    "started_unix": { "type": "number" },
+    "elapsed_seconds": { "type": "number", "minimum": 0 },
+    "summary": {
+      "type": "object",
+      "required": ["cases", "accepted", "failed"],
+      "properties": {
+        "cases": { "type": "integer", "minimum": 0 },
+        "accepted": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "operation",
+          "method",
+          "accepted",
+          "reasons",
+          "metrics",
+          "timing"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "operation": { "type": "string" },
+          "method": { "type": "string" },
+          "benchmark": { "type": "boolean" },
+          "accepted": { "type": "boolean" },
+          "reasons": { "type": "array", "items": { "type": "string" } },
+          "result": { "type": ["object", "null"] },
+          "metrics": { "type": "object" },
+          "error": { "type": ["object", "null"] },
+          "trials": { "type": ["array", "null"] },
+          "timing": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -14,6 +14,7 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
 
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /source_run_id:/);
+  assert.match(workflow, /qualification_run_id:/);
   assert.match(workflow, /- preview\n\s+- production/);
   assert.doesNotMatch(workflow, /pull_request_target:/);
   assert.match(workflow, /\.github\/workflows\/wasm-release\.yml/);
@@ -25,13 +26,13 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
     "Clean reproducibility build b",
     "reproducibility",
     "Browser release gates",
-    "Public parity (chromium)",
-    "Public parity (firefox)",
-    "Public parity (webkit)",
+    "Numerical release qualification gate",
   ]) assert.match(workflow, new RegExp(gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
-  assert.match(workflow, /if \[\[ "\$release_gate" == "missing" \]\]/);
-  assert.match(workflow, /elif \[\[ "\$release_gate" != "success" \]\]/);
+  assert.match(workflow, /if \[\[ "\$release_gate" != "success" \]\]/);
+  assert.doesNotMatch(workflow, /Required legacy release job/);
+  assert.match(workflow, /qualification_sha[\s\S]+source_sha/);
+  assert.match(workflow, /numerical-release-gate/);
 
   assert.match(workflow, /ref: \$\{\{ steps\.source\.outputs\.sha \}\}/);
   assert.match(workflow, /ref: \$\{\{ github\.sha \}\}/);
@@ -39,7 +40,17 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   assert.match(workflow, /\.github\/workflows\/wasm-candidate\.yml/);
   assert.match(workflow, /git merge-base --is-ancestor "\$SOURCE_SHA" origin\/main/);
   assert.match(workflow, /gh run download "\$SOURCE_RUN_ID"[\s\S]+--name wasm-clean-build-a/);
+  assert.match(
+    workflow,
+    /release:qualify:numerics:authenticate[\s\S]+--browser-distribution packages\/flint-wasm\/dist/,
+  );
   const install = workflow.indexOf("pnpm install --frozen-lockfile");
+  const browserCopy = workflow.indexOf(
+    "cp -a build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist",
+  );
+  const browserBinding = workflow.indexOf(
+    "--browser-distribution packages/flint-wasm/dist",
+  );
   const receipt = workflow.indexOf("production-receipt.cjs validate");
   const stage = workflow.indexOf("website/live/scripts/stage.mjs");
   const prepare = workflow.indexOf("prepare-release.mjs");
@@ -47,12 +58,15 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   const deploy = workflow.indexOf("cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd");
   assert.ok(
     install >= 0 &&
+      browserCopy >= 0 &&
+      browserCopy < browserBinding &&
+      browserBinding < receipt &&
       install < receipt &&
       receipt < stage &&
       stage < prepare &&
       prepare < upload &&
       upload < deploy,
-    "dependency installation, receipt validation, staging, preparation, and R2 upload must precede Worker activation",
+    "dependency installation, browser byte authentication, receipt validation, staging, preparation, and R2 upload must precede Worker activation",
   );
   assert.match(workflow, /cache: pnpm/);
   assert.match(workflow, /node --test website\/live\/test\/\*\.test\.mjs/);

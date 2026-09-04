@@ -2,54 +2,81 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
-const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
-const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 
-const { runPnpm } = require("./pnpm-invocation.cjs");
+const {
+  SUPPORTED_TARGETS,
+  assertSuccessful,
+  prepareFreshInstall,
+  prepareRelocatedSeaFromInstall,
+  runInstalledKernelPython,
+  runInstalledSourcePython,
+  runProcess,
+  runRelocatedSeaPython,
+  targetForHost,
+} = require("./package-qualification/runtime.cjs");
+const {
+  numericalSmokeSource,
+  parseNumericalSmoke,
+} = require("./package-qualification/numerical-smoke.cjs");
 
 const root = resolve(__dirname, "..");
-const rootArchive = resolve(process.argv[2] || "build/release/npm/sagejs.tgz");
-const nativeArchive = resolve(
-  process.argv[3] || "build/release/npm/sagejs-linux-x64.tgz",
-);
-const temporaryRoot = mkdtempSync(join(tmpdir(), "sagejs-npm-test-"));
-try {
-  const rootContents = execFileSync("tar", ["-tzf", rootArchive], {
-    encoding: "utf8",
-  });
-  assert.doesNotMatch(rootContents, /\.sagejs-native-kernels\//);
-  assert.doesNotMatch(rootContents, /package\/dist\/native-kernels\//);
 
-  const manifest = {
-    private: true,
-    dependencies: {
-      "@sagemath/sagejs": `file:${rootArchive}`,
-      "@sagemath/sagejs-linux-x64": `file:${nativeArchive}`,
-    },
-  };
-  writeFileSync(
-    join(temporaryRoot, "package.json"),
-    `${JSON.stringify(manifest, null, 2)}\n`,
+function usage(error) {
+  const output = error ? console.error : console.log;
+  if (error) output(error);
+  output(
+    "Usage: node scripts/test-npm-package.cjs [ROOT_TGZ PLATFORM_TGZ] " +
+      "[--target linux-x64|linux-arm64|macos-arm64|windows-x64] " +
+      "[--root ROOT_TGZ] [--platform-package PLATFORM_TGZ] [--keep]",
   );
-  writeFileSync(
-    join(temporaryRoot, "pnpm-workspace.yaml"),
-    `overrides:\n  "@sagemath/sagejs-linux-x64": "file:${nativeArchive}"\n`,
-  );
-  runPnpm(["install", "--ignore-scripts"], {
-    cwd: temporaryRoot,
-    stdio: "inherit",
-  });
-  const expectedVersion = require(join(root, "package.json")).version;
-  const installedManifest = JSON.parse(
-    readFileSync(
-      join(temporaryRoot, "node_modules", "@sagemath", "sagejs", "package.json"),
-      "utf8",
+  process.exit(error ? 2 : 0);
+}
+
+function parseArguments(argv) {
+  const values = { positional: [] };
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+    if (argument === "--") continue;
+    if (argument === "--help" || argument === "-h") usage();
+    if (argument === "--keep") {
+      values.keep = true;
+      continue;
+    }
+    if (["--target", "--root", "--platform-package"].includes(argument)) {
+      const value = argv[++index];
+      if (!value) usage(`${argument} requires a value`);
+      const key = argument === "--platform-package"
+        ? "platformArchive"
+        : argument.slice(2);
+      values[key] = value;
+      continue;
+    }
+    if (argument.startsWith("--")) usage(`unknown option ${argument}`);
+    values.positional.push(argument);
+  }
+  if (values.positional.length > 2) usage("too many positional arguments");
+  const target = values.target || targetForHost();
+  if (!target) usage(`unsupported host ${process.platform}-${process.arch}`);
+  return {
+    target,
+    rootArchive: resolve(
+      values.root || values.positional[0] || "build/release/npm/sagejs.tgz",
     ),
-  );
-  assert.equal(installedManifest.version, expectedVersion);
-  const commonJsOutput = execFileSync(
+    platformArchive: resolve(
+      values.platformArchive ||
+        values.positional[1] ||
+        `build/release/npm/sagejs-${target}.tgz`,
+    ),
+    keep: Boolean(values.keep),
+  };
+}
+
+function verifyPublicJavaScriptApi(context) {
+  const expectedVersion = require(join(root, "package.json")).version;
+  assert.equal(context.version, expectedVersion);
+  const target = SUPPORTED_TARGETS[context.target];
+  const commonJs = assertSuccessful(runProcess(
     process.execPath,
     [
       "-e",
@@ -62,28 +89,31 @@ try {
         'catch (error) { if (error.code !== "MODULE_NOT_FOUND") throw error; }',
         "(async () => {",
         "  const sage = await api.createSage();",
-        '  const result = await sage.evaluate("factor(370309)");',
-        "  console.log(result.repr);",
-        '  console.log((await sage.evaluate("version()")).repr);',
-        '  console.log((await sage.evaluate("version(True)[\\"schema\\"]")).repr);',
-        '  console.log((await sage.evaluate("A=AffineSpace(QQ,2,names=(\\"x\\",\\"y\\")); x,y=A.gens(); X=A.subscheme([y-x^2]); (X.dimension(), A(3,9) in X)")).repr);',
-        "  await sage.close();",
+        "  try {",
+        '    console.log((await sage.evaluate("factor(370309)")).repr);',
+        '    console.log((await sage.evaluate("version()")).repr);',
+        '    console.log((await sage.evaluate("version(True)[\\"schema\\"]")).repr);',
+        '    console.log((await sage.evaluate("A=AffineSpace(QQ,2,names=(\\"x\\",\\"y\\")); x,y=A.gens(); X=A.subscheme([y-x^2]); (X.dimension(), A(3,9) in X)")).repr);',
+        "  } finally {",
+        "    await sage.close();",
+        "  }",
         "})().catch((error) => { console.error(error); process.exitCode = 1; });",
       ].join("\n"),
     ],
-    { cwd: temporaryRoot, encoding: "utf8" },
-  );
+    { cwd: context.directory, timeout: 180_000 },
+  ), "installed CommonJS public API smoke");
   assert.equal(
-    commonJsOutput.trim(),
+    commonJs.stdout.trim(),
     [
       "67 * 5527",
-      `'Sage.js v${expectedVersion} [linux-x64], Release Date: ` +
+      `'Sage.js v${expectedVersion} [${target.runtimeId}], Release Date: ` +
         `${require(join(root, "sagejs-version.json")).release_date}'`,
       "'sagejs.version/v1'",
       "(1, True)",
     ].join("\n"),
   );
-  const esmOutput = execFileSync(
+
+  const esm = assertSuccessful(runProcess(
     process.execPath,
     [
       "--input-type=module",
@@ -91,20 +121,71 @@ try {
       [
         'import { createSage } from "@sagemath/sagejs";',
         "const sage = await createSage();",
-        'console.log((await sage.evaluate("number_of_partitions(10)")).repr);',
-        "await sage.close();",
+        "try {",
+        '  console.log((await sage.evaluate("number_of_partitions(10)")).repr);',
+        "} finally {",
+        "  await sage.close();",
+        "}",
       ].join("\n"),
     ],
-    { cwd: temporaryRoot, encoding: "utf8" },
-  );
-  assert.equal(esmOutput.trim(), "42");
-  const executable = join(temporaryRoot, "node_modules", ".bin", "sagejs");
-  const output = execFileSync(executable, ["--jupyter-kernel-self-test"], {
-    cwd: temporaryRoot,
-    encoding: "utf8",
-  });
-  assert.equal(output.trim(), "Sage.js Jupyter SEA runtime passed.");
-  console.log("Isolated CommonJS, ESM, native mathematics, and CLI npm tests passed");
-} finally {
-  rmSync(temporaryRoot, { recursive: true, force: true });
+    { cwd: context.directory, timeout: 180_000 },
+  ), "installed ESM public API smoke");
+  assert.equal(esm.stdout.trim(), "42");
 }
+
+function main() {
+  const options = parseArguments(process.argv.slice(2));
+  let install;
+  let relocated;
+  try {
+    install = prepareFreshInstall(options);
+    verifyPublicJavaScriptApi(install);
+
+    const source = numericalSmokeSource();
+    parseNumericalSmoke(runInstalledSourcePython(install, source));
+    parseNumericalSmoke(runInstalledKernelPython(install, source));
+
+    relocated = prepareRelocatedSeaFromInstall(install);
+    parseNumericalSmoke(runRelocatedSeaPython(relocated, source));
+
+    const selfTest = runRelocatedSeaPython(
+      relocated,
+      "print('relocated SEA Python runtime passed')\n",
+    );
+    assertSuccessful(selfTest, "relocated SEA Python self-test");
+    assert.equal(selfTest.stdout.trim(), "relocated SEA Python runtime passed");
+    console.log(
+      `Fresh ${options.target} npm install, public APIs, lazy numerical ` +
+        "resources, and relocated SEA passed",
+    );
+  } finally {
+    cleanupQualification({
+      install,
+      relocated,
+      keep: options.keep,
+      log: console.log,
+    });
+  }
+}
+
+function cleanupQualification({ install, relocated, keep, log = console.log }) {
+  try {
+    // A relocated executable is a disposable copy. Keeping the consumer for
+    // diagnosis must never leave this second, otherwise invisible directory.
+    relocated?.cleanup();
+  } finally {
+    if (keep && install) {
+      log(`Kept package qualification directory: ${install.directory}`);
+    } else {
+      install?.cleanup();
+    }
+  }
+}
+
+if (require.main === module) main();
+
+module.exports = {
+  cleanupQualification,
+  parseArguments,
+  verifyPublicJavaScriptApi,
+};

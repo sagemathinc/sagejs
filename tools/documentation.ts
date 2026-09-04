@@ -78,6 +78,95 @@ export interface DocumentationSearchOptions {
   tag?: string;
 }
 
+export interface DocumentationCatalogOptions {
+  /** Include the documented lazy numerical entry points not present in the live registry. */
+  includeNumericalFlagships?: boolean;
+}
+
+const NUMERICAL_FLAGSHIPS: ReadonlyArray<{
+  name: string;
+  module: string;
+  signature: string;
+  summary: string;
+  tags: string[];
+}> = [
+  {
+    name: "find_root",
+    module: "sagejs.numerics",
+    signature: "find_root(function, a=None, b=None, *, x0=None, method=None, **options)",
+    summary: "Find and independently validate a scalar root with diagnostics and bounded traces.",
+    tags: ["numerical", "root-finding", "validated"],
+  },
+  {
+    name: "minimize_scalar",
+    module: "sagejs.numerics.optimization",
+    signature: "minimize_scalar(function, bounds=None, *, method=None, **options)",
+    summary: "Minimize a scalar objective with explicit budgets and validation evidence.",
+    tags: ["numerical", "optimization"],
+  },
+  {
+    name: "minimize",
+    module: "sagejs.numerics.optimization",
+    signature: "minimize(function, x0, *, method=None, **options)",
+    summary: "Minimize a multivariate objective and return a structured NumericalResult.",
+    tags: ["numerical", "optimization"],
+  },
+  {
+    name: "curve_fit",
+    module: "sagejs.numerics.optimization",
+    signature: "curve_fit(function, xdata, ydata, p0, **options)",
+    summary: "Fit a nonlinear model with residual diagnostics and parameter provenance.",
+    tags: ["numerical", "fitting", "least-squares"],
+  },
+  {
+    name: "solve_ivp",
+    module: "sagejs.numerics.ode",
+    signature: "solve_ivp(function, t_span, y0, *, method=None, **options)",
+    summary: "Solve and validate an initial-value ODE problem with adaptive-step traces.",
+    tags: ["numerical", "ode", "initial-value-problem"],
+  },
+  {
+    name: "integrate",
+    module: "sagejs.numerics.integration",
+    signature: "integrate(function, a, b, *, method=None, **options)",
+    summary: "Compute an adaptive numerical integral with error and budget diagnostics.",
+    tags: ["numerical", "integration", "quadrature"],
+  },
+  {
+    name: "svd",
+    module: "sagejs.numerics.spectral",
+    signature: "svd(matrix, *, trace='none', **options)",
+    summary: "Compute and independently validate a singular-value decomposition.",
+    tags: ["numerical", "linear-algebra", "spectral"],
+  },
+  {
+    name: "fft",
+    module: "sagejs.numerics.spectral",
+    signature: "fft(samples, **options)",
+    summary: "Compute a radix-2 or Bluestein discrete Fourier transform.",
+    tags: ["numerical", "spectral", "fft"],
+  },
+];
+
+function numericalFlagshipEntry(value: (typeof NUMERICAL_FLAGSHIPS)[number]): DocumentationEntry {
+  return {
+    schema_version: DOCSPEC_VERSION,
+    name: value.name,
+    aliases: [],
+    kind: "function",
+    module: value.module,
+    signature: value.signature,
+    summary: value.summary,
+    doc: `${value.summary}\n\nImport from \`${value.module}\`. Results expose \`explain()\`, \`to_json()\`, semantic plots, and bounded animations when supported.`,
+    tags: value.tags,
+    backends: ["portable-python", "browser-wasm", "native-optional"],
+    sage_compatibility: { status: "extension", notes: "Agent-first structured numerical result contract." },
+    provenance: [{ kind: "sagejs-original" }],
+    references: [],
+    limitations: [],
+  };
+}
+
 function stringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return [
@@ -334,6 +423,7 @@ function references(value: unknown): DocumentationReference[] {
 
 export function documentationCatalogFromRegistry(
   registry: unknown,
+  options: DocumentationCatalogOptions = {},
 ): DocumentationCatalog {
   const byName = new Map<string, DocumentationEntry>();
   if (!Array.isArray(registry)) {
@@ -393,6 +483,13 @@ export function documentationCatalogFromRegistry(
       limitations: stringArray(metadata.limitations),
     };
     byName.set(name, normalized);
+  }
+  if (options.includeNumericalFlagships) {
+    for (const flagship of NUMERICAL_FLAGSHIPS) {
+      if (!byName.has(flagship.name)) {
+        byName.set(flagship.name, numericalFlagshipEntry(flagship));
+      }
+    }
   }
   return {
     schema_version: DOCSPEC_VERSION,

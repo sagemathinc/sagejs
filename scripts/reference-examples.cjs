@@ -147,6 +147,7 @@ function collectReferenceSources(root) {
   }
   const localFixtures = [
     join(root, "reference-tests", "graphs.cjs"),
+    join(root, "docs", "reference", "fixtures", "numerical.cjs"),
   ];
   for (const filename of localFixtures) {
     const fixture = require(filename);

@@ -27,6 +27,9 @@ const {
   provenanceRecord,
   validateLazyModuleBundle,
 } = require("./lazy-module-provenance.cjs");
+const {
+  validateNumericalBrowserClosure,
+} = require("./check-numerical-browser-closure.cjs");
 
 const root = resolve(__dirname, "..");
 const libraryDirectory = join(root, "src", "lib");
@@ -37,6 +40,7 @@ const manifest = JSON.parse(readFileSync(
   join(__dirname, "precompiled-python-packages.json"),
   "utf8",
 ));
+validateNumericalBrowserClosure({ repositoryRoot: root, manifest });
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-python-precompile-"));
 const packageTemporary = join(temporary, "packages");
 const taskTemporary = join(temporary, "tasks");
@@ -365,6 +369,11 @@ try {
     },
     modules: sortedBundleModules,
   };
+  validateNumericalBrowserClosure({
+    repositoryRoot: root,
+    manifest,
+    bundle,
+  });
   validateLazyModuleBundle(bundle, { repositoryRoot: root });
   writeFileSync(bundleFilename, `${JSON.stringify(bundle)}\n`);
 

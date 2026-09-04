@@ -20,3 +20,8 @@ architecture/native-exports.json linguist-generated=true
 
 # Source patches retain upstream context whitespace for exact application.
 packages/flint/patches/*.patch -whitespace
+
+# Exact vendored Plotly distribution.  Its upstream minified payload contains
+# intentional trailing spaces; do not make those third-party bytes a source
+# whitespace error.
+website/numerical-computing/plotly.min.js -whitespace

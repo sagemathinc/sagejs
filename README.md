@@ -1,6 +1,6 @@
 # Sage.js
 
-> **Early alpha:** Sage.js 0.7.0 is intended for outside experimentation.
+> **Early alpha:** Sage.js 0.8.0 is intended for outside experimentation.
 > Expect missing functionality, incompatible changes, and rough edges.
 
 > **Sage.js is open, portable, high-performance software for exploring
@@ -61,9 +61,9 @@ Inside Sage mode, `version()` reports the human-readable release and target;
 
 ```sage
 sage: version()
-'Sage.js v0.7.0 [linux-x64], Release Date: 2026-08-31'
+'Sage.js v0.8.0 [linux-x64], Release Date: 2026-09-03'
 sage: version(json=True)
-{'schema': 'sagejs.version/v1', 'name': 'Sage.js', 'version': '0.7.0', 'release_date': '2026-08-31', 'platform': 'linux-x64'}
+{'schema': 'sagejs.version/v1', 'name': 'Sage.js', 'version': '0.8.0', 'release_date': '2026-09-03', 'platform': 'linux-x64'}
 ```
 
 - [npm package](https://www.npmjs.com/package/@sagemath/sagejs)
@@ -76,6 +76,34 @@ sage: version(json=True)
 The [implementation dashboard](https://sagemathinc.github.io/sagejs/) is the
 living map of what Sage.js provides, how strongly each capability is tested,
 and what is prioritized next.
+
+## Numerical computing laboratory
+
+Sage.js 0.8.0 includes an agent-first numerical laboratory with validated root
+finding, approximation, dense linear algebra, integration, optimization and
+fitting, ODE solvers, polynomial roots, FFT and spectral methods, statistics,
+regression, and deterministic parameter sweeps. The canonical APIs return
+structured evidence rather than only a scalar or backend status:
+
+```python
+from sagejs.numerics import find_root
+
+result = find_root(
+    lambda x: cos(x) - x,
+    0.0,
+    1.0,
+    method="brent",
+    trace="evaluations",
+)
+result.to_dict()       # stable values, validation, diagnostics, and provenance
+result.explain()       # human-readable account of the computation
+```
+
+The same contracts support selected Sage, Python/SciPy, MATLAB, and Wolfram
+frontends, JSON, equivalent-code emission, PlotSpec/Plotly figures, and bounded
+animations. Unsupported methods and translations are classified explicitly.
+See the [interactive numerical laboratory](https://sagejs.org/numerical-computing/)
+and [numerical API contract](docs/numerical-computing/README.md).
 
 ## Download a standalone executable
 
@@ -91,7 +119,7 @@ It installs into `~/.local/bin` by default and, when necessary, adds that
 directory to the current user's shell startup file. Restart the shell (or
 source the file named by the installer) after a first installation. When run
 as root it instead installs system-wide into `/usr/local/bin`; set
-`SAGEJS_INSTALL_DIR` to choose another directory or `SAGEJS_VERSION=0.7.0` to
+`SAGEJS_INSTALL_DIR` to choose another directory or `SAGEJS_VERSION=0.8.0` to
 pin a release. The archives
 include both `sagejs`, with the native mathematics stack, and
 `sagepython`, the lightweight Python-compatible runtime. No Node.js, Python,
@@ -111,7 +139,7 @@ built on Ubuntu 24.04; a minimal Debian/Ubuntu image needs `curl`, `xz-utils`,
 and `libatomic1` for the one-command installer and official Node-based
 executable. Windows executables are intended for ordinary Windows
 10/11 x64 systems; Authenticode provisioning is still in progress, so the
-0.7.0 early-alpha executables may be unsigned. macOS executables use the hardened
+0.8.0 early-alpha executables may be unsigned. macOS executables use the hardened
 runtime, are Developer ID signed, and the downloadable ZIP and PKG are both
 submitted to Apple's notary service; the PKG also carries a stapled ticket.
 
@@ -265,7 +293,7 @@ credentials can reproduce the signed, notarized macOS artifacts locally with:
 ```sh
 pnpm release:macos
 # Or also attach it to an existing release:
-pnpm release:macos -- --publish v0.7.0
+pnpm release:macos -- --publish v0.8.0
 ```
 
 The command uses the same credential conventions as CoCalc's macOS release
@@ -366,13 +394,13 @@ language ecosystems.
 Sage.js development after version 0.1 requires Node.js 22.22.2 or newer.
 
 ```sh
-npm install --global @sagemath/sagejs@0.7.0
+npm install --global @sagemath/sagejs@0.8.0
 ```
 
 Or, with pnpm:
 
 ```sh
-pnpm add --global @sagemath/sagejs@0.7.0
+pnpm add --global @sagemath/sagejs@0.8.0
 ```
 
 The public package keeps the Sage.js library and embedding APIs, while its
@@ -415,6 +443,16 @@ The first form opens a `wasm: ` prompt. The launcher verifies the production
 receipt and every selected asset before evaluation; a stale or incomplete
 artifact fails closed instead of falling back to native execution.
 
+Node applications can select the same addon-free runtime explicitly:
+
+```js
+import { createSage } from "@sagemath/sagejs/wasm/node";
+
+const sage = await createSage();
+console.log((await sage.evaluate("factor(2026)")).repr);
+await sage.close();
+```
+
 ## Documentation
 
 Sage.js retains public docstrings for `help(f)`, `f?`, Jupyter inspection, and
@@ -453,7 +491,7 @@ console.log(result.repr);
 await sage.close();
 ```
 
-The 0.7.0 npm embedding API starts the installed platform executable behind a
+The 0.8.0 npm embedding API starts the installed platform executable behind a
 small JSON-lines protocol, so `createSage()` exposes the same full native
 mathematics runtime as the command line without a compiler or postinstall
 script. The explicit `@sagemath/sagejs/kernel` export remains available for
@@ -540,7 +578,7 @@ The `sagejs` command uses Sage-style syntax by default:
 
 ```py
 $ sagejs
-Welcome to Sage.js v0.7.0 [linux-x64].
+Welcome to Sage.js v0.8.0 [linux-x64].
 sage: 2^100
 1267650600228229401496703205376
 sage: sum([1..100])
@@ -830,7 +868,7 @@ Python mode retains Python's meaning of `^`:
 
 ```py
 $ sagejs --python
-Welcome to Sage.js v0.7.0 (Python mode) [linux-x64].
+Welcome to Sage.js v0.8.0 (Python mode) [linux-x64].
 >>> 2^3
 1
 >>> 2**3

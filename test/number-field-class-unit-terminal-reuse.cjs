@@ -9,7 +9,8 @@ const { spawnSagejsSync } = require("./helpers/sagejs-cli.cjs");
 const root = join(__dirname, "..");
 function run(source) {
   const timeout =
-    process.platform === "linux" && process.arch === "arm64"
+    process.platform === "darwin" ||
+    (process.platform === "linux" && process.arch === "arm64")
       ? 600_000
       : 300_000;
   const result = spawnSagejsSync(root, ["--python", "-"], {
@@ -18,8 +19,9 @@ function run(source) {
     input: source,
     // This integration test intentionally performs several cold exact
     // class/unit computations in one interpreter.  Keep the subprocess bound
-    // finite, but allow the persistent Linux ARM64 release host to finish the
-    // proof replays when both integration workers are under load.
+    // finite, but allow the persistent macOS ARM64 and Linux ARM64 release
+    // hosts to finish the proof replays when both integration workers are
+    // under load.
     timeout,
   });
   if (result.error) {

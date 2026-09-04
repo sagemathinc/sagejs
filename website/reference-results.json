@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 216,
+    "pass": 224,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -94,6 +94,11 @@
       "id": "src/baselib/polynomial.py#06c5e7960cda410c-5badf7217b080d99",
       "status": "pass",
       "actual": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n"
+    },
+    {
+      "id": "docs/reference/fixtures/numerical.cjs#65881c7f41cc6e9f-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
     },
     {
       "id": "src/baselib/modular.py#c49ea7b9bb92c689-e3b0c44298fc1c14",
@@ -234,6 +239,16 @@
       "id": "src/baselib/modular.py#a0e18d83ecc03c5c-cd589672dc7b7b8a",
       "status": "pass",
       "actual": "(False, 'the eta product has a pole at a cusp')\n"
+    },
+    {
+      "id": "docs/reference/fixtures/numerical.cjs#a14aed811b458915-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "docs/reference/fixtures/numerical.cjs#57920a98a0bed855-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
     },
     {
       "id": "src/baselib/finite_fields.py#d5fed5b346a11651-bdf39be03f43bdb9",
@@ -702,6 +717,11 @@
       "actual": "[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]\n"
     },
     {
+      "id": "docs/reference/fixtures/numerical.cjs#60922b0372e1f6b1-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
       "id": "src/baselib/hyperelliptic_curves.py#b0ba7464f1ad3eef-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
@@ -755,6 +775,16 @@
       "id": "src/baselib/groups.py#6f7ecbdb475e0987-eaa0689a095d4394",
       "status": "pass",
       "actual": "336\n"
+    },
+    {
+      "id": "docs/reference/fixtures/numerical.cjs#56e55a2c02e6318d-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "docs/reference/fixtures/numerical.cjs#8bd27c89e6130059-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
     },
     {
       "id": "src/baselib/modular.py#90f6ac1f31cf147f-e3b0c44298fc1c14",
@@ -1237,6 +1267,11 @@
       "actual": "[x == -2, x == 2]\n"
     },
     {
+      "id": "docs/reference/fixtures/numerical.cjs#57a23b91ef0cce9b-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
       "id": "src/baselib/groups.py#0abcda1883011fff-eba3ff5a3fd19728",
       "status": "pass",
       "actual": "276595200\n"
@@ -1265,6 +1300,11 @@
       "id": "src/baselib/modular.py#959a51d353f2e5ad-63bd7e92de99d396",
       "status": "pass",
       "actual": "(3, 3, 3)\n"
+    },
+    {
+      "id": "docs/reference/fixtures/numerical.cjs#1d9812b101682f40-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
     },
     {
       "id": "src/baselib/modular.py#fb49fc62b2de3f59-fa70629e534e2a03",

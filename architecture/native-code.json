@@ -88,6 +88,27 @@
       "rationale": "Standalone C-to-Wasm feasibility target for the reviewed bounded modular character scan; compiled only by the optimizer evidence harness, not linked into Sage.js or selected as a production mathematical implementation."
     },
     {
+      "path": "bench/numerical-optimization/callback-probe.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Standalone no-allocation C-to-Wasm microbenchmark that separates internal arithmetic from synchronous Wasm-to-JavaScript objective callback cost; it is not linked into Sage.js or used as a mathematical implementation."
+    },
+    {
+      "path": "bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Qualification-only ASAN/UBSAN/LSAN harness for the pinned upstream cminpack lmdif/lmder components, including callback failure propagation; it is compiled only by the release evidence collector and is never linked into or shipped with Sage.js."
+    },
+    {
+      "path": "bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Qualification-only ASAN/UBSAN/LSAN harness for the pinned upstream NLopt component closure. Release evidence compiles the selected Nelder-Mead-only path and its cancellation behavior; the guarded COBYLA path is excluded after source-bound sanitizer failure. The harness is never linked into or shipped with Sage.js."
+    },
+    {
       "path": "bench/rforest/portable_trace_harness.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
@@ -149,6 +170,27 @@
       "review_status": "accepted",
       "lane": "integration",
       "rationale": "Host-neutral generated owned-resource ABI over M4RI dense GF(2) matrices, with checked dimensions and empty shapes, canonical logical row-word and SagePack transfer, deterministic lifecycle accounting, and direct resource-to-resource linear algebra."
+    },
+    {
+      "path": "packages/flint-wasm/numerical/qualification/mgh-oracle-adapter.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Qualification-only host-neutral adapter over cminpack's upstream MINPACK-2 MGH functions; it is compiled into an independent oracle reactor and is never shipped as the production solver."
+    },
+    {
+      "path": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "category": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "integration",
+      "rationale": "Bounded callback, total evaluation-budget, allocation, cancellation, and status ABI over the pinned cminpack lmdif/lmder implementation; mathematical iteration policy stays in authenticated upstream source, allocations are operation-scoped, and Sage.js independently validates returned residuals."
+    },
+    {
+      "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "category": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "numerical-optimization",
+      "rationale": "Bounded packed callback, force-stop, allocation, status, and linear-memory ABI over the pinned MIT NLopt Nelder-Mead source; NLopt owns the algorithm, automatic selection is disabled, and Sage.js independently applies contradiction checks before any heuristic public success. COBYLA is excluded after source-bound UBSAN exposed unresolved upstream pointer-provenance undefined behavior."
     },
     {
       "path": "packages/flint-wasm/src/factor.c",

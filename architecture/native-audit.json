@@ -541,6 +541,48 @@
       "next": "Upstream the status-returning embedding changes and remove local containment code when msolve provides an equivalent stable library contract."
     },
     {
+      "path": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "lines": 367,
+      "bytes": 11651,
+      "decision": "retain-bridge",
+      "priority": "low",
+      "responsibilities": [
+        "validate bounded cminpack dimensions, tolerances, workspace, and linear-memory regions",
+        "marshal complete residual and Jacobian callback batches across one synchronous Wasm import",
+        "track and release every operation-owned allocation on success and failure"
+      ],
+      "rationale": "This adapter owns only a bounded status, callback, and memory ABI around authenticated upstream cminpack; the Levenberg-Marquardt iteration policy remains entirely in the mature external library.",
+      "fallback": "The public automatic route remains the independently tested ordinary-Python damped Gauss-Newton implementation, while an explicit cminpack identity fails rather than silently substituting it.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "cminpack upstream MGH corpus",
+        "SciPy"
+      ],
+      "next": "Retain the one-import packed boundary and exact method names; widen dimensions or select it automatically only with fresh lifecycle, correctness, payload, and performance receipts."
+    },
+    {
+      "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "lines": 463,
+      "bytes": 17196,
+      "decision": "retain-bridge",
+      "priority": "low",
+      "responsibilities": [
+        "validate dimensions, tolerances, bounds, and every linear-memory region",
+        "marshal objective values through one synchronous Wasm import while retaining separately fuzzed future derivative-batch ABI probes",
+        "translate cancellation, force-stop, allocation failure, and exact NLopt statuses without inventing convergence"
+      ],
+      "rationale": "The adapter owns only a bounded foreign-library ABI around authenticated MIT NLopt Nelder-Mead sources; the algorithm remains entirely upstream, derivative callbacks are rejected, and public success is explicitly heuristic after independent contradiction checks. COBYLA is absent from the source closure because its selected upstream f2c implementation fails source-bound UBSAN.",
+      "fallback": "Automatic minimization remains ordinary Python. Explicit NLopt Nelder-Mead fails closed when the artifact, callback contract, result identity, or independent contradiction checks are unavailable. Nonlinear constraints are unsupported pending a modern sanitizer-clean backend.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "SciPy",
+        "PRIMA"
+      ],
+      "next": "Keep Nelder-Mead explicit-only and heuristic; evaluate a modern PRIMA implementation for constrained optimization with separately pinned licensing, lifecycle, correctness, payload, sanitizer, and four-platform evidence."
+    },
+    {
       "path": "packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",
       "lines": 25,
       "bytes": 560,
