@@ -2828,6 +2828,8 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
     if (message.includes("NativeIntegerVector memory limit") ||
         message.includes("NativeIntegerMatrix memory limit") ||
         message.includes("NativeExactArena memory limit") ||
+        message.includes("NativeExactArena checkpoint allocation failed") ||
+        message.includes("NativeExactArena temporary capacity exhausted") ||
         message.includes("NativeIntegerVector allocation failed")) {
       nativeRaise("MemoryError", message);
     }

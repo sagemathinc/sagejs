@@ -1,0 +1,67 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-temporary-exhaustion-exception-bridge",
+  "title": "Native Temporary Exhaustion Exception Bridge",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Map native exact temporary/checkpoint arena exhaustion into catchable Python MemoryError at the JS backend boundary, with focused compiled-Python regression coverage",
+  "base_commit": "5b0fb6149c8d9737789f40e4df74e6fa521ab5a5",
+  "claims": [
+    "tools/native-kernel/js-backend.cjs",
+    "tools/native-kernel/test/native-exact-exception-bridge.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Compiled Python catches MemoryError raised from native exact temporary arena exhaustion"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/native-exact-exception-bridge.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.135,
+      "started_at": "2026-09-04T18:35:43.590Z",
+      "commit": "5b0fb6149c8d9737789f40e4df74e6fa521ab5a5",
+      "workspace_fingerprint": "5093695b3d555e02f7ab7b8ba0f403f5e18f560a224ca9c1ad5225c89cc17324",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=early-checkpoint fmpz execution agrees tools/native-kernel/test/fmpz-early-checkpoint.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.571,
+      "started_at": "2026-09-04T18:36:17.263Z",
+      "commit": "5b0fb6149c8d9737789f40e4df74e6fa521ab5a5",
+      "workspace_fingerprint": "5093695b3d555e02f7ab7b8ba0f403f5e18f560a224ca9c1ad5225c89cc17324",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Native exact checkpoint allocation and temporary-capacity exhaustion now cross the generated JavaScript boundary as Python MemoryError. A focused compiled-addon/Sage.js regression proves that Python except BaseException catches the translated exception and retains the exact native diagnostic.",
+    "risks": [
+      "The focused execution receipts are from linux-x64; the bridge itself is target-independent generated JavaScript, while other required platforms remain covered by normal native CI."
+    ],
+    "next_steps": [
+      "Integrate this commit before requalifying the cubic public checkpoint cap. The cubic runtime already catches MemoryError in both its main receipt and transcript fail-closed paths, so it needs no exception-list edit."
+    ]
+  }
+}
