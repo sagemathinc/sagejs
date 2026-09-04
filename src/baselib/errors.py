@@ -51,7 +51,12 @@ class BaseException(runtime.error):
         else:
             message = runtime.repr(self.args)
         self.message = message
-        self.name = self.constructor.name
+        python_name = runtime.reflect.get(self.constructor, "__name__")
+        self.name = (
+            self.constructor.name
+            if python_name is runtime.undefined
+            else runtime.string(python_name)
+        )
         error = runtime.error(message)
         error.name = self.name
         self.stack = error.stack

@@ -229,7 +229,12 @@ test("bare and reusable main programs emit strict JavaScript", async () => {
         reuse_main_module,
       });
       ast.print(output);
-      assert.match(output.get(), /^"use strict";/);
+      const javascript = output.get();
+      assert.match(javascript, /^"use strict";/);
+      assert.match(
+        javascript,
+        /__sagejs_module_namespaces__\.add\(ρσ_modules\.__main__\)/,
+      );
     }
   } finally {
     frontend.close();
@@ -637,7 +642,10 @@ test("class-body global declarations bind the isolated module cell", async () =>
     assert.match(javascript, /\$ρσ\$py\$Object = "class value"/);
     assert.doesNotMatch(javascript, /Holder\.prototype\.Object/);
     assert.doesNotMatch(javascript, /(?:^|\n)var Object;/);
-    assert.match(javascript, /\$ρσ\$py\$runtime = replacement/);
+    assert.match(
+      javascript,
+      /\$ρσ\$py\$runtime = ρσ_resolve_module_name\(void 0, "replacement"/,
+    );
     assert.match(
       javascript,
       /ρσ_getattr_internal\([^;\n]*\$ρσ\$py\$runtime[^;\n]*"native_get"/,
@@ -663,6 +671,33 @@ test("same-named module assignments fall back to Python builtins", async () => {
       javascript,
       /\$ρσ\$py\$next = ρσ_check_unbound\(ρσ_resolve_module_name\(\$ρσ\$py\$next, "next"/,
     );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("module exception targets use the containing lexical cell", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "try:\n    raise ValueError()\nexcept ValueError as len:\n    pass\n" +
+        "answer = len([1, 2])\n",
+      parserOptions,
+    );
+    assert.ok(ast.localvars.some((symbol) => symbol.name === "len"));
+    assert.ok(ast.exports.some((symbol) => symbol.name === "len"));
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /var [^;]*\$ρσ\$py\$len[^;]*;/);
+    assert.match(
+      javascript,
+      /\["len"\]: \{enumerable:true,get:\(\)=>\$ρσ\$py\$len/,
+    );
+    assert.match(javascript, /\$ρσ\$py\$len = ρσ_Exception/);
+    assert.match(javascript, /\$ρσ\$py\$len = ρσ_cleared_exception/);
+    assert.doesNotMatch(javascript, /var \$ρσ\$py\$len = ρσ_Exception/);
   } finally {
     frontend.close();
   }
@@ -845,7 +880,7 @@ test("a first class assignment reads its same-named module global", async () => 
     const javascript = output.get();
     assert.match(
       javascript,
-      /Session\.prototype\.Interrupted = \$ρσ\$py\$Interrupted/,
+      /Session\.prototype\.Interrupted = ρσ_resolve_module_name\(void 0, "Interrupted"/,
     );
     assert.doesNotMatch(
       javascript,
@@ -871,7 +906,7 @@ test("a first annotated class assignment reads its same-named module global", as
     const javascript = output.get();
     assert.match(
       javascript,
-      /Application\.prototype\.description = ρσ_resolve_callable\(str\)\(ρσ_check_unbound\(\$ρσ\$py\$description/,
+      /Application\.prototype\.description = ρσ_resolve_callable\(ρσ_resolve_module_name\(void 0, "str"[^;]+\)\(ρσ_check_unbound\(ρσ_resolve_module_name\(void 0, "description"/,
     );
     assert.doesNotMatch(
       javascript,
@@ -1230,6 +1265,213 @@ test("hygienic star imports stay inside the Python module", async () => {
       /\u03c1\u03c3_modules\["star_consumer"\]\[\u03c1\u03c3_star_name\] =/,
     );
     assert.doesNotMatch(javascript, /globalThis\[\u03c1\u03c3_star_name\]/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("star-imported reads use the live Python module namespace", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "from exported_names import *\nanswer = dynamic_name\n",
+      { ...parserOptions, module_id: "star_consumer" },
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /\$\u03c1\u03c3\$py\$answer = \u03c1\u03c3_resolve_module_name\(void 0, "dynamic_name", \u03c1\u03c3_modules\["star_consumer"\]/,
+    );
+    assert.doesNotMatch(javascript, /typeof \$\u03c1\u03c3\$py\$dynamic_name/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("nested functions resolve star-imported module names dynamically", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "from exported_names import *\ndef read():\n    return dynamic_name\n",
+      { ...parserOptions, module_id: "star_consumer" },
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /return ρσ_resolve_module_name\(void 0, "dynamic_name", ρσ_modules\["star_consumer"\]/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("deleting a star-imported name declares a synchronized module cell", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "from exported_names import *\ndel dynamic_name\n",
+      { ...parserOptions, module_id: "star_consumer" },
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /var \$ρσ\$py\$dynamic_name/);
+    assert.match(
+      javascript,
+      /\$ρσ\$py\$dynamic_name\s*=\s*ρσ_delete_name\(/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("class prebinding reads bypass identically named closure cells", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "module_value = 'module'\n" +
+        "def make(module_value):\n" +
+        "    class Scoped:\n" +
+        "        captured = module_value\n" +
+        "        module_value = 'class'\n" +
+        "    return Scoped\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /prototype\.captured = \u03c1\u03c3_resolve_module_name\(void 0, "module_value", \u03c1\u03c3_modules\["__main__"\]/,
+    );
+    assert.doesNotMatch(
+      javascript,
+      /prototype\.captured = \$\u03c1\u03c3\$py\$module_value/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("class prebinding markers preserve hygienic assignment targets", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "class NativeIntegerVector:\n" +
+        "    _ENTRY_CHARGE = 32\n",
+      parserOptions,
+    );
+    const classNode = ast.body.find((statement) =>
+      statement instanceof compiler.AST_Class
+    );
+    assert.ok(classNode);
+    const assignment = classNode.body
+      .map((statement) => statement.body ?? statement)
+      .find((statement) => statement instanceof compiler.AST_Assign);
+    assert.ok(assignment);
+
+    // Imported modules retain this sequential LOAD_NAME marker in their
+    // serialized analysis. Reproduce that durable form directly so cached
+    // output cannot regress to an unbound raw JavaScript class name.
+    assignment.left.python_class_prebinding_fallback = true;
+    assignment.left.python_identifier = false;
+
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /\$ρσ\$py\$NativeIntegerVector\.prototype\._ENTRY_CHARGE\s*=/,
+    );
+    assert.doesNotMatch(
+      javascript,
+      /(?:^|[;\n]\s*)NativeIntegerVector\.prototype\._ENTRY_CHARGE\s*=/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("module imports retain namespace binding metadata for class LOAD_NAME", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "from exported_names import namedtuple\n" +
+        "class Namespace:\n" +
+        "    namedtuple = namedtuple\n",
+      parserOptions,
+    );
+    assert.deepEqual(ast.python_import_bindings.namedtuple, {
+      kind: "module",
+      name: "namedtuple",
+      module: "__main__",
+      declare: true,
+    });
+  } finally {
+    frontend.close();
+  }
+});
+
+test("first class augmented assignment reads through LOAD_NAME", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "value = 'module'\n" +
+        "def make(value):\n" +
+        "    class Scoped:\n" +
+        "        value += '!'\n" +
+        "    return Scoped.value\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /Scoped\.prototype\.value\s*=\s*ρσ_operator_iadd_exact\(ρσ_resolve_module_name\(/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("later class reads preserve sequential and conditional LOAD_NAME behavior", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "value = 10\n" +
+        "class Sequential:\n" +
+        "    value = 1\n" +
+        "    value = value + 1\n" +
+        "class Conditional:\n" +
+        "    if False:\n" +
+        "        value = 1\n" +
+        "    value += 2\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /Sequential\.prototype\.value\s*=\s*ρσ_operator_add_exact\(\(\$\u03c1\u03c3\$py\$Sequential\.prototype\.hasOwnProperty\("value"\)/,
+    );
+    assert.match(
+      javascript,
+      /Conditional\.prototype\.hasOwnProperty\("value"\)/,
+    );
   } finally {
     frontend.close();
   }

@@ -144,8 +144,12 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
     elif is_node_type(node, AST_Except):
         if node.argname:
             output.indent()
-            output.print("var")
-            output.space()
+            exception_target_definition = node.argname.definition()
+            class_exception_target = (
+                output.in_class_body
+                and exception_target_definition
+                and ".prototype." in exception_target_definition.name
+            )
             output.assign(node.argname)
             output.print("ρσ_Exception")
             output.semicolon()
@@ -164,8 +168,17 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
 
             def clear_exception_target():
                 output.indent()
-                output.assign(node.argname)
-                output.print("void 0")
+                if class_exception_target:
+                    output.print("delete")
+                    output.space()
+                    node.argname.print(output)
+                else:
+                    output.assign(node.argname)
+                    # Preserve the fact that the exception target was
+                    # explicitly cleared. Plain JavaScript `undefined` also
+                    # represents a never-created control-flow binding, which
+                    # may legitimately fall through to Python builtins.
+                    output.print("ρσ_cleared_exception")
                 output.end_statement()
 
             output.with_block(clear_exception_target)

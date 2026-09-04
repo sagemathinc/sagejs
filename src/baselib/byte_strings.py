@@ -1727,3 +1727,26 @@ runtime.reflect.set(
     "prototype",
     runtime.reflect.get(SageMemoryView, "prototype"),
 )
+
+
+def _publish_builtin_byte_type(
+    _builtin_byte_type: Any, _builtin_byte_name: str
+) -> None:
+    runtime.object.defineProperty(
+        _builtin_byte_type,
+        "__python_type__",
+        {"value": type, "writable": True, "configurable": True},
+    )
+    runtime.reflect.set(_builtin_byte_type, "__name__", _builtin_byte_name)
+    runtime.reflect.set(_builtin_byte_type, "__qualname__", _builtin_byte_name)
+    runtime.reflect.set(
+        runtime.reflect.get(_builtin_byte_type, "prototype"),
+        "__python_type__",
+        _builtin_byte_type,
+    )
+    runtime.set_class_repr(_builtin_byte_type, "<class '" + _builtin_byte_name + "'>")
+
+
+_publish_builtin_byte_type(ρσ_bytes, "bytes")
+_publish_builtin_byte_type(ρσ_bytearray, "bytearray")
+_publish_builtin_byte_type(ρσ_memoryview, "memoryview")

@@ -326,6 +326,9 @@ export class PythonAstSemanticAnalyzer {
       if (Array.isArray(value)) {
         for (const statement of value) {
           if (statement instanceof this.compiler.AST_Scope) continue;
+          if (statement instanceof this.compiler.AST_Except && statement.argname) {
+            names.push(statement.argname.name);
+          }
           for (const key of ["body", "alternative", "bcatch", "bfinally", "condition"]) {
             const nested = statement[key];
             if (nested) scan(nested);
@@ -354,6 +357,13 @@ export class PythonAstSemanticAnalyzer {
       if (value instanceof this.compiler.AST_Assign) {
         this.addTarget(value.left, names);
         if (!(value.right instanceof this.compiler.AST_Scope)) scan(value.right);
+        return;
+      }
+      if (
+        value instanceof this.compiler.AST_UnaryPrefix &&
+        value.operator === "delete"
+      ) {
+        this.addTarget(value.expression, names);
         return;
       }
       // Python 3 gives comprehensions their own implicit scope. Their loop

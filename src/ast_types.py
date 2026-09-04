@@ -1074,6 +1074,10 @@ class AST_Conditional(AST_Node):
 class AST_Assign(AST_Binary):
     "An assignment expression — `a = b + 5`"
 
+    properties = {
+        "python_class_augmented_read": "[AST_SymbolRef?] LOAD_NAME source for a first class-body augmented assignment",
+    }
+
     def is_chained(self):
         return (
             is_node_type(self.right, AST_Assign)
@@ -1310,6 +1314,7 @@ class AST_SymbolRef(AST_Symbol):
     properties = {
         "parens": "[boolean/S] if true, this variable is wrapped in parentheses",
         "intrinsic_call": "[boolean/S] compiler-provided runtime symbols are directly callable",
+        "python_class_prebinding_fallback": "[boolean/S] force class LOAD_NAME fallback before the first binding",
     }
 
 

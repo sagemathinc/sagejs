@@ -219,6 +219,37 @@ def print_delete(self, output):
                     output.comma()
 
         output.with_parens(print_values)
+    elif (
+        is_node_type(self, AST_Symbol)
+        and self.definition()
+        and ".prototype." in self.definition().name
+        and output.in_class_body
+    ):
+        # Class namespaces use real properties rather than lexical cells.
+        # Validate the current own binding, then remove the property so a
+        # later LOAD_NAME can fall back to the defining module and builtins.
+        definition = self.definition()
+        definition_name = definition.mangled_name or definition.name
+        definition_parts = definition_name.split(".")
+        class_prefix = definition_parts[0]
+        if definition.python_identifier:
+            class_prefix = output.make_python_name(class_prefix)
+        else:
+            class_prefix = output.make_name(class_prefix)
+        class_namespace = class_prefix + "." + ".".join(definition_parts[1:-1])
+        output.print("(ρσ_delete_name(")
+        output.print("Object.prototype.hasOwnProperty.call(")
+        output.print(class_namespace)
+        output.comma()
+        output.print(JSON.stringify(self.name))
+        output.print(") ? ")
+        self.print(output)
+        output.print(" : undefined")
+        output.comma()
+        output.print(JSON.stringify(self.name))
+        output.print("), delete ")
+        self.print(output)
+        output.print(")")
     elif is_node_type(self, AST_Symbol):
         output.assign(self)
         output.print("ρσ_delete_name(")
@@ -836,6 +867,7 @@ def print_assignment(self, output):
 
 
 def print_assign(self, output):
+    compound_left = self.python_class_augmented_read or self.left
     native_uint64_operator = self.operator[:-1]
     marked_uint64 = (
         self.native_operator
@@ -936,7 +968,7 @@ def print_assign(self, output):
     if self.operator in arithmetic_compound_functions:
         output.assign(self.left)
         print_arithmetic_call(output, arithmetic_compound_functions[self.operator])
-        self.left.print(output)
+        compound_left.print(output)
         output.comma()
         self.right.print(output)
         output.print(")")
@@ -944,7 +976,7 @@ def print_assign(self, output):
     if self.operator in compound_functions:
         output.assign(self.left)
         output.print(compound_functions[self.operator] + "(")
-        self.left.print(output)
+        compound_left.print(output)
         output.comma()
         self.right.print(output)
         output.print(")")
@@ -953,7 +985,7 @@ def print_assign(self, output):
         output.assign(self.left)
         print_arithmetic_call(output, "ρσ_operator_iadd")
         (
-            self.left.print(output),
+            compound_left.print(output),
             output.comma(),
             self.right.print(output),
             output.print(")"),
@@ -963,7 +995,7 @@ def print_assign(self, output):
         output.assign(self.left)
         print_arithmetic_call(output, "ρσ_operator_isub")
         (
-            self.left.print(output),
+            compound_left.print(output),
             output.comma(),
             self.right.print(output),
             output.print(")"),
@@ -973,7 +1005,7 @@ def print_assign(self, output):
         output.assign(self.left)
         print_arithmetic_call(output, "ρσ_operator_imul")
         (
-            self.left.print(output),
+            compound_left.print(output),
             output.comma(),
             self.right.print(output),
             output.print(")"),

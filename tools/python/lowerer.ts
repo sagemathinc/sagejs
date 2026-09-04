@@ -125,8 +125,10 @@ export class PythonCstLowerer {
   private readonly knownClasses = new Map<string, any>();
   private readonly intrinsicModules = new Map<string, Record<string, string>>();
   private moduleBindings = new Set<string>();
+  private moduleImportBindings: Record<string, any> = Object.create(null);
   private readonly classBindings: Array<{
     names: Set<string>;
+    localNames: Set<string>;
     globals: Set<string>;
     functionDepth: number;
   }> = [];
@@ -238,6 +240,7 @@ export class PythonCstLowerer {
     for (const name of this.nestedModuleGlobalBindings(root)) {
       this.moduleBindings.add(name);
     }
+    this.moduleImportBindings = Object.create(null);
     this.annotationsMode = root.namedChildren.some(
       (node) => node.type === "future_import_statement" &&
         /\bannotations\b/.test(node.text),
@@ -248,6 +251,7 @@ export class PythonCstLowerer {
     const ast = new this.compiler.AST_Toplevel(finalizedToplevel);
     ast.python_lexical_hygiene = !this.options.compiler_bootstrap;
     ast.python_scope_bindings = [...this.moduleBindings];
+    ast.python_import_bindings = this.moduleImportBindings;
     const extracted = this.extractDocstrings(body);
     ast.body = extracted.body;
     ast.docstrings = extracted.docstrings;
@@ -320,6 +324,7 @@ export class PythonCstLowerer {
     ) {
       if (classFrame.globals.has(name)) return "module";
       if (classFrame.names.has(name)) return "class";
+      if (classFrame.localNames.has(name)) return "class-fallback";
       // A class body uses LOAD_NAME semantics: an as-yet-unbound class name
       // may still resolve through an enclosing function before falling back
       // to the defining module and its builtins.
@@ -386,18 +391,18 @@ export class PythonCstLowerer {
 
   /** Whether a source reference is backed by a Python lexical cell here. */
   private sourceNameIsLexicallyBound(name: string): boolean {
-    for (let index = this.functionFrames.length - 1; index >= 0; index -= 1) {
-      const frame = this.functionFrames[index];
-      if (frame.globals.has(name)) return this.moduleBindings.has(name);
-      if (frame.bindings.has(name) || frame.nonlocals.has(name)) return true;
-    }
     const classFrame = this.classBindings.at(-1);
     if (
       classFrame &&
       this.functionFrames.length === classFrame.functionDepth
     ) {
       if (classFrame.globals.has(name)) return this.moduleBindings.has(name);
-      if (classFrame.names.has(name)) return false;
+      if (classFrame.localNames.has(name)) return false;
+    }
+    for (let index = this.functionFrames.length - 1; index >= 0; index -= 1) {
+      const frame = this.functionFrames[index];
+      if (frame.globals.has(name)) return this.moduleBindings.has(name);
+      if (frame.bindings.has(name) || frame.nonlocals.has(name)) return true;
     }
     return this.moduleBindings.has(name);
   }
@@ -2463,10 +2468,24 @@ export class PythonCstLowerer {
     // lowered.  A provisional entry is enough to select AST_New; it is
     // replaced by the finished class definition below.
     this.knownClasses.set(nameNode.text, { provisional: true });
+    const bodyNode = this.field(node, "body");
+    const classGlobals = new Set(
+      this.declaredNames(bodyNode, "global_statement"),
+    );
+    const classNonlocals = new Set(
+      this.declaredNames(bodyNode, "nonlocal_statement"),
+    );
+    const classLocalNames = this.functionBindingNames(
+      bodyNode,
+      [],
+      classGlobals,
+      classNonlocals,
+    );
     this.classStack.push(nameNode.text);
     this.classBindings.push({
       names: new Set(),
-      globals: new Set(),
+      localNames: classLocalNames,
+      globals: classGlobals,
       functionDepth: this.functionFrames.length,
     });
     let statements: any[];
@@ -2833,8 +2852,14 @@ export class PythonCstLowerer {
       }
       if (value instanceof this.compiler.AST_Scope) return;
       if (value instanceof this.compiler.AST_SymbolRef &&
-          value.name === name &&
-          value.python_resolution_provenance === "class-fallback") {
+          value.name === name) {
+        // The first class-namespace assignment makes every same-named read
+        // on its RHS a LOAD_NAME operation, even when an enclosing function
+        // has a closure cell with that spelling.  Do not rely on the initial
+        // provenance annotation here: older AST analysis may already have
+        // associated that reference with the closure definition.
+        value.python_resolution_provenance = "class-fallback";
+        value.python_lexical_binding = false;
         value.python_class_prebinding_fallback = true;
         return;
       }
@@ -2863,6 +2888,31 @@ export class PythonCstLowerer {
         }
         return;
       }
+      if (value instanceof this.compiler.AST_Except) {
+        for (const error of value.errors ?? []) visit(error, seen);
+        if (value.argname && !nonlocals.has(value.argname.name)) {
+          const name = value.argname.name;
+          known.add(name);
+          classvars[name] = true;
+          ownClassvars[name] = true;
+          value.argname.thedef = definition(name);
+        }
+        visit(value.body, seen);
+        return;
+      }
+      if (value instanceof this.compiler.AST_UnaryPrefix &&
+          value.operator === "delete" &&
+          value.expression instanceof this.compiler.AST_SymbolRef) {
+        const name = value.expression.name;
+        if (nonlocals.has(name)) return;
+        // DELETE_NAME always targets the class namespace, including when no
+        // preceding assignment made the name known to this sequential walk.
+        // It must not turn into deletion of an enclosing lexical binding.
+        classvars[name] = true;
+        ownClassvars[name] = true;
+        value.expression.thedef = definition(name);
+        return;
+      }
       if (value instanceof this.compiler.AST_AnnotatedAssignment &&
           value.target instanceof this.compiler.AST_SymbolRef) {
         const name = value.target.name;
@@ -2883,10 +2933,33 @@ export class PythonCstLowerer {
           value.left instanceof this.compiler.AST_SymbolRef) {
         const name = value.left.name;
         if (nonlocals.has(name)) return;
+        const firstBinding = !known.has(name);
         // Python evaluates the right-hand side before binding a new class
         // namespace name. Thus ``Interrupted = Interrupted`` reads the
         // module global on its first occurrence, while a later ``x = x + 1``
         // reads the existing class value.
+        if (value.operator !== "=") {
+          // In ``class C: x += value`` the target is also a LOAD_NAME read.
+          // Keep that read separate from the rewritten STORE_NAME target so
+          // it can fall back to the module/builtins namespace instead of an
+          // identically named enclosing closure cell.
+          const read = new this.compiler.AST_SymbolRef({
+            name,
+            start: value.left.start,
+            end: value.left.end,
+          });
+          read.python_identifier = value.left.python_identifier;
+          read.python_resolution_provenance =
+            value.left.python_resolution_provenance;
+          read.python_lexical_binding = value.left.python_lexical_binding;
+          if (firstBinding) {
+            read.python_resolution_provenance = "class-fallback";
+            read.python_lexical_binding = false;
+            read.python_class_prebinding_fallback = true;
+          }
+          value.python_class_augmented_read = read;
+        }
+        if (firstBinding) markClassPrebindingFallback(value.right, name);
         visit(value.right, seen);
         known.add(name);
         classvars[name] = true;
@@ -3055,18 +3128,23 @@ export class PythonCstLowerer {
       ]
       : [...this.moduleBindings];
     statement.python_import_bindings = Object.create(null);
+    const recordImportBinding = (localName: string): void => {
+      const destination = this.importBindingDestination(localName);
+      statement.python_import_bindings[localName] = destination;
+      if (destination.kind === "module") {
+        this.moduleImportBindings[destination.name] = destination;
+      }
+    };
     for (const imported of imports) {
       if (imported.star) continue;
       if (imported.argnames) {
         for (const argument of imported.argnames) {
           const localName = argument.alias?.name ?? argument.name;
-          statement.python_import_bindings[localName] =
-            this.importBindingDestination(localName);
+          recordImportBinding(localName);
         }
       } else {
         const localName = imported.alias?.name ?? imported.key.split(".")[0];
-        statement.python_import_bindings[localName] =
-          this.importBindingDestination(localName);
+        recordImportBinding(localName);
       }
     }
     return statement;
