@@ -2993,7 +2993,7 @@ typedef struct
 } sagejs_integer_buffer;`;
 }
 
-function generateIntegerBufferCoreSupport() {
+function generateIntegerBufferCoreSupport(includeFmpz = false) {
   return `
 static int sagejs_integer_buffer_index(
     const sagejs_integer_buffer *buffer,
@@ -3023,6 +3023,85 @@ static int sagejs_mpz_integer_buffer_index(
     return mpz_to_int64(index, &small) &&
         sagejs_integer_buffer_index(buffer, small, position);
 }
+${includeFmpz ? `
+#if FLINT_BITS != 64
+#error "resident fmpz IntegerBuffer views require 64-bit FLINT limbs"
+#endif
+
+static int sagejs_fmpz_integer_buffer_index(
+    const sagejs_integer_buffer *buffer,
+    const fmpz_t index,
+    size_t *position)
+{
+    if (!fmpz_fits_si(index))
+        return 0;
+    return sagejs_integer_buffer_index(
+        buffer, (int64_t) fmpz_get_si(index), position);
+}
+
+static void sagejs_integer_buffer_get_fmpz(
+    const sagejs_integer_buffer *buffer,
+    size_t position,
+    fmpz_t result)
+{
+    const int32_t signed_size = buffer->sizes[position];
+    const slong count = signed_size < 0
+        ? (slong) (-(int64_t) signed_size) : (slong) signed_size;
+    if (count == 0)
+    {
+        fmpz_zero(result);
+        return;
+    }
+    fmpz_set_ui_array(result,
+        (const ulong *) (buffer->limbs +
+            position * buffer->word_capacity), count);
+    if (signed_size < 0)
+        fmpz_neg(result, result);
+}
+
+static int sagejs_integer_buffer_set_fmpz(
+    sagejs_native_status *status,
+    sagejs_integer_buffer *buffer,
+    size_t position,
+    const fmpz_t value)
+{
+    const int sign = fmpz_sgn(value);
+    const flint_bitcnt_t bits = fmpz_bits(value);
+    const size_t count = sign == 0 ? 0 :
+        (size_t) (UINT64_C(1) + (bits - 1) / 64);
+    uint64_t *slot = buffer->limbs + position * buffer->word_capacity;
+    if (count > buffer->word_capacity || count > (size_t) INT32_MAX)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "IntegerBuffer word capacity exceeded");
+        return 0;
+    }
+    if (count != 0)
+    {
+        if (sign > 0)
+        {
+            fmpz_get_ui_array((ulong *) slot, (slong) count, value);
+        }
+        else
+        {
+            uint64_t carry = UINT64_C(1);
+            /* FLINT publishes a negative value in two's-complement form.
+               IntegerBuffer stores a separate sign and unsigned magnitude,
+               so negate the fixed-width limb sequence in place. */
+            fmpz_get_signed_ui_array((ulong *) slot, (slong) count, value);
+            for (size_t limb = 0; limb < count; limb += 1)
+            {
+                const uint64_t inverted = ~slot[limb];
+                slot[limb] = inverted + carry;
+                carry = carry && slot[limb] == 0;
+            }
+        }
+    }
+    buffer->sizes[position] = sign < 0
+        ? -(int32_t) count : (int32_t) count;
+    return 1;
+}
+` : ""}
 
 static void sagejs_integer_buffer_get_mpz(
     const sagejs_integer_buffer *buffer,
@@ -3987,7 +4066,9 @@ function generateHostCore(ir, options = {}) {
     exact.length > 0 ? generateExactCoreRuntime() : "",
     fmpz.selected.length > 0 ? FMPZ_EXACT_RUNTIME_C_SOURCE : "",
     usesInt64Buffers ? generateInt64BufferCoreSupport() : "",
-    usesIntegerBuffers ? generateIntegerBufferCoreSupport() : "",
+    usesIntegerBuffers
+      ? generateIntegerBufferCoreSupport(fmpz.selected.length > 0)
+      : "",
     exact.map((fn) => internalSignature(fn, true)).join("\n"),
     fmpz.prototypes,
     word.prototypes,

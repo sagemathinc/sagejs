@@ -1214,6 +1214,9 @@ const FMPZ_OPERATION_KINDS = new Set([
   "integer.abs",
   "integer.arena.vector.allocate",
   "integer.binary",
+  "integer.buffer.get",
+  "integer.buffer.length",
+  "integer.buffer.set",
   "integer.compare",
   "integer.constant",
   "integer.copy",
@@ -1250,8 +1253,9 @@ const FMPZ_FFI_DECLARATIONS = new Set([
  * Inspect the deliberately small fmpz representation slice.
  *
  * Semantic Integer values remain exact.  A root owns one closed arena with
- * unbounded exact vectors and the direct fmpz matrix round-trip declarations.
- * Its transitive helpers may use only exact scalar values and ordinary
+ * unbounded exact vectors, borrowed packed IntegerBuffer boundary views, and
+ * the direct fmpz matrix round-trip declarations.  Packed buffers remain root
+ * parameters: transitive helpers may use only exact scalar values and ordinary
  * structured control.  Anything outside this list continues through the
  * mature GMP backend.
  */
@@ -1264,7 +1268,7 @@ function fmpzReturnTypeSupported(type) {
 function inspectFmpzFunction(fn) {
   if (!fmpzReturnTypeSupported(fn.returnType)) return null;
   if (!fn.params.every((param) =>
-    ["Integer", "uint64", "bool"].includes(param.type)
+    ["Integer", "uint64", "bool", "IntegerBuffer"].includes(param.type)
   )) return null;
   if (!fn.locals.every((local) =>
     ["Integer", "uint64", "bool", "NativeExactArena", "NativeIntegerVector"]
@@ -1323,6 +1327,13 @@ function inspectFmpzFunction(fn) {
         if (statement.rightType !== undefined &&
             statement.rightType !== "uint64") eligible = false;
       }
+      if (statement.kind.startsWith("integer.buffer.")) {
+        if (statement.bufferType !== "IntegerBuffer") eligible = false;
+        if (statement.kind !== "integer.buffer.length" &&
+            !["Integer", "uint64"].includes(statement.indexType)) {
+          eligible = false;
+        }
+      }
       if ((statement.kind === "ffi.call" ||
           statement.kind === "ffi.arena.resource.allocate") &&
           !FMPZ_FFI_DECLARATIONS.has(statement.foreign?.declarationId)) {
@@ -1354,6 +1365,9 @@ function inspectFmpzFunction(fn) {
     arenas === 0 && vectors === 0 &&
     (fn.foreignDependencies || []).length === 0 &&
     (fn.foreignResources || []).length === 0 &&
+    fn.params.every((param) =>
+      ["Integer", "uint64", "bool"].includes(param.type)
+    ) &&
     fn.locals.every((local) =>
       ["Integer", "uint64", "bool"].includes(local.type)
     )
@@ -1364,12 +1378,18 @@ function inspectFmpzFunction(fn) {
 function fmpzBackendPolicy(fn) {
   const inspection = inspectFmpzFunction(fn);
   if (inspection?.role !== "root" || fn.dependencies.length !== 0) return null;
+  const packedBuffers = fn.params.some((param) =>
+    param.type === "IntegerBuffer"
+  );
   return {
     kind: "fmpz",
-    reason:
-      "a closed unbounded exact arena is qualified for inline-promoting FLINT fmpz storage",
+    reason: packedBuffers
+      ? "a closed unbounded exact arena is qualified for direct packed-limb fmpz ingress and publication"
+      : "a closed unbounded exact arena is qualified for inline-promoting FLINT fmpz storage",
     requiresExactWorkspace: true,
-    qualification: "direct-fmpz-vector-matrix-v1",
+    qualification: packedBuffers
+      ? "direct-fmpz-packed-buffer-call-graph-v3"
+      : "direct-fmpz-vector-matrix-v1",
   };
 }
 
@@ -1409,14 +1429,20 @@ function fmpzClosedCallGraphPolicies(functions, recursive) {
       return true;
     }
     if (!qualify(rootName, true)) continue;
+    const packedBuffers = root.params.some((param) =>
+      param.type === "IntegerBuffer"
+    );
     policies.set(rootName, root.dependencies.length === 0
       ? fmpzBackendPolicy(root)
       : {
           kind: "fmpz",
-          reason:
-            "a closed exact call graph is qualified for inline-promoting FLINT fmpz storage",
+          reason: packedBuffers
+            ? "a closed exact call graph is qualified for direct packed-limb fmpz ingress and publication"
+            : "a closed exact call graph is qualified for inline-promoting FLINT fmpz storage",
           requiresExactWorkspace: true,
-          qualification: "direct-fmpz-vector-matrix-call-graph-v2",
+          qualification: packedBuffers
+            ? "direct-fmpz-packed-buffer-call-graph-v3"
+            : "direct-fmpz-vector-matrix-call-graph-v2",
         });
     for (const name of selected) {
       if (name === rootName) continue;
@@ -1530,7 +1556,9 @@ function backendPolicy(fn, profile, recursive, fmpzPolicies = new Map()) {
   }
   if (
     profile.uint64BitwiseOperations > 0 &&
-    fn.params.every((param) => param.type !== "Integer")
+    fn.params.every((param) =>
+      !["Integer", "IntegerBuffer"].includes(param.type)
+    )
   ) {
     return {
       kind: "tagged",
@@ -1540,7 +1568,9 @@ function backendPolicy(fn, profile, recursive, fmpzPolicies = new Map()) {
   if (
     profile.uint64ArithmeticOperations > 0 &&
     profile.rangeLoops + profile.whileLoops > 0 &&
-    fn.params.every((param) => param.type !== "Integer")
+    fn.params.every((param) =>
+      !["Integer", "IntegerBuffer"].includes(param.type)
+    )
   ) {
     return {
       kind: "tagged",
@@ -1701,12 +1731,16 @@ function analyzeExactModule(functions) {
           semanticType: "Integer",
           representation: "flint-fmpz-inline-word-with-gmp-promotion",
           residentContainers: profile.liveExactScopes > 0
-            ? "inline-promoting-fmpz-vector"
+            ? fn.params.some((param) => param.type === "IntegerBuffer")
+              ? "inline-promoting-fmpz-vector-and-borrowed-packed-integer-buffer"
+              : "inline-promoting-fmpz-vector"
             : "caller-owned-fmpz-values",
           promotion: "transparent-and-owning",
           ffiBoundary: "direct-fmpz_t",
           hostBoundary: profile.liveExactScopes > 0
-            ? "one-mpz-fmpz-conversion-on-entry-and-exit"
+            ? fn.params.some((param) => param.type === "IntegerBuffer")
+              ? "borrowed-packed-limb-views-plus-one-mpz-fmpz-scalar-conversion-on-entry-and-exit"
+              : "one-mpz-fmpz-conversion-on-entry-and-exit"
             : "mpz-fmpz-conversion-only-when-the-helper-is-called-from-the-host",
           cleanup: "clear-promoted-values-before-flint-cache-drain-and-arena-rewind",
           qualification: backend.qualification,
