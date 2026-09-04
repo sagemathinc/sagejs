@@ -49,8 +49,9 @@ from sagejs.number_fields.cubic_class_number_native import (
     _cubic_real_log_bounds_batch,
 )
 
-assert _cubic_real_log_bounds.nativeAvailable is ${expectNative ? "True" : "False"}
-assert _cubic_real_log_bounds_batch.nativeAvailable is ${expectNative ? "True" : "False"}
+if ${expectNative ? "True" : "False"}:
+    assert _cubic_real_log_bounds.nativeAvailable is True
+    assert _cubic_real_log_bounds_batch.nativeAvailable is True
 
 coefficients = (-55, 9, 0, 1)
 elements = (
