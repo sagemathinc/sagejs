@@ -622,6 +622,7 @@ function emitWordStatements(statements, context, indent) {
         `${indent}while (${iterator} < ${stop})`,
         `${indent}{`,
         `${indent}    ${index} = ${iterator};`,
+        `${indent}    (void) ${index};`,
         emitWordStatements(statement.body, context, `${indent}    `),
         `${indent}    if (${step} >= ${stop} - ${iterator})`,
         `${indent}        break;`,
@@ -648,6 +649,7 @@ function emitWordStatements(statements, context, indent) {
         `${indent}    else if (${iterator} <= ${stop})`,
         `${indent}        break;`,
         `${indent}    ${index} = ${iterator};`,
+        `${indent}    (void) ${index};`,
         emitWordStatements(statement.body, context, `${indent}    `),
         `${indent}    if (!sagejs_word_add_int64(` +
           `${iterator}, ${step}, &${iterator}))`,
