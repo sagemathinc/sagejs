@@ -16,7 +16,7 @@
     "classified-native-file": 244,
     "declared-ffi": 463,
     "declared-ffi-resource": 34,
-    "napi-export": 353,
+    "napi-export": 354,
     "runtime-intrinsic": 147,
     "wasm-export": 74
   },
@@ -5918,6 +5918,16 @@
       "export": "cyclotomicElementCoefficients",
       "symbol": "sagejs_cyclotomic_element_coefficients",
       "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicElementsFromIntegralCoordinates",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "cyclotomicElementsFromIntegralCoordinates",
+      "symbol": "sagejs_cyclotomic_elements_from_integral_coordinates",
+      "disposition": "retain-representation-primitive",
       "family": "algebraic"
     },
     {

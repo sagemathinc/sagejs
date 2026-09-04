@@ -16,16 +16,31 @@ precision = space.sturm_bound() + 1
 started = time.perf_counter()
 basis = space.q_expansion_basis(precision)
 basis_ms = 1000 * (time.perf_counter() - started)
+print(
+    f"SageMath N={level} k={weight}: basis {basis_ms:.1f} ms",
+    file=sys.stderr,
+    flush=True,
+)
 cusp = space.cuspidal_subspace()
 started = time.perf_counter()
 hecke = cusp.hecke_matrix(2)
 hecke_ms = 1000 * (time.perf_counter() - started)
+print(
+    f"SageMath N={level} k={weight}: T2 {hecke_ms:.1f} ms",
+    file=sys.stderr,
+    flush=True,
+)
 diamond_index = 2
 while math.gcd(level, diamond_index) != 1:
     diamond_index += 1
 started = time.perf_counter()
 diamond = cusp.diamond_bracket_matrix(diamond_index)
 diamond_ms = 1000 * (time.perf_counter() - started)
+print(
+    f"SageMath N={level} k={weight}: diamond {diamond_ms:.1f} ms",
+    file=sys.stderr,
+    flush=True,
+)
 print(
     json.dumps(
         {

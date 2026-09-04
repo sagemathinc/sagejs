@@ -52,6 +52,21 @@ test("native cyclotomic roots are exact algebraic numbers", () => {
     flint.qqbarMinpolyCoefficients(root),
     [1n, -1n, 1n],
   );
+  const values = flint.cyclotomicElementsFromIntegralCoordinates(
+    [1n, 2n, -3n, 4n],
+    6n,
+  );
+  assert.deepEqual(
+    values.map((value) => flint.cyclotomicElementCoefficients(value, 6n)),
+    [
+      [[1n, 1n], [2n, 1n]],
+      [[-3n, 1n], [4n, 1n]],
+    ],
+  );
+  assert.throws(
+    () => flint.cyclotomicElementsFromIntegralCoordinates([1n], 6n),
+    /wrong length/,
+  );
 });
 
 test("native Dirichlet boundary rejects invalid handles and indices", () => {

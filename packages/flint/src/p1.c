@@ -106,6 +106,11 @@ typedef struct
     gr_mat_t quotient_relations;
     gr_mat_t reduction;
     sagejs_cyclotomic_matrix cyclotomic_quotient;
+    fmpz *hecke_root_actions;
+    size_t hecke_root_action_count;
+    size_t *hecke_target_by_column;
+    fmpz *hecke_accumulator;
+    size_t hecke_accumulator_count;
     int context_initialized;
     int quotient_relations_initialized;
     int reduction_initialized;
@@ -2226,6 +2231,15 @@ static void p1_character_presentation_clear(
     free(presentation->generator_exponents);
     free(presentation->pivot_rows);
     free(presentation->free_columns);
+    if (presentation->hecke_root_actions != NULL)
+        _fmpz_vec_clear(
+            presentation->hecke_root_actions,
+            (slong) presentation->hecke_root_action_count);
+    free(presentation->hecke_target_by_column);
+    if (presentation->hecke_accumulator != NULL)
+        _fmpz_vec_clear(
+            presentation->hecke_accumulator,
+            (slong) presentation->hecke_accumulator_count);
     if (presentation->reduction_initialized)
         gr_mat_clear(presentation->reduction, presentation->context);
     if (presentation->quotient_relations_initialized)
@@ -3913,6 +3927,102 @@ done:
     return result;
 }
 
+/* Cache the immutable root actions and quotient-column lookup once. */
+static int p1_character_prepare_hecke_workspace(
+    sagejs_character_presentation *presentation)
+{
+    const sagejs_cyclotomic_matrix *quotient =
+        &presentation->cyclotomic_quotient;
+    size_t degree = quotient->degree;
+    ulong order = quotient->order;
+    size_t action_count;
+    size_t accumulator_count;
+    fmpz *root_actions = NULL;
+    fmpz *accumulator = NULL;
+    size_t *target_by_column = NULL;
+    fmpz_poly_t cyclotomic, monomial, remainder;
+    int polynomials_initialized = 0;
+    int status = 0;
+
+    if (presentation->hecke_root_actions != NULL &&
+        presentation->hecke_target_by_column != NULL &&
+        presentation->hecke_accumulator != NULL)
+        return 1;
+    if (presentation->hecke_root_actions != NULL ||
+        presentation->hecke_target_by_column != NULL ||
+        presentation->hecke_accumulator != NULL || degree == 0 ||
+        order == 0 || degree > SIZE_MAX / degree ||
+        degree * degree > SIZE_MAX / order ||
+        presentation->two_term_generators > SIZE_MAX / order)
+        return 0;
+    action_count = (size_t) order * degree * degree;
+    accumulator_count = presentation->two_term_generators * (size_t) order;
+    if (action_count == 0 || action_count > (size_t) WORD_MAX ||
+        accumulator_count > (size_t) WORD_MAX)
+        return 0;
+    root_actions = _fmpz_vec_init((slong) action_count);
+    accumulator = _fmpz_vec_init(
+        (slong) (accumulator_count == 0 ? 1 : accumulator_count));
+    target_by_column = malloc(
+        (presentation->two_term_generators == 0
+            ? 1 : presentation->two_term_generators)
+            * sizeof(*target_by_column));
+    if (root_actions == NULL || accumulator == NULL || target_by_column == NULL)
+        goto done;
+    for (size_t column = 0;
+        column < presentation->two_term_generators; column++)
+        target_by_column[column] = SIZE_MAX;
+    for (size_t target = 0; target < presentation->dimension; target++)
+        target_by_column[presentation->free_columns[target]] = target;
+
+    fmpz_poly_init(cyclotomic);
+    fmpz_poly_init(monomial);
+    fmpz_poly_init(remainder);
+    polynomials_initialized = 1;
+    fmpz_poly_cyclotomic(cyclotomic, order);
+    for (ulong exponent = 0; exponent < order; exponent++)
+        for (size_t input_power = 0; input_power < degree; input_power++)
+        {
+            fmpz_poly_zero(monomial);
+            fmpz_poly_set_coeff_ui(
+                monomial, (slong) (input_power + exponent), 1);
+            fmpz_poly_rem(remainder, monomial, cyclotomic);
+            for (size_t output_power = 0;
+                output_power < degree; output_power++)
+                fmpz_poly_get_coeff_fmpz(
+                    root_actions +
+                        (exponent * degree + input_power) * degree +
+                        output_power,
+                    remainder, (slong) output_power);
+        }
+    presentation->hecke_root_actions = root_actions;
+    presentation->hecke_root_action_count = action_count;
+    presentation->hecke_target_by_column = target_by_column;
+    presentation->hecke_accumulator = accumulator;
+    presentation->hecke_accumulator_count =
+        accumulator_count == 0 ? 1 : accumulator_count;
+    root_actions = NULL;
+    accumulator = NULL;
+    target_by_column = NULL;
+    status = 1;
+
+done:
+    if (polynomials_initialized)
+    {
+        fmpz_poly_clear(remainder);
+        fmpz_poly_clear(monomial);
+        fmpz_poly_clear(cyclotomic);
+    }
+    if (root_actions != NULL)
+        _fmpz_vec_clear(root_actions, (slong) action_count);
+    if (accumulator != NULL)
+        _fmpz_vec_clear(
+            accumulator,
+            (slong) (accumulator_count == 0 ? 1 : accumulator_count));
+    free(target_by_column);
+    return status;
+}
+
 /*
  * Assemble character-valued Hecke matrices in the cyclotomic power basis.
  * The presentation RREF was already reconstructed in exactly these
@@ -3937,18 +4047,16 @@ static int p1_character_hecke_cyclotomic(
     size_t dimension = presentation->dimension;
     size_t degree = quotient->degree;
     ulong order = quotient->order;
-    size_t output_count, action_count, accumulator_count;
+    size_t output_count, accumulator_count;
     fmpq *output = NULL;
-    fmpz *root_actions = NULL;
-    fmpz *accumulator = NULL;
-    size_t *target_by_column = NULL;
-    fmpz_poly_t cyclotomic, monomial, remainder;
+    const fmpz *root_actions;
+    fmpz *accumulator;
+    const size_t *target_by_column;
     fmpz_t integer_coefficient, integer_term;
     fmpq_t rational_term, weighted_term;
     fmpq_poly_t polynomial;
     qqbar_t root, value;
     int scalars_initialized = 0;
-    int polynomials_initialized = 0;
     int status = 0;
 
     if (quotient->coefficients == NULL || quotient->rank != presentation->rank ||
@@ -3958,37 +4066,20 @@ static int p1_character_hecke_cyclotomic(
         (source_count != 0 && dimension > SIZE_MAX / source_count) ||
         source_count * dimension > SIZE_MAX / degree ||
         presentation->two_term_generators > SIZE_MAX / order ||
-        (degree != 0 && degree > SIZE_MAX / degree) ||
-        degree * degree > SIZE_MAX / order)
+        !p1_character_prepare_hecke_workspace(presentation))
         return 0;
     output_count = source_count * dimension * degree;
-    action_count = (size_t) order * degree * degree;
     accumulator_count = presentation->two_term_generators * (size_t) order;
     if (output_count > (size_t) WORD_MAX ||
-        action_count > (size_t) WORD_MAX ||
         accumulator_count > (size_t) WORD_MAX)
         return 0;
+    root_actions = presentation->hecke_root_actions;
+    target_by_column = presentation->hecke_target_by_column;
+    accumulator = presentation->hecke_accumulator;
     output = _fmpq_vec_init((slong) (output_count == 0 ? 1 : output_count));
-    root_actions = _fmpz_vec_init(
-        (slong) (action_count == 0 ? 1 : action_count));
-    accumulator = _fmpz_vec_init(
-        (slong) (accumulator_count == 0 ? 1 : accumulator_count));
-    target_by_column = malloc(
-        (presentation->two_term_generators == 0
-            ? 1 : presentation->two_term_generators)
-            * sizeof(*target_by_column));
-    if (output == NULL || root_actions == NULL || accumulator == NULL ||
-        target_by_column == NULL)
+    if (output == NULL)
         goto done;
-    for (size_t column = 0;
-        column < presentation->two_term_generators; column++)
-        target_by_column[column] = SIZE_MAX;
-    for (size_t target = 0; target < dimension; target++)
-        target_by_column[presentation->free_columns[target]] = target;
 
-    fmpz_poly_init(cyclotomic);
-    fmpz_poly_init(monomial);
-    fmpz_poly_init(remainder);
     fmpz_init(integer_coefficient);
     fmpz_init(integer_term);
     fmpq_init(rational_term);
@@ -3996,26 +4087,7 @@ static int p1_character_hecke_cyclotomic(
     fmpq_poly_init(polynomial);
     qqbar_init(root);
     qqbar_init(value);
-    polynomials_initialized = 1;
     scalars_initialized = 1;
-    fmpz_poly_cyclotomic(cyclotomic, order);
-
-    /* Matrix of multiplication by every power of the chosen root. */
-    for (ulong exponent = 0; exponent < order; exponent++)
-        for (size_t input_power = 0; input_power < degree; input_power++)
-        {
-            fmpz_poly_zero(monomial);
-            fmpz_poly_set_coeff_ui(
-                monomial, (slong) (input_power + exponent), 1);
-            fmpz_poly_rem(remainder, monomial, cyclotomic);
-            for (size_t output_power = 0;
-                output_power < degree; output_power++)
-                fmpz_poly_get_coeff_fmpz(
-                    root_actions +
-                        (exponent * degree + input_power) * degree +
-                        output_power,
-                    remainder, (slong) output_power);
-        }
 
     for (size_t source_offset = 0; source_offset < source_count; source_offset++)
     {
@@ -4184,20 +4256,6 @@ done:
         fmpz_clear(integer_term);
         fmpz_clear(integer_coefficient);
     }
-    if (polynomials_initialized)
-    {
-        fmpz_poly_clear(remainder);
-        fmpz_poly_clear(monomial);
-        fmpz_poly_clear(cyclotomic);
-    }
-    free(target_by_column);
-    if (root_actions != NULL)
-        _fmpz_vec_clear(
-            root_actions, (slong) (action_count == 0 ? 1 : action_count));
-    if (accumulator != NULL)
-        _fmpz_vec_clear(
-            accumulator,
-            (slong) (accumulator_count == 0 ? 1 : accumulator_count));
     if (output != NULL)
         _fmpq_vec_clear(
             output, (slong) (output_count == 0 ? 1 : output_count));

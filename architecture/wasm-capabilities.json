@@ -13164,6 +13164,25 @@
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicElementsFromIntegralCoordinates",
+      "kind": "napi-export",
+      "family": "algebraic",
+      "source": "packages/flint/src/algebraic.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/lib/sagejs/modular_forms/qexp.py"
+      ],
+      "tests": [
+        "native-public-fallback-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Node adapter batches exact cyclotomic materialization; browser execution uses the coefficientwise exact constructor in the same public formula.",
+      "public_explanation": "Exact cyclotomic Eisenstein coefficients remain available through the ordinary Sage.js fallback when the batched Node representation primitive is unavailable."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixPolyEvaluate",
       "kind": "napi-export",
       "family": "dense-matrix-algorithms",

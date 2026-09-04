@@ -61,6 +61,20 @@ test("batched cyclotomic Hecke images equal full exact operators", async (t) => 
     "print(fast == slow, fast.nrows(), fast.ncols())",
   ].join("\n"));
   assert.equal(result.stdout.trim(), "True 9 1");
+
+  const higherDegree = await session.evaluate([
+    "M = ModularForms(Gamma1(53), 2)",
+    "F = M.character_components()[1].fixed_character_space()",
+    "S = F.cuspidal_subspace()._modular_symbols_cusp_space()",
+    "indices = list(range(1, 9))",
+    "fast = S._character_hecke_image_rows(0, indices)",
+    "slow = matrix(S.base_ring(), [S.hecke_matrix(n).row(0).list() for n in indices])",
+    "print(F.base_ring().degree(), fast == slow, fast.nrows(), fast.ncols(), fast[7,0])",
+  ].join("\n"));
+  assert.equal(
+    higherDegree.stdout.trim(),
+    "12 True 8 3 -2*zeta26^8 - zeta26^5 + zeta26^4",
+  );
 });
 
 test("Gamma1 object arithmetic, coordinates, and serialization are exact", async (t) => {

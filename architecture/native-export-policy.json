@@ -446,6 +446,11 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicElementsFromIntegralCoordinates",
+      "family": "algebraic",
+      "decision": "retain-representation-primitive"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixPolyEvaluate",
       "family": "dense-matrix-algorithms",
       "decision": "migrate-to-typed-python"

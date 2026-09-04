@@ -11,7 +11,7 @@
   "files": [
     {
       "path": "architecture/package-graph.json",
-      "sha256": "f00576428980778a832f5f2c67ac94f00be90b2c019c338e4831d9b0edb9ffc1"
+      "sha256": "25fbb021e46a4ab27312c1cc7dcf1d6aa9fd4f7e9ee2c90b2de147c305edf78c"
     },
     {
       "path": "bench/modular/qexp-correctness/README.md",
@@ -47,7 +47,7 @@
     },
     {
       "path": "docs/index.md",
-      "sha256": "78783b70a11019e0296c00e56c502795b77546e09926c040702f3361807cc8b6"
+      "sha256": "2c94a09ee4da64616a108fc249bc5105115b9311688699c3141b8b0dabcf5086"
     },
     {
       "path": "docs/classical-modular-form-elements.md",
@@ -63,11 +63,11 @@
     },
     {
       "path": "src/baselib/modular.py",
-      "sha256": "a15f2ff38f86730f133d401b86b34d04cd0cca58a25719367bdca568ab19ad10"
+      "sha256": "d34433c12a2d98a504aecfa84c83897782160071d1f4634ab365526a4f3fd489"
     },
     {
       "path": "src/lib/sagejs/modular_forms/__init__.py",
-      "sha256": "c95ebcee9644ead7b1b41defabc5783b47e2e49602cd3dc4ce1eb4c967d77ff3"
+      "sha256": "16dc0beff34beeed89a117e8189458bd28da42a93623510ac3be4b1c1064e423"
     },
     {
       "path": "src/lib/sagejs/modular_forms/eta_products.py",
@@ -79,15 +79,15 @@
     },
     {
       "path": "src/lib/sagejs/modular_forms/newforms.py",
-      "sha256": "18d80b379c837ec94330423d0b85871d017ebf6acdb410145c1475efbd20f575"
+      "sha256": "7fe3e38afb6799b9bb078a769efbddfe1d77a47e4a4da3e5b0e8fc75b2f1e16a"
     },
     {
       "path": "src/lib/sagejs/modular_forms/object_layer.py",
-      "sha256": "8176b8b0a1b144ae0fe6e323ba7107c376232a00357c51b1242eb8489bf1fe3b"
+      "sha256": "2fff90363e85f7ba10406c637e3c8f93edc53a7a7e1edbd567cbbd9bf003e2af"
     },
     {
       "path": "src/lib/sagejs/modular_forms/qexp.py",
-      "sha256": "1ab99367e8e6e640aa6308d0f76d87503c47606d22109e4ecaadb6acaa017545"
+      "sha256": "fb73c863c5db7c888ea1396198c493376c1aa26b3bf0c4d1c1d78325a30a36a5"
     },
     {
       "path": "src/lib/sagejs/modular_forms/qexp_algebra.py",
@@ -131,8 +131,8 @@
     },
     {
       "path": "tools/serialization-codecs/modular-forms.ts",
-      "sha256": "0e1053e97df87edb5f76c17bea12edd78cb97f8f8d12d3041a662146ebd4ccd9"
+      "sha256": "a0915c967609f8aecd958a3ac4620e5a108e98746df1eaa49acb2f37c249a10f"
     }
   ],
-  "bundle_sha256": "b38b871ba71974a7a6d47943aec67000db0eaae4cd46390d54e03beabff579e2"
+  "bundle_sha256": "c84f700a0e33288835a2c3316d33d6916122c229f0666d0bd4511b916f958bd4"
 }

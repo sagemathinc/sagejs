@@ -150,15 +150,16 @@ benchmark in `bench/modular/gamma1-spaces` compares complete Sturm-precision
 bases and first cuspidal Hecke operators with SageMath and Magma.  Its pinned
 $N=27$, $k=3$ receipt includes nontrivial character components of degrees $1$,
 $2$, and $6$:
-Sage.js constructs the complete basis in $5.30$ seconds and the first $T_2$ in
-$0.92$ seconds, versus $9.30$ and $1.83$ seconds in SageMath.  Magma constructs
+Sage.js constructs the complete basis in $3.67$ seconds and the first $T_2$ in
+$0.87$ seconds, versus $9.30$ and $1.83$ seconds in SageMath.  Magma constructs
 the basis in $0.63$ seconds.
 
 The larger $N=53$, $k=2$ receipt includes two degree-$12$ character
 components.  Sage.js constructs the complete $143$-dimensional rational basis
-in $284.73$ seconds, versus $152.46$ seconds in SageMath and $2.80$ seconds in
-Magma.  Its first $T_2$ takes $20.44$ seconds in Sage.js versus $151.73$ seconds
-in SageMath.  Component profiling identifies fixed-character basis
-construction over the degree-$12$ cyclotomic fields as the remaining scaling
-bottleneck.  See the committed receipt for exact commands, host details, and
-operator timings.
+in $45.80$ seconds, versus $152.46$ seconds in SageMath and $2.80$ seconds in
+Magma.  Its first $T_2$ takes $11.87$ seconds in Sage.js versus $151.73$ seconds
+in SageMath.  Exact cyclotomic divisor sieves and coordinate-preserving matrix
+arithmetic make Sage.js $3.33\times$ faster than SageMath for the basis and
+$12.8\times$ faster for first Hecke action at this level.  Magma remains the
+performance target.  See the committed receipt for exact commands, host
+details, the level-$73$ bounded scaling observation, and operator timings.

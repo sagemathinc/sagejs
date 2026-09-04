@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "5a7374c483bceea89fccc6075de815dfd81a9aca35940c5e3a8ac8e1fa0d6bb1",
+  "source_sha256": "220bc038cc68a1a97ef169ab90a233e3b93f14c4be7f04321b74274f4f68efd9",
   "counts": {
-    "total": 1080,
+    "total": 1081,
     "by_kind": {
       "declared-ffi-function": 463,
       "declared-ffi-resource": 34,
-      "napi-export": 353,
+      "napi-export": 354,
       "production-kernel": 55,
       "runtime-intrinsic": 147,
       "specialist-capability": 28
@@ -16,13 +16,13 @@
       "compiled-source": 55,
       "desktop-only": 47,
       "generated-wasm": 363,
-      "portable-fallback": 565,
+      "portable-fallback": 566,
       "shared-core": 50
     },
     "by_status": {
       "available": 609,
       "desktop-only": 47,
-      "fallback": 424
+      "fallback": 425
     }
   },
   "workflow_aliases": {
@@ -7418,6 +7418,18 @@
         "src/baselib/dirichlet.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicElementsFromIntegralCoordinates",
+      "family": "algebraic",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/lib/sagejs/modular_forms/qexp.py"
+      ],
+      "explanation": "Exact cyclotomic Eisenstein coefficients remain available through the ordinary Sage.js fallback when the batched Node representation primitive is unavailable."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixPolyEvaluate",
