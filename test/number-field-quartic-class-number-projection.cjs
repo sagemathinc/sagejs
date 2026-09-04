@@ -95,7 +95,21 @@ for proof in (False, True):
             K, proof=proof, algorithm="auto"
         )
         assert completed.complete and completed.class_number() == expected
-        assert completed.proof_status == "exact-unconditional"
+        expected_proof_status = (
+            "exact-unconditional"
+            if proof
+            else "exact-relations-conditional-grh"
+        )
+        # The resumable scalar path preserves the same honest analytic
+        # authority as a direct coupled computation: proof=False consumes
+        # the Belabas--Friedman GRH bound even when its factor-base plan is the
+        # unconditional Minkowski plan.
+        assert completed.proof_status == expected_proof_status, (
+            "resumed-proof-status",
+            proof,
+            index,
+            completed.proof_status,
+        )
         assert completed.context is engine.context
         assert resources["relation_attempts"] == attempts
         assert resources["relations"] == relations
@@ -132,9 +146,15 @@ for proof in (False, True):
     finally:
         factor_base_module.build_factor_base = original_build
     assert scalar_builds == 1, ("public-scalar-builds", proof, scalar_builds)
-    # The public adapter may independently rebuild the theorem's factor-base
-    # presentation during proof replay, but it does not launch a second search.
-    assert builds[0] <= 2, ("public-total-builds", proof, builds[0])
+    # The public adapter independently replays the factor-base presentation.
+    # Conditional results also replay the distinct analytic authority carried
+    # by their GRH certificate; neither path launches a second relation search.
+    expected_total_builds = 3 if not proof else 2
+    assert builds[0] == expected_total_builds, (
+        "public-total-builds",
+        proof,
+        builds[0],
+    )
     assert group.order() == 2 and group.invariants() == (2,)
     assert group.verify()
     assert resources["relation_attempts"] == attempts

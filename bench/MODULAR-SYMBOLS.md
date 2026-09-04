@@ -106,6 +106,20 @@ pnpm bench:character-modular-symbols -- --large
 pnpm bench:character-modular-symbols -- --large --json
 ```
 
+Public $q$-expansion reconstruction for coefficient fields of degree greater
+than two has a separate scaling receipt:
+
+```sh
+pnpm bench:modular:higher-character-qexp -- --json
+pnpm bench:modular:higher-character-qexp -- --large --json
+```
+
+It compares exact canonical bases at levels $101$, $157$, $241$, and, in the
+large profile, $401$.  Each row verifies a nontrivial coefficient by its exact
+minimal polynomial before reporting a ratio.  See
+`bench/modular/higher-character-qexp/README.md` for the current receipt and
+algorithm notes.
+
 The default character profile compares quadratic and order-5 characters at
 prime level 1201. The intentionally expensive `--large` profile adds prime
 level 4001. Both profiles also include the full-order character modulo 37 in

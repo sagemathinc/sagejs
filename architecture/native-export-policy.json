@@ -351,6 +351,51 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalBinary",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalFromParts",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPart",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPowInt",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPrecision",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRelation",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRound",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalToString",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalUnary",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:complexMul",
       "family": "numerical",
       "decision": "migrate-to-declared-ffi"
@@ -1256,6 +1301,11 @@
       "decision": "migrate-to-typed-python"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
+      "family": "modular-symbols",
+      "decision": "migrate-to-typed-python"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",
       "family": "modular-symbols",
       "decision": "migrate-to-typed-python"
@@ -1682,12 +1732,72 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalBinary",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromBounds",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromRational",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPart",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPowInt",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPrecision",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRelation",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRound",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalToString",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalUnary",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:realMul",
       "family": "numerical",
       "decision": "migrate-to-declared-ffi"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realNeg",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realNext",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realParts",
       "family": "numerical",
       "decision": "migrate-to-declared-ffi"
     },

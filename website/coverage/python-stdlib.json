@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "capability": "stdlib",
-  "audited": "2026-08-08",
+  "audited": "2026-09-04",
   "reference": {
     "name": "CPython",
     "version": "3.14",
@@ -10,9 +10,9 @@
   },
   "metric": {
     "name": "Importable public top-level module breadth",
-    "numerator": 85,
+    "numerator": 86,
     "denominator": 194,
-    "percentage": 43.8,
+    "percentage": 44.3,
     "limitation": "Successful import counts a module once. It does not imply that every class, function, constant, submodule, platform behavior, or CPython edge case inside that module is implemented."
   },
   "importableModules": [
@@ -62,6 +62,7 @@
     "logging",
     "marshal",
     "math",
+    "mimetypes",
     "multiprocessing",
     "ntpath",
     "numbers",

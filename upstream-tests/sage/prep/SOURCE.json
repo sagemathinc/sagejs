@@ -1,0 +1,7 @@
+{
+  "title": "Sage PREP tutorials",
+  "repository": "https://github.com/sagemath/sage.git",
+  "revision": "6cd06ec1acdec7a4516ed9928bd575b7a63999b8",
+  "path": "src/doc/en/prep/**/*.rst",
+  "license": "CC-BY-SA-3.0"
+}

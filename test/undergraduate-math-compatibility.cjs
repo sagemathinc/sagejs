@@ -34,6 +34,22 @@ async function main() {
       (await sage.evaluate("list(fibonacci_sequence(3,8))")).repr,
       "[2, 3, 5, 8, 13]",
     );
+    assert.equal(
+      (
+        await sage.evaluate(
+          "repr(table([('i','v'),(0,1),(1,-2)], header_row=True))",
+        )
+      ).repr,
+      "'  i   v\\n├───┼────┤\\n  0   1\\n  1   -2'",
+    );
+    assert.match(
+      (
+        await sage.evaluate(
+          "table([('x','x^2'),(2,4)], header_row=True)._html_()",
+        )
+      ).repr,
+      /<table class="table_form">/,
+    );
 
     assert.equal(
       (await sage.evaluate("matrix(2, [[1,2],[3,4]])")).repr,
@@ -55,6 +71,14 @@ async function main() {
         )
       ).repr,
       "[0, 1, 1, 2, 1, 0, 3, 4, 0, 0, 3, 1]",
+    );
+    assert.equal(
+      (
+        await sage.evaluate(
+          "A=matrix([[1,2],[3,4]]); B=matrix([[5]]); block_diagonal_matrix(A,B)",
+        )
+      ).repr,
+      "[1 2|0]\n[3 4|0]\n[---+-]\n[0 0|5]",
     );
 
     assert.equal(
@@ -89,6 +113,53 @@ async function main() {
         )
       ).repr,
       "(3*y - 2*z, -3*x + z, 2*x - y)",
+    );
+    assert.equal(
+      (
+        await sage.evaluate(
+          [
+            "var('t')",
+            "r=vector((2*t-4,t^2,t^3/4))",
+            "(r(t=5),r.diff(t),diff(r,t),r.diff(t).norm())",
+          ].join("\n"),
+        )
+      ).repr,
+      "((6, 25, 125/4), (2, 2*t, 3/4*t^2), (2, 2*t, 3/4*t^2), " +
+        "sqrt(4*abs(t)^2 + 9/16*abs(t^2)^2 + 4))",
+    );
+    assert.equal(
+      (
+        await sage.evaluate(
+          "v=vector([3,4]); (v.norm(),v/5,(v/5).n())",
+        )
+      ).repr,
+      "(5, (3/5, 4/5), (0.6, 0.8))",
+    );
+    assert.equal(
+      (
+        await sage.evaluate(
+          "G=matrix(QQ,[[1,2,3],[2,4,6]]); V=G.right_kernel(); " +
+            "c=V.coordinate_vector([1,4,-3]); V.basis_matrix().transpose()*c",
+        )
+      ).repr,
+      "(1, 4, -3)",
+    );
+    assert.equal(
+      (
+        await sage.evaluate(
+          "H=matrix(QQ,[[2,0],[0,3]]); D,P=H.eigenmatrix_right(); " +
+            "(sorted(D.diagonal()),P*D==H*P)",
+        )
+      ).repr,
+      "([2, 3], True)",
+    );
+    assert.equal(
+      (
+        await sage.evaluate(
+          "U=random_matrix(QQ,4,algorithm='unimodular'); abs(U.det())",
+        )
+      ).repr,
+      "1",
     );
     assert.equal(
       (await sage.evaluate("x,y=var('x y'); jacobian([x^2,y^2],[x,y])"))
@@ -142,6 +213,57 @@ async function main() {
         )
       ).repr,
       "Graphics3d Object",
+    );
+    assert.equal(
+      (await sage.evaluate("point((1,2,3))")).repr,
+      "Graphics3d Object",
+    );
+    assert.equal(
+      (
+        await sage.evaluate(
+          "var('t'); len(parametric_plot((cos(t),sin(t)),(t,0,2*pi),fill=True))",
+        )
+      ).repr,
+      "2",
+    );
+    assert.equal(
+      (
+        await sage.evaluate(
+          "len(polar_plot([cos(4*t)+1.5,cos(4*t)/2+2.5]," +
+            "(t,0,2*pi),fill=True,fillcolor='orange'))",
+        )
+      ).repr,
+      "4",
+    );
+    assert.equal(
+      (
+        await sage.evaluate(
+          "contour_plot.options['fill']=False; a=contour_plot.options['fill']; " +
+            "b=contour_plot.defaults()['fill']; (a,b)",
+        )
+      ).repr,
+      "(False, True)",
+    );
+    assert.equal(
+      (
+        await sage.evaluate(
+          "len(region_plot(sin(x)>=0,(x,-2,2),(t,-2,2),bordercol='black'))",
+        )
+      ).repr,
+      "2",
+    );
+    assert.equal(
+      (
+        await sage.evaluate(
+          "plot(cos(x),(x,0,pi/2),ticks=[[0,pi/4,pi/2],None]," +
+            "tick_formatter=pi)",
+        )
+      ).repr,
+      "Graphics object consisting of 1 graphics primitive",
+    );
+    assert.equal(
+      (await sage.evaluate("golden_ratio == (1+sqrt(5))/2")).repr,
+      "True",
     );
   } finally {
     await sage.close();

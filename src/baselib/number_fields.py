@@ -67,6 +67,13 @@ def _nf_ideal_arithmetic_module() -> Any:
     return _nf_ideal_arithmetic_module_cache
 
 
+def _nf_cubic_native_runtime_module() -> Any:
+    return _nf_lazy_import(
+        "__sagejs_nf_cubic_native_runtime_module__",
+        "sagejs.number_fields.cubic_class_number_native_runtime",
+    )
+
+
 def _nf_lazy_import(cache_name: str, module_name: str) -> Any:
     cache = runtime.reflect.get(runtime.global_object, cache_name)
     if cache is runtime.undefined:
@@ -2957,9 +2964,25 @@ class NumberFieldParent(sage.Parent):
         algorithm: str = "auto",
         **limits: Any,
     ) -> int:
-        if self._is_tutorial_cubic():
-            return 1
         if self.degree() == 3 and algorithm == "auto" and len(limits) == 0:
+            # Enter the closed polynomial-to-class-group program directly at
+            # the public degree-specific dispatch point.  A successful exact
+            # receipt does not need to load the general class/unit orchestration
+            # module merely to project its scalar.  Every unavailable,
+            # unsupported, or rejected native attempt still falls through to
+            # the established exact cubic pipeline below.
+            proof_value = True if proof is None else bool(proof)
+            if proof_value is False:
+                try:
+                    native_certificate = _nf_cubic_native_runtime_module().certified_complex_cubic_class_number(
+                        self
+                    )
+                except ImportError:
+                    native_certificate = None
+                except RuntimeError:
+                    native_certificate = None
+                if native_certificate is not None:
+                    return int(native_certificate.class_number)
             return _nf_class_unit_groups_module().cubic_class_number_projection(
                 self, proof=proof
             )

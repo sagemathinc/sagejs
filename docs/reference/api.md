@@ -1202,56 +1202,6 @@ sage: b.q_expansion(100).precision_absolute()
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
-## `EisensteinSeriesElement.q_expansion`
-
-```sage
-q_expansion(prec: Any=None) -> Any
-```
-
-Return the `q`-expansion to absolute precision `O(q^prec)`.
-
-### Parameters
-
-- `prec` — nonnegative integer; when omitted, use the precision
-  requested when this basis element was constructed.
-
-### Examples
-
-The level-389 weight-2 Eisenstein form can be displayed briefly and
-then expanded farther without reconstructing its parent:
-
-```sage
-sage: E = EisensteinForms(389, 2)
-sage: b = E.basis(prec=8)[0]
-sage: b.q_expansion(5)
-1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)
-```
-
-### Implementation
-
-Level-one divisor sums are generated in one native FLINT sieve.
-Prime-level oldforms use the exact degeneracy map `q -> q^N`.
-
-### Metadata
-
-- Kind: `method`
-- Module: `sage.modular.modform.element`
-- Tags: modular forms, Eisenstein series, q-expansions, power series
-- Backends: FLINT, Sage.js native helpers
-- Sage compatibility: compatible — Returns an exact power series with Sage-style absolute precision notation.
-- Algorithm: Native exact divisor-sum sieve and degeneracy maps
-- Limitations: The currently constructed Eisenstein spaces cover the implemented congruence-subgroup cases.
-
-### Provenance
-
-- `sage-derived` — [SageMath modular-form element API](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/modform/element.html); license GPL-2.0-or-later
-- `library-backed` — [FLINT exact arithmetic](https://flintlib.org/)
-- `sagejs-original` — Native coefficient sieve and parent integration
-
-### References
-
-- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
-
 ## `EisensteinSubspace.basis`
 
 ```sage
@@ -5933,9 +5883,10 @@ ModularForms(group: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=T
 
 Construct the implemented ambient space of modular forms.
 
-`group` is a level or congruence subgroup, `weight` is nonnegative,
-and `prec` controls the default displayed q-expansion precision.
-Initial ambient spaces are exact over `QQ`.
+`group` is a level, congruence subgroup, or Dirichlet character; `weight`
+is nonnegative, and `prec` controls the default displayed q-expansion
+precision. Trivial and quadratic characters are exact over `QQ`, while
+higher-order characters use their minimal exact cyclotomic value field.
 
 ### Examples
 
@@ -5947,9 +5898,9 @@ sage: M.cuspidal_subspace().dimension()
 1
 ```
 
-This foundation currently provides exact dimensions, cusp/Eisenstein
-subspaces, and Eisenstein q-expansions.  It is not yet SageMath's complete
-Hecke-module implementation.
+The returned cusp, Eisenstein, old, new, and ambient spaces share one
+parented exact element contract, including exact Hecke action and
+Sturm-certified coordinate recovery.
 
 ### Metadata
 
@@ -7731,10 +7682,10 @@ Plot a function of two variables as a three-dimensional surface.
 ## `point`
 
 ```sage
-point(points: Any, **options: Any) -> Graphics
+point(points: Any, **options: Any) -> Any
 ```
 
-Return a graphics object containing one or more points.
+Return one or more points, dispatching three coordinates to `point3d`.
 
 ### Metadata
 
@@ -7757,10 +7708,10 @@ Return a graphics object containing one or more points.
 ## `point2d`
 
 ```sage
-point(points: Any, **options: Any) -> Graphics
+point(points: Any, **options: Any) -> Any
 ```
 
-Return a graphics object containing one or more points.
+Return one or more points, dispatching three coordinates to `point3d`.
 
 ### Metadata
 
@@ -7805,10 +7756,10 @@ Return one or more points in three-dimensional space.
 ## `points`
 
 ```sage
-point(points: Any, **options: Any) -> Graphics
+point(points: Any, **options: Any) -> Any
 ```
 
-Return a graphics object containing one or more points.
+Return one or more points, dispatching three coordinates to `point3d`.
 
 ### Metadata
 
@@ -8427,7 +8378,7 @@ well as documented methods of loaded Python classes.
 ```sage
 sage: search_doc('q-expansion')
 Search results for 'q-expansion':
-    EisensteinSeriesElement.q_expansion -- Return the ...
+    ClassicalModularFormElement.q_expansion -- Return the ...
 ```
 
 This intentionally searches the locally installed Sage.js API.  It does
@@ -8481,11 +8432,12 @@ q - q^3 + O(q^4)
 show(value: Any, *others: Any, **options: Any) -> Any
 ```
 
-Return `value` for rich display, combining graphics when requested.
+Display `value`, combining graphics when requested.
 
-Multiple graphics are added before display.  Notebook kernels render the
-returned semantic object using Plotly-compatible HTML/data, without
-requiring a Jupyter extension.
+Multiple graphics are added before display. Notebook and browser kernels
+publish the semantic object through their rich-display channel; text-only
+processes print its ordinary representation. This also works from inside
+callbacks, where returning the object would otherwise discard it.
 
 ### Metadata
 

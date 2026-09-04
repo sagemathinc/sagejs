@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/benchmarks/complex-cubic-frontier-corpus.schema.json",
+  "title": "Complex cubic out-of-sample frontier corpus",
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "integer": { "type": "string", "pattern": "^-?(?:0|[1-9][0-9]*)$" },
+    "positiveInteger": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label", "coefficients", "discriminant", "discriminant_absolute",
+        "class_number", "class_group_invariants", "equation_order_index",
+        "ramified_prime_count", "selection"
+      ],
+      "properties": {
+        "label": { "type": "string", "pattern": "^3\\.1\\.[1-9][0-9]*\\.[1-9][0-9]*$" },
+        "coefficients": {
+          "type": "array", "minItems": 4, "maxItems": 4,
+          "prefixItems": [
+            { "$ref": "#/$defs/integer" }, { "$ref": "#/$defs/integer" },
+            { "$ref": "#/$defs/integer" }, { "const": "1" }
+          ],
+          "items": false
+        },
+        "discriminant": { "$ref": "#/$defs/integer" },
+        "discriminant_absolute": { "$ref": "#/$defs/positiveInteger" },
+        "class_number": { "$ref": "#/$defs/positiveInteger" },
+        "class_group_invariants": {
+          "type": "array", "items": { "$ref": "#/$defs/positiveInteger" }
+        },
+        "equation_order_index": { "$ref": "#/$defs/positiveInteger" },
+        "ramified_prime_count": { "type": "integer", "minimum": 0 },
+        "selection": {
+          "type": "object", "additionalProperties": false,
+          "required": ["global_rank", "stratum", "stratum_rank", "shard"],
+          "properties": {
+            "global_rank": { "type": "integer", "minimum": 1 },
+            "stratum": { "type": "string", "minLength": 1 },
+            "stratum_rank": { "type": "integer", "minimum": 1 },
+            "shard": { "type": "integer", "minimum": 0, "maximum": 19 }
+          }
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "schema_version", "created_at", "manifest", "survey_asset", "selection_policy",
+    "prior_exposure", "warmups", "records", "digests"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.benchmark/complex-cubic-frontier-survey-view-v1" },
+    "schema_version": { "const": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "manifest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema", "id", "filename", "file_sha256", "selection_query_sha256"],
+      "properties": {
+        "schema": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "filename": { "type": "string", "minLength": 1 },
+        "file_sha256": { "$ref": "#/$defs/digest" },
+        "selection_query_sha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "survey_asset": {
+      "type": "object", "additionalProperties": false,
+      "required": ["role", "filename", "gzip_sha256", "records_sha256", "labels_sha256"],
+      "properties": {
+        "role": { "const": "survey" },
+        "filename": { "type": "string", "minLength": 1 },
+        "gzip_sha256": { "$ref": "#/$defs/digest" },
+        "records_sha256": { "$ref": "#/$defs/digest" },
+        "labels_sha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "selection_policy": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "seed", "field_count", "warmup_count", "shard_count", "fields_per_shard",
+        "strata", "tune_per_stratum", "projection"
+      ],
+      "properties": {
+        "seed": { "const": ":sagejs-complex-cubic-frontier-1412-v1" },
+        "field_count": { "const": 1000 },
+        "warmup_count": { "const": 12 },
+        "shard_count": { "const": 20 },
+        "fields_per_shard": { "const": 50 },
+        "strata": { "type": "array", "minItems": 20, "maxItems": 20, "uniqueItems": true, "items": { "type": "string" } },
+        "tune_per_stratum": { "const": 50 },
+        "projection": { "const": "rank-major over manifest strata; one stratum per shard" }
+      }
+    },
+    "prior_exposure": {
+      "type": "object", "additionalProperties": false,
+      "required": ["record_count", "labels_sha256", "derivation"],
+      "properties": {
+        "record_count": { "type": "integer", "minimum": 0 },
+        "labels_sha256": { "$ref": "#/$defs/digest" },
+        "derivation": { "type": "object" }
+      }
+    },
+    "warmups": { "type": "array", "minItems": 12, "maxItems": 12, "items": { "$ref": "#/$defs/field" } },
+    "records": { "type": "array", "minItems": 1000, "maxItems": 1000, "items": { "$ref": "#/$defs/field" } },
+    "digests": {
+      "type": "object", "additionalProperties": false,
+      "required": ["labels_sha256", "records_sha256", "warmup_labels_sha256"],
+      "properties": {
+        "labels_sha256": { "$ref": "#/$defs/digest" },
+        "records_sha256": { "$ref": "#/$defs/digest" },
+        "warmup_labels_sha256": { "$ref": "#/$defs/digest" }
+      }
+    }
+  }
+}

@@ -101,6 +101,10 @@ export interface KernelEvaluation {
   repr: string;
   durationMs: number;
   display?: SageDisplayData;
+  mimeBundle?: {
+    data: Record<string, unknown>;
+    metadata: Record<string, unknown>;
+  };
   events: SageOutputEvent[];
   commEvents: SageCommEvent[];
   optimization: SageOptimizationReport;
@@ -279,13 +283,17 @@ function commJsonValue(value: unknown): Record<string, unknown> {
 function commBuffer(value: unknown): Uint8Array {
   let candidate = value;
   if (candidate && typeof candidate === "object") {
-    const values = Reflect.get(candidate, "_values");
-    if (values !== undefined) candidate = values;
-    else {
-      const bytesValues = Reflect.get(candidate, "_bytes_values");
-      if (typeof bytesValues === "function") {
-        candidate = Reflect.apply(bytesValues, candidate, []);
-      }
+    const bytesValues = Reflect.get(candidate, "_bytes_values");
+    if (typeof bytesValues === "function") {
+      candidate = Reflect.apply(bytesValues, candidate, []);
+    } else {
+      const values = Reflect.get(candidate, "_values");
+      candidate =
+        typeof values === "function"
+          ? Reflect.apply(values, candidate, [])
+          : values === undefined
+            ? candidate
+            : values;
     }
   }
   let result: Uint8Array;
@@ -620,6 +628,12 @@ export function createKernelEvaluator({
     compilerFrontends.get(mode)!,
     compilerFrontends.get("python")!,
   );
+  Reflect.set(
+    globalThis,
+    "__sagejs_parse_sage__",
+    (source: string, options: Record<string, any>) =>
+      compilerFrontends.get("sage")!.parse(source, options),
+  );
   global.__sagejs_kernel_modules__ = global.ρσ_modules;
   runInThisContext('var __name__ = "__main__"; show_js = false;');
   let optimizerProfileActive = false;
@@ -744,11 +758,19 @@ export function createKernelEvaluator({
       value !== null;
     const repr = !publishResult ? "" : String(global.ρσ_repr(value));
     const display = publishResult ? richDisplay(value) : undefined;
+    const mimeBundle =
+      publishResult &&
+      (typeof value === "object" || typeof value === "function") &&
+      value !== null &&
+      typeof Reflect.get(value, "_repr_mimebundle_") === "function"
+        ? displayBundle(value)
+        : undefined;
     if (publishResult) global._ = value;
     return {
       repr,
       durationMs,
       display,
+      mimeBundle,
       events,
       commEvents,
       optimization: optimizationReport!,
@@ -1276,6 +1298,7 @@ export function createKernelEvaluator({
       delete global.__sagejs_graph_database_bytes__;
       delete global.__sagejs_kernel_modules__;
       Reflect.deleteProperty(globalThis, "__sagejs_parse_python__");
+      Reflect.deleteProperty(globalThis, "__sagejs_parse_sage__");
     },
   };
 }

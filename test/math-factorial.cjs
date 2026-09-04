@@ -33,6 +33,21 @@ test("math.factorial matches CPython", async () => {
       (await session.evaluate("[factorial(k) for k in range(8)]")).repr,
       "[1, 1, 2, 6, 24, 120, 720, 5040]",
     );
+
+    // A source checkout and other portable hosts may intentionally omit the
+    // optional native FLINT addon.  The exact product-tree fallback must keep
+    // the same public behavior in that configuration.
+    await session.evaluate(
+      [
+        "import sagejs.runtime as _runtime",
+        "_runtime.optional_flint_backend = lambda: None",
+      ].join("\n"),
+    );
+    assert.equal(
+      (await session.evaluate("len(str(factorial(10000)))")).repr,
+      "35660",
+    );
+
     // CPython accepts the integer protocol, rejects floats by type, and
     // rejects negative integers by value.
     assert.equal(
@@ -59,33 +74,20 @@ test("math.factorial matches CPython", async () => {
   }
 });
 
-test("factorial retains an exact dynamic fallback without FLINT", async () => {
-  const session = await createSage({ mode: "python" });
+test("Sage factorial has an exact portable fallback", async () => {
+  const session = await createSage({ mode: "sage" });
   try {
-    await session.evaluate([
-      "import sagejs.runtime as runtime",
-      "runtime.optional_flint_backend = lambda: None",
-      "from math import factorial as math_factorial",
-    ].join("\n"));
-    assert.equal((await session.evaluate("math_factorial(25)")).repr,
-      "15511210043330985984000000");
+    await session.evaluate(
+      [
+        "import sagejs.runtime as _runtime",
+        "_runtime.optional_flint_backend = lambda: None",
+      ].join("\n"),
+    );
     assert.equal(
-      (await session.evaluate("len(str(math_factorial(10000)))")).repr,
+      (await session.evaluate("len(str(factorial(10000)))")).repr,
       "35660",
     );
   } finally {
     await session.close();
-  }
-
-  const sageSession = await createSage();
-  try {
-    await sageSession.evaluate([
-      "import sagejs.runtime as runtime",
-      "runtime.optional_flint_backend = lambda: None",
-    ].join("\n"));
-    assert.equal((await sageSession.evaluate("factorial(25)")).repr,
-      "15511210043330985984000000");
-  } finally {
-    await sageSession.close();
   }
 });

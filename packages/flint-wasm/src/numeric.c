@@ -36,6 +36,7 @@
 #define NUMERIC_MAX_EXPRESSION_OPS UINT32_C(4096)
 #define NUMERIC_MAX_INTERVALS UINT32_C(100000)
 #define NUMERIC_MAX_ROOT_ITERATIONS UINT32_C(100000)
+#define INTERVAL_GUARD_BITS 8
 
 enum
 {
@@ -65,13 +66,33 @@ typedef struct
     int live;
 } complex_slot;
 
+typedef struct
+{
+    arb_t value;
+    slong precision;
+    uint32_t generation;
+    int live;
+} real_interval_slot;
+
+typedef struct
+{
+    acb_t value;
+    slong precision;
+    uint32_t generation;
+    int live;
+} complex_interval_slot;
+
 static char numeric_input[NUMERIC_CAPACITY];
 static char numeric_output[NUMERIC_CAPACITY];
 static double zeta_zero_output[NUMERIC_MAX_ZEROS];
 static real_slot real_slots[NUMERIC_SLOT_COUNT];
 static complex_slot complex_slots[NUMERIC_SLOT_COUNT];
+static real_interval_slot real_interval_slots[NUMERIC_SLOT_COUNT];
+static complex_interval_slot complex_interval_slots[NUMERIC_SLOT_COUNT];
 static uint32_t next_real_slot = 1;
 static uint32_t next_complex_slot = 1;
+static uint32_t next_real_interval_slot = 1;
+static uint32_t next_complex_interval_slot = 1;
 static uint32_t numeric_status;
 static uint32_t numeric_live_count;
 static double symbolic_results[2];
@@ -106,6 +127,28 @@ static complex_slot *complex_from_handle(uint32_t handle)
     if (index == 0 || index >= NUMERIC_SLOT_COUNT)
         return NULL;
     slot = complex_slots + index;
+    return slot->live && slot->generation == generation ? slot : NULL;
+}
+
+static real_interval_slot *real_interval_from_handle(uint32_t handle)
+{
+    uint32_t index = handle & NUMERIC_SLOT_MASK;
+    uint32_t generation = handle >> NUMERIC_SLOT_BITS;
+    real_interval_slot *slot;
+    if (index == 0 || index >= NUMERIC_SLOT_COUNT)
+        return NULL;
+    slot = real_interval_slots + index;
+    return slot->live && slot->generation == generation ? slot : NULL;
+}
+
+static complex_interval_slot *complex_interval_from_handle(uint32_t handle)
+{
+    uint32_t index = handle & NUMERIC_SLOT_MASK;
+    uint32_t generation = handle >> NUMERIC_SLOT_BITS;
+    complex_interval_slot *slot;
+    if (index == 0 || index >= NUMERIC_SLOT_COUNT)
+        return NULL;
+    slot = complex_interval_slots + index;
     return slot->live && slot->generation == generation ? slot : NULL;
 }
 
@@ -170,20 +213,103 @@ static uint32_t allocate_complex(mpfr_prec_t precision, complex_slot **result)
     return 0;
 }
 
+static uint32_t allocate_real_interval(
+    slong precision, real_interval_slot **result)
+{
+    uint32_t searched;
+    if (numeric_live_count >= NUMERIC_MAX_LIVE_RESOURCES)
+    {
+        numeric_status = NUMERIC_RESOURCE_LIMIT;
+        return 0;
+    }
+    for (searched = 0; searched < NUMERIC_SLOT_COUNT - 1; searched++)
+    {
+        uint32_t index = next_real_interval_slot++;
+        real_interval_slot *slot;
+        if (next_real_interval_slot == NUMERIC_SLOT_COUNT)
+            next_real_interval_slot = 1;
+        slot = real_interval_slots + index;
+        if (!slot->live)
+        {
+            slot->generation = next_generation(slot->generation);
+            arb_init(slot->value);
+            slot->precision = precision;
+            slot->live = 1;
+            numeric_live_count++;
+            *result = slot;
+            numeric_status = NUMERIC_OK;
+            return slot_handle(index, slot->generation);
+        }
+    }
+    numeric_status = NUMERIC_RESOURCE_LIMIT;
+    return 0;
+}
+
+static uint32_t allocate_complex_interval(
+    slong precision, complex_interval_slot **result)
+{
+    uint32_t searched;
+    if (numeric_live_count >= NUMERIC_MAX_LIVE_RESOURCES)
+    {
+        numeric_status = NUMERIC_RESOURCE_LIMIT;
+        return 0;
+    }
+    for (searched = 0; searched < NUMERIC_SLOT_COUNT - 1; searched++)
+    {
+        uint32_t index = next_complex_interval_slot++;
+        complex_interval_slot *slot;
+        if (next_complex_interval_slot == NUMERIC_SLOT_COUNT)
+            next_complex_interval_slot = 1;
+        slot = complex_interval_slots + index;
+        if (!slot->live)
+        {
+            slot->generation = next_generation(slot->generation);
+            acb_init(slot->value);
+            slot->precision = precision;
+            slot->live = 1;
+            numeric_live_count++;
+            *result = slot;
+            numeric_status = NUMERIC_OK;
+            return slot_handle(index, slot->generation);
+        }
+    }
+    numeric_status = NUMERIC_RESOURCE_LIMIT;
+    return 0;
+}
+
 static int valid_precision(uint32_t precision)
 {
     return precision >= MPFR_PREC_MIN && precision <= UINT32_C(1048576);
 }
 
-static int parse_rational(mpfr_t result, const char *text)
+static int valid_rounding(uint32_t code)
+{
+    return code <= 4;
+}
+
+static mpfr_rnd_t rounding_mode(uint32_t code)
+{
+    switch (code)
+    {
+        case 1: return MPFR_RNDU;
+        case 2: return MPFR_RNDD;
+        case 3: return MPFR_RNDZ;
+        case 4: return MPFR_RNDA;
+        default: return MPFR_RNDN;
+    }
+}
+
+static int parse_rational(
+    mpfr_t result, const char *text, mpfr_rnd_t rounding)
 {
     const char *slash = strchr(text, '/');
     mpz_t numerator;
     mpz_t denominator;
+    mpq_t rational;
     char *left;
     int valid;
     if (slash == NULL)
-        return mpfr_set_str(result, text, 10, MPFR_RNDN) == 0;
+        return mpfr_set_str(result, text, 10, rounding) == 0;
     left = (char *) malloc((size_t) (slash - text) + 1);
     if (left == NULL)
         return 0;
@@ -197,8 +323,12 @@ static int parse_rational(mpfr_t result, const char *text)
     free(left);
     if (valid)
     {
-        mpfr_set_z(result, numerator, MPFR_RNDN);
-        mpfr_div_z(result, result, denominator, MPFR_RNDN);
+        mpq_init(rational);
+        mpq_set_num(rational, numerator);
+        mpq_set_den(rational, denominator);
+        mpq_canonicalize(rational);
+        mpfr_set_q(result, rational, rounding);
+        mpq_clear(rational);
     }
     mpz_clear(denominator);
     mpz_clear(numerator);
@@ -316,10 +446,9 @@ static int parse_serialized_real(
     return 1;
 }
 
-static char *format_real(mpfr_srcptr value)
+static char *format_real_digits(
+    mpfr_srcptr value, mpfr_rnd_t rounding, size_t digits)
 {
-    mpfr_prec_t precision = mpfr_get_prec(value);
-    size_t digits = (size_t) floor((precision - 1) * 0.30102999566398119521);
     mpfr_exp_t exponent;
     char *raw;
     char *magnitude;
@@ -343,7 +472,7 @@ static char *format_real(mpfr_srcptr value)
         result[(mpfr_signbit(value) ? 3 : 2) + digits] = '\0';
         return result;
     }
-    raw = mpfr_get_str(NULL, &exponent, 10, digits, value, MPFR_RNDN);
+    raw = mpfr_get_str(NULL, &exponent, 10, digits, value, rounding);
     if (raw == NULL)
         return NULL;
     sign = raw[0] == '-' ? 1 : 0;
@@ -405,6 +534,339 @@ static char *format_real(mpfr_srcptr value)
                 magnitude + 1, (long) exponent - 1);
     }
     mpfr_free_str(raw);
+    return result;
+}
+
+static char *format_real_rounding(mpfr_srcptr value, mpfr_rnd_t rounding)
+{
+    size_t digits = (size_t) floor(
+        (mpfr_get_prec(value) - 1) * 0.30102999566398119521);
+    return format_real_digits(value, rounding, digits);
+}
+
+static char *format_real_full(mpfr_srcptr value, mpfr_rnd_t rounding)
+{
+    size_t digits = (size_t) ceil(
+        mpfr_get_prec(value) * 0.30102999566398119521) + 1;
+    return format_real_digits(value, rounding, digits);
+}
+
+static char *format_real(mpfr_srcptr value)
+{
+    return format_real_rounding(value, MPFR_RNDN);
+}
+
+static char *format_real_base2(mpfr_srcptr value)
+{
+    mpfr_prec_t precision = mpfr_get_prec(value);
+    mpfr_exp_t exponent;
+    char *raw;
+    char *magnitude;
+    char *result;
+    char *out;
+    size_t sign;
+    size_t digits = (size_t) precision;
+    size_t leading;
+    size_t integer_digits;
+    size_t length;
+
+    if (mpfr_nan_p(value))
+        return strdup("NaN");
+    if (mpfr_inf_p(value))
+        return strdup(mpfr_signbit(value) ? "-infinity" : "+infinity");
+    if (mpfr_zero_p(value))
+    {
+        result = (char *) malloc(digits + 4);
+        if (result == NULL)
+            return NULL;
+        snprintf(result, digits + 4, "%s0.", mpfr_signbit(value) ? "-" : "");
+        memset(result + (mpfr_signbit(value) ? 3 : 2), '0', digits);
+        result[(mpfr_signbit(value) ? 3 : 2) + digits] = '\0';
+        return result;
+    }
+    raw = mpfr_get_str(NULL, &exponent, 2, digits, value, MPFR_RNDN);
+    if (raw == NULL)
+        return NULL;
+    sign = raw[0] == '-' ? 1 : 0;
+    magnitude = raw + sign;
+    leading = exponent <= 0 ? (size_t) (-exponent) : 0;
+    integer_digits = exponent > 0 ? (size_t) exponent : 1;
+    length = sign + integer_digits + 1 +
+        (exponent > 0
+            ? (digits > (size_t) exponent ? digits - (size_t) exponent : 1)
+            : leading + digits);
+    result = (char *) malloc(length + 1);
+    if (result == NULL)
+    {
+        mpfr_free_str(raw);
+        return NULL;
+    }
+    out = result;
+    if (sign)
+        *out++ = '-';
+    if (exponent <= 0)
+    {
+        *out++ = '0';
+        *out++ = '.';
+        memset(out, '0', leading);
+        out += leading;
+        memcpy(out, magnitude, digits);
+        out += digits;
+    }
+    else
+    {
+        size_t copied = integer_digits < digits ? integer_digits : digits;
+        memcpy(out, magnitude, copied);
+        out += copied;
+        if (integer_digits > copied)
+        {
+            memset(out, '0', integer_digits - copied);
+            out += integer_digits - copied;
+        }
+        *out++ = '.';
+        if (digits > integer_digits)
+        {
+            memcpy(out, magnitude + integer_digits, digits - integer_digits);
+            out += digits - integer_digits;
+        }
+        else
+            *out++ = '0';
+    }
+    *out = '\0';
+    mpfr_free_str(raw);
+    return result;
+}
+
+static void round_arb_enclosure(arb_t value, slong precision)
+{
+    mpfr_t exact_lower;
+    mpfr_t exact_upper;
+    mpfr_t lower;
+    mpfr_t upper;
+    arb_t rounded;
+    mpfr_init2(exact_lower, (mpfr_prec_t) precision + 64);
+    mpfr_init2(exact_upper, (mpfr_prec_t) precision + 64);
+    mpfr_init2(lower, (mpfr_prec_t) precision);
+    mpfr_init2(upper, (mpfr_prec_t) precision);
+    arb_get_interval_mpfr(exact_lower, exact_upper, value);
+    mpfr_set(lower, exact_lower, MPFR_RNDD);
+    mpfr_set(upper, exact_upper, MPFR_RNDU);
+    arb_init(rounded);
+    arb_set_interval_mpfr(
+        rounded, lower, upper, precision + INTERVAL_GUARD_BITS);
+    arb_swap(value, rounded);
+    arb_clear(rounded);
+    mpfr_clear(upper);
+    mpfr_clear(lower);
+    mpfr_clear(exact_upper);
+    mpfr_clear(exact_lower);
+}
+
+static void round_acb_enclosure(acb_t value, slong precision)
+{
+    round_arb_enclosure(acb_realref(value), precision);
+    round_arb_enclosure(acb_imagref(value), precision);
+}
+
+static char *join_interval_strings(const char *lower, const char *upper)
+{
+    size_t length = strlen(lower) + strlen(upper) + 7;
+    char *result = (char *) malloc(length + 1);
+    if (result != NULL)
+        snprintf(result, length + 1, "[%s .. %s]", lower, upper);
+    return result;
+}
+
+static char *format_arb_brackets(const arb_t value, slong precision)
+{
+    mpfr_t lower;
+    mpfr_t upper;
+    char *lower_text;
+    char *upper_text;
+    char *result;
+    size_t digits =
+        (size_t) ceil(precision * 0.30102999566398119521) + 1;
+
+    if (!arb_is_finite(value))
+        return arb_get_str(value, (slong) digits, ARB_STR_MORE);
+    mpfr_init2(lower, (mpfr_prec_t) precision + 64);
+    mpfr_init2(upper, (mpfr_prec_t) precision + 64);
+    arb_get_interval_mpfr(lower, upper, value);
+    lower_text = format_real_digits(lower, MPFR_RNDD, digits);
+    upper_text = format_real_digits(upper, MPFR_RNDU, digits);
+    result = lower_text != NULL && upper_text != NULL
+        ? join_interval_strings(lower_text, upper_text) : NULL;
+    free(upper_text);
+    free(lower_text);
+    mpfr_clear(upper);
+    mpfr_clear(lower);
+    return result;
+}
+
+static char *format_arb_question(const arb_t value, slong precision)
+{
+    mpfr_t lower;
+    mpfr_t upper;
+    mpfr_exp_t lower_exponent;
+    mpfr_exp_t upper_exponent;
+    mpfr_exp_t exponent;
+    char *lower_digits = NULL;
+    char *upper_digits = NULL;
+    char *mantissa_digits = NULL;
+    char *result = NULL;
+    mpz_t lower_integer;
+    mpz_t upper_integer;
+    mpz_t divisor;
+    mpz_t error;
+    size_t lower_count;
+    size_t upper_count;
+    size_t digits;
+    long scientific_exponent;
+    int scientific;
+
+    if (!arb_is_finite(value))
+        return format_arb_brackets(value, precision);
+    if (arb_is_exact(value) && arb_is_int(value))
+    {
+        fmpz_t integer;
+        char *raw;
+        fmpz_init(integer);
+        arf_get_fmpz(integer, arb_midref(value), ARF_RND_NEAR);
+        raw = fmpz_get_str(NULL, 10, integer);
+        fmpz_clear(integer);
+        return raw;
+    }
+    mpfr_init2(lower, (mpfr_prec_t) precision + 64);
+    mpfr_init2(upper, (mpfr_prec_t) precision + 64);
+    arb_get_interval_mpfr(lower, upper, value);
+    lower_digits = mpfr_get_str(
+        NULL, &lower_exponent, 10, 0, lower, MPFR_RNDD);
+    upper_digits = mpfr_get_str(
+        NULL, &upper_exponent, 10, 0, upper, MPFR_RNDU);
+    if (lower_digits == NULL || upper_digits == NULL)
+        goto cleanup_reals;
+    lower_count = strlen(lower_digits) - (lower_digits[0] == '-' ? 1 : 0);
+    upper_count = strlen(upper_digits) - (upper_digits[0] == '-' ? 1 : 0);
+    lower_exponent -= (mpfr_exp_t) lower_count;
+    upper_exponent -= (mpfr_exp_t) upper_count;
+    if (lower_exponent - upper_exponent > 4096 ||
+        upper_exponent - lower_exponent > 4096)
+    {
+        mpfr_free_str(upper_digits);
+        mpfr_free_str(lower_digits);
+        mpfr_clear(upper);
+        mpfr_clear(lower);
+        return format_arb_brackets(value, precision);
+    }
+    mpz_init_set_str(lower_integer, lower_digits, 10);
+    mpz_init_set_str(upper_integer, upper_digits, 10);
+    mpz_init(divisor);
+    mpz_init(error);
+    if (mpfr_zero_p(lower))
+        lower_exponent = upper_exponent;
+    if (mpfr_zero_p(upper))
+        upper_exponent = lower_exponent;
+    if (lower_exponent < upper_exponent)
+    {
+        unsigned long delta = (unsigned long) (upper_exponent - lower_exponent);
+        mpz_ui_pow_ui(divisor, 10, delta);
+        mpz_fdiv_q(lower_integer, lower_integer, divisor);
+        lower_exponent = upper_exponent;
+    }
+    else if (upper_exponent < lower_exponent)
+    {
+        unsigned long delta = (unsigned long) (lower_exponent - upper_exponent);
+        mpz_ui_pow_ui(divisor, 10, delta);
+        mpz_cdiv_q(upper_integer, upper_integer, divisor);
+        upper_exponent = lower_exponent;
+    }
+    exponent = lower_exponent;
+    mpz_sub(error, upper_integer, lower_integer);
+    while (mpz_cmp_ui(error, 2) > 0)
+    {
+        mpz_fdiv_q_ui(lower_integer, lower_integer, 10);
+        mpz_cdiv_q_ui(upper_integer, upper_integer, 10);
+        exponent++;
+        mpz_sub(error, upper_integer, lower_integer);
+    }
+    mpz_add(lower_integer, lower_integer, upper_integer);
+    if (mpz_sgn(lower_integer) >= 0)
+        mpz_cdiv_q_2exp(lower_integer, lower_integer, 1);
+    else
+        mpz_fdiv_q_2exp(lower_integer, lower_integer, 1);
+    mantissa_digits = mpz_get_str(NULL, 10, lower_integer);
+    if (mantissa_digits == NULL)
+        goto cleanup_integers;
+    {
+        int negative = mantissa_digits[0] == '-';
+        const char *magnitude = mantissa_digits + negative;
+        digits = strlen(magnitude);
+        scientific_exponent = (long) exponent + (long) digits - 1;
+        scientific = exponent > 0 || labs(scientific_exponent) >= 6;
+        if (scientific)
+        {
+            size_t length = (size_t) negative + digits + 32;
+            result = (char *) malloc(length);
+            if (result != NULL)
+                snprintf(result, length, "%s%c.%s?e%ld",
+                    negative ? "-" : "", magnitude[0], magnitude + 1,
+                    scientific_exponent);
+        }
+        else if (exponent + (mpfr_exp_t) digits <= 0)
+        {
+            size_t zeros = (size_t) (-(exponent + (mpfr_exp_t) digits));
+            size_t length = (size_t) negative + 2 + zeros + digits + 2;
+            char *out;
+            result = (char *) malloc(length + 1);
+            if (result != NULL)
+            {
+                out = result;
+                if (negative)
+                    *out++ = '-';
+                *out++ = '0';
+                *out++ = '.';
+                memset(out, '0', zeros);
+                out += zeros;
+                memcpy(out, magnitude, digits);
+                out += digits;
+                *out++ = '?';
+                *out = '\0';
+            }
+        }
+        else
+        {
+            size_t before = (size_t) (exponent + (mpfr_exp_t) digits);
+            size_t length = (size_t) negative + digits + 3;
+            char *out;
+            result = (char *) malloc(length + 1);
+            if (result != NULL)
+            {
+                out = result;
+                if (negative)
+                    *out++ = '-';
+                memcpy(out, magnitude, before);
+                out += before;
+                *out++ = '.';
+                memcpy(out, magnitude + before, digits - before);
+                out += digits - before;
+                *out++ = '?';
+                *out = '\0';
+            }
+        }
+    }
+cleanup_integers:
+    free(mantissa_digits);
+    mpz_clear(error);
+    mpz_clear(divisor);
+    mpz_clear(upper_integer);
+    mpz_clear(lower_integer);
+cleanup_reals:
+    if (upper_digits != NULL)
+        mpfr_free_str(upper_digits);
+    if (lower_digits != NULL)
+        mpfr_free_str(lower_digits);
+    mpfr_clear(upper);
+    mpfr_clear(lower);
     return result;
 }
 
@@ -476,7 +938,8 @@ EXPORT uint32_t sagejs_numeric_output_capacity(void) { return NUMERIC_CAPACITY; 
 EXPORT uint32_t sagejs_numeric_last_status(void) { return numeric_status; }
 EXPORT uint32_t sagejs_numeric_live_count(void) { return numeric_live_count; }
 
-EXPORT uint32_t sagejs_numeric_real_from_string(uint32_t precision)
+EXPORT uint32_t sagejs_numeric_real_from_string(
+    uint32_t precision, uint32_t rounding, uint32_t base)
 {
     real_slot *slot;
     mpfr_t restored;
@@ -502,7 +965,8 @@ EXPORT uint32_t sagejs_numeric_real_from_string(uint32_t precision)
         mpfr_clear(restored);
         return handle;
     }
-    if (!valid_precision(precision))
+    if (!valid_precision(precision) || !valid_rounding(rounding) ||
+        (base != 2 && base != 10))
     {
         numeric_status = NUMERIC_INVALID_INPUT;
         return 0;
@@ -510,7 +974,11 @@ EXPORT uint32_t sagejs_numeric_real_from_string(uint32_t precision)
     handle = allocate_real((mpfr_prec_t) precision, &slot);
     if (handle == 0)
         return 0;
-    if (!parse_rational(slot->value, numeric_input))
+    if ((base == 10 &&
+            !parse_rational(slot->value, numeric_input,
+                rounding_mode(rounding))) ||
+        (base == 2 && mpfr_set_str(slot->value, numeric_input, 2,
+            rounding_mode(rounding)) != 0))
     {
         mpfr_clear(slot->value);
         slot->live = 0;
@@ -521,30 +989,33 @@ EXPORT uint32_t sagejs_numeric_real_from_string(uint32_t precision)
     return handle;
 }
 
-EXPORT uint32_t sagejs_numeric_real_round(uint32_t source_handle, uint32_t precision)
+EXPORT uint32_t sagejs_numeric_real_round(
+    uint32_t source_handle, uint32_t precision, uint32_t rounding)
 {
     real_slot *source = real_from_handle(source_handle);
     real_slot *result;
     uint32_t handle;
-    if (source == NULL || !valid_precision(precision))
+    if (source == NULL || !valid_precision(precision) ||
+        !valid_rounding(rounding))
     {
         numeric_status = source == NULL ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
         return 0;
     }
     handle = allocate_real((mpfr_prec_t) precision, &result);
     if (handle != 0)
-        mpfr_set(result->value, source->value, MPFR_RNDN);
+        mpfr_set(result->value, source->value, rounding_mode(rounding));
     return handle;
 }
 
 EXPORT uint32_t sagejs_numeric_real_binary(
-    uint32_t operation, uint32_t left_handle, uint32_t right_handle)
+    uint32_t operation, uint32_t left_handle, uint32_t right_handle,
+    uint32_t rounding)
 {
     real_slot *left = real_from_handle(left_handle);
     real_slot *right = real_from_handle(right_handle);
     real_slot *result;
     uint32_t handle;
-    if (left == NULL || right == NULL)
+    if (left == NULL || right == NULL || !valid_rounding(rounding))
     {
         numeric_status = NUMERIC_INVALID_HANDLE;
         return 0;
@@ -553,13 +1024,17 @@ EXPORT uint32_t sagejs_numeric_real_binary(
     if (handle == 0)
         return 0;
     if (operation == 0)
-        mpfr_add(result->value, left->value, right->value, MPFR_RNDN);
+        mpfr_add(result->value, left->value, right->value,
+            rounding_mode(rounding));
     else if (operation == 1)
-        mpfr_sub(result->value, left->value, right->value, MPFR_RNDN);
+        mpfr_sub(result->value, left->value, right->value,
+            rounding_mode(rounding));
     else if (operation == 2)
-        mpfr_mul(result->value, left->value, right->value, MPFR_RNDN);
+        mpfr_mul(result->value, left->value, right->value,
+            rounding_mode(rounding));
     else if (operation == 3)
-        mpfr_div(result->value, left->value, right->value, MPFR_RNDN);
+        mpfr_div(result->value, left->value, right->value,
+            rounding_mode(rounding));
     else
     {
         mpfr_clear(result->value);
@@ -587,14 +1062,15 @@ EXPORT uint32_t sagejs_numeric_real_neg(uint32_t source_handle)
     return handle;
 }
 
-EXPORT uint32_t sagejs_numeric_real_pow_int(uint32_t source_handle)
+EXPORT uint32_t sagejs_numeric_real_pow_int(
+    uint32_t source_handle, uint32_t rounding)
 {
     real_slot *source = real_from_handle(source_handle);
     real_slot *result;
     mpz_t exponent;
     uint32_t handle;
     numeric_input[NUMERIC_CAPACITY - 1] = '\0';
-    if (source == NULL)
+    if (source == NULL || !valid_rounding(rounding))
     {
         numeric_status = NUMERIC_INVALID_HANDLE;
         return 0;
@@ -608,7 +1084,8 @@ EXPORT uint32_t sagejs_numeric_real_pow_int(uint32_t source_handle)
     }
     handle = allocate_real(mpfr_get_prec(source->value), &result);
     if (handle != 0)
-        mpfr_pow_z(result->value, source->value, exponent, MPFR_RNDN);
+        mpfr_pow_z(result->value, source->value, exponent,
+            rounding_mode(rounding));
     mpz_clear(exponent);
     return handle;
 }
@@ -650,17 +1127,96 @@ EXPORT double sagejs_numeric_real_to_double(uint32_t handle)
     return mpfr_get_d(slot->value, MPFR_RNDN);
 }
 
-EXPORT uint32_t sagejs_numeric_real_format(uint32_t handle, uint32_t exact_snapshot)
+EXPORT uint32_t sagejs_numeric_real_format(
+    uint32_t handle, uint32_t mode, uint32_t rounding, uint32_t full)
 {
     real_slot *slot = real_from_handle(handle);
     char *text;
+    int ok;
+    if (slot == NULL || !valid_rounding(rounding))
+    {
+        numeric_status = slot == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    if (mode == 0)
+        text = full
+            ? format_real_full(slot->value, rounding_mode(rounding))
+            : format_real_rounding(slot->value, rounding_mode(rounding));
+    else if (mode == 1)
+        text = serialize_real(slot->value);
+    else if (mode == 2)
+        text = format_real_base2(slot->value);
+    else
+    {
+        numeric_status = NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    if (text == NULL)
+    {
+        numeric_status = NUMERIC_ALLOCATION_FAILED;
+        return 0;
+    }
+    ok = output_text(text);
+    free(text);
+    return ok ? 1 : 0;
+}
+
+EXPORT uint32_t sagejs_numeric_real_next(
+    uint32_t source_handle, int32_t direction)
+{
+    real_slot *source = real_from_handle(source_handle);
+    real_slot *result;
+    uint32_t handle;
+    if (source == NULL || (direction != -1 && direction != 1))
+    {
+        numeric_status = source == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_real(mpfr_get_prec(source->value), &result);
+    if (handle == 0)
+        return 0;
+    mpfr_set(result->value, source->value, MPFR_RNDN);
+    if (direction < 0)
+        mpfr_nextbelow(result->value);
+    else
+        mpfr_nextabove(result->value);
+    return handle;
+}
+
+EXPORT uint32_t sagejs_numeric_real_parts(uint32_t handle)
+{
+    real_slot *slot = real_from_handle(handle);
+    mpz_t mantissa;
+    mpfr_exp_t exponent;
+    char *digits;
+    char *text;
+    int sign;
+    int length;
     int ok;
     if (slot == NULL)
     {
         numeric_status = NUMERIC_INVALID_HANDLE;
         return 0;
     }
-    text = exact_snapshot ? serialize_real(slot->value) : format_real(slot->value);
+    mpz_init(mantissa);
+    exponent = mpfr_get_z_2exp(mantissa, slot->value);
+    sign = mpz_sgn(mantissa);
+    mpz_abs(mantissa, mantissa);
+    digits = mpz_get_str(NULL, 10, mantissa);
+    mpz_clear(mantissa);
+    if (digits == NULL)
+    {
+        numeric_status = NUMERIC_ALLOCATION_FAILED;
+        return 0;
+    }
+    length = snprintf(NULL, 0, "%d|%s|%ld", sign, digits, (long) exponent);
+    text = (char *) malloc((size_t) length + 1);
+    if (text != NULL)
+        snprintf(text, (size_t) length + 1,
+            "%d|%s|%ld", sign, digits, (long) exponent);
+    free(digits);
     if (text == NULL)
     {
         numeric_status = NUMERIC_ALLOCATION_FAILED;
@@ -680,6 +1236,632 @@ EXPORT uint32_t sagejs_numeric_real_close(uint32_t handle)
         return 0;
     }
     mpfr_clear(slot->value);
+    slot->live = 0;
+    numeric_live_count--;
+    numeric_status = NUMERIC_OK;
+    return 1;
+}
+
+EXPORT uint32_t sagejs_numeric_real_interval_from_rational(uint32_t precision)
+{
+    real_interval_slot *slot;
+    mpfr_t lower;
+    mpfr_t upper;
+    uint32_t handle;
+    numeric_input[NUMERIC_CAPACITY - 1] = '\0';
+    if (!valid_precision(precision))
+    {
+        numeric_status = NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_real_interval((slong) precision, &slot);
+    if (handle == 0)
+        return 0;
+    mpfr_init2(lower, (mpfr_prec_t) precision);
+    mpfr_init2(upper, (mpfr_prec_t) precision);
+    if (!parse_rational(lower, numeric_input, MPFR_RNDD) ||
+        !parse_rational(upper, numeric_input, MPFR_RNDU))
+    {
+        mpfr_clear(upper);
+        mpfr_clear(lower);
+        arb_clear(slot->value);
+        slot->live = 0;
+        numeric_live_count--;
+        numeric_status = NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    arb_set_interval_mpfr(slot->value, lower, upper,
+        (slong) precision + INTERVAL_GUARD_BITS);
+    mpfr_clear(upper);
+    mpfr_clear(lower);
+    return handle;
+}
+
+EXPORT uint32_t sagejs_numeric_real_interval_from_bounds(
+    uint32_t lower_handle, uint32_t upper_handle, uint32_t precision)
+{
+    real_slot *lower = real_from_handle(lower_handle);
+    real_slot *upper = real_from_handle(upper_handle);
+    real_interval_slot *slot;
+    uint32_t handle;
+    if (lower == NULL || upper == NULL || !valid_precision(precision) ||
+        mpfr_greater_p(lower->value, upper->value))
+    {
+        numeric_status = lower == NULL || upper == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_real_interval((slong) precision, &slot);
+    if (handle != 0)
+        arb_set_interval_mpfr(slot->value, lower->value, upper->value,
+            (slong) precision + INTERVAL_GUARD_BITS);
+    return handle;
+}
+
+EXPORT uint32_t sagejs_numeric_real_interval_from_dump(uint32_t precision)
+{
+    real_interval_slot *slot;
+    uint32_t handle;
+    numeric_input[NUMERIC_CAPACITY - 1] = '\0';
+    if (!valid_precision(precision))
+    {
+        numeric_status = NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_real_interval((slong) precision, &slot);
+    if (handle == 0)
+        return 0;
+    if (arb_load_str(slot->value, numeric_input) != 0)
+    {
+        arb_clear(slot->value);
+        slot->live = 0;
+        numeric_live_count--;
+        numeric_status = NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    return handle;
+}
+
+EXPORT uint32_t sagejs_numeric_real_interval_round(
+    uint32_t source_handle, uint32_t precision)
+{
+    real_interval_slot *source = real_interval_from_handle(source_handle);
+    real_interval_slot *result;
+    uint32_t handle;
+    if (source == NULL || !valid_precision(precision))
+    {
+        numeric_status = source == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_real_interval((slong) precision, &result);
+    if (handle != 0)
+    {
+        arb_set_round(result->value, source->value, (slong) precision);
+        round_arb_enclosure(result->value, (slong) precision);
+    }
+    return handle;
+}
+
+EXPORT uint32_t sagejs_numeric_real_interval_binary(
+    uint32_t operation, uint32_t left_handle, uint32_t right_handle,
+    uint32_t precision)
+{
+    real_interval_slot *left = real_interval_from_handle(left_handle);
+    real_interval_slot *right = real_interval_from_handle(right_handle);
+    real_interval_slot *result;
+    uint32_t handle;
+    slong working_precision;
+    if (left == NULL || right == NULL || !valid_precision(precision) ||
+        operation > 5)
+    {
+        numeric_status = left == NULL || right == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_real_interval((slong) precision, &result);
+    if (handle == 0)
+        return 0;
+    working_precision = (slong) precision + INTERVAL_GUARD_BITS;
+    if (operation == 0)
+        arb_add(result->value, left->value, right->value, working_precision);
+    else if (operation == 1)
+        arb_sub(result->value, left->value, right->value, working_precision);
+    else if (operation == 2)
+        arb_mul(result->value, left->value, right->value, working_precision);
+    else if (operation == 3)
+        arb_div(result->value, left->value, right->value, working_precision);
+    else if (operation == 4 && !arb_intersection(
+            result->value, left->value, right->value, working_precision))
+    {
+        arb_clear(result->value);
+        result->live = 0;
+        numeric_live_count--;
+        numeric_status = NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    else if (operation == 5)
+        arb_union(result->value, left->value, right->value, working_precision);
+    round_arb_enclosure(result->value, (slong) precision);
+    return handle;
+}
+
+EXPORT uint32_t sagejs_numeric_real_interval_unary(
+    uint32_t operation, uint32_t source_handle, uint32_t precision)
+{
+    real_interval_slot *source = real_interval_from_handle(source_handle);
+    real_interval_slot *result;
+    uint32_t handle;
+    slong working_precision;
+    if (source == NULL || !valid_precision(precision) || operation > 7)
+    {
+        numeric_status = source == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_real_interval((slong) precision, &result);
+    if (handle == 0)
+        return 0;
+    working_precision = (slong) precision + INTERVAL_GUARD_BITS;
+    if (operation == 0)
+        arb_neg(result->value, source->value);
+    else if (operation == 1)
+        arb_sqrt(result->value, source->value, working_precision);
+    else if (operation == 2)
+        arb_exp(result->value, source->value, working_precision);
+    else if (operation == 3)
+        arb_log(result->value, source->value, working_precision);
+    else if (operation == 4)
+        arb_sin(result->value, source->value, working_precision);
+    else if (operation == 5)
+        arb_cos(result->value, source->value, working_precision);
+    else if (operation == 6)
+        arb_tan(result->value, source->value, working_precision);
+    else
+        arb_abs(result->value, source->value);
+    round_arb_enclosure(result->value, (slong) precision);
+    return handle;
+}
+
+EXPORT uint32_t sagejs_numeric_real_interval_pow_int(
+    uint32_t source_handle, uint32_t precision)
+{
+    real_interval_slot *source = real_interval_from_handle(source_handle);
+    real_interval_slot *result;
+    mpz_t exponent;
+    fmpz_t flint_exponent;
+    uint32_t handle;
+    numeric_input[NUMERIC_CAPACITY - 1] = '\0';
+    if (source == NULL || !valid_precision(precision))
+    {
+        numeric_status = source == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    mpz_init(exponent);
+    if (mpz_set_str(exponent, numeric_input, 10) != 0)
+    {
+        mpz_clear(exponent);
+        numeric_status = NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_real_interval((slong) precision, &result);
+    if (handle != 0)
+    {
+        fmpz_init(flint_exponent);
+        fmpz_set_mpz(flint_exponent, exponent);
+        arb_pow_fmpz(result->value, source->value, flint_exponent,
+            (slong) precision + INTERVAL_GUARD_BITS);
+        round_arb_enclosure(result->value, (slong) precision);
+        fmpz_clear(flint_exponent);
+    }
+    mpz_clear(exponent);
+    return handle;
+}
+
+EXPORT int32_t sagejs_numeric_real_interval_relation(
+    uint32_t operation, uint32_t left_handle, uint32_t right_handle)
+{
+    real_interval_slot *left = real_interval_from_handle(left_handle);
+    real_interval_slot *right = real_interval_from_handle(right_handle);
+    if (left == NULL || right == NULL || operation > 2)
+    {
+        numeric_status = left == NULL || right == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return -1;
+    }
+    numeric_status = NUMERIC_OK;
+    return operation == 0 ? arb_equal(left->value, right->value)
+        : operation == 1 ? arb_contains(left->value, right->value)
+        : arb_overlaps(left->value, right->value);
+}
+
+EXPORT uint32_t sagejs_numeric_real_interval_part(
+    uint32_t operation, uint32_t source_handle)
+{
+    real_interval_slot *source = real_interval_from_handle(source_handle);
+    real_slot *result;
+    mpfr_t lower;
+    mpfr_t upper;
+    uint32_t handle;
+    if (source == NULL || operation > 5)
+    {
+        numeric_status = source == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_real((mpfr_prec_t) source->precision, &result);
+    if (handle == 0)
+        return 0;
+    mpfr_init2(lower, (mpfr_prec_t) source->precision);
+    mpfr_init2(upper, (mpfr_prec_t) source->precision);
+    arb_get_interval_mpfr(lower, upper, source->value);
+    if (operation == 0)
+        mpfr_set(result->value, lower, MPFR_RNDD);
+    else if (operation == 1)
+        mpfr_set(result->value, upper, MPFR_RNDU);
+    else if (operation == 2)
+        arf_get_mpfr(result->value, arb_midref(source->value), MPFR_RNDN);
+    else if (operation == 3)
+    {
+        arf_t radius;
+        arf_init(radius);
+        arf_set_mag(radius, arb_radref(source->value));
+        arf_get_mpfr(result->value, radius, MPFR_RNDU);
+        arf_clear(radius);
+    }
+    else
+    {
+        mpfr_sub(result->value, upper, lower, MPFR_RNDU);
+        if (operation == 5)
+        {
+            mpfr_t center;
+            mpfr_init2(center, (mpfr_prec_t) source->precision);
+            arf_get_mpfr(center, arb_midref(source->value), MPFR_RNDN);
+            mpfr_abs(center, center, MPFR_RNDD);
+            mpfr_div(result->value, result->value, center, MPFR_RNDU);
+            mpfr_clear(center);
+        }
+    }
+    mpfr_clear(upper);
+    mpfr_clear(lower);
+    return handle;
+}
+
+EXPORT uint32_t sagejs_numeric_real_interval_format(
+    uint32_t handle, uint32_t style)
+{
+    real_interval_slot *slot = real_interval_from_handle(handle);
+    char *text;
+    int ok;
+    if (slot == NULL || style > 2)
+    {
+        numeric_status = slot == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    if (style == 0)
+        text = format_arb_question(slot->value, slot->precision);
+    else if (style == 1)
+        text = format_arb_brackets(slot->value, slot->precision);
+    else
+        text = arb_dump_str(slot->value);
+    if (text == NULL)
+    {
+        numeric_status = NUMERIC_ALLOCATION_FAILED;
+        return 0;
+    }
+    ok = output_text(text);
+    free(text);
+    return ok ? 1 : 0;
+}
+
+EXPORT uint32_t sagejs_numeric_real_interval_precision(uint32_t handle)
+{
+    real_interval_slot *slot = real_interval_from_handle(handle);
+    if (slot == NULL)
+    {
+        numeric_status = NUMERIC_INVALID_HANDLE;
+        return 0;
+    }
+    numeric_status = NUMERIC_OK;
+    return (uint32_t) slot->precision;
+}
+
+EXPORT uint32_t sagejs_numeric_real_interval_close(uint32_t handle)
+{
+    real_interval_slot *slot = real_interval_from_handle(handle);
+    if (slot == NULL)
+    {
+        numeric_status = NUMERIC_INVALID_HANDLE;
+        return 0;
+    }
+    arb_clear(slot->value);
+    slot->live = 0;
+    numeric_live_count--;
+    numeric_status = NUMERIC_OK;
+    return 1;
+}
+
+EXPORT uint32_t sagejs_numeric_complex_interval_from_parts(
+    uint32_t real_handle, uint32_t imaginary_handle, uint32_t precision)
+{
+    real_interval_slot *real = real_interval_from_handle(real_handle);
+    real_interval_slot *imaginary = real_interval_from_handle(imaginary_handle);
+    complex_interval_slot *result;
+    uint32_t handle;
+    if (real == NULL || imaginary == NULL || !valid_precision(precision))
+    {
+        numeric_status = real == NULL || imaginary == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_complex_interval((slong) precision, &result);
+    if (handle != 0)
+    {
+        if (real->precision == (slong) precision)
+            arb_set(acb_realref(result->value), real->value);
+        else
+            arb_set_round(acb_realref(result->value), real->value,
+                (slong) precision);
+        if (imaginary->precision == (slong) precision)
+            arb_set(acb_imagref(result->value), imaginary->value);
+        else
+            arb_set_round(acb_imagref(result->value), imaginary->value,
+                (slong) precision);
+    }
+    return handle;
+}
+
+EXPORT uint32_t sagejs_numeric_complex_interval_round(
+    uint32_t source_handle, uint32_t precision)
+{
+    complex_interval_slot *source = complex_interval_from_handle(source_handle);
+    complex_interval_slot *result;
+    uint32_t handle;
+    if (source == NULL || !valid_precision(precision))
+    {
+        numeric_status = source == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_complex_interval((slong) precision, &result);
+    if (handle != 0)
+    {
+        acb_set_round(result->value, source->value, (slong) precision);
+        round_acb_enclosure(result->value, (slong) precision);
+    }
+    return handle;
+}
+
+EXPORT uint32_t sagejs_numeric_complex_interval_binary(
+    uint32_t operation, uint32_t left_handle, uint32_t right_handle,
+    uint32_t precision)
+{
+    complex_interval_slot *left = complex_interval_from_handle(left_handle);
+    complex_interval_slot *right = complex_interval_from_handle(right_handle);
+    complex_interval_slot *result;
+    uint32_t handle;
+    slong working_precision;
+    if (left == NULL || right == NULL || !valid_precision(precision) ||
+        operation > 3)
+    {
+        numeric_status = left == NULL || right == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_complex_interval((slong) precision, &result);
+    if (handle == 0)
+        return 0;
+    working_precision = (slong) precision + INTERVAL_GUARD_BITS;
+    if (operation == 0)
+        acb_add(result->value, left->value, right->value, working_precision);
+    else if (operation == 1)
+        acb_sub(result->value, left->value, right->value, working_precision);
+    else if (operation == 2)
+        acb_mul(result->value, left->value, right->value, working_precision);
+    else
+        acb_div(result->value, left->value, right->value, working_precision);
+    round_acb_enclosure(result->value, (slong) precision);
+    return handle;
+}
+
+EXPORT uint32_t sagejs_numeric_complex_interval_unary(
+    uint32_t operation, uint32_t source_handle, uint32_t precision)
+{
+    complex_interval_slot *source = complex_interval_from_handle(source_handle);
+    complex_interval_slot *result;
+    uint32_t handle;
+    slong working_precision;
+    if (source == NULL || !valid_precision(precision) || operation > 6)
+    {
+        numeric_status = source == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_complex_interval((slong) precision, &result);
+    if (handle == 0)
+        return 0;
+    working_precision = (slong) precision + INTERVAL_GUARD_BITS;
+    if (operation == 0)
+        acb_neg(result->value, source->value);
+    else if (operation == 1)
+        acb_sqrt(result->value, source->value, working_precision);
+    else if (operation == 2)
+        acb_exp(result->value, source->value, working_precision);
+    else if (operation == 3)
+        acb_log(result->value, source->value, working_precision);
+    else if (operation == 4)
+        acb_sin(result->value, source->value, working_precision);
+    else if (operation == 5)
+        acb_cos(result->value, source->value, working_precision);
+    else
+        acb_tan(result->value, source->value, working_precision);
+    round_acb_enclosure(result->value, (slong) precision);
+    return handle;
+}
+
+EXPORT uint32_t sagejs_numeric_complex_interval_pow_int(
+    uint32_t source_handle, uint32_t precision)
+{
+    complex_interval_slot *source = complex_interval_from_handle(source_handle);
+    complex_interval_slot *result;
+    mpz_t exponent;
+    fmpz_t flint_exponent;
+    uint32_t handle;
+    numeric_input[NUMERIC_CAPACITY - 1] = '\0';
+    if (source == NULL || !valid_precision(precision))
+    {
+        numeric_status = source == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    mpz_init(exponent);
+    if (mpz_set_str(exponent, numeric_input, 10) != 0)
+    {
+        mpz_clear(exponent);
+        numeric_status = NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_complex_interval((slong) precision, &result);
+    if (handle != 0)
+    {
+        fmpz_init(flint_exponent);
+        fmpz_set_mpz(flint_exponent, exponent);
+        acb_pow_fmpz(result->value, source->value, flint_exponent,
+            (slong) precision + INTERVAL_GUARD_BITS);
+        round_acb_enclosure(result->value, (slong) precision);
+        fmpz_clear(flint_exponent);
+    }
+    mpz_clear(exponent);
+    return handle;
+}
+
+EXPORT int32_t sagejs_numeric_complex_interval_relation(
+    uint32_t operation, uint32_t left_handle, uint32_t right_handle)
+{
+    complex_interval_slot *left = complex_interval_from_handle(left_handle);
+    complex_interval_slot *right = complex_interval_from_handle(right_handle);
+    if (left == NULL || right == NULL || operation > 2)
+    {
+        numeric_status = left == NULL || right == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return -1;
+    }
+    numeric_status = NUMERIC_OK;
+    return operation == 0 ? acb_equal(left->value, right->value)
+        : operation == 1 ? acb_contains(left->value, right->value)
+        : acb_overlaps(left->value, right->value);
+}
+
+EXPORT uint32_t sagejs_numeric_complex_interval_part(
+    uint32_t operation, uint32_t source_handle)
+{
+    complex_interval_slot *source = complex_interval_from_handle(source_handle);
+    real_interval_slot *result;
+    uint32_t handle;
+    if (source == NULL || operation > 1)
+    {
+        numeric_status = source == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    handle = allocate_real_interval(source->precision, &result);
+    if (handle != 0)
+        arb_set(result->value, operation == 0
+            ? acb_realref(source->value) : acb_imagref(source->value));
+    return handle;
+}
+
+EXPORT uint32_t sagejs_numeric_complex_interval_format(
+    uint32_t handle, uint32_t style)
+{
+    complex_interval_slot *slot = complex_interval_from_handle(handle);
+    arb_t imaginary;
+    char *real_text;
+    char *imaginary_text;
+    char *text;
+    int negative;
+    int ok;
+    size_t length;
+    if (slot == NULL || style > 1)
+    {
+        numeric_status = slot == NULL
+            ? NUMERIC_INVALID_HANDLE : NUMERIC_INVALID_INPUT;
+        return 0;
+    }
+    if (arb_is_zero(acb_imagref(slot->value)))
+    {
+        text = style == 0
+            ? format_arb_question(acb_realref(slot->value), slot->precision)
+            : format_arb_brackets(acb_realref(slot->value), slot->precision);
+        if (text == NULL)
+        {
+            numeric_status = NUMERIC_ALLOCATION_FAILED;
+            return 0;
+        }
+        ok = output_text(text);
+        free(text);
+        return ok ? 1 : 0;
+    }
+    real_text = style == 0
+        ? format_arb_question(acb_realref(slot->value), slot->precision)
+        : format_arb_brackets(acb_realref(slot->value), slot->precision);
+    arb_init(imaginary);
+    negative = arb_is_negative(acb_imagref(slot->value));
+    if (negative)
+        arb_neg(imaginary, acb_imagref(slot->value));
+    else
+        arb_set(imaginary, acb_imagref(slot->value));
+    imaginary_text = style == 0
+        ? format_arb_question(imaginary, slot->precision)
+        : format_arb_brackets(imaginary, slot->precision);
+    arb_clear(imaginary);
+    if (real_text == NULL || imaginary_text == NULL)
+    {
+        free(imaginary_text);
+        free(real_text);
+        numeric_status = NUMERIC_ALLOCATION_FAILED;
+        return 0;
+    }
+    length = strlen(real_text) + strlen(imaginary_text) + 8;
+    text = (char *) malloc(length + 1);
+    if (text != NULL)
+        snprintf(text, length + 1, "%s %c %s*I",
+            real_text, negative ? '-' : '+', imaginary_text);
+    free(imaginary_text);
+    free(real_text);
+    if (text == NULL)
+    {
+        numeric_status = NUMERIC_ALLOCATION_FAILED;
+        return 0;
+    }
+    ok = output_text(text);
+    free(text);
+    return ok ? 1 : 0;
+}
+
+EXPORT uint32_t sagejs_numeric_complex_interval_precision(uint32_t handle)
+{
+    complex_interval_slot *slot = complex_interval_from_handle(handle);
+    if (slot == NULL)
+    {
+        numeric_status = NUMERIC_INVALID_HANDLE;
+        return 0;
+    }
+    numeric_status = NUMERIC_OK;
+    return (uint32_t) slot->precision;
+}
+
+EXPORT uint32_t sagejs_numeric_complex_interval_close(uint32_t handle)
+{
+    complex_interval_slot *slot = complex_interval_from_handle(handle);
+    if (slot == NULL)
+    {
+        numeric_status = NUMERIC_INVALID_HANDLE;
+        return 0;
+    }
+    acb_clear(slot->value);
     slot->live = 0;
     numeric_live_count--;
     numeric_status = NUMERIC_OK;

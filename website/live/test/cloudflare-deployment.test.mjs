@@ -64,7 +64,7 @@ test("Cloudflare Worker maps immutable and release shell objects without path es
     release,
     "br",
   ).url);
-  assert.equal(edgeKey.searchParams.get("__sagejs_cache"), "2");
+  assert.equal(edgeKey.searchParams.get("__sagejs_cache"), "3");
   assert.equal(edgeKey.searchParams.get("__sagejs_release"), release);
   assert.equal(edgeKey.searchParams.get("__sagejs_encoding"), "br");
   assert.equal(edgeKey.searchParams.has("old"), false);
@@ -87,6 +87,7 @@ test("Cloudflare Worker maps immutable and release shell objects without path es
   assert.equal(response.headers.get("Content-Encoding"), "br");
   assert.equal(response.headers.get("Cache-Control"), "no-cache");
   assert.equal(response.headers.get("Cross-Origin-Embedder-Policy"), "require-corp");
+  assert.equal(response.headers.get("Access-Control-Allow-Origin"), null);
   assert.deepEqual(seen, [`releases/${release}/br/index.html`]);
 
   const unsafe = await handleRequest(
@@ -138,6 +139,27 @@ test("Cloudflare Worker negotiates against the original client encoding", async 
   assert.deepEqual(keys, [`releases/${release}/identity/runtime-version.json`]);
 });
 
+test("Cloudflare Worker permits only the dedicated cell document to be framed", async () => {
+  const bucket = {
+    async get(key) {
+      return key === `releases/${release}/identity/embed/v1/frame.html`
+        ? object("<html></html>", "text/html; charset=utf-8")
+        : null;
+    },
+  };
+  const response = await handleRequest(
+    cloudflareRequest(
+      "https://app.sagejs.org/embed/v1/frame.html?parentOrigin=https%3A%2F%2Fcourse.example",
+      "identity",
+    ),
+    { ASSETS: bucket, RELEASE_ID: release },
+  );
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("Content-Security-Policy"), /frame-ancestors \*/);
+  assert.equal(response.headers.get("X-Frame-Options"), null);
+  assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
+});
+
 test("Cloudflare Worker falls back to identity and fails closed", async () => {
   const assetPath = `assets/sha256-${"b".repeat(64)}/runtime.wasm`;
   const keys = [];
@@ -154,6 +176,8 @@ test("Cloudflare Worker falls back to identity and fails closed", async () => {
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("Content-Encoding"), null);
   assert.equal(response.headers.get("Cache-Control"), "public, max-age=31536000, immutable");
+  assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
+  assert.equal(response.headers.get("Cross-Origin-Resource-Policy"), "cross-origin");
   assert.deepEqual(keys, [
     `public/br/${assetPath}`,
     `public/identity/${assetPath}`,

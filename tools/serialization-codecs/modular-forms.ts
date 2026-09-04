@@ -89,14 +89,22 @@ function encodeParent(value: unknown, context: EncodeContext): WireValue {
         isCuspidal,
       });
     }
-    case "ModularForms":
-      return context.encode({
+    case "ModularForms": {
+      const character = Reflect.get(Object(value), "_character");
+      const data: Record<string, unknown> = {
         kind: "ModularForms",
         group: Reflect.get(Object(value), "_group"),
         weight: Reflect.get(Object(value), "_weight"),
         base: Reflect.get(Object(value), "_base"),
         precision: Reflect.get(Object(value), "_precision"),
-      });
+      };
+      // Keep the established trivial-character wire format byte-for-byte
+      // stable while authenticating character parents explicitly.
+      if (character !== null && character !== undefined) {
+        data.character = character;
+      }
+      return context.encode(data);
+    }
     case "ModularFormsSubspace":
     case "EisensteinSubspace":
       return context.encode({
@@ -105,6 +113,11 @@ function encodeParent(value: unknown, context: EncodeContext): WireValue {
         subspaceKind: Reflect.get(Object(value), "_subspace_kind"),
         dimension: Reflect.get(Object(value), "_dimension"),
         precision: Reflect.get(Object(value), "_precision"),
+      });
+    case "OldModularFormsSubspace":
+      return context.encode({
+        kind: "OldModularFormsSubspace",
+        cuspSpace: Reflect.get(Object(value), "_cusp_space"),
       });
     default:
       throw new SageSerializationError("unsupported modular-forms parent");
@@ -143,10 +156,11 @@ function decodeParent(payload: WireValue, context: DecodeContext): unknown {
         data.basis,
         data.subspaceKind,
         data.sign,
+        data.isCuspidal,
       ]);
     case "ModularForms":
       return callGlobal("ModularForms", [
-        data.group,
+        data.character ?? data.group,
         data.weight,
         data.base,
         true,
@@ -160,6 +174,8 @@ function decodeParent(payload: WireValue, context: DecodeContext): unknown {
         data.precision,
         data.kind === "EisensteinSubspace",
       ]);
+    case "OldModularFormsSubspace":
+      return callMethod(data.cuspSpace, "old_subspace", []);
     default:
       throw new SageSerializationError(
         `unsupported modular-forms parent ${String(data.kind)}`,
@@ -184,6 +200,12 @@ function encodeOperator(value: unknown, context: EncodeContext): WireValue {
         name: Reflect.get(Object(value), "_name"),
         ambientMatrix: Reflect.get(Object(value), "_ambient_matrix"),
       });
+    case "ClassicalModularFormsHeckeOperator":
+      return context.encode({
+        kind: "ClassicalModularFormsHeckeOperator",
+        space: Reflect.get(Object(value), "_space"),
+        index: Reflect.get(Object(value), "_index"),
+      });
     default:
       throw new SageSerializationError("unsupported modular-symbol operator");
   }
@@ -203,6 +225,8 @@ function decodeOperator(payload: WireValue, context: DecodeContext): unknown {
         data.name,
         data.ambientMatrix,
       ]);
+    case "ClassicalModularFormsHeckeOperator":
+      return callMethod(data.space, "T", [data.index]);
     default:
       throw new SageSerializationError(
         `unsupported modular-symbol operator ${String(data.kind)}`,
@@ -212,6 +236,14 @@ function decodeOperator(payload: WireValue, context: DecodeContext): unknown {
 
 function encodeElement(value: unknown, context: EncodeContext): WireValue {
   const parent = Reflect.get(Object(value), "_parent");
+  if (kind(value) === "NormalizedNewform") {
+    return context.encode({
+      kind: "NormalizedNewform",
+      parent,
+      constituent: Reflect.get(Object(value), "_constituent"),
+      name: Reflect.get(Object(value), "_name"),
+    });
+  }
   switch (kind(parent)) {
     case "DirichletGroup":
       return context.encode({
@@ -226,14 +258,27 @@ function encodeElement(value: unknown, context: EncodeContext): WireValue {
         coordinates: callMethod(value, "vector"),
         label: Reflect.get(Object(value), "_label"),
       });
+    case "ModularFormsSubspace":
     case "EisensteinSubspace":
-      return context.encode({
-        kind: "EisensteinSeriesElement",
-        parent,
-        index: Reflect.get(Object(value), "_index"),
-        displayPrecision: Reflect.get(Object(value), "_display_precision"),
-      });
+    case "OldModularFormsSubspace":
+      if (kind(value) === "ClassicalModularFormElement") {
+        return context.encode({
+          kind: "ClassicalModularFormElement",
+          parent,
+          coordinates: callMethod(value, "vector"),
+          displayPrecision: callMethod(value, "precision"),
+        });
+      }
+      throw new SageSerializationError("unsupported modular-forms element");
     case "ModularForms":
+      if (kind(value) === "ClassicalModularFormElement") {
+        return context.encode({
+          kind: "ClassicalModularFormElement",
+          parent,
+          coordinates: callMethod(value, "vector"),
+          displayPrecision: callMethod(value, "precision"),
+        });
+      }
       if (kind(value) !== "ExactModularForm") {
         throw new SageSerializationError("unsupported modular-forms element");
       }
@@ -259,16 +304,21 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
         data.coordinates,
         data.label,
       ]);
-    case "EisensteinSeriesElement":
-      return callMethod(data.parent, "_from_serialized_element", [
-        data.index,
-        data.displayPrecision,
-      ]);
     case "ExactModularForm":
       return callMethod(data.parent, "_from_serialized_element", [
         data.terms,
         data.displayPrecision,
         data.provenance,
+      ]);
+    case "ClassicalModularFormElement":
+      return callMethod(data.parent, "_from_serialized_classical_element", [
+        data.coordinates,
+        data.displayPrecision,
+      ]);
+    case "NormalizedNewform":
+      return callMethod(data.parent, "_from_serialized_newform", [
+        data.constituent,
+        data.name,
       ]);
     default:
       throw new SageSerializationError(
@@ -287,6 +337,7 @@ const parentCodec: SageCodec = {
     "ModularForms",
     "ModularFormsSubspace",
     "EisensteinSubspace",
+    "OldModularFormsSubspace",
   ].includes(
     kind(value) ?? "",
   ),
@@ -297,10 +348,12 @@ const parentCodec: SageCodec = {
 const elementCodec: SageCodec = {
   type: "sage.modular_forms.element",
   version: 1,
-  test: (value) => [
+  test: (value) => kind(value) === "NormalizedNewform" || [
     "DirichletGroup",
     "ModularSymbols",
+    "ModularFormsSubspace",
     "EisensteinSubspace",
+    "OldModularFormsSubspace",
     "ModularForms",
   ].includes(
     parentKind(value) ?? "",
@@ -312,7 +365,11 @@ const elementCodec: SageCodec = {
 const operatorCodec: SageCodec = {
   type: "sage.modular_forms.operator",
   version: 1,
-  test: (value) => ["HeckeOperator", "ModularSymbolsLinearOperator"].includes(
+  test: (value) => [
+    "HeckeOperator",
+    "ModularSymbolsLinearOperator",
+    "ClassicalModularFormsHeckeOperator",
+  ].includes(
     kind(value) ?? "",
   ),
   encode: encodeOperator,

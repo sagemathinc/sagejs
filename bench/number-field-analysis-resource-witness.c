@@ -172,23 +172,48 @@ int main(int argc, char **argv)
     }
     static const char *const sqrt5[] = {"-5", "0", "1"};
     static const char *const cubic[] = {"-8", "-2", "-1", "1"};
-    static const char *const unresolved[] = {"-1022117", "0", "1"};
+    static const char *const word_composite[] = {"-1022117", "0", "1"};
+    static const char *const residual_power[] = {"-1229", "0", "0", "1"};
+    static const char *const composite_residual_power[] = {
+        "-3134169485067", "0", "1"
+    };
+    static const char *const cubic_residual_2169623[] = {
+        "-4269", "94", "-1", "1"
+    };
+    static const char *const cubic_residual_3374831[] = {
+        "256", "376", "-1", "1"
+    };
     static const char *const arbitrary[] = {
         "-18446744073709551629", "0", "1"
     };
 
     sagejs_number_field_analysis_resource_t sqrt5_result;
     sagejs_number_field_analysis_resource_t cubic_result;
-    sagejs_number_field_analysis_resource_t unresolved_result;
+    sagejs_number_field_analysis_resource_t word_composite_result;
+    sagejs_number_field_analysis_resource_t residual_power_result;
+    sagejs_number_field_analysis_resource_t composite_residual_power_result;
+    sagejs_number_field_analysis_resource_t cubic_residual_2169623_result;
+    sagejs_number_field_analysis_resource_t cubic_residual_3374831_result;
     sagejs_number_field_analysis_resource_t arbitrary_result;
     analyze(sqrt5_result, sqrt5, 3, "3", UINT64_C(1000));
     analyze(cubic_result, cubic, 4, "1", UINT64_C(1000));
-    analyze(unresolved_result, unresolved, 3, "1", UINT64_C(1000));
+    analyze(word_composite_result, word_composite, 3, "1", UINT64_C(1000));
+    analyze(residual_power_result, residual_power, 4, "1", UINT64_C(1000));
+    analyze(composite_residual_power_result,
+        composite_residual_power, 3, "1", UINT64_C(1000));
+    analyze(cubic_residual_2169623_result,
+        cubic_residual_2169623, 4, "1", UINT64_C(1000));
+    analyze(cubic_residual_3374831_result,
+        cubic_residual_3374831, 4, "1", UINT64_C(1000));
     analyze(arbitrary_result, arbitrary, 3, "1", UINT64_C(1000));
 
     assert(sqrt5_result->length > 80);
     assert(cubic_result->length > 80);
-    assert(unresolved_result->length > 80);
+    assert(word_composite_result->length > 80);
+    assert(residual_power_result->length > 80);
+    assert(composite_residual_power_result->length > 80);
+    assert(cubic_residual_2169623_result->length > 80);
+    assert(cubic_residual_3374831_result->length > 80);
     assert(arbitrary_result->length > 80);
 
     /* Deterministic close/reconstruct stress; sanitizers authenticate cleanup. */
@@ -203,12 +228,20 @@ int main(int argc, char **argv)
     printf("{\"schema\":\"sagejs.number-field-analysis-resource/v2\",");
     print_result("sqrt5", sqrt5_result, 0);
     print_result("cubic", cubic_result, 0);
-    print_result("unresolved", unresolved_result, 0);
+    print_result("wordComposite", word_composite_result, 0);
+    print_result("residualPower", residual_power_result, 0);
+    print_result("compositeResidualPower", composite_residual_power_result, 0);
+    print_result("cubicResidual2169623", cubic_residual_2169623_result, 0);
+    print_result("cubicResidual3374831", cubic_residual_3374831_result, 0);
     print_result("arbitrary", arbitrary_result, 1);
     printf("}\n");
 
     sagejs_number_field_analysis_resource_clear(arbitrary_result);
-    sagejs_number_field_analysis_resource_clear(unresolved_result);
+    sagejs_number_field_analysis_resource_clear(cubic_residual_3374831_result);
+    sagejs_number_field_analysis_resource_clear(cubic_residual_2169623_result);
+    sagejs_number_field_analysis_resource_clear(composite_residual_power_result);
+    sagejs_number_field_analysis_resource_clear(residual_power_result);
+    sagejs_number_field_analysis_resource_clear(word_composite_result);
     sagejs_number_field_analysis_resource_clear(cubic_result);
     sagejs_number_field_analysis_resource_clear(sqrt5_result);
     return 0;

@@ -2,7 +2,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
+const { readFileSync, readdirSync } = require("node:fs");
 const { resolve } = require("node:path");
 const test = require("node:test");
 
@@ -18,6 +18,22 @@ test("routine CI cancels superseded runs and fails the platform matrix fast", ()
   assert.match(workflow, /fail-fast: true/);
   assert.match(workflow, /pnpm test:ci/);
   assert.doesNotMatch(workflow, /parallel:check -- --all/);
+});
+
+test("repository workflows use GitHub-hosted runners", () => {
+  const workflowDirectory = resolve(__dirname, "../.github/workflows");
+  for (const filename of readdirSync(workflowDirectory)) {
+    if (!filename.endsWith(".yml") && !filename.endsWith(".yaml")) continue;
+    assert.doesNotMatch(
+      readFileSync(resolve(workflowDirectory, filename), "utf8"),
+      /blacksmith/i,
+      `${filename} must not spend Blacksmith runner credits`,
+    );
+  }
+  assert.match(workflow, /runs-on: ubuntu-24\.04/);
+  assert.match(workflow, /runner: ubuntu-24\.04-arm/);
+  assert.match(workflow, /runner: macos-15/);
+  assert.match(workflow, /runner: windows-2025/);
 });
 
 test("expensive native and SEA jobs wait for the routine gate", () => {

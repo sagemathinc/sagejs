@@ -207,8 +207,11 @@ from sagejs.ffi.flint import (
     fmpz_matrix_det as _ffi_fmpz_matrix_det,
     fmpz_matrix_trace as _ffi_fmpz_matrix_trace,
     fmpz_matrix_hnf as _ffi_fmpz_matrix_hnf,
+    fmpz_matrix_hnf_into as _ffi_fmpz_matrix_hnf_into,
     fmpz_matrix_snf as _ffi_fmpz_matrix_snf,
+    fmpz_matrix_snf_into as _ffi_fmpz_matrix_snf_into,
     fmpz_matrix_hnf_transform as _ffi_fmpz_matrix_hnf_transform,
+    fmpz_matrix_lll_transform as _ffi_fmpz_matrix_lll_transform,
     fmpz_matrix_snf_transform as _ffi_fmpz_matrix_snf_transform,
     fmpz_matrix_right_kernel as _ffi_fmpz_matrix_right_kernel,
     fmpz_matrix_charpoly as _ffi_fmpz_matrix_charpoly,
@@ -451,7 +454,11 @@ from sagejs.ffi.flint import (
     number_field_order_resource_unramified_primes as _ffi_number_field_order_resource_unramified_primes,
     number_field_order_with_round2_proof_resource as _ffi_number_field_order_with_round2_proof_resource,
     number_field_analyze_resource as _ffi_number_field_analyze_resource,
+    number_field_analysis_resource_project as _ffi_number_field_analysis_resource_project,
+    number_field_analysis_resource_project_proof as _ffi_number_field_analysis_resource_project_proof,
     integer_log_sqrt_balls_packed as _ffi_integer_log_sqrt_balls_packed,
+    integer_log_sqrt_balls_resource as _ffi_integer_log_sqrt_balls_resource,
+    positive_rational_log_balls_resource as _ffi_positive_rational_log_balls_resource,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
 
@@ -2297,10 +2304,32 @@ def ffiFmpzMatrixHnf(
 
 
 @native
+def ffiFmpzMatrixHnfInto(
+    hermite: FmpzMatrix,
+    source: FmpzMatrix,
+) -> bool:
+    return _ffi_fmpz_matrix_hnf_into(
+        hermite,
+        source,
+    )
+
+
+@native
 def ffiFmpzMatrixSnf(
     source: FmpzMatrix,
 ) -> FmpzMatrix:
     return _ffi_fmpz_matrix_snf(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixSnfInto(
+    smith: FmpzMatrix,
+    source: FmpzMatrix,
+) -> bool:
+    return _ffi_fmpz_matrix_snf_into(
+        smith,
         source,
     )
 
@@ -2313,6 +2342,19 @@ def ffiFmpzMatrixHnfTransform(
 ) -> bool:
     return _ffi_fmpz_matrix_hnf_transform(
         hermite,
+        transform,
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixLllTransform(
+    reduced: FmpzMatrix,
+    transform: FmpzMatrix,
+    source: FmpzMatrix,
+) -> bool:
+    return _ffi_fmpz_matrix_lll_transform(
+        reduced,
         transform,
         source,
     )
@@ -5405,6 +5447,36 @@ def ffiNumberFieldAnalyzeResource(
 
 
 @native
+def ffiNumberFieldAnalysisResourceProject(
+    output: IntegerBuffer,
+    resource: NumberFieldAnalysisResource,
+    output_length: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_number_field_analysis_resource_project(
+        output,
+        resource,
+        output_length,
+        one,
+    )
+
+
+@native
+def ffiNumberFieldAnalysisResourceProjectProof(
+    output: IntegerBuffer,
+    resource: NumberFieldAnalysisResource,
+    output_length: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_number_field_analysis_resource_project_proof(
+        output,
+        resource,
+        output_length,
+        one,
+    )
+
+
+@native
 def ffiIntegerLogSqrtBallsPacked(
     output: IntegerBuffer,
     source: IntegerBuffer,
@@ -5419,5 +5491,35 @@ def ffiIntegerLogSqrtBallsPacked(
         output_length,
         count,
         one,
+        precision,
+    )
+
+
+@native
+def ffiIntegerLogSqrtBallsResource(
+    output: FmpzMatrix,
+    source: FmpzMatrix,
+    precision: uint64,
+) -> bool:
+    return _ffi_integer_log_sqrt_balls_resource(
+        output,
+        source,
+        precision,
+    )
+
+
+@native
+def ffiPositiveRationalLogBallsResource(
+    output: FmpzMatrix,
+    numerators: FmpzMatrix,
+    denominators: FmpzMatrix,
+    count: uint64,
+    precision: uint64,
+) -> bool:
+    return _ffi_positive_rational_log_balls_resource(
+        output,
+        numerators,
+        denominators,
+        count,
         precision,
     )

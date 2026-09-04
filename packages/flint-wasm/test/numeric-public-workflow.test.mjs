@@ -19,6 +19,15 @@ const numericNapiIds = [
   "complexFromReals",
   "complexImag",
   "complexImagDouble",
+  "complexIntervalBinary",
+  "complexIntervalFromParts",
+  "complexIntervalPart",
+  "complexIntervalPowInt",
+  "complexIntervalPrecision",
+  "complexIntervalRelation",
+  "complexIntervalRound",
+  "complexIntervalToString",
+  "complexIntervalUnary",
   "complexMul",
   "complexNeg",
   "complexPowInt",
@@ -34,8 +43,20 @@ const numericNapiIds = [
   "realFromBigInt",
   "realFromRational",
   "realFromString",
+  "realIntervalBinary",
+  "realIntervalFromBounds",
+  "realIntervalFromRational",
+  "realIntervalPart",
+  "realIntervalPowInt",
+  "realIntervalPrecision",
+  "realIntervalRelation",
+  "realIntervalRound",
+  "realIntervalToString",
+  "realIntervalUnary",
   "realMul",
   "realNeg",
+  "realNext",
+  "realParts",
   "realPowInt",
   "realPrecision",
   "realRound",
@@ -109,6 +130,85 @@ test("MPFR resources and Acb special functions execute in the production Wasm mo
   const power = keep(backend.realPowInt(three, 3));
   assert.equal(backend.realToString(power), "27.000000000000000000000000000");
   assert.equal(backend.realEqual(power, power), true);
+  const nextAbove = keep(backend.realNext(threeQuarters, 1));
+  assert.equal(backend.realEqual(nextAbove, threeQuarters), false);
+  assert.deepEqual(
+    backend.realParts(threeQuarters),
+    [1, 950737950171172051122527404032n, -100n],
+  );
+
+  const intervalThird = keep(
+    backend.realIntervalFromRational(1n, 9n, 100),
+  );
+  const intervalOne = keep(
+    backend.realIntervalFromRational(1n, 1n, 100),
+  );
+  const intervalBounds = keep(
+    backend.realIntervalFromBounds(threeQuarters, fiveQuarters, 100),
+  );
+  assert.equal(backend.realIntervalPrecision(intervalThird), 100);
+  assert.match(backend.realIntervalToString(intervalThird), /^0\.1111.*\?$/);
+  const intervalRounded = keep(backend.realIntervalRound(intervalThird, 53));
+  assert.equal(backend.realIntervalPrecision(intervalRounded), 53);
+  const intervalSum = keep(
+    backend.realIntervalBinary(0, intervalThird, intervalOne, 100),
+  );
+  assert.equal(
+    backend.realIntervalRelation(1, intervalBounds, intervalOne),
+    true,
+  );
+  const intervalSqrt = keep(
+    backend.realIntervalUnary(1, intervalThird, 100),
+  );
+  assert.match(backend.realIntervalToString(intervalSqrt), /^0\.3333.*\?$/);
+  const intervalPower = keep(
+    backend.realIntervalPowInt(intervalThird, 3n, 100),
+  );
+  assert.match(backend.realIntervalToString(intervalPower), /^0\.00137.*\?$/);
+  const intervalLower = keep(backend.realIntervalPart(0, intervalSum));
+  assert.ok(backend.realToDouble(intervalLower) < 1.112);
+
+  const complexInterval = keep(
+    backend.complexIntervalFromParts(intervalThird, intervalThird, 100),
+  );
+  assert.equal(backend.complexIntervalPrecision(complexInterval), 100);
+  assert.match(
+    backend.complexIntervalToString(complexInterval),
+    /^0\.1111.*\+ 0\.1111.*\*I$/,
+  );
+  const complexIntervalRounded = keep(
+    backend.complexIntervalRound(complexInterval, 53),
+  );
+  assert.equal(backend.complexIntervalPrecision(complexIntervalRounded), 53);
+  const complexIntervalSum = keep(
+    backend.complexIntervalBinary(
+      0, complexInterval, complexInterval, 100,
+    ),
+  );
+  assert.equal(
+    backend.complexIntervalRelation(
+      2, complexIntervalSum, complexInterval,
+    ),
+    false,
+  );
+  const complexIntervalSqrt = keep(
+    backend.complexIntervalUnary(1, complexInterval, 100),
+  );
+  assert.match(
+    backend.complexIntervalToString(complexIntervalSqrt),
+    /\*I$/,
+  );
+  const complexIntervalPower = keep(
+    backend.complexIntervalPowInt(complexInterval, 2n, 100),
+  );
+  assert.match(backend.complexIntervalToString(complexIntervalPower), /\*I$/);
+  const complexRealInterval = keep(
+    backend.complexIntervalPart(0, complexInterval),
+  );
+  assert.equal(
+    backend.realIntervalRelation(0, complexRealInterval, intervalThird),
+    true,
+  );
 
   const complex = keep(backend.complexFromReals(fiveQuarters, threeQuarters));
   assert.equal(backend.complexPrecision(complex), 100);
@@ -386,8 +486,9 @@ test("public browser evaluator authenticates its active Wasm routes", {
         const session = await createSage();
         try {
           const result = await session.evaluate(
-            "R=RealField(100); x=var('x'); " +
-            "(R(1)/R(3), Ei(CDF(1,2)), " +
+            "RF=RealField(100); R=RealIntervalField(10); " +
+            "a=R(1/9); C=ComplexIntervalField(10); x=var('x'); " +
+            "(RF(1)/RF(3), Ei(CDF(1,2)), a, 1/a, C(a,a).sqrt(), " +
             "numerical_integral(exp(x^2),1,2)[0], " +
             "(x^2-2).find_root(1,2))"
           );
@@ -411,12 +512,19 @@ test("public browser evaluator authenticates its active Wasm routes", {
     }
     const result = evaluation.result.value;
     assert.match(result.repr, /0\.33333333333333333333333333333/);
+    assert.match(result.repr, /0\.112\?/);
+    assert.match(result.repr, /9\.0\?/);
+    assert.match(result.repr, /\*I/);
     assert.match(result.repr, /14\.9899760196000/);
     assert.match(result.repr, /1\.41421356237/);
     const routes = new Map(result.routes);
     for (const capabilityId of [
       "napi:@sagemath/sagejs-flint:realDiv",
       "napi:@sagemath/sagejs-flint:complexEi",
+      "napi:@sagemath/sagejs-flint:realIntervalFromRational",
+      "napi:@sagemath/sagejs-flint:realIntervalBinary",
+      "napi:@sagemath/sagejs-flint:complexIntervalFromParts",
+      "napi:@sagemath/sagejs-flint:complexIntervalUnary",
       "specialist:symbolic-numerical-integral-wasm",
     ]) {
       assert.equal(

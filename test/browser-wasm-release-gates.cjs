@@ -337,6 +337,14 @@ test("Cloudflare-compatible header policy is parsed and security checked", () =>
   assert.deepEqual(validateHeadersRules(rules), []);
   rules[0].headers.delete("cross-origin-opener-policy");
   assert.match(validateHeadersRules(rules).join("\n"), /cross-origin-opener-policy/);
+
+  const embedRules = parseHeadersFile(`/*
+  X-Frame-Options: DENY
+
+/embed/v1/frame.html
+  ! X-Frame-Options
+`);
+  assert.equal(embedRules[1].headers.get("x-frame-options"), null);
 });
 
 async function withDeploymentOrigin({ doubleBrotli = false, doubleImmutableBrotli = false } = {}, callback) {

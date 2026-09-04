@@ -63,6 +63,50 @@ test.before(async () => {
   renderer = await import(pathToFileURL(modulePath));
 });
 
+test("checked evidence comparison admits roundoff but rejects semantic drift", () => {
+  assert.equal(
+    generator.normalizeGeneratedJson('{"status":"converged"}\r\n'),
+    '{"status":"converged"}\n',
+  );
+  assert.doesNotThrow(() => generator.assertEvidenceEquivalent(
+    {
+      measurements: { bundle_bytes: 2_104_140, max_trace_bytes: 19_131 },
+      visualization: {
+        budget_measurements: { trace_records: [{ payload_bytes: 14_541 }] },
+      },
+      validation: { residual: 4.1022536592756025e-17 },
+    },
+    {
+      measurements: { bundle_bytes: 2_104_132, max_trace_bytes: 19_129 },
+      visualization: {
+        budget_measurements: { trace_records: [{ payload_bytes: 14_539 }] },
+      },
+      validation: { residual: 4.3164264222198e-17 },
+    },
+  ));
+  assert.throws(
+    () => generator.assertEvidenceEquivalent(
+      { status: "converged", value: 1.0 },
+      { status: "validation_failed", value: 1.0 },
+    ),
+    /status changed/,
+  );
+  assert.throws(
+    () => generator.assertEvidenceEquivalent(
+      { status: "converged", value: 1.0 },
+      { status: "converged", value: 1.001 },
+    ),
+    /value changed/,
+  );
+  assert.throws(
+    () => generator.assertEvidenceEquivalent(
+      { measurements: { story_count: 10 } },
+      { measurements: { story_count: 11 } },
+    ),
+    /story_count changed/,
+  );
+});
+
 test("checked gallery is generated from current numerical contracts", async () => {
   await generator.main([]);
   assert.equal(bundle.schema, "sagejs.numerics.gallery.bundle/v1");

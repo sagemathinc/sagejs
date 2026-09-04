@@ -151,7 +151,8 @@ assert display.str() == legacy_format(display), (
     legacy_format(display),
 )
 display.subdivide(1, 1)
-assert display.str() == "[   1|  22  333]\n[--------------]\n[4444|   5   66]"
+expected_display = "[   1|  22  333]\n[----+---------]\n[4444|   5   66]"
+assert display.str() == expected_display, repr(display.str())
 
 # Representative 500x500 ratchets protect the structural boundaries from
 # returning to Python-level per-entry loops. The relative gates compare the

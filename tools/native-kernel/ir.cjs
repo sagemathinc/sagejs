@@ -25,7 +25,7 @@ const {
 } = require("./provenance.cjs");
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 
-const IR_VERSION = 34;
+const IR_VERSION = 36;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -101,6 +101,52 @@ function integerLiteral(node) {
     return undefined;
   }
   return BigInt(args[0].value);
+}
+
+function moduleIntegerConstants(topLevel, filename) {
+  const constants = new Map();
+  function evaluate(node) {
+    const literal = integerLiteral(node);
+    if (literal !== undefined) return literal;
+    if (nodeType(node) === "AST_SymbolRef") return constants.get(node.name);
+    if (nodeType(node) !== "AST_Binary") return undefined;
+    const left = evaluate(node.left);
+    const right = evaluate(node.right);
+    if (left === undefined || right === undefined) return undefined;
+    switch (node.operator) {
+      case "+": return left + right;
+      case "-": return left - right;
+      case "*": return left * right;
+      case "//":
+        if (right === 0n) return undefined;
+        return left / right;
+      case "%":
+        if (right === 0n) return undefined;
+        return left % right;
+      case "<<":
+        if (right < 0n || right > 65536n) return undefined;
+        return left << right;
+      case ">>":
+        if (right < 0n || right > 65536n) return undefined;
+        return left >> right;
+      default: return undefined;
+    }
+  }
+  for (const statement of topLevel) {
+    if (nodeType(statement) !== "AST_SimpleStatement" ||
+        nodeType(statement.body) !== "AST_Assign" ||
+        statement.body.operator !== "=" ||
+        nodeType(statement.body.left) !== "AST_SymbolRef") continue;
+    const name = statement.body.left.name;
+    const value = evaluate(statement.body.right);
+    if (value === undefined) continue;
+    expect(
+      !constants.has(name),
+      `${filename}: duplicate native module integer constant ${name}`,
+    );
+    constants.set(name, value);
+  }
+  return constants;
 }
 
 function decimalLiteral(node) {
@@ -687,6 +733,40 @@ function supportedModulePreamble(statement) {
   });
 }
 
+function foreignDescriptor(
+  library,
+  declaration,
+  moduleName,
+  importedName,
+  localName,
+) {
+  return Object.freeze({
+    declarationId: declaration.declaration_id,
+    declarationIdentity: declaration.declaration_identity,
+    declarationHash: declaration.declaration_hash,
+    library: declaration.library,
+    resources: library.resources,
+    function: {
+      id: declaration.id,
+      pythonName: declaration.python_name,
+      signature: declaration.signature,
+      dynamic: declaration.dynamic,
+      native: declaration.native,
+      call_plan: declaration.call_plan,
+      effects: declaration.effects,
+      result: declaration.result,
+      errors: declaration.errors,
+      exceptions: declaration.exceptions,
+      targets: declaration.targets,
+    },
+    import: {
+      module: moduleName,
+      name: importedName,
+      localName,
+    },
+  });
+}
+
 function ffiImports(topLevel, filename) {
   const registry = loadFfiRegistry();
   const functions = new Map();
@@ -711,8 +791,36 @@ function ffiImports(topLevel, filename) {
             !resources.has(localName) && !functions.has(localName),
             `duplicate native FFI import name ${localName}`,
           );
+          const itemGetDeclaration = resource.item_get === undefined
+            ? undefined
+            : library.byPythonName.get(resource.item_get);
+          const itemSetDeclaration = resource.item_set === undefined
+            ? undefined
+            : library.byPythonName.get(resource.item_set);
           resources.set(localName, Object.freeze({
             ...resource,
+            ...(itemGetDeclaration === undefined
+              ? {}
+              : {
+                  item_get: foreignDescriptor(
+                    library,
+                    itemGetDeclaration,
+                    moduleName,
+                    itemGetDeclaration.python_name,
+                    `${localName}.__getitem__`,
+                  ),
+                }),
+            ...(itemSetDeclaration === undefined
+              ? {}
+              : {
+                  item_set: foreignDescriptor(
+                    library,
+                    itemSetDeclaration,
+                    moduleName,
+                    itemSetDeclaration.python_name,
+                    `${localName}.__setitem__`,
+                  ),
+                }),
             compiler_type: localName,
             declaration_identity: library.identity,
             library: library.library,
@@ -728,31 +836,13 @@ function ffiImports(topLevel, filename) {
           !functions.has(localName) && !resources.has(localName),
           `duplicate native FFI import name ${localName}`,
         );
-        functions.set(localName, Object.freeze({
-          declarationId: declaration.declaration_id,
-          declarationIdentity: declaration.declaration_identity,
-          declarationHash: declaration.declaration_hash,
-          library: declaration.library,
-          resources: library.resources,
-          function: {
-            id: declaration.id,
-            pythonName: declaration.python_name,
-            signature: declaration.signature,
-            dynamic: declaration.dynamic,
-            native: declaration.native,
-            call_plan: declaration.call_plan,
-            effects: declaration.effects,
-            result: declaration.result,
-            errors: declaration.errors,
-            exceptions: declaration.exceptions,
-            targets: declaration.targets,
-          },
-          import: {
-            module: moduleName,
-            name: imported.name,
-            localName,
-          },
-        }));
+        functions.set(localName, foreignDescriptor(
+          library,
+          declaration,
+          moduleName,
+          imported.name,
+          localName,
+        ));
       }
     }
   }
@@ -773,6 +863,46 @@ async function lowerSource(source, filename, options = {}) {
   }
 
   const topLevel = array(toplevel.body);
+  const importedNativeFunctions = new Map();
+  if (typeof options.resolveNativeImport === "function") {
+    for (const statement of topLevel) {
+      if (nodeType(statement) !== "AST_Imports") continue;
+      for (const item of array(statement.imports)) {
+        const moduleName = item.key;
+        if (typeof moduleName !== "string" ||
+            !moduleName.startsWith("sagejs.") ||
+            moduleName === "sagejs.native" ||
+            moduleName.startsWith("sagejs.ffi.") || item.star) continue;
+        for (const imported of array(item.argnames)) {
+          const localName = imported.alias?.name || imported.name;
+          const resolved = await options.resolveNativeImport({
+            moduleName,
+            importedName: imported.name,
+            localName,
+            importer: filename,
+          });
+          if (resolved === null || resolved === undefined) continue;
+          expect(
+            localName === imported.name,
+            `${filename}: imported native function aliases are not yet supported`,
+          );
+          expect(
+            !importedNativeFunctions.has(localName),
+            `${filename}: duplicate imported native function ${localName}`,
+          );
+          const entry = resolved.ir?.functions?.find(
+            (fn) => fn.name === imported.name,
+          );
+          expect(
+            entry !== undefined,
+            `${filename}: imported native module did not compile ${imported.name}`,
+          );
+          importedNativeFunctions.set(localName, { ...resolved, entry });
+        }
+      }
+    }
+  }
+  const integerConstants = moduleIntegerConstants(topLevel, filename);
   const records = nativeRecordSchemas(topLevel, filename);
   const foreignImports = ffiImports(topLevel, filename);
   const foreignFunctions = foreignImports.functions;
@@ -874,6 +1004,17 @@ async function lowerSource(source, filename, options = {}) {
       signatures.set(signature.name, signature);
     }
   }
+  for (const [localName, imported] of importedNativeFunctions) {
+    expect(
+      !signatures.has(localName),
+      `native function ${localName} conflicts with an imported native function`,
+    );
+    signatures.set(localName, {
+      name: localName,
+      params: imported.entry.params.map((param) => ({ ...param })),
+      returnType: imported.entry.returnType,
+    });
+  }
   for (const name of foreignFunctions.keys()) {
     expect(
       !signatures.has(name),
@@ -916,11 +1057,13 @@ async function lowerSource(source, filename, options = {}) {
             records,
             filename,
             decoratedMode,
+            integerConstants,
           );
   }
   const loweredDefinitions = [...selectedDefinitions];
   const lowered = [];
   const included = new Set(loweredDefinitions.map((fn) => fn.name.name));
+  const requiredNativeImports = new Set();
   const definitionsByName = new Map(
     definitions.map((fn) => [fn.name.name, fn]),
   );
@@ -930,6 +1073,11 @@ async function lowerSource(source, filename, options = {}) {
     for (const dependency of result.dependencies || []) {
       if (included.has(dependency)) continue;
       const definition = definitionsByName.get(dependency);
+      if (definition === undefined && importedNativeFunctions.has(dependency)) {
+        requiredNativeImports.add(dependency);
+        included.add(dependency);
+        continue;
+      }
       expect(
         definition !== undefined,
         `${result.name} calls missing native function ${dependency}`,
@@ -938,11 +1086,41 @@ async function lowerSource(source, filename, options = {}) {
       loweredDefinitions.push(definition);
     }
   }
-  const selected = analyzeExactModule(lowered).map((fn, index) => finalizeFunctionProvenance(
-    fn,
-    loweredDefinitions[index],
-    filename,
-  ));
+  const importedLowered = [];
+  const importedRecords = [];
+  const importedLibraries = [];
+  const nativeSourceDependencies = [];
+  const combinedNames = new Set(lowered.map((fn) => fn.name));
+  for (const name of requiredNativeImports) {
+    const imported = importedNativeFunctions.get(name);
+    for (const fn of imported.ir.functions || []) {
+      expect(
+        !combinedNames.has(fn.name),
+        `${filename}: imported native function conflicts with ${fn.name}`,
+      );
+      combinedNames.add(fn.name);
+      importedLowered.push(fn);
+    }
+    importedRecords.push(...(imported.ir.records || []));
+    importedLibraries.push(...(imported.ir.foreignLibraries || []));
+    nativeSourceDependencies.push({
+      module: imported.moduleName,
+      path: imported.sourcePath,
+      sha256: imported.sourceHash,
+    });
+    nativeSourceDependencies.push(
+      ...(imported.ir.nativeSourceDependencies || []),
+    );
+  }
+  const selected = analyzeExactModule([...lowered, ...importedLowered]).map(
+    (fn, index) => index < lowered.length
+      ? finalizeFunctionProvenance(
+          fn,
+          loweredDefinitions[index],
+          filename,
+        )
+      : fn,
+  );
   const selectedForeignLibraryIds = new Set();
   for (const fn of selected) {
     for (const dependency of fn.foreignDependencies || []) {
@@ -960,34 +1138,43 @@ async function lowerSource(source, filename, options = {}) {
   const importedForeignLibraries = [
     ...foreignResources.values(),
     ...foreignFunctions.values(),
-  ];
+  ].map((foreign) => {
+    const declarationHash = foreign.declarationHash ??
+      foreign.declaration_identity.split("@")[1];
+    return {
+      id: foreign.library.id,
+      declarationHash,
+      declarationIdentity: `${foreign.library.id}@${declarationHash}`,
+      pythonModule: foreign.library.python_module,
+      dynamic: foreign.library.dynamic,
+      native: foreign.library.native,
+      resources: foreign.resources ?? [foreign],
+    };
+  });
+  const combinedRecords = new Map();
+  for (const record of [...records.values(), ...importedRecords]) {
+    const prior = combinedRecords.get(record.name);
+    expect(
+      prior === undefined || JSON.stringify(prior) === JSON.stringify(record),
+      `${filename}: imported native record conflicts with ${record.name}`,
+    );
+    combinedRecords.set(record.name, record);
+  }
   return {
     version: IR_VERSION,
-    records: Array.from(records.values()),
+    records: Array.from(combinedRecords.values()),
     functions: selected,
     foreignLibraries: Array.from(new Map(
-      importedForeignLibraries
-        .filter((foreign) => selectedForeignLibraryIds.has(foreign.library.id))
-        .map((foreign) => {
-          const declarationHash = foreign.declarationHash ??
-            foreign.declaration_identity.split("@")[1];
-          return [
-            foreign.library.id,
-            {
-              id: foreign.library.id,
-              declarationHash,
-              declarationIdentity: `${foreign.library.id}@${declarationHash}`,
-              pythonModule: foreign.library.python_module,
-              dynamic: foreign.library.dynamic,
-              native: foreign.library.native,
-              resources: foreign.resources ?? [foreign],
-            },
-          ];
-        }),
+      [...importedForeignLibraries, ...importedLibraries]
+        .filter((library) => selectedForeignLibraryIds.has(library.id))
+        .map((library) => [library.id, library]),
     ).values()).sort((left, right) => left.id.localeCompare(right.id)),
     callGraph: Object.fromEntries(
       selected.map((fn) => [fn.name, fn.dependencies || []]),
     ),
+    nativeSourceDependencies: Array.from(new Map(
+      nativeSourceDependencies.map((dependency) => [dependency.path, dependency]),
+    ).values()).sort((left, right) => left.path.localeCompare(right.path)),
   };
 }
 

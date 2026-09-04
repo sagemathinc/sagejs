@@ -789,6 +789,32 @@ sage: R(1.00000000000000000000000000000000000000000000000000001505) == \
 True
 ```
 
+`RealField` also supports Sage's five MPFR rounding modes (`RNDN`, `RNDU`,
+`RNDD`, `RNDZ`, and `RNDA`), adjacent representable values, exact dyadic
+reconstruction, and binary formatting. Certified real and complex intervals
+use Arb and Acb in both native builds and WebAssembly:
+
+```py
+sagejs: up = RealField(3, rnd="RNDU")
+sagejs: up(1/9).exact_rational()
+1/8
+sagejs: R = RealIntervalField(10)
+sagejs: a = R(1/9); a, 1/a
+(0.112?, 9.0?)
+sagejs: (1/a).str(style="brackets")
+'[8.9843 .. 9.0157]'
+sagejs: ComplexIntervalField(10)(a, a).sqrt()
+0.366? + 0.152?*I
+```
+
+Integer and rational inputs are enclosed from their exact values, and all
+arithmetic is outward-rounded. A backend without Arb/Acb support raises an
+explicit capability error instead of silently substituting ordinary floating
+point. The interval element implementation is loaded on first use, so merely
+starting Sage.js does not pay its code-loading cost. See
+[Certified interval arithmetic](docs/interval-arithmetic.md) for the supported
+API and guarantees.
+
 ## Parents, coercion, and native polynomials
 
 The mathematical object model implements singleton `ZZ` and `QQ` parents,

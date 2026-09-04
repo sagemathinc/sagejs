@@ -442,7 +442,7 @@ class CertifiedModularForm(sage.Element):
     def __mul__(self, other: Any) -> CertifiedModularForm:
         if not isinstance(other, CertifiedModularForm) and _kind(other) not in [
             "ExactModularForm",
-            "EisensteinSeriesElement",
+            "ClassicalModularFormElement",
             "NormalizedNewform",
         ]:
             scalar = self.base_ring()(other)
@@ -619,7 +619,7 @@ def _source_character(source: Any, level: int) -> ExactNebentypus:
 def _recognized_source(source: Any) -> bool:
     return _kind(source) in [
         "ExactModularForm",
-        "EisensteinSeriesElement",
+        "ClassicalModularFormElement",
         "NormalizedNewform",
     ]
 
@@ -2089,6 +2089,27 @@ def _default_formula_candidates(
     return candidates
 
 
+def formula_candidate_upper_bound(space: Any, cutoff: Any = None) -> int:
+    """Bound the default formula span without constructing expansions."""
+    if space.base_ring() is not sage.QQ or space.group()._family != "Gamma0":
+        return 0
+    stopping_count = (
+        None if cutoff is None else _nonnegative(cutoff, "formula candidate cutoff")
+    )
+    if stopping_count == 0:
+        return 0
+    level_one_dimension = _global("dimension_cusp_forms")(1, space.weight())
+    count = runtime.number(level_one_dimension) * len(sage.divisors(space.level()))
+    if stopping_count is not None and count >= stopping_count:
+        return stopping_count
+    eta_cutoff = None if stopping_count is None else stopping_count - count
+    count += _eta_products_module().registry_eta_product_candidate_upper_bound(
+        space,
+        eta_cutoff,
+    )
+    return count if stopping_count is None else min(count, stopping_count)
+
+
 def formula_generated_subspace(
     space: Any,
     candidates: Any = None,
@@ -2258,7 +2279,10 @@ class QExpansionAlgorithmReceipt:
 def _modular_symbols_auto_domain(space: Any) -> bool:
     return (
         space.group()._family == "Gamma0"
-        and space.base_ring() is sage.QQ
+        and (
+            space.base_ring() is sage.QQ
+            or runtime.reflect.get(space.ambient_space(), "_character") is not None
+        )
         and runtime.reflect.get(space, "_subspace_kind") in ["Cuspidal", "New"]
     )
 
@@ -2271,6 +2295,7 @@ def _formula_explicit_domain(space: Any) -> bool:
     return (
         space.group()._family == "Gamma0"
         and space.base_ring() is sage.QQ
+        and runtime.reflect.get(space.ambient_space(), "_character") is None
         and runtime.reflect.get(space, "_subspace_kind") == "Cuspidal"
     )
 
@@ -2301,5 +2326,6 @@ __all__ = [
     "certified_modular_form",
     "character_eisenstein_series",
     "formula_generated_subspace",
+    "formula_candidate_upper_bound",
     "q_expansion_algorithm_receipt",
 ]

@@ -45,7 +45,17 @@ function runPublic(source, timeout) {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-class-unit-public-"));
   try {
     const filename = join(directory, "acceptance.py");
-    writeFileSync(filename, source, "utf8");
+    // This suite exercises the established object-producing class/unit
+    // pipeline and its resumable caches.  PR #100 adds a separate scalar-only
+    // resident fast path for supported complex cubics; its receipts and public
+    // dispatch are covered by number-field-cubic-native-class-number.cjs.
+    // Make the native accelerator decline here so these fallback contracts do
+    // not accidentally depend on whether a native pack was built beforehand.
+    const fallbackOnly = `
+import sagejs.number_fields.cubic_class_number_native_runtime as _native_cubic_runtime
+_native_cubic_runtime.certified_complex_cubic_class_number = lambda field: None
+`;
+    writeFileSync(filename, `${fallbackOnly}\n${source}`, "utf8");
     const [executable, arguments_] = sagejsInvocation(["--python", filename]);
     const result = spawnSync(executable, arguments_, {
       cwd: root,
@@ -136,7 +146,10 @@ test("public quadratic class/unit context preserves proof and analytic contracts
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 K = NumberField(x**2 + 4*x + 1, "a")
-expected = [(False, "exact-unconditional"), (True, "exact-unconditional")]
+expected = [
+    (False, "exact-relations-conditional-grh"),
+    (True, "exact-unconditional"),
+]
 for proof, status in expected:
     result = K.class_unit_group(proof=proof)
     assert result.complete and result.proof_status == status
@@ -398,7 +411,7 @@ assert len(rejected_hint.collector.records) == 5
 # the missing unit-relation work.
 result = K.class_unit_group(proof=False)
 assert result.complete and result.class_number() == 3
-assert result.proof_status == "exact-unconditional"
+assert result.proof_status == "exact-relations-conditional-grh"
 assert result.unit_group().unit_rank == 1
 resources = result.diagnostics["resources"]
 assert resources["cubic_factor_base_seed_uses"] == 1
@@ -701,7 +714,7 @@ print("cubic-relation-seed-ok")
   assert.equal(output, "cubic-relation-seed-ok");
 });
 
-test("cubic fallback retains a packed duplicate pair before unit saturation", () => {
+test("cubic fallback retains a stable packed dependency before unit saturation", () => {
   const output = runPublic(String.raw`
 import sagejs.number_fields.class_unit_analytic as analytic_module
 import sagejs.number_fields.class_group_factor_base as factor_base_module
@@ -712,13 +725,12 @@ x = R.gen()
 K = NumberField(x**3 - x**2 + 9*x - 21, "a")
 
 # LMFDB 3.1.2856.1 needed a targeted saturation batch when the packed cubic
-# relation sieve retained only the minimal class-presentation support.  Once
-# the bounded class proof fails, the producer retains the one additional
-# generator that pairs with an already selected duplicate valuation row (and
-# widens the box only if the primary candidates have none).  The resulting
-# unit quotient is
-# fundamental here, so neither LLL relation saturation nor the much more
-# expensive bounded p-th-root search should run.
+# relation sieve retained only transform-dependent class-presentation support.
+# Height-aware stable lattice deletion leaves one exact dependency relation in
+# the source-ordered packed candidates (and widens the box only if the primary
+# candidates have none).  Its unit quotient is already fundamental here, so
+# neither LLL relation saturation nor the much more expensive bounded p-th-root
+# search should run.
 original_saturate_unit_lattice = analytic_module.saturate_unit_lattice
 original_descriptor_scan = factor_base_module._eligible_descriptors
 unit_root_searches = 0
@@ -739,7 +751,7 @@ finally:
 assert unit_root_searches == 0
 result = K.class_unit_group(proof=False)
 assert result.complete
-assert result.proof_status == "exact-unconditional"
+assert result.proof_status == "exact-relations-conditional-grh"
 assert result.saturation_record.complete
 assert result.saturation_record.verify()
 resources = result.diagnostics["resources"]
@@ -747,7 +759,7 @@ artifact = K._bounded_cubic_class_number_artifact
 artifact_search = artifact.diagnostics["relation_search"]
 context = result.context
 assert context is not None
-assert context.proof_state.label == "exact-unconditional"
+assert context.proof_state.label == "exact-relations-conditional-grh"
 assert context.factor_base == result.conditional_factor_base
 assert context.relations == result.conditional_relation_records
 assert context.matrix_state is result.conditional_presentation_evidence
@@ -844,8 +856,8 @@ assert callback_result.diagnostics["resources"][
 assert replay_calls[0] >= 1
 assert events
 
-# The completed unconditional computation also satisfies proof=True without a
-# second relation or analytic pass.
+# The completed conditional computation upgrades to proof=True by reusing its
+# exact relation and analytic state rather than repeating discovery.
 assert K.class_number(proof=True) == 7
 print("cubic-packed-fundamental-unit-ok")
 `, 180_000);
@@ -860,8 +872,9 @@ R = PolynomialRing(QQ, "x")
 x = R.gen()
 
 # LMFDB 3.1.1563.1 has a seven-prime Minkowski base.  Reusing its exact
-# prefix plus one exact duplicate-row unit dependency makes the coupled result
-# unconditional without a separate BDF discovery/proof pass or LLL search.
+# The prefix plus one exact duplicate-row unit dependency completes the
+# conditional coupled result without a separate BDF discovery pass or LLL
+# search.  Its analytic index-one proof still carries the named GRH boundary.
 K = NumberField(x**3 - x**2 + 7*x - 6, "a")
 assert K.class_number(proof=False) == 5
 artifact = K._bounded_cubic_class_number_artifact
@@ -872,7 +885,7 @@ projection = list(K._class_number_projection_cache.values())[-1]
 result = K.class_unit_group(proof=False)
 assert projection._completed is result
 resources = result.diagnostics["resources"]
-assert result.proof_status == "exact-unconditional"
+assert result.proof_status == "exact-relations-conditional-grh"
 assert result.diagnostics["factor_base_bound"] == 11
 assert result.diagnostics["factor_base_size"] == 7
 assert resources["cubic_factor_base_seed_uses"] == 1
@@ -965,8 +978,9 @@ assert proof_result.saturation_record.complete
 assert proof_result.saturation_record.verify()
 
 # LMFDB 3.1.5448.1 has no duplicate valuation row in the primary coefficient
-# box.  The one bounded coefficient-4 fallback finds an exact pair whose unit
-# quotient is fundamental, so the coupled engine again needs no LLL search.
+# box.  The bounded coefficient-4 fallback finds one stable exact dependency
+# relation.  It is already the complete rank-one dependency basis, so the live
+# authenticated unit is reused without an unnecessary LLL reduction.
 W = NumberField(x**3 - x**2 - 14*x + 30, "c")
 assert W.class_number(proof=False) == 8
 widened_artifact = W._bounded_cubic_class_number_artifact
@@ -980,12 +994,17 @@ widened_projection = list(W._class_number_projection_cache.values())[-1]
 widened_result = W.class_unit_group(proof=False)
 assert widened_projection._completed is widened_result
 widened_resources = widened_result.diagnostics["resources"]
-assert widened_result.proof_status == "exact-unconditional"
+assert widened_result.proof_status == "exact-relations-conditional-grh"
 assert widened_resources["cubic_relation_seed_relations"] == 8
 assert widened_resources["relation_attempts"] == 0
 assert widened_resources["relation_candidates"] == 0
+assert widened_resources["unit_principal_authority_requests"] == 1
 assert widened_resources["unit_principal_authority_hits"] == 1
 assert widened_resources["unit_principal_authority_fallbacks"] == 0
+assert widened_resources["dependency_unit_steering_basis_hits"] == 1
+assert widened_resources["dependency_unit_steering_basis_fallbacks"] == 0
+assert widened_resources["dependency_lattice_lll_requests"] == 0
+assert widened_resources["dependency_lattice_lll_reductions"] == 0
 assert widened_result.context.live_diagnostics()["authenticated_dependency_units"] == 1
 
 # Filtering the widened box by repeated absolute norm changes only the amount

@@ -44,7 +44,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 834000,
+      "max_source_bytes": 853000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -55,6 +55,7 @@
         "src/baselib/containers.py",
         "src/baselib/errors.py",
         "src/baselib/internal.py",
+        "src/baselib/interacts.py",
         "src/baselib/itertools.py",
         "src/baselib/runtime_primitives.py",
         "src/baselib/sagejs_bootstrap.py",
@@ -149,7 +150,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 1000000,
+      "max_source_bytes": 1050000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.compiler", "sagejs.native", "sagejs.ffi"],
       "files": [
@@ -163,7 +164,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 800000,
+      "max_source_bytes": 820000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -189,10 +190,20 @@
       "prefixes": []
     },
     {
+      "id": "interval-arithmetic",
+      "layer": 3,
+      "startup": "lazy",
+      "max_source_bytes": 30000,
+      "depends_on": ["core-runtime", "native-integration", "arithmetic"],
+      "modules": ["sagejs.intervals"],
+      "files": ["src/lib/sagejs/intervals.py"],
+      "prefixes": []
+    },
+    {
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 440000,
+      "max_source_bytes": 450000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py"
@@ -238,7 +249,7 @@
       "id": "matrix-native-kernels",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 175000,
+      "max_source_bytes": 176000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -248,7 +259,6 @@
       "modules": ["sagejs.kernels.matrix"],
       "files": [
         "src/lib/sagejs/kernels/matrix/__init__.py",
-        "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
         "src/lib/sagejs/kernels/matrix/combinatorial.py",
         "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
         "src/lib/sagejs/kernels/matrix/dense_integer.py",
@@ -266,6 +276,21 @@
       "prefixes": []
     },
     {
+      "id": "class-group-resident-native-kernels",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 70000,
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic",
+        "linear-algebra"
+      ],
+      "modules": ["sagejs.kernels.matrix.class_group_hnf"],
+      "files": ["src/lib/sagejs/kernels/matrix/class_group_hnf.py"],
+      "prefixes": []
+    },
+    {
       "id": "number-field-algorithms",
       "layer": 5,
       "startup": "lazy",
@@ -275,6 +300,7 @@
         "native-integration",
         "arithmetic",
         "linear-algebra",
+        "class-group-resident-native-kernels",
         "matrix-native-kernels",
         "polynomial-native-kernels",
         "python-stdlib"
@@ -284,10 +310,33 @@
       "prefixes": ["src/lib/sagejs/number_fields/"]
     },
     {
+      "id": "complex-cubic-native-program",
+      "layer": 6,
+      "startup": "lazy",
+      "max_source_bytes": 360000,
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic",
+        "linear-algebra",
+        "number-field-algorithms",
+        "python-stdlib"
+      ],
+      "modules": [
+        "sagejs.number_fields.cubic_class_number_native",
+        "sagejs.number_fields.cubic_class_number_native_runtime"
+      ],
+      "files": [
+        "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+        "src/lib/sagejs/number_fields/cubic_class_number_native_runtime.py"
+      ],
+      "prefixes": []
+    },
+    {
       "id": "number-field-relation-matrix",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 115000,
+      "max_source_bytes": 120000,
       "depends_on": [
         "core-runtime",
         "linear-algebra",
@@ -361,7 +410,7 @@
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 1620000,
+      "max_source_bytes": 1720000,
       "depends_on": [
         "core-runtime",
         "arithmetic",
@@ -729,7 +778,7 @@
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 310000,
+      "max_source_bytes": 345000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",
@@ -743,7 +792,7 @@
       "id": "modular-form-expansions",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 115000,
+      "max_source_bytes": 130000,
       "depends_on": [
         "core-runtime", "python-stdlib", "arithmetic", "linear-algebra",
         "modular-forms"
@@ -794,6 +843,27 @@
       ],
       "files": [
         "src/lib/sagejs/modular_forms/eta_products.py"
+      ],
+      "prefixes": []
+    },
+    {
+      "id": "modular-form-object-layer",
+      "layer": 7,
+      "startup": "lazy",
+      "max_source_bytes": 70000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "modular-forms",
+        "modular-form-expansions",
+        "modular-form-qexp-algebra"
+      ],
+      "modules": [
+        "sagejs.modular_forms.object_layer"
+      ],
+      "files": [
+        "src/lib/sagejs/modular_forms/object_layer.py"
       ],
       "prefixes": []
     },
@@ -889,7 +959,7 @@
       "modules": [
         "_dummy_thread", "_thread", "abc", "aes", "annotationlib", "argparse", "array", "ast", "atexit", "base64", "bdb", "bisect", "calendar", "cmath", "codecs", "collections", "colorsys", "contextlib", "copy", "decimal",
         "csv", "dataclasses", "datetime", "elementmaker", "encodings", "enum", "errno", "fnmatch", "functools", "gc",
-        "genericpath", "gettext", "glob", "gzip", "hashlib", "heapq", "html", "inspect", "itertools", "linecache", "locale", "logging", "marshal",
+        "genericpath", "gettext", "glob", "gzip", "hashlib", "heapq", "html", "inspect", "itertools", "linecache", "locale", "logging", "marshal", "mimetypes",
         "http", "importlib", "io", "js", "json", "keyword", "math", "multiprocessing", "ntpath", "numbers",
         "operator", "os", "pathlib", "pdb", "pickle", "platform", "posixpath", "pprint", "pythonize", "random",
         "re", "reprlib", "sage", "sagejs_serialization", "shlex", "shutil", "socket", "string",
@@ -905,7 +975,7 @@
         "src/lib/fnmatch.py", "src/lib/functools.py", "src/lib/gc.py",
         "src/lib/genericpath.py", "src/lib/gettext.py", "src/lib/glob.py",
         "src/lib/gzip.py", "src/lib/hashlib.py", "src/lib/heapq.py",
-        "src/lib/inspect.py", "src/lib/io.py", "src/lib/itertools.py", "src/lib/js.py", "src/lib/json.py", "src/lib/keyword.py", "src/lib/linecache.py", "src/lib/locale.py", "src/lib/marshal.py", "src/lib/math.py",
+        "src/lib/inspect.py", "src/lib/io.py", "src/lib/itertools.py", "src/lib/js.py", "src/lib/json.py", "src/lib/keyword.py", "src/lib/linecache.py", "src/lib/locale.py", "src/lib/marshal.py", "src/lib/math.py", "src/lib/mimetypes.py",
         "src/lib/multiprocessing.py", "src/lib/ntpath.py", "src/lib/numbers.py", "src/lib/operator.py",
         "src/lib/os.py", "src/lib/pathlib.py", "src/lib/pdb.py", "src/lib/pickle.py", "src/lib/platform.py", "src/lib/posixpath.py", "src/lib/pprint.py",
         "src/lib/pythonize.py", "src/lib/random.py", "src/lib/re.py", "src/lib/reprlib.py",
@@ -921,13 +991,19 @@
     },
     {
       "id": "widget-runtime",
-      "layer": 2,
+      "layer": 5,
       "startup": "lazy",
       "max_source_bytes": 1200000,
-      "depends_on": ["core-runtime", "python-stdlib"],
-      "modules": ["IPython", "comm", "traitlets"],
-      "files": [],
-      "prefixes": ["src/lib/IPython/", "src/lib/comm/", "src/lib/sagejs/widgets/", "src/lib/traitlets/"]
+      "depends_on": ["core-runtime", "python-stdlib", "numeric-compat"],
+      "modules": ["IPython", "comm", "ipywidgets", "sage.interacts", "traitlets"],
+      "files": [
+        "src/lib/sage/interacts/__init__.py",
+        "src/lib/sage/interacts/all.py",
+        "src/lib/sage/interacts/calculus.py",
+        "src/lib/sage/interacts/library.py",
+        "src/lib/sage/interacts/statistics.py"
+      ],
+      "prefixes": ["src/lib/IPython/", "src/lib/comm/", "src/lib/ipywidgets/", "src/lib/sagejs/interacts/", "src/lib/sagejs/widgets/", "src/lib/traitlets/"]
     },
     {
       "id": "numerical-computing",

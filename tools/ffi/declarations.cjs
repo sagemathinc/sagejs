@@ -73,7 +73,8 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
   knownKeys(filename, resource, [
     "id", "python_name", "abi_type", "ownership", "owner", "dynamic",
     "native", "targets",
-  ], ["host_transfer", "host_ingress"], `resource ${resource.id || "?"}`);
+  ], ["host_transfer", "host_ingress", "item_get", "item_set"],
+    `resource ${resource.id || "?"}`);
   if (!identifier(resource.id) || ids.has(resource.id)) {
     fail(filename, `invalid or duplicate resource id ${resource.id}`);
   }
@@ -87,6 +88,12 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
     fail(filename, `${resource.id} must be an owned resource or borrowed view`);
   }
   nullableString(filename, resource.owner, `${resource.id}.owner`);
+  if (resource.item_get !== undefined && !identifier(resource.item_get)) {
+    fail(filename, `${resource.id}.item_get must name a declared FFI function`);
+  }
+  if (resource.item_set !== undefined && !identifier(resource.item_set)) {
+    fail(filename, `${resource.id}.item_set must name a declared FFI function`);
+  }
   if ((resource.ownership === "owned") !== (resource.owner === null)) {
     fail(filename,
       `${resource.id} owned resources require a null owner and borrowed ` +
@@ -297,7 +304,7 @@ function callPlan(library, fn, catalog, resourcesByType) {
 }
 
 function validateResourceAggregateComposition(
-  filename, fn, resourcesByType, returnResource,
+  filename, fn, resourcesByType, returnResource, catalog,
 ) {
   const adapters = fn.native.arguments.filter((argument) =>
     argument.adapter !== null
@@ -312,9 +319,10 @@ function validateResourceAggregateComposition(
 
   const reject = (detail) => fail(
     filename,
-    `${fn.id} resource/aggregate composition ${detail}; only one read-only ` +
-      "UInt64Buffer packed slice, optionally paired with one borrowed " +
-      "read-only owned resource, is currently supported",
+    `${fn.id} resource/aggregate composition ${detail}; supported shapes are ` +
+      "one read-only UInt64Buffer packed slice or one transactional writable " +
+      "IntegerBuffer packed fmpz matrix, paired with at most one borrowed " +
+      "read-only owned resource",
   );
   if (adapters.length !== 1 || resourceParameters.length > 1) {
     reject("has an unsupported number of resources or adapters");
@@ -337,26 +345,47 @@ function validateResourceAggregateComposition(
   const data = fn.signature.parameters.find((parameter) =>
     parameter.name === adapter.data
   );
-  const length = fn.signature.parameters.find((parameter) =>
-    parameter.name === adapter.length
+  const adapterSpec = catalog.adapters.get(adapter.kind);
+  const dimensionNames = adapterSpec === undefined
+    ? []
+    : adapterSpec.dimensions.map((field) => adapter[field]);
+  const dimensions = dimensionNames.map((name) =>
+    fn.signature.parameters.find((parameter) => parameter.name === name)
   );
-  if (adapter.kind !== "packed_slice" || nativeArgument.direction !== "in" ||
-      nativeArgument.abi_type !== "uint64_t_ptr" ||
-      adapter.access !== "read" || adapter.aliasing !== "allowed" ||
-      adapter.transactional !== false || data?.type !== "UInt64Buffer" ||
-      data.ownership !== "borrowed" || data.mutability !== "read" ||
-      length?.type !== "uint64") {
+  const readSlice = adapter.kind === "packed_slice" &&
+    nativeArgument.direction === "in" &&
+    nativeArgument.abi_type === "uint64_t_ptr" &&
+    adapter.access === "read" && adapter.aliasing === "allowed" &&
+    adapter.transactional === false && data?.type === "UInt64Buffer" &&
+    data.ownership === "borrowed" && data.mutability === "read" &&
+    dimensions.length === 1 && dimensions[0]?.type === "uint64";
+  const writeExactMatrix = adapter.kind === "packed_fmpz_matrix" &&
+    nativeArgument.direction === "out" &&
+    nativeArgument.abi_type === "fmpz_mat_t" &&
+    adapter.access === "write" && adapter.aliasing === "allowed" &&
+    adapter.transactional === true && data?.type === "IntegerBuffer" &&
+    data.ownership === "borrowed_mut" && data.mutability === "write" &&
+    dimensions.length === 2 &&
+    dimensions.every((dimension) => dimension?.type === "uint64");
+  if (!readSlice && !writeExactMatrix) {
     reject("uses an unsupported aggregate adapter");
   }
-  const consumed = new Set([data.name, length.name]);
+  const consumed = new Set([data.name, ...dimensionNames]);
   if (resourceParameter !== undefined) consumed.add(resourceParameter.name);
   if (fn.signature.parameters.some((parameter) =>
     !consumed.has(parameter.name) && parameter.type !== "uint64"
   )) {
     reject("has a non-word auxiliary parameter");
   }
-  if (fn.effects.writes.length !== 0) {
+  if (readSlice && fn.effects.writes.length !== 0) {
     reject("declares mutation");
+  }
+  if (writeExactMatrix && (
+    resourceParameter === undefined || returnResource !== undefined ||
+    fn.signature.return_type !== "bool" ||
+    fn.effects.writes.length !== 1 || fn.effects.writes[0] !== data.name
+  )) {
+    reject("has an unauthenticated writable projection contract");
   }
   if (returnResource !== undefined) {
     if (returnResource.ownership !== "owned") {
@@ -766,7 +795,7 @@ function validateFunction(
   }
 
   validateResourceAggregateComposition(
-    filename, fn, resourcesByType, returnResource,
+    filename, fn, resourcesByType, returnResource, catalog,
   );
 
   const enriched = {
@@ -799,8 +828,13 @@ function loadDeclarationDocument(document, options = {}) {
       !/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(library.dynamic.package)) {
     fail(filename, "library.dynamic.package must be a package name");
   }
-  exactKeys(filename, library.native,
-    ["headers", "link", "dependencies", "toolchain"], "library.native");
+  knownKeys(filename, library.native,
+    ["headers", "link", "dependencies", "toolchain"],
+    ["checkpoint_cleanup"], "library.native");
+  if (library.native.checkpoint_cleanup !== undefined &&
+      !identifier(library.native.checkpoint_cleanup)) {
+    fail(filename, "library.native.checkpoint_cleanup must be a C identifier");
+  }
   safeStrings(filename, library.native.headers, "library.native.headers",
     /^[A-Za-z0-9_+./-]+$/);
   safeStrings(filename, library.native.dependencies,
@@ -884,7 +918,73 @@ function loadDeclarationDocument(document, options = {}) {
       filename, library, fn, ids, pythonNames, resourcesByType, catalog,
     )
   );
+  const functionsByPythonName = new Map(
+    functions.map((fn) => [fn.python_name, fn]),
+  );
   const enrichedResources = resources.map((resource) => {
+    if (resource.item_get !== undefined) {
+      const accessor = functionsByPythonName.get(resource.item_get);
+      if (accessor === undefined) {
+        fail(filename,
+          `${resource.id}.item_get names unknown function ${resource.item_get}`);
+      }
+      const [owner, ...indices] = accessor.signature.parameters;
+      if (owner?.type !== resource.python_name ||
+          owner.ownership !== "borrowed" || owner.mutability !== "read") {
+        fail(filename,
+          `${resource.id}.item_get must first borrow ${resource.python_name} read-only`);
+      }
+      if (indices.length === 0 ||
+          indices.some((parameter) => parameter.type !== "uint64")) {
+        fail(filename,
+          `${resource.id}.item_get requires one or more uint64 indices`);
+      }
+      if (!["Integer", "uint64", "bool"].includes(
+        accessor.signature.return_type,
+      )) {
+        fail(filename,
+          `${resource.id}.item_get must return Integer, uint64, or bool`);
+      }
+      if (!accessor.effects.pure || accessor.effects.writes.length !== 0) {
+        fail(filename, `${resource.id}.item_get must be a pure read`);
+      }
+    }
+    if (resource.item_set !== undefined) {
+      const accessor = functionsByPythonName.get(resource.item_set);
+      if (accessor === undefined) {
+        fail(filename,
+          `${resource.id}.item_set names unknown function ${resource.item_set}`);
+      }
+      const [owner, ...tail] = accessor.signature.parameters;
+      const value = tail.at(-1);
+      const indices = tail.slice(0, -1);
+      if (owner?.type !== resource.python_name ||
+          owner.ownership !== "borrowed_mut" || owner.mutability !== "write") {
+        fail(filename,
+          `${resource.id}.item_set must first borrow ${resource.python_name} writable`);
+      }
+      if (indices.length === 0 ||
+          indices.some((parameter) => parameter.type !== "uint64")) {
+        fail(filename,
+          `${resource.id}.item_set requires one or more uint64 indices`);
+      }
+      if (value === undefined ||
+          !["Integer", "uint64", "bool"].includes(value.type)) {
+        fail(filename,
+          `${resource.id}.item_set requires a supported scalar value`);
+      }
+      if (accessor.signature.return_type !== "bool" ||
+          accessor.result.domain !== "status") {
+        fail(filename,
+          `${resource.id}.item_set must be a checked status operation`);
+      }
+      if (accessor.effects.pure ||
+          accessor.effects.writes.length !== 1 ||
+          accessor.effects.writes[0] !== owner.name) {
+        fail(filename,
+          `${resource.id}.item_set must write exactly its resource argument`);
+      }
+    }
     let root = resource;
     while (root.owner !== null) root = resourcesById.get(root.owner);
     return Object.freeze({ ...resource, root_owner: root.id });
@@ -1045,6 +1145,54 @@ function generatePythonModule(declaration) {
         `        finally:\n` +
         `            self.close()\n`
       : "";
+    const itemGet = resource.item_get === undefined
+      ? ""
+      : (() => {
+          const accessor = declaration.functions.find(
+            (fn) => fn.python_name === resource.item_get,
+          );
+          const dimensions = accessor.signature.parameters.length - 1;
+          const returned = pythonType(accessor.signature.return_type);
+          if (dimensions === 1) {
+            return `\n    def __getitem__(self, index: Any) -> ${returned}:\n` +
+              `        return ${accessor.python_name}(self, index)\n`;
+          }
+          const arguments_ = Array.from(
+            { length: dimensions }, (_, index) => `index[${index}]`,
+          );
+          return `\n    def __getitem__(self, index: Any) -> ${returned}:\n` +
+            `        if not isinstance(index, tuple) or len(index) != ` +
+              `${dimensions}:\n` +
+            `            raise TypeError(${JSON.stringify(
+              `${resource.python_name} expects ${dimensions} indices`,
+            )})\n` +
+            `        return ${accessor.python_name}(self, ` +
+              `${arguments_.join(", ")})\n`;
+        })();
+    const itemSet = resource.item_set === undefined
+      ? ""
+      : (() => {
+          const accessor = declaration.functions.find(
+            (fn) => fn.python_name === resource.item_set,
+          );
+          const dimensions = accessor.signature.parameters.length - 2;
+          const arguments_ = Array.from(
+            { length: dimensions }, (_, index) => `index[${index}]`,
+          );
+          const call = `${accessor.python_name}(self, ` +
+            `${arguments_.join(", ")}, value)`;
+          if (dimensions === 1) {
+            return `\n    def __setitem__(self, index: Any, value: Any) -> None:\n` +
+              `        ${accessor.python_name}(self, index, value)\n`;
+          }
+          return `\n    def __setitem__(self, index: Any, value: Any) -> None:\n` +
+            `        if not isinstance(index, tuple) or len(index) != ` +
+              `${dimensions}:\n` +
+            `            raise TypeError(${JSON.stringify(
+              `${resource.python_name} expects ${dimensions} indices`,
+            )})\n` +
+            `        ${call}\n`;
+        })();
     return `class ${resource.python_name}:\n` +
       `    \"\"\"Opaque ${resource.ownership} ${library.id}:` +
       `${resource.id} ${resource.ownership === "owned" ? "resource" : "view"}.` +
@@ -1056,7 +1204,7 @@ function generatePythonModule(declaration) {
       `    def _ffi_borrow(self) -> Any:\n` +
       `        return _runtime.ffi_resource_borrow(\n` +
       `            self._token, ${JSON.stringify(identity)}\n` +
-      `        )\n` + contextManager + hostTransfer;
+      `        )\n` + contextManager + hostTransfer + itemGet + itemSet;
   }).join("\n\n");
   const functions = declaration.functions.map((fn) => {
     const resultWire = [fn.result.domain, [...fn.result.success], fn.result.absence];

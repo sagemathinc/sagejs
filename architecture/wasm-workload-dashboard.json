@@ -24,11 +24,11 @@
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "cd543bff96e95b98e854b5281c6a82ec78841ce6f42148d282267d3b845ac15a"
+      "sha256": "576d03b5cb7d44b59f6c90373850eb8386dfc500d55ade24725fafbac7fd6232"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
-      "sha256": "56ecfd9dab3132cf8065c0b6a437c112ce26b05614774950befe6697df3623ca"
+      "sha256": "dc075082bf5be4dec1a6a6f5cb3adc3175cd33cbd06aa33d817736c5f13a7298"
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
@@ -42,35 +42,35 @@
     "parity_workloads": 41,
     "performance_workloads": 21,
     "capability_counts": {
-      "total": 1049,
+      "total": 1080,
       "by_kind": {
-        "declared-ffi-function": 456,
+        "declared-ffi-function": 463,
         "declared-ffi-resource": 34,
-        "napi-export": 331,
-        "production-kernel": 53,
+        "napi-export": 353,
+        "production-kernel": 55,
         "runtime-intrinsic": 147,
         "specialist-capability": 28
       },
       "by_disposition": {
-        "compiled-source": 53,
+        "compiled-source": 55,
         "desktop-only": 47,
-        "generated-wasm": 339,
-        "portable-fallback": 560,
+        "generated-wasm": 363,
+        "portable-fallback": 565,
         "shared-core": 50
       },
       "by_status": {
-        "available": 584,
+        "available": 609,
         "desktop-only": 47,
-        "fallback": 418
+        "fallback": 424
       }
     },
     "kernel_coverage_totals": {
-      "registered_kernels": 53,
-      "production_kernels": 46,
-      "compiled_functions": 284,
+      "registered_kernels": 55,
+      "production_kernels": 47,
+      "compiled_functions": 287,
       "unsupported_production_functions": 0,
-      "non_production_functions": 30,
-      "same_source_fallback_functions": 30
+      "non_production_functions": 54,
+      "same_source_fallback_functions": 54
     }
   },
   "route_classes": {

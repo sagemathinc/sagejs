@@ -18,10 +18,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import time
 from typing import Any, Callable, Iterable, Sequence, cast
 
+import sagejs as sage
 import sagejs.runtime as runtime
+from sagejs.number_fields.class_group_proof_contracts import (
+    analytic_class_unit_assumptions,
+)
 
 EXACT_UNCONDITIONAL = "exact-unconditional"
 EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
@@ -35,6 +40,12 @@ INCOMPLETE_RESOURCE_LIMIT = "incomplete-resource-limit"
 MAX_DIRECT_CUBIC_RELATION_SEED_BOUND = 20
 MAX_DIRECT_CUBIC_RELATION_SEED_SIZE = 7
 MAX_UNCONDITIONAL_CUBIC_RELATION_SEED_SIZE = 10
+MAX_DIRECT_CUBIC_PACKED_DEDEKIND_KUMMER_BOUND = 12
+# The compact cubic factor producer retains exact local-algebra, HNF, and
+# quotient-field evidence.  The tune frontier currently justifies keeping it
+# live through BDF discovery and materialization at equation-index primes up to
+# this conservative bound; larger bases retain the mature public route.
+MAX_DIRECT_CUBIC_PACKED_FACTOR_BOUND = 32
 DEFAULT_CUBIC_SATURATION_RELATION_BATCH = 12
 MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 # Exact expansion is useful for cheaply distinguishing +/-1 from a genuine
@@ -2042,6 +2053,10 @@ class ClassUnitGroupEngine:
             "dependency_unit_materializations": 0,
             "dependency_unit_eager_candidates": 0,
             "dependency_unit_steering_basis_hits": 0,
+            "dependency_unit_steering_basis_fallbacks": 0,
+            "dependency_unit_steering_index_preflight_requests": 0,
+            "dependency_unit_steering_index_preflight_accepts": 0,
+            "dependency_unit_steering_index_preflight_rejections": 0,
             "dependency_lattice_lll_requests": 0,
             "dependency_lattice_lll_reductions": 0,
             "dependency_lattice_lll_fallbacks": 0,
@@ -2091,6 +2106,26 @@ class ClassUnitGroupEngine:
             "cubic_integral_sieve_dependency_bound": 0,
             "cubic_integral_sieve_validated_batch_uses": 0,
             "cubic_specialized_empty_factor_base_skips": 0,
+            "cubic_reduced_ideal_sieve_uses": 0,
+            "cubic_reduced_ideal_sieve_candidates": 0,
+            "cubic_reduced_ideal_sieve_relations": 0,
+            "cubic_reduced_ideal_sieve_dependency_relations": 0,
+            "cubic_reduced_ideal_sieve_source_norm": 0,
+            "cubic_reduced_ideal_resident_uses": 0,
+            "cubic_reduced_ideal_resident_generated_candidates": 0,
+            "cubic_reduced_ideal_resident_smooth_candidates": 0,
+            "cubic_reduced_ideal_resident_work": 0,
+            "cubic_relation_selector_calls": 0,
+            "cubic_relation_selector_initial_rows": 0,
+            "cubic_relation_selector_candidate_rows": 0,
+            "cubic_relation_selector_total_rows": 0,
+            "cubic_relation_selector_columns": 0,
+            "cubic_relation_selector_maximum_entry_bits": 0,
+            "cubic_relation_selector_deletion_trials": 0,
+            "cubic_relation_selector_hnf_calls": 0,
+            "cubic_relation_selector_native_boundary_calls": 0,
+            "cubic_relation_selector_library_boundary_calls": 0,
+            "cubic_relation_selector_flint_basis_deletion_uses": 0,
             "cubic_specialized_seed_skips": 0,
             "quartic_factor_base_seed_uses": 0,
             "quartic_relation_seed_relations": 0,
@@ -2799,10 +2834,16 @@ class ClassUnitGroupEngine:
             return None
         try:
             classes = classes_module.bounded_class_group(self.field)
+            # The specialized result requires both complete class and unit
+            # computations.  For an unsupported class-group input, the unit
+            # box cannot change the outcome and may perform many exact norm
+            # tests before returning another incomplete result.
+            if not classes.complete:
+                return None
             units = units_module.bounded_unit_subgroup(self.field)
         except (TypeError, ValueError, ArithmeticError):
             return None
-        if not classes.complete or not units.complete:
+        if not units.complete:
             return None
         factored_type = getattr(
             self.components.factored, "FactoredNumberFieldElement", None
@@ -2879,14 +2920,33 @@ class ClassUnitGroupEngine:
     ) -> tuple[Any, tuple[Any, ...]]:
         started = self._phase_start()
         module = self.components.factor_base
-        plan = module.factor_base_plan(
-            self.order,
-            proof=proof,
-            theorem=("minkowski" if proof else "auto"),
-            max_bound=self.limits.max_factor_base_bound,
-            max_prime_ideals=self.limits.max_factor_base_size,
-            max_memory_bytes=self.limits.max_memory_bytes,
+        standard_module = _optional_module(
+            "sagejs.number_fields.class_group_factor_base"
         )
+        compact_cubic_candidate = bool(
+            not proof
+            and int(self.field.degree()) == 3
+            and self.algorithm == "auto"
+            and self.seed == 0
+            and self.checkpoint_controller is None
+            and module is standard_module
+        )
+        compact_eligible = getattr(module, "_has_equation_index_primes", None)
+        compact_cubic = bool(
+            compact_cubic_candidate
+            and callable(compact_eligible)
+            and compact_eligible(self.order)
+        )
+        plan_options = {
+            "proof": proof,
+            "theorem": ("minkowski" if proof else "auto"),
+            "max_bound": self.limits.max_factor_base_bound,
+            "max_prime_ideals": self.limits.max_factor_base_size,
+            "max_memory_bytes": self.limits.max_memory_bytes,
+        }
+        if compact_cubic:
+            plan_options["_compact_cubic_index_primes"] = True
+        plan = module.factor_base_plan(self.order, **plan_options)
         plan.require_feasible()
         records: Any = None
         primes: tuple[Any, ...] = ()
@@ -2896,9 +2956,13 @@ class ClassUnitGroupEngine:
             not proof
             and int(self.field.degree()) == 3
             and self.algorithm == "auto"
-            and int(plan.bound) <= 12
-            and module
-            is _optional_module("sagejs.number_fields.class_group_factor_base")
+            and int(plan.bound)
+            <= (
+                MAX_DIRECT_CUBIC_PACKED_FACTOR_BOUND
+                if compact_cubic
+                else MAX_DIRECT_CUBIC_PACKED_DEDEKIND_KUMMER_BOUND
+            )
+            and module is standard_module
         ):
             try:
                 cubic = __import__(
@@ -2953,11 +3017,17 @@ class ClassUnitGroupEngine:
                 packed_records = ()
             else:
                 self._checkpoint_capture({"factor_base": primes})
+        retain_packed_evidence = bool(
+            packed_factor_base_verified
+            and getattr(
+                getattr(self.context, "_live_artifacts", None), "reusable", False
+            )
+        )
         self._bind_context_factor_base(
             primes,
-            validated=packed_factor_base_verified,
-            producer_records=packed_records,
-            canonical_records=(records if packed_factor_base_verified else ()),
+            validated=retain_packed_evidence,
+            producer_records=(packed_records if retain_packed_evidence else ()),
+            canonical_records=(records if retain_packed_evidence else ()),
         )
         if record_stage:
             self._phase_finish("factor-base", started)
@@ -3285,6 +3355,134 @@ class ClassUnitGroupEngine:
                 steering.abort_candidate(steering_ticket)
         return admitted
 
+    def _reduced_cubic_relation_order_rows(
+        self,
+        relations: Any,
+        factor_base: tuple[Any, ...],
+    ) -> tuple[tuple[tuple[int, ...], ...], int, int] | None:
+        """Return exact order coordinates for one deterministically reduced ideal.
+
+        A high-norm factor-base ideal is a selection heuristic only.  Its LLL
+        rows are converted back to the maximal-order basis exactly; subsequent
+        norm-form evaluation and prime-power valuation replay authenticate all
+        relations independently of this choice.
+        """
+        if len(factor_base) < 1:
+            return None
+        try:
+            source_index = max(
+                range(len(factor_base)),
+                key=lambda index: (
+                    int(factor_base[index].norm()._numerator),
+                    index,
+                ),
+            )
+            source = factor_base[source_index]
+            lattice = relations.minkowski_lll_lattice(source)
+            denominator = int(lattice.denominator)
+            exact_rows = tuple(
+                tuple(int(value) for value in row) for row in lattice.exact_rows
+            )
+            if (
+                denominator <= 0
+                or len(exact_rows) != 3
+                or any(len(row) != 3 for row in exact_rows)
+            ):
+                return None
+            inverse = self.order._basis_inverse_matrix().rows()
+            answer: list[tuple[int, ...]] = []
+            for row in exact_rows:
+                coordinates: list[int] = []
+                for target in range(3):
+                    value = sage.QQ(0)
+                    for source_coordinate in range(3):
+                        value += (
+                            sage.QQ(row[source_coordinate])
+                            / sage.QQ(denominator)
+                            * inverse[source_coordinate][target]
+                        )
+                    if value.denominator() != 1:
+                        return None
+                    coordinates.append(int(value.numerator()))
+                answer.append(tuple(coordinates))
+            return (
+                tuple(answer),
+                source_index,
+                int(source.norm()._numerator),
+            )
+        except (AttributeError, ArithmeticError, ImportError, TypeError, ValueError):
+            return None
+
+    def _reduced_cubic_relation_order_batches(
+        self,
+        relations: Any,
+        factor_base: tuple[Any, ...],
+        maximum_sources: int,
+    ) -> tuple[tuple[tuple[tuple[int, ...], ...], int, int], ...]:
+        """Return reduced order rows for the largest factor-base ideals.
+
+        PARI's deterministic `small_norm` prefix scans useful ideals backward
+        from the largest norm.  Non-Galois cubics have no automorphism orbit to
+        collapse, so the first three distinct source ideals are the exact
+        compact schedule exercised by the discriminant `-9399` witness.  This
+        helper only chooses and converts lattices; every eventual relation is
+        authenticated independently.
+        """
+        limit = max(0, int(maximum_sources))
+        if limit == 0:
+            return ()
+        sources = tuple(
+            sorted(
+                range(len(factor_base)),
+                key=lambda index: (
+                    int(factor_base[index].norm()._numerator),
+                    index,
+                ),
+                reverse=True,
+            )[:limit]
+        )
+        answer: list[tuple[tuple[tuple[int, ...], ...], int, int]] = []
+        try:
+            inverse = self.order._basis_inverse_matrix().rows()
+            for source_index in sources:
+                source = factor_base[source_index]
+                lattice = relations.minkowski_lll_lattice(source)
+                denominator = int(lattice.denominator)
+                exact_rows = tuple(
+                    tuple(int(value) for value in row) for row in lattice.exact_rows
+                )
+                if (
+                    denominator <= 0
+                    or len(exact_rows) != 3
+                    or any(len(row) != 3 for row in exact_rows)
+                ):
+                    return ()
+                rows: list[tuple[int, ...]] = []
+                for row in exact_rows:
+                    coordinates: list[int] = []
+                    for target in range(3):
+                        value = sage.QQ(0)
+                        for source_coordinate in range(3):
+                            value += (
+                                sage.QQ(row[source_coordinate])
+                                / sage.QQ(denominator)
+                                * inverse[source_coordinate][target]
+                            )
+                        if value.denominator() != 1:
+                            return ()
+                        coordinates.append(int(value.numerator()))
+                    rows.append(tuple(coordinates))
+                answer.append(
+                    (
+                        tuple(rows),
+                        source_index,
+                        int(source.norm()._numerator),
+                    )
+                )
+        except (AttributeError, ArithmeticError, ImportError, TypeError, ValueError):
+            return ()
+        return tuple(answer)
+
     def _default_cubic_integral_relation_prefix(
         self,
         collector: Any,
@@ -3314,9 +3512,23 @@ class ClassUnitGroupEngine:
                 fromlist=["cubic_class_number"],
             )
             propose = getattr(cubic, "_packed_cubic_relation_candidates", None)
+            propose_reduced = getattr(
+                cubic, "_packed_cubic_reduced_ideal_relation_candidates", None
+            )
+            propose_reduced_shell = getattr(
+                cubic, "_packed_cubic_reduced_ideal_shell_candidates", None
+            )
+            resident_reduced_shell = getattr(
+                cubic,
+                "_resident_cubic_reduced_shell_relation_selection",
+                None,
+            )
             select = getattr(cubic, "_select_cubic_relation_candidates", None)
             select_dependencies = getattr(
                 cubic, "_select_cubic_dependency_candidates", None
+            )
+            select_postrank_dependencies = getattr(
+                cubic, "_select_cubic_postrank_dependency_candidates", None
             )
             bounded_dependencies = getattr(
                 cubic, "_bounded_cubic_dependency_candidates", None
@@ -3326,8 +3538,10 @@ class ClassUnitGroupEngine:
             )
             if (
                 not callable(propose)
+                or not callable(propose_reduced)
                 or not callable(select)
                 or not callable(select_dependencies)
+                or not callable(select_postrank_dependencies)
                 or not callable(bounded_dependencies)
             ):
                 return collector
@@ -3353,60 +3567,279 @@ class ClassUnitGroupEngine:
             if remaining <= 0:
                 return collector
             packed_factor_base = self._context_packed_factor_base(factor_base)
-            candidates: Any = propose(
-                self.order,
-                factor_base,
-                maximum_candidates=remaining,
-                coefficient_bound=coefficient_bound,
-                power_factor_base=packed_factor_base,
-                cancelled=self.cancelled,
+            initial_rows = tuple(proposal[1] for proposal in initial_proposals)
+
+            def record_selection_receipt(selection_receipt: dict[str, Any]) -> None:
+                self._resource_usage["cubic_relation_selector_calls"] += 1
+                for resource_name, receipt_name in (
+                    ("cubic_relation_selector_initial_rows", "initial_rows"),
+                    ("cubic_relation_selector_candidate_rows", "candidate_rows"),
+                    ("cubic_relation_selector_total_rows", "total_rows"),
+                    ("cubic_relation_selector_deletion_trials", "deletion_trials"),
+                    ("cubic_relation_selector_hnf_calls", "hnf_calls"),
+                    (
+                        "cubic_relation_selector_native_boundary_calls",
+                        "native_boundary_calls",
+                    ),
+                    (
+                        "cubic_relation_selector_library_boundary_calls",
+                        "library_boundary_calls",
+                    ),
+                    (
+                        "cubic_relation_selector_flint_basis_deletion_uses",
+                        "flint_basis_deletions",
+                    ),
+                ):
+                    self._resource_usage[resource_name] += int(
+                        selection_receipt.get(receipt_name, 0)
+                    )
+                for resource_name, receipt_name in (
+                    ("cubic_relation_selector_columns", "columns"),
+                    (
+                        "cubic_relation_selector_maximum_entry_bits",
+                        "maximum_entry_bits",
+                    ),
+                ):
+                    self._resource_usage[resource_name] = max(
+                        int(self._resource_usage[resource_name]),
+                        int(selection_receipt.get(receipt_name, 0)),
+                    )
+                if int(selection_receipt.get("resident_shell", 0)):
+                    self._resource_usage["cubic_reduced_ideal_resident_uses"] += 1
+                    self._resource_usage[
+                        "cubic_reduced_ideal_resident_generated_candidates"
+                    ] += int(selection_receipt.get("resident_generated_candidates", 0))
+                    self._resource_usage[
+                        "cubic_reduced_ideal_resident_smooth_candidates"
+                    ] += int(selection_receipt.get("resident_smooth_candidates", 0))
+                    self._resource_usage["cubic_reduced_ideal_resident_work"] += int(
+                        selection_receipt.get("resident_work", 0)
+                    )
+
+            def select_candidates(values: tuple[Any, ...]) -> Any:
+                selection_receipt: dict[str, Any] = {}
+                result = select(
+                    matrix,
+                    initial_rows,
+                    values,
+                    len(factor_base),
+                    selection_receipt,
+                )
+                record_selection_receipt(selection_receipt)
+                return result
+
+            reduced_candidates: tuple[Any, ...] = ()
+            reduced_source_index = -1
+            reduced_source_norm = 0
+            selected_result: Any = None
+            # A complex cubic has only one unit direction, but that does not
+            # make its ideal-class relation search one-dimensional.  In
+            # particular, a tiny non-Galois cubic can need precisely one
+            # relation found in a reduced factor-base ideal before the
+            # provisional quotient has the correct order.  Start those fields
+            # with four primitive directions from each of three high-norm
+            # reduced ideals; real cubics retain the wider coefficient box
+            # needed by their two unit directions.  Either batch remains an
+            # untrusted proposal and the ordinary exact admission boundary
+            # below proves every principal-ideal identity.
+            reduced_bound = (
+                1
+                if unit_rank == 1
+                else int(
+                    getattr(
+                        cubic,
+                        "_CUBIC_REDUCED_IDEAL_RELATION_SIEVE_BOUND",
+                        3,
+                    )
+                )
             )
-            if candidates is None:
-                return collector
+            if unit_rank >= 1 and len(factor_base) >= 8:
+                reduced_sources = self._reduced_cubic_relation_order_batches(
+                    relations, factor_base, 3 if unit_rank == 1 else 1
+                )
+                if reduced_sources:
+                    _rows, reduced_source_index, reduced_source_norm = reduced_sources[
+                        0
+                    ]
+                    if unit_rank == 1 and callable(resident_reduced_shell):
+                        resident_receipt: dict[str, Any] = {}
+                        resident_result: Any = resident_reduced_shell(
+                            self.order,
+                            factor_base,
+                            tuple(source[0] for source in reduced_sources),
+                            initial_rows,
+                            maximum_candidates=remaining,
+                            power_factor_base=packed_factor_base,
+                            cancelled=self.cancelled,
+                            selection_receipt=resident_receipt,
+                        )
+                        if (
+                            isinstance(resident_result, tuple)
+                            and len(resident_result) == 3
+                        ):
+                            reduced_candidates = tuple(resident_result[0])
+                            resident_rank = int(resident_result[2])
+                            if resident_rank == len(factor_base):
+                                selected_result = (
+                                    tuple(resident_result[1]),
+                                    resident_rank,
+                                )
+                            record_selection_receipt(resident_receipt)
+                    if not reduced_candidates:
+                        if unit_rank == 1 and callable(propose_reduced_shell):
+                            reduced_result: Any = propose_reduced_shell(
+                                self.order,
+                                factor_base,
+                                tuple(source[0] for source in reduced_sources),
+                                maximum_candidates=remaining,
+                                power_factor_base=packed_factor_base,
+                                cancelled=self.cancelled,
+                            )
+                        else:
+                            reduced_result = propose_reduced(
+                                self.order,
+                                factor_base,
+                                reduced_sources[0][0],
+                                maximum_candidates=remaining,
+                                coefficient_bound=reduced_bound,
+                                power_factor_base=packed_factor_base,
+                                cancelled=self.cancelled,
+                            )
+                        if reduced_result is not None:
+                            reduced_candidates = tuple(reduced_result)
+
+            # For rank-one cubics, first ask whether the tiny reduced-ideal
+            # batch already spans the factor-base lattice.  This is PARI's
+            # successful small-field regime: avoid constructing and valuating
+            # the unrelated global coefficient box when the exact selector can
+            # finish from one reduced ideal.  A deficient or declined batch
+            # falls through to the unchanged combined prefix.
+            candidates: tuple[Any, ...] = ()
+            if unit_rank == 1 and reduced_candidates:
+                reduced_selected = (
+                    selected_result
+                    if selected_result is not None
+                    else select_candidates(reduced_candidates)
+                )
+                if (
+                    isinstance(reduced_selected, tuple)
+                    and len(reduced_selected) == 2
+                    and isinstance(reduced_selected[0], (list, tuple))
+                    and int(reduced_selected[1]) == len(factor_base)
+                ):
+                    candidates = reduced_candidates
+                    selected_result = reduced_selected
+            if selected_result is None:
+                global_candidates: Any = propose(
+                    self.order,
+                    factor_base,
+                    maximum_candidates=remaining,
+                    coefficient_bound=coefficient_bound,
+                    power_factor_base=packed_factor_base,
+                    cancelled=self.cancelled,
+                )
+                if global_candidates is None:
+                    return collector
+                candidates = tuple(global_candidates)
+            if reduced_candidates and selected_result is None:
+                combined: list[Any] = []
+                for candidate in reduced_candidates + candidates:
+                    row, coordinates, _norm = candidate
+                    key = (tuple(row), tuple(coordinates))
+                    if any(
+                        key == (tuple(prior[0]), tuple(prior[1])) for prior in combined
+                    ):
+                        continue
+                    combined.append(candidate)
+                candidates = tuple(combined)
             if packed_factor_base is not None:
                 self._resource_usage["cubic_relation_packed_factor_base_uses"] += 1
-            selected_result: Any = select(
-                matrix,
-                tuple(proposal[1] for proposal in initial_proposals),
-                candidates,
-                len(factor_base),
-            )
+            if selected_result is None:
+                selected_result = select_candidates(candidates)
             if not isinstance(selected_result, tuple) or len(selected_result) != 2:
                 return collector
-            selected, _selected_rank = selected_result
-            if selected is None or len(selected) > remaining:
+            raw_selected = selected_result[0]
+            if raw_selected is None or not isinstance(raw_selected, (list, tuple)):
                 return collector
-            dependency_result: Any = bounded_dependencies(
-                self.order,
-                factor_base,
-                selected,
-                candidates,
-                unit_rank,
-                remaining,
-                cancelled=self.cancelled,
-                power_factor_base=packed_factor_base,
-            )
-            if not isinstance(dependency_result, tuple) or len(dependency_result) != 2:
+            selected = tuple(raw_selected)
+            if len(selected) > remaining:
                 return collector
-            dependency_candidates, dependency_bound = dependency_result
+            if reduced_candidates:
+                dependency_limit = min(
+                    int(
+                        getattr(
+                            cubic,
+                            "_CUBIC_REDUCED_IDEAL_RELATION_DEPENDENCIES",
+                            8,
+                        )
+                    ),
+                    max(0, remaining - len(selected)),
+                )
+                raw_dependency_candidates: Any = select_postrank_dependencies(
+                    selected,
+                    candidates,
+                    dependency_limit,
+                )
+                if not isinstance(raw_dependency_candidates, (list, tuple)):
+                    return collector
+                dependency_candidates = tuple(raw_dependency_candidates)
+                dependency_bound = reduced_bound
+            else:
+                dependency_result: Any = bounded_dependencies(
+                    self.order,
+                    factor_base,
+                    selected,
+                    candidates,
+                    unit_rank,
+                    remaining,
+                    cancelled=self.cancelled,
+                    power_factor_base=packed_factor_base,
+                )
+                if (
+                    not isinstance(dependency_result, tuple)
+                    or len(dependency_result) != 2
+                ):
+                    return collector
+                raw_dependency_candidates = dependency_result[0]
+                if not isinstance(raw_dependency_candidates, (list, tuple)):
+                    return collector
+                dependency_candidates = tuple(raw_dependency_candidates)
+                dependency_bound = dependency_result[1]
             if len(dependency_candidates) > remaining - len(selected):
                 dependency_candidates = ()
-            proposals = tuple(
-                (
-                    coordinates,
-                    row,
-                    {
-                        "algorithm": algorithm,
-                        "coefficient_bound": coefficient_bound,
-                        "order_basis_coordinates": list(coordinates),
-                    },
-                )
-                for algorithm, candidates_group in (
-                    ("packed-cubic-engine-relation-sieve", selected),
-                    ("packed-cubic-engine-unit-seed", dependency_candidates),
-                )
-                for row, coordinates, _expected_norm in candidates_group
+            reduced_keys = tuple(
+                (tuple(row), tuple(coordinates))
+                for row, coordinates, _norm in reduced_candidates
             )
+            proposals_list: list[tuple[Any, Any, dict[str, Any]]] = []
+            for role, candidates_group in (
+                ("relation-sieve", selected),
+                ("unit-seed", dependency_candidates),
+            ):
+                for row, coordinates, _expected_norm in candidates_group:
+                    reduced = any(
+                        (tuple(row), tuple(coordinates)) == key for key in reduced_keys
+                    )
+                    provenance = {
+                        "algorithm": (
+                            "packed-cubic-engine-reduced-ideal-" + role
+                            if reduced
+                            else "packed-cubic-engine-" + role
+                        ),
+                        "coefficient_bound": (
+                            reduced_bound if reduced else coefficient_bound
+                        ),
+                        "order_basis_coordinates": list(coordinates),
+                    }
+                    if reduced:
+                        provenance.update(
+                            {
+                                "reduced_source_factor_index": reduced_source_index,
+                                "reduced_source_ideal_norm": reduced_source_norm,
+                            }
+                        )
+                    proposals_list.append((coordinates, row, provenance))
+            proposals = tuple(proposals_list)
             batch_admit = getattr(trial, "admit_integral_order_basis_rows", None)
             validated_admit = getattr(
                 trial, "_admit_validated_integral_order_basis_rows", None
@@ -3461,6 +3894,35 @@ class ClassUnitGroupEngine:
                 int(self._resource_usage["cubic_integral_sieve_dependency_bound"]),
                 int(dependency_bound),
             )
+            if reduced_candidates:
+                reduced_selected = sum(
+                    1
+                    for row, coordinates, _norm in selected
+                    if any(
+                        (tuple(row), tuple(coordinates)) == key for key in reduced_keys
+                    )
+                )
+                reduced_dependencies = sum(
+                    1
+                    for row, coordinates, _norm in dependency_candidates
+                    if any(
+                        (tuple(row), tuple(coordinates)) == key for key in reduced_keys
+                    )
+                )
+                self._resource_usage["cubic_reduced_ideal_sieve_uses"] += 1
+                self._resource_usage["cubic_reduced_ideal_sieve_candidates"] += len(
+                    reduced_candidates
+                )
+                self._resource_usage["cubic_reduced_ideal_sieve_relations"] += (
+                    reduced_selected
+                )
+                self._resource_usage[
+                    "cubic_reduced_ideal_sieve_dependency_relations"
+                ] += reduced_dependencies
+                self._resource_usage["cubic_reduced_ideal_sieve_source_norm"] = max(
+                    int(self._resource_usage["cubic_reduced_ideal_sieve_source_norm"]),
+                    reduced_source_norm,
+                )
             return trial
         except (AttributeError, ArithmeticError, ImportError, TypeError, ValueError):
             return collector
@@ -4692,6 +5154,12 @@ class ClassUnitGroupEngine:
         allow_steering_basis: bool = True,
     ) -> tuple[tuple[Any, ...], tuple[tuple[int, ...], ...]]:
         """Select dependency rows by cached logs, then materialize only the basis."""
+        if allow_steering_basis:
+            steering_basis = self._live_steering_unit_basis(
+                records, dependencies, unit_rank, True
+            )
+            if steering_basis is not None:
+                return steering_basis
         # Cubic relation prefixes contain only a handful of dependencies.
         # Relation-rank steering has already materialized and cached several
         # of these exact units, so forming the remaining candidates once is
@@ -4706,44 +5174,6 @@ class ClassUnitGroupEngine:
                 normalized.pop()
             normalized_dependencies.append(tuple(normalized))
         retained_prefix = tuple(records) == self._relation_log_record_prefix
-        # The relation loop has already found an observed full-rank unit
-        # subgroup.  Use that exact live basis for the first rigorous `hR`
-        # test instead of eagerly minimizing its regulator over every
-        # dependency.  If its certified index is not one, adaptive saturation
-        # calls this method again and deliberately takes the complete
-        # minimum-volume path below.
-        if (
-            allow_steering_basis
-            and not self._relation_initial_basis_selected
-            and retained_prefix
-            and unit_rank > 0
-            and len(self._relation_independent_dependency_keys) >= unit_rank
-        ):
-            dependency_rows: dict[tuple[int, ...], tuple[int, ...]] = {}
-            for dependency, dependency_key in zip(
-                dependencies, normalized_dependencies, strict=True
-            ):
-                dependency_rows.setdefault(
-                    dependency_key, tuple(int(value) for value in dependency)
-                )
-            selected_keys = tuple(
-                self._relation_independent_dependency_keys[:unit_rank]
-            )
-            if all(
-                key in dependency_rows and key in self._relation_dependency_units
-                for key in selected_keys
-            ):
-                self._relation_initial_basis_selected = True
-                self._resource_usage["dependency_unit_steering_basis_hits"] += 1
-                self._resource_usage["relation_dependency_unit_object_cache_hits"] += (
-                    len(selected_keys)
-                )
-                return (
-                    tuple(
-                        self._relation_dependency_units[key] for key in selected_keys
-                    ),
-                    tuple(dependency_rows[key] for key in selected_keys),
-                )
         retained_complete = bool(
             retained_prefix
             and all(
@@ -4814,6 +5244,134 @@ class ClassUnitGroupEngine:
         if not eager_units:
             self._resource_usage["dependency_unit_materializations"] += len(units)
         return units, selected_dependencies
+
+    def _live_steering_unit_basis(
+        self,
+        records: Sequence[Any],
+        dependencies: Sequence[Sequence[int]],
+        unit_rank: int,
+        consume: bool,
+    ) -> tuple[tuple[Any, ...], tuple[tuple[int, ...], ...]] | None:
+        """Return the exact live unit basis already authenticated by steering.
+
+        Relation collection must exhibit full logarithmic rank before it can
+        finish.  Its selected dependency units are retained as exact factored
+        objects bound to the identical live relation prefix.  Consume that
+        basis for the first rigorous `hR` test instead of first replacing the
+        dependency lattice and rebuilding every candidate.  If the live basis
+        is absent, stale, or later proves a nontrivial analytic index, the
+        ordinary complete LLL/minimum-volume path remains the fallback.
+        """
+        if (
+            self._relation_initial_basis_selected
+            or unit_rank <= 0
+            or tuple(records) != self._relation_log_record_prefix
+            or len(self._relation_independent_dependency_keys) < unit_rank
+        ):
+            return None
+        dependency_rows: dict[tuple[int, ...], tuple[int, ...]] = {}
+        for dependency in dependencies:
+            normalized = [int(value) for value in dependency]
+            while normalized and normalized[-1] == 0:
+                normalized.pop()
+            dependency_rows.setdefault(
+                tuple(normalized), tuple(int(value) for value in dependency)
+            )
+        selected_keys = tuple(self._relation_independent_dependency_keys[:unit_rank])
+        if not all(
+            key in dependency_rows and key in self._relation_dependency_units
+            for key in selected_keys
+        ):
+            return None
+        if consume:
+            self._consume_live_steering_unit_basis(len(selected_keys))
+        return (
+            tuple(self._relation_dependency_units[key] for key in selected_keys),
+            tuple(dependency_rows[key] for key in selected_keys),
+        )
+
+    def _consume_live_steering_unit_basis(self, unit_count: int) -> None:
+        """Account for one preflight-approved live dependency basis."""
+        if self._relation_initial_basis_selected:
+            raise ArithmeticError("the live dependency basis was already consumed")
+        self._relation_initial_basis_selected = True
+        self._resource_usage["dependency_unit_steering_basis_hits"] += 1
+        self._resource_usage["relation_dependency_unit_object_cache_hits"] += int(
+            unit_count
+        )
+
+    def _live_steering_index_one_likely(
+        self,
+        presentation: Any,
+        units: tuple[Any, ...],
+        unit_rank: int,
+    ) -> bool:
+        """Cheaply reject retained cubic unit lattices far from index one.
+
+        This is an optimization-only route selector.  It combines the already
+        cached 80-bit logarithms with the coarsest rigorous zeta-residue
+        enclosure used by the final adaptive `hR` calculation.  The broad
+        floating interval deliberately accepts only candidates visibly near
+        index one.  An accepted candidate still enters `_analytic_index`, whose
+        exact interval proof remains the sole mathematical authority; a false
+        rejection merely selects the complete LLL dependency route.
+        """
+        if int(self.field.degree()) != 3 or unit_rank != 2 or len(units) != 2:
+            return False
+        self._resource_usage["dependency_unit_steering_index_preflight_requests"] += 1
+        accepted = False
+        try:
+            logarithms = [list(self._unit_logarithms(unit, 80)[:-1]) for unit in units]
+            regulator = _floating_determinant_absolute(logarithms)
+            if not math.isfinite(regulator) or regulator <= 0.0:
+                raise ArithmeticError("the retained regulator estimate is invalid")
+            analytic = self.components.analytic
+            limits = analytic.ZetaLogResidueLimits(
+                maximum_prime_bound=self.limits.max_analytic_prime_bound,
+                maximum_precision_bits=self.limits.max_precision_bits,
+            )
+            options: dict[str, Any] = {
+                "absolute_error": "1",
+                "precision_bits": self.limits.precision_bits,
+                "limits": limits,
+            }
+            if self._analytic_workspace is not None:
+                options["workspace"] = self._analytic_workspace
+            zeta = analytic.zeta_log_residue_bound(
+                int(self.order.discriminant()),
+                int(self.field.degree()),
+                self.order.splitting_records,
+                **options,
+            )
+            r1, r2 = (int(value) for value in _value(self.field, ("signature",)))
+            log_index = (
+                (r1 + r2) * math.log(2.0)
+                + r2 * math.log(math.pi)
+                - math.log(2.0)
+                - 0.5 * math.log(abs(int(self.order.discriminant())))
+                + math.log(int(presentation.order))
+                + math.log(regulator)
+                - _floating_value(zeta.ball.midpoint())
+            )
+            approximate_index = math.exp(log_index)
+            # Corpus calibration separates the index-one cases (0.979--1.004)
+            # from exact indices 3, 8, and 11.  Keep a much wider interval than
+            # those observations while failing closed for ambiguous estimates.
+            accepted = math.isfinite(approximate_index) and (
+                0.75 <= approximate_index <= 1.25
+            )
+        except RuntimeError as error:
+            if _is_cancellation(error) or self.cancelled():
+                raise
+        except (ArithmeticError, AttributeError, ImportError, TypeError, ValueError):
+            pass
+        counter = (
+            "dependency_unit_steering_index_preflight_accepts"
+            if accepted
+            else "dependency_unit_steering_index_preflight_rejections"
+        )
+        self._resource_usage[counter] += 1
+        return accepted
 
     def _reduce_dependency_lattice(
         self,
@@ -4964,13 +5522,35 @@ class ClassUnitGroupEngine:
         for dependency in presentation.dependency_transforms:
             if len(dependency) != len(records):
                 raise ArithmeticError("a relation dependency has the wrong exact width")
-        dependencies = self._reduce_dependency_lattice(records, source_dependencies)
-        units, selected_dependencies = self._select_dependency_unit_basis(
-            records,
-            dependencies,
-            unit_rank,
-            allow_steering_basis=dependencies == source_dependencies,
-        )
+        steering_basis = None
+        cubic_rank_two = unit_rank == 2 and int(self.field.degree()) == 3
+        if cubic_rank_two:
+            live_basis = self._live_steering_unit_basis(
+                records, source_dependencies, unit_rank, False
+            )
+            if live_basis is not None:
+                live_units, _live_dependencies = live_basis
+                if self._live_steering_index_one_likely(
+                    presentation, live_units, unit_rank
+                ):
+                    self._consume_live_steering_unit_basis(len(live_units))
+                    steering_basis = live_basis
+                else:
+                    # Prevent the complete selector from reconsidering the same
+                    # rejected retained basis after exact lattice reduction.
+                    self._relation_initial_basis_selected = True
+        if steering_basis is None:
+            dependencies = self._reduce_dependency_lattice(records, source_dependencies)
+            units, selected_dependencies = self._select_dependency_unit_basis(
+                records,
+                dependencies,
+                unit_rank,
+                allow_steering_basis=bool(
+                    dependencies == source_dependencies and not cubic_rank_two
+                ),
+            )
+        else:
+            units, selected_dependencies = steering_basis
         selected_unit_hashes: list[str] = []
         for dependency, unit in zip(selected_dependencies, units, strict=True):
             normalized = [int(value) for value in dependency]
@@ -5014,7 +5594,7 @@ class ClassUnitGroupEngine:
                 "unit-recovery",
                 "bounded",
                 rank=unit_rank,
-                candidates=len(dependencies),
+                candidates=len(source_dependencies),
             )
             return ()
         self._verify_exact_units(units)
@@ -5023,7 +5603,7 @@ class ClassUnitGroupEngine:
             "unit-recovery",
             "complete",
             rank=unit_rank,
-            candidates=len(dependencies),
+            candidates=len(source_dependencies),
         )
         return units
 
@@ -5323,7 +5903,13 @@ class ClassUnitGroupEngine:
                     if tuple(plan.assumptions) or "Minkowski" not in str(plan.theorem):
                         return False
                 elif proof_status == EXACT_RELATIONS_CONDITIONAL_GRH:
-                    if not tuple(plan.assumptions):
+                    # The overall class/unit result can be conditional because
+                    # its Belabas--Friedman `hR` completion uses GRH even when
+                    # the smaller generator plan is the unconditional
+                    # Minkowski plan.  Keep those two authorities distinct.
+                    if not tuple(plan.assumptions) and "Minkowski" not in str(
+                        plan.theorem
+                    ):
                         return False
                 else:
                     return False
@@ -6310,6 +6896,9 @@ class ClassUnitGroupEngine:
         initial_proof_status: str,
         saturation_record: Any,
     ) -> ClassUnitComputation:
+        conditional_assumptions = analytic_class_unit_assumptions(
+            str(plan.theorem), tuple(plan.assumptions)
+        )
         if type(saturation_record) is _AdaptiveSaturationState:
             saturation_record = self._finalize_adaptive_saturation_record(
                 saturation_record,
@@ -6425,7 +7014,7 @@ class ClassUnitGroupEngine:
                 else None
             ),
             assumptions=(
-                tuple(plan.assumptions)
+                conditional_assumptions
                 if proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
                 else ()
             ),
@@ -6564,11 +7153,64 @@ class ClassUnitGroupEngine:
                         "unit_rank_target": unit_rank,
                     },
                 )
+            steering_hits_before = self._resource_usage[
+                "dependency_unit_steering_basis_hits"
+            ]
             units = self._independent_units(collector, presentation, unit_rank)
-            torsion, regulator, index = self._analytic_index(
-                presentation, units, unit_rank
+            used_steering_basis = bool(
+                int(self.field.degree()) == 3
+                and self._resource_usage["dependency_unit_steering_basis_hits"]
+                > steering_hits_before
             )
-            initial_proof_status = _factor_base_proof_status(plan)
+            steering_basis_fell_back = False
+            try:
+                torsion, regulator, index = self._analytic_index(
+                    presentation, units, unit_rank
+                )
+            except RuntimeError as error:
+                analytic_resource_error = getattr(
+                    self.components.analytic, "AnalyticResourceError", None
+                )
+                if (
+                    not used_steering_basis
+                    or not isinstance(analytic_resource_error, type)
+                    or not isinstance(error, analytic_resource_error)
+                ):
+                    raise
+                self._resource_usage["dependency_unit_steering_basis_fallbacks"] += 1
+                steering_basis_fell_back = True
+                units = self._independent_units(collector, presentation, unit_rank)
+                torsion, regulator, index = self._analytic_index(
+                    presentation, units, unit_rank
+                )
+            # Full logarithmic rank does not by itself prove that the steering
+            # basis is a fundamental unit basis.  Keep its zero-materialization
+            # win when the rigorous `hR` test proves index one, but fall back to
+            # the complete LLL/minimum-volume dependency route before entering
+            # adaptive saturation when it does not.  This preserves the lazy
+            # class-number projection and avoids mistaking producer liveness
+            # for mathematical completeness.
+            if (
+                used_steering_basis
+                and not steering_basis_fell_back
+                and not index.index_one
+            ):
+                self._resource_usage["dependency_unit_steering_basis_fallbacks"] += 1
+                units = self._independent_units(collector, presentation, unit_rank)
+                torsion, regulator, index = self._analytic_index(
+                    presentation, units, unit_rank
+                )
+            factor_base_proof_status = _factor_base_proof_status(plan)
+            # Every nontrivial computation reaching `_analytic_index` consumes
+            # the Belabas--Friedman zeta-residue bound.  Thus a `proof=False`
+            # result is conditional even when its factor base was generated
+            # unconditionally by Minkowski.  Specialized empty/trivial paths
+            # return before this point and retain their unconditional labels.
+            initial_proof_status = (
+                factor_base_proof_status
+                if self.proof
+                else EXACT_RELATIONS_CONDITIONAL_GRH
+            )
             if (
                 class_number_only
                 and index.index_one
@@ -7932,6 +8574,36 @@ def cubic_class_number_projection(field: Any, proof: bool | None = None) -> int:
     if int(field.degree()) != 3:
         raise ValueError("the cubic class-number projection requires degree three")
     proof_value = True if proof is None else bool(proof)
+    if proof_value is False:
+        # The resident program is a complete GRH-conditional
+        # polynomial-to-class-group proof, not a heuristic hint.  Its immutable
+        # receipt remains independently replayable through the ordinary exact
+        # engine.  A missing compiled artifact, unsupported cubic, exhausted
+        # arena, or rejected analytic interval declines here and leaves the
+        # established exact object pipeline unchanged.
+        try:
+            native_runtime = __import__(
+                "sagejs.number_fields.cubic_class_number_native_runtime",
+                fromlist=["cubic_class_number_native_runtime"],
+            )
+            native_certificate = native_runtime.certified_complex_cubic_class_number(
+                field
+            )
+        except (
+            AttributeError,
+            ImportError,
+            OverflowError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+            ArithmeticError,
+        ):
+            native_certificate = None
+        if native_certificate is not None:
+            return _integer(
+                native_certificate.class_number,
+                "certified resident cubic class number",
+            )
     default_limits = ClassUnitEngineLimits()
     projection_key = _class_number_projection_cache_key(proof_value, default_limits)
     cached_projection = _cached_class_number_projection(

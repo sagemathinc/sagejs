@@ -24,6 +24,7 @@ function operationInputs(operation) {
     case "integer.abs":
     case "integer.truth":
     case "integer.round_sqrt":
+    case "uint64.from_integer_checked":
     case "bool.not":
     case "uint64.truth":
     case "value.discard":
@@ -584,6 +585,9 @@ function localEffects(fn) {
           isUint64Shift(operation.operation)) {
         mayRaise.add("OverflowError");
       }
+      if (operation.kind === "uint64.from_integer_checked") {
+        mayRaise.add("OverflowError");
+      }
       if (operation.kind === "integer.round_sqrt") {
         mayRaise.add("ValueError");
         mayRaise.add("OverflowError");
@@ -700,6 +704,7 @@ function localEffects(fn) {
 function bufferWrites(fn, dependencyEffects) {
   const bufferTypes = new Set([
     "IntegerBuffer", "Int64Buffer", "Int64Record", "UInt64Buffer",
+    "NativeIntegerVector",
   ]);
   const aliases = new Map(
     fn.params
@@ -730,6 +735,11 @@ function bufferWrites(fn, dependencyEffects) {
           statement.kind === "integer.buffer.set" ||
           statement.kind === "uint64.buffer.set") {
         for (const root of roots(statement.buffer)) writes.add(root);
+      } else if (statement.kind === "integer.vector.set" ||
+          statement.kind === "integer.vector.addmul" ||
+          statement.kind === "integer.vector.submul" ||
+          statement.kind === "integer.vector.swap") {
+        for (const root of roots(statement.vector)) writes.add(root);
       } else if (statement.kind === "native.call") {
         const effect = dependencyEffects.get(statement.function);
         const callee = effect?.params || [];
@@ -1011,6 +1021,9 @@ function taggedIntegerProof(fn, effects) {
       if (operation.kind.startsWith("integer.")) {
         operations.add(operation.kind.replace("integer.", "tagged-"));
       }
+      if (operation.kind === "uint64.from_integer_checked") {
+        operations.add("tagged-to_uint64_checked");
+      }
       if (operation.kind === "native.call") operations.add("direct-tagged-call");
       if (operation.kind === "ffi.call" ||
           operation.kind === "ffi.arena.resource.allocate") {
@@ -1252,6 +1265,13 @@ function residentCodeQualityAnalysis(fn) {
 }
 
 function backendPolicy(fn, profile, recursive) {
+  if (fn.params.some((param) => param.type === "NativeIntegerVector")) {
+    return {
+      kind: "gmp",
+      reason: "a borrowed resident exact vector stays in its owning GMP arena",
+      requiresExactWorkspace: true,
+    };
+  }
   if (profile.liveExactScopes > 0) {
     return {
       kind: "gmp",

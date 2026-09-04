@@ -22,7 +22,7 @@ concurrency:
 jobs:
   validate:
     name: Validate static dashboard
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out Sage.js
         uses: actions/checkout@v7
@@ -53,7 +53,7 @@ jobs:
     name: Deploy GitHub Pages
     if: github.ref == 'refs/heads/main'
     needs: validate
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     permissions:
       pages: write
       id-token: write

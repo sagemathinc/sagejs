@@ -12,6 +12,9 @@ from sagejs.ffi.flint import (
 from sagejs.native import NativeExactArena, native
 
 
+_FMPZ_CHECKPOINT_CACHE_WITNESS = (1 << 256) + 2026
+
+
 @native
 def resident_flint_hnf(
     memory_limit: uint64,
@@ -33,3 +36,24 @@ def resident_flint_hnf(
             fmpz_matrix_entry(hermite, 1, 1),
             determinant,
         )
+
+
+@native
+def resident_flint_checkpoint_cache(
+    memory_limit: uint64,
+    temporary_limit: uint64,
+) -> int:
+    """Force one promoted fmpz to be recycled at an arena boundary."""
+    with NativeExactArena(memory_limit, temporary_limit) as arena:
+        source = arena.foreign_resource(fmpz_matrix, 1, 1)
+        changed = fmpz_matrix_set_entry(
+            source,
+            0,
+            0,
+            _FMPZ_CHECKPOINT_CACHE_WITNESS,
+        )
+        if not changed:
+            return 0
+        if fmpz_matrix_entry(source, 0, 0) != _FMPZ_CHECKPOINT_CACHE_WITNESS:
+            return 0
+        return 1

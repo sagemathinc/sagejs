@@ -387,7 +387,12 @@ function memoryMeasurement(subject) {
       !MEMORY_METHODS.includes(measurement_method)) {
     fail("memory measurement", `unsupported ${measurement_scope} method on ${process.platform}`);
   }
-  const sample_interval_ms = processTree && process.platform !== "linux" ? 50 : 5;
+  // A Linux process-tree sample scans the complete /proc process table before
+  // selecting descendants. Sampling that at 5 ms can consume a core and
+  // materially perturb long-running browser qualification. Twenty samples per
+  // second is sufficient for these sustained memory workloads and matches the
+  // other external-process collectors.
+  const sample_interval_ms = processTree ? 50 : 5;
   const read = processTree ? processTreeRssSnapshot : () => process.memoryUsage().rss;
   let peak = 0;
   let error = null;
@@ -410,6 +415,23 @@ function memoryMeasurement(subject) {
   const timer = setInterval(sample, sample_interval_ms);
   timer.unref();
   return {
+    executionStarted() {
+      // The initial boundary sample necessarily runs before an adapter has
+      // launched its subject.  Give a genuinely asynchronous adapter one turn
+      // to create its child, then take an eager process-tree sample.  This is
+      // especially important on Windows: a warmed Node/SEA invocation can
+      // finish before the first 50 ms interval fires, while the CIM snapshot
+      // itself is still authoritative once it has begun.  A synchronous
+      // adapter cannot exploit this hook because its runCase call does not
+      // return until the hidden child has already exited.
+      if (!processTree) return Promise.resolve();
+      return new Promise((resolve) => {
+        setImmediate(() => {
+          sample();
+          resolve();
+        });
+      });
+    },
     finish() {
       clearInterval(timer);
       sample();
@@ -443,7 +465,7 @@ async function measuredSample(adapter, caseContract, kind, index, subject) {
   const started = process.hrtime.bigint();
   let observation;
   try {
-    observation = await adapter.runCase({
+    const execution = adapter.runCase({
       id: caseContract.id,
       program_phase: caseContract.program_phase,
       layer: caseContract.layer,
@@ -453,6 +475,8 @@ async function measuredSample(adapter, caseContract, kind, index, subject) {
       sample_kind: kind,
       sample_index: index,
     });
+    await authenticatedMemory.executionStarted();
+    observation = await execution;
   } catch (error) {
     observation = adapterExceptionObservation(error);
   } finally {
@@ -799,8 +823,8 @@ function expectedPeakMemoryContract(platformId, subjectKind) {
     };
   }
   const external = {
-    "linux-x64": ["linux-procfs-process-tree-sampled-v1", 5],
-    "linux-arm64": ["linux-procfs-process-tree-sampled-v1", 5],
+    "linux-x64": ["linux-procfs-process-tree-sampled-v1", 50],
+    "linux-arm64": ["linux-procfs-process-tree-sampled-v1", 50],
     "macos-arm64": ["macos-ps-process-tree-sampled-v1", 50],
     "windows-x64": ["windows-cim-process-tree-sampled-v1", 50],
   }[platformId];

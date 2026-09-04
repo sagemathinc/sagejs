@@ -288,6 +288,142 @@ print("cubic-exact-square-root")
   assert.equal(output, "cubic-exact-square-root");
 });
 
+test("exact unit checks reuse order membership and algebraic norms", () => {
+  const output = runSagejs(String.raw`
+import sagejs.number_fields.class_unit_analytic as analytic
+import sagejs.number_fields.embeddings as embeddings
+
+class ExactElement:
+    def __init__(self, norm):
+        self.value = norm
+        self.integrality_calls = 0
+        self.norm_calls = 0
+    def is_integral(self):
+        self.integrality_calls += 1
+        raise AssertionError("known order membership repeated integrality")
+    def norm(self):
+        self.norm_calls += 1
+        return self.value
+
+class ExactOrder:
+    def __init__(self, contains=True):
+        self.contains = contains
+        self.membership_calls = 0
+    def __contains__(self, _value):
+        self.membership_calls += 1
+        return self.contains
+
+unit = ExactElement(-1)
+order = ExactOrder()
+assert embeddings.exact_norm_is_unit(
+    None, unit, integral_order=order
+) == (True, -1)
+assert order.membership_calls == 1
+assert unit.integrality_calls == 0 and unit.norm_calls == 1
+
+nonmember = ExactElement(1)
+rejecting_order = ExactOrder(False)
+assert embeddings.exact_norm_is_unit(
+    None, nonmember, integral_order=rejecting_order
+) == (False, 0)
+assert rejecting_order.membership_calls == 1 and nonmember.norm_calls == 0
+
+saved_product = embeddings.exact_conjugate_sum_product
+fallback_calls = []
+class FallbackElement:
+    def is_integral(self):
+        return True
+def fallback_product(field, element):
+    fallback_calls.append((field, element))
+    return (0, -1)
+embeddings.exact_conjugate_sum_product = fallback_product
+try:
+    fallback = FallbackElement()
+    assert embeddings.exact_norm_is_unit("field", fallback) == (True, -1)
+    assert fallback_calls == [("field", fallback)]
+finally:
+    embeddings.exact_conjugate_sum_product = saved_product
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 576*x - 1665, "a")
+a = K.gen()
+O = K.maximal_order()
+value = K(2048447) + QQ(71697)/5*a - QQ(18149)/5*a**2
+conjugate_norm = embeddings.exact_conjugate_sum_product(K, value)[1]
+assert conjugate_norm == value.norm() == 1
+assert embeddings.exact_norm_is_unit(K, value) == (True, 1)
+assert analytic._exact_unit(K, O, value)
+assert not analytic._exact_unit(K, O, K(2))
+print("exact-unit-norm-reuse")
+`);
+  assert.equal(output, "exact-unit-norm-reuse");
+});
+
+test("cubic unit-root boxes screen exact nonunit norm coordinates", () => {
+  const output = runSagejs(String.raw`
+import sagejs.number_fields.class_unit_analytic as analytic
+import sagejs.number_fields.cubic_class_number as cubic
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x - 1, "a_norm_screen")
+O = K.maximal_order()
+
+saved_exact_unit = analytic._exact_unit
+screened_roots = []
+def audited_exact_unit(field, order, value):
+    screened_roots.append(value)
+    return saved_exact_unit(field, order, value)
+analytic._exact_unit = audited_exact_unit
+try:
+    assert analytic._bounded_exact_pth_root(
+        K, O, (), (K.one(),), 2, 1, None
+    ) is None
+finally:
+    analytic._exact_unit = saved_exact_unit
+
+assert screened_roots
+assert len(screened_roots) < 26
+assert all(root in O and root.norm() in (-1, 1) for root in screened_roots)
+
+saved_norm_form = cubic._order_cubic_norm_form_coefficients
+fallback_roots = []
+def unavailable_norm_form(_order):
+    raise RuntimeError("optional cubic norm form unavailable")
+def audited_fallback(field, order, value):
+    fallback_roots.append(value)
+    return saved_exact_unit(field, order, value)
+cubic._order_cubic_norm_form_coefficients = unavailable_norm_form
+analytic._exact_unit = audited_fallback
+try:
+    assert analytic._bounded_exact_pth_root(
+        K, O, (), (K.one(),), 2, 1, None
+    ) is None
+finally:
+    analytic._exact_unit = saved_exact_unit
+    cubic._order_cubic_norm_form_coefficients = saved_norm_form
+
+assert len(fallback_roots) == 26
+assert screened_roots == [
+    root for root in fallback_roots if root.norm() in (-1, 1)
+]
+
+polls = []
+def cancelled():
+    polls.append(1)
+    return len(polls) == 2
+try:
+    analytic._bounded_exact_pth_root(K, O, (), (K.one(),), 2, 1, cancelled)
+    raise AssertionError("cubic norm screening skipped source-order cancellation")
+except analytic.AnalyticResourceError:
+    pass
+assert len(polls) == 2
+print("cubic-unit-norm-screen")
+`);
+  assert.equal(output, "cubic-unit-norm-screen");
+});
+
 test("BF plan aggregation and bounded provenance preserve exact intervals", () => {
   runPython(String.raw`
 module._shared_integer_log_endpoints.clear()

@@ -1,6 +1,7 @@
 packages:
   - packages/*
 allowBuilds:
+  '@cocalc/widgets': false
   esbuild: true
   tree-sitter-cli: true
   tree-sitter-macaulay2: false

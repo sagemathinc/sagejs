@@ -11,6 +11,25 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 
+def _rounding_mode(value: Any = "RNDN") -> tuple[str, int]:
+    name = runtime.reflect.apply(
+        runtime.reflect.get(runtime.string_class.prototype, "toUpperCase"),
+        runtime.string(value),
+        [],
+    )
+    if name == "RNDN":
+        return name, 0
+    if name == "RNDU":
+        return name, 1
+    if name == "RNDD":
+        return name, 2
+    if name == "RNDZ":
+        return name, 3
+    if name == "RNDA":
+        return name, 4
+    raise ValueError("rounding mode must be RNDN, RNDU, RNDD, RNDZ, or RNDA")
+
+
 def _close_numeric_resource(value: Any) -> None:
     """Close a backend numeric value when it owns a Wasm handle."""
     close = getattr(runtime.flint_backend(), "closeNumericResource", None)
@@ -42,16 +61,32 @@ class RealNumberElement(sage.Element):
         return RealNumberElement(self._parent, native_value)
 
     def _add_(self, other: RealNumberElement) -> RealNumberElement:
-        return self._new(runtime.flint_backend().realAdd(self._native, other._native))
+        return self._new(
+            runtime.flint_backend().realAdd(
+                self._native, other._native, self._parent._rounding_code
+            )
+        )
 
     def _sub_(self, other: RealNumberElement) -> RealNumberElement:
-        return self._new(runtime.flint_backend().realSub(self._native, other._native))
+        return self._new(
+            runtime.flint_backend().realSub(
+                self._native, other._native, self._parent._rounding_code
+            )
+        )
 
     def _mul_(self, other: RealNumberElement) -> RealNumberElement:
-        return self._new(runtime.flint_backend().realMul(self._native, other._native))
+        return self._new(
+            runtime.flint_backend().realMul(
+                self._native, other._native, self._parent._rounding_code
+            )
+        )
 
     def _truediv_(self, other: RealNumberElement) -> RealNumberElement:
-        return self._new(runtime.flint_backend().realDiv(self._native, other._native))
+        return self._new(
+            runtime.flint_backend().realDiv(
+                self._native, other._native, self._parent._rounding_code
+            )
+        )
 
     def _eq_(self, other: RealNumberElement) -> bool:
         return runtime.flint_backend().realEqual(self._native, other._native)
@@ -88,13 +123,62 @@ class RealNumberElement(sage.Element):
 
     def __pow__(self, exponent: int) -> RealNumberElement:
         exponent = runtime.integer_bigint(exponent)
-        return self._new(runtime.flint_backend().realPowInt(self._native, exponent))
+        return self._new(
+            runtime.flint_backend().realPowInt(
+                self._native, exponent, self._parent._rounding_code
+            )
+        )
 
     def precision(self) -> int:
         return self._parent.precision()
 
     def __repr__(self) -> str:
-        return runtime.flint_backend().realToString(self._native)
+        return runtime.flint_backend().realToString(
+            self._native, 10, self._parent._rounding_code, False
+        )
+
+    def str(self, base: int = 10) -> str:
+        """Return the finite MPFR value in base 10 or base 2."""
+        base = int(base)
+        return runtime.flint_backend().realToString(
+            self._native, base, self._parent._rounding_code, True
+        )
+
+    def nextabove(self) -> RealNumberElement:
+        """Return the next representable value toward positive infinity."""
+        return self._new(runtime.flint_backend().realNext(self._native, 1))
+
+    def nextbelow(self) -> RealNumberElement:
+        """Return the next representable value toward negative infinity."""
+        return self._new(runtime.flint_backend().realNext(self._native, -1))
+
+    def sign_mantissa_exponent(self) -> Any:
+        """Return the exact MPFR `(sign, mantissa, exponent)` decomposition."""
+        parts = runtime.flint_backend().realParts(self._native)
+        return runtime.math_tuple(
+            [
+                runtime.normalize_integer(parts[0]),
+                runtime.normalize_integer(parts[1]),
+                runtime.normalize_integer(parts[2]),
+            ]
+        )
+
+    def exact_rational(self) -> Any:
+        """Return the exact dyadic rational represented by this value."""
+        sign, mantissa, exponent = self.sign_mantissa_exponent()
+        numerator = sign * mantissa
+        if exponent >= 0:
+            return runtime.rational_class(numerator * (2**exponent), 1)
+        return runtime.rational_class(numerator, 2 ** (-exponent))
+
+    def frac(self) -> RealNumberElement:
+        """Return the fractional part of this finite real value."""
+        rational = self.exact_rational()
+        numerator = rational._numerator
+        denominator = rational._denominator
+        return self._parent(
+            runtime.rational_class(numerator % denominator, denominator)
+        )
 
     def __float__(self) -> float:
         return runtime.flint_backend().realToDouble(self._native)
@@ -258,16 +342,20 @@ class RealDoubleField_class(sage.Parent):
 
 @runtime.callable_instance_class
 class RealField_class(sage.Parent):
-    def __init__(self, precision: int) -> None:
+    def __init__(self, precision: int, rounding: str, rounding_code: int) -> None:
         self._name = (
             "Real Field with " + runtime.string(precision) + " bits of precision"
         )
+        if rounding != "RNDN":
+            self._name += " and rounding " + rounding
         self._kind = "RealField"
         self._precision = precision
+        self._rounding = rounding
+        self._rounding_code = rounding_code
         self._element_is_atomic = True
 
-    def __call__(self, value: Any = 0) -> RealNumberElement:
-        return _real_field_element(self, value)
+    def __call__(self, value: Any = 0, base: int = 10) -> RealNumberElement:
+        return _real_field_element(self, value, base)
 
     def _fromNative(self, native_value: Any) -> RealNumberElement:
         if runtime.flint_backend().realPrecision(native_value) != self._precision:
@@ -278,6 +366,9 @@ class RealField_class(sage.Parent):
         return self._precision
 
     prec = precision
+
+    def rounding_mode(self) -> str:
+        return self._rounding
 
     def __contains__(self, value: Any) -> bool:
         try:
@@ -359,30 +450,44 @@ def _real_from_exact(
                 value._numerator,
                 value._denominator,
                 field._precision,
+                field._rounding_code,
             ),
         )
     return RealNumberElement(
         field,
-        backend.realFromBigInt(runtime.integer_bigint(value), field._precision),
+        backend.realFromBigInt(
+            runtime.integer_bigint(value),
+            field._precision,
+            field._rounding_code,
+        ),
     )
 
 
 def _real_field_element(
     field: RealField_class,
     value: Any,
+    base: int = 10,
 ) -> RealNumberElement:
     backend = runtime.flint_backend()
+    base = int(base)
+    if base not in (2, 10):
+        raise ValueError("real input base must be 2 or 10")
     if isinstance(value, RealLiteral):
         return RealNumberElement(
             field,
-            backend.realFromString(value.literal, field._precision),
+            backend.realFromString(
+                value.literal,
+                field._precision,
+                field._rounding_code,
+                value.base,
+            ),
         )
     if isinstance(value, RealNumberElement):
         if value._parent is field:
             return value
         return RealNumberElement(
             field,
-            backend.realRound(value._native, field._precision),
+            backend.realRound(value._native, field._precision, field._rounding_code),
         )
     if isinstance(value, sage.Rational) or runtime.is_exact_integer(value):
         return _real_from_exact(field, value)
@@ -393,17 +498,25 @@ def _real_field_element(
     ):
         return RealNumberElement(
             field,
-            backend.realFromString(str(float(value)), field._precision),
+            backend.realFromString(
+                str(float(value)), field._precision, field._rounding_code
+            ),
         )
     if runtime.jstype(value) == "number" or runtime.jstype(value) == "string":
+        if base != 10 and runtime.jstype(value) != "string":
+            raise TypeError("nondecimal real input must be a string")
         return RealNumberElement(
             field,
-            backend.realFromString(str(value), field._precision),
+            backend.realFromString(
+                str(value), field._precision, field._rounding_code, base
+            ),
         )
     if value is not None and hasattr(value, "__float__"):
         return RealNumberElement(
             field,
-            backend.realFromString(str(float(value)), field._precision),
+            backend.realFromString(
+                str(float(value)), field._precision, field._rounding_code
+            ),
         )
     raise TypeError("unable to convert value to " + str(field))
 
@@ -447,13 +560,16 @@ def _register_real_field(field: RealField_class) -> None:
 
 def RealField(
     precision: Any = runtime.undefined,
+    rnd: Any = "RNDN",
 ) -> RealField_class:
     precision = _field_precision(precision)
-    field = _real_fields.get(precision)
+    rounding, rounding_code = _rounding_mode(rnd)
+    key = runtime.string(precision) + ":" + rounding
+    field = _real_fields.get(key)
     if field is not runtime.undefined:
         return field
-    field = RealField_class(precision)
-    _real_fields.set(precision, field)
+    field = RealField_class(precision, rounding, rounding_code)
+    _real_fields.set(key, field)
     _register_real_field(field)
     return field
 
@@ -556,9 +672,142 @@ def ComplexField(
     return field
 
 
+_interval_module_cache = runtime.undefined
+
+
+def _interval_module() -> Any:
+    global _interval_module_cache
+    if _interval_module_cache is runtime.undefined:
+        loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
+        if loader is runtime.undefined:
+            raise RuntimeError("the certified interval module loader is unavailable")
+        _interval_module_cache = runtime.reflect.apply(
+            loader, runtime.undefined, ["sagejs.intervals"]
+        )
+    return _interval_module_cache
+
+
+def _interval_apply(name: str, values: list[Any]) -> Any:
+    module = _interval_module()
+    operation = runtime.reflect.get(module, name)
+    return runtime.reflect.apply(operation, module, values)
+
+
+@runtime.callable_instance_class
+class RealIntervalField_class(sage.Parent):
+    """A real ball field whose element implementation is loaded on first use."""
+
+    def __init__(self, precision: int) -> None:
+        self._name = (
+            "Real Interval Field with "
+            + runtime.string(precision)
+            + " bits of precision"
+        )
+        self._kind = "RealIntervalField"
+        self._precision = precision
+        self._element_is_atomic = True
+
+    def __call__(self, value: Any = 0, upper: Any = runtime.undefined) -> Any:
+        return _interval_apply("real_interval_element", [self, value, upper])
+
+    def _fromNative(self, native_value: Any) -> Any:
+        return _interval_apply("real_interval_from_native", [self, native_value])
+
+    def precision(self) -> int:
+        return self._precision
+
+    prec = precision
+
+    def __contains__(self, value: Any) -> bool:
+        try:
+            self(value)
+            return True
+        except Exception:
+            return False
+
+
+@runtime.callable_instance_class
+class ComplexIntervalField_class(sage.Parent):
+    """A complex ball field whose element implementation is loaded on first use."""
+
+    def __init__(self, precision: int) -> None:
+        self._name = (
+            "Complex Interval Field with "
+            + runtime.string(precision)
+            + " bits of precision"
+        )
+        self._kind = "ComplexIntervalField"
+        self._precision = precision
+        self._element_is_atomic = True
+
+    def __call__(self, value: Any = 0, imag: Any = runtime.undefined) -> Any:
+        return _interval_apply("complex_interval_element", [self, value, imag])
+
+    def _fromNative(self, native_value: Any) -> Any:
+        return _interval_apply("complex_interval_from_native", [self, native_value])
+
+    def precision(self) -> int:
+        return self._precision
+
+    prec = precision
+
+    def gen(self) -> Any:
+        return self(0, 1)
+
+
+_real_interval_fields = runtime.map()
+_complex_interval_fields = runtime.map()
+
+
+def RealIntervalField(
+    precision: Any = runtime.undefined,
+) -> RealIntervalField_class:
+    precision = _field_precision(precision)
+    field = _real_interval_fields.get(precision)
+    if field is not runtime.undefined:
+        return field
+    field = RealIntervalField_class(precision)
+    _real_interval_fields.set(precision, field)
+
+    def conversion(value: Any) -> Any:
+        return field(value)
+
+    runtime.coercion_model.register(sage.ZZ, field, conversion)
+    runtime.coercion_model.register(sage.QQ, field, conversion)
+    runtime.coercion_model.register(RDF, field, conversion)
+    for real_field in _real_fields.values():
+        runtime.coercion_model.register(real_field, field, conversion)
+    return field
+
+
+def ComplexIntervalField(
+    precision: Any = runtime.undefined,
+) -> ComplexIntervalField_class:
+    precision = _field_precision(precision)
+    field = _complex_interval_fields.get(precision)
+    if field is not runtime.undefined:
+        return field
+    field = ComplexIntervalField_class(precision)
+    _complex_interval_fields.set(precision, field)
+
+    def conversion(value: Any) -> Any:
+        return field(value)
+
+    runtime.coercion_model.register(sage.ZZ, field, conversion)
+    runtime.coercion_model.register(sage.QQ, field, conversion)
+    runtime.coercion_model.register(RDF, field, conversion)
+    for real_field in _real_fields.values():
+        runtime.coercion_model.register(real_field, field, conversion)
+    for real_interval_field in _real_interval_fields.values():
+        runtime.coercion_model.register(real_interval_field, field, conversion)
+    return field
+
+
 RR = RealField(53)
 CC = ComplexField(53)
 CDF = ComplexDoubleField_class()
+RIF = RealIntervalField(53)
+CIF = ComplexIntervalField(53)
 _cdf_conversion = _complex_coercion(CDF)
 runtime.coercion_model.register(sage.ZZ, CDF, _cdf_conversion)
 runtime.coercion_model.register(sage.QQ, CDF, _cdf_conversion)

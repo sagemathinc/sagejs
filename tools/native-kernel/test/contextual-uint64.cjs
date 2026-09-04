@@ -14,6 +14,7 @@ const test = require("node:test");
 
 const { generateHostCore } = require("../c-backend.cjs");
 const { compileKernel } = require("../compiler.cjs");
+const { analyzeExactModule } = require("../exact-analysis.cjs");
 const { lowerSource } = require("../ir.cjs");
 const {
   classifyWasmFunction,
@@ -55,7 +56,9 @@ function run(command, args, options = {}) {
 
 test("uint64 literals are contextually typed through fixed-span helpers", async () => {
   const ir = await lowerSource(witnessSource, witnessPath);
+  analyzeExactModule(ir.functions);
   assert.deepEqual(ir.callGraph, {
+    exact_to_uint64: [],
     fixed_span_uint64_witness: [
       "publish_degree",
       "translate_index",
@@ -63,9 +66,43 @@ test("uint64 literals are contextually typed through fixed-span helpers", async 
     ],
     publish_degree: [],
     promote_uint64_tuple: [],
+    retained_exact_to_uint64: [],
     translate_index: [],
     trim_span: [],
   });
+  const checked = operations(
+    ir.functions.find((fn) => fn.name === "exact_to_uint64").body,
+  );
+  assert.ok(checked.some((operation) =>
+    operation.kind === "uint64.from_integer_checked"
+  ));
+  const retained = ir.functions.find(
+    (fn) => fn.name === "retained_exact_to_uint64",
+  );
+  const retainedOperations = operations(retained.body);
+  const conversion = retainedOperations.find(
+    (operation) => operation.kind === "uint64.from_integer_checked",
+  );
+  assert.ok(conversion);
+  const retainedAssignment = retainedOperations.findIndex(
+    (operation) => operation.target === conversion.source,
+  );
+  const conversionIndex = retainedOperations.indexOf(conversion);
+  const retainedSlot = retained.analysis.storage.slots[conversion.source];
+  assert.notEqual(retainedSlot, undefined);
+  for (
+    const operation of retainedOperations.slice(
+      retainedAssignment + 1,
+      conversionIndex,
+    )
+  ) {
+    if (retained.analysis.storage.slots[operation.target] !== undefined) {
+      assert.notEqual(
+        retained.analysis.storage.slots[operation.target],
+        retainedSlot,
+      );
+    }
+  }
   for (const name of ["publish_degree", "translate_index", "trim_span"]) {
     const lowered = ir.functions.find((fn) => fn.name === name);
     assert.equal(lowered.kernelKind, "integer");
@@ -150,6 +187,16 @@ checked([1], [0])
 checked([0, 0, 0], [0, 0, 0])
 print("compiled=" + str(compiled))
 assert promote_uint64_tuple(7) == (True, 7)
+assert exact_to_uint64(7) == 8
+assert retained_exact_to_uint64(7) == 8
+assert exact_to_uint64(-1) == 0
+assert exact_to_uint64((1 << 64) - 2) == (1 << 64) - 1
+for rejected in (-2, (1 << 64) - 1):
+    try:
+        exact_to_uint64(rejected)
+        raise AssertionError("out-of-range exact-to-uint64 conversion succeeded")
+    except OverflowError:
+        pass
 print("CONTEXTUAL_UINT64_OK")
 `;
   try {
@@ -182,7 +229,7 @@ print("CONTEXTUAL_UINT64_OK")
       "import sys",
       `sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})`,
       `sys.path.insert(0, ${JSON.stringify(__dirname)})`,
-      "from fixed_span_uint64_witness import fixed_span_uint64_witness as witness, promote_uint64_tuple",
+      "from fixed_span_uint64_witness import exact_to_uint64, fixed_span_uint64_witness as witness, promote_uint64_tuple, retained_exact_to_uint64",
       "for values, expected in [",
       "    ([2, 3, 0, 0], [1, 3, 0, 0]),",
       "    ([5, 0], [0, 0]),",
@@ -193,6 +240,16 @@ print("CONTEXTUAL_UINT64_OK")
       "    assert witness(output, 7) == any(values)",
       "    assert output == expected",
       "assert promote_uint64_tuple(7) == (True, 7)",
+      "assert exact_to_uint64(7) == 8",
+      "assert retained_exact_to_uint64(7) == 8",
+      "assert exact_to_uint64(-1) == 0",
+      "assert exact_to_uint64((1 << 64) - 2) == (1 << 64) - 1",
+      "for rejected in (-2, (1 << 64) - 1):",
+      "    try:",
+      "        exact_to_uint64(rejected)",
+      "        raise AssertionError('out-of-range exact-to-uint64 conversion succeeded')",
+      "    except OverflowError:",
+      "        pass",
       "print('cpython-ok')",
       "",
     ].join("\n");

@@ -79,7 +79,7 @@ assert source["live_arena_shared_limit"](264, 1) == 2
 test("the compiler emits one shared-budget exact ownership graph", async () => {
   const source = readFileSync(sourcePath, "utf8");
   const ir = await lowerSource(source, sourcePath);
-  assert.equal(ir.version, 34);
+  assert.equal(ir.version, 36);
   const fn = ir.functions.find(
     (candidate) => candidate.name === "live_arena_relation_step",
   );
@@ -223,7 +223,7 @@ for (const implementation of [
   }
 });
 
-test("arena children cannot escape, alias, or allocate conditionally", async () => {
+test("arena children may be conditional but cannot escape, alias, or repeat", async () => {
   const header =
     "from sagejs.native import NativeExactArena, native, uint64\n" +
     "@native\n";
@@ -239,17 +239,28 @@ test("arena children cannot escape, alias, or allocate conditionally", async () 
     ),
     /live exact owners cannot be copied, passed, or returned/,
   );
+  await lowerSource(
+    header +
+      "def f(n: uint64) -> int:\n" +
+      "    with NativeExactArena(n, n) as workspace:\n" +
+      "        if n > 0:\n" +
+      "            values = workspace.integer_vector(1, 64)\n" +
+      "            values[0] = n\n" +
+      "        return 0\n",
+    "live-arena-conditional.py",
+  );
   await assert.rejects(
     () => lowerSource(
       header +
         "def f(n: uint64) -> int:\n" +
         "    with NativeExactArena(n, n) as workspace:\n" +
-        "        if n > 0:\n" +
+        "        while n > 0:\n" +
         "            values = workspace.integer_vector(1, 64)\n" +
+        "            n -= 1\n" +
         "        return 0\n",
-      "live-arena-conditional.py",
+      "live-arena-repeated.py",
     ),
-    /children must be allocated unconditionally/,
+    /cannot be allocated repeatedly in a native loop/,
   );
   await assert.rejects(
     () => lowerSource(

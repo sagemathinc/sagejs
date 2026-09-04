@@ -570,6 +570,9 @@ class Expression(sage.Element):
     def __neg__(self) -> Expression:
         return Expression(_call_backend("canonical", [["Negate", self._tree]]))
 
+    def __abs__(self) -> Expression:
+        return Expression(_call_backend("canonical", [["Abs", self._tree]]))
+
     def __pow__(self, exponent: Any) -> Expression:
         return Expression(
             _call_backend(
@@ -1879,7 +1882,11 @@ def _laplace_transform_tree(
 def diff(
     expression: Any,
     *variables: Any,
-) -> Expression:
+) -> Any:
+    if not isinstance(expression, Expression):
+        derivative_method = getattr(expression, "diff", None)
+        if callable(derivative_method):
+            return derivative_method(*variables)
     if len(variables) == 0:
         return SR(expression).derivative()
     return SR(expression).derivative(*variables)
@@ -3435,6 +3442,7 @@ pi = Expression("Pi")
 e = Expression("ExponentialE")
 oo = Expression("PositiveInfinity")
 minus_infinity = Expression("NegativeInfinity")
+golden_ratio = Expression(["Divide", ["Add", 1, ["Sqrt", 5]], 2])
 _imaginary_unit = Expression("ImaginaryUnit")
 i = _imaginary_unit
 runtime.reflect.set(runtime.global_object, "I", _imaginary_unit)

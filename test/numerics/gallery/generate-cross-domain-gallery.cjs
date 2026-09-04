@@ -12,6 +12,10 @@ const {
 const { spawnSync } = require("node:child_process");
 const { join, resolve } = require("node:path");
 const { pathToFileURL } = require("node:url");
+const {
+  assertEvidenceEquivalent,
+  normalizeGeneratedJson,
+} = require("./evidence-equivalence.cjs");
 
 const root = resolve(__dirname, "../../..");
 const gallery = join(root, "docs/numerical-computing/gallery");
@@ -121,7 +125,8 @@ function pythonEvidence() {
   });
   if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  return { bundle: JSON.parse(result.stdout), evidence: result.stdout };
+  const evidence = normalizeGeneratedJson(result.stdout);
+  return { bundle: JSON.parse(evidence), evidence };
 }
 
 async function artifacts() {
@@ -159,20 +164,26 @@ async function main(argv = process.argv.slice(2)) {
   }
   assert.ok(existsSync(evidencePath), `${evidencePath} is missing; run with --write`);
   assert.ok(existsSync(htmlPath), `${htmlPath} is missing; run with --write`);
-  assert.equal(
-    readFileSync(evidencePath, "utf8"),
-    generated.evidence,
-    "cross-domain gallery evidence is stale; regenerate with --write",
-  );
+  const checkedEvidence = readFileSync(evidencePath, "utf8");
+  const checkedBundle = JSON.parse(checkedEvidence);
+  assertEvidenceEquivalent(generated.bundle, checkedBundle);
+  const renderer = await import(pathToFileURL(modulePath));
+  renderer.assertGalleryBudgets(checkedBundle, checkedEvidence);
+  const checkedHtml = renderer.buildGalleryDocument(checkedBundle);
   assert.equal(
     readFileSync(htmlPath, "utf8"),
-    generated.html,
+    checkedHtml,
     "cross-domain gallery HTML is stale; regenerate with --write",
   );
+  const checkedManifest = `${JSON.stringify(
+    publicManifest(checkedBundle, checkedHtml),
+    null,
+    2,
+  )}\n`;
   for (const [filename, expected, label] of [
-    [publicEvidencePath, generated.evidence, "public gallery evidence"],
-    [publicHtmlPath, generated.html, "public gallery HTML"],
-    [publicManifestPath, generated.manifest, "public gallery manifest"],
+    [publicEvidencePath, checkedEvidence, "public gallery evidence"],
+    [publicHtmlPath, checkedHtml, "public gallery HTML"],
+    [publicManifestPath, checkedManifest, "public gallery manifest"],
     [publicModulePath, readFileSync(modulePath), "public gallery renderer"],
     [publicCssPath, readFileSync(cssPath), "public gallery stylesheet"],
     [publicPlotlyPath, readFileSync(plotlyPath), "public Plotly distribution"],
@@ -195,4 +206,10 @@ if (require.main === module) {
   });
 }
 
-module.exports = { artifacts, main, publicManifest };
+module.exports = {
+  artifacts,
+  assertEvidenceEquivalent,
+  main,
+  normalizeGeneratedJson,
+  publicManifest,
+};

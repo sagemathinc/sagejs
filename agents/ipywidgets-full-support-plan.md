@@ -2,7 +2,65 @@
 
 ## Status and outcome
 
-Planning document, 2026-08-30. No implementation in this document.
+Implementation is active. As of 2026-08-31:
+
+- P0 is complete: upstream versions, licenses, protocol fixtures, test
+  inventory, and the normalized CPython corpus are pinned.
+- P1–P5 are complete for the primary path: upstream traitlets, comm, and
+  ipywidgets run as compiled Python; rich display and binary comm transport
+  work in the evaluator and standard Jupyter kernel.
+- The app portion of P6B is complete for core widgets and `Output`, including
+  offline assets, bidirectional state updates, reset behavior, and browser
+  acceptance coverage. A core gallery now qualifies scalar/nested controls,
+  frontend-only `jslink`, rich `Output` capture/clear/error behavior, and a real
+  binary `FileUpload` round trip in offline Chromium. The browser manager eagerly
+  instantiates comm-opened headless models, matching Jupyter's requirement for
+  link models that are not reachable from the displayed widget tree. Incoming
+  typed-array buffers are normalized to Python `memoryview` objects before
+  upstream ipywidgets deserialization. Live models and views have explicit
+  per-session limits; retained `Output` state is capped at one MiB per control;
+  clear/reset deterministically removes rendered views, and reset replaces stale
+  controls with a rerun notice. Frontend events have a bounded queue and widget
+  callbacks have a worker-replacing timeout; a regression deliberately runs a
+  nonreturning Python callback and verifies that the clean replacement kernel
+  immediately evaluates new code. P6A now has a transport-neutral controller
+  used by the full app and a provisional Shadow DOM `<sagejs-cell>`/ESM
+  factory. Declarative and factory-created host prototypes qualify independent
+  lifecycle, Sage/Python mode construction, rich output, KaTeX, and a live Sage
+  `@interact` slider in Chromium. An unrelated strict-CSP host also loads the
+  public component/runtime without COOP or COEP; a local Blob module bootstrap
+  explicitly handles both remote worker levels, and the edge serves only the
+  required credential-free assets with CORS/CORP. A dedicated sandboxable frame
+  is also qualified cross-origin with exact parent source/origin checks,
+  bounded request ids/messages/results, deferred initialization, and a narrow
+  lifecycle protocol; only that document relaxes the global anti-framing
+  headers. Named shared-session pooling now serializes execution, enforces
+  language compatibility and hard live/shared-session limits, routes graphics
+  to the active cell, and reference-counts worker ownership; independent
+  workers remain the default. Unit and Chromium acceptance tests verify shared
+  state and deterministic final cleanup. The complete capability comparison
+  and broader browser matrix remain open before the `/embed/v1/` interfaces
+  are declared stable.
+- P7's kernel-side Sage compatibility layer is implemented and covered by
+  executable PREP and Sage differential corpora. Sage-global `@interact`,
+  `input_box`, `slider`, `range_slider`, `checkbox`, `selector`,
+  `color_selector`, `input_grid`, and `text_control` use standard ipywidgets
+  models. Automatic boolean/string/integer/real/list/iterator/tuple inference,
+  matrix and vector grids, custom PREP layout placement, initial and manual
+  updates, localized callback errors, and text-only CLI behavior are
+  qualified. PREP's plotting-control and tangent-line calculus examples run
+  their documented defaults, and a lazy `sage.interacts` library ships tested
+  Taylor-polynomial, derivative, quadratic-equation, coin-toss, and basic demo
+  applications. Text controls evaluate through the authoritative Sage parser
+  in native kernels and the isolated browser compiler, while Python `eval`
+  retains Python semantics. The app's interactive symbolic-plot and editable
+  function-explorer presets exercise Sage `@interact` offline; browser
+  acceptance changes `x^3 - 2*x` to `x^4`, verifies the plot update, and then
+  verifies clean widget teardown across a kernel reset.
+  Completing the remaining full browser/Jupyter PREP matrix and upstream Sage
+  widget doctest inventory remains open.
+- P8–P10 and the remaining lifecycle, embedding, documentation, budget, and
+  four-platform gates remain open. Custom widgets remain deliberately last.
 
 The outcome is first-class support for the standard ipywidgets protocol and
 core widget API in Sage.js, followed by Sage-compatible `@interact` and the
@@ -933,6 +991,20 @@ Classify failures caused by missing mathematics separately from widget-system
 failures. An interact whose body calls an unsupported mathematical operation
 must still construct correctly and then report the body’s honest capability
 error in its output widget.
+
+Current corpus disposition (2026-08-31):
+
+- the PREP quickstart, general plotting-control example, and calculus
+  tangent-line example execute successfully in the native kernel;
+- `sage.interacts.library` is intentionally a bounded teaching subset with
+  `demo`, `taylor_polynomial`, `function_derivative`, `quadratic_equation`, and
+  `coin`, loaded lazily through the Sage-global `interacts` namespace;
+- the advanced-2D PREP spelling `slider([0..360], step_size=5)` is stale even
+  against current Sage, whose selection slider rejects `step_size`; preserve
+  that honest error rather than inventing a divergent widget contract;
+- missing operations inside an otherwise valid interact, such as presently
+  unsupported vector norms in broader examples, are tracked as mathematics
+  capability gaps rather than widget failures.
 
 Acceptance gate:
 

@@ -2,12 +2,12 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 53,
-    "production_kernels": 46,
-    "compiled_functions": 284,
+    "registered_kernels": 55,
+    "production_kernels": 47,
+    "compiled_functions": 287,
     "unsupported_production_functions": 0,
-    "non_production_functions": 30,
-    "same_source_fallback_functions": 30
+    "non_production_functions": 54,
+    "same_source_fallback_functions": 54
   },
   "kernels": [
     {
@@ -41,9 +41,9 @@
       "id": "class-group-resident-hnf-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 2,
+      "compiled_functions": 4,
       "fallback_functions": 0,
-      "total_functions": 2,
+      "total_functions": 4,
       "fallback_reasons": []
     },
     {
@@ -56,6 +56,15 @@
       "fallback_reasons": [
         "development-witness-not-in-production-registry"
       ]
+    },
+    {
+      "id": "complex-cubic-class-group-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
+      "fallback_reasons": []
     },
     {
       "id": "dense-binary-m4ri-optional",
@@ -471,6 +480,17 @@
       "fallback_functions": 0,
       "total_functions": 4,
       "fallback_reasons": []
+    },
+    {
+      "id": "structural-polynomial-flint-production",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 24,
+      "total_functions": 24,
+      "fallback_reasons": [
+        "foreign-resource-not-declared-for-wasm"
+      ]
     },
     {
       "id": "tate-algorithm-witness",

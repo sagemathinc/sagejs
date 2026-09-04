@@ -2598,6 +2598,7 @@ def splitting_records(
     stop: Any,
     *,
     include_lattices: bool = False,
+    _index_prime_record: Any = None,
 ) -> Iterator[dict[str, Any]]:
     """Stream compact splitting records for primes in `[start, stop)`.
 
@@ -2634,6 +2635,12 @@ def splitting_records(
     position = 0
     while position < len(candidates):
         candidate = candidates[position]
+        if _index_prime_record is not None and index_squared % candidate == 0:
+            proposed = _index_prime_record(order, candidate)
+            if not include_lattices and proposed is not None:
+                yield proposed
+                position += 1
+                continue
         if include_lattices or index_squared % candidate == 0:
             yield factor_rational_prime(order, candidate).splitting_record(
                 include_lattices

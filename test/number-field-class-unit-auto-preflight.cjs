@@ -42,6 +42,12 @@ test("default cubic class-unit calls prime every measured artifact mode", () => 
   const output = runPublic(String.raw`
 import sagejs.number_fields.class_unit_groups as class_unit_module
 import sagejs.number_fields.cubic_class_number as cubic_module
+import sagejs.number_fields.cubic_class_number_native_runtime as native_cubic_runtime
+
+# This test specifies the bounded Python artifact modes.  The resident native
+# scalar frontier has its own dispatch and receipt tests, so make it decline
+# here rather than letting the installed native pack bypass this producer.
+native_cubic_runtime.certified_complex_cubic_class_number = lambda field: None
 
 original_projection = class_unit_module.cubic_class_number_projection
 original_producer = cubic_module.bounded_cubic_minkowski_class_number
@@ -175,6 +181,12 @@ print("cubic-auto-preflight-policy-ok")
 test("automatic cubic preflight remains acceleration-only and cache-safe", () => {
   const output = runPublic(String.raw`
 import sagejs.number_fields.cubic_class_number as cubic_module
+import sagejs.number_fields.cubic_class_number_native_runtime as native_cubic_runtime
+
+# Keep this authority/caching test on the bounded Python artifact path.  Native
+# scalar dispatch is covered independently and may otherwise satisfy the
+# request before the producer interposition below is observable.
+native_cubic_runtime.certified_complex_cubic_class_number = lambda field: None
 
 original_producer = cubic_module.bounded_cubic_minkowski_class_number
 producer_calls = []

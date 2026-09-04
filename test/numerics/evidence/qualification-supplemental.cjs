@@ -318,7 +318,7 @@ function browserEvidence(kind, engine) {
       measurement_method: "linux-procfs-process-tree-sampled-v1",
       measurement_scope: "process_tree",
       authenticated_by: "qualification-collector",
-      sample_interval_ms: 5,
+      sample_interval_ms: 50,
       worker_replacement_passed: true,
     },
     scope: { claim: "collector-authenticated-real-browser-process-tree-memory" },
@@ -530,7 +530,7 @@ function peak(bytes, overrides = {}) {
     measurement_method: "linux-procfs-process-tree-sampled-v1",
     measurement_scope: "process_tree",
     authenticated_by: "qualification-collector",
-    sample_interval_ms: 5,
+    sample_interval_ms: 50,
     ...overrides,
   };
 }
@@ -823,7 +823,7 @@ test("browser memory evidence requires authenticated process-tree delta", () => 
     { delta_bytes: 1, minimum_delta_bytes: 1 },
     { delta_bytes: 40 * 1024 * 1024 + 1 },
     { measurement_method: "node-process-rss-boundary-v1" },
-    { sample_interval_ms: 50 },
+    { sample_interval_ms: 5 },
   ]) {
     const weakened = browserEvidence("browser", "chromium");
     Object.assign(weakened.memory, change);
