@@ -7,6 +7,8 @@
   no-Singular roadmap
 - Runtime policy: Singular is neither a build dependency nor a runtime
   dependency
+- Deferred coefficient fields:
+  [extension coefficient fields plan](no-singular-extension-fields-plan.md)
 
 ## Executive decision
 
@@ -47,6 +49,16 @@ algorithm reference only. A future proposal may revisit modules, local
 orders, free resolutions, or other excluded features, but it must stand on
 its own portability, size, and maintenance evidence.
 
+This plan's delivery boundary is equally strict about coefficient fields:
+**implement only `QQ` and prime `GF(p)` here.** Support for finite extensions
+`GF(p^d)` and number fields belongs exclusively to
+the [extension coefficient fields
+plan](no-singular-extension-fields-plan.md), after this plan is complete. An
+implementation PR for this plan must not expand its claimed support,
+acceptance matrix, or release gate to those fields. It must, however, preserve
+the extension-ready boundaries specified below so that the follow-up does not
+require redesigning the scheme layer.
+
 ## Scope boundary
 
 ### Required by this plan
@@ -67,11 +79,27 @@ its own portability, size, and maintenance evidence.
 | Images and inverse images | graph ideals, elimination, and saturation | polynomial maps in the supported affine/projective cases |
 | Zero-dimensional radical and primary decomposition | quotient algebra, minimal polynomials, factorization, exact splitting | `QQ`, prime `GF(p)` |
 
-Construction may work over another exact Sage.js field when the underlying
-polynomial operations suffice. Computational methods must nevertheless check
-their capability tuple and either return an exact answer or raise a precise
-`NotImplementedError`. They must never silently coerce to `QQ`, reduce modulo
-a convenient prime, or call an unavailable native backend.
+Public object construction may happen to remain generic when no field-specific
+work is required, but that is not a promise of extension-field support and is
+not an invitation to implement it in this program. Computational methods must
+check their capability tuple and either return an exact answer over `QQ` or
+prime `GF(p)`, or raise a precise `NotImplementedError`. They must never
+silently coerce to `QQ`, reduce modulo a convenient prime, or call an
+unavailable native backend.
+
+### Deferred coefficient-domain program
+
+The following are deliberately deferred—not forgotten and not partially in
+scope:
+
+- finite extensions `GF(p^d)` for `d > 1`; and
+- simple absolute number fields `QQ[a]/(f)`.
+
+Their exact-baseline and optional fast-backend work is planned in
+`agents/no-singular-extension-fields-plan.md`. Do not add auxiliary defining-
+polynomial variables, extension-field Gröbner dispatch, number-field
+multivariate storage, extension-specific point enumeration, or extension-
+field decomposition to any phase of this document.
 
 ### Explicitly excluded as major projects
 
@@ -87,13 +115,76 @@ These are not incomplete phases of this plan:
   divisors, Riemann-Roch spaces, and Jacobians constructed from general
   plane curves;
 - rational maps with base loci, blowups, covered schemes, and gluing;
-- arbitrary finite fields, number fields, polynomial coefficient rings, and
-  mixed or inexact coefficient domains; and
+- relative/towered fields, transcendental coefficient fields, polynomial
+  coefficient rings, and mixed or inexact coefficient domains; and
 - a runtime bridge to Singular, Macaulay2, CoCoA, Oscar, or Julia.
 
 If a required operation would need one of these capabilities to be correct on
 a particular input, it must reject that input honestly. A narrow correct
 method is preferable to a general-looking method with hidden hypotheses.
+
+## Mandatory extension-ready boundaries
+
+Deferring extension fields must not create `QQ`/prime-field assumptions in
+the public geometry architecture. Every phase in this plan must satisfy these
+requirements even though extension fields are not tested or advertised here.
+
+### Scheme code is coefficient-domain neutral
+
+Affine/projective spaces, schemes, points, maps, Jacobians, and curves operate
+through polynomial-ring and ideal interfaces. They must not branch on private
+field tags such as `_kind == "QQ"` or `_kind == "GF"`. Domain-specific
+dispatch belongs below the polynomial/ideal capability boundary.
+
+### Coefficient arithmetic is isolated from monomial algorithms
+
+New ordinary-Python algorithms must obtain zero, one, coercion, equality,
+addition, multiplication, inversion, characteristic, and serialization from
+a reviewed exact-field interface. Monomial comparison, divisibility,
+S-pairs, normal forms, Hilbert combinatorics, and scheme constructions must
+not encode rational numerators or prime residues directly.
+
+Existing packed `QQ`/`GF(p)` ABIs may remain specialized for performance, but
+their packed values may not become the representation assumed by public
+algorithms. A later extension-field coefficient codec must be addable without
+changing scheme APIs.
+
+### Every backend advertises a full capability tuple
+
+Routing is based on operation, exact base-field descriptor, monomial order,
+proof mode, platform, and resource envelope. A fallback is selected only when
+it advertises the same mathematical operation. In particular, code must not
+treat every positive-characteristic field as a prime field or every
+characteristic-zero field as `QQ`.
+
+### Parent identity and serialization include the base field
+
+Polynomial, ideal, quotient, scheme, point, and morphism descriptors retain a
+stable description of the exact coefficient field and chosen embedding. Cache
+keys include that descriptor, not merely the characteristic. User generator
+names are display data and must not be mistaken for mathematical field
+identity.
+
+### Proof and verification are field-parametric
+
+Proof resolution remains `proof.polynomial()` plus a local override. Exact
+certificate verification works through field operations and cannot assume
+integer/rational coefficient packets. Probabilistic metadata identifies both
+the algorithm and coefficient domain.
+
+### Backend encodings never leak into geometry
+
+A future backend may represent `K = k[a]/(m)` using an auxiliary variable and
+the relation `m(a)`. That variable is private backend state: it is not an
+ambient-space coordinate, does not change scheme dimension, and must not
+affect point semantics, printing, hashing, or public variable names.
+
+### “Extension-ready” does not mean “extension-supported”
+
+Tests in this plan should exercise the abstraction and reject unsupported
+fields at the declared boundary. They should not start an unreviewed partial
+implementation. Completion of this plan is judged only over `QQ` and prime
+`GF(p)`; completion of the companion plan is a separate milestone.
 
 ## Semantics that must not drift
 
@@ -285,6 +376,13 @@ before exposing a useful, mathematically closed feature.
    Macaulay2, and Oscar for the ideal operations later in this plan.
 6. Add the failing `AffineSpace(QQ, 2)` report as the first regression test,
    but fix it in Phase 4 with the complete object contract.
+7. Add architecture checks for the mandatory extension-ready boundaries:
+   scheme modules cannot dispatch on concrete field tags, capability records
+   must carry a full base-field descriptor, and public caches cannot key only
+   on characteristic.
+8. Link the user and architecture documentation to
+   `agents/no-singular-extension-fields-plan.md` without importing any of its
+   implementation scope into this milestone.
 
 Acceptance:
 
@@ -292,6 +390,8 @@ Acceptance:
 - fixtures reproduce under the locally pinned Sage checkout;
 - every promised operation maps to an implementation phase and every rejected
   operation maps to a precise limitation; and
+- `GF(p^d)` and number-field requests fail at the intentional capability
+  boundary while all public geometry interfaces remain field-parametric; and
 - no production dependency has been added.
 
 ### Phase 1: polynomial calculus and quotient rings
@@ -814,6 +914,8 @@ Each PR description must state:
 - new resource envelopes;
 - dynamic/native/Wasm behavior;
 - tests and oracle revisions; and
+- how the change preserves the mandatory extension-ready boundaries without
+  implementing the deferred extension-field plan; and
 - which later phase, if any, is required for a higher-level convenience API.
 
 ## Definition of done
@@ -845,6 +947,13 @@ The no-Singular roadmap is complete only when all of the following hold:
       `proof=` override.
 - [ ] Every unsupported case produces a concise capability error rather than
       a backend stack trace.
+- [ ] Public scheme and curve code contains no `QQ`/prime-field backend
+      dispatch; coefficient-specific choices live behind polynomial and ideal
+      capabilities.
+- [ ] Field identity, proof state, order, backend, and resource policy are all
+      represented in serialization descriptors and cache keys.
+- [ ] `GF(p^d)` and number fields remain explicitly unsupported by this
+      milestone and point to `agents/no-singular-extension-fields-plan.md`.
 - [ ] Strict Python, architecture, portable, native, Node-Wasm, and browser
       tests pass.
 - [ ] Linux x64, Linux ARM64, macOS ARM64, and native Windows x64 qualification
