@@ -1907,25 +1907,11 @@ def _cubic_scaled_polynomial_value(
 
 
 @native
-def _cubic_real_log_bounds(
-    log_numerators: FmpzMatrix,
-    log_denominators: FmpzMatrix,
-    log_endpoints: FmpzMatrix,
+def _cubic_real_root_interval(
     coefficients: IntegerBuffer,
-    denominator: int,
-    basis_zero_zero: int,
-    basis_zero_one: int,
-    basis_zero_two: int,
-    basis_one_one: int,
-    basis_one_two: int,
-    basis_two_two: int,
-    element_zero: int,
-    element_one: int,
-    element_two: int,
     scale: int,
-    precision: uint64,
 ) -> tuple[int, int]:
-    """Enclose the signed real-place log absolute value of one element."""
+    """Isolate the unique real root of a complex cubic at one dyadic scale."""
     root_bound = 1
     coefficient_index: uint64 = 0
     while coefficient_index < 3:
@@ -1967,6 +1953,28 @@ def _cubic_real_log_bounds(
         bisections += 1
     if root_upper - root_lower > 1:
         return (1, 0)
+    return (root_lower, root_upper)
+
+
+@native
+def _cubic_real_embedding_absolute_bounds_from_root_interval(
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    element_zero: int,
+    element_one: int,
+    element_two: int,
+    root_lower: int,
+    root_upper: int,
+    scale: int,
+) -> tuple[int, int]:
+    """Enclose the absolute real embedding numerator at one dyadic scale."""
+    if denominator <= 0 or root_upper < root_lower or root_upper - root_lower > 1:
+        return (1, 0)
 
     raw_zero = element_zero * basis_zero_zero
     raw_one = element_zero * basis_zero_one + element_one * basis_one_one
@@ -2006,6 +2014,49 @@ def _cubic_real_log_bounds(
         absolute_upper = -value_lower
     else:
         return (1, 0)
+    return (absolute_lower, absolute_upper)
+
+
+@native
+def _cubic_real_log_bounds_from_root_interval(
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    element_zero: int,
+    element_one: int,
+    element_two: int,
+    root_lower: int,
+    root_upper: int,
+    scale: int,
+    precision: uint64,
+) -> tuple[int, int]:
+    """Enclose one real-place log using a caller-owned root interval."""
+    absolute_lower, absolute_upper = (
+        _cubic_real_embedding_absolute_bounds_from_root_interval(
+            denominator,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            element_zero,
+            element_one,
+            element_two,
+            root_lower,
+            root_upper,
+            scale,
+        )
+    )
+    if absolute_upper < absolute_lower:
+        return (1, 0)
     logarithm_lower, logarithm_upper = _cubic_log_interval_bounds(
         log_numerators,
         log_denominators,
@@ -2016,6 +2067,130 @@ def _cubic_real_log_bounds(
         precision,
     )
     return (logarithm_lower, logarithm_upper)
+
+
+@native
+def _cubic_real_log_bounds(
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
+    coefficients: IntegerBuffer,
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    element_zero: int,
+    element_one: int,
+    element_two: int,
+    scale: int,
+    precision: uint64,
+) -> tuple[int, int]:
+    """Enclose the signed real-place log absolute value of one element."""
+    root_lower, root_upper = _cubic_real_root_interval(coefficients, scale)
+    if root_upper < root_lower:
+        return (1, 0)
+    return _cubic_real_log_bounds_from_root_interval(
+        log_numerators,
+        log_denominators,
+        log_endpoints,
+        denominator,
+        basis_zero_zero,
+        basis_zero_one,
+        basis_zero_two,
+        basis_one_one,
+        basis_one_two,
+        basis_two_two,
+        element_zero,
+        element_one,
+        element_two,
+        root_lower,
+        root_upper,
+        scale,
+        precision,
+    )
+
+
+@native
+def _cubic_real_log_bounds_batch(
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
+    relation_logs: FmpzMatrix,
+    coefficients: IntegerBuffer,
+    relation_elements: FmpzMatrix,
+    relation_count: uint64,
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    scale: int,
+    precision: uint64,
+) -> bool:
+    """Enclose all retained real-place logs through one resident Arb batch."""
+    if relation_count == 0 or denominator <= 0:
+        return False
+    root_lower, root_upper = _cubic_real_root_interval(coefficients, scale)
+    if root_upper < root_lower:
+        return False
+    log_denominator = denominator * scale
+
+    relation_index: uint64 = 0
+    while relation_index < relation_count:
+        absolute_lower, absolute_upper = (
+            _cubic_real_embedding_absolute_bounds_from_root_interval(
+                denominator,
+                basis_zero_zero,
+                basis_zero_one,
+                basis_zero_two,
+                basis_one_one,
+                basis_one_two,
+                basis_two_two,
+                relation_elements[relation_index, 0],
+                relation_elements[relation_index, 1],
+                relation_elements[relation_index, 2],
+                root_lower,
+                root_upper,
+                scale,
+            )
+        )
+        if absolute_upper < absolute_lower:
+            return False
+        argument_index: uint64 = 2 * relation_index
+        log_numerators[argument_index, 0] = absolute_lower
+        log_denominators[argument_index, 0] = log_denominator
+        log_numerators[argument_index + 1, 0] = absolute_upper
+        log_denominators[argument_index + 1, 0] = log_denominator
+        relation_index += 1
+
+    argument_count: uint64 = 2 * relation_count
+    if not positive_rational_log_balls_resource(
+        log_endpoints,
+        log_numerators,
+        log_denominators,
+        argument_count,
+        precision,
+    ):
+        return False
+
+    relation_index = 0
+    while relation_index < relation_count:
+        endpoint_index: uint64 = 4 * relation_index
+        lower = log_endpoints[endpoint_index, 0]
+        lower_upper = log_endpoints[endpoint_index + 1, 0]
+        upper_lower = log_endpoints[endpoint_index + 2, 0]
+        upper = log_endpoints[endpoint_index + 3, 0]
+        if lower_upper < lower or upper < upper_lower or upper < lower:
+            return False
+        relation_logs[relation_index, 0] = lower
+        relation_logs[relation_index, 1] = upper
+        relation_index += 1
+    return True
 
 
 @native
@@ -7142,35 +7317,41 @@ def certified_complex_cubic_class_group_v1(
             relation_count,
             2,
         )
-        if dependency_scan_active:
-            relation_index: uint64 = 0
-            while relation_index < relation_count:
-                (
-                    witness_log_lower,
-                    witness_log_upper,
-                ) = _cubic_real_log_bounds(
-                    log_numerators,
-                    log_denominators,
-                    log_endpoints,
-                    coefficients,
-                    denominator,
-                    basis_zero_zero,
-                    basis_zero_one,
-                    basis_zero_two,
-                    basis_one_one,
-                    basis_one_two,
-                    basis_two_two,
-                    dependency_relation_elements[relation_index, 0],
-                    dependency_relation_elements[relation_index, 1],
-                    dependency_relation_elements[relation_index, 2],
-                    dependency_log_scale,
-                    dependency_log_precision,
-                )
-                if witness_log_upper < witness_log_lower:
-                    return False
-                relation_logs[relation_index, 0] = witness_log_lower
-                relation_logs[relation_index, 1] = witness_log_upper
-                relation_index += 1
+        relation_log_argument_count: uint64 = 2 * relation_count
+        relation_log_numerators = arena.foreign_resource(
+            fmpz_matrix,
+            relation_log_argument_count,
+            one_column,
+        )
+        relation_log_denominators = arena.foreign_resource(
+            fmpz_matrix,
+            relation_log_argument_count,
+            one_column,
+        )
+        relation_log_endpoints = arena.foreign_resource(
+            fmpz_matrix,
+            2 * relation_log_argument_count,
+            one_column,
+        )
+        if dependency_scan_active and not _cubic_real_log_bounds_batch(
+            relation_log_numerators,
+            relation_log_denominators,
+            relation_log_endpoints,
+            relation_logs,
+            coefficients,
+            dependency_relation_elements,
+            relation_count,
+            denominator,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            dependency_log_scale,
+            dependency_log_precision,
+        ):
+            return False
         output[59] = 433
         unit_combinations = arena.foreign_resource(
             fmpz_matrix,

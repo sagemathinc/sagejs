@@ -1,0 +1,115 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-batched-relation-logs",
+  "title": "Batch rigorous cubic relation logs",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replace per-relation Arb log resource calls in the complex cubic dependency pipeline with one rigorous batched call while preserving exact output intervals and fallback semantics",
+  "base_commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+    "test/number-field-cubic-native-class-number.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 buch2.c get_embs/hnfspec_i"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/number-field-cubic-native-class-number.cjs",
+    "pnpm build:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.7,
+      "started_at": "2026-09-04T06:48:46.712Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "8c126ec5cdb7ab46a8081e8ac0c01767edda49f9ea6b2911769ec2e012868f60",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.648,
+      "started_at": "2026-09-04T06:49:35.084Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "8c126ec5cdb7ab46a8081e8ac0c01767edda49f9ea6b2911769ec2e012868f60",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-native-class-number.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.348,
+      "started_at": "2026-09-04T06:50:38.319Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "8c126ec5cdb7ab46a8081e8ac0c01767edda49f9ea6b2911769ec2e012868f60",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-native-class-number.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 63.726,
+      "started_at": "2026-09-04T07:06:34.579Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "8c126ec5cdb7ab46a8081e8ac0c01767edda49f9ea6b2911769ec2e012868f60",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 460.488,
+      "started_at": "2026-09-04T07:07:51.400Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "8c126ec5cdb7ab46a8081e8ac0c01767edda49f9ea6b2911769ec2e012868f60",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1131.627,
+      "started_at": "2026-09-04T07:20:23.154Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "8c126ec5cdb7ab46a8081e8ac0c01767edda49f9ea6b2911769ec2e012868f60",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Factors unique-real-root isolation out of scalar cubic log enclosure, exposes exact absolute embedding numerator intervals, and replaces two Arb resource calls per retained relation with one positive-rational-log batch for all 2*n interval endpoints. The batch and serial paths produce bit-for-bit identical rigorous endpoints natively and with native execution disabled. The full cubic receipt, exact replay, pinned LMFDB, and large-unit suite passes. A direct FLINT resource microbenchmark at 36 relations measured 128.8 us for 72 singleton calls versus 20.5 us for one batch (about 6.3x for this resource phase).",
+    "risks": [
+      "The integration branch independently refactored the same root-isolation helpers, so cherry-pick may conflict around _cubic_real_log_bounds; preserve the integration branch's root helper and merge the absolute-bounds/batch helper plus dependency-phase allocation and call semantically.",
+      "pnpm architecture:check passed FFI, package, native, Wasm capability/resource, and CoWasm checks, then failed because the branch base has a stale generated optimizer-opportunity manifest outside this lane's claims.",
+      "pnpm test:native passed all functional, native-kernel, sanitizer, lifecycle, and migration suites, then failed the unrelated dense QQ performance gate: select_rows_300, select_columns_300, and stack_300x300 take about 35 ms on this branch base against 15 ms budgets. A standalone rerun reproduced only those same performance failures.",
+      "The microbenchmark isolates the Arb resource-call phase; the full wider-corpus wall-time effect must be measured after integration with the f+14/f+18 relation prefix."
+    ],
+    "next_steps": [
+      "Integrate the batch helper into the current wider-prefix cubic campaign and measure dependency-phase and 1000-field corpus wall time on opt.",
+      "Use the exposed absolute embedding intervals as the rigorous input boundary for the transformed approximate-log sidecar."
+    ]
+  }
+}
