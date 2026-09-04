@@ -1188,7 +1188,7 @@ print((
   assert.equal(output, "(1, 1, 0, 1, 1, 1, 1, 128)");
 });
 
-test("cubic class saturation searches nonzero p-torsion cosets", () => {
+test("reduced cubic ideals avoid unnecessary p-torsion saturation", () => {
   const output = run(String.raw`
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -1201,11 +1201,18 @@ assert result.class_group().invariants() == (9,)
 assert result.saturation_record.verify(K, K.maximal_order())
 assert result.saturation_record.remaining_index_bound == 1
 resources = result.diagnostics["resources"]
-assert resources["class_p_torsion_source_searches"] == 1
-assert resources["class_p_torsion_source_work"] == 924
-assert resources["class_p_torsion_source_candidates"] == 12
-assert resources["class_p_torsion_source_uses"] >= 1
+assert resources["class_p_torsion_source_searches"] == 0
+assert resources["class_p_torsion_source_work"] == 0
+assert resources["class_p_torsion_source_candidates"] == 0
+assert resources["class_p_torsion_source_uses"] == 0
 assert resources["class_p_torsion_source_fallbacks"] == 0
+assert resources["saturation_rounds"] == 0
+assert resources["cubic_reduced_ideal_resident_uses"] == 1
+assert resources["cubic_reduced_ideal_resident_generated_candidates"] == 12
+assert resources["cubic_reduced_ideal_resident_smooth_candidates"] == 12
+assert resources["cubic_reduced_ideal_sieve_uses"] == 1
+assert resources["cubic_reduced_ideal_sieve_candidates"] == 12
+assert resources["cubic_reduced_ideal_sieve_relations"] == 6
 maps = __import__(
     "sagejs.number_fields.class_group_maps",
     fromlist=["class_group_from_engine_result"],
@@ -1216,7 +1223,9 @@ receipts = payload["conditional_evidence"]["generator_relations"]
 assert len(receipts) == 1
 receipt = receipts[0]
 assert receipt["coordinates"] == [0]
-assert sum(abs(value) for value in receipt["relation_coefficients"]) == 336499
+# The reduced-ideal relation neighborhood now yields a much shorter exact
+# generator relation than the former p-torsion coset search.
+assert sum(abs(value) for value in receipt["relation_coefficients"]) == 56
 seal_verify_calls = [0]
 original_group_verify = maps.IdealClassGroup.verify
 def counted_seal_verify(group):
@@ -1256,7 +1265,7 @@ assert not view.verify_proof_payload(bad_generator)
 print((
     result.class_number(),
     result.class_group().invariants(),
-    resources["class_p_torsion_source_candidates"],
+    resources["cubic_reduced_ideal_sieve_candidates"],
     result.saturation_record.remaining_index_bound,
 ))
 `, 300_000);
