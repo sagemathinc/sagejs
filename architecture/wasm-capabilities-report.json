@@ -1,11 +1,11 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "997a617e8f4a62554859bcf17a5e7db1b1c6aac27c2189374dd3339e0f7c467e",
+  "source_sha256": "9ed724e13ca6a54b5fe507af41f345fda9b2095993917082eacca5ecaa6accc4",
   "counts": {
-    "total": 1047,
+    "total": 1051,
     "by_kind": {
-      "declared-ffi-function": 462,
+      "declared-ffi-function": 466,
       "declared-ffi-resource": 34,
       "napi-export": 325,
       "production-kernel": 53,
@@ -16,13 +16,13 @@
       "compiled-source": 53,
       "desktop-only": 47,
       "generated-wasm": 341,
-      "portable-fallback": 561,
+      "portable-fallback": 565,
       "shared-core": 45
     },
     "by_status": {
       "available": 580,
       "desktop-only": 47,
-      "fallback": 420
+      "fallback": 424
     }
   },
   "workflow_aliases": {
@@ -367,10 +367,10 @@
     {
       "id": "ffi-resource:flint:byte_region",
       "family": "flint",
-      "disposition": "generated-wasm",
+      "disposition": "portable-fallback",
       "status": "available",
-      "fallback": "declared-ffi-capability-fallback",
-      "wasm_module": "flint",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
@@ -2974,7 +2974,31 @@
       "explanation": "The reviewed caller-owned HNF declaration is included in the generated WebAssembly resource closure for the source-transparent stable selector."
     },
     {
+      "id": "ffi:flint:fmpz_matrix_hnf_prefix_into",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "fallback",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_hnf_transform",
+      "family": "flint",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_hnf_transform_prefix",
       "family": "flint",
       "disposition": "portable-fallback",
       "status": "fallback",
@@ -3011,6 +3035,18 @@
     },
     {
       "id": "ffi:flint:fmpz_matrix_lll_transform",
+      "family": "flint",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_lll_transform_prefix",
       "family": "flint",
       "disposition": "portable-fallback",
       "status": "fallback",
@@ -3263,6 +3299,18 @@
     },
     {
       "id": "ffi:flint:fmpz_matrix_snf_into",
+      "family": "flint",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_snf_prefix_into",
       "family": "flint",
       "disposition": "portable-fallback",
       "status": "fallback",

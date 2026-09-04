@@ -1,0 +1,186 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fmpz-logical-prefix-adapters",
+  "title": "Logical-prefix FLINT matrix adapters",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Add validated dynamic and native HNF, SNF, HNF-transform, and LLL-transform operations over logical prefixes of oversized owned fmpz matrix resources, with scoped FLINT windows, exact cleanup, retained-byte accounting, and focused regression coverage",
+  "base_commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/include/sagejs/fmpz_matrix_ffi.h",
+    "packages/flint/generated/ffi_host.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "architecture/native-boundaries.json",
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "architecture/wasm-workload-dashboard.json",
+    "architecture/optimizer-opportunities.manifest.json",
+    "docs/optimizer-opportunities.md",
+    "test/fmpz-matrix-logical-prefix.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "FLINT fmpz_mat_window_init/fmpz_mat_window_clear ownership contract"
+  ],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Exact identities H=T*A and B=U*A over independently sliced matrices",
+      "Dynamic/native differential results across changing logical prefixes and invalid shapes"
+    ],
+    "exceptions": [
+      "A scoped FLINT matrix window is a compact representation adapter around mature FLINT HNF/SNF/LLL routines; expressing the borrowed logical shape in mathematical Python would allocate and copy instead of preserving one resident exact representation"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/fmpz-matrix-logical-prefix.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node test/fmpz-matrix-logical-prefix.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.817,
+      "started_at": "2026-09-04T06:48:09.720Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "69046161ad1ed0d85f33976ecedc51a7525ba27ff5cce8c78148308b2d04083a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.375,
+      "started_at": "2026-09-04T06:48:19.704Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "69046161ad1ed0d85f33976ecedc51a7525ba27ff5cce8c78148308b2d04083a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 144.832,
+      "started_at": "2026-09-04T06:48:35.422Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "69046161ad1ed0d85f33976ecedc51a7525ba27ff5cce8c78148308b2d04083a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 8.399,
+      "started_at": "2026-09-04T06:51:40.132Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "69046161ad1ed0d85f33976ecedc51a7525ba27ff5cce8c78148308b2d04083a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 239.697,
+      "started_at": "2026-09-04T07:09:20.544Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "14b1d8ff3dcec3f17a093b1be3e5e8800fb1dadf1b0496ff202e86b84b6e3c25",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 67.304,
+      "started_at": "2026-09-04T07:13:24.479Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "14b1d8ff3dcec3f17a093b1be3e5e8800fb1dadf1b0496ff202e86b84b6e3c25",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-logical-prefix.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.936,
+      "started_at": "2026-09-04T07:21:10.470Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "493ec7dc5abc24f9f60101e83c32353ff32f60f7109186c05f1950a12d724f8a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.764,
+      "started_at": "2026-09-04T07:21:20.802Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "493ec7dc5abc24f9f60101e83c32353ff32f60f7109186c05f1950a12d724f8a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 188.511,
+      "started_at": "2026-09-04T07:21:36.464Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "493ec7dc5abc24f9f60101e83c32353ff32f60f7109186c05f1950a12d724f8a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.874,
+      "started_at": "2026-09-04T07:25:03.297Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "493ec7dc5abc24f9f60101e83c32353ff32f60f7109186c05f1950a12d724f8a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2763.291,
+      "started_at": "2026-09-04T07:25:53.299Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "493ec7dc5abc24f9f60101e83c32353ff32f60f7109186c05f1950a12d724f8a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-logical-prefix.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.993,
+      "started_at": "2026-09-04T08:12:27.565Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "493ec7dc5abc24f9f60101e83c32353ff32f60f7109186c05f1950a12d724f8a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added dimension-generic, nonempty top-left fmpz matrix prefix adapters for caller-owned HNF, SNF, HNF transforms, and exact row-LLL transforms. Every adapter validates alias and capacity constraints before mutation, scopes and clears FLINT windows, refreshes retained-byte accounting on writable roots, and is exposed through generated dynamic and source-transparent native bindings. Focused tests cover changing-prefix reuse, exact transform identities, rejection atomicity, big-integer accounting, one shared native arena, and 300 sanitizer lifecycle cycles.",
+    "risks": [
+      "The new operations are currently host-native only; Wasm remains an explicitly classified exact ordinary fallback pending a separate authenticated production-closure receipt.",
+      "The exhaustive changed-file run passed build, architecture, unit, compiler, direct FLINT, sanitizer, and native lifecycle checks before failing unrelated dense-rational performance budgets for select_rows, select_columns, and stack under concurrent system load. The focused adapter suite passed again against the freshly rebuilt addon."
+    ],
+    "next_steps": [
+      "Integrate the prefix calls into the cubic relation/unit scheduler by preallocating roots to its chosen maximum capacity, including factor-count plus 18, and passing the current logical row and column counts.",
+      "Enable Wasm only after these exact prefix operations enter an authenticated production closure with platform evidence."
+    ]
+  }
+}
