@@ -1254,10 +1254,10 @@ const FMPZ_FFI_DECLARATIONS = new Set([
  *
  * Semantic Integer values remain exact.  A root owns one closed arena with
  * unbounded exact vectors, borrowed packed IntegerBuffer boundary views, and
- * the direct fmpz matrix round-trip declarations.  Packed buffers remain root
- * parameters: transitive helpers may use only exact scalar values and ordinary
- * structured control.  Anything outside this list continues through the
- * mature GMP backend.
+ * the direct fmpz matrix round-trip declarations.  A root may pass its vectors,
+ * matrices, and packed boundary views through an acyclic helper graph without
+ * transferring ownership or exposing an aggregate host ABI.  Anything outside
+ * this list continues through the mature GMP backend.
  */
 function fmpzReturnTypeSupported(type) {
   return (tupleElementTypes(type) || [type]).every((element) =>
@@ -1267,8 +1267,18 @@ function fmpzReturnTypeSupported(type) {
 
 function inspectFmpzFunction(fn) {
   if (!fmpzReturnTypeSupported(fn.returnType)) return null;
+  const fmpzResourceTypes = new Set(
+    (fn.foreignResources || [])
+      .filter((resource) => resource.id === "fmpz_matrix")
+      .map((resource) => resource.compiler_type || resource.python_name),
+  );
+  const scalarParameter = (param) =>
+    ["Integer", "uint64", "bool", "IntegerBuffer"].includes(param.type);
+  const borrowedAggregateParameter = (param) =>
+    param.type === "IntegerBuffer" ||
+    param.type === "NativeIntegerVector" || fmpzResourceTypes.has(param.type);
   if (!fn.params.every((param) =>
-    ["Integer", "uint64", "bool", "IntegerBuffer"].includes(param.type)
+    scalarParameter(param) || borrowedAggregateParameter(param)
   )) return null;
   if (!fn.locals.every((local) =>
     ["Integer", "uint64", "bool", "NativeExactArena", "NativeIntegerVector"]
@@ -1360,18 +1370,25 @@ function inspectFmpzFunction(fn) {
     write() {},
   });
   if (!zeroBoundedVectors) return null;
-  if (arenas === 1 && vectors > 0) return { role: "root" };
+  if (
+    arenas === 1 && vectors > 0 &&
+    fn.params.every(scalarParameter)
+  ) return { role: "root" };
   if (
     arenas === 0 && vectors === 0 &&
-    (fn.foreignDependencies || []).length === 0 &&
-    (fn.foreignResources || []).length === 0 &&
     fn.params.every((param) =>
-      ["Integer", "uint64", "bool"].includes(param.type)
+      ["Integer", "uint64", "bool"].includes(param.type) ||
+      borrowedAggregateParameter(param)
     ) &&
     fn.locals.every((local) =>
       ["Integer", "uint64", "bool"].includes(local.type)
     )
-  ) return { role: "helper" };
+  ) {
+    return {
+      role: "helper",
+      borrowedAggregates: fn.params.some(borrowedAggregateParameter),
+    };
+  }
   return null;
 }
 
@@ -1432,15 +1449,22 @@ function fmpzClosedCallGraphPolicies(functions, recursive) {
     const packedBuffers = root.params.some((param) =>
       param.type === "IntegerBuffer"
     );
+    const borrowedAggregates = Array.from(qualified).some((name) =>
+      inspections.get(name)?.borrowedAggregates
+    );
     policies.set(rootName, root.dependencies.length === 0
       ? fmpzBackendPolicy(root)
       : {
           kind: "fmpz",
-          reason: packedBuffers
+          reason: borrowedAggregates
+            ? "a closed exact call graph is qualified for borrowed resident fmpz vectors and matrices"
+            : packedBuffers
             ? "a closed exact call graph is qualified for direct packed-limb fmpz ingress and publication"
             : "a closed exact call graph is qualified for inline-promoting FLINT fmpz storage",
           requiresExactWorkspace: true,
-          qualification: packedBuffers
+          qualification: borrowedAggregates
+            ? "direct-fmpz-borrowed-aggregate-call-graph-v4"
+            : packedBuffers
             ? "direct-fmpz-packed-buffer-call-graph-v3"
             : "direct-fmpz-vector-matrix-call-graph-v2",
         });
@@ -1451,7 +1475,9 @@ function fmpzClosedCallGraphPolicies(functions, recursive) {
         reason:
           "a helper is transitively contained in a qualified closed fmpz exact program",
         requiresExactWorkspace: false,
-        qualification: "direct-fmpz-helper-call-graph-v2",
+        qualification: borrowedAggregates
+          ? "direct-fmpz-borrowed-aggregate-helper-call-graph-v4"
+          : "direct-fmpz-helper-call-graph-v2",
       });
     }
   }
@@ -1717,6 +1743,14 @@ function analyzeExactModule(functions) {
     }
     const effect = effects.get(fn.name);
     const residentCodeQuality = residentCodeQualityAnalysis(fn);
+    const borrowedFmpzAggregates = fn.params.some((param) =>
+      (profile.liveExactScopes === 0 && param.type === "IntegerBuffer") ||
+      param.type === "NativeIntegerVector" ||
+      (fn.foreignResources || []).some((resource) =>
+        resource.id === "fmpz_matrix" &&
+        (resource.compiler_type || resource.python_name) === param.type
+      )
+    );
     fn.analysis = {
       storage: storageAnalysis(fn),
       execution: { ...profile, recursive: recursive.has(fn.name) },
@@ -1734,6 +1768,8 @@ function analyzeExactModule(functions) {
             ? fn.params.some((param) => param.type === "IntegerBuffer")
               ? "inline-promoting-fmpz-vector-and-borrowed-packed-integer-buffer"
               : "inline-promoting-fmpz-vector"
+            : borrowedFmpzAggregates
+              ? "caller-owned-borrowed-fmpz-aggregates"
             : "caller-owned-fmpz-values",
           promotion: "transparent-and-owning",
           ffiBoundary: "direct-fmpz_t",
@@ -1741,6 +1777,8 @@ function analyzeExactModule(functions) {
             ? fn.params.some((param) => param.type === "IntegerBuffer")
               ? "borrowed-packed-limb-views-plus-one-mpz-fmpz-scalar-conversion-on-entry-and-exit"
               : "one-mpz-fmpz-conversion-on-entry-and-exit"
+            : borrowedFmpzAggregates
+              ? "none-internal-borrowed-aggregate-only"
             : "mpz-fmpz-conversion-only-when-the-helper-is-called-from-the-host",
           cleanup: "clear-promoted-values-before-flint-cache-drain-and-arena-rewind",
           qualification: backend.qualification,
@@ -1749,6 +1787,14 @@ function analyzeExactModule(functions) {
       ...(residentCodeQuality === undefined ? {} : { residentCodeQuality }),
       ...(hasUint64Bitwise(fn.body) ? { uint64: UINT64_SEMANTICS } : {}),
     };
+    if (
+      backend.kind === "fmpz" &&
+      borrowedFmpzAggregates
+    ) {
+      // These values are borrowed only inside one qualified closed native
+      // program.  They deliberately never acquire a public aggregate ABI.
+      fn.hostCallable = false;
+    }
   }
   const primeSourceEffects = primeSourceEffectAnalyses(functions);
   for (const fn of functions) {

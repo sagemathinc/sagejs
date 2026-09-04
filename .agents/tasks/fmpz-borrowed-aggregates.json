@@ -1,0 +1,78 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fmpz-borrowed-aggregates",
+  "title": "Borrowed fmpz exact aggregates",
+  "lane": "native-compiler",
+  "status": "review",
+  "owner": "user",
+  "objective": "Extend the fail-closed resident-fmpz backend through nested internal helpers that borrow NativeIntegerVector, FmpzMatrix, and IntegerBuffer parameters, with no public aggregate ABI, no ownership transfer, and differential/generated-code proof of zero mpz conversion in the qualified closure",
+  "base_commit": "dcefab282bd06cd0fff95773b0482432a0263e73",
+  "claims": [
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/fmpz-backend.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/compiler.cjs",
+    "tools/native-kernel/test/fmpz-buffer-ingress.cjs",
+    "tools/native-kernel/test/fmpz-borrowed-aggregates.cjs"
+  ],
+  "dependencies": [
+    "fmpz-buffer-ingress"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "dynamic JavaScript, GMP exact backend, and fmpz backend differential execution",
+      "generated internal C contains no mpz calls or fmpz/mpz conversions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/fmpz-backend.cjs tools/native-kernel/test/fmpz-call-graph.cjs tools/native-kernel/test/fmpz-buffer-ingress.cjs tools/native-kernel/test/borrowed-resident-vector.cjs tools/native-kernel/test/fmpz-borrowed-aggregates.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.248,
+      "started_at": "2026-09-04T09:57:20.509Z",
+      "commit": "dcefab282bd06cd0fff95773b0482432a0263e73",
+      "workspace_fingerprint": "1f2e9c9b08e4a1520e3a8b78feaa6d03da90ee0729f286234b7fb002acc3cbab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 42.309,
+      "started_at": "2026-09-04T09:57:28.507Z",
+      "commit": "dcefab282bd06cd0fff95773b0482432a0263e73",
+      "workspace_fingerprint": "1f2e9c9b08e4a1520e3a8b78feaa6d03da90ee0729f286234b7fb002acc3cbab",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Closed resident-fmpz programs may now pass caller-owned NativeIntegerVector, FmpzMatrix, and IntegerBuffer aggregates through nested internal helpers without repacking, ownership transfer, cleanup, or a public aggregate ABI. NativeIntegerVector parameters lower as borrowed fmpz-vector pointers, preserving the distinction between local address-taking and direct borrowed forwarding; matrix and packed-buffer arguments preserve direct aliasing. Selection remains atomic and fail closed. A nested differential witness covers two vectors, one matrix, packed buffers, visible mutation, negative and promoted integers, tuples, early failure/recovery, and structurally proves that qualified helper bodies contain no mpz bridge or fmpz/mpz conversion. The promoted path exposed a FLINT cached-wrapper lifetime hazard, fixed by draining exact TLS checkpoint caches before suspending and rewinding the arena for result publication. Focused tests pass 14/14, strict baselib passes with 0 errors, and a complete build passes. The architecture umbrella reached the optimizer-dashboard manifest check after all preceding checks passed, where integration must regenerate the shared unclaimed digest. The native umbrella passed its package suites and reached 79 pass / 1 skip in the combined host phase, then stopped at an unmodified FFI platform-link fixture whose missing link array raises in compiler.cjs.",
+    "risks": [
+      "Execution evidence is Linux x64; the generated C ABI is platform-neutral, but required release platforms still need integration CI.",
+      "The shared optimizer-opportunity dashboard manifest must be regenerated after integration because exact-analysis changed.",
+      "The full native umbrella remains blocked by the unrelated native foreign-input platform-link fixture failure in test/ffi.cjs."
+    ],
+    "next_steps": [
+      "Regenerate shared optimizer-opportunity artifacts in the integration lane and run the complete architecture/native matrix.",
+      "Extend fmpz vector indexing to accept exact Integer indices; the cubic audit found this is the next structural blocker in 28 functions (262 reads and 98 writes).",
+      "After exact-index support, re-audit the cubic closure and address the next smallest fail-closed obstruction rather than widening public aggregate ABI."
+    ]
+  }
+}

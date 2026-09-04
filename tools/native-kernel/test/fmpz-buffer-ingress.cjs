@@ -136,7 +136,7 @@ test("closed fmpz roots admit borrowed packed integer ingress and publication", 
   assert.doesNotMatch(publicBridge, /integer_buffer_(?:get|set)_mpz/);
 });
 
-test("IntegerBuffer parameters stay root-only and unsupported views fail closed", async () => {
+test("IntegerBuffer helpers borrow root views and copied views fail closed", async () => {
   const bufferHelper = source.replace(
     "def fmpz_buffer_step(value: int, divisor: int, bias: int) -> int:\n" +
       "    quotient = value // divisor",
@@ -152,17 +152,37 @@ test("IntegerBuffer parameters stay root-only and unsupported views fail closed"
     "fmpz_buffer_step(source[-1], divisor, bias, source)",
   );
   const helperIr = await lowerSource(bufferHelper, "fmpz-buffer-helper.py");
-  assert.notEqual(
-    helperIr.functions.find((fn) =>
-      fn.name === "resident_fmpz_integer_buffers"
-    ).analysis.backend.kind,
-    "fmpz",
+  const helperRoot = helperIr.functions.find((fn) =>
+    fn.name === "resident_fmpz_integer_buffers"
   );
-  assert.notEqual(
-    helperIr.functions.find((fn) => fn.name === "fmpz_buffer_step")
-      .analysis.backend.kind,
-    "fmpz",
+  const helper = helperIr.functions.find((fn) =>
+    fn.name === "fmpz_buffer_step"
   );
+  assert.equal(helperRoot.analysis.backend.kind, "fmpz");
+  assert.equal(
+    helperRoot.analysis.backend.qualification,
+    "direct-fmpz-borrowed-aggregate-call-graph-v4",
+  );
+  assert.equal(helper.analysis.backend.kind, "fmpz");
+  assert.equal(
+    helper.analysis.backend.qualification,
+    "direct-fmpz-borrowed-aggregate-helper-call-graph-v4",
+  );
+  assert.equal(helper.hostCallable, false);
+
+  const helperCore = generateHostCore(helperIr).source;
+  const helperImplementation = emittedFunction(
+    helperCore,
+    "static int fmpz_native_fmpz_buffer_step(",
+  );
+  assert.match(
+    helperImplementation,
+    /sagejs_integer_buffer sagejs_arg_source/,
+  );
+  assert.match(helperImplementation, /sagejs_integer_buffer_get_fmpz/);
+  assert.doesNotMatch(helperImplementation, /fmpz_(?:set|get)_mpz/);
+  assert.doesNotMatch(helperImplementation, /\bmpz_/);
+  assert.doesNotMatch(helperCore, /int sagejs_kernel_fmpz_buffer_step\(/);
 
   const copied = source.replace(
     "values = arena.integer_vector(128, 0)",

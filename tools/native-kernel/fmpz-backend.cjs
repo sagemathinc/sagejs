@@ -39,6 +39,9 @@ function fmpzValue(name, context) {
   if (context.storage.borrowedParameters.includes(name)) {
     return `sagejs_arg_${name}`;
   }
+  if (context.liveIntegerVectorParameters?.has(name)) {
+    return `(*sagejs_arg_${name})`;
+  }
   if (context.resourceParameters.has(name)) return `sagejs_arg_${name}`;
   if (context.integerBufferParameters.has(name)) return `sagejs_arg_${name}`;
   return cName(name);
@@ -51,6 +54,9 @@ function fmpzArgument(fn, param) {
   if (param.type === "bool") return `int ${name}`;
   if (param.type === "IntegerBuffer") {
     return `sagejs_integer_buffer ${name}`;
+  }
+  if (param.type === "NativeIntegerVector") {
+    return `sagejs_native_fmpz_vector *${name}`;
   }
   const resource = resourceForFunctionType(fn, param.type);
   if (resource !== undefined) return `${resource.abi_type} ${name}`;
@@ -415,7 +421,11 @@ function emitFmpzOperation(operation, context, indent) {
           : `&${fmpzValue(result.name, context)}`
       );
     const args = operation.arguments.map((argument) =>
-      fmpzValue(argument.name, context)
+      argument.type === "NativeIntegerVector"
+        ? context.liveIntegerVectorParameters?.has(argument.name)
+          ? `sagejs_arg_${argument.name}`
+          : `&${fmpzValue(argument.name, context)}`
+        : fmpzValue(argument.name, context)
     );
     return [
       `${indent}if (!fmpz_native_${operation.function}(status, ` +
@@ -577,7 +587,17 @@ function emitFmpzStatements(statements, context, indent) {
         );
       }
       if (context.checkpointActive && publishesExact) {
-        lines.push(`${indent}sagejs_native_gmp_checkpoint_suspend();`);
+        // A nested helper may have returned promoted fmpz wrappers to FLINT's
+        // thread-local cache while the checkpoint was active.  Drain that
+        // cache before suspending allocation; otherwise publication can reuse
+        // an arena-owned wrapper and leave the caller with a dangling fmpz
+        // after the arena rewind.
+        lines.push(
+          ...context.checkpointCleanupSymbols.map(
+            (symbol) => `${indent}${symbol}();`,
+          ),
+          `${indent}sagejs_native_gmp_checkpoint_suspend();`,
+        );
       }
       if (tuple !== undefined) {
         tuple.forEach((type, index) => {
@@ -649,6 +669,7 @@ function fmpzDeclarations(fn) {
   for (const param of fn.params) {
     if (param.type === "Integer" ||
         param.type === "IntegerBuffer" ||
+        param.type === "NativeIntegerVector" ||
         resourceForFunctionType(fn, param.type) !== undefined) continue;
     declarations.push(
       `    ${param.type === "uint64" ? "uint64_t" : "int"} ` +
@@ -729,6 +750,11 @@ function fmpzDeclarations(fn) {
     integerBufferParameters: new Set(
       fn.params
         .filter((param) => param.type === "IntegerBuffer")
+        .map((param) => param.name),
+    ),
+    liveIntegerVectorParameters: new Set(
+      fn.params
+        .filter((param) => param.type === "NativeIntegerVector")
         .map((param) => param.name),
     ),
   };
