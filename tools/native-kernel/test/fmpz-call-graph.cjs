@@ -149,20 +149,28 @@ test("fmpz selection propagates through a closed tuple-return call graph", async
   assert.match(helperBridge, /fmpz_get_mpz/);
 });
 
-test("an unsupported helper invalidates the entire fmpz candidate", async () => {
-  const unsupported = source.replace(
+test("checked uint64 helpers stay resident and bounded vectors fail closed", async () => {
+  const checked = source.replace(
     "quotient = value // divisor",
     "checked = checked_uint64(value)\n    quotient = value // divisor + checked",
   );
-  const unsupportedIr = await lowerSource(
-    unsupported,
-    "unsupported-fmpz-helper.py",
+  const checkedIr = await lowerSource(
+    checked,
+    "checked-fmpz-helper.py",
   );
-  assert.notEqual(
-    unsupportedIr.functions.find((fn) => fn.name === "resident_fmpz_call_graph")
+  assert.equal(
+    checkedIr.functions.find((fn) => fn.name === "resident_fmpz_call_graph")
       .analysis.backend.kind,
     "fmpz",
   );
+  const checkedCore = generateHostCore(checkedIr).source;
+  const implementation = emittedFunction(
+    checkedCore,
+    "static int fmpz_native_fmpz_division_pair(",
+  );
+  assert.match(implementation, /sagejs_fmpz_to_uint64_checked/);
+  assert.doesNotMatch(implementation, /fmpz_(?:set|get)_mpz/);
+  assert.doesNotMatch(implementation, /\bmpz_/);
 
   const bounded = source.replace(
     "arena.integer_vector(8192, 0)",

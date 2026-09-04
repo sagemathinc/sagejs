@@ -143,7 +143,7 @@ test("closed unbounded exact arenas select direct fmpz storage", async () => {
   assert.match(adapter, /native_resident_fmpz_witness\(/);
 });
 
-test("fmpz selection fails closed outside the qualified representation", async () => {
+test("fmpz selection admits exact indices and rejects bounded vectors", async () => {
   const bounded = source.replace(
     "arena.integer_vector(8192, 0)",
     "arena.integer_vector(8192, 256)",
@@ -156,7 +156,14 @@ test("fmpz selection fails closed outside the qualified representation", async (
     "values[value] = current",
   );
   const exactIndexIr = await lowerSource(exactIndex, "exact-index-witness.py");
-  assert.equal(exactIndexIr.functions[0].analysis.backend.kind, "gmp");
+  assert.equal(exactIndexIr.functions[0].analysis.backend.kind, "fmpz");
+  const implementation = emittedFunction(
+    generateHostCore(exactIndexIr).source,
+    "static int fmpz_native_resident_fmpz_witness(",
+  );
+  assert.match(implementation, /sagejs_native_fmpz_vector_set_at/);
+  assert.doesNotMatch(implementation, /fmpz_(?:set|get)_mpz/);
+  assert.doesNotMatch(implementation, /\bmpz_/);
 });
 
 test("small and promoted fmpz arithmetic agrees with JavaScript and GMP", async () => {

@@ -209,13 +209,11 @@ test("fmpz helpers borrow vectors and matrices inside one closed program", async
 test("one unsupported aggregate helper rejects the whole fmpz closure", async () => {
   const unsupported = source
     .replace(
-      "    IntegerBuffer,\n",
-      "    IntegerBuffer,\n    checked_uint64,\n",
-    )
-    .replace(
       "    before = left[index] + packed[index]",
-      "    checked = checked_uint64(packed[index])\n" +
-        "    before = left[index] + packed[index] + checked",
+      "    extra = 0\n" +
+        "    for position in range(scale):\n" +
+        "        extra += position\n" +
+        "    before = left[index] + packed[index] + extra",
     );
   const ir = await lowerSource(unsupported, "unsupported-fmpz-aggregate.py");
   for (const fn of ir.functions) {

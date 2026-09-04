@@ -44,6 +44,7 @@ function fmpzValue(name, context) {
   }
   if (context.resourceParameters.has(name)) return `sagejs_arg_${name}`;
   if (context.integerBufferParameters.has(name)) return `sagejs_arg_${name}`;
+  if (context.uint64BufferParameters.has(name)) return `sagejs_arg_${name}`;
   return cName(name);
 }
 
@@ -54,6 +55,9 @@ function fmpzArgument(fn, param) {
   if (param.type === "bool") return `int ${name}`;
   if (param.type === "IntegerBuffer") {
     return `sagejs_integer_buffer ${name}`;
+  }
+  if (param.type === "UInt64Buffer") {
+    return `sagejs_uint64_buffer ${name}`;
   }
   if (param.type === "NativeIntegerVector") {
     return `sagejs_native_fmpz_vector *${name}`;
@@ -181,13 +185,35 @@ function emitFmpzOperation(operation, context, indent) {
     "integer.vector.addmul",
     "integer.vector.submul",
   ].includes(operation.kind)) {
-    if (operation.indexType !== "uint64") {
+    if (!["Integer", "uint64"].includes(operation.indexType)) {
       throw new Error(
-        `${context.fn.name}: fmpz vectors initially require uint64 indices`,
+        `${context.fn.name}: fmpz vectors require exact integer indices`,
       );
     }
     const vector = fmpzValue(operation.vector, context);
     const index = fmpzValue(operation.index, context);
+    if (operation.indexType === "Integer") {
+      let checkedAction;
+      if (operation.kind === "integer.vector.get") {
+        checkedAction = `sagejs_native_fmpz_vector_get_at(status, &${vector}, ` +
+          `${index}, ${target})`;
+      } else if (operation.kind === "integer.vector.borrow") {
+        checkedAction = `sagejs_native_fmpz_vector_borrow_at(status, ` +
+          `&${vector}, ${index}, &${target})`;
+      } else if (operation.kind === "integer.vector.set") {
+        checkedAction = `sagejs_native_fmpz_vector_set_at(status, &${vector}, ` +
+          `${index}, ${fmpzValue(operation.value, context)})`;
+      } else {
+        checkedAction = `sagejs_native_fmpz_vector_addmul_at(status, ` +
+          `&${vector}, ${index}, ${fmpzValue(operation.left, context)}, ` +
+          `${fmpzValue(operation.right, context)}, ` +
+          `${operation.kind === "integer.vector.submul" ? 1 : 0})`;
+      }
+      return [
+        `${indent}if (!${checkedAction})`,
+        `${indent}    goto fail;`,
+      ].join("\n");
+    }
     let action;
     if (operation.kind === "integer.vector.get") {
       action = `fmpz_set(${target}, ${vector}.entries + sagejs_vector_position);`;
@@ -206,8 +232,13 @@ function emitFmpzOperation(operation, context, indent) {
     }
     return [
       `${indent}{`,
-      `${indent}    size_t sagejs_vector_position = (size_t) ${index};`,
-      `${indent}    if (${index} >= (uint64_t) ${vector}.length)`,
+      `${indent}    size_t sagejs_vector_position = ` +
+        `${operation.indexType === "Integer" ? "0" : `(size_t) ${index}`};`,
+      `${indent}    if (` +
+        `${operation.indexType === "Integer"
+          ? `!sagejs_native_fmpz_vector_index(&${vector}, ${index}, ` +
+            "&sagejs_vector_position)"
+          : `${index} >= (uint64_t) ${vector}.length`})`,
       `${indent}    {`,
       statusFailure(
         "range",
@@ -221,34 +252,57 @@ function emitFmpzOperation(operation, context, indent) {
     ].join("\n");
   }
   if (operation.kind === "integer.vector.swap") {
-    if (operation.leftType !== "uint64" || operation.rightType !== "uint64") {
+    if (!["Integer", "uint64"].includes(operation.leftType) ||
+        !["Integer", "uint64"].includes(operation.rightType)) {
       throw new Error(
-        `${context.fn.name}: fmpz vector swap initially requires uint64 indices`,
+        `${context.fn.name}: fmpz vector swap requires exact integer indices`,
       );
     }
     const vector = fmpzValue(operation.vector, context);
     const left = fmpzValue(operation.left, context);
     const right = fmpzValue(operation.right, context);
+    if (operation.leftType === "Integer" &&
+        operation.rightType === "Integer") {
+      return [
+        `${indent}if (!sagejs_native_fmpz_vector_swap_at(status, ` +
+          `&${vector}, ${left}, ${right}))`,
+        `${indent}    goto fail;`,
+      ].join("\n");
+    }
     return [
-      `${indent}if (${left} >= (uint64_t) ${vector}.length ||`,
-      `${indent}    ${right} >= (uint64_t) ${vector}.length)`,
       `${indent}{`,
+      `${indent}    size_t sagejs_vector_left = ` +
+        `${operation.leftType === "Integer" ? "0" : `(size_t) ${left}`};`,
+      `${indent}    size_t sagejs_vector_right = ` +
+        `${operation.rightType === "Integer" ? "0" : `(size_t) ${right}`};`,
+      `${indent}    if (` +
+        `${operation.leftType === "Integer"
+          ? `!sagejs_native_fmpz_vector_index(&${vector}, ${left}, ` +
+            "&sagejs_vector_left)"
+          : `${left} >= (uint64_t) ${vector}.length`} ||`,
+      `${indent}        ` +
+        `${operation.rightType === "Integer"
+          ? `!sagejs_native_fmpz_vector_index(&${vector}, ${right}, ` +
+            "&sagejs_vector_right)"
+          : `${right} >= (uint64_t) ${vector}.length`})`,
+      `${indent}    {`,
       statusFailure(
         "range",
         "NativeIntegerVector index out of range",
-        `${indent}    `,
+        `${indent}        `,
       ),
-      `${indent}    goto fail;`,
-      `${indent}}`,
-      `${indent}fmpz_swap(${vector}.entries + (size_t) ${left},`,
-      `${indent}    ${vector}.entries + (size_t) ${right});`,
-      `${indent}{`,
-      `${indent}    uint64_t sagejs_charge = ` +
-        `${vector}.payload_charges[(size_t) ${left}];`,
-      `${indent}    ${vector}.payload_charges[(size_t) ${left}] = ` +
-        `${vector}.payload_charges[(size_t) ${right}];`,
-      `${indent}    ${vector}.payload_charges[(size_t) ${right}] = ` +
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    fmpz_swap(${vector}.entries + sagejs_vector_left,`,
+      `${indent}        ${vector}.entries + sagejs_vector_right);`,
+      `${indent}    {`,
+      `${indent}        uint64_t sagejs_charge = ` +
+        `${vector}.payload_charges[sagejs_vector_left];`,
+      `${indent}        ${vector}.payload_charges[sagejs_vector_left] = ` +
+        `${vector}.payload_charges[sagejs_vector_right];`,
+      `${indent}        ${vector}.payload_charges[sagejs_vector_right] = ` +
         `sagejs_charge;`,
+      `${indent}    }`,
       `${indent}}`,
     ].join("\n");
   }
@@ -270,8 +324,94 @@ function emitFmpzOperation(operation, context, indent) {
     ].join("\n");
   }
   if (operation.kind === "integer.from_uint64") {
-    return `${indent}fmpz_set_ui(${target}, ` +
-      `(ulong) ${fmpzValue(operation.source, context)});`;
+    const source = fmpzValue(operation.source, context);
+    return [
+      "#if FLINT_BITS == 64",
+      `${indent}fmpz_set_ui(${target}, (ulong) ${source});`,
+      "#else",
+      `${indent}fmpz_set_uiui(${target}, (ulong) (${source} >> 32), ` +
+        `(ulong) ${source});`,
+      "#endif",
+    ].join("\n");
+  }
+  if (operation.kind === "uint64.from_integer_checked") {
+    return [
+      `${indent}if (!sagejs_fmpz_to_uint64_checked(` +
+        `${fmpzValue(operation.source, context)}, &${target}))`,
+      `${indent}{`,
+      statusFailure(
+        "range", "integer is outside unsigned 64-bit", `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.mod_uint64") {
+    const divisor = fmpzValue(operation.right, context);
+    return [
+      `${indent}if (${divisor} == 0)`,
+      `${indent}{`,
+      statusFailure(
+        "range", "integer division or modulo by zero", `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      "#if FLINT_BITS == 64",
+      `${indent}${target} = (uint64_t) fmpz_fdiv_ui(` +
+        `${fmpzValue(operation.left, context)}, (ulong) ${divisor});`,
+      "#else",
+      `${indent}${target} = sagejs_fmpz_fdiv_uint64(` +
+        `${fmpzValue(operation.left, context)}, ${divisor});`,
+      "#endif",
+    ].join("\n");
+  }
+  if (operation.kind === "uint64.buffer.copy") {
+    return `${indent}${target} = ${fmpzValue(operation.source, context)};`;
+  }
+  if (operation.kind === "uint64.buffer.length") {
+    return `${indent}${target} = (uint64_t) ` +
+      `${fmpzValue(operation.buffer, context)}.length;`;
+  }
+  if (operation.kind === "uint64.buffer.get" ||
+      operation.kind === "uint64.buffer.set") {
+    const buffer = fmpzValue(operation.buffer, context);
+    const index = fmpzValue(operation.index, context);
+    const position = operation.indexType === "Integer"
+      ? "sagejs_buffer_position" : `(size_t) ${index}`;
+    const access = operation.kind === "uint64.buffer.get"
+      ? `${target} = ${buffer}.data[${position}];`
+      : `${buffer}.data[${position}] = ${fmpzValue(operation.value, context)};`;
+    if (operation.indexType === "Integer") {
+      return [
+        `${indent}{`,
+        `${indent}    size_t sagejs_buffer_position;`,
+        `${indent}    if (!sagejs_fmpz_signed_buffer_index(` +
+          `${buffer}.length, ${index}, &sagejs_buffer_position))`,
+        `${indent}    {`,
+        statusFailure(
+          "range", "UInt64Buffer index out of range", `${indent}        `,
+        ),
+        `${indent}        goto fail;`,
+        `${indent}    }`,
+        `${indent}    ${access}`,
+        `${indent}}`,
+      ].join("\n");
+    }
+    if (operation.indexType !== "uint64") {
+      throw new Error(
+        `${context.fn.name}: UInt64Buffer requires exact integer indices`,
+      );
+    }
+    return [
+      `${indent}if (${index} >= (uint64_t) ${buffer}.length)`,
+      `${indent}{`,
+      statusFailure(
+        "range", "UInt64Buffer index out of range", `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}${access}`,
+    ].join("\n");
   }
   if (operation.kind === "integer.neg" || operation.kind === "integer.abs") {
     return `${indent}fmpz_${operation.kind.slice("integer.".length)}(` +
@@ -669,6 +809,7 @@ function fmpzDeclarations(fn) {
   for (const param of fn.params) {
     if (param.type === "Integer" ||
         param.type === "IntegerBuffer" ||
+        param.type === "UInt64Buffer" ||
         param.type === "NativeIntegerVector" ||
         resourceForFunctionType(fn, param.type) !== undefined) continue;
     declarations.push(
@@ -712,6 +853,10 @@ function fmpzDeclarations(fn) {
       );
       continue;
     }
+    if (local.type === "UInt64Buffer") {
+      declarations.push(`    sagejs_uint64_buffer ${cName(local.name)};`);
+      continue;
+    }
     if (local.type === "Integer") continue;
     if (!["uint64", "bool"].includes(local.type)) {
       throw new Error(`${fn.name}: unsupported fmpz local ${local.type}`);
@@ -750,6 +895,11 @@ function fmpzDeclarations(fn) {
     integerBufferParameters: new Set(
       fn.params
         .filter((param) => param.type === "IntegerBuffer")
+        .map((param) => param.name),
+    ),
+    uint64BufferParameters: new Set(
+      fn.params
+        .filter((param) => param.type === "UInt64Buffer")
         .map((param) => param.name),
     ),
     liveIntegerVectorParameters: new Set(
