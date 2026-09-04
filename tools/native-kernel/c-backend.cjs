@@ -3630,12 +3630,27 @@ function publicCoreSignature(fn, prototype = false) {
 
 function publicCoreFunction(fn) {
   if (fn.analysis?.backend?.kind === "fmpz") {
-    const declarations = [
-      "    int sagejs_core_ok;",
-      "    fmpz_t sagejs_fmpz_result;",
-    ];
-    const initialization = ["    fmpz_init(sagejs_fmpz_result);"];
-    const cleanup = ["    fmpz_clear(sagejs_fmpz_result);"];
+    const declarations = ["    int sagejs_core_ok;"];
+    const initialization = [];
+    const cleanup = [];
+    const conversions = [];
+    const tuple = tupleElementTypes(fn.returnType);
+    const resultTypes = tuple || [fn.returnType];
+    const resultArguments = [];
+    resultTypes.forEach((type, index) => {
+      const suffix = tuple === undefined ? "" : `_${index}`;
+      const output = `sagejs_native_output${suffix}`;
+      if (type !== "Integer") {
+        resultArguments.push(output);
+        return;
+      }
+      const value = `sagejs_fmpz_result${suffix}`;
+      declarations.push(`    fmpz_t ${value};`);
+      initialization.push(`    fmpz_init(${value});`);
+      cleanup.unshift(`    fmpz_clear(${value});`);
+      resultArguments.push(value);
+      conversions.push(`        fmpz_get_mpz(${output}, ${value});`);
+    });
     const arguments_ = [];
     for (const param of fn.params) {
       if (param.type !== "Integer") {
@@ -3656,10 +3671,13 @@ function publicCoreFunction(fn) {
 ${declarations.join("\n")}
     sagejs_native_status_reset(status);
 ${initialization.join("\n")}
-    sagejs_core_ok = fmpz_native_${fn.name}(status, sagejs_fmpz_result` +
+    sagejs_core_ok = fmpz_native_${fn.name}(status, ` +
+      `${resultArguments.join(", ")}` +
       `${arguments_.length ? `, ${arguments_.join(", ")}` : ""});
     if (sagejs_core_ok)
-        fmpz_get_mpz(sagejs_native_output, sagejs_fmpz_result);
+    {
+${conversions.join("\n")}
+    }
 ${cleanup.join("\n")}
     return sagejs_core_ok;
 }`;

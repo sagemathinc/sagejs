@@ -1,5 +1,6 @@
 "use strict";
 
+const { tupleElementTypes } = require("./integer-ir.cjs");
 const {
   emitFmpzForeignCall,
   resourceForFunctionType,
@@ -52,13 +53,24 @@ function fmpzArgument(fn, param) {
   throw new Error(`unsupported fmpz native parameter ${param.type}`);
 }
 
+function fmpzResults(type) {
+  const tuple = tupleElementTypes(type);
+  const elements = tuple || [type];
+  return elements.map((element, index) => {
+    const suffix = tuple === undefined ? "" : `_${index}`;
+    if (element === "Integer") return `fmpz_t sagejs_native_output${suffix}`;
+    if (element === "uint64") {
+      return `uint64_t *sagejs_native_output${suffix}`;
+    }
+    if (element === "bool") return `int *sagejs_native_output${suffix}`;
+    throw new Error(`unsupported fmpz native return element ${element}`);
+  });
+}
+
 function fmpzInternalSignature(fn, prototype = false) {
-  if (fn.returnType !== "Integer") {
-    throw new Error(`${fn.name}: the first fmpz slice returns only Integer`);
-  }
   const parameters = [
     "sagejs_native_status *status",
-    "fmpz_t sagejs_native_output",
+    ...fmpzResults(fn.returnType),
     ...fn.params.map((param) => fmpzArgument(fn, param)),
   ].join(", ");
   return `static int fmpz_native_${fn.name}(${parameters})` +
@@ -344,6 +356,30 @@ function emitFmpzOperation(operation, context, indent) {
     return `${indent}${target} = ` +
       `${fmpzValue(operation.source, context)} != 0;`;
   }
+  if (operation.kind === "native.call") {
+    const callee = context.functions.get(operation.function);
+    if (callee === undefined || callee.analysis?.backend?.kind !== "fmpz") {
+      throw new Error(
+        `${context.fn.name}: unqualified fmpz callee ${operation.function}`,
+      );
+    }
+    const outputs = operation.results === undefined
+      ? [operation.returnType === "Integer" ? target : `&${target}`]
+      : operation.results.map((result) =>
+        result.type === "Integer"
+          ? fmpzValue(result.name, context)
+          : `&${fmpzValue(result.name, context)}`
+      );
+    const args = operation.arguments.map((argument) =>
+      fmpzValue(argument.name, context)
+    );
+    return [
+      `${indent}if (!fmpz_native_${operation.function}(status, ` +
+        `${outputs.join(", ")}` +
+        `${args.length ? `, ${args.join(", ")}` : ""}))`,
+      `${indent}    goto fail;`,
+    ].join("\n");
+  }
   if (operation.kind === "ffi.call" ||
       operation.kind === "ffi.arena.resource.allocate") {
     return emitFmpzForeignCall(operation, {
@@ -479,11 +515,10 @@ function emitFmpzStatements(statements, context, indent) {
       continue;
     }
     if (statement.kind === "return") {
-      if (statement.type !== "Integer") {
-        throw new Error(
-          `${context.fn.name}: the first fmpz slice returns only Integer`,
-        );
-      }
+      const tuple = tupleElementTypes(statement.type);
+      const publishesExact = tuple === undefined
+        ? statement.type === "Integer"
+        : tuple.includes("Integer");
       if (context.checkpointActive) {
         lines.push(
           `${indent}if (` +
@@ -495,14 +530,37 @@ function emitFmpzStatements(statements, context, indent) {
           `${indent}        "NativeExactArena temporary capacity exhausted");`,
           `${indent}    goto fail;`,
           `${indent}}`,
-          `${indent}sagejs_native_gmp_checkpoint_suspend();`,
         );
       }
-      lines.push(
-        `${indent}fmpz_set(sagejs_native_output, ` +
-          `${fmpzValue(statement.value, context)});`,
-      );
-      if (context.checkpointActive) {
+      if (context.checkpointActive && publishesExact) {
+        lines.push(`${indent}sagejs_native_gmp_checkpoint_suspend();`);
+      }
+      if (tuple !== undefined) {
+        tuple.forEach((type, index) => {
+          if (type === "Integer") {
+            lines.push(
+              `${indent}fmpz_set(sagejs_native_output_${index}, ` +
+                `${fmpzValue(statement.values[index], context)});`,
+            );
+          } else {
+            lines.push(
+              `${indent}*sagejs_native_output_${index} = ` +
+                `${fmpzValue(statement.values[index], context)};`,
+            );
+          }
+        });
+      } else if (statement.type === "Integer") {
+        lines.push(
+          `${indent}fmpz_set(sagejs_native_output, ` +
+            `${fmpzValue(statement.value, context)});`,
+        );
+      } else {
+        lines.push(
+          `${indent}*sagejs_native_output = ` +
+            `${fmpzValue(statement.value, context)};`,
+        );
+      }
+      if (context.checkpointActive && publishesExact) {
         lines.push(
           `${indent}if (!sagejs_native_gmp_checkpoint_resume())`,
           `${indent}{`,
@@ -650,9 +708,10 @@ function fmpzDeclarations(fn) {
   return { context, declarations, initialization, cleanup };
 }
 
-function emitFmpzInternalFunction(fn) {
+function emitFmpzInternalFunction(fn, functions) {
   const { context, declarations, initialization, cleanup } =
     fmpzDeclarations(fn);
+  context.functions = functions;
   return `${fmpzInternalSignature(fn)}
 {
 ${declarations.join("\n")}
@@ -674,8 +733,11 @@ ${cleanup.join("\n")}
 
 function generateFmpzFunctions(functions) {
   const selected = functions.filter((fn) => fn.analysis?.backend?.kind === "fmpz");
+  const functionMap = new Map(functions.map((fn) => [fn.name, fn]));
   return {
-    functions: selected.map(emitFmpzInternalFunction).join("\n\n"),
+    functions: selected.map((fn) =>
+      emitFmpzInternalFunction(fn, functionMap)
+    ).join("\n\n"),
     prototypes: selected.map((fn) => fmpzInternalSignature(fn, true)).join("\n"),
     selected,
   };

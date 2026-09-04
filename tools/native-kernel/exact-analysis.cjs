@@ -1,6 +1,9 @@
 "use strict";
 
 const {
+  tupleElementTypes,
+} = require("./integer-ir.cjs");
+const {
   UINT64_SEMANTICS,
   hasUint64Bitwise,
   isUint64Bitwise,
@@ -1226,6 +1229,7 @@ const FMPZ_OPERATION_KINDS = new Set([
   "integer.vector.set",
   "integer.vector.submul",
   "integer.vector.swap",
+  "native.call",
   "raise",
   "return",
   "uint64.binary",
@@ -1243,15 +1247,22 @@ const FMPZ_FFI_DECLARATIONS = new Set([
 ]);
 
 /**
- * Qualify the first deliberately small fmpz representation slice.
+ * Inspect the deliberately small fmpz representation slice.
  *
- * The semantic type remains Integer.  This proof only admits one closed
- * arena, unbounded exact vectors, ordinary structured control, and the direct
- * fmpz matrix round-trip declarations.  Anything outside this list continues
- * through the mature GMP backend.
+ * Semantic Integer values remain exact.  A root owns one closed arena with
+ * unbounded exact vectors and the direct fmpz matrix round-trip declarations.
+ * Its transitive helpers may use only exact scalar values and ordinary
+ * structured control.  Anything outside this list continues through the
+ * mature GMP backend.
  */
-function fmpzBackendPolicy(fn) {
-  if (fn.returnType !== "Integer" || fn.dependencies.length !== 0) return null;
+function fmpzReturnTypeSupported(type) {
+  return (tupleElementTypes(type) || [type]).every((element) =>
+    ["Integer", "uint64", "bool"].includes(element)
+  );
+}
+
+function inspectFmpzFunction(fn) {
+  if (!fmpzReturnTypeSupported(fn.returnType)) return null;
   if (!fn.params.every((param) =>
     ["Integer", "uint64", "bool"].includes(param.type)
   )) return null;
@@ -1323,7 +1334,7 @@ function fmpzBackendPolicy(fn) {
     }
   }
   visit(fn.body);
-  if (!eligible || arenas !== 1 || vectors === 0) return null;
+  if (!eligible) return null;
 
   let zeroBoundedVectors = true;
   walkStatements(fn.body, {
@@ -1338,6 +1349,21 @@ function fmpzBackendPolicy(fn) {
     write() {},
   });
   if (!zeroBoundedVectors) return null;
+  if (arenas === 1 && vectors > 0) return { role: "root" };
+  if (
+    arenas === 0 && vectors === 0 &&
+    (fn.foreignDependencies || []).length === 0 &&
+    (fn.foreignResources || []).length === 0 &&
+    fn.locals.every((local) =>
+      ["Integer", "uint64", "bool"].includes(local.type)
+    )
+  ) return { role: "helper" };
+  return null;
+}
+
+function fmpzBackendPolicy(fn) {
+  const inspection = inspectFmpzFunction(fn);
+  if (inspection?.role !== "root" || fn.dependencies.length !== 0) return null;
   return {
     kind: "fmpz",
     reason:
@@ -1345,6 +1371,65 @@ function fmpzBackendPolicy(fn) {
     requiresExactWorkspace: true,
     qualification: "direct-fmpz-vector-matrix-v1",
   };
+}
+
+function fmpzClosedCallGraphPolicies(functions, recursive) {
+  const exact = new Map(
+    functions
+      .filter((fn) => fn.kernelKind === "integer")
+      .map((fn) => [fn.name, fn]),
+  );
+  const inspections = new Map(
+    Array.from(exact, ([name, fn]) => [name, inspectFmpzFunction(fn)]),
+  );
+  const policies = new Map();
+  for (const [rootName, root] of exact) {
+    if (inspections.get(rootName)?.role !== "root" ||
+        recursive.has(rootName)) continue;
+    const selected = new Set([rootName]);
+    const visiting = new Set();
+    const qualified = new Set();
+    function qualify(name, isRoot = false) {
+      if (qualified.has(name)) return true;
+      if (visiting.has(name) || recursive.has(name)) return false;
+      const fn = exact.get(name);
+      const inspection = inspections.get(name);
+      if (fn === undefined || inspection === null || inspection === undefined ||
+          (!isRoot && inspection.role !== "helper")) return false;
+      visiting.add(name);
+      for (const dependency of fn.dependencies) {
+        if (!qualify(dependency)) {
+          visiting.delete(name);
+          return false;
+        }
+      }
+      visiting.delete(name);
+      qualified.add(name);
+      selected.add(name);
+      return true;
+    }
+    if (!qualify(rootName, true)) continue;
+    policies.set(rootName, root.dependencies.length === 0
+      ? fmpzBackendPolicy(root)
+      : {
+          kind: "fmpz",
+          reason:
+            "a closed exact call graph is qualified for inline-promoting FLINT fmpz storage",
+          requiresExactWorkspace: true,
+          qualification: "direct-fmpz-vector-matrix-call-graph-v2",
+        });
+    for (const name of selected) {
+      if (name === rootName) continue;
+      policies.set(name, {
+        kind: "fmpz",
+        reason:
+          "a helper is transitively contained in a qualified closed fmpz exact program",
+        requiresExactWorkspace: false,
+        qualification: "direct-fmpz-helper-call-graph-v2",
+      });
+    }
+  }
+  return policies;
 }
 
 function residentCodeQualityAnalysis(fn) {
@@ -1414,8 +1499,8 @@ function residentCodeQualityAnalysis(fn) {
   };
 }
 
-function backendPolicy(fn, profile, recursive) {
-  const fmpz = fmpzBackendPolicy(fn);
+function backendPolicy(fn, profile, recursive, fmpzPolicies = new Map()) {
+  const fmpz = fmpzPolicies.get(fn.name) || fmpzBackendPolicy(fn);
   if (fmpz !== null) return fmpz;
   if (fn.params.some((param) => param.type === "NativeIntegerVector")) {
     return {
@@ -1560,6 +1645,7 @@ function analyzeExactModule(functions) {
     if (fn.kernelKind === "integer") introduceResidentBorrows(fn);
   }
   const recursive = recursiveFunctions(functions);
+  const fmpzPolicies = fmpzClosedCallGraphPolicies(functions, recursive);
   const effects = effectAnalyses(functions);
   const exact = new Map(
     functions
@@ -1584,10 +1670,15 @@ function analyzeExactModule(functions) {
       ...executionProfile(fn),
       dependencyDepth: dependencyDepth(fn.name),
     };
-    let backend = backendPolicy(fn, profile, recursive.has(fn.name));
+    let backend = backendPolicy(
+      fn,
+      profile,
+      recursive.has(fn.name),
+      fmpzPolicies,
+    );
     if (
       profile.rangeLoops > 0 &&
-      !["gmp", "integer-buffer-values"].includes(backend.kind)
+      !["fmpz", "gmp", "integer-buffer-values"].includes(backend.kind)
     ) {
       backend = {
         kind: "tagged",
@@ -1609,10 +1700,14 @@ function analyzeExactModule(functions) {
         fmpzExact: {
           semanticType: "Integer",
           representation: "flint-fmpz-inline-word-with-gmp-promotion",
-          residentContainers: "inline-promoting-fmpz-vector",
+          residentContainers: profile.liveExactScopes > 0
+            ? "inline-promoting-fmpz-vector"
+            : "caller-owned-fmpz-values",
           promotion: "transparent-and-owning",
           ffiBoundary: "direct-fmpz_t",
-          hostBoundary: "one-mpz-fmpz-conversion-on-entry-and-exit",
+          hostBoundary: profile.liveExactScopes > 0
+            ? "one-mpz-fmpz-conversion-on-entry-and-exit"
+            : "mpz-fmpz-conversion-only-when-the-helper-is-called-from-the-host",
           cleanup: "clear-promoted-values-before-flint-cache-drain-and-arena-rewind",
           qualification: backend.qualification,
         },
