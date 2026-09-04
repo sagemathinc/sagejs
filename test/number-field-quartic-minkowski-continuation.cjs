@@ -69,8 +69,35 @@ for proof in (False, True):
         retained = class_unit_module.class_unit_context(
             K, proof=proof, algorithm="minkowski"
         )
-        assert retained.complete and retained.class_number() == expected
-        assert retained.proof_status == "exact-unconditional"
+        retained_class_number = retained.class_number() if retained.complete else None
+        retained_resources = retained.diagnostics["resources"]
+        assert retained.complete and retained_class_number == expected, (
+            "retained-result",
+            proof,
+            index,
+            retained.complete,
+            retained_class_number,
+            retained.proof_status,
+            retained.reason,
+            retained_resources["dependency_unit_steering_basis_hits"],
+            retained_resources["dependency_unit_steering_basis_fallbacks"],
+            retained_resources["dependency_lattice_lll_reductions"],
+            tuple((stage.name, stage.state) for stage in retained.stages),
+        )
+        expected_proof_status = (
+            "exact-unconditional"
+            if proof
+            else "exact-relations-conditional-grh"
+        )
+        # The Minkowski plan proves generation of the factor base, but the
+        # proof=False completion still uses the Belabas--Friedman GRH bound
+        # for the analytic class/unit index-one decision.
+        assert retained.proof_status == expected_proof_status, (
+            "retained-proof-status",
+            proof,
+            index,
+            retained.proof_status,
+        )
         assert retained.diagnostics["resources"]["proof_primes_completed"] == 0
 
 # The direct factor-base logarithm is exactly the unit column in the retained

@@ -5264,8 +5264,7 @@ class ClassUnitGroupEngine:
         """
         if (
             self._relation_initial_basis_selected
-            or int(self.field.degree()) != 3
-            or unit_rank not in (1, 2)
+            or unit_rank <= 0
             or tuple(records) != self._relation_log_record_prefix
             or len(self._relation_independent_dependency_keys) < unit_rank
         ):
@@ -5524,7 +5523,8 @@ class ClassUnitGroupEngine:
             if len(dependency) != len(records):
                 raise ArithmeticError("a relation dependency has the wrong exact width")
         steering_basis = None
-        if unit_rank == 2:
+        cubic_rank_two = unit_rank == 2 and int(self.field.degree()) == 3
+        if cubic_rank_two:
             live_basis = self._live_steering_unit_basis(
                 records, source_dependencies, unit_rank, False
             )
@@ -5546,7 +5546,7 @@ class ClassUnitGroupEngine:
                 dependencies,
                 unit_rank,
                 allow_steering_basis=bool(
-                    unit_rank == 1 and dependencies == source_dependencies
+                    dependencies == source_dependencies and not cubic_rank_two
                 ),
             )
         else:
@@ -7158,7 +7158,8 @@ class ClassUnitGroupEngine:
             ]
             units = self._independent_units(collector, presentation, unit_rank)
             used_steering_basis = bool(
-                self._resource_usage["dependency_unit_steering_basis_hits"]
+                int(self.field.degree()) == 3
+                and self._resource_usage["dependency_unit_steering_basis_hits"]
                 > steering_hits_before
             )
             steering_basis_fell_back = False
