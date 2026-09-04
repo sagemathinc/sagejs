@@ -763,7 +763,14 @@ test("the ordinary CPython oracle retains the same canonical lattices", () => {
     ],
     { cwd: tmpdir(), encoding: "utf8", timeout: 30_000 },
   );
-  assert.equal(python.status, 0, python.stderr || python.stdout);
+  assert.equal(
+    python.status,
+    0,
+    python.error?.message ||
+      python.stderr ||
+      python.stdout ||
+      "CPython oracle exited without diagnostics",
+  );
   assert.deepEqual(JSON.parse(python.stdout), {
     status: "cpython-resident-hnf-ok",
   });
