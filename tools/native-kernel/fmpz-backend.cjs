@@ -693,12 +693,19 @@ function emitFmpzStatements(statements, context, indent) {
     }
     if (statement.kind === "integer.arena.scope") {
       const owner = fmpzValue(statement.owner, context);
+      const earlyCheckpoint = context.earlyCheckpointOwners.has(
+        statement.owner,
+      );
       const lastAllocation = statement.body.findLastIndex((operation) =>
         operation.kind === "integer.arena.vector.allocate" ||
         operation.kind === "ffi.arena.resource.allocate"
       );
-      const residentSetup = statement.body.slice(0, lastAllocation + 1);
-      const checkpointBody = statement.body.slice(lastAllocation + 1);
+      const residentSetup = earlyCheckpoint
+        ? []
+        : statement.body.slice(0, lastAllocation + 1);
+      const checkpointBody = earlyCheckpoint
+        ? statement.body
+        : statement.body.slice(lastAllocation + 1);
       const checkpointContext = {
         ...context,
         checkpointActive: true,
@@ -728,6 +735,11 @@ function emitFmpzStatements(statements, context, indent) {
       );
       lines.push(
         emitFmpzStatements(statement.setup, context, indent),
+        ...(earlyCheckpoint
+          ? context.checkpointCleanupSymbols.map(
+              (symbol) => `${indent}${symbol}();`,
+            )
+          : []),
         `${indent}if (!sagejs_native_exact_arena_init(status, &${owner}, ` +
           `${fmpzValue(statement.memoryLimit, context)}, ` +
           `${fmpzValue(statement.temporaryLimit, context)}))`,
@@ -927,11 +939,15 @@ function fmpzDeclarations(fn) {
     }
   }
   collect(fn.body);
+  const checkpointCleanupSymbols =
+    (fn.checkpointCleanupSymbols || []).length > 0
+      ? fn.checkpointCleanupSymbols
+      : ["flint_cleanup"];
   const context = {
     fn,
     storage,
     constants,
-    checkpointCleanupSymbols: fn.checkpointCleanupSymbols || [],
+    checkpointCleanupSymbols,
     resourceParameters: new Set(
       fn.params
         .filter((param) =>
@@ -953,6 +969,14 @@ function fmpzDeclarations(fn) {
       fn.params
         .filter((param) => param.type === "NativeIntegerVector")
         .map((param) => param.name),
+    ),
+    earlyCheckpointOwners: new Set(
+      (fn.analysis.liveExactWorkspace?.scopes || [])
+        .filter((scope) =>
+          scope.checkpointLifetime?.placement ===
+            "immediately-after-arena-init-before-child-init"
+        )
+        .map((scope) => scope.owner),
     ),
   };
   for (const name of storage.mutableParameters) {
