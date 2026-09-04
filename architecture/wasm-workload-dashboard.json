@@ -24,11 +24,11 @@
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "c327fc205fcc3c35322ce2ac7c1028437ea0e1ba5e30d59cdeb9f0a5c7f65332"
+      "sha256": "1791b2ac5c2ad990be7379c747dc495b592426088e36625bcc3b0d088a09c239"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
-      "sha256": "04255ca2a59bf766c42bb58100aa262eab10c934fa36a197f6628a28b98b995a"
+      "sha256": "a5bbf2de063576143caf25e265bbcb75e5f4136a27fa5f54f86fea6bd8e0f638"
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
@@ -59,18 +59,18 @@
         "shared-core": 45
       },
       "by_status": {
-        "available": 580,
+        "available": 579,
         "desktop-only": 47,
-        "fallback": 424
+        "fallback": 425
       }
     },
     "kernel_coverage_totals": {
       "registered_kernels": 53,
       "production_kernels": 45,
-      "compiled_functions": 281,
-      "unsupported_production_functions": 0,
+      "compiled_functions": 280,
+      "unsupported_production_functions": 1,
       "non_production_functions": 54,
-      "same_source_fallback_functions": 54
+      "same_source_fallback_functions": 55
     }
   },
   "route_classes": {

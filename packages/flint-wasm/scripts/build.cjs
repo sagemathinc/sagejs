@@ -25,6 +25,9 @@ const autoReceiptPolicyApi = require(
   "../../../tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs"
 );
 const { kernelPackExports } = require("./kernel-pack-exports.cjs");
+const {
+  productionKernelsForPack,
+} = require("../../../tools/native-kernel/wasm-production-pack.cjs");
 const wasmAbiAllowlist = path.join(__dirname, "wasm-abi-allowlist.cjs");
 
 const packageRoot = path.resolve(__dirname, "..");
@@ -1148,7 +1151,7 @@ function buildKernelPacks({ reuseLinkedArtifacts = false } = {}) {
     if (!new Set(["flint", "gmp"]).has(pack.domain)) {
       throw new Error(`unsupported production kernel domain ${pack.domain}`);
     }
-    const kernels = manifest.kernels.filter((kernel) => kernel.domain === pack.domain);
+    const kernels = productionKernelsForPack(manifest.kernels, pack);
     const sources = kernels.flatMap((kernel) => {
       const directory = path.join(
         kernelBuildDirectory,

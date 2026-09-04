@@ -121,17 +121,19 @@ test("the Wasm source-kernel inventory accounts for all registered kernels", asy
   const nonProductionFunctions = inventory.nonProduction.flatMap(
     (kernel) => kernel.functions,
   );
+  const unsupportedProductionFunctions = productionFunctions.filter(
+    (fn) => fn.status === "unsupported"
+  ).length;
   assert.deepEqual(coverage.totals, {
     registered_kernels: inventory.registered.length,
     production_kernels: inventory.production.length,
     compiled_functions: productionFunctions.filter(
       (fn) => fn.status === "compiled-source"
     ).length,
-    unsupported_production_functions: productionFunctions.filter(
-      (fn) => fn.status === "unsupported"
-    ).length,
+    unsupported_production_functions: unsupportedProductionFunctions,
     non_production_functions: nonProductionFunctions.length,
-    same_source_fallback_functions: nonProductionFunctions.length,
+    same_source_fallback_functions:
+      nonProductionFunctions.length + unsupportedProductionFunctions,
   });
   const coverageById = new Map(coverage.kernels.map((item) => [item.id, item]));
   for (const omitted of inventory.nonProduction) {

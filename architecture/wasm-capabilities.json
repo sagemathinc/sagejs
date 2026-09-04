@@ -11022,16 +11022,18 @@
         "production-kernel-differential",
         "complex-cubic-native-class-group-differential"
       ],
-      "status": "available",
+      "status": "fallback",
       "reviewed": true,
-      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
-      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "review_note": "The production pack compiles 0 of 1 functions. The remaining 1 functions use their tested same-source dynamic fallback (fmpz-integer-buffer-requires-64-bit-flint-limbs).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 functions.",
       "compiled_coverage": {
-        "compiled_functions": 1,
-        "fallback_functions": 0,
+        "compiled_functions": 0,
+        "fallback_functions": 1,
         "total_functions": 1,
         "production_pack": true,
-        "fallback_reasons": []
+        "fallback_reasons": [
+          "fmpz-integer-buffer-requires-64-bit-flint-limbs"
+        ]
       }
     },
     {
