@@ -11,6 +11,7 @@ const test = require("node:test");
 
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
 const kernelSource = join(
@@ -735,7 +736,7 @@ print(json.dumps({'status': 'resident-hnf-ok', 'reports': reports}, sort_keys=Tr
 
 test("the ordinary CPython oracle retains the same canonical lattices", () => {
   const python = spawnSync(
-    "python3",
+    pythonExecutable(),
     [
       "-c",
       [
@@ -762,7 +763,14 @@ test("the ordinary CPython oracle retains the same canonical lattices", () => {
     ],
     { cwd: tmpdir(), encoding: "utf8", timeout: 30_000 },
   );
-  assert.equal(python.status, 0, python.stderr || python.stdout);
+  assert.equal(
+    python.status,
+    0,
+    python.error?.message ||
+      python.stderr ||
+      python.stdout ||
+      "CPython oracle exited without diagnostics",
+  );
   assert.deepEqual(JSON.parse(python.stdout), {
     status: "cpython-resident-hnf-ok",
   });

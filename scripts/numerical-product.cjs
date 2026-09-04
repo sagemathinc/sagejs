@@ -353,6 +353,11 @@ function installNumericalProduct({
   for (const [productPath, installedPath] of productFiles) {
     const destination = join(root, installedPath);
     mkdirSync(dirname(destination), { recursive: true });
+    // Never overwrite an existing hardlink in place: copyFileSync would mutate
+    // every name for the inode before the post-install link check could reject
+    // it.  Removing the exact destination also makes repeated installs replace
+    // symlinks and stale files without following them.
+    rmSync(destination, { force: true });
     copyFileSync(join(input, ...productPath.split("/")), destination);
   }
   validateInstalledNumericalProduct(root);
