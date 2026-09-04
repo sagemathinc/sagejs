@@ -16,7 +16,7 @@
     "classified-native-file": 244,
     "declared-ffi": 463,
     "declared-ffi-resource": 34,
-    "napi-export": 352,
+    "napi-export": 353,
     "runtime-intrinsic": 147,
     "wasm-export": 74
   },
@@ -7618,6 +7618,16 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListBoundaryData",
       "symbol": "sagejs_p1list_boundary_data",
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListCharacterHeckeImages",
+      "symbol": "sagejs_p1list_character_hecke_images",
       "disposition": "migrate-to-typed-python",
       "family": "modular-symbols"
     },

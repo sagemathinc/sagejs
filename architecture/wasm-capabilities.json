@@ -16426,6 +16426,25 @@
       "shared_core": "packages/flint/src/modsym_core.c"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
+      "kind": "napi-export",
+      "family": "modular-symbols",
+      "source": "packages/flint/src/p1.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/modular.py"
+      ],
+      "tests": [
+        "modular-symbols-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The batched Node adapter is an optional acceleration; browser execution uses the same exact full-Hecke fallback.",
+      "public_explanation": "Batched character Hecke images use an exact portable modular-symbol fallback when the Node acceleration is unavailable."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeMatrix",
       "kind": "napi-export",
       "family": "modular-symbols",

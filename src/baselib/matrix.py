@@ -8177,6 +8177,21 @@ class Matrix(sage.Element):
                 answer._row_subdivisions = [top.nrows()]
             answer._trace_word_prime_resource("stack")
             return answer
+        if _is_algebraic_base(base):
+            native_value = runtime.flint_backend().matrixStack(
+                top._native, bottom._native
+            )
+            answer = Matrix(
+                MatrixSpace(
+                    base,
+                    top.nrows() + bottom.nrows(),
+                    top.ncols(),
+                ),
+                native_value,
+            )
+            if subdivide:
+                answer._row_subdivisions = [top.nrows()]
+            return answer
         if top._has_packed_prime_storage() and bottom._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_stack
             modulus = int(_untyped(base).characteristic())

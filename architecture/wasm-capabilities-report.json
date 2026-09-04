@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "7f7439c46b302e6d5be09e20cacba7785726df8d8adffaf602f04cbcc8254f1f",
+  "source_sha256": "5a7374c483bceea89fccc6075de815dfd81a9aca35940c5e3a8ac8e1fa0d6bb1",
   "counts": {
-    "total": 1079,
+    "total": 1080,
     "by_kind": {
       "declared-ffi-function": 463,
       "declared-ffi-resource": 34,
-      "napi-export": 352,
+      "napi-export": 353,
       "production-kernel": 55,
       "runtime-intrinsic": 147,
       "specialist-capability": 28
@@ -16,13 +16,13 @@
       "compiled-source": 55,
       "desktop-only": 47,
       "generated-wasm": 363,
-      "portable-fallback": 564,
+      "portable-fallback": 565,
       "shared-core": 50
     },
     "by_status": {
       "available": 609,
       "desktop-only": 47,
-      "fallback": 423
+      "fallback": 424
     }
   },
   "workflow_aliases": {
@@ -9463,6 +9463,18 @@
         "src/baselib/modular.py"
       ],
       "explanation": "Modular-symbol boundary data runs in the receipt-authenticated FLINT WebAssembly artifact with an ordinary exact fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
+      "family": "modular-symbols",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/modular.py"
+      ],
+      "explanation": "Batched character Hecke images use an exact portable modular-symbol fallback when the Node acceleration is unavailable."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeMatrix",

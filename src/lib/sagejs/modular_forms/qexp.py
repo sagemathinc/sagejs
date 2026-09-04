@@ -850,7 +850,7 @@ def _modular_symbols_q_expansion_data(
     source_space: Any,
     precision: int,
     use_cache: bool = True,
-) -> tuple[Any, Any, Any, Any, Any]:
+) -> tuple[Any, Any, Any, Any, Any, Any]:
     """Return the Hecke-dual basis and its exact modular-symbol lift."""
     return source_space._q_expansion_data(precision, use_cache)
 
@@ -1114,7 +1114,7 @@ class ModularSymbolsQExpansionCertificate:
         return self._verified
 
     def verify(self) -> bool:
-        replay_signed, replay, replay_indices, _raw, _lift = (
+        replay_signed, replay, replay_indices, _raw, _lift, _lift_indices = (
             _modular_symbols_q_expansion_data(
                 self._source_space,
                 self._precision,
@@ -1160,8 +1160,8 @@ def modular_symbols_q_expansion_basis(
     cached = space._q_expansion_basis_cache.get(cache_key)
     if cached is not runtime.undefined:
         return list(cached)
-    _signed, coefficients, _indices, _raw, _lift = _modular_symbols_q_expansion_data(
-        space, precision
+    _signed, coefficients, _indices, _raw, _lift, _lift_indices = (
+        _modular_symbols_q_expansion_data(space, precision)
     )
     basis = _series_from_coefficient_matrix(coefficients, variable)
     space._q_expansion_basis_cache.set(cache_key, runtime.math_tuple(basis))
@@ -1180,8 +1180,8 @@ def modular_symbols_q_expansion_module(
     if algorithm != "modular_symbols":
         raise ValueError("only the exact Hecke-dual q-expansion algorithm is available")
     precision = _modular_symbols_precision(space, prec)
-    _signed, coefficients, _indices, _raw, _lift = _modular_symbols_q_expansion_data(
-        space, precision
+    _signed, coefficients, _indices, _raw, _lift, _lift_indices = (
+        _modular_symbols_q_expansion_data(space, precision)
     )
     source_ring = coefficients.base_ring()
     coefficient_ring = source_ring if R is None else R
@@ -1204,7 +1204,7 @@ def modular_symbols_q_expansion_certificate(
         if prec is None
         else _modular_symbols_precision(space, prec)
     )
-    signed, coefficients, functional_indices, _raw, _lift = (
+    signed, coefficients, functional_indices, _raw, _lift, _lift_indices = (
         _modular_symbols_q_expansion_data(space, precision)
     )
     certificate = ModularSymbolsQExpansionCertificate(

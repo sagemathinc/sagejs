@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5396,
-      "bytes": 177818,
+      "lines": 5399,
+      "bytes": 177958,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -79,8 +79,8 @@
     },
     {
       "path": "packages/flint/src/matrix.c",
-      "lines": 5851,
-      "bytes": 191200,
+      "lines": 6050,
+      "bytes": 199431,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -88,7 +88,7 @@
         "FLINT dense and sparse matrix calls",
         "locally implemented matrix algorithms and conversion paths"
       ],
-      "rationale": "The largest mixed native source combines an essential packed FLINT boundary with Sage.js-owned algorithms. Retain mature FLINT calls, split the ABI by representation, and use existing prime-field typed witnesses to migrate local control flow where it is competitive.",
+      "rationale": "The largest mixed native source combines an essential packed FLINT boundary with Sage.js-owned algorithms. Retain mature FLINT calls and coordinate-preserving cyclotomic representation primitives, split the ABI by representation, and use existing prime-field typed witnesses to migrate local control flow where it is competitive.",
       "fallback": "Every matrix operation retains its tested Python/JavaScript implementation or an explicit native capability diagnostic.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Preserve the exact 50-export symbol ratchet, migrate the 22 thin operations through declarations, and replace the 12 documented source-owned exceptions one typed algorithm at a time."
@@ -127,8 +127,8 @@
     },
     {
       "path": "packages/flint/src/p1.c",
-      "lines": 4603,
-      "bytes": 161898,
+      "lines": 4774,
+      "bytes": 168847,
       "decision": "typed-remediation-pilot",
       "priority": "critical",
       "responsibilities": [
@@ -136,6 +136,7 @@
         "integer and rational sparse star eigenspaces",
         "higher-weight and character presentations",
         "Heilbronn representatives and Hecke assembly",
+        "batched cyclotomic Hecke-image assembly",
         "path reduction and result conversion"
       ],
       "rationale": "This file is the clearest architecture violation: an adapter contains several independent research algorithms and low-level exact-memory management. The continued-fraction Heilbronn enumeration and fused higher-weight Hecke traversal are now source-transparent typed-Python implementations; sparse exact elimination follows only after packed records and rational storage are compiler features.",

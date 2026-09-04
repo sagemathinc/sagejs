@@ -1973,10 +1973,13 @@ napi_value sagejs_matrix_stack(napi_env env, napi_callback_info info)
     }
     if (top->kind != bottom->kind ||
         (top->kind != SAGEJS_MATRIX_ZZ &&
-         top->kind != SAGEJS_MATRIX_QQ))
+         top->kind != SAGEJS_MATRIX_QQ &&
+         top->kind != SAGEJS_MATRIX_QQBAR) ||
+        (top->kind == SAGEJS_MATRIX_QQBAR &&
+            top->algebraic_real != bottom->algebraic_real))
     {
         napi_throw_type_error(env, NULL,
-            "native matrix stacking requires matching ZZ or QQ matrices");
+            "native matrix stacking requires matching exact matrices");
         return NULL;
     }
     if (bottom_rows > WORD_MAX - top_rows)
@@ -1985,15 +1988,78 @@ napi_value sagejs_matrix_stack(napi_env env, napi_callback_info info)
             "stacked matrix has too many rows");
         return NULL;
     }
-    answer = new_matrix(env, top->kind, top_rows + bottom_rows, columns);
+    answer = new_matrix_like(env, top, top_rows + bottom_rows, columns);
     if (answer == NULL)
         return NULL;
     if (top->kind == SAGEJS_MATRIX_ZZ)
         fmpz_mat_concat_vertical(
             answer->integer, top->integer, bottom->integer);
-    else
+    else if (top->kind == SAGEJS_MATRIX_QQ)
         fmpq_mat_concat_vertical(
             answer->rational, top->rational, bottom->rational);
+    else
+    {
+        for (slong row = 0; row < top_rows; row++)
+            for (slong column = 0; column < columns; column++)
+                qqbar_set(
+                    (qqbar_ptr) gr_mat_entry_ptr(
+                        answer->algebraic, row, column,
+                        answer->algebraic_context),
+                    (qqbar_srcptr) gr_mat_entry_ptr(
+                        top->algebraic, row, column,
+                        top->algebraic_context));
+        for (slong row = 0; row < bottom_rows; row++)
+            for (slong column = 0; column < columns; column++)
+                qqbar_set(
+                    (qqbar_ptr) gr_mat_entry_ptr(
+                        answer->algebraic, top_rows + row, column,
+                        answer->algebraic_context),
+                    (qqbar_srcptr) gr_mat_entry_ptr(
+                        bottom->algebraic, row, column,
+                        bottom->algebraic_context));
+        if (top->cyclotomic_coordinates != NULL &&
+            bottom->cyclotomic_coordinates != NULL &&
+            top->cyclotomic_order == bottom->cyclotomic_order &&
+            top->cyclotomic_degree == bottom->cyclotomic_degree)
+        {
+            size_t degree = top->cyclotomic_degree;
+            size_t count = (size_t) (top_rows + bottom_rows) *
+                (size_t) columns * degree;
+            if (degree == 0 ||
+                ((size_t) (top_rows + bottom_rows) != 0 &&
+                    (size_t) columns > SIZE_MAX /
+                        (size_t) (top_rows + bottom_rows)) ||
+                (size_t) (top_rows + bottom_rows) *
+                    (size_t) columns > SIZE_MAX / degree ||
+                count > (size_t) WORD_MAX)
+            {
+                finalize_matrix(env, answer, NULL);
+                napi_throw_range_error(env, NULL,
+                    "stacked cyclotomic matrix is too large");
+                return NULL;
+            }
+            answer->cyclotomic_coordinates = _fmpq_vec_init(
+                (slong) (count == 0 ? 1 : count));
+            if (answer->cyclotomic_coordinates == NULL)
+            {
+                finalize_matrix(env, answer, NULL);
+                napi_throw_error(env, NULL,
+                    "unable to preserve stacked cyclotomic coordinates");
+                return NULL;
+            }
+            answer->cyclotomic_order = top->cyclotomic_order;
+            answer->cyclotomic_degree = degree;
+            for (size_t index = 0; index < count; index++)
+            {
+                const fmpq *source = index <
+                        (size_t) top_rows * (size_t) columns * degree
+                    ? top->cyclotomic_coordinates + index
+                    : bottom->cyclotomic_coordinates + index -
+                        (size_t) top_rows * (size_t) columns * degree;
+                fmpq_set(answer->cyclotomic_coordinates + index, source);
+            }
+        }
+    }
     return wrap_matrix(env, answer);
 }
 
@@ -2192,6 +2258,22 @@ static int matrix_sparse_left_cyclotomic(
                             }
             }
         }
+    for (slong row = 0; row < rows; row++)
+        for (slong column = 0; column < columns; column++)
+        {
+            fmpq_poly_zero(expression);
+            for (size_t power = 0; power < degree; power++)
+                fmpq_poly_set_coeff_fmpq(
+                    expression, (slong) power,
+                    answer->cyclotomic_coordinates +
+                        ((size_t) row * (size_t) columns +
+                            (size_t) column) * degree + power);
+            qqbar_evaluate_fmpq_poly(
+                (qqbar_ptr) gr_mat_entry_ptr(
+                    answer->algebraic, row, column,
+                    answer->algebraic_context),
+                expression, root);
+        }
     qqbar_clear(root);
     fmpz_poly_clear(remainder);
     fmpz_poly_clear(monomial);
@@ -2223,7 +2305,7 @@ fail:
     answer->cyclotomic_coordinates = NULL;
     answer->cyclotomic_order = 0;
     answer->cyclotomic_degree = 0;
-    return 1;
+    return 0;
 }
 
 napi_value sagejs_cyclotomic_matrix_poly_evaluate(
@@ -2522,7 +2604,7 @@ napi_value sagejs_matrix_sparse_left_mul(
             }
         fmpq_clear(product);
     }
-    else
+    else if (right->cyclotomic_coordinates == NULL)
     {
         qqbar_t product;
         qqbar_init(product);
@@ -2549,11 +2631,10 @@ napi_value sagejs_matrix_sparse_left_mul(
                             right->algebraic_context));
                     qqbar_add(target, target, product);
                 }
-            }
+        }
         qqbar_clear(product);
     }
-    if (left->kind == SAGEJS_MATRIX_QQBAR &&
-        !matrix_sparse_left_cyclotomic(answer, left, right))
+    else if (!matrix_sparse_left_cyclotomic(answer, left, right))
     {
         finalize_matrix(env, answer, NULL);
         napi_throw_error(env, NULL,
@@ -5373,6 +5454,121 @@ napi_value sagejs_matrix_solve(napi_env env, napi_callback_info info)
     return wrap_matrix(env, answer);
 }
 
+static int matrix_inverse_cyclotomic(
+    sagejs_matrix *answer,
+    const sagejs_matrix *source)
+{
+    slong size = matrix_nrows(source);
+    size_t degree = source->cyclotomic_degree;
+    size_t coordinate_count;
+    fmpz_poly_t cyclotomic_integer;
+    fmpq_poly_t defining, expression;
+    nf_t number_field;
+    gr_ctx_t number_field_context;
+    gr_mat_t source_nf, answer_nf;
+    qqbar_t root;
+    int scalar_initialized = 0;
+    int number_field_initialized = 0;
+    int matrices_initialized = 0;
+    int status = 0;
+
+    if (source->cyclotomic_coordinates == NULL ||
+        source->cyclotomic_order < 3 || degree == 0 ||
+        ((size_t) size != 0 &&
+            (size_t) size > SIZE_MAX / (size_t) size) ||
+        (size_t) size * (size_t) size > SIZE_MAX / degree ||
+        (size_t) size * (size_t) size * degree > (size_t) WORD_MAX)
+        return 0;
+    coordinate_count = (size_t) size * (size_t) size * degree;
+    answer->cyclotomic_coordinates = _fmpq_vec_init(
+        (slong) (coordinate_count == 0 ? 1 : coordinate_count));
+    if (answer->cyclotomic_coordinates == NULL)
+        return 0;
+    answer->cyclotomic_order = source->cyclotomic_order;
+    answer->cyclotomic_degree = degree;
+
+    fmpz_poly_init(cyclotomic_integer);
+    fmpq_poly_init(defining);
+    fmpq_poly_init(expression);
+    qqbar_init(root);
+    scalar_initialized = 1;
+    fmpz_poly_cyclotomic(cyclotomic_integer, source->cyclotomic_order);
+    fmpq_poly_set_fmpz_poly(defining, cyclotomic_integer);
+    nf_init(number_field, defining);
+    number_field_initialized = 1;
+    _gr_ctx_init_nf_from_ref(number_field_context, number_field);
+    gr_mat_init(source_nf, size, size, number_field_context);
+    gr_mat_init(answer_nf, size, size, number_field_context);
+    matrices_initialized = 1;
+
+    for (slong row = 0; row < size; row++)
+        for (slong column = 0; column < size; column++)
+        {
+            fmpq_poly_zero(expression);
+            for (size_t power = 0; power < degree; power++)
+                fmpq_poly_set_coeff_fmpq(
+                    expression, (slong) power,
+                    source->cyclotomic_coordinates +
+                        ((size_t) row * (size_t) size +
+                            (size_t) column) * degree + power);
+            nf_elem_set_fmpq_poly(
+                (nf_elem_struct *) gr_mat_entry_ptr(
+                    source_nf, row, column, number_field_context),
+                expression, number_field);
+        }
+    if (gr_mat_inv(answer_nf, source_nf, number_field_context) != GR_SUCCESS)
+        goto cleanup;
+
+    qqbar_root_of_unity(root, 1, source->cyclotomic_order);
+    for (slong row = 0; row < size; row++)
+        for (slong column = 0; column < size; column++)
+        {
+            fmpq_poly_zero(expression);
+            nf_elem_get_fmpq_poly(
+                expression,
+                (const nf_elem_struct *) gr_mat_entry_ptr(
+                    answer_nf, row, column, number_field_context),
+                number_field);
+            for (size_t power = 0; power < degree; power++)
+                fmpq_poly_get_coeff_fmpq(
+                    answer->cyclotomic_coordinates +
+                        ((size_t) row * (size_t) size +
+                            (size_t) column) * degree + power,
+                    expression, (slong) power);
+            qqbar_evaluate_fmpq_poly(
+                (qqbar_ptr) gr_mat_entry_ptr(
+                    answer->algebraic, row, column,
+                    answer->algebraic_context),
+                expression, root);
+        }
+    status = 1;
+
+cleanup:
+    if (matrices_initialized)
+    {
+        gr_mat_clear(answer_nf, number_field_context);
+        gr_mat_clear(source_nf, number_field_context);
+    }
+    if (number_field_initialized)
+        nf_clear(number_field);
+    if (scalar_initialized)
+    {
+        qqbar_clear(root);
+        fmpq_poly_clear(expression);
+        fmpq_poly_clear(defining);
+        fmpz_poly_clear(cyclotomic_integer);
+    }
+    if (!status)
+    {
+        _fmpq_vec_clear(answer->cyclotomic_coordinates,
+            (slong) (coordinate_count == 0 ? 1 : coordinate_count));
+        answer->cyclotomic_coordinates = NULL;
+        answer->cyclotomic_order = 0;
+        answer->cyclotomic_degree = 0;
+    }
+    return status;
+}
+
 napi_value sagejs_matrix_inverse(napi_env env, napi_callback_info info)
 {
     napi_value args[1];
@@ -5417,6 +5613,9 @@ napi_value sagejs_matrix_inverse(napi_env env, napi_callback_info info)
             env, source, matrix_nrows(source), matrix_ncols(source));
         if (answer == NULL)
             return NULL;
+        if (source->cyclotomic_coordinates != NULL &&
+            matrix_inverse_cyclotomic(answer, source))
+            return wrap_matrix(env, answer);
         if (gr_mat_inv(
             answer->algebraic,
             source->algebraic,

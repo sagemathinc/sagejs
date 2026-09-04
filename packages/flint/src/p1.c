@@ -3928,16 +3928,19 @@ static int p1_character_hecke_cyclotomic(
     const dirichlet_char_t character,
     const p1_matrix_four *heilbronn,
     size_t heilbronn_count,
-    sagejs_cyclotomic_matrix *hecke_coordinates)
+    sagejs_cyclotomic_matrix *hecke_coordinates,
+    size_t source_start,
+    size_t source_count)
 {
     const sagejs_cyclotomic_matrix *quotient =
         &presentation->cyclotomic_quotient;
     size_t dimension = presentation->dimension;
     size_t degree = quotient->degree;
     ulong order = quotient->order;
-    size_t output_count, action_count;
+    size_t output_count, action_count, accumulator_count;
     fmpq *output = NULL;
     fmpz *root_actions = NULL;
+    fmpz *accumulator = NULL;
     size_t *target_by_column = NULL;
     fmpz_poly_t cyclotomic, monomial, remainder;
     fmpz_t integer_coefficient, integer_term;
@@ -3951,24 +3954,31 @@ static int p1_character_hecke_cyclotomic(
     if (quotient->coefficients == NULL || quotient->rank != presentation->rank ||
         quotient->columns != dimension ||
         degree == 0 || order == 0 ||
-        (dimension != 0 && dimension > SIZE_MAX / dimension) ||
-        dimension * dimension > SIZE_MAX / degree ||
+        source_start > dimension || source_count > dimension - source_start ||
+        (source_count != 0 && dimension > SIZE_MAX / source_count) ||
+        source_count * dimension > SIZE_MAX / degree ||
+        presentation->two_term_generators > SIZE_MAX / order ||
         (degree != 0 && degree > SIZE_MAX / degree) ||
         degree * degree > SIZE_MAX / order)
         return 0;
-    output_count = dimension * dimension * degree;
+    output_count = source_count * dimension * degree;
     action_count = (size_t) order * degree * degree;
+    accumulator_count = presentation->two_term_generators * (size_t) order;
     if (output_count > (size_t) WORD_MAX ||
-        action_count > (size_t) WORD_MAX)
+        action_count > (size_t) WORD_MAX ||
+        accumulator_count > (size_t) WORD_MAX)
         return 0;
     output = _fmpq_vec_init((slong) (output_count == 0 ? 1 : output_count));
     root_actions = _fmpz_vec_init(
         (slong) (action_count == 0 ? 1 : action_count));
+    accumulator = _fmpz_vec_init(
+        (slong) (accumulator_count == 0 ? 1 : accumulator_count));
     target_by_column = malloc(
         (presentation->two_term_generators == 0
             ? 1 : presentation->two_term_generators)
             * sizeof(*target_by_column));
-    if (output == NULL || root_actions == NULL || target_by_column == NULL)
+    if (output == NULL || root_actions == NULL || accumulator == NULL ||
+        target_by_column == NULL)
         goto done;
     for (size_t column = 0;
         column < presentation->two_term_generators; column++)
@@ -4007,11 +4017,15 @@ static int p1_character_hecke_cyclotomic(
                     remainder, (slong) output_power);
         }
 
-    for (size_t source = 0; source < dimension; source++)
+    for (size_t source_offset = 0; source_offset < source_count; source_offset++)
     {
+        size_t source = source_start + source_offset;
         size_t generator = presentation->basis_generators[source];
         uint32_t i = (uint32_t) (generator / list->count);
         sagejs_p1_pair pair = list->pairs[generator % list->count];
+        _fmpz_vec_zero(
+            accumulator,
+            (slong) (accumulator_count == 0 ? 1 : accumulator_count));
         for (size_t h = 0; h < heilbronn_count; h++)
         {
             int64_t a = heilbronn[h].a;
@@ -4058,6 +4072,20 @@ static int p1_character_hecke_cyclotomic(
                     value_exponent,
                     presentation->generator_exponents[image_generator],
                     order);
+                fmpz_add(
+                    accumulator + column * order + combined_exponent,
+                    accumulator + column * order + combined_exponent,
+                    integer_coefficient);
+            }
+        }
+        /* Reduce each accumulated character-valued generator only once. */
+        for (size_t column = 0;
+            column < presentation->two_term_generators; column++)
+            for (ulong exponent = 0; exponent < order; exponent++)
+            {
+                const fmpz *integer = accumulator + column * order + exponent;
+                if (fmpz_is_zero(integer))
+                    continue;
                 if (presentation->pivot_rows[column] == SIZE_MAX)
                 {
                     size_t target = target_by_column[column];
@@ -4067,17 +4095,16 @@ static int p1_character_hecke_cyclotomic(
                         output_power < degree; output_power++)
                     {
                         const fmpz *action = root_actions +
-                            combined_exponent * degree * degree +
-                            output_power;
+                            exponent * degree * degree + output_power;
                         if (fmpz_is_zero(action))
                             continue;
-                        fmpz_mul(integer_term, integer_coefficient, action);
+                        fmpz_mul(integer_term, integer, action);
                         fmpq_add_fmpz(
                             output +
-                                (source * dimension + target) * degree +
+                                (source_offset * dimension + target) * degree +
                                 output_power,
                             output +
-                                (source * dimension + target) * degree +
+                                (source_offset * dimension + target) * degree +
                                 output_power,
                             integer_term);
                     }
@@ -4095,20 +4122,18 @@ static int p1_character_hecke_cyclotomic(
                                     quotient->columns + target;
                             if (fmpq_is_zero(coefficient))
                                 continue;
-                            fmpq_mul_fmpz(
-                                rational_term, coefficient,
-                                integer_coefficient);
+                            fmpq_mul_fmpz(rational_term, coefficient, integer);
                             for (size_t output_power = 0;
                                 output_power < degree; output_power++)
                             {
                                 const fmpz *action = root_actions +
-                                    (combined_exponent * degree + input_power) *
-                                        degree + output_power;
+                                    (exponent * degree + input_power) * degree +
+                                    output_power;
                                 fmpq *destination;
                                 if (fmpz_is_zero(action))
                                     continue;
                                 destination = output +
-                                    (source * dimension + target) * degree +
+                                    (source_offset * dimension + target) * degree +
                                     output_power;
                                 fmpq_mul_fmpz(
                                     weighted_term, rational_term, action);
@@ -4118,11 +4143,10 @@ static int p1_character_hecke_cyclotomic(
                         }
                 }
             }
-        }
     }
 
     qqbar_root_of_unity(root, 1, order);
-    for (size_t source = 0; source < dimension; source++)
+    for (size_t source_offset = 0; source_offset < source_count; source_offset++)
         for (size_t target = 0; target < dimension; target++)
         {
             fmpq_poly_zero(polynomial);
@@ -4130,17 +4154,17 @@ static int p1_character_hecke_cyclotomic(
                 fmpq_poly_set_coeff_fmpq(
                     polynomial, (slong) power,
                     output +
-                        (source * dimension + target) * degree + power);
+                        (source_offset * dimension + target) * degree + power);
             qqbar_evaluate_fmpq_poly(value, polynomial, root);
             qqbar_set(
-                p1_gr_entry(matrix, (slong) source,
+                p1_gr_entry(matrix, (slong) source_offset,
                     (slong) target, presentation->context),
                 value);
         }
     if (hecke_coordinates != NULL)
     {
         sagejs_cyclotomic_matrix_clear(hecke_coordinates);
-        hecke_coordinates->rank = dimension;
+        hecke_coordinates->rank = source_count;
         hecke_coordinates->columns = dimension;
         hecke_coordinates->degree = degree;
         hecke_coordinates->order = order;
@@ -4170,6 +4194,10 @@ done:
     if (root_actions != NULL)
         _fmpz_vec_clear(
             root_actions, (slong) (action_count == 0 ? 1 : action_count));
+    if (accumulator != NULL)
+        _fmpz_vec_clear(
+            accumulator,
+            (slong) (accumulator_count == 0 ? 1 : accumulator_count));
     if (output != NULL)
         _fmpq_vec_clear(
             output, (slong) (output_count == 0 ? 1 : output_count));
@@ -4270,7 +4298,7 @@ napi_value sagejs_p1list_character_hecke_matrix(
         if (!p1_character_hecke_cyclotomic(
                 matrix, list, presentation, (uint32_t) weight_value,
                 group, character, heilbronn, heilbronn_count,
-                &hecke_coordinates))
+                &hecke_coordinates, 0, presentation->dimension))
             goto done;
     }
     else
@@ -4434,6 +4462,149 @@ done:
     free(heilbronn);
     if (!retained_presentation)
         p1_character_presentation_clear(presentation);
+    if (character_initialized)
+        dirichlet_char_clear(character);
+    return result;
+}
+
+/*
+ * Compute selected Hecke images of one character-Manin basis vector.
+ *
+ * The q-expansion algorithm only needs rows of T_n, not full matrices.  This
+ * batched adapter keeps the exact cyclotomic arithmetic in the retained
+ * presentation while avoiding the quadratic work and allocation of every
+ * unused source row.  The mathematical fallback remains the full exact
+ * matrix path in modular.py.
+ */
+napi_value sagejs_p1list_character_hecke_images(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[8], result = NULL;
+    size_t argument_count = 8;
+    sagejs_p1list_value *list;
+    sagejs_character_presentation *presentation;
+    const dirichlet_group_struct *group = NULL;
+    dirichlet_char_t character;
+    int character_initialized = 0;
+    int64_t weight_value, sign_value, source_value;
+    ulong character_index;
+    bool is_array = false;
+    uint32_t index_count = 0;
+
+    if (!p1_check_napi(env, napi_get_cb_info(
+            env, info, &argument_count, arguments, NULL, NULL)) ||
+        argument_count != 8)
+    {
+        napi_throw_type_error(env, NULL, "wrong number of arguments");
+        return NULL;
+    }
+    if ((list = p1_unwrap(env, arguments[0])) == NULL ||
+        !p1_safe_integer(env, arguments[1], &weight_value) ||
+        !p1_safe_integer(env, arguments[2], &sign_value) ||
+        !p1_safe_integer(env, arguments[3], &source_value) ||
+        !p1_check_napi(env, napi_is_array(env, arguments[4], &is_array)))
+        return NULL;
+    if (!is_array)
+    {
+        napi_throw_type_error(env, NULL, "Hecke indices must be an array");
+        return NULL;
+    }
+    if (!p1_check_napi(env,
+            napi_get_array_length(env, arguments[4], &index_count)) ||
+        !p1_bigint_to_ulong(env, arguments[6], &character_index) ||
+        !sagejs_dirichlet_character_init_native(
+            env, arguments[5], arguments[6], &group, character))
+        return NULL;
+    character_initialized = 1;
+    presentation = p1_character_presentation_unwrap(env, arguments[7]);
+    if (presentation == NULL)
+        goto done;
+    if (weight_value < 2 || weight_value > UINT32_MAX ||
+        (sign_value != -1 && sign_value != 0 && sign_value != 1) ||
+        source_value < 0 ||
+        (uint64_t) source_value >= presentation->dimension ||
+        index_count == 0 || index_count > 100000 ||
+        group->q != list->level ||
+        presentation->level != list->level ||
+        presentation->weight != (uint32_t) weight_value ||
+        presentation->sign != (int) sign_value ||
+        presentation->character_index != character_index ||
+        presentation->cyclotomic_quotient.coefficients == NULL)
+    {
+        napi_throw_range_error(env, NULL,
+            "character Hecke images require a matching retained cyclotomic presentation, a valid source row, and 1 to 100000 indices");
+        goto done;
+    }
+    if (!p1_check_napi(env,
+            napi_create_array_with_length(env, index_count, &result)))
+    {
+        result = NULL;
+        goto done;
+    }
+    for (uint32_t position = 0; position < index_count; position++)
+    {
+        napi_value index_value, matrix_value;
+        int64_t index;
+        p1_matrix_four *heilbronn = NULL;
+        size_t heilbronn_count = 0;
+        gr_mat_t matrix;
+        int matrix_initialized = 0;
+        sagejs_cyclotomic_matrix coordinates = {0};
+
+        if (!p1_check_napi(env,
+                napi_get_element(env, arguments[4], position, &index_value)) ||
+            !p1_safe_integer(env, index_value, &index))
+            goto item_fail;
+        if (index < 1 || index > INT32_MAX)
+        {
+            napi_throw_range_error(env, NULL,
+                "Hecke indices must be positive 31-bit integers");
+            goto item_fail;
+        }
+        if ((n_is_prime((ulong) index)
+                ? !p1_heilbronn_cremona(
+                    (ulong) index, &heilbronn, &heilbronn_count)
+                : !p1_heilbronn_merel(
+                    (ulong) index, &heilbronn, &heilbronn_count)))
+        {
+            napi_throw_error(env, NULL,
+                "unable to construct Heilbronn representatives");
+            goto item_fail;
+        }
+        gr_mat_init(matrix, 1, (slong) presentation->dimension,
+            presentation->context);
+        matrix_initialized = 1;
+        if (!p1_character_hecke_cyclotomic(
+                matrix, list, presentation, (uint32_t) weight_value,
+                group, character, heilbronn, heilbronn_count,
+                &coordinates, (size_t) source_value, 1))
+        {
+            napi_throw_error(env, NULL,
+                "unable to compute a character Hecke image");
+            goto item_fail;
+        }
+        matrix_value = sagejs_qqbar_matrix_from_cyclotomic_gr_mat(
+            env, matrix, presentation->context,
+            coordinates.order, coordinates.degree,
+            coordinates.coefficients);
+        if (matrix_value == NULL || !p1_check_napi(env,
+                napi_set_element(env, result, position, matrix_value)))
+            goto item_fail;
+        sagejs_cyclotomic_matrix_clear(&coordinates);
+        gr_mat_clear(matrix, presentation->context);
+        free(heilbronn);
+        continue;
+
+item_fail:
+        sagejs_cyclotomic_matrix_clear(&coordinates);
+        if (matrix_initialized)
+            gr_mat_clear(matrix, presentation->context);
+        free(heilbronn);
+        result = NULL;
+        goto done;
+    }
+
+done:
     if (character_initialized)
         dirichlet_char_clear(character);
     return result;

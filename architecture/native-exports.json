@@ -4,7 +4,7 @@
   "counts": {
     "declared-ffi": 7,
     "migrate-to-declared-ffi": 238,
-    "migrate-to-typed-python": 34,
+    "migrate-to-typed-python": 35,
     "retain-differential-oracle": 6,
     "retain-host-adapter": 35,
     "retain-representation-primitive": 32
@@ -66,7 +66,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 2943,
+        "line": 3024,
         "lines": 38,
         "sha256": "d08b41bf0365eeae43126aff90e00d4fb5eadc4101ee3c518616f9ea7c2a9c92",
         "calls": [
@@ -1432,7 +1432,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 2229,
+        "line": 2311,
         "lines": 220,
         "sha256": "d27983081f5d531c5e665c796b6bc12bdbf062d2e192b97084a39ec5c0f6bc48",
         "calls": [
@@ -1510,7 +1510,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 4227,
+        "line": 4308,
         "lines": 318,
         "sha256": "7c80ae3462764e39ccbf7820ff11096644af6210ff6ac37abb2cb2519fbf218b",
         "calls": [
@@ -5599,7 +5599,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 4487,
+        "line": 4658,
         "lines": 49,
         "sha256": "d48c8088271b7e1902d6b8939db1c30c1b13a91d4968316cb7122ca1a7cabc0e",
         "calls": [
@@ -5640,7 +5640,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 4571,
+        "line": 4742,
         "lines": 33,
         "sha256": "c39cd70877426672189f37d31a3591edfe206db625f5baa424fb4635a2e204ce",
         "calls": [
@@ -5681,7 +5681,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 4537,
+        "line": 4708,
         "lines": 33,
         "sha256": "da3781394739f6f61f092a0552c5c63a790c42208587d65518ff346f637a498d",
         "calls": [
@@ -5754,7 +5754,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5714,
+        "line": 5913,
         "lines": 138,
         "sha256": "c0321410e8f404d1c1f2fee1aff7924d7ed1b5735699c0378d720c118d625d41",
         "calls": [
@@ -5847,7 +5847,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 4902,
+        "line": 4983,
         "lines": 175,
         "sha256": "6aefccff0be813cb8f88640567481081dac1dd11300e79e3de0993eedcae6e05",
         "calls": [
@@ -5929,7 +5929,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 3186,
+        "line": 3267,
         "lines": 70,
         "sha256": "508adef977167e4d0577420be319f17253b905c27541d6a805ea5f267317cfa8",
         "calls": [
@@ -5995,7 +5995,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 3142,
+        "line": 3223,
         "lines": 43,
         "sha256": "fd27515ea1d2ad71282477944430e3df9b0f37952d955e04cd5e165b6c60e9de",
         "calls": [
@@ -6037,6 +6037,7 @@
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint-wasm/test/resource-browser-smoke.mjs",
+        "packages/flint/test/modular.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/ffi.cjs",
@@ -6054,7 +6055,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 3100,
+        "line": 3181,
         "lines": 41,
         "sha256": "08b48c0a959915e6112f255ace66aecf73acd86b6523e81d0cb16288a351e541",
         "calls": [
@@ -6105,7 +6106,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5471,
+        "line": 5670,
         "lines": 105,
         "sha256": "61e864471287c4814458b9ccc4b2d42fa8b3e8a786d23e5c70b89e182a0a56ec",
         "calls": [
@@ -6201,7 +6202,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 3504,
+        "line": 3585,
         "lines": 25,
         "sha256": "7d93b4c97867abb12cf311b6494c74aa7c61c81405d3702b0264249f7f576338",
         "calls": [
@@ -6241,7 +6242,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 3570,
+        "line": 3651,
         "lines": 57,
         "sha256": "d72c881f2e8ac0a241918e9205397168baa93bc0e47381a99bbdbf1472afcc6d",
         "calls": [
@@ -6285,7 +6286,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 3530,
+        "line": 3611,
         "lines": 39,
         "sha256": "0d532a861fbc4afd27b245ecf39e75c1c9a18cd372c77edc4654ae08733dea03",
         "calls": [
@@ -6328,9 +6329,9 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5376,
-        "lines": 94,
-        "sha256": "163a86c7b90e6c95dad45f1e6e5eca2307c8f56021288c76018aa697772cfd3f",
+        "line": 5572,
+        "lines": 97,
+        "sha256": "a9c09d4e7e014376f159f5de0991133b21c85ff39199e95bb6e4881b10814b14",
         "calls": [
           "acb_mat_approx_inv",
           "finalize_matrix",
@@ -6338,6 +6339,7 @@
           "fmpq_mat_init",
           "fmpq_mat_inv",
           "gr_mat_inv",
+          "matrix_inverse_cyclotomic",
           "matrix_is_modular",
           "matrix_modulus",
           "matrix_ncols",
@@ -6369,6 +6371,7 @@
         "packages/flint-wasm/test/algebraic-matrix-resource.test.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
+        "packages/flint/test/modular.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/ffi.cjs"
@@ -6385,7 +6388,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 2757,
+        "line": 2838,
         "lines": 22,
         "sha256": "9382c2b79727cb812ea8b60012ef35d375ff02d74109c6dde9ec4b2e184b809b",
         "calls": [
@@ -6421,7 +6424,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5078,
+        "line": 5159,
         "lines": 47,
         "sha256": "02aeaa3b720fef515576dcf6fa0b3bd1bc658281c70d2e58d7b78942172474c7",
         "calls": [
@@ -6467,7 +6470,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 2005,
+        "line": 2071,
         "lines": 4,
         "sha256": "201a6be6fee11ad1daf1417c75ca10171abab4e65960c5312fad78ba56f8c682",
         "calls": [
@@ -6491,6 +6494,7 @@
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint-wasm/test/resource-browser-smoke.mjs",
         "packages/flint/bench/benchmark.cjs",
+        "packages/flint/test/modular.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/dense-prime-migration.cjs",
@@ -6508,7 +6512,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 2010,
+        "line": 2076,
         "lines": 40,
         "sha256": "8631544636dd411fbcb2e16ef67d6f278987c96af252cbac3ec125e47897f438",
         "calls": [
@@ -6553,7 +6557,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 2811,
+        "line": 2892,
         "lines": 58,
         "sha256": "43783aee59947834137f7c3c7d11080eabb0f31d5f8c924f5eb0674ddd0c3e23",
         "calls": [
@@ -6600,7 +6604,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 2780,
+        "line": 2861,
         "lines": 30,
         "sha256": "2f6080400a9a0cf130f1908e74a7421133ccd5028eee83739cc71ad9cfa0c206",
         "calls": [
@@ -6642,7 +6646,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 3326,
+        "line": 3407,
         "lines": 93,
         "sha256": "9bc62b96784fa89e632ddd3a0479e9ceb0ae04938e4be4102da6eaae253afcdf",
         "calls": [
@@ -6704,7 +6708,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 3697,
+        "line": 3778,
         "lines": 523,
         "sha256": "3a048f1cf7acfe26b3c22b35c7dc86f45325d923cf6a77b34482b6d6144538e5",
         "calls": [
@@ -6792,7 +6796,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 3420,
+        "line": 3501,
         "lines": 83,
         "sha256": "c389ed14c123480d076e89308d23e536238d461934de112bcba6911de3eb6f47",
         "calls": [
@@ -6851,7 +6855,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 2870,
+        "line": 2951,
         "lines": 72,
         "sha256": "f702db6d5a9a19514b78124e22ce8e53754ecfade31c4a70c9464fca65784e6a",
         "calls": [
@@ -6905,7 +6909,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 2735,
+        "line": 2816,
         "lines": 5,
         "sha256": "b77b4f4b645e984d09feed9a6d983c054f7d56fd2452a0331a411fe57a998200",
         "calls": [
@@ -6939,7 +6943,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 2729,
+        "line": 2810,
         "lines": 5,
         "sha256": "2da17332e2a84978e8d740e148943b685cba9e78c462f14442118ae889fbfac1",
         "calls": [
@@ -6972,7 +6976,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 3628,
+        "line": 3709,
         "lines": 68,
         "sha256": "dd01c3e079480f5896e949fedd0de27fa22ab1b10f976119d8a309443822240d",
         "calls": [
@@ -7016,7 +7020,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5196,
+        "line": 5277,
         "lines": 179,
         "sha256": "da462d027e6967f0930906a1721b57c7a0764e5fdde06f2286d55cc253522d63",
         "calls": [
@@ -7074,9 +7078,9 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 2450,
-        "lines": 115,
-        "sha256": "509ec705bf5fc63883dd57837e9bc7e5d1b4e3c0de7daf69d5db3f04bd63d567",
+        "line": 2532,
+        "lines": 114,
+        "sha256": "e4d54e689a15a10ff3349a0b41f062a191966d77089dfabee64ef3b2607276e7",
         "calls": [
           "finalize_matrix",
           "fmpq_add",
@@ -7119,6 +7123,7 @@
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
+        "packages/flint/test/modular.cjs",
         "src/baselib/matrix.py"
       ],
       "declared_ffi": null
@@ -7134,16 +7139,22 @@
       "implementation": {
         "path": "packages/flint/src/matrix.c",
         "line": 1953,
-        "lines": 46,
-        "sha256": "54df4149f364a36df0ae2e972298e44d21515c570dafc2e0b50a70bf49c57699",
+        "lines": 112,
+        "sha256": "c6ef1d33bfc69de576c9e4dbb66eedc00a1e2aad8e0f1759a272d99cc166fd8e",
         "calls": [
+          "_fmpq_vec_init",
+          "finalize_matrix",
           "fmpq_mat_concat_vertical",
+          "fmpq_set",
           "fmpz_mat_concat_vertical",
+          "gr_mat_entry_ptr",
           "matrix_ncols",
           "matrix_nrows",
+          "napi_throw_error",
           "napi_throw_range_error",
           "napi_throw_type_error",
-          "new_matrix",
+          "new_matrix_like",
+          "qqbar_set",
           "require_arguments",
           "unwrap_matrix",
           "wrap_matrix"
@@ -7159,7 +7170,9 @@
         "Sage.js JavaScript fallback",
         "FLINT"
       ],
-      "consumers": [],
+      "consumers": [
+        "src/baselib/matrix.py"
+      ],
       "declared_ffi": null
     },
     {
@@ -7172,7 +7185,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 2000,
+        "line": 2066,
         "lines": 4,
         "sha256": "a154319bb68b9216c04481380a3888a84e4bd040021a9e7af54b63a191a837de",
         "calls": [
@@ -7206,7 +7219,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 3029,
+        "line": 3110,
         "lines": 70,
         "sha256": "a10a8c32c2bc201fd1cd3a5bff5f21fa731de246bba87da03ea32f7050fd84af",
         "calls": [
@@ -9192,6 +9205,62 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListCharacterHeckeImages",
+      "callback": "sagejs_p1list_character_hecke_images",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/p1.c",
+        "line": 4479,
+        "lines": 133,
+        "sha256": "03e2187bb394c569f81db28c158492f19ef32d2ae4bac3c34536d7c4a90dc034",
+        "calls": [
+          "dirichlet_char_clear",
+          "free",
+          "gr_mat_clear",
+          "gr_mat_init",
+          "n_is_prime",
+          "napi_create_array_with_length",
+          "napi_get_array_length",
+          "napi_get_cb_info",
+          "napi_get_element",
+          "napi_is_array",
+          "napi_set_element",
+          "napi_throw_error",
+          "napi_throw_range_error",
+          "napi_throw_type_error",
+          "p1_bigint_to_ulong",
+          "p1_character_hecke_cyclotomic",
+          "p1_character_presentation_unwrap",
+          "p1_check_napi",
+          "p1_heilbronn_cremona",
+          "p1_heilbronn_merel",
+          "p1_safe_integer",
+          "p1_unwrap",
+          "sagejs_cyclotomic_matrix_clear",
+          "sagejs_dirichlet_character_init_native",
+          "sagejs_qqbar_matrix_from_cyclotomic_gr_mat"
+        ]
+      },
+      "family": "modular-symbols",
+      "decision": "migrate-to-typed-python",
+      "note": null,
+      "rationale": "P1 and modular-symbol exports combine packed representation primitives, retained C oracles, and Sage.js-owned algorithms.",
+      "fallback": "Strict Python modular-symbol code and source-transparent P1 kernels provide the semantic fallback.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "PARI/GP"
+      ],
+      "consumers": [
+        "packages/flint/test/modular.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeMatrix",
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListCharacterHeckeMatrix",
@@ -9201,9 +9270,9 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 4179,
+        "line": 4207,
         "lines": 262,
-        "sha256": "9fa3857cefcc4f35c2ba01ad961aea76e36509143c202ca412965ab8ab89d0ec",
+        "sha256": "1bd5b0f854946a4c3bffdfe458ea76e68de28cfa3a65caaadf55b0fe29063b67",
         "calls": [
           "_qqbar_vec_clear",
           "_qqbar_vec_init",
@@ -9903,7 +9972,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/p1.c",
-        "line": 4442,
+        "line": 4613,
         "lines": 44,
         "sha256": "dc666c997ca4ffbcf433bf9d66b22744414f5c5336948a61d51c93ac0f7bda13",
         "calls": [
@@ -11787,7 +11856,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 2982,
+        "line": 3063,
         "lines": 46,
         "sha256": "ce8c8719095b7a920e15e0573a0c14b26264b306324e6a65561db0cdd07c93dc",
         "calls": [

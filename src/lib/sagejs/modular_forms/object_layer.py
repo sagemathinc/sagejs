@@ -1,4 +1,4 @@
-r"""Parented classical modular forms for fixed-character $\Gamma_0$ spaces.
+r"""Parented classical modular forms for $\Gamma_0$ and $\Gamma_1$ spaces.
 
 The public mathematical state is a parent and an exact coordinate vector.
 Power-series expansions are deterministic, extendable realizations obtained
@@ -61,6 +61,10 @@ def _ambient(space: Any) -> Any:
     if _space_kind(space) == "Ambient":
         return space
     return space.ambient_space()
+
+
+def _is_gamma1(space: Any) -> bool:
+    return _ambient(space).group()._family == "Gamma1"
 
 
 def _ambient_signature(space: Any) -> tuple[Any, ...]:
@@ -174,6 +178,20 @@ def _space_q_expansion_basis(
             variable,
         )
         result = [series.add_bigoh(precision) for series in certified_basis]
+        cache.set(key, runtime.math_tuple(result))
+        return list(result)
+
+    if _is_gamma1(space):
+        from . import gamma1
+
+        result = gamma1.q_expansion_basis(space, precision, variable)
+        if len(result) != space.dimension():
+            raise ArithmeticError(
+                "the canonical Gamma1 q-expansion basis has dimension "
+                + str(len(result))
+                + " instead of "
+                + str(space.dimension())
+            )
         cache.set(key, runtime.math_tuple(result))
         return list(result)
 
@@ -410,12 +428,15 @@ def _as_classical(value: Any, precision: int) -> ClassicalModularFormElement:
     if not all(hasattr(value, name) for name in ["level", "weight", "q_expansion"]):
         raise TypeError("expected a classical modular form")
     character = value.character() if hasattr(value, "character") else None
-    defining_data = (
-        character
-        if runtime.reflect.get(runtime.reflect.get(character, "_parent"), "_kind")
-        == "DirichletGroup"
-        else value.level()
-    )
+    if hasattr(value, "group") and value.group()._family == "Gamma1":
+        defining_data = value.group()
+    else:
+        defining_data = (
+            character
+            if runtime.reflect.get(runtime.reflect.get(character, "_parent"), "_kind")
+            == "DirichletGroup"
+            else value.level()
+        )
     parent = _global("ModularForms")(
         defining_data,
         value.weight(),
@@ -668,9 +689,21 @@ class ClassicalModularFormElement(sage.Element):
                 other = self._classical_other(other)
         level = _lcm(self.level(), other.level())
         display_precision = min(self._display_precision, other.precision())
-        character = _product_character(self.character(), other.character(), level)
+        left_gamma1 = self.group()._family == "Gamma1"
+        right_gamma1 = other.group()._family == "Gamma1"
+        if left_gamma1 or right_gamma1:
+            if not (left_gamma1 and right_gamma1):
+                raise NotImplementedError(
+                    "products mixing Gamma1 and fixed-character parents are "
+                    "not yet represented over a common coefficient ring"
+                )
+            defining_data = _global("Gamma1")(level)
+        else:
+            defining_data = _product_character(
+                self.character(), other.character(), level
+            )
         target = _global("ModularForms")(
-            character,
+            defining_data,
             self.weight() + other.weight(),
             None,
             True,
@@ -748,11 +781,13 @@ class ClassicalModularFormElement(sage.Element):
 
     def __hash__(self) -> int:
         coordinates_value = self.ambient_coordinates()
+        character = self.character()
+        character_number = None if character is None else character.conrey_number()
         return hash(
             (
                 self.level(),
                 self.weight(),
-                self.character().conrey_number(),
+                character_number,
                 tuple(str(value) for value in coordinates_value),
             )
         )
@@ -878,6 +913,12 @@ def hecke_matrix(space: Any, index: Any) -> Any:
     cached = cache.get(key)
     if cached is not runtime.undefined:
         return cached
+    if _is_gamma1(space):
+        from . import gamma1
+
+        answer = gamma1.hecke_matrix(space, hecke_index)
+        cache.set(key, answer)
+        return answer
     precision = _sturm_precision(space)
     symbol_source = _modular_symbols_qexp_source(space)
     if symbol_source is not None:
@@ -950,6 +991,69 @@ def hecke_operator(space: Any, index: Any) -> ClassicalModularFormsHeckeOperator
     return ClassicalModularFormsHeckeOperator(space, index)
 
 
+def diamond_bracket_matrix(space: Any, value: Any) -> Any:
+    r"""Return the exact diamond-bracket matrix on a $\Gamma_1$ space."""
+    if not _is_gamma1(space):
+        raise NotImplementedError(
+            "diamond operators on parented modular forms currently require Gamma1"
+        )
+    from . import gamma1
+
+    return gamma1.diamond_bracket_matrix(space, value)
+
+
+@runtime.lightweight_math_class
+class ClassicalModularFormsDiamondOperator:
+    r"""An exact diamond operator on a parented $\Gamma_1$ space."""
+
+    def __init__(self, space: Any, value: Any) -> None:
+        self._kind = "ClassicalModularFormsDiamondOperator"
+        self._space = space
+        self._value = _integer(value, "diamond-bracket index")
+        self._matrix = diamond_bracket_matrix(space, self._value)
+        runtime.object.freeze(self)
+
+    def domain(self) -> Any:
+        return self._space
+
+    codomain = domain
+
+    def index(self) -> int:
+        return self._value
+
+    def matrix(self) -> Any:
+        return self._matrix
+
+    def charpoly(self, variable: str = "x") -> Any:
+        return self._matrix.charpoly(variable)
+
+    characteristic_polynomial = charpoly
+
+    def __call__(self, value: Any) -> ClassicalModularFormElement:
+        element = construct_element(self._space, value)
+        return ClassicalModularFormElement(
+            self._space,
+            element.vector() * self._matrix,
+            element.precision(),
+        )
+
+    def __repr__(self) -> str:
+        return (
+            "Diamond bracket operator <" + str(self._value) + "> on " + str(self._space)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+def diamond_bracket_operator(
+    space: Any,
+    value: Any,
+) -> ClassicalModularFormsDiamondOperator:
+    """Return the exact parented diamond operator `<value>` on `space`."""
+    return ClassicalModularFormsDiamondOperator(space, value)
+
+
 _element_prototype = runtime.reflect.get(ClassicalModularFormElement, "prototype")
 _q_expansion_method = runtime.reflect.get(_element_prototype, "q_expansion")
 runtime.reflect.set(
@@ -995,8 +1099,9 @@ runtime.register_doc(
         "limitations": [
             (
                 "The current object layer supports integral-weight Gamma0 "
-                "spaces with trivial or Dirichlet character; weight one and "
-                "general Gamma1/GammaH parents remain outside this slice."
+                "spaces with trivial or Dirichlet character and Gamma1 spaces "
+                "over QQ; weight one and general GammaH parents remain outside "
+                "this slice."
             ),
         ],
     },
@@ -1005,11 +1110,14 @@ runtime.register_doc(
 
 __all__ = [
     "ClassicalModularFormElement",
+    "ClassicalModularFormsDiamondOperator",
     "ClassicalModularFormsHeckeOperator",
     "basis",
     "construct_element",
     "contains",
     "coordinates",
+    "diamond_bracket_matrix",
+    "diamond_bracket_operator",
     "hecke_matrix",
     "hecke_operator",
     "q_expansion_basis",

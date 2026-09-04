@@ -106,14 +106,20 @@ function encodeParent(value: unknown, context: EncodeContext): WireValue {
       return context.encode(data);
     }
     case "ModularFormsSubspace":
-    case "EisensteinSubspace":
-      return context.encode({
+    case "EisensteinSubspace": {
+      const newPrime = Reflect.get(Object(value), "_new_prime");
+      const data: Record<string, unknown> = {
         kind: kind(value),
         ambient: Reflect.get(Object(value), "_ambient"),
         subspaceKind: Reflect.get(Object(value), "_subspace_kind"),
         dimension: Reflect.get(Object(value), "_dimension"),
         precision: Reflect.get(Object(value), "_precision"),
-      });
+      };
+      if (newPrime !== null && newPrime !== undefined) {
+        data.newPrime = newPrime;
+      }
+      return context.encode(data);
+    }
     case "OldModularFormsSubspace":
       return context.encode({
         kind: "OldModularFormsSubspace",
@@ -173,6 +179,7 @@ function decodeParent(payload: WireValue, context: DecodeContext): unknown {
         data.dimension,
         data.precision,
         data.kind === "EisensteinSubspace",
+        data.newPrime ?? null,
       ]);
     case "OldModularFormsSubspace":
       return callMethod(data.cuspSpace, "old_subspace", []);
@@ -206,6 +213,12 @@ function encodeOperator(value: unknown, context: EncodeContext): WireValue {
         space: Reflect.get(Object(value), "_space"),
         index: Reflect.get(Object(value), "_index"),
       });
+    case "ClassicalModularFormsDiamondOperator":
+      return context.encode({
+        kind: "ClassicalModularFormsDiamondOperator",
+        space: Reflect.get(Object(value), "_space"),
+        index: Reflect.get(Object(value), "_value"),
+      });
     default:
       throw new SageSerializationError("unsupported modular-symbol operator");
   }
@@ -227,11 +240,30 @@ function decodeOperator(payload: WireValue, context: DecodeContext): unknown {
       ]);
     case "ClassicalModularFormsHeckeOperator":
       return callMethod(data.space, "T", [data.index]);
+    case "ClassicalModularFormsDiamondOperator":
+      return callMethod(data.space, "diamond_bracket_operator", [data.index]);
     default:
       throw new SageSerializationError(
         `unsupported modular-symbol operator ${String(data.kind)}`,
       );
   }
+}
+
+function encodeCertificate(value: unknown, context: EncodeContext): WireValue {
+  return context.encode({
+    kind: "Gamma1DescentCertificate",
+    space: callMethod(value, "space"),
+  });
+}
+
+function decodeCertificate(payload: WireValue, context: DecodeContext): unknown {
+  const data = context.decode(payload) as Record<string, unknown>;
+  if (data.kind !== "Gamma1DescentCertificate") {
+    throw new SageSerializationError(
+      `unsupported modular-forms certificate ${String(data.kind)}`,
+    );
+  }
+  return callMethod(data.space, "q_expansion_basis_certificate", []);
 }
 
 function encodeElement(value: unknown, context: EncodeContext): WireValue {
@@ -368,12 +400,21 @@ const operatorCodec: SageCodec = {
   test: (value) => [
     "HeckeOperator",
     "ModularSymbolsLinearOperator",
+    "ClassicalModularFormsDiamondOperator",
     "ClassicalModularFormsHeckeOperator",
   ].includes(
     kind(value) ?? "",
   ),
   encode: encodeOperator,
   decode: decodeOperator,
+};
+
+const certificateCodec: SageCodec = {
+  type: "sage.modular_forms.certificate",
+  version: 1,
+  test: (value) => kind(value) === "Gamma1DescentCertificate",
+  encode: encodeCertificate,
+  decode: decodeCertificate,
 };
 
 let registered = false;
@@ -384,4 +425,5 @@ export function registerModularFormsCodecs(): void {
   registerCodec(parentCodec);
   registerCodec(elementCodec);
   registerCodec(operatorCodec);
+  registerCodec(certificateCodec);
 }
