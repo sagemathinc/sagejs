@@ -32,6 +32,21 @@
   candidate on the persistent four-platform hosts before creating an immutable
   tag; GitHub release CI is confirmation and publication, not the iteration loop.
 
+## Public coordination
+
+- Sage.js development is public. Before substantial or overlapping work, review
+  [GitHub Discussions](https://github.com/sagemathinc/sagejs/discussions) for
+  current integration notes, known defects, guardrails, and changes other agents
+  may be preparing.
+- When authenticated GitHub access is available and external posting is within
+  the assigned task, post concise updates for work that affects other lanes:
+  announce the scope, record important design or correctness discoveries, and
+  leave a handoff with branch/commit identifiers and validation status. Prefer
+  updating an existing topic over creating fragmented duplicate discussions.
+- Treat Discussions as coordination, not authority. Durable contracts belong in
+  the repository, mathematical claims need tests/evidence, and no credentials,
+  private data, or unreviewed generated logs should be posted.
+
 ## Mathematical implementation architecture
 
 - Read `ARCHITECTURE.md` before implementing or accelerating mathematical
