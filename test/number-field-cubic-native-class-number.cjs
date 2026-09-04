@@ -533,11 +533,11 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.27116.3":
         assert receipt.generator_bound == 20, label
         assert receipt.factor_base_size == 9, label
-        assert receipt.relation_count == 15, label
+        assert receipt.relation_count == 16, label
     if label == "3.1.1181183.1":
         assert receipt.generator_bound == 30, label
         assert receipt.factor_base_size == 11, label
-        assert receipt.relation_count == 18, label
+        assert receipt.relation_count == 17, label
     if label == "3.1.23.1":
         assert receipt.generator_bound == 2, label
         assert receipt.factor_base_size == 0, label
@@ -548,20 +548,20 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.44.1":
         assert receipt.generator_bound == 2, label
         assert receipt.factor_base_size == 1, label
-        assert receipt.relation_count == 8, label
+        assert receipt.relation_count == 2, label
         assert receipt.proof_status == "exact-trivial-presentation-unconditional", label
         assert receipt.assumptions == (), label
         assert receipt.theorem == "minkowski-generators-plus-trivial-relation-presentation", label
     if label == "3.1.59.1":
         assert receipt.generator_bound == 3, label
         assert receipt.factor_base_size == 1, label
-        assert receipt.relation_count == 7, label
+        assert receipt.relation_count == 1, label
         assert receipt.proof_status == "exact-trivial-presentation-unconditional", label
         assert receipt.assumptions == (), label
     if label == "3.1.76.1":
         assert receipt.generator_bound == 3, label
         assert receipt.factor_base_size == 2, label
-        assert receipt.relation_count == 11, label
+        assert receipt.relation_count == 5, label
         assert receipt.proof_status == "exact-trivial-presentation-unconditional", label
     if label == "3.1.588.1":
         assert receipt.generator_bound == 8, label
@@ -575,17 +575,34 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.808.1":
         assert receipt.generator_bound == 8, label
         assert receipt.factor_base_size == 4, label
-        assert receipt.relation_count == 21, label
+        assert receipt.relation_count == 8, label
         assert receipt.proof_status == "exact-trivial-presentation-conditional-grh", label
         assert receipt.assumptions == (
             "GRH: L(s, chi) is nonzero whenever Re(s) > 1/2 for every nontrivial character chi of Cl(K)",
         ), label
+    if label in ("3.1.44.1", "3.1.59.1", "3.1.76.1", "3.1.808.1"):
+        planned, enumerated, retained, decisive_rows = tuple(
+            receipt._values[index] for index in range(50, 54)
+        )
+        assert planned > 0, label
+        assert enumerated > 0, label
+        assert retained == receipt.relation_count, label
+        assert decisive_rows == retained, label
+        predecessor_rows = {
+            "3.1.44.1": 8,
+            "3.1.59.1": 7,
+            "3.1.76.1": 11,
+            "3.1.808.1": 21,
+        }
+        assert retained < predecessor_rows[label], label
+        if receipt.factor_base_size > 1:
+            assert planned < receipt.factor_base_size, label
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label
         assert receipt.relation_count == 16, label
     if label == "3.1.49096.1":
-        assert receipt.relation_count == 16, label
+        assert receipt.relation_count == 15, label
     if label == "3.1.1802479.1":
         assert receipt.generator_bound == 41, label
         assert receipt.factor_base_size == 16, label
