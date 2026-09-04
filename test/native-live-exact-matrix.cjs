@@ -76,7 +76,7 @@ else:
 test("live exact matrices have shaped lexical GMP ownership", async () => {
   const source = readFileSync(sourcePath, "utf8");
   const ir = await lowerSource(source, sourcePath);
-  assert.equal(ir.version, 36);
+  assert.equal(ir.version, 37);
   const addmul = ir.functions.find((fn) => fn.name === "live_matrix_addmul");
   assert.equal(addmul.analysis.backend.kind, "gmp");
   assert.equal(addmul.analysis.backend.requiresExactWorkspace, true);

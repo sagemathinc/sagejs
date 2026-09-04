@@ -576,6 +576,23 @@ function emitExactOperation(operation, context, indent) {
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
+  if (operation.kind === "range.validate_step") {
+    const step = exactValue(operation.step, context);
+    const condition = operation.stepType === "Integer"
+      ? `mpz_sgn(${step}) == 0`
+      : `${step} == 0`;
+    return [
+      `${indent}if (${condition})`,
+      `${indent}{`,
+      statusFailure(
+        "range",
+        "range() arg 3 must not be zero",
+        `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.copy") {
     return `${indent}mpz_set(${target}, ` +
       `${exactValue(operation.source, context)});`;
@@ -1385,32 +1402,43 @@ function emitExactStatements(statements, context, indent) {
     }
     if (statement.kind === "loop.range") {
       const index = exactValue(statement.index, context);
-      const bound = exactValue(statement.count, context);
-      const condition = statement.boundIsStop
-        ? `${index} < ${bound}`
-        : `(${index} - UINT64_C(${statement.start})) < ${bound}`;
+      const iterator = exactValue(statement.iterator, context);
+      const start = exactValue(statement.start, context);
+      const stop = exactValue(statement.stop, context);
+      const step = exactValue(statement.step, context);
       lines.push(
-        `${indent}for (${index} = ` +
-          `UINT64_C(${statement.start}); ` +
-          `${condition}; ` +
-          `${index} += ` +
-          `UINT64_C(${statement.step || 1}))`,
+        `${indent}${iterator} = ${start};`,
+        `${indent}while (${iterator} < ${stop})`,
         `${indent}{`,
+        `${indent}    ${index} = ${iterator};`,
         emitExactStatements(statement.body, context, `${indent}    `),
+        `${indent}    if (${step} >= ${stop} - ${iterator})`,
+        `${indent}        break;`,
+        `${indent}    ${iterator} += ${step};`,
         `${indent}}`,
       );
       continue;
     }
     if (statement.kind === "loop.range_exact") {
       const index = exactValue(statement.index, context);
+      const iterator = exactValue(statement.iterator, context);
+      const start = exactValue(statement.start, context);
+      const stop = exactValue(statement.stop, context);
+      const step = exactValue(statement.step, context);
       lines.push(
-        `${indent}mpz_set(${index}, ` +
-          `${exactValue(statement.start, context)});`,
-        `${indent}while (mpz_cmp(${index}, ` +
-          `${exactValue(statement.stop, context)}) < 0)`,
+        `${indent}mpz_set(${iterator}, ${start});`,
+        `${indent}for (;;)`,
         `${indent}{`,
+        `${indent}    if (mpz_sgn(${step}) > 0)`,
+        `${indent}    {`,
+        `${indent}        if (mpz_cmp(${iterator}, ${stop}) >= 0)`,
+        `${indent}            break;`,
+        `${indent}    }`,
+        `${indent}    else if (mpz_cmp(${iterator}, ${stop}) <= 0)`,
+        `${indent}        break;`,
+        `${indent}    mpz_set(${index}, ${iterator});`,
         emitExactStatements(statement.body, context, `${indent}    `),
-        `${indent}    mpz_add_ui(${index}, ${index}, 1);`,
+        `${indent}    mpz_add(${iterator}, ${iterator}, ${step});`,
         `${indent}}`,
       );
       continue;

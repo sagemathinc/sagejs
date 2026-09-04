@@ -198,6 +198,10 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "bool.constant") {
     return `${indent}${operation.target} = ${operation.value};`;
   }
+  if (operation.kind === "range.validate_step") {
+    return `${indent}if (${operation.step} === 0n) ` +
+      `nativeRaise("ValueError", "range() arg 3 must not be zero");`;
+  }
   if (
     operation.kind === "integer.copy" ||
     operation.kind === "bool.copy" ||
@@ -541,27 +545,30 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     ].join("\n");
   }
   if (operation.kind === "loop.range") {
-    const condition = operation.boundIsStop
-      ? `${operation.index} < ${operation.count}`
-      : `${operation.index} - ${operation.start} < ${operation.count}`;
     return [
-      `${indent}for (${operation.index} = ${BigInt(operation.start)}n; ` +
-        `${condition}; ` +
-        `${operation.index} += ${BigInt(operation.step || 1)}n) {`,
+      `${indent}${operation.iterator} = ${operation.start};`,
+      `${indent}while (${operation.iterator} < ${operation.stop}) {`,
+      `${indent}  ${operation.index} = ${operation.iterator};`,
       ...operation.body.map((item) =>
         emitExactStatement(item, `${indent}  `, resourceStack)
       ),
+      `${indent}  if (${operation.step} >= ` +
+        `${operation.stop} - ${operation.iterator}) break;`,
+      `${indent}  ${operation.iterator} += ${operation.step};`,
       `${indent}}`,
     ].join("\n");
   }
   if (operation.kind === "loop.range_exact") {
     return [
-      `${indent}for (${operation.index} = ${operation.start}; ` +
-        `${operation.index} < ${operation.stop}; ` +
-        `${operation.index} += 1n) {`,
+      `${indent}${operation.iterator} = ${operation.start};`,
+      `${indent}while (${operation.step} > 0n ? ` +
+        `${operation.iterator} < ${operation.stop} : ` +
+        `${operation.iterator} > ${operation.stop}) {`,
+      `${indent}  ${operation.index} = ${operation.iterator};`,
       ...operation.body.map((item) =>
         emitExactStatement(item, `${indent}  `, resourceStack)
       ),
+      `${indent}  ${operation.iterator} += ${operation.step};`,
       `${indent}}`,
     ].join("\n");
   }
@@ -2710,7 +2717,9 @@ function float64NativeBuffer(value, argument) {
 }
 
 function integerFloorDiv(left, right) {
-  if (right === 0n) throw new RangeError("integer division or modulo by zero");
+  if (right === 0n) {
+    nativeRaise("ZeroDivisionError", "integer division or modulo by zero");
+  }
   let quotient = left / right;
   const remainder = left % right;
   if (remainder !== 0n && (remainder < 0n) !== (right < 0n)) quotient -= 1n;
@@ -2733,7 +2742,7 @@ function integerDivmod(left, right) {
 }
 
 function integerRoundSqrt(value) {
-  if (value < 0n) throw new RangeError("math domain error");
+  if (value < 0n) nativeRaise("ValueError", "math domain error");
   const input = Number(value);
   if (!Number.isFinite(input)) {
     throw new RangeError("int too large to convert to float");
@@ -2793,6 +2802,9 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
     }
     if (message.includes("division") || message.includes("modulo")) {
       nativeRaise("ZeroDivisionError", message);
+    }
+    if (message.includes("range() arg 3 must not be zero")) {
+      nativeRaise("ValueError", message);
     }
     if (message.includes("math domain")) nativeRaise("ValueError", message);
     if (message.includes("too large to convert")) {

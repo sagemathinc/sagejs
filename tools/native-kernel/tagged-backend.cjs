@@ -139,6 +139,20 @@ function emitTaggedOperation(operation, context, indent) {
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
+  if (operation.kind === "range.validate_step") {
+    const step = taggedValue(operation.step, context);
+    const condition = operation.stepType === "Integer"
+      ? `sagejs_tagged_sgn(${step}) == 0`
+      : `${step} == 0`;
+    return [
+      `${indent}if (${condition})`,
+      `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `${cString("range() arg 3 must not be zero")});`,
+      `${indent}    goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.copy") {
     return `${indent}sagejs_tagged_copy(${target}, ` +
       `${taggedValue(operation.source, context)});`;
@@ -600,30 +614,43 @@ function emitTaggedStatements(statements, context, indent) {
     }
     if (statement.kind === "loop.range") {
       const index = taggedValue(statement.index, context);
-      const bound = taggedValue(statement.count, context);
-      const condition = statement.boundIsStop
-        ? `${index} < ${bound}`
-        : `(${index} - UINT64_C(${statement.start})) < ${bound}`;
+      const iterator = taggedValue(statement.iterator, context);
+      const start = taggedValue(statement.start, context);
+      const stop = taggedValue(statement.stop, context);
+      const step = taggedValue(statement.step, context);
       lines.push(
-        `${indent}for (${index} = UINT64_C(${statement.start}); ` +
-          `${condition}; ` +
-          `${index} += UINT64_C(${statement.step || 1}))`,
+        `${indent}${iterator} = ${start};`,
+        `${indent}while (${iterator} < ${stop})`,
         `${indent}{`,
+        `${indent}    ${index} = ${iterator};`,
         emitTaggedStatements(statement.body, context, `${indent}    `),
+        `${indent}    if (${step} >= ${stop} - ${iterator})`,
+        `${indent}        break;`,
+        `${indent}    ${iterator} += ${step};`,
         `${indent}}`,
       );
       continue;
     }
     if (statement.kind === "loop.range_exact") {
       const index = taggedValue(statement.index, context);
+      const iterator = taggedValue(statement.iterator, context);
+      const start = taggedValue(statement.start, context);
+      const stop = taggedValue(statement.stop, context);
+      const step = taggedValue(statement.step, context);
       lines.push(
-        `${indent}sagejs_tagged_copy(${index}, ` +
-          `${taggedValue(statement.start, context)});`,
-        `${indent}while (sagejs_tagged_cmp(${index}, ` +
-          `${taggedValue(statement.stop, context)}) < 0)`,
+        `${indent}sagejs_tagged_copy(${iterator}, ${start});`,
+        `${indent}for (;;)`,
         `${indent}{`,
+        `${indent}    if (sagejs_tagged_sgn(${step}) > 0)`,
+        `${indent}    {`,
+        `${indent}        if (sagejs_tagged_cmp(${iterator}, ${stop}) >= 0)`,
+        `${indent}            break;`,
+        `${indent}    }`,
+        `${indent}    else if (sagejs_tagged_cmp(${iterator}, ${stop}) <= 0)`,
+        `${indent}        break;`,
+        `${indent}    sagejs_tagged_copy(${index}, ${iterator});`,
         emitTaggedStatements(statement.body, context, `${indent}    `),
-        `${indent}    sagejs_tagged_add_one(${index});`,
+        `${indent}    sagejs_tagged_add(${iterator}, ${iterator}, ${step});`,
         `${indent}}`,
       );
       continue;

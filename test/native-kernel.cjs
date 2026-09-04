@@ -284,10 +284,10 @@ const renamedPrimeFieldSourceIr = await lowerSource(
   "renamed-prime-field-source.py",
 );
 
-assert.equal(ir.version, 36);
-assert.equal(scalarExactIr.version, 36);
-assert.equal(scalarFloatIr.version, 36);
-assert.equal(reductionsIr.version, 36);
+assert.equal(ir.version, 37);
+assert.equal(scalarExactIr.version, 37);
+assert.equal(scalarFloatIr.version, 37);
+assert.equal(reductionsIr.version, 37);
 assert.deepEqual(
   scalarFloatIr.functions.map((fn) => [fn.name, fn.kernelKind]),
   [["int_to_float", "float64"], ["float_abs", "float64"]],
@@ -345,9 +345,10 @@ assert.match(signedBuffersC, /Int64Record is outside its buffer/);
 const strideLoop = scalarExactIr.functions
   .find((fn) => fn.name === "sum_stride").body
   .find((operation) => operation.kind === "loop.range");
-assert.equal(strideLoop.start, 0);
-assert.equal(strideLoop.step, 3);
-assert.equal(strideLoop.boundIsStop, true);
+assert.equal(typeof strideLoop.start, "string");
+assert.equal(typeof strideLoop.stop, "string");
+assert.equal(typeof strideLoop.step, "string");
+assert.notEqual(strideLoop.iterator, strideLoop.index);
 assert.equal(complexFunction.params[0].type, "ComplexField");
 assert.equal(complexFunction.params[1].type, "uint64");
 assert.equal(complexFunction.returnType, "ComplexNumber");
@@ -799,20 +800,21 @@ await assert.rejects(
   ),
   /compiler-owned records are borrowed values and may not be returned/,
 );
-await assert.rejects(
-  () =>
-    lowerSource(
-      "from sagejs.native import native\n" +
-        "@native\n" +
-        "def f() -> Integer:\n" +
-        "    total = 0\n" +
-        "    for index in range(0, 10, 3):\n" +
-        "        total += index\n" +
-        "    return total\n",
-      "exact-step.py",
-    ),
-  /range step currently requires a uint64 stop/,
+const exactStepIr = await lowerSource(
+  "from sagejs.native import native\n" +
+    "@native\n" +
+    "def f() -> Integer:\n" +
+    "    total = 0\n" +
+    "    for index in range(0, 10, 3):\n" +
+    "        total += index\n" +
+    "    return total\n",
+  "exact-step.py",
 );
+const exactStepLoop = exactStepIr.functions[0].body.find(
+  (operation) => operation.kind.startsWith("loop.range"),
+);
+assert.notEqual(exactStepLoop, undefined);
+assert.notEqual(exactStepLoop.iterator, exactStepLoop.index);
 await assert.rejects(
   () =>
     lowerSource(
@@ -3311,7 +3313,7 @@ print(is_compiled(native_powmod))
 }
 
 console.log(
-  "Native Kernel v36 canonical isolated cores, records, reductions, buffers, provenance, P1, ABI, FFI, and fallback passed.",
+  "Native Kernel v37 canonical isolated cores, records, reductions, buffers, provenance, P1, ABI, FFI, and fallback passed.",
 );
 })().catch((error) => {
   console.error(error);
