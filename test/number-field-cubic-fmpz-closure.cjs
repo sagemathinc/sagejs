@@ -23,7 +23,7 @@ const sourcePath = resolve(
 const logicalSource = "sagejs/number_fields/cubic_class_number_native.py";
 const rootFunction = "certified_complex_cubic_class_group_v1";
 const expectedNameDigest =
-  "8b1e816905741ef5554c1ba9ddcc5789ae99aefc9350b287241341406f70aeb4";
+  "b3442051662cc70970c1f5c62c5da591cc02a4d51919144991df0acdccfef5c4";
 const expectedHostFunctions = Object.freeze([
   "_cubic_arctan_reciprocal_bounds",
   "_cubic_atanh_log_bounds",
@@ -115,8 +115,8 @@ test("the complete cubic closure is one direct fmpz program", {
   );
 
   assert.equal(ir.version, 38);
-  assert.equal(functions.size, 83);
-  assert.equal(edges.length, 187);
+  assert.equal(functions.size, 84);
+  assert.equal(edges.length, 194);
   assert.equal(
     createHash("sha256").update(names.join("\n")).digest("hex"),
     expectedNameDigest,
@@ -124,6 +124,23 @@ test("the complete cubic closure is one direct fmpz program", {
   assert.deepEqual(
     Array.from(reachableNames(ir.callGraph, rootFunction)).sort(),
     names,
+  );
+  assert.equal(
+    functions.get("_cubic_online_relation_lattice_update").hostCallable,
+    false,
+  );
+  assert.ok(
+    ir.callGraph[rootFunction].includes("_cubic_plan_adjacent_ideal"),
+  );
+  assert.ok(
+    ir.callGraph[rootFunction].includes(
+      "_cubic_online_relation_lattice_update",
+    ),
+  );
+  assert.ok(
+    ir.callGraph._cubic_append_reduced_ideal_ellipsoid.includes(
+      "_cubic_online_relation_lattice_update",
+    ),
   );
 
   const hostFunctions = ir.functions
@@ -135,7 +152,7 @@ test("the complete cubic closure is one direct fmpz program", {
   );
   assert.deepEqual(hostFunctions, expectedHostFunctions);
   assert.equal(hostFunctions.length, 22);
-  assert.equal(privateFunctions.length, 61);
+  assert.equal(privateFunctions.length, 62);
   assert.equal(functions.get(rootFunction).hostCallable, true);
   assert.equal((header.match(/\bint sagejs_kernel_/g) || []).length, 22);
   assert.equal((core.match(/\nint sagejs_kernel_/g) || []).length, 22);
@@ -223,7 +240,7 @@ test("one unsupported operation atomically removes fmpz from the closure", {
   assert.notEqual(unsupported, withImport);
 
   const ir = await lowerClosure(unsupported);
-  assert.equal(ir.functions.length, 83);
+  assert.equal(ir.functions.length, 84);
   assert.deepEqual(
     ir.functions.filter((fn) => fn.analysis.backend.kind === "fmpz"),
     [],

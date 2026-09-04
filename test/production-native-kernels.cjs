@@ -230,7 +230,6 @@ test("the complex-cubic pack authenticates only lexical same-source private help
     "_cubic_real_root_interval",
     "_cubic_regulator_bounds",
     "_cubic_scaled_polynomial_value",
-    "_cubic_small_relation_prefix_is_trivial",
   ].sort();
   const index = JSON.parse(readFileSync(join(published, "index.json"), "utf8"));
   const record = index.logicalSources[logicalSource];

@@ -933,6 +933,72 @@ def _cubic_relation_row_in_hnf(
     return True
 
 
+def _cubic_online_relation_lattice_update(
+    basis: FmpzMatrix,
+    source: FmpzMatrix,
+    reduced: FmpzMatrix,
+    relations: FmpzMatrix,
+    relation_row: uint64,
+    dimension: uint64,
+) -> int:
+    """Adjoin one exact row and recognize the full integer lattice.
+
+    The resident `basis` is the canonical row HNF of every previously admitted
+    relation.  Returning `2` proves that the enlarged lattice is exactly
+    `ZZ^dimension`, `1` records a valid proper sublattice, and `-1` reports a
+    failed exact reduction.  This is an online stopping certificate, not a
+    heuristic rank test.
+    """
+    if relation_row + 1 < dimension:
+        return 1
+    row: uint64 = 0
+    if relation_row + 1 == dimension:
+        while row < dimension:
+            column: uint64 = 0
+            while column < dimension:
+                source[row, column] = relations[row, column]
+                column += 1
+            row += 1
+        column = 0
+        while column < dimension:
+            source[dimension, column] = 0
+            column += 1
+    else:
+        while row < dimension:
+            column = 0
+            while column < dimension:
+                source[row, column] = basis[row, column]
+                column += 1
+            row += 1
+        column = 0
+        while column < dimension:
+            source[dimension, column] = relations[relation_row, column]
+            column += 1
+    if not fmpz_matrix_hnf_into(reduced, source):
+        return -1
+
+    rank: uint64 = 0
+    index_one = True
+    row = 0
+    while row < dimension:
+        row_nonzero = False
+        column = 0
+        while column < dimension:
+            value = reduced[row, column]
+            basis[row, column] = value
+            if value != 0:
+                row_nonzero = True
+            column += 1
+        if row_nonzero:
+            rank += 1
+        if reduced[row, row] != 1:
+            index_one = False
+        row += 1
+    if rank == dimension and index_one:
+        return 2
+    return 1
+
+
 def _cubic_modular_relation_collection_complete(
     modular_workspace: UInt64Buffer,
     relation_count: uint64,
@@ -2914,24 +2980,22 @@ def _cubic_append_reduced_ideal_ellipsoid(
     hnf_source: FmpzMatrix,
     hnf_result: FmpzMatrix,
     streaming_relation_collection: bool,
-) -> tuple[uint64, uint64]:
-    """Admit every bounded ellipsoid candidate through exact valuations."""
+    online_relation_basis: FmpzMatrix,
+    online_relation_source: FmpzMatrix,
+    online_relation_hnf: FmpzMatrix,
+    online_relation_count: uint64,
+    online_relation_status: int,
+) -> tuple[uint64, uint64, uint64, int]:
+    """Admit bounded ellipsoid candidates until an exact quotient closes."""
     limit_zero = parameters[parameter_row, 7]
     limit_one = parameters[parameter_row, 8]
     limit_two = parameters[parameter_row, 9]
     candidate_count: uint64 = 0
     coefficient_two = -limit_two
-    while coefficient_two <= limit_two and not (
-        streaming_relation_collection
-        and _cubic_modular_relation_collection_complete(
-            modular_workspace,
-            relation_count,
-            relation_target,
-            factor_count,
-        )
-    ):
-        coefficient_one = -limit_one
-        while coefficient_one <= limit_one and not (
+    while (
+        coefficient_two <= limit_two
+        and online_relation_status != 2
+        and not (
             streaming_relation_collection
             and _cubic_modular_relation_collection_complete(
                 modular_workspace,
@@ -2939,15 +3003,34 @@ def _cubic_append_reduced_ideal_ellipsoid(
                 relation_target,
                 factor_count,
             )
-        ):
-            coefficient_zero = -limit_zero
-            while coefficient_zero <= limit_zero and not (
+        )
+    ):
+        coefficient_one = -limit_one
+        while (
+            coefficient_one <= limit_one
+            and online_relation_status != 2
+            and not (
                 streaming_relation_collection
                 and _cubic_modular_relation_collection_complete(
                     modular_workspace,
                     relation_count,
                     relation_target,
                     factor_count,
+                )
+            )
+        ):
+            coefficient_zero = -limit_zero
+            while (
+                coefficient_zero <= limit_zero
+                and online_relation_status != 2
+                and not (
+                    streaming_relation_collection
+                    and _cubic_modular_relation_collection_complete(
+                        modular_workspace,
+                        relation_count,
+                        relation_target,
+                        factor_count,
+                    )
                 )
             ):
                 status, coordinate_zero, coordinate_one, coordinate_two = (
@@ -2968,7 +3051,12 @@ def _cubic_append_reduced_ideal_ellipsoid(
                     if candidate_count > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES:
                         overflow_relation_count: uint64 = relation_capacity
                         overflow_relation_count += 1
-                        return (overflow_relation_count, candidate_count)
+                        return (
+                            overflow_relation_count,
+                            candidate_count,
+                            online_relation_count,
+                            online_relation_status,
+                        )
                     relation_count = _cubic_append_smooth_principal_relation(
                         workspace,
                         modular_workspace,
@@ -2987,11 +3075,34 @@ def _cubic_append_reduced_ideal_ellipsoid(
                         relation_target,
                     )
                     if relation_count > relation_capacity:
-                        return (relation_count, candidate_count)
+                        return (
+                            relation_count,
+                            candidate_count,
+                            online_relation_count,
+                            online_relation_status,
+                        )
+                    while (
+                        online_relation_count < relation_count
+                        and online_relation_status != 2
+                    ):
+                        online_relation_status = _cubic_online_relation_lattice_update(
+                            online_relation_basis,
+                            online_relation_source,
+                            online_relation_hnf,
+                            relation_matrix,
+                            online_relation_count,
+                            factor_count,
+                        )
+                        online_relation_count += 1
                 coefficient_zero += 1
             coefficient_one += 1
         coefficient_two += 1
-    return (relation_count, candidate_count)
+    return (
+        relation_count,
+        candidate_count,
+        online_relation_count,
+        online_relation_status,
+    )
 
 
 @native
@@ -3478,6 +3589,168 @@ def _cubic_plan_reduced_ideal_shell(
             best_score = score
             best_pair = pair
         pair += 1
+    return best_pair + 1
+
+
+def _cubic_plan_adjacent_ideal(
+    workspace: NativeIntegerVector,
+    embedding_source: FmpzMatrix,
+    embedding_reduced: FmpzMatrix,
+    embedding_transform: FmpzMatrix,
+    transforms: FmpzMatrix,
+    ellipsoid_parameters: FmpzMatrix,
+    factor_index: uint64,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    real_root: int,
+    complex_real_root: int,
+    complex_imaginary_root: int,
+    scale: int,
+    group_count: uint64,
+    relation_effort: uint64,
+    bounded_collection: bool,
+) -> int:
+    """Build the exact reduced plan for one adjacent factor-base ideal.
+
+    Positive return values retain the historical plan encoding: `1..3` select
+    one four-direction shell, `4` is an auxiliary-factor ellipsoid, and `5..7`
+    select an ellipsoid plus its best four-direction pair.  Negative values
+    distinguish exact LLL, ellipsoid preparation, and candidate-envelope
+    failures.
+    """
+    factor_base: uint64 = _FACTOR_OFFSET + _FACTOR_STRIDE * factor_index
+    power_base: uint64 = _POWER_OFFSET + factor_index * _CUBIC_MAX_POWERS * 9
+    transform_row_offset: uint64 = 3 * factor_index
+    if not _cubic_fill_ideal_t2_embedding(
+        embedding_source,
+        workspace,
+        power_base,
+        basis_zero_zero,
+        basis_zero_one,
+        basis_zero_two,
+        basis_one_one,
+        basis_one_two,
+        basis_two_two,
+        real_root,
+        complex_real_root,
+        complex_imaginary_root,
+        scale,
+    ) or not fmpz_matrix_lll_transform(
+        embedding_reduced,
+        embedding_transform,
+        embedding_source,
+    ):
+        return -1
+    transform_row: uint64 = 0
+    while transform_row < 3:
+        transform_column: uint64 = 0
+        while transform_column < 3:
+            transforms[transform_row_offset + transform_row, transform_column] = (
+                embedding_transform[transform_row, transform_column]
+            )
+            transform_column += 1
+        transform_row += 1
+
+    use_ellipsoid = workspace[factor_base + 8] == 1 or relation_effort >= 3
+    if use_ellipsoid:
+        if not _cubic_prepare_reduced_ideal_ellipsoid(
+            workspace,
+            power_base,
+            embedding_reduced,
+            transforms,
+            transform_row_offset,
+            ellipsoid_parameters,
+            factor_index,
+        ):
+            return -2
+        ellipsoid_count: uint64 = 0
+        if not bounded_collection:
+            ellipsoid_count = _cubic_plan_reduced_ideal_ellipsoid(
+                workspace,
+                power_base,
+                transforms,
+                transform_row_offset,
+                ellipsoid_parameters,
+                factor_index,
+                group_count,
+            )
+        if ellipsoid_count > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES:
+            return -3
+        ellipsoid_parameters[factor_index, 10] = ellipsoid_count
+    if workspace[factor_base + 8] == 1:
+        return 4
+
+    best_score = -1
+    best_pair: uint64 = 0
+    pair: uint64 = 0
+    while pair < 3:
+        first: uint64 = 0
+        second: uint64 = 1
+        if pair == 1:
+            second = 2
+        elif pair == 2:
+            first = 1
+            second = 2
+        score = 0
+        direction: uint64 = 0
+        while direction < 4:
+            left = 1
+            right = 0
+            if direction == 1:
+                left = 0
+                right = 1
+            elif direction == 2:
+                right = 1
+            elif direction == 3:
+                left = -1
+                right = 1
+            coefficient_zero = 0
+            coefficient_one = 0
+            coefficient_two = 0
+            if first == 0:
+                coefficient_zero = left
+            elif first == 1:
+                coefficient_one = left
+            else:
+                coefficient_two = left
+            if second == 0:
+                coefficient_zero = right
+            elif second == 1:
+                coefficient_one = right
+            else:
+                coefficient_two = right
+            coordinate_zero, coordinate_one, coordinate_two = (
+                _cubic_transformed_ideal_coordinates(
+                    workspace,
+                    power_base,
+                    transforms,
+                    transform_row_offset,
+                    coefficient_zero,
+                    coefficient_one,
+                    coefficient_two,
+                )
+            )
+            norm = _cubic_norm_form_value(
+                workspace,
+                coordinate_zero,
+                coordinate_one,
+                coordinate_two,
+            )
+            if norm < 0:
+                norm = -norm
+            if _cubic_plan_smooth_norm(workspace, group_count, norm):
+                score += 1
+            direction += 1
+        if score > best_score:
+            best_score = score
+            best_pair = pair
+        pair += 1
+    if use_ellipsoid:
+        return best_pair + 5
     return best_pair + 1
 
 
@@ -5682,46 +5955,6 @@ def _cubic_next_factor_by_norm(
     return next_index
 
 
-@native
-def _cubic_small_relation_prefix_is_trivial(
-    relations: FmpzMatrix,
-    relation_count: uint64,
-    factor_count: uint64,
-) -> bool:
-    """Recognize index one in dimensions one and two by determinantal gcd."""
-    content = 0
-    if factor_count == 1:
-        row: uint64 = 0
-        while row < relation_count:
-            content, ignored_left, ignored_right = _cubic_extended_gcd(
-                content,
-                relations[row, 0],
-            )
-            if content == 1:
-                return True
-            row += 1
-        return False
-    if factor_count != 2:
-        return False
-    left_row: uint64 = 0
-    while left_row < relation_count:
-        right_row: uint64 = 0
-        while right_row < left_row:
-            determinant = (
-                relations[left_row, 0] * relations[right_row, 1]
-                - relations[left_row, 1] * relations[right_row, 0]
-            )
-            content, ignored_left, ignored_right = _cubic_extended_gcd(
-                content,
-                determinant,
-            )
-            if content == 1:
-                return True
-            right_row += 1
-        left_row += 1
-    return False
-
-
 def _cubic_publish_relation_factor_rows(
     workspace: NativeIntegerVector,
     factor_count: uint64,
@@ -6600,6 +6833,8 @@ def certified_complex_cubic_class_group_v1(
         # while widening the retained dependency margin.
         adjacent_ideal_count: uint64 = 0
         adjacent_candidate_count: uint64 = 0
+        adjacent_planned_count: uint64 = 0
+        adjacent_enumerated_count: uint64 = 0
         adjacent_prefix_start: uint64 = 0
         adjacent_factor_cursor: uint64 = 0
         adjacent_prefix: uint64 = _CUBIC_INITIAL_ADJACENT_IDEALS
@@ -6617,9 +6852,11 @@ def certified_complex_cubic_class_group_v1(
         use_pari_permutation = (
             (relation_effort >= 3 and relation_effort <= 5)
             and factor_count <= _CUBIC_NARROW_ADJACENT_MAX_FACTORS
-            and factor_count > adjacent_prefix
+            and factor_count > 0
         )
-        if use_canonical_prefix or use_pari_permutation:
+        if (use_canonical_prefix or use_pari_permutation) and (
+            factor_count > adjacent_prefix
+        ):
             adjacent_prefix_start = factor_count - adjacent_prefix
         if use_pari_permutation:
             # During planning slot +9 holds a one-based permutation position.
@@ -6733,6 +6970,24 @@ def certified_complex_cubic_class_group_v1(
                 sorted_count += 1
             if permutation_count != factor_count:
                 return False
+
+        # Preserve the permutation independently of slot +9, which becomes the
+        # reduced-plan code as soon as an ideal is visited.  PARI consumes this
+        # order backward even when the selected prefix contains the whole small
+        # factor base.
+        adjacent_order = arena.foreign_resource(fmpz_matrix, factor_count, 1)
+        adjacent_order_index: uint64 = 0
+        while adjacent_order_index < factor_count:
+            adjacent_order_factor_base: uint64 = (
+                _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_order_index
+            )
+            adjacent_order_position: uint64 = adjacent_order_index
+            if use_pari_permutation:
+                adjacent_order_position = checked_uint64(
+                    workspace[adjacent_order_factor_base + 9] - 1
+                )
+            adjacent_order[adjacent_order_position, 0] = adjacent_order_index + 1
+            adjacent_order_index += 1
         while adjacent_factor_cursor < factor_count:
             adjacent_factor_index: uint64 = adjacent_factor_cursor
             adjacent_factor_base: uint64 = (
@@ -6752,7 +7007,8 @@ def certified_complex_cubic_class_group_v1(
             ):
                 schedule_adjacent = True
             if schedule_adjacent:
-                workspace[adjacent_factor_base + 9] = 1
+                if not use_pari_permutation:
+                    workspace[adjacent_factor_base + 9] = 1
                 adjacent_ideal_count += 1
                 if workspace[adjacent_factor_base + 8] == 0:
                     adjacent_candidate_count += 4
@@ -6890,9 +7146,10 @@ def certified_complex_cubic_class_group_v1(
 
         # Plan one checked T2/LLL shell or ellipsoid per selected ideal.
         adjacent_factor_index = 0
-        while adjacent_factor_index < factor_count:
+        while not bounded_relation_collection and adjacent_factor_index < factor_count:
             factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
             if workspace[factor_base + 9] != 0:
+                adjacent_planned_count += 1
                 output[62] = adjacent_factor_index
                 output[63] = 34
                 power_base = (
@@ -7144,6 +7401,23 @@ def certified_complex_cubic_class_group_v1(
             relation_capacity,
             3,
         )
+        online_relation_basis = arena.foreign_resource(
+            fmpz_matrix,
+            factor_count,
+            factor_count,
+        )
+        online_relation_source = arena.foreign_resource(
+            fmpz_matrix,
+            factor_count + 1,
+            factor_count,
+        )
+        online_relation_hnf = arena.foreign_resource(
+            fmpz_matrix,
+            factor_count + 1,
+            factor_count,
+        )
+        online_relation_count: uint64 = 0
+        online_relation_status = 1
         dependency_coordinates = arena.foreign_resource(
             fmpz_matrix,
             9,
@@ -7216,6 +7490,19 @@ def certified_complex_cubic_class_group_v1(
                     return False
                 modular_relation_row += 1
 
+        while online_relation_count < relation_count and online_relation_status != 2:
+            online_relation_status = _cubic_online_relation_lattice_update(
+                online_relation_basis,
+                online_relation_source,
+                online_relation_hnf,
+                relation_candidates,
+                online_relation_count,
+                factor_count,
+            )
+            if online_relation_status < 0:
+                return False
+            online_relation_count += 1
+
         # PARI's Buchmann collector does not exhaust every planned reduced
         # ideal once a presentation has acquired its bounded safety margin.
         # For a complex cubic the unit rank is one, so the first effort asks
@@ -7223,11 +7510,7 @@ def certified_complex_cubic_class_group_v1(
         # the HNF, exact unit reconstruction, and rigorous index-one proof
         # below remain the authority, and an insufficient prefix declines so
         # that a later effort can resume with the exhaustive plan.
-        trivial_relation_prefix = _cubic_small_relation_prefix_is_trivial(
-            relation_candidates,
-            relation_count,
-            factor_count,
-        )
+        trivial_relation_prefix = online_relation_status == 2
         relation_collection_complete = trivial_relation_prefix or (
             streaming_relation_collection
             and _cubic_modular_relation_collection_complete(
@@ -7281,15 +7564,25 @@ def certified_complex_cubic_class_group_v1(
                         )
                         if next_relation_count > relation_capacity:
                             return False
-                        if next_relation_count > relation_count:
-                            trivial_relation_prefix = (
-                                _cubic_small_relation_prefix_is_trivial(
+                        relation_count = next_relation_count
+                        while (
+                            online_relation_count < relation_count
+                            and online_relation_status != 2
+                        ):
+                            online_relation_status = (
+                                _cubic_online_relation_lattice_update(
+                                    online_relation_basis,
+                                    online_relation_source,
+                                    online_relation_hnf,
                                     relation_candidates,
-                                    next_relation_count,
+                                    online_relation_count,
                                     factor_count,
                                 )
                             )
-                        relation_count = next_relation_count
+                            if online_relation_status < 0:
+                                return False
+                            online_relation_count += 1
+                        trivial_relation_prefix = online_relation_status == 2
                         relation_collection_complete = trivial_relation_prefix or (
                             streaming_relation_collection
                             and _cubic_modular_relation_collection_complete(
@@ -7303,10 +7596,58 @@ def certified_complex_cubic_class_group_v1(
                 coordinate_one += 1
             coordinate_zero += 1
 
-        adjacent_factor_index = 0
-        while adjacent_factor_index < factor_count and not relation_collection_complete:
+        adjacent_factor_cursor = 0
+        while (
+            adjacent_factor_cursor < factor_count and not relation_collection_complete
+        ):
+            adjacent_factor_index = adjacent_factor_cursor
+            if bounded_relation_collection and use_pari_permutation:
+                adjacent_order_position = factor_count - adjacent_factor_cursor - 1
+                adjacent_order_value = adjacent_order[adjacent_order_position, 0]
+                if adjacent_order_value < 1 or adjacent_order_value > factor_count:
+                    return False
+                adjacent_factor_index = checked_uint64(adjacent_order_value - 1)
             factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
             adjacent_pair_code = workspace[factor_base + 9]
+            if bounded_relation_collection and adjacent_pair_code > 0:
+                adjacent_planned_count += 1
+                output[62] = adjacent_factor_index
+                output[63] = 34
+                adjacent_pair_code = _cubic_plan_adjacent_ideal(
+                    workspace,
+                    adjacent_embedding_source,
+                    adjacent_embedding_reduced,
+                    adjacent_embedding_transform,
+                    adjacent_transforms,
+                    adjacent_ellipsoid_parameters,
+                    adjacent_factor_index,
+                    basis_zero_zero,
+                    basis_zero_one,
+                    basis_zero_two,
+                    basis_one_one,
+                    basis_one_two,
+                    basis_two_two,
+                    adjacent_real_root,
+                    adjacent_complex_real_root,
+                    adjacent_complex_imaginary_root,
+                    analytic_scale,
+                    group_count,
+                    relation_effort,
+                    bounded_relation_collection,
+                )
+                if adjacent_pair_code < 1:
+                    if adjacent_pair_code == -2:
+                        output[63] = 36
+                    elif adjacent_pair_code == -3:
+                        output[63] = 38
+                    output[58] = adjacent_ellipsoid_parameters[adjacent_factor_index, 7]
+                    output[59] = adjacent_ellipsoid_parameters[adjacent_factor_index, 8]
+                    output[60] = adjacent_ellipsoid_parameters[adjacent_factor_index, 9]
+                    output[61] = adjacent_ellipsoid_parameters[
+                        adjacent_factor_index, 10
+                    ]
+                    return False
+                workspace[factor_base + 9] = adjacent_pair_code
             if adjacent_pair_code > 0:
                 power_base = (
                     _POWER_OFFSET + adjacent_factor_index * _CUBIC_MAX_POWERS * 9
@@ -7320,6 +7661,8 @@ def certified_complex_cubic_class_group_v1(
                     (
                         next_relation_count,
                         admitted_ellipsoid_count,
+                        online_relation_count,
+                        online_relation_status,
                     ) = _cubic_append_reduced_ideal_ellipsoid(
                         workspace,
                         modular_workspace,
@@ -7338,14 +7681,25 @@ def certified_complex_cubic_class_group_v1(
                         hnf_source,
                         hnf_result,
                         streaming_relation_collection,
+                        online_relation_basis,
+                        online_relation_source,
+                        online_relation_hnf,
+                        online_relation_count,
+                        online_relation_status,
                     )
-                    if next_relation_count > relation_capacity or (
-                        not streaming_relation_collection
-                        and admitted_ellipsoid_count
-                        != adjacent_ellipsoid_parameters[adjacent_factor_index, 10]
+                    if (
+                        online_relation_status < 0
+                        or next_relation_count > relation_capacity
+                        or (
+                            not streaming_relation_collection
+                            and admitted_ellipsoid_count
+                            != adjacent_ellipsoid_parameters[adjacent_factor_index, 10]
+                        )
                     ):
                         return False
                     relation_count = next_relation_count
+                    adjacent_enumerated_count += admitted_ellipsoid_count
+                    trivial_relation_prefix = online_relation_status == 2
                     relation_collection_complete = trivial_relation_prefix or (
                         streaming_relation_collection
                         and _cubic_modular_relation_collection_complete(
@@ -7370,6 +7724,7 @@ def certified_complex_cubic_class_group_v1(
                         adjacent_second = 2
                     adjacent_direction: uint64 = 0
                     while adjacent_direction < 4 and not relation_collection_complete:
+                        adjacent_enumerated_count += 1
                         adjacent_left = 1
                         adjacent_right = 0
                         if adjacent_direction == 1:
@@ -7428,6 +7783,24 @@ def certified_complex_cubic_class_group_v1(
                         if next_relation_count > relation_capacity:
                             return False
                         relation_count = next_relation_count
+                        while (
+                            online_relation_count < relation_count
+                            and online_relation_status != 2
+                        ):
+                            online_relation_status = (
+                                _cubic_online_relation_lattice_update(
+                                    online_relation_basis,
+                                    online_relation_source,
+                                    online_relation_hnf,
+                                    relation_candidates,
+                                    online_relation_count,
+                                    factor_count,
+                                )
+                            )
+                            if online_relation_status < 0:
+                                return False
+                            online_relation_count += 1
+                        trivial_relation_prefix = online_relation_status == 2
                         relation_collection_complete = trivial_relation_prefix or (
                             streaming_relation_collection
                             and _cubic_modular_relation_collection_complete(
@@ -7438,7 +7811,7 @@ def certified_complex_cubic_class_group_v1(
                             )
                         )
                         adjacent_direction += 1
-            adjacent_factor_index += 1
+            adjacent_factor_cursor += 1
 
         # The bounded PARI-shaped stages use adjacent ideals but no compound
         # products.  Only a later exact-status-authorized effort reaches this
@@ -7837,6 +8210,12 @@ def certified_complex_cubic_class_group_v1(
             output[35] = _CUBIC_PROOF_TRIVIAL_MINKOWSKI
             if use_grh_generator_base:
                 output[35] = _CUBIC_PROOF_TRIVIAL_GRH
+            # Private deterministic diagnostics authenticate that the online
+            # certificate actually avoided the eager all-ideal schedule.
+            output[50] = adjacent_planned_count
+            output[51] = adjacent_enumerated_count
+            output[52] = relation_count
+            output[53] = online_relation_count
             return True
 
         # Retain exactly the rows that change the incremental canonical HNF.
