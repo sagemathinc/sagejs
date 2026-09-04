@@ -4,7 +4,7 @@
   "id": "fmpz-backend-evidence",
   "title": "Force and attest fmpz backend",
   "lane": "native-compiler",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Allow an explicit fmpz native-backend override for qualified programs and bind the selected exact backend into authenticated complex-cubic frontier runtime evidence for source-matched GMP/fmpz A/B measurements",
   "base_commit": "dcefab282bd06cd0fff95773b0482432a0263e73",
@@ -37,10 +37,50 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/fmpz-backend-override.cjs test/complex-cubic-frontier-runner.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.091,
+      "started_at": "2026-09-04T09:47:37.940Z",
+      "commit": "fbaed246ec5758b7930afaaa3bc851f3c6724c3e",
+      "workspace_fingerprint": "126da98ad1a5ab6a06515915796842a75847515fba5ed155a28efe0c22102e7e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 43.767,
+      "started_at": "2026-09-04T09:47:43.777Z",
+      "commit": "fbaed246ec5758b7930afaaa3bc851f3c6724c3e",
+      "workspace_fingerprint": "126da98ad1a5ab6a06515915796842a75847515fba5ed155a28efe0c22102e7e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.002,
+      "started_at": "2026-09-04T09:48:31.418Z",
+      "commit": "fbaed246ec5758b7930afaaa3bc851f3c6724c3e",
+      "workspace_fingerprint": "126da98ad1a5ab6a06515915796842a75847515fba5ed155a28efe0c22102e7e",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Commit fbaed246 admits SAGEJS_NATIVE_INTEGER_BACKEND=fmpz only for functions whose exact analysis selected the fmpz backend; unqualified and native-unavailable calls fail closed. The frontier runner now accepts --sagejs-integer-backend auto|gmp|fmpz and records requested, selected, and enforcement semantics in a v4 no-inheritance direct-environment identity. That identity includes the exact environment variable and is hashed through runtime closure, census checkpoint keys, warmup attestation, and timing source matching, preventing GMP/fmpz evidence reuse. Focused compiled fmpz/GMP/JavaScript differential, unavailable-backend, unqualified-backend, runner identity, and evidence-gate tests pass.",
+    "risks": [
+      "Forcing fmpz deliberately makes the complex-cubic frontier census decline or fail until the complete closed program is compiler-qualified for fmpz; this is the safety signal needed before timing, not a compatibility fallback.",
+      "The evidence JSON schema did not require a change because the authenticated direct-process identity is carried inside the existing source/runtime-closure object; consumers must inspect candidate_runtime_closure.direct_process_environment.exact_integer_backend.",
+      "pnpm architecture:check reaches the inherited optimizer-opportunity dashboard and fails because its manifest input digest is stale; all preceding FFI, package, native, Wasm, resource-lifetime, and CoWasm checks pass.",
+      "A full pnpm test:native attempt was stopped during its redundant FLINT addon rebuild after the focused compiled suite and an earlier full pnpm build passed; two existing matrix-backed fmpz tests then lacked the interrupted generated direct addon, while tests not requiring that package adapter continued to pass."
+    ],
+    "next_steps": [
+      "Integrate this lane before source-matched GMP/fmpz corpus measurements.",
+      "After the closed cubic program is fmpz-qualified, run separate agreeing censuses and retained timings with --sagejs-integer-backend gmp and fmpz; their runtime identities and checkpoint keys will be distinct.",
+      "Regenerate the shared optimizer-opportunity artifacts in the integration lane after compiler work settles."
+    ]
   }
 }
