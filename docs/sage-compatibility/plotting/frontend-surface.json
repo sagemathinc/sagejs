@@ -30,7 +30,7 @@
     },
     {
       "path": "tools/kernel.ts",
-      "sha256": "5153b1b99525a9ff5ecc02e291f993c121f292a065266e5e6b4114dc58f40aef"
+      "sha256": "1161cfb27107a06f8564afc44aff055f1c1fdac1e4c3535d23cb06b3a2a9f2ca"
     },
     {
       "path": "test/graphics.cjs",
