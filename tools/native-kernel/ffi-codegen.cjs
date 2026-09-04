@@ -913,6 +913,95 @@ function emitExactForeignCall(operation, context, indent) {
     : emitDirectCall(operation, context, indent);
 }
 
+/**
+ * Emit a declared call for the internal FLINT-fmpz exact backend.
+ *
+ * Unlike the GMP and hand-tagged paths, every semantic Integer is already an
+ * `fmpz_t`.  Resource calls can therefore pass exact inputs and outputs
+ * directly through the declaration ABI.  This deliberately accepts only
+ * direct scalar/resource/result lowering; a future backend extension must
+ * make aggregate adapters explicit rather than silently reintroducing an
+ * fmpz/mpz staging loop.
+ */
+function emitFmpzForeignCall(operation, context, indent) {
+  const fn = operation.foreign.function;
+  const returned = resourceForType(operation, fn.signature.return_type);
+  const args = nativeArguments(fn).map((argument) => {
+    if (argument.adapter !== null ||
+        !["exact_integer", "result", "resource", "scalar"].includes(
+          argument.lowering.kind,
+        )) {
+      throw new Error(
+        `${operation.foreign.declarationId} has no direct fmpz lowering`,
+      );
+    }
+    if (argument.source === "result") {
+      return context.result(operation.target);
+    }
+    const source = argumentBySource(operation, argument.source);
+    const resource = resourceForType(operation, source.type);
+    if (resource !== undefined || argument.abi_type === "fmpz_t") {
+      return context.value(source.name);
+    }
+    if (argument.abi_type === "ulong" || argument.abi_type === "uint64_t") {
+      return `(${argument.abi_type}) ${context.value(source.name)}`;
+    }
+    if (argument.abi_type === "int") {
+      return `(int) ${context.value(source.name)}`;
+    }
+    throw new Error(
+      `${operation.foreign.declarationId} uses unsupported direct fmpz ABI ` +
+        `${argument.abi_type}`,
+    );
+  });
+  const validation = fn.signature.parameters.flatMap((parameter, index) => {
+    if (parameter.minimum === undefined) return [];
+    const source = operation.arguments[index];
+    return [
+      `${indent}    if (${context.value(source.name)} < ` +
+        `UINT64_C(${parameter.minimum}))`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, ` +
+        `SAGEJS_NATIVE_RANGE_ERROR, "FFI resource argument is below minimum ` +
+        `${parameter.minimum}");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+    ];
+  });
+  const raw = `sagejs_ffi_${cName(operation.target)}_result`;
+  const needsRaw = fn.native.return_type !== "void";
+  const call = `${nativeSymbol(fn)}(${args.join(", ")})`;
+  const invoke = needsRaw
+    ? `${indent}    ${nativeReturnType(fn)} ${raw} = ${call};`
+    : `${indent}    ${call};`;
+  const checked = needsRaw
+    ? failureLines(fn, raw, [], context, `${indent}    `)
+    : [];
+  const result = [];
+  if (returned?.ownership === "owned") {
+    result.push(
+      `${indent}    ${context.resourceInitialized(operation.target)} = 1;`,
+    );
+  } else if (fn.signature.return_type === "Integer") {
+    // The declaration wrote directly into the compiler-owned fmpz result.
+  } else if (needsRaw) {
+    result.push(assignRawResult(
+      fn,
+      raw,
+      context.result(operation.target),
+      `${indent}    `,
+    ));
+  }
+  return [
+    `${indent}{`,
+    ...validation,
+    invoke,
+    ...checked,
+    ...result,
+    `${indent}}`,
+  ].join("\n");
+}
+
 function emitTaggedForeignCall(operation, context, indent) {
   if (nativeArguments(operation.foreign.function).some((argument) =>
     argument.adapter?.kind === "packed_fmpz_matrix"
@@ -1347,6 +1436,7 @@ function sagejsFfiTransferResource(value, resources) {
 
 module.exports = {
   emitExactForeignCall,
+  emitFmpzForeignCall,
   emitTaggedForeignCall,
   emitWordForeignCall,
   exceptionShimInclude,
