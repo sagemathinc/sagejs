@@ -501,7 +501,10 @@ function candidateRuntimeClosure(root = ROOT) {
     throw new Error("candidate runtime closure has no declared FLINT package boundary");
   }
   const runtimeRequireOrigin = path.join(root, "dist/tools/resources.js");
-  const expectedFlintLoader = path.join(root, "packages/flint/index.cjs");
+  const expectedFlintPackage = fs.realpathSync(
+    path.join(root, "packages/flint"),
+  );
+  const expectedFlintLoader = path.join(expectedFlintPackage, "index.cjs");
   const shadowCandidates = [
     "dist/tools/node_modules/@sagemath/sagejs-flint",
     "dist/node_modules/@sagemath/sagejs-flint",
@@ -517,7 +520,7 @@ function candidateRuntimeClosure(root = ROOT) {
   const workspaceLink = path.join(root, workspaceLinkName);
   const workspaceLinkStatus = lstatOrNull(workspaceLink);
   if (!workspaceLinkStatus?.isSymbolicLink() ||
-      fs.realpathSync(workspaceLink) !== path.join(root, "packages/flint")) {
+      fs.realpathSync(workspaceLink) !== expectedFlintPackage) {
     throw new Error(
       "candidate runtime closure requires the workspace FLINT package link",
     );
