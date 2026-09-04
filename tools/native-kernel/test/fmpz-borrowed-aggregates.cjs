@@ -206,14 +206,31 @@ test("fmpz helpers borrow vectors and matrices inside one closed program", async
   assert.doesNotMatch(core, /sagejs_kernel_borrowed_fmpz_(?:leaf|middle)/);
 });
 
-test("one unsupported aggregate helper rejects the whole fmpz closure", async () => {
+test("one unsupported FFI helper rejects the whole fmpz closure", async () => {
   const unsupported = source
     .replace(
-      "    before = left[index] + packed[index]",
-      "    extra = 0\n" +
-        "    for position in range(scale):\n" +
-        "        extra += position\n" +
-        "    before = left[index] + packed[index] + extra",
+      "    FmpzMatrix,",
+      "    FmpzMatrix,\n" +
+        "    FmpzPolynomial,\n" +
+        "    fmpz_polynomial,\n" +
+        "    fmpz_polynomial_length,",
+    )
+    .replace(
+      "\n\n@native\ndef borrowed_fmpz_leaf(",
+      "\n\n@native\n" +
+        "def unsupported_polynomial_length(polynomial: FmpzPolynomial) -> int:\n" +
+        "    return fmpz_polynomial_length(polynomial)\n\n\n" +
+        "@native\ndef borrowed_fmpz_leaf(",
+    )
+    .replace(
+      "        matrix = arena.foreign_resource(fmpz_matrix, 2, 4)",
+      "        matrix = arena.foreign_resource(fmpz_matrix, 2, 4)\n" +
+        "        polynomial = arena.foreign_resource(fmpz_polynomial, 1)\n" +
+        "        unsupported = unsupported_polynomial_length(polynomial)",
+    )
+    .replace(
+      "        return total + visible, changed, negative",
+      "        return total + visible + unsupported, changed, negative",
     );
   const ir = await lowerSource(unsupported, "unsupported-fmpz-aggregate.py");
   for (const fn of ir.functions) {
