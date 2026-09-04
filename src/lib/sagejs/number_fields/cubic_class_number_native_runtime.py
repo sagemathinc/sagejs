@@ -31,6 +31,7 @@ from sagejs.number_fields.cubic_class_number_native import (
     _CUBIC_MAX_GROUPS,
     _CUBIC_MAX_ORDER_WITNESSES,
     _CUBIC_MAX_RELATIONS,
+    _CUBIC_MODULAR_WORKSPACE_LENGTH,
     _CUBIC_PROOF_ANALYTIC_GRH,
     _CUBIC_PROOF_TRIVIAL_GRH,
     _CUBIC_PROOF_TRIVIAL_MINKOWSKI,
@@ -49,7 +50,9 @@ _CUBIC_BUFFER_WORD_CAPACITY = (_CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT + 63) // 64
 _CUBIC_OUTPUT_WORD_CAPACITY = 256
 _CUBIC_ARENA_MEMORY_LIMIT = 1_048_576
 _CUBIC_ARENA_TEMPORARY_LIMIT = 2_097_152
-_CUBIC_RELATION_EFFORTS = (1, 2, 3, 4, 5, 6, 7, 8)
+# Try the measured PARI-shaped bounded regime once, then retain the monotone
+# exact fallbacks needed outside its qualified relation envelope.
+_CUBIC_RELATION_EFFORTS = (5, 1, 7, 8)
 _resident_buffers: tuple[Any, ...] | None = None
 _resident_coefficients: tuple[Any, tuple[int, int, int, int], Any] | None = None
 _resident_native_module: Any | None = None
@@ -312,6 +315,7 @@ def _extract_relation_transcript(
         (
             _kernel,
             output,
+            modular_workspace,
             analysis_proof,
             verification_polynomial,
             verification_numerator,
@@ -356,6 +360,7 @@ def _extract_relation_transcript(
             accepted = kernel(
                 output,
                 packed_coefficients,
+                modular_workspace,
                 analysis_proof,
                 verification_polynomial,
                 verification_numerator,
@@ -1024,6 +1029,10 @@ def certified_complex_cubic_class_number(
                 _CUBIC_OUTPUT_LENGTH,
                 _CUBIC_OUTPUT_WORD_CAPACITY,
             )
+            modular_workspace = native_module.kernel_uint64_zeros(
+                kernel,
+                _CUBIC_MODULAR_WORKSPACE_LENGTH,
+            )
             analysis_proof = native_module.kernel_integer_zeros(
                 kernel,
                 _CUBIC_ANALYSIS_PROOF_CAPACITY,
@@ -1072,6 +1081,7 @@ def certified_complex_cubic_class_number(
             _resident_buffers = (
                 kernel,
                 output,
+                modular_workspace,
                 analysis_proof,
                 verification_polynomial,
                 verification_numerator,
@@ -1087,6 +1097,7 @@ def certified_complex_cubic_class_number(
         (
             _kernel,
             output,
+            modular_workspace,
             analysis_proof,
             verification_polynomial,
             verification_numerator,
@@ -1123,6 +1134,7 @@ def certified_complex_cubic_class_number(
                 accepted = kernel(
                     output,
                     packed_coefficients,
+                    modular_workspace,
                     analysis_proof,
                     verification_polynomial,
                     verification_numerator,
