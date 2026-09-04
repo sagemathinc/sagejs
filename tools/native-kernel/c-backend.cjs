@@ -3104,6 +3104,7 @@ static int sagejs_integer_buffer_set_fmpz(
             "IntegerBuffer word capacity exceeded");
         return 0;
     }
+    memset(slot, 0, buffer->word_capacity * sizeof(*slot));
     if (count != 0)
     {
         if (sign > 0)

@@ -1270,6 +1270,25 @@ const FMPZ_FFI_DECLARATIONS = new Set([
   "flint:fmpz_matrix",
   "flint:fmpz_matrix_entry",
   "flint:fmpz_matrix_set_entry",
+  "flint:fmpz_polynomial",
+  "flint:fmpz_polynomial_set_coefficient",
+  "flint:fmpz_polynomial_seal",
+  "flint:number_field_analyze_resource",
+  "flint:number_field_analysis_resource_project",
+  "flint:number_field_analysis_resource_project_proof",
+  "flint:integer_log_sqrt_balls_resource",
+  "flint:positive_rational_log_balls_resource",
+  "flint:fmpz_matrix_hnf_into",
+  "flint:fmpz_matrix_hnf_transform",
+  "flint:fmpz_matrix_lll_transform",
+  "flint:fmpz_matrix_snf",
+  "flint:fmpz_matrix_snf_into",
+]);
+
+const FMPZ_RESOURCE_IDS = new Set([
+  "fmpz_matrix",
+  "fmpz_polynomial",
+  "number_field_analysis_resource",
 ]);
 
 /**
@@ -1277,10 +1296,11 @@ const FMPZ_FFI_DECLARATIONS = new Set([
  *
  * Semantic Integer values remain exact.  A root owns one closed arena with
  * unbounded exact vectors, borrowed packed IntegerBuffer boundary views, and
- * the direct fmpz matrix round-trip declarations.  A root may pass its vectors,
- * matrices, and packed boundary views through an acyclic helper graph without
- * transferring ownership or exposing an aggregate host ABI.  Anything outside
- * this list continues through the mature GMP backend.
+ * direct resident FLINT matrix, polynomial, and number-field-analysis
+ * declarations.  A root may pass its vectors, foreign resources, and packed
+ * boundary views through an acyclic helper graph without transferring ownership
+ * or exposing an aggregate host ABI.  Anything outside this list continues
+ * through the mature GMP backend.
  */
 function fmpzReturnTypeSupported(type) {
   return (tupleElementTypes(type) || [type]).every((element) =>
@@ -1292,7 +1312,7 @@ function inspectFmpzFunction(fn) {
   if (!fmpzReturnTypeSupported(fn.returnType)) return null;
   const fmpzResourceTypes = new Set(
     (fn.foreignResources || [])
-      .filter((resource) => resource.id === "fmpz_matrix")
+      .filter((resource) => FMPZ_RESOURCE_IDS.has(resource.id))
       .map((resource) => resource.compiler_type || resource.python_name),
   );
   const scalarParameter = (param) =>
@@ -1312,7 +1332,7 @@ function inspectFmpzFunction(fn) {
     ].includes(local.type) ||
     (fn.foreignResources || []).some((resource) =>
       (resource.compiler_type || resource.python_name) === local.type &&
-      resource.id === "fmpz_matrix"
+      FMPZ_RESOURCE_IDS.has(resource.id)
     )
   )) return null;
 
@@ -1343,7 +1363,7 @@ function inspectFmpzFunction(fn) {
         if (!statement.children.every((child) =>
           child.type === "NativeIntegerVector" ||
           (child.childKind === "foreign-resource" &&
-            child.resourceId === "fmpz_matrix")
+            FMPZ_RESOURCE_IDS.has(child.resourceId))
         )) eligible = false;
         visit(statement.setup);
         visit(statement.body);
@@ -1784,7 +1804,7 @@ function analyzeExactModule(functions) {
         ["IntegerBuffer", "UInt64Buffer"].includes(param.type)) ||
       param.type === "NativeIntegerVector" ||
       (fn.foreignResources || []).some((resource) =>
-        resource.id === "fmpz_matrix" &&
+        FMPZ_RESOURCE_IDS.has(resource.id) &&
         (resource.compiler_type || resource.python_name) === param.type
       )
     );

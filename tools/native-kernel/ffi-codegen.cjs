@@ -579,6 +579,22 @@ function emitPackedFmpzCall(operation, context, indent) {
   const fn = operation.foreign.function;
   const arguments_ = nativeArguments(fn);
   const declarations = [];
+  const minimumValidation = fn.signature.parameters.flatMap(
+    (parameter_, index) => {
+      if (parameter_.minimum === undefined) return [];
+      const source = operation.arguments[index];
+      return [
+        `${indent}    if (${context.value(source.name)} < ` +
+          `UINT64_C(${parameter_.minimum}))`,
+        `${indent}    {`,
+        `${indent}        sagejs_native_status_set(status, ` +
+          `SAGEJS_NATIVE_RANGE_ERROR, "FFI resource argument is below minimum ` +
+          `${parameter_.minimum}");`,
+        `${indent}        ${context.failure}`,
+        `${indent}    }`,
+      ];
+    },
+  );
   const validation = [];
   const initialization = [];
   const copyInput = [];
@@ -767,6 +783,7 @@ function emitPackedFmpzCall(operation, context, indent) {
   return [
     `${indent}{`,
     ...declarations,
+    ...minimumValidation,
     ...validation,
     ...initialization,
     ...copyInput,
@@ -924,6 +941,11 @@ function emitExactForeignCall(operation, context, indent) {
  * fmpz/mpz staging loop.
  */
 function emitFmpzForeignCall(operation, context, indent) {
+  if (nativeArguments(operation.foreign.function).some((argument) =>
+    argument.adapter?.kind === "packed_fmpz_matrix"
+  )) {
+    return emitFmpzPackedMatrixCall(operation, context, indent);
+  }
   const fn = operation.foreign.function;
   const returned = resourceForType(operation, fn.signature.return_type);
   const args = nativeArguments(fn).map((argument) => {
@@ -998,6 +1020,184 @@ function emitFmpzForeignCall(operation, context, indent) {
     invoke,
     ...checked,
     ...result,
+    `${indent}}`,
+  ].join("\n");
+}
+
+/**
+ * Project a resident FLINT result into a packed IntegerBuffer without ever
+ * materializing an mpz.  Every writable matrix is private staging storage:
+ * validate all shapes, run the foreign operation, and preflight every fmpz
+ * limb count before changing the caller's buffer.  The final setter cannot
+ * fail after that preflight because the buffer capacity and staged fmpz values
+ * remain fixed for the duration of this isolated call.
+ */
+function emitFmpzPackedMatrixCall(operation, context, indent) {
+  const fn = operation.foreign.function;
+  const arguments_ = nativeArguments(fn);
+  const declarations = [];
+  const minimumValidation = [];
+  const validation = [];
+  const initialization = [];
+  const cleanup = [];
+  const outputs = [];
+  const callArguments = [];
+  const parameter = (name) =>
+    context.value(argumentBySource(operation, name).name);
+
+  for (const [index, argument] of arguments_.entries()) {
+    if (argument.adapter === null) {
+      const source = argumentBySource(operation, argument.source);
+      const resource = resourceForType(operation, source.type);
+      if (resource !== undefined || argument.abi_type === "fmpz_t") {
+        callArguments.push(context.value(source.name));
+      } else if (
+        argument.abi_type === "ulong" || argument.abi_type === "uint64_t"
+      ) {
+        callArguments.push(
+          `(${argument.abi_type}) ${context.value(source.name)}`,
+        );
+      } else if (argument.abi_type === "int") {
+        callArguments.push(`(int) ${context.value(source.name)}`);
+      } else {
+        throw new Error(
+          `${operation.foreign.declarationId} uses unsupported packed fmpz ` +
+            `ABI ${argument.abi_type}`,
+        );
+      }
+      continue;
+    }
+    const adapter = argument.adapter;
+    if (
+      argument.abi_type !== "fmpz_mat_t" ||
+      argument.direction !== "out" ||
+      adapter.kind !== "packed_fmpz_matrix" ||
+      adapter.access !== "write" ||
+      adapter.aliasing !== "allowed" ||
+      adapter.transactional !== true
+    ) {
+      throw new Error(
+        `${operation.foreign.declarationId} requires a transactional writable ` +
+          "packed fmpz matrix",
+      );
+    }
+    const prefix = `sagejs_ffi_${cName(operation.target)}_${index}`;
+    const matrix = `${prefix}_matrix`;
+    const count = `${prefix}_count`;
+    const data = parameter(adapter.data);
+    const rows = parameter(adapter.rows);
+    const columns = parameter(adapter.columns);
+    declarations.push(
+      `${indent}    fmpz_mat_t ${matrix};`,
+      `${indent}    size_t ${count};`,
+    );
+    validation.push(
+      `${indent}    if (${rows} > (uint64_t) WORD_MAX || ` +
+        `${columns} > (uint64_t) WORD_MAX ||`,
+      `${indent}        (${rows} != 0 && ${columns} > ` +
+        `(uint64_t) SIZE_MAX / ${rows}))`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, ` +
+        `SAGEJS_NATIVE_RANGE_ERROR, "integer matrix is too large to convert");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+      `${indent}    ${count} = (size_t) ${rows} * (size_t) ${columns};`,
+      `${indent}    if (${data}.length != ${count})`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, ` +
+        `SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"integer matrix buffer length does not match dimensions");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+    );
+    initialization.push(
+      `${indent}    fmpz_mat_init(${matrix}, (slong) ${rows}, ` +
+        `(slong) ${columns});`,
+    );
+    cleanup.unshift(`${indent}    fmpz_mat_clear(${matrix});`);
+    outputs.push({ matrix, count, columns, data });
+    callArguments.push(matrix);
+  }
+
+  if (outputs.length === 0) {
+    throw new Error(
+      `${operation.foreign.declarationId} has no packed fmpz output`,
+    );
+  }
+  if (resourceForType(operation, fn.signature.return_type) !== undefined) {
+    throw new Error(
+      `${operation.foreign.declarationId} cannot return a resource while ` +
+        "publishing a packed fmpz matrix",
+    );
+  }
+  for (const [index, parameter_] of fn.signature.parameters.entries()) {
+    if (parameter_.minimum === undefined) continue;
+    const source = operation.arguments[index];
+    minimumValidation.push(
+      `${indent}    if (${context.value(source.name)} < ` +
+        `UINT64_C(${parameter_.minimum}))`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, ` +
+        `SAGEJS_NATIVE_RANGE_ERROR, "FFI resource argument is below minimum ` +
+        `${parameter_.minimum}");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+    );
+  }
+
+  const raw = `sagejs_ffi_${cName(operation.target)}_result`;
+  declarations.push(`${indent}    ${nativeReturnType(fn)} ${raw};`);
+  const checked = failureLines(fn, raw, cleanup, context, `${indent}    `);
+  const preflight = outputs.flatMap(({ matrix, count, columns, data }) => [
+    `${indent}    for (size_t sagejs_index = 0; sagejs_index < ${count}; ` +
+      "sagejs_index++)",
+    `${indent}    {`,
+    `${indent}        const fmpz *sagejs_entry = fmpz_mat_entry(${matrix},`,
+    `${indent}            (slong) (sagejs_index / (size_t) ${columns}),`,
+    `${indent}            (slong) (sagejs_index % (size_t) ${columns}));`,
+    `${indent}        const flint_bitcnt_t sagejs_bits = fmpz_bits(sagejs_entry);`,
+    `${indent}        const size_t sagejs_words = sagejs_bits == 0 ? 0 :`,
+    `${indent}            (size_t) (UINT64_C(1) + (sagejs_bits - 1) / 64);`,
+    `${indent}        if (sagejs_words > ${data}.word_capacity ||`,
+    `${indent}            sagejs_words > (size_t) INT32_MAX)`,
+    `${indent}        {`,
+    ...cleanup.map((line) =>
+      line.replace(`${indent}    `, `${indent}            `)
+    ),
+    `${indent}            sagejs_native_status_set(status, ` +
+      `SAGEJS_NATIVE_RANGE_ERROR, "IntegerBuffer word capacity exceeded");`,
+    `${indent}            ${context.failure}`,
+    `${indent}        }`,
+    `${indent}    }`,
+  ]);
+  const commit = outputs.flatMap(({ matrix, count, columns, data }) => [
+    `${indent}    for (size_t sagejs_index = 0; sagejs_index < ${count}; ` +
+      "sagejs_index++)",
+    `${indent}    {`,
+    `${indent}        (void) sagejs_integer_buffer_set_fmpz(status, &${data},`,
+    `${indent}            sagejs_index, fmpz_mat_entry(${matrix},`,
+    `${indent}                (slong) (sagejs_index / (size_t) ${columns}),`,
+    `${indent}                (slong) (sagejs_index % (size_t) ${columns})));`,
+    `${indent}    }`,
+  ]);
+  const result = assignRawResult(
+    fn,
+    raw,
+    context.result(operation.target),
+    `${indent}    `,
+  );
+  return [
+    `${indent}{`,
+    ...declarations,
+    ...minimumValidation,
+    ...validation,
+    ...initialization,
+    `${indent}    ${raw} = ${nativeSymbol(fn)}(${callArguments.join(", ")});`,
+    ...checked,
+    ...preflight,
+    ...commit,
+    ...cleanup,
+    result,
     `${indent}}`,
   ].join("\n");
 }
