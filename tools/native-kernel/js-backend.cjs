@@ -2966,6 +2966,9 @@ const nativeCompatibility = Object.freeze({
   cacheKey: ${jsString(options.cacheKey || "")},
   sourceHash: ${jsString(options.sourceHash || "")},
   nativeAbi: ${Number(options.nativeAbi || 0)},
+  privateFunctions: Object.freeze(${JSON.stringify(
+    options.privateFunctions || [],
+  )}),
   foreignDeclarations: Object.freeze(${JSON.stringify(
     options.foreignDeclarations || [],
   )}.map((declaration) => Object.freeze(declaration))),
@@ -3007,6 +3010,7 @@ module.exports = {
   cacheKey: nativeCompatibility.cacheKey,
   sourceHash: nativeCompatibility.sourceHash,
   nativeAbi: nativeCompatibility.nativeAbi,
+  privateFunctions: nativeCompatibility.privateFunctions,
   foreignDeclarations: nativeCompatibility.foreignDeclarations,
   executionMode: compiledExecutionMode,
   nativeAvailable: nativeAddon !== null,

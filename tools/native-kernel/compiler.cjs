@@ -305,6 +305,7 @@ function writeDiscoveryIndex(
     sourceHash,
     nativeAbi: compatibility.nativeAbi,
     foreignDeclarations: compatibility.foreignDeclarations,
+    privateFunctions: compatibility.privateFunctions,
   };
   index.sources[sourcePath] = record;
   if (sourceKey !== undefined) {
@@ -319,12 +320,22 @@ function writeDiscoveryIndex(
   writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`);
 }
 
-function nativeCompatibility(ir, foreignInputs) {
+function nativeCompatibility(ir, foreignInputs, sourcePath) {
   const inputsByLibrary = new Map(
     foreignInputs.map((input) => [input.id, input]),
   );
   return Object.freeze({
     nativeAbi: NATIVE_ABI_VERSION,
+    privateFunctions: Object.freeze(
+      ir.functions
+        .filter((fn) =>
+          fn.lexicallyNative === true &&
+          fn.hostCallable === false &&
+          fn.provenance?.file === sourcePath
+        )
+        .map((fn) => fn.name)
+        .sort(),
+    ),
     foreignDeclarations: Object.freeze(
       (ir.foreignLibraries || [])
         .map((library) => {
@@ -879,7 +890,7 @@ async function compileKernel(options) {
     ir,
   );
   const foreignInputs = foreignCompilationInputs(ir, { cacheRoot });
-  const compatibility = nativeCompatibility(ir, foreignInputs);
+  const compatibility = nativeCompatibility(ir, foreignInputs, sourcePath);
   const usesSpecializedPrimeField = ir.functions.some(
     (fn) => fn.kernelKind === "prime-field-matrix",
   );
@@ -964,6 +975,7 @@ async function compileKernel(options) {
       shimHeaderPath: exceptionShims === null ? null : shimHeaderPath,
       nativeAbi: compatibility.nativeAbi,
       foreignDeclarations: compatibility.foreignDeclarations,
+      privateFunctions: compatibility.privateFunctions,
       foreignInputs,
       automaticSelections,
       exceptionShields: exceptionShims === null ? [] :
@@ -1015,6 +1027,7 @@ async function compileKernel(options) {
       sourcePath,
       nativeAbi: compatibility.nativeAbi,
       foreignDeclarations: compatibility.foreignDeclarations,
+      privateFunctions: compatibility.privateFunctions,
     }),
   );
   writeFileSync(
@@ -1026,6 +1039,7 @@ async function compileKernel(options) {
         nativeAbi: NATIVE_ABI_VERSION,
         sourceHash,
         foreignDeclarations: compatibility.foreignDeclarations,
+        privateFunctions: compatibility.privateFunctions,
         foreignInputs,
         primeFieldTuning: tuning,
         sourceBoundsChecked,
@@ -1092,6 +1106,7 @@ async function compileKernel(options) {
     shimHeaderPath: exceptionShims === null ? null : shimHeaderPath,
     nativeAbi: compatibility.nativeAbi,
     foreignDeclarations: compatibility.foreignDeclarations,
+    privateFunctions: compatibility.privateFunctions,
     foreignInputs,
     automaticSelections,
     exceptionShields: exceptionShims === null ? [] :

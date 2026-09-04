@@ -25,7 +25,7 @@ const {
 } = require("./provenance.cjs");
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 
-const IR_VERSION = 37;
+const IR_VERSION = 38;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -1068,7 +1068,14 @@ async function lowerSource(source, filename, options = {}) {
     definitions.map((fn) => [fn.name.name, fn]),
   );
   for (let index = 0; index < loweredDefinitions.length; index += 1) {
-    const result = lowerDefinition(loweredDefinitions[index]);
+    const definition = loweredDefinitions[index];
+    const result = lowerDefinition(definition);
+    // `decorated` predates dependency-graph and requested-subset lowering: it
+    // records the lowering mode, not whether this particular definition had a
+    // lexical `@native` decorator.  Keep the two facts distinct.  Artifact
+    // discovery uses this per-definition provenance to distinguish intentional
+    // private native entry points from ordinary undecorated helpers.
+    result.lexicallyNative = nativeDecorator(definition);
     lowered.push(result);
     for (const dependency of result.dependencies || []) {
       if (included.has(dependency)) continue;
