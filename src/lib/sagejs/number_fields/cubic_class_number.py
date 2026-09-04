@@ -2825,12 +2825,12 @@ def _select_cubic_relation_candidates(
     ideal-containment admission boundary.  We obtain the two deterministic
     edge-minimal supports by presenting candidates in each order.  Later
     relations often give useful unit dependencies and shorter class-group
-    coordinates, so that support remains the default.  We choose the earlier
-    support only when the sum of its principal-norm bit lengths is at least
-    twenty percent smaller.  That conservative height test avoids pathological
-    proof generators without making a small incidental difference discard the
-    established unit-friendly support.  Both supports must authenticate the
-    same canonical lattice basis.
+    coordinates.  We therefore choose the earlier support when its sum of
+    principal-norm bit lengths is at least fifteen percent smaller, retaining
+    the later, unit-friendly support across incidental height differences.
+    This exact height test avoids pathological proof generators without
+    assuming either source edge is universally cheaper.  Both supports must
+    authenticate the same canonical lattice basis.
     """
     if selection_receipt is not None:
         source_rows = initial_rows + tuple(entry[0] for entry in candidates)
@@ -2919,9 +2919,10 @@ def _select_cubic_relation_candidates(
         late_norm_bits = sum(
             abs(int(candidates[index][2])).bit_length() for index in late_indices
         )
-        # Cross-multiply to avoid floating-point policy at this exact boundary.
         selected_indices = (
-            early_indices if 5 * early_norm_bits <= 4 * late_norm_bits else late_indices
+            early_indices
+            if 20 * early_norm_bits <= 17 * late_norm_bits
+            else late_indices
         )
         return (
             tuple(candidates[index] for index in selected_indices),
