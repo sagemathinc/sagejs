@@ -53,6 +53,8 @@ _CUBIC_CLASS_NUMBER_REPLAY_MAX_RESIDUE_STATES = 20_000_000
 _CUBIC_NORM_FORM_X_SLICE = 8
 _CUBIC_RELATION_SIEVE_BOUND = 2
 _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND = 4
+_CUBIC_REDUCED_IDEAL_RELATION_SIEVE_BOUND = 3
+_CUBIC_REDUCED_IDEAL_RELATION_DEPENDENCIES = 8
 _CUBIC_RELATION_SIEVE_MAX_CANDIDATES = 128
 _CUBIC_RELATION_SIEVE_MAX_PRIME_POWERS = 256
 # At these tiny bounds, producing the packed factors directly is cheaper than
@@ -705,6 +707,11 @@ def packed_cubic_factor_records(
             )
         if local is None:
             return None
+        # Keep the packed producer mathematically identical to the generic
+        # factor-base stream: a unique unramified degree-three factor is the
+        # principal ideal `p O_K`, hence contributes no class-group generator.
+        if len(local) == 1 and int(local[0]["e"]) == 1 and int(local[0]["f"]) == 3:
+            continue
         for record in local:
             record["dedekind_kummer"] = p_maximal
         occurrences: dict[int, int] = {}
@@ -793,21 +800,18 @@ def _materialize_packed_cubic_factor_records(
 def materialize_verified_packed_cubic_factor_records(
     factor_records: tuple[Any, ...],
 ) -> tuple[tuple[Any, ...], tuple[Any, ...]] | None:
-    """Materialize a live packed Dedekind--Kummer base with exact checks.
+    """Materialize a live packed cubic factor base with exact checks.
 
     The generic class/unit engine needs ordinary prime-ideal objects before
-    relation collection.  For a cubic `p`-maximal equation order, the packed
-    producer already retains the exact modular factor, HNF lattice, quotient
-    presentation, and second generator.  Replay the same independent checks
-    as `_dedekind_kummer_prime_candidate(..., verify_candidate=True)` after
-    materialization.  Index-prime finite-algebra factors deliberately return
-    `None`; their complete product/comaximality replay remains authoritative.
+    relation collection.  The packed producer retains the exact modular
+    ideal, HNF lattice, quotient presentation, and second generator.  Replay
+    the lattice preimage, quotient field, and local-algebra ramification after
+    materialization.  This proves both Dedekind--Kummer and equation-index
+    factors without constructing and multiplying a second set of public ideal
+    objects.
     """
     if not factor_records or any(
-        not isinstance(record, PackedCubicFactorRecord)
-        or not record.dedekind_kummer
-        or record.second_generator is None
-        for record in factor_records
+        not isinstance(record, PackedCubicFactorRecord) for record in factor_records
     ):
         return None
     prime_module = __import__(
@@ -829,7 +833,7 @@ def materialize_verified_packed_cubic_factor_records(
                 value += row[source] * inverse_rows[source][target]
             if value._denominator != 1:
                 raise ArithmeticError(
-                    "a packed Dedekind--Kummer lattice left the maximal order"
+                    "a packed cubic factor lattice left the maximal order"
                 )
             coordinates.append(int(value._numerator))
         return tuple(coordinates)
@@ -891,34 +895,55 @@ def materialize_verified_packed_cubic_factor_records(
         target_subspace = [list(row) for row in packed.subspace]
         if reduced_rows != target_subspace:
             raise ArithmeticError(
-                "a packed Dedekind--Kummer lattice has the wrong modular image"
+                "a packed cubic factor lattice has the wrong modular image"
             )
         expected_norm = rational_prime**packed.residue_degree
         if abs(determinant(lattice_rows)) != expected_norm:
-            raise ArithmeticError(
-                "a packed Dedekind--Kummer ideal has the wrong exact norm"
-            )
+            raise ArithmeticError("a packed cubic factor has the wrong exact norm")
 
         witness_payload = packed._second_generator_payload
         if witness_payload is None:
-            raise ArithmeticError(
-                "a packed Dedekind--Kummer ideal lacks a two-generator witness"
+            generated_subspace = prime_module._subspace_ideal_generated_by(
+                target_subspace,
+                3,
+                table,
+                rational_prime,
             )
-        witness_row = tuple(
-            sage.QQ(numerator) / sage.QQ(denominator)
-            for numerator, denominator in witness_payload
-        )
-        witness_coordinates = order_coordinates(witness_row)
-        generated_subspace = prime_module._subspace_ideal_generated_by(
-            [[value % rational_prime for value in witness_coordinates]],
-            3,
-            table,
-            rational_prime,
-        )
+        else:
+            witness_row = tuple(
+                sage.QQ(numerator) / sage.QQ(denominator)
+                for numerator, denominator in witness_payload
+            )
+            witness_coordinates = order_coordinates(witness_row)
+            generated_subspace = prime_module._subspace_ideal_generated_by(
+                [[value % rational_prime for value in witness_coordinates]],
+                3,
+                table,
+                rational_prime,
+            )
         if generated_subspace != target_subspace:
-            raise ArithmeticError(
-                "a packed Dedekind--Kummer witness generates the wrong ideal"
+            raise ArithmeticError("a packed cubic factor is not an algebra ideal")
+        power = target_subspace
+        for _exponent in range(4):
+            next_power = prime_module._subspace_product(
+                power,
+                target_subspace,
+                3,
+                table,
+                rational_prime,
             )
+            if next_power == power:
+                break
+            power = next_power
+        else:
+            raise ArithmeticError("a packed cubic local ideal did not stabilize")
+        local_dimension = 3 - len(power)
+        if (
+            packed.residue_degree < 1
+            or packed.ramification < 1
+            or local_dimension != packed.ramification * packed.residue_degree
+        ):
+            raise ArithmeticError("a packed cubic ramification index changed")
         presentation = packed.presentation
         residue_degree = packed.residue_degree
         primitive = [int(value) % rational_prime for value in presentation["primitive"]]
@@ -945,7 +970,7 @@ def materialize_verified_packed_cubic_factor_records(
                 for row in target_subspace
             )
         ):
-            raise ArithmeticError("a packed Dedekind--Kummer quotient map changed")
+            raise ArithmeticError("a packed cubic quotient map changed")
         powers: list[list[int]] = []
         power = list(one)
         for _exponent in range(residue_degree):
@@ -956,7 +981,7 @@ def materialize_verified_packed_cubic_factor_records(
                 power, primitive, table, rational_prime
             )
         if prime_module._matrix_inverse(powers, rational_prime) != power_inverse:
-            raise ArithmeticError("a packed Dedekind--Kummer power basis changed")
+            raise ArithmeticError("a packed cubic residue power basis changed")
         next_image = prime_module._row_times_matrix(
             power, quotient_matrix, rational_prime
         )
@@ -970,13 +995,11 @@ def materialize_verified_packed_cubic_factor_records(
             tuple(int(value) % rational_prime for value in presentation["modulus"])
             != expected_modulus
         ):
-            raise ArithmeticError("a packed Dedekind--Kummer residue modulus changed")
+            raise ArithmeticError("a packed cubic residue modulus changed")
         if not prime_module._presentation_modulus_is_irreducible(
             presentation, rational_prime, residue_degree
         ):
-            raise ArithmeticError(
-                "a packed Dedekind--Kummer ideal quotient is not a field"
-            )
+            raise ArithmeticError("a packed cubic factor quotient is not a field")
         prime_ideal._packed_candidate_pending_replay = False
         prime_ideal._verified_modular_algebra = (
             rational_prime,
@@ -1405,32 +1428,32 @@ def _find_packed_cubic_norm_obstruction(
     return (None, used)
 
 
-def _packed_cubic_relation_candidates(
+def _packed_cubic_relation_rows_from_coordinates(
     order: Any,
     factor_base: tuple[Any, ...],
+    coefficient_vectors: tuple[int, ...],
+    absolute_norms: tuple[int, ...],
     *,
-    maximum_candidates: int,
-    coefficient_bound: int = _CUBIC_RELATION_SIEVE_BOUND,
-    duplicate_row_norms: Iterable[int] | None = None,
     power_factor_base: tuple[Any, ...] | None = None,
-    valuation_candidate_limit: int | None = None,
     cancelled: Callable[[], bool] | None,
+    row_kernel: Any = None,
 ) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
-    """Propose small integral relations through two packed exact kernels.
+    """Compute exact factor-base rows for one private cubic coordinate batch.
 
-    The first kernel enumerates a canonical cubic coefficient box and retains
-    only elements whose rational norm is supported on factor-base rational
-    primes.  The second computes all prime-ideal valuations in one packed
-    lattice pass.  These rows are only proposals: the collector independently
-    proves generator containment and equal ideal norm before admission.
+    Candidate selection is deliberately separate from valuation.  Global
+    order boxes and boxes in reduced ideal lattices both end here, so the
+    expensive prime-power bases stay packed and one source-transparent native
+    pass computes every row.  The returned rows are still proposals; exact
+    integral admission remains the semantic boundary.
     """
-    coefficient_bound = int(coefficient_bound)
+    candidate_count = len(absolute_norms)
     if (
         not factor_base
         or len(factor_base) > 16
-        or maximum_candidates < 1
-        or coefficient_bound < 1
-        or coefficient_bound > _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND
+        or candidate_count < 1
+        or candidate_count > _CUBIC_RELATION_SIEVE_MAX_CANDIDATES
+        or len(coefficient_vectors) != 3 * candidate_count
+        or any(int(value) <= 1 for value in absolute_norms)
     ):
         return None
     power_factors = factor_base
@@ -1448,106 +1471,25 @@ def _packed_cubic_relation_candidates(
             ):
                 return None
     _check_cubic_cancelled(cancelled)
-    kernel_module = __import__(
-        "sagejs.number_fields.bl_composite_kernel", fromlist=["bl_composite_kernel"]
-    )
-    candidate_kernel = getattr(
-        kernel_module, "packed_cubic_norm_smooth_candidates_in_place", None
-    )
-    row_kernel = getattr(kernel_module, "packed_factor_base_rows_in_place", None)
-    if isinstance(_cubic_relation_sieve_kernel_override, tuple):
-        candidate_kernel, row_kernel = _cubic_relation_sieve_kernel_override
-    elif _cubic_relation_sieve_kernel_override is False:
-        return None
-    if not callable(candidate_kernel) or not callable(row_kernel):
-        return None
-    native_module = __import__("sagejs.native", fromlist=["native"])
-    ideal_module = __import__(
-        "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
-    )
-    capacity = min(_CUBIC_RELATION_SIEVE_MAX_CANDIDATES, maximum_candidates)
-    rational_primes = sorted(
-        {int(prime_ideal.rational_prime()) for prime_ideal in factor_base}
-    )
-    coefficients = _order_cubic_norm_form_coefficients(order)
     try:
-        metadata = native_module.kernel_integer_zeros(candidate_kernel, 4, 1)
-        coefficient_output = native_module.kernel_integer_zeros(
-            candidate_kernel, 3 * capacity, 16
+        kernel_module = __import__(
+            "sagejs.number_fields.bl_composite_kernel",
+            fromlist=["bl_composite_kernel"],
         )
-        norm_output = native_module.kernel_integer_zeros(candidate_kernel, capacity, 16)
-        if not candidate_kernel(
-            metadata,
-            coefficient_output,
-            norm_output,
-            native_module.kernel_integer_buffer(candidate_kernel, coefficients),
-            native_module.kernel_integer_buffer(candidate_kernel, rational_primes),
-            coefficient_bound,
-            capacity,
-        ):
-            return None
-        metadata_values = tuple(
-            int(value) for value in native_module.integer_buffer_values(metadata)
-        )
-        if (
-            len(metadata_values) != 4
-            or metadata_values[2] != 0
-            or metadata_values[3] != coefficient_bound
-        ):
-            return None
-        candidate_count = runtime.number(metadata_values[0])
-        if candidate_count < 1 or candidate_count > capacity:
-            return None
-        packed_coefficients = tuple(
-            int(value)
-            for value in native_module.integer_buffer_values(coefficient_output)
-        )
-        packed_norms = tuple(
-            int(value) for value in native_module.integer_buffer_values(norm_output)
-        )
-        coefficient_vectors = packed_coefficients[: 3 * candidate_count]
-        absolute_norms = packed_norms[:candidate_count]
-        if any(value <= 1 for value in absolute_norms):
-            return None
-        if duplicate_row_norms is not None:
-            selected_norms = {abs(int(value)) for value in duplicate_row_norms}
-            multiplicities: dict[int, int] = {}
-            for norm in absolute_norms:
-                multiplicities[norm] = multiplicities.get(norm, 0) + 1
-            retained = tuple(
-                index
-                for index, norm in enumerate(absolute_norms)
-                if norm in selected_norms or multiplicities[norm] > 1
+        if row_kernel is None:
+            row_kernel = getattr(
+                kernel_module, "packed_factor_base_rows_in_place", None
             )
-            coefficient_vectors = tuple(
-                coefficient_vectors[3 * index + offset]
-                for index in retained
-                for offset in range(3)
-            )
-            absolute_norms = tuple(absolute_norms[index] for index in retained)
-            candidate_count = len(retained)
-            if candidate_count == 0:
-                return ()
-        if valuation_candidate_limit is not None:
-            valuation_limit = max(1, int(valuation_candidate_limit))
-            if candidate_count > valuation_limit:
-                retained = tuple(
-                    sorted(
-                        range(candidate_count),
-                        key=lambda index: (
-                            absolute_norms[index],
-                            coefficient_vectors[3 * index : 3 * index + 3],
-                        ),
-                    )[:valuation_limit]
-                )
-                coefficient_vectors = tuple(
-                    coefficient_vectors[3 * index + offset]
-                    for index in retained
-                    for offset in range(3)
-                )
-                absolute_norms = tuple(absolute_norms[index] for index in retained)
-                candidate_count = len(retained)
-
+            if isinstance(_cubic_relation_sieve_kernel_override, tuple):
+                row_kernel = _cubic_relation_sieve_kernel_override[1]
+            elif _cubic_relation_sieve_kernel_override is False:
+                return None
+        if not callable(row_kernel):
+            return None
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        ideal_module = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+        )
         factor_norms = tuple(
             _integer_rational(prime_ideal.norm(), "a factor-base norm")
             for prime_ideal in factor_base
@@ -1556,7 +1498,7 @@ def _packed_cubic_relation_candidates(
         for factor_norm in factor_norms:
             maximum = 0
             for norm in absolute_norms:
-                current = norm
+                current = int(norm)
                 valuation = 0
                 while current % factor_norm == 0:
                     current //= factor_norm
@@ -1657,6 +1599,1014 @@ def _packed_cubic_relation_candidates(
         row = tuple(row_values[offset : offset + len(factor_base)])
         answer.append((row, tuple(coordinates), absolute_norms[candidate]))
     return tuple(answer)
+
+
+def _packed_cubic_reduced_ideal_relation_candidates(
+    order: Any,
+    factor_base: tuple[Any, ...],
+    reduced_order_rows: Iterable[Iterable[int]],
+    *,
+    maximum_candidates: int,
+    coefficient_bound: int = _CUBIC_REDUCED_IDEAL_RELATION_SIEVE_BOUND,
+    power_factor_base: tuple[Any, ...] | None = None,
+    cancelled: Callable[[], bool] | None,
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
+    """Propose smooth elements in a bounded reduced cubic ideal lattice.
+
+    The three input rows are exact maximal-order coordinates of an already
+    reduced ideal basis.  This function does not trust their provenance: it
+    uses them only to select order elements, computes their exact cubic norm
+    form, and sends the resulting private batch through the same packed
+    prime-power valuation operation as the global order-box producer.
+    """
+    bound = int(coefficient_bound)
+    capacity = min(_CUBIC_RELATION_SIEVE_MAX_CANDIDATES, int(maximum_candidates))
+    try:
+        rows = tuple(tuple(int(value) for value in row) for row in reduced_order_rows)
+    except (TypeError, ValueError):
+        return None
+    if (
+        not factor_base
+        or len(factor_base) > 16
+        or len(rows) != 3
+        or any(len(row) != 3 for row in rows)
+        or bound < 1
+        or bound > _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND
+        or capacity < 1
+    ):
+        return None
+    norm_form = _order_cubic_norm_form_coefficients(order)
+    rational_primes = tuple(
+        sorted({int(prime_ideal.rational_prime()) for prime_ideal in factor_base})
+    )
+    coordinates: list[int] = []
+    norms: list[int] = []
+    seen: set[tuple[int, int, int]] = set()
+    sequence = 0
+    for left in range(-bound, bound + 1):
+        for middle in range(-bound, bound + 1):
+            for right in range(-bound, bound + 1):
+                if left == middle == right == 0 or (
+                    left < 0
+                    or (left == 0 and middle < 0)
+                    or (left == 0 and middle == 0 and right < 0)
+                ):
+                    continue
+                if sequence % 64 == 0:
+                    _check_cubic_cancelled(cancelled)
+                sequence += 1
+                candidate = (
+                    left * rows[0][0] + middle * rows[1][0] + right * rows[2][0],
+                    left * rows[0][1] + middle * rows[1][1] + right * rows[2][1],
+                    left * rows[0][2] + middle * rows[1][2] + right * rows[2][2],
+                )
+                if candidate in seen or not any(candidate):
+                    continue
+                seen.add(candidate)
+                norm = abs(_cubic_norm_form_value(norm_form, *candidate))
+                if norm <= 1:
+                    continue
+                remaining = norm
+                for prime in rational_primes:
+                    while remaining % prime == 0:
+                        remaining //= prime
+                if remaining != 1:
+                    continue
+                if len(norms) >= capacity:
+                    return None
+                coordinates.extend(candidate)
+                norms.append(norm)
+    if not norms:
+        return ()
+    return _packed_cubic_relation_rows_from_coordinates(
+        order,
+        factor_base,
+        tuple(coordinates),
+        tuple(norms),
+        power_factor_base=power_factor_base,
+        cancelled=cancelled,
+    )
+
+
+def _packed_cubic_reduced_ideal_shell_candidates(
+    order: Any,
+    factor_base: tuple[Any, ...],
+    reduced_order_batches: Iterable[Iterable[Iterable[int]]],
+    *,
+    maximum_candidates: int,
+    power_factor_base: tuple[Any, ...] | None = None,
+    cancelled: Callable[[], bool] | None,
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
+    """Propose the four shortest deterministic directions in reduced ideals.
+
+    For each reduced cubic ideal basis `(b0,b1,b2)`, this bounded prefix chooses
+    one of the three unordered basis-vector pairs and tests `u`, `v`, `u+v`,
+    and `-u+v`.  The chosen pair maximizes the number of rationally smooth
+    exact norms, with stable pair order breaking ties.  This makes the shell
+    invariant under the noncanonical row order returned by different LLL
+    backends.  The four resulting directions are precisely the primitive,
+    nonscalar factor attempts reached by PARI's Fincke--Pohst search on the
+    small complex-cubic regime before its four-relation per-ideal target is
+    met.  Multiple ideals remain one valuation batch, and repeated elements
+    are retained: the relation cache/selector, not candidate discovery, owns
+    exact duplicate policy.
+
+    The shell is only a proposal schedule.  Exact norm-form evaluation and the
+    packed prime-power valuation pass run here, while the independent ordinary
+    admission boundary still proves every retained principal-ideal identity.
+    """
+    capacity = min(_CUBIC_RELATION_SIEVE_MAX_CANDIDATES, int(maximum_candidates))
+    try:
+        batches = tuple(
+            tuple(tuple(int(value) for value in row) for row in rows)
+            for rows in reduced_order_batches
+        )
+    except (TypeError, ValueError):
+        return None
+    if (
+        not factor_base
+        or len(factor_base) > 16
+        or not batches
+        or len(batches) > 8
+        or any(len(rows) != 3 for rows in batches)
+        or any(len(row) != 3 for rows in batches for row in rows)
+        or capacity < 1
+    ):
+        return None
+    norm_form = _order_cubic_norm_form_coefficients(order)
+    rational_primes = tuple(
+        sorted({int(prime_ideal.rational_prime()) for prime_ideal in factor_base})
+    )
+    shell = ((1, 0), (0, 1), (1, 1), (-1, 1))
+    pairs = ((0, 1), (0, 2), (1, 2))
+    coordinates: list[int] = []
+    norms: list[int] = []
+    for rows in batches:
+        best: tuple[tuple[tuple[int, int, int], int], ...] = ()
+        best_score = -1
+        for first, second in pairs:
+            trial: list[tuple[tuple[int, int, int], int]] = []
+            score = 0
+            for left, middle in shell:
+                _check_cubic_cancelled(cancelled)
+                candidate = (
+                    left * rows[first][0] + middle * rows[second][0],
+                    left * rows[first][1] + middle * rows[second][1],
+                    left * rows[first][2] + middle * rows[second][2],
+                )
+                norm = abs(_cubic_norm_form_value(norm_form, *candidate))
+                trial.append((candidate, norm))
+                remaining = norm
+                for prime in rational_primes:
+                    while remaining > 1 and remaining % prime == 0:
+                        remaining //= prime
+                if norm > 1 and remaining == 1:
+                    score += 1
+            if score > best_score:
+                best = tuple(trial)
+                best_score = score
+        for candidate, norm in best:
+            if norm <= 1:
+                continue
+            if len(norms) >= capacity:
+                return None
+            coordinates.extend(candidate)
+            norms.append(norm)
+    if not norms:
+        return ()
+    return _packed_cubic_relation_rows_from_coordinates(
+        order,
+        factor_base,
+        tuple(coordinates),
+        tuple(norms),
+        power_factor_base=power_factor_base,
+        cancelled=cancelled,
+    )
+
+
+def _resident_cubic_reduced_shell_relation_selection(
+    order: Any,
+    factor_base: tuple[Any, ...],
+    reduced_order_batches: Iterable[Iterable[Iterable[int]]],
+    initial_rows: Iterable[Iterable[int]],
+    *,
+    maximum_candidates: int,
+    power_factor_base: tuple[Any, ...] | None = None,
+    cancelled: Callable[[], bool] | None,
+    selection_receipt: dict[str, Any] | None = None,
+) -> (
+    tuple[
+        tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+        tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+        int,
+    ]
+    | None
+):
+    """Run the compact reduced-shell valuation and HNF slice resident.
+
+    Reduced ideal rows and authenticated factor-base power lattices cross one
+    boundary.  Candidate selection, exact norm evaluation, all prime-power
+    containments, relation rows, and stable FLINT HNF deletion remain inside
+    one `NativeExactArena`.  Published rows are still untrusted proposals and
+    must pass ordinary exact relation admission before affecting a result.
+    """
+    _check_cubic_cancelled(cancelled)
+    try:
+        batches = tuple(
+            tuple(tuple(int(value) for value in row) for row in rows)
+            for rows in reduced_order_batches
+        )
+        checked_initial = tuple(
+            tuple(int(value) for value in row) for row in initial_rows
+        )
+    except (TypeError, ValueError):
+        return None
+    capacity = 4 * len(batches)
+    width = len(factor_base)
+    if (
+        not batches
+        or len(batches) > 8
+        or any(len(rows) != 3 for rows in batches)
+        or any(len(row) != 3 for rows in batches for row in rows)
+        or width < 1
+        or width > 16
+        or any(len(row) != width for row in checked_initial)
+        or capacity < 1
+        or capacity > int(maximum_candidates)
+        or capacity > _CUBIC_RELATION_SIEVE_MAX_CANDIDATES
+    ):
+        return None
+
+    power_factors = factor_base
+    if power_factor_base is not None:
+        power_factors = tuple(power_factor_base)
+        if len(power_factors) != width:
+            return None
+        for factor, retained in zip(factor_base, power_factors, strict=True):
+            if (
+                not isinstance(retained, PackedCubicFactorRecord)
+                or retained.order is not order
+                or retained.rational_prime() != int(factor.rational_prime())
+                or retained.norm_value
+                != _integer_rational(factor.norm(), "a factor-base norm")
+            ):
+                return None
+
+    norm_form = _order_cubic_norm_form_coefficients(order)
+    shell = ((1, 0), (0, 1), (1, 1), (-1, 1))
+    pairs = ((0, 1), (0, 2), (1, 2))
+    planning_values = [value for rows in batches for row in rows for value in row]
+    planning_norms: list[int] = []
+    for rows in batches:
+        for first, second in pairs:
+            for left, middle in shell:
+                coordinates = tuple(
+                    left * rows[first][index] + middle * rows[second][index]
+                    for index in range(3)
+                )
+                planning_values.extend(coordinates)
+                norm = abs(_cubic_norm_form_value(norm_form, *coordinates))
+                planning_values.append(norm)
+                if norm > 1:
+                    planning_norms.append(norm)
+    if not planning_norms:
+        return None
+
+    try:
+        kernel_module = __import__(
+            "sagejs.kernels.matrix.class_group_hnf",
+            fromlist=["class_group_hnf"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        kernel = getattr(
+            kernel_module,
+            "cubic_reduced_shell_relation_hnf_v1",
+            None,
+        )
+        if not callable(kernel) or not native_module.is_compiled(kernel):
+            return None
+        ideal_module = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+        )
+        factor_norms = tuple(
+            _integer_rational(prime_ideal.norm(), "a factor-base norm")
+            for prime_ideal in factor_base
+        )
+        maxima: list[int] = []
+        for factor_norm in factor_norms:
+            maximum = 0
+            for norm in planning_norms:
+                current = norm
+                valuation = 0
+                while current % factor_norm == 0:
+                    current //= factor_norm
+                    valuation += 1
+                maximum = max(maximum, valuation)
+            maxima.append(maximum)
+        if sum(maxima) < 1 or sum(maxima) > _CUBIC_RELATION_SIEVE_MAX_PRIME_POWERS:
+            return None
+        pending_packed_factors = tuple(
+            (prime_ideal, maximum)
+            for prime_ideal, maximum in zip(power_factors, maxima, strict=True)
+            if isinstance(prime_ideal, PackedCubicFactorRecord)
+            and maximum > len(prime_ideal._power_cache)
+        )
+        if pending_packed_factors:
+            packed_chains = ideal_module.packed_ideal_power_basis_chains_from_bases(
+                order.number_field(),
+                tuple(
+                    (
+                        factor.basis_numerators,
+                        factor.basis_denominator,
+                        maximum,
+                    )
+                    for factor, maximum in pending_packed_factors
+                ),
+            )
+            if packed_chains is not None:
+                for (factor, _maximum), powers in zip(
+                    pending_packed_factors, packed_chains, strict=True
+                ):
+                    factor._power_cache = powers
+        offsets = [0]
+        prime_power_numerators: list[int] = []
+        prime_power_denominators: list[int] = []
+        for prime_ideal, maximum in zip(power_factors, maxima, strict=True):
+            packed_power_method = getattr(prime_ideal, "packed_power_bases", None)
+            packed_powers: Any = (
+                packed_power_method(maximum)
+                if callable(packed_power_method)
+                else ideal_module.packed_valuation_power_bases(prime_ideal, maximum)
+            )
+            for packed_basis, denominator in packed_powers:
+                prime_power_numerators.extend(packed_basis)
+                prime_power_denominators.append(int(denominator))
+            offsets.append(len(prime_power_denominators))
+        if not prime_power_denominators:
+            return None
+        prime_module = __import__(
+            "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+        )
+        packed_order_basis = prime_module._packed_candidate_order_basis(order)
+        if packed_order_basis is None:
+            unit_numerators, unit_denominator = ideal_module._packed_ideal_basis(
+                order.ideal(1)
+            )
+        else:
+            unit_numerators, unit_denominator = packed_order_basis
+
+        maximum_input_bits = max(
+            (abs(int(value)).bit_length() for value in planning_values),
+            default=1,
+        )
+        maximum_bits = max(64, maximum_input_bits + 16)
+        coordinate_words = max(8, (maximum_bits + 63) // 64 + 2)
+        largest_dimension = max(len(checked_initial) + capacity, width)
+        relation_bits = max(
+            (int(value).bit_length() for value in maxima),
+            default=1,
+        )
+        hnf_bits = largest_dimension * (
+            relation_bits + largest_dimension.bit_length() + 2
+        )
+        hnf_words = max(8, (hnf_bits + 63) // 64 + 2)
+        metadata_buffer = native_module.kernel_integer_zeros(kernel, 9, 2)
+        coordinate_output = native_module.kernel_integer_zeros(
+            kernel, capacity * 3, coordinate_words
+        )
+        norm_output = native_module.kernel_integer_zeros(
+            kernel, capacity, coordinate_words
+        )
+        row_output = native_module.kernel_integer_zeros(kernel, capacity * width, 4)
+        selected_output = native_module.kernel_integer_zeros(kernel, capacity, 2)
+        basis_output = native_module.kernel_integer_zeros(
+            kernel,
+            (len(checked_initial) + capacity) * width,
+            hnf_words,
+        )
+        maximum_trials = capacity
+        work_limit = max(
+            100_000,
+            4 * (len(checked_initial) + capacity) * width * (capacity + 1),
+        )
+        resident_entries = capacity * (3 + width + 2)
+        resident_memory_limit = max(
+            1_048_576,
+            65_536 + resident_entries * (32 + 8 * coordinate_words),
+        )
+        temporary_limit = max(1_048_576, 1_048_576 + work_limit * 64)
+        status = kernel(
+            metadata_buffer,
+            coordinate_output,
+            norm_output,
+            row_output,
+            selected_output,
+            basis_output,
+            native_module.kernel_integer_buffer(kernel, norm_form),
+            native_module.kernel_integer_buffer(
+                kernel,
+                sorted(
+                    {int(prime_ideal.rational_prime()) for prime_ideal in factor_base}
+                ),
+            ),
+            native_module.kernel_integer_buffer(
+                kernel,
+                [value for rows in batches for row in rows for value in row],
+            ),
+            native_module.kernel_integer_buffer(
+                kernel,
+                [value for row in checked_initial for value in row],
+            ),
+            native_module.kernel_integer_buffer(kernel, unit_numerators),
+            native_module.kernel_integer_buffer(kernel, prime_power_numerators),
+            native_module.kernel_integer_buffer(kernel, prime_power_denominators),
+            native_module.kernel_integer_buffer(kernel, offsets),
+            native_module.kernel_integer_buffer(kernel, factor_norms),
+            unit_denominator,
+            len(batches),
+            len(checked_initial),
+            width,
+            len(prime_power_denominators),
+            maximum_bits,
+            maximum_trials,
+            work_limit,
+            resident_memory_limit,
+            temporary_limit,
+        )
+        if status != 1:
+            return None
+        metadata = tuple(
+            int(value) for value in native_module.integer_buffer_values(metadata_buffer)
+        )
+        coordinate_values = tuple(
+            int(value)
+            for value in native_module.integer_buffer_values(coordinate_output)
+        )
+        norm_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(norm_output)
+        )
+        row_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(row_output)
+        )
+        selected_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(selected_output)
+        )
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+
+    if len(metadata) != 9:
+        raise ArithmeticError("resident cubic shell metadata has the wrong size")
+    (
+        generated_count,
+        smooth_count,
+        rank,
+        selected_count,
+        deletion_trials,
+        hnf_calls,
+        complete,
+        work,
+        total_rows,
+    ) = metadata
+    if (
+        generated_count < smooth_count
+        or generated_count > capacity
+        or smooth_count < selected_count
+        or smooth_count > capacity
+        or rank < 1
+        or rank > width
+        or deletion_trials < 0
+        or deletion_trials > maximum_trials
+        or hnf_calls != deletion_trials + 1
+        or complete != 1
+        or work < 0
+        or work > work_limit
+        or total_rows != len(checked_initial) + smooth_count
+        or any(value not in (0, 1) for value in selected_values[:smooth_count])
+        or sum(selected_values[:smooth_count]) != selected_count
+        or any(selected_values[smooth_count:])
+    ):
+        raise ArithmeticError("resident cubic shell metadata failed authentication")
+    proposals: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
+    for candidate_index in range(smooth_count):
+        coordinates = tuple(
+            coordinate_values[3 * candidate_index : 3 * candidate_index + 3]
+        )
+        norm = norm_values[candidate_index]
+        row = tuple(row_values[candidate_index * width : (candidate_index + 1) * width])
+        if norm <= 1 or abs(_cubic_norm_form_value(norm_form, *coordinates)) != norm:
+            raise ArithmeticError("resident cubic shell norm failed exact replay")
+        row_norm = 1
+        for factor_norm, exponent in zip(factor_norms, row, strict=True):
+            if exponent < 0:
+                raise ArithmeticError(
+                    "resident cubic shell published a negative valuation"
+                )
+            row_norm *= factor_norm**exponent
+        if row_norm != norm:
+            raise ArithmeticError("resident cubic shell row norm failed exact replay")
+        proposals.append((row, coordinates, norm))
+    candidates = tuple(proposals)
+    selected = tuple(
+        candidate
+        for candidate, retained in zip(candidates, selected_values, strict=False)
+        if retained == 1
+    )
+    if len(selected) != selected_count:
+        raise ArithmeticError("resident cubic shell selection mask failed replay")
+    if selection_receipt is not None:
+        source_rows = checked_initial + tuple(candidate[0] for candidate in candidates)
+        selection_receipt.update(
+            {
+                "initial_rows": len(checked_initial),
+                "candidate_rows": len(candidates),
+                "total_rows": len(source_rows),
+                "columns": width,
+                "maximum_entry_bits": max(
+                    (
+                        abs(int(value)).bit_length()
+                        for row in source_rows
+                        for value in row
+                    ),
+                    default=1,
+                ),
+                "completed": 1,
+                "rank": rank,
+                "deletion_trials": deletion_trials,
+                "hnf_calls": hnf_calls,
+                "native_boundary_calls": 1,
+                "library_boundary_calls": 0,
+                "flint_basis_deletions": 0,
+                "resident_shell": 1,
+                "resident_generated_candidates": generated_count,
+                "resident_smooth_candidates": smooth_count,
+                "resident_work": work,
+            }
+        )
+    return candidates, selected, rank
+
+
+def _packed_cubic_relation_candidates(
+    order: Any,
+    factor_base: tuple[Any, ...],
+    *,
+    maximum_candidates: int,
+    coefficient_bound: int = _CUBIC_RELATION_SIEVE_BOUND,
+    duplicate_row_norms: Iterable[int] | None = None,
+    power_factor_base: tuple[Any, ...] | None = None,
+    valuation_candidate_limit: int | None = None,
+    cancelled: Callable[[], bool] | None,
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
+    """Propose small integral relations through two packed exact kernels.
+
+    The first kernel enumerates a canonical cubic coefficient box and retains
+    only elements whose rational norm is supported on factor-base rational
+    primes.  The second computes all prime-ideal valuations in one packed
+    lattice pass.  These rows are only proposals: the collector independently
+    proves generator containment and equal ideal norm before admission.
+    """
+    coefficient_bound = int(coefficient_bound)
+    if (
+        not factor_base
+        or len(factor_base) > 16
+        or maximum_candidates < 1
+        or coefficient_bound < 1
+        or coefficient_bound > _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND
+    ):
+        return None
+    power_factors = factor_base
+    if power_factor_base is not None:
+        power_factors = tuple(power_factor_base)
+        if len(power_factors) != len(factor_base):
+            return None
+        for factor, retained in zip(factor_base, power_factors, strict=True):
+            if (
+                not isinstance(retained, PackedCubicFactorRecord)
+                or retained.order is not order
+                or retained.rational_prime() != int(factor.rational_prime())
+                or retained.norm_value
+                != _integer_rational(factor.norm(), "a factor-base norm")
+            ):
+                return None
+    _check_cubic_cancelled(cancelled)
+    kernel_module = __import__(
+        "sagejs.number_fields.bl_composite_kernel", fromlist=["bl_composite_kernel"]
+    )
+    candidate_kernel = getattr(
+        kernel_module, "packed_cubic_norm_smooth_candidates_in_place", None
+    )
+    row_kernel = getattr(kernel_module, "packed_factor_base_rows_in_place", None)
+    if isinstance(_cubic_relation_sieve_kernel_override, tuple):
+        candidate_kernel, row_kernel = _cubic_relation_sieve_kernel_override
+    elif _cubic_relation_sieve_kernel_override is False:
+        return None
+    if not callable(candidate_kernel) or not callable(row_kernel):
+        return None
+    native_module = __import__("sagejs.native", fromlist=["native"])
+    capacity = min(_CUBIC_RELATION_SIEVE_MAX_CANDIDATES, maximum_candidates)
+    rational_primes = sorted(
+        {int(prime_ideal.rational_prime()) for prime_ideal in factor_base}
+    )
+    coefficients = _order_cubic_norm_form_coefficients(order)
+    try:
+        metadata = native_module.kernel_integer_zeros(candidate_kernel, 4, 1)
+        coefficient_output = native_module.kernel_integer_zeros(
+            candidate_kernel, 3 * capacity, 16
+        )
+        norm_output = native_module.kernel_integer_zeros(candidate_kernel, capacity, 16)
+        if not candidate_kernel(
+            metadata,
+            coefficient_output,
+            norm_output,
+            native_module.kernel_integer_buffer(candidate_kernel, coefficients),
+            native_module.kernel_integer_buffer(candidate_kernel, rational_primes),
+            coefficient_bound,
+            capacity,
+        ):
+            return None
+        metadata_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(metadata)
+        )
+        if (
+            len(metadata_values) != 4
+            or metadata_values[2] != 0
+            or metadata_values[3] != coefficient_bound
+        ):
+            return None
+        candidate_count = runtime.number(metadata_values[0])
+        if candidate_count < 1 or candidate_count > capacity:
+            return None
+        packed_coefficients = tuple(
+            int(value)
+            for value in native_module.integer_buffer_values(coefficient_output)
+        )
+        packed_norms = tuple(
+            int(value) for value in native_module.integer_buffer_values(norm_output)
+        )
+        coefficient_vectors = packed_coefficients[: 3 * candidate_count]
+        absolute_norms = packed_norms[:candidate_count]
+        if any(value <= 1 for value in absolute_norms):
+            return None
+        if duplicate_row_norms is not None:
+            selected_norms = {abs(int(value)) for value in duplicate_row_norms}
+            multiplicities: dict[int, int] = {}
+            for norm in absolute_norms:
+                multiplicities[norm] = multiplicities.get(norm, 0) + 1
+            retained = tuple(
+                index
+                for index, norm in enumerate(absolute_norms)
+                if norm in selected_norms or multiplicities[norm] > 1
+            )
+            coefficient_vectors = tuple(
+                coefficient_vectors[3 * index + offset]
+                for index in retained
+                for offset in range(3)
+            )
+            absolute_norms = tuple(absolute_norms[index] for index in retained)
+            candidate_count = len(retained)
+            if candidate_count == 0:
+                return ()
+        if valuation_candidate_limit is not None:
+            valuation_limit = max(1, int(valuation_candidate_limit))
+            if candidate_count > valuation_limit:
+                retained = tuple(
+                    sorted(
+                        range(candidate_count),
+                        key=lambda index: (
+                            absolute_norms[index],
+                            coefficient_vectors[3 * index : 3 * index + 3],
+                        ),
+                    )[:valuation_limit]
+                )
+                coefficient_vectors = tuple(
+                    coefficient_vectors[3 * index + offset]
+                    for index in retained
+                    for offset in range(3)
+                )
+                absolute_norms = tuple(absolute_norms[index] for index in retained)
+                candidate_count = len(retained)
+
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+    return _packed_cubic_relation_rows_from_coordinates(
+        order,
+        factor_base,
+        tuple(coefficient_vectors),
+        tuple(absolute_norms),
+        power_factor_base=power_factor_base,
+        cancelled=cancelled,
+        row_kernel=row_kernel,
+    )
+
+
+def _cyclic_cubic_targeted_relation_candidates(
+    order: Any,
+    factor_base: tuple[Any, ...],
+    initial_rows: tuple[tuple[int, ...], ...],
+    base_candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    *,
+    matrix_module: Any,
+    relation_module: Any,
+    maximum_parents: int = 4,
+    maximum_target_candidates: int = 32,
+    power_factor_base: tuple[Any, ...] | None = None,
+    cancelled: Callable[[], bool] | None,
+    receipt: dict[str, Any] | None = None,
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
+    """Propose one quotient-targeted cyclic-cubic relation campaign.
+
+    This is a bounded discovery policy, not a proof boundary.  It keeps at
+    most four reduced-ideal parents whose complete order-three Galois orbits
+    improve an exact provisional presentation.  It then chooses a small-norm
+    factor-base class outside the cyclic subgroup of the smallest retained
+    class, searches `P0^e * Pj` in a radius-one reduced lattice, and returns
+    the complete small target batch after one row is seen to shrink the exact
+    provisional quotient.  Ordinary relation admission still reconstructs
+    and proves every returned principal ideal independently.
+    """
+    width = len(factor_base)
+    parent_limit = int(maximum_parents)
+    target_limit = int(maximum_target_candidates)
+    if (
+        int(order.number_field().degree()) != 3
+        or width < 2
+        or width > 16
+        or parent_limit < 1
+        or parent_limit > 8
+        or target_limit < 1
+        or target_limit > _CUBIC_RELATION_SIEVE_MAX_CANDIDATES
+    ):
+        return None
+    try:
+        plan = relation_module.plan_automorphism_orbits(
+            order.number_field(), factor_base
+        )
+        if (
+            not bool(plan.available)
+            or not bool(plan.useful)
+            or int(plan.orbit_order) != 3
+        ):
+            return None
+        checked_initial = tuple(
+            tuple(int(value) for value in row) for row in initial_rows
+        )
+        checked_base = tuple(
+            (
+                tuple(int(value) for value in row),
+                tuple(int(value) for value in coordinates),
+                int(norm),
+            )
+            for row, coordinates, norm in base_candidates
+        )
+        if any(len(row) != width for row in checked_initial) or any(
+            len(row) != width or len(coordinates) != 3 or norm <= 1
+            for row, coordinates, norm in checked_base
+        ):
+            return None
+        factor_norms = tuple(
+            _integer_rational(prime_ideal.norm(), "a factor-base norm")
+            for prime_ideal in factor_base
+        )
+        norm_form = _order_cubic_norm_form_coefficients(order)
+
+        def presentation(
+            candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+        ) -> Any:
+            accumulator = matrix_module.RelationMatrixAccumulator(width)
+            for row in checked_initial:
+                accumulator.add_relation(row)
+            for row, _coordinates, _norm in candidates:
+                accumulator.add_relation(row)
+            return accumulator.presentation()
+
+        def lattice_state(
+            candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+        ) -> tuple[int, int | None]:
+            rows = checked_initial + tuple(entry[0] for entry in candidates)
+            basis = matrix_module.exact_relation_hnf_basis(rows, width)
+            rank = len(basis)
+            index = (
+                abs(int(matrix_module._determinant_exact(basis)))
+                if rank == width
+                else None
+            )
+            return rank, index
+
+        def candidate_is_exact(
+            candidate: tuple[tuple[int, ...], tuple[int, ...], int],
+        ) -> bool:
+            row, coordinates, norm = candidate
+            if abs(_cubic_norm_form_value(norm_form, *coordinates)) != norm:
+                return False
+            row_norm = 1
+            for factor_norm, exponent in zip(factor_norms, row, strict=True):
+                if exponent < 0:
+                    return False
+                row_norm *= factor_norm**exponent
+            return row_norm == norm
+
+        retained: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
+        current_rank, current_index = lattice_state(())
+        parents_examined = 0
+        retained_parents = 0
+        for parent in checked_base:
+            _check_cubic_cancelled(cancelled)
+            parents_examined += 1
+            orbit: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
+            image = parent
+            for _exponent in range(3):
+                if not candidate_is_exact(image):
+                    return None
+                if image not in orbit:
+                    orbit.append(image)
+                row, coordinates, norm = image
+                image = (
+                    tuple(plan.permute_row(row)),
+                    tuple(plan.map_order_coordinates(coordinates)),
+                    norm,
+                )
+            trial_candidates = tuple(retained) + tuple(orbit)
+            trial_rank, trial_index = lattice_state(trial_candidates)
+            improves = trial_rank > current_rank
+            if (
+                not improves
+                and trial_index is not None
+                and current_index is not None
+                and trial_index < current_index
+            ):
+                improves = True
+            if not improves:
+                continue
+            retained.extend(orbit)
+            current_rank = trial_rank
+            current_index = trial_index
+            retained_parents += 1
+            if retained_parents >= parent_limit:
+                break
+        if current_rank != width or current_index is None or current_index <= 1:
+            return None
+        current = presentation(tuple(retained))
+        if current.order is None or int(current.order) != current_index:
+            return None
+
+        class_rows: list[tuple[int, ...]] = []
+        for index in range(width):
+            row = [0] * width
+            row[index] = 1
+            class_rows.append(
+                tuple(int(value) for value in current.class_coordinates(row))
+            )
+        nontrivial_indices = tuple(
+            sorted(
+                (index for index, row in enumerate(class_rows) if any(row)),
+                key=lambda index: (factor_norms[index], index),
+            )
+        )
+        if len(nontrivial_indices) < 2:
+            return None
+        base_index = nontrivial_indices[0]
+        base_class = class_rows[base_index]
+        invariants = tuple(int(value) for value in current.invariants)
+        if len(base_class) != len(invariants) or not invariants:
+            return None
+
+        def gcd(left: int, right: int) -> int:
+            left = abs(left)
+            right = abs(right)
+            while right:
+                left, right = right, left % right
+            return left
+
+        def lcm(left: int, right: int) -> int:
+            return left // gcd(left, right) * right
+
+        base_order = 1
+        for value, invariant in zip(base_class, invariants, strict=True):
+            base_order = lcm(base_order, invariant // gcd(value, invariant))
+        if base_order < 2 or base_order > 4096:
+            return None
+
+        def in_base_subgroup(candidate_class: tuple[int, ...]) -> bool:
+            for multiple in range(base_order):
+                if all(
+                    (multiple * base_value - candidate_value) % invariant == 0
+                    for base_value, candidate_value, invariant in zip(
+                        base_class, candidate_class, invariants, strict=True
+                    )
+                ):
+                    return True
+            return False
+
+        maximum_factor_norm = max(factor_norms)
+        threshold = maximum_factor_norm * maximum_factor_norm
+        base_norm = factor_norms[base_index]
+        source_exponent = 0
+        source_power = 1
+        while source_power * base_norm <= threshold:
+            source_power *= base_norm
+            source_exponent += 1
+        if source_exponent < 1:
+            return None
+
+        inverse = order._basis_inverse_matrix().rows()
+
+        def reduced_order_rows(ideal: Any) -> tuple[tuple[int, ...], ...] | None:
+            lattice = relation_module.minkowski_lll_lattice(ideal)
+            denominator = int(lattice.denominator)
+            exact_rows = tuple(
+                tuple(int(value) for value in row) for row in lattice.exact_rows
+            )
+            if (
+                denominator <= 0
+                or len(exact_rows) != 3
+                or any(len(row) != 3 for row in exact_rows)
+            ):
+                return None
+            answer: list[tuple[int, ...]] = []
+            for row in exact_rows:
+                coordinates: list[int] = []
+                for target in range(3):
+                    value = sage.QQ(0)
+                    for source in range(3):
+                        value += (
+                            sage.QQ(row[source])
+                            / sage.QQ(denominator)
+                            * inverse[source][target]
+                        )
+                    if value.denominator() != 1:
+                        return None
+                    coordinates.append(int(value.numerator()))
+                answer.append(tuple(coordinates))
+            return tuple(answer)
+
+        target_indices_examined = 0
+        for target_index in nontrivial_indices[1:]:
+            if in_base_subgroup(class_rows[target_index]):
+                continue
+            _check_cubic_cancelled(cancelled)
+            target_indices_examined += 1
+            source_row = [0] * width
+            source_row[base_index] = source_exponent
+            source_row[target_index] += 1
+            source_ideal = relation_module.reconstruct_factor_base_ideal(
+                order, factor_base, source_row
+            )
+            reduced_rows = reduced_order_rows(source_ideal)
+            if reduced_rows is None:
+                continue
+            targeted = _packed_cubic_reduced_ideal_relation_candidates(
+                order,
+                factor_base,
+                reduced_rows,
+                maximum_candidates=target_limit,
+                coefficient_bound=1,
+                power_factor_base=power_factor_base,
+                cancelled=cancelled,
+            )
+            if targeted is None:
+                continue
+            checked_targeted = tuple(targeted)
+            improving_index = -1
+            final_order = current_index
+            for index, candidate in enumerate(checked_targeted):
+                if not candidate_is_exact(candidate):
+                    return None
+                trial_rank, trial_index = lattice_state(tuple(retained) + (candidate,))
+                if (
+                    trial_index is not None
+                    and trial_rank == width
+                    and trial_index < current_index
+                ):
+                    improving_index = index
+                    final_order = trial_index
+                    break
+            if improving_index < 0:
+                continue
+            if receipt is not None:
+                receipt.update(
+                    {
+                        "available": 1,
+                        "parents_examined": parents_examined,
+                        "retained_parents": retained_parents,
+                        "orbit_candidates": len(retained),
+                        "provisional_order": current_index,
+                        "base_index": base_index,
+                        "base_norm": base_norm,
+                        "source_exponent": source_exponent,
+                        "target_indices_examined": target_indices_examined,
+                        "target_index": target_index,
+                        "target_norm": factor_norms[target_index],
+                        "source_norm": _integer_rational(
+                            source_ideal.norm(), "a targeted source norm"
+                        ),
+                        "target_candidates": len(checked_targeted),
+                        "improving_target_candidate": improving_index,
+                        "final_order": final_order,
+                    }
+                )
+            return tuple(retained) + checked_targeted
+        return None
+    except (AttributeError, ArithmeticError, ImportError, TypeError, ValueError):
+        return None
 
 
 def _validated_cubic_integral_relation_batch(
@@ -1862,6 +2812,7 @@ def _select_cubic_relation_candidates(
     initial_rows: tuple[tuple[int, ...], ...],
     candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
     width: int,
+    selection_receipt: dict[str, Any] | None = None,
 ) -> tuple[
     tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None,
     int,
@@ -1873,14 +2824,53 @@ def _select_cubic_relation_candidates(
     deletion schedule before any selected proposal proceeds to the independent
     ideal-containment admission boundary.
     """
+    if selection_receipt is not None:
+        source_rows = initial_rows + tuple(entry[0] for entry in candidates)
+        selection_receipt.update(
+            {
+                "initial_rows": len(initial_rows),
+                "candidate_rows": len(candidates),
+                "total_rows": len(source_rows),
+                "columns": int(width),
+                "maximum_entry_bits": max(
+                    (
+                        abs(int(value)).bit_length()
+                        for row in source_rows
+                        for value in row
+                    ),
+                    default=1,
+                ),
+                "completed": 0,
+                "rank": 0,
+                "deletion_trials": 0,
+                "hnf_calls": 0,
+                "native_boundary_calls": 0,
+                "library_boundary_calls": 0,
+                "flint_basis_deletions": 0,
+            }
+        )
     if not candidates:
         return (), 0
     try:
-        selection = matrix_module.resident_exact_relation_hnf_selection(
+        selection = matrix_module.stable_exact_relation_hnf_selection(
             initial_rows,
             (entry[0] for entry in candidates),
             width,
         )
+        if selection_receipt is not None:
+            selection_receipt.update(
+                {
+                    "completed": int(selection.deletion_complete),
+                    "rank": int(selection.rank),
+                    "deletion_trials": int(selection.deletion_trials),
+                    "hnf_calls": int(selection.hnf_calls),
+                    "native_boundary_calls": int(selection.boundary_calls),
+                    "library_boundary_calls": int(selection.library_boundary_calls),
+                    "flint_basis_deletions": int(
+                        selection.backend.endswith("flint-basis-deletions")
+                    ),
+                }
+            )
         if selection.rank < 1 or not selection.deletion_complete:
             return None, 0
         return (
@@ -1972,6 +2962,38 @@ def _select_cubic_dependency_candidates(
         handled_rows.append(row)
         dependencies += 1
         if dependencies >= limit:
+            break
+    return tuple(answer)
+
+
+def _select_cubic_postrank_dependency_candidates(
+    selected: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    maximum: int,
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...]:
+    """Retain a bounded deterministic prefix after exact row rank is full.
+
+    Once the selected rows and the initial rational-prime rows span the
+    factor-base columns, every further distinct principal row contributes an
+    exact relation dependency.  Unlike the older global-box heuristic, a
+    reduced ideal box need not repeat a valuation row to expose useful units.
+    The coupled engine measures logarithmic rank and proves the final `hR`
+    index, so this is only a bounded discovery policy, never a proof claim.
+    """
+    limit = max(0, int(maximum))
+    if limit == 0:
+        return ()
+    retained = [
+        (tuple(row), tuple(coordinates)) for row, coordinates, _norm in selected
+    ]
+    answer: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
+    for row, coordinates, norm in candidates:
+        key = (tuple(row), tuple(coordinates))
+        if any(key == previous for previous in retained):
+            continue
+        retained.append(key)
+        answer.append((key[0], key[1], int(norm)))
+        if len(answer) >= limit:
             break
     return tuple(answer)
 
@@ -4952,4 +5974,9 @@ __all__ = [
     "bounded_cubic_minkowski_class_number",
     "materialize_verified_packed_cubic_factor_records",
     "packed_cubic_factor_records",
+    "_cyclic_cubic_targeted_relation_candidates",
+    "_packed_cubic_reduced_ideal_relation_candidates",
+    "_packed_cubic_reduced_ideal_shell_candidates",
+    "_resident_cubic_reduced_shell_relation_selection",
+    "_select_cubic_postrank_dependency_candidates",
 ]

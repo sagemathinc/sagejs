@@ -1,0 +1,211 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "complex-cubic-frontier-corpus",
+  "title": "Complex cubic frontier corpus",
+  "lane": "optimizer-development",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement a deterministic, provenance-bound 1,412-record complex-cubic LMFDB frontier corpus generator, canonical split release assets, offline validator, and pinned-label replay query",
+  "base_commit": "3fcac10a359ce954998a3f6b08072e9a7d775d07",
+  "claims": [
+    "bench/optimization-engine/complex-cubic-frontier-corpus.cjs",
+    "architecture/optimization-engine/workloads/complex-cubic-frontier-corpus.schema.json",
+    "bench/optimization-engine/test-complex-cubic-frontier-corpus.cjs",
+    "bench/optimization-engine/complex-cubic-frontier-corpus.md",
+    "bench/optimization-engine/complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://www.lmfdb.org/NumberField/",
+    "https://www.lmfdb.org/citation"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Synthetic-row deterministic fixture tests",
+      "Pinned-label LMFDB source replay digest"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check",
+    "node --test bench/optimization-engine/test-complex-cubic-frontier-corpus.cjs",
+    "node bench/optimization-engine/complex-cubic-frontier-corpus.cjs --check --exclude-labels build/complex-cubic-frontier-corpus/prior-exposed-labels-v1.txt --manifest bench/optimization-engine/complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json --asset-dir /tmp/complex-cubic-frontier-v1-final",
+    "node bench/optimization-engine/complex-cubic-frontier-corpus.cjs --replay --exclude-labels build/complex-cubic-frontier-corpus/prior-exposed-labels-v1.txt --manifest bench/optimization-engine/complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json --asset-dir /tmp/complex-cubic-frontier-v1-final"
+  ],
+  "runs": [
+    {
+      "command": "node --test bench/optimization-engine/test-complex-cubic-frontier-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.749,
+      "started_at": "2026-09-02T08:49:52.370Z",
+      "commit": "f568bbd5fcbd8ac0bfd233dbaeadeb8e9e9eafa4",
+      "workspace_fingerprint": "5dd914881afecc8d8f02f6bb9a52f54a92a0fadd4f8c5390bc6c63f51a4d13af",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 364.335,
+      "started_at": "2026-09-02T08:53:46.136Z",
+      "commit": "f568bbd5fcbd8ac0bfd233dbaeadeb8e9e9eafa4",
+      "workspace_fingerprint": "cd46b9c63c78b2091f83c8641f9ee87e354b6c1ebebc23deadd621ae19c109a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 20.33,
+      "started_at": "2026-09-02T09:00:02.979Z",
+      "commit": "f568bbd5fcbd8ac0bfd233dbaeadeb8e9e9eafa4",
+      "workspace_fingerprint": "cd46b9c63c78b2091f83c8641f9ee87e354b6c1ebebc23deadd621ae19c109a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.846,
+      "started_at": "2026-09-02T09:00:31.364Z",
+      "commit": "f568bbd5fcbd8ac0bfd233dbaeadeb8e9e9eafa4",
+      "workspace_fingerprint": "cd46b9c63c78b2091f83c8641f9ee87e354b6c1ebebc23deadd621ae19c109a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:optimization-engine",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.789,
+      "started_at": "2026-09-02T09:01:35.072Z",
+      "commit": "f568bbd5fcbd8ac0bfd233dbaeadeb8e9e9eafa4",
+      "workspace_fingerprint": "cd46b9c63c78b2091f83c8641f9ee87e354b6c1ebebc23deadd621ae19c109a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/optimization-engine/complex-cubic-frontier-corpus.cjs --check --exclude-labels build/complex-cubic-frontier-corpus/prior-exposed-labels-v1.txt --manifest bench/optimization-engine/complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json --asset-dir /tmp/complex-cubic-frontier-v1-final",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.161,
+      "started_at": "2026-09-02T09:01:53.744Z",
+      "commit": "f568bbd5fcbd8ac0bfd233dbaeadeb8e9e9eafa4",
+      "workspace_fingerprint": "cd46b9c63c78b2091f83c8641f9ee87e354b6c1ebebc23deadd621ae19c109a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/optimization-engine/complex-cubic-frontier-corpus.cjs --replay --exclude-labels build/complex-cubic-frontier-corpus/prior-exposed-labels-v1.txt --manifest bench/optimization-engine/complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json --asset-dir /tmp/complex-cubic-frontier-v1-final",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.676,
+      "started_at": "2026-09-02T09:01:54.640Z",
+      "commit": "f568bbd5fcbd8ac0bfd233dbaeadeb8e9e9eafa4",
+      "workspace_fingerprint": "cd46b9c63c78b2091f83c8641f9ee87e354b6c1ebebc23deadd621ae19c109a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.684,
+      "started_at": "2026-09-02T09:02:02.931Z",
+      "commit": "f568bbd5fcbd8ac0bfd233dbaeadeb8e9e9eafa4",
+      "workspace_fingerprint": "cd46b9c63c78b2091f83c8641f9ee87e354b6c1ebebc23deadd621ae19c109a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.508,
+      "started_at": "2026-09-02T09:07:09.648Z",
+      "commit": "3fcac10a7ec338a1d48f243d1cd63a3c7e610f65",
+      "workspace_fingerprint": "47fc6c773f3675c2f1514ae7e5c39cd38977e218dff63a588dee66af4f914eba",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 357.411,
+      "started_at": "2026-09-02T09:07:56.948Z",
+      "commit": "3fcac10a7ec338a1d48f243d1cd63a3c7e610f65",
+      "workspace_fingerprint": "47fc6c773f3675c2f1514ae7e5c39cd38977e218dff63a588dee66af4f914eba",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.028,
+      "started_at": "2026-09-02T09:17:46.319Z",
+      "commit": "3fcac10a7ec338a1d48f243d1cd63a3c7e610f65",
+      "workspace_fingerprint": "47fc6c773f3675c2f1514ae7e5c39cd38977e218dff63a588dee66af4f914eba",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.402,
+      "started_at": "2026-09-02T09:18:59.960Z",
+      "commit": "3fcac10a7ec338a1d48f243d1cd63a3c7e610f65",
+      "workspace_fingerprint": "47fc6c773f3675c2f1514ae7e5c39cd38977e218dff63a588dee66af4f914eba",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/optimization-engine/test-complex-cubic-frontier-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.779,
+      "started_at": "2026-09-02T09:19:23.063Z",
+      "commit": "3fcac10a7ec338a1d48f243d1cd63a3c7e610f65",
+      "workspace_fingerprint": "47fc6c773f3675c2f1514ae7e5c39cd38977e218dff63a588dee66af4f914eba",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/optimization-engine/complex-cubic-frontier-corpus.cjs --check --exclude-labels build/complex-cubic-frontier-corpus/prior-exposed-labels-v1.txt --manifest bench/optimization-engine/complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json --asset-dir /tmp/complex-cubic-frontier-v1-final",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.153,
+      "started_at": "2026-09-02T09:19:24.525Z",
+      "commit": "3fcac10a7ec338a1d48f243d1cd63a3c7e610f65",
+      "workspace_fingerprint": "47fc6c773f3675c2f1514ae7e5c39cd38977e218dff63a588dee66af4f914eba",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/optimization-engine/complex-cubic-frontier-corpus.cjs --replay --exclude-labels build/complex-cubic-frontier-corpus/prior-exposed-labels-v1.txt --manifest bench/optimization-engine/complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json --asset-dir /tmp/complex-cubic-frontier-v1-final",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.623,
+      "started_at": "2026-09-02T09:19:25.361Z",
+      "commit": "3fcac10a7ec338a1d48f243d1cd63a3c7e610f65",
+      "workspace_fingerprint": "47fc6c773f3675c2f1514ae7e5c39cd38977e218dff63a588dee66af4f914eba",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented and exercised a deterministic complex-cubic LMFDB corpus generator, strict offline validator, and pinned-label replay. The frozen corpus has 12 named controls, 1,000 tune records (50 in every one of 20 discriminant/class-group cells), and 400 holdout records (the next 20 in every cell). A committed 47 KB content-addressed manifest contains no records and binds the normalized SQL, the canonical 1,815-label exposure set and derivation, source metadata, counts, logical hashes, gzip hashes, release URLs, and CC-BY-SA-4.0 attribution. Real public-LMFDB generation and independent pinned-label replay both returned exactly 1,412 records with source digest c94049d975c64d05aec973191892a3a3f580d4732a1a8c7aada2f94b43549144. Network-free synthetic tests cover the exact counts, every rank, ordering, metadata, deterministic compression, canonical serialization, corruption, exposure leakage, manifest identity, and replay-without-resampling contract.",
+    "risks": [
+      "The two content-addressed gzip assets are intentionally untracked at /tmp/complex-cubic-frontier-v1-final and must be uploaded without renaming before the manifest release URLs resolve.",
+      "The no-install lane omits the optional FLINT addon. pnpm test:compiler passes after provisioning the same-HEAD ignored addon artifacts from the root checkout; pnpm build passes cleanly with optional native adapters absent.",
+      "LMFDB is a mutable external source. The replay command deliberately fails closed if a pinned record changes or disappears; it never resamples a replacement."
+    ],
+    "next_steps": [
+      "Upload the exact survey and holdout gzip files from /tmp/complex-cubic-frontier-v1-final to GitHub release optimization-corpus-complex-cubic-v1.",
+      "Use only the survey asset during tuning; open the holdout asset only after freezing the candidate and intervention.",
+      "Run the corpus check command after downloading the release assets and preserve the committed manifest with benchmark evidence."
+    ]
+  }
+}

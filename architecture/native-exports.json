@@ -5529,6 +5529,7 @@
         "Sage.js JavaScript fallback"
       ],
       "consumers": [
+        "bench/class-unit-groups/run-complex-cubic-frontier.cjs",
         "packages/flint-wasm/dynamic-compiler.mjs",
         "packages/flint-wasm/node-cli.mjs",
         "packages/flint-wasm/numerical/scripts/build.cjs",
@@ -14126,6 +14127,8 @@
         "Sage.js JavaScript fallback"
       ],
       "consumers": [
+        "bench/class-unit-groups/complex-cubic-frontier-holdout.cjs",
+        "bench/class-unit-groups/run-complex-cubic-frontier.cjs",
         "bench/hyperelliptic/cross-platform/run.cjs",
         "packages/flint-wasm/lazy-modules.mjs",
         "packages/flint-wasm/numerical/qualification/run.mjs",
@@ -14136,6 +14139,7 @@
         "packages/flint/test/test.cjs",
         "scripts/test-npm-package.cjs",
         "src/baselib/builtins.py",
+        "test/complex-cubic-frontier-holdout-gate.cjs",
         "test/ffi.cjs",
         "test/native-kernel.cjs",
         "test/native-reusable-exact-workspace.cjs",

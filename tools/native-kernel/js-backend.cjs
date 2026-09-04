@@ -74,6 +74,12 @@ function emitStatement(operation, indent) {
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
   }
+  if (operation.kind === "uint64.from_integer_checked") {
+    return `${indent}if (${operation.source} < 0n || ` +
+      `${operation.source} > 18446744073709551615n) ` +
+      `nativeRaise("OverflowError", "integer is outside unsigned 64-bit");\n` +
+      `${indent}${operation.target} = ${operation.source};`;
+  }
   if (
     operation.kind === "real.pow_uint" ||
     operation.kind === "complex.pow_uint"
@@ -392,6 +398,12 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
+  }
+  if (operation.kind === "uint64.from_integer_checked") {
+    return `${indent}if (${operation.source} < 0n || ` +
+      `${operation.source} > 18446744073709551615n) ` +
+      `nativeRaise("OverflowError", "integer is outside unsigned 64-bit");\n` +
+      `${indent}${operation.target} = ${operation.source};`;
   }
   if (operation.kind === "integer.neg") {
     return `${indent}${operation.target} = -${operation.source};`;
@@ -1244,6 +1256,9 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
 function generateJavaScript(ir, options = {}) {
+  const publicFunctions = ir.functions.filter(
+    (fn) => fn.hostCallable !== false,
+  );
   function emitFloat64Statement(operation, indent, uint64BigInt) {
     if (operation.kind === "uint64.constant") {
       return `${indent}${operation.target} = ${operation.value}` +
@@ -1419,7 +1434,7 @@ function generateJavaScript(ir, options = {}) {
         `${JSON.stringify(fn.analysis.backend)});`;
   }
 
-  const exports = ir.functions.map((fn) => fn.name).join(", ");
+  const exports = publicFunctions.map((fn) => fn.name).join(", ");
   return `"use strict";
 
 const requestedNativeMode = process.env.SAGEJS_NATIVE_MODE || "auto";
@@ -2899,7 +2914,9 @@ function primeFieldNativeCall(name, args) {
 }
 
 ${ir.functions.map((fn) =>
-    fn.kernelKind === "integer"
+    fn.hostCallable === false
+      ? emitExactFallback(fn)
+      : fn.kernelKind === "integer"
       ? emitExactPublicFunction(fn, options.automaticSelections?.[fn.name])
       : fn.kernelKind === "float64"
         ? emitFloat64PublicFunction(fn)

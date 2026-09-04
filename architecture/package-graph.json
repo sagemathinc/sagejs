@@ -150,7 +150,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 1000000,
+      "max_source_bytes": 1050000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.compiler", "sagejs.native", "sagejs.ffi"],
       "files": [
@@ -248,7 +248,7 @@
       "id": "matrix-native-kernels",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 175000,
+      "max_source_bytes": 176000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -258,7 +258,6 @@
       "modules": ["sagejs.kernels.matrix"],
       "files": [
         "src/lib/sagejs/kernels/matrix/__init__.py",
-        "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
         "src/lib/sagejs/kernels/matrix/combinatorial.py",
         "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
         "src/lib/sagejs/kernels/matrix/dense_integer.py",
@@ -276,6 +275,21 @@
       "prefixes": []
     },
     {
+      "id": "class-group-resident-native-kernels",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 70000,
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic",
+        "linear-algebra"
+      ],
+      "modules": ["sagejs.kernels.matrix.class_group_hnf"],
+      "files": ["src/lib/sagejs/kernels/matrix/class_group_hnf.py"],
+      "prefixes": []
+    },
+    {
       "id": "number-field-algorithms",
       "layer": 5,
       "startup": "lazy",
@@ -285,6 +299,7 @@
         "native-integration",
         "arithmetic",
         "linear-algebra",
+        "class-group-resident-native-kernels",
         "matrix-native-kernels",
         "polynomial-native-kernels",
         "python-stdlib"
@@ -294,10 +309,33 @@
       "prefixes": ["src/lib/sagejs/number_fields/"]
     },
     {
+      "id": "complex-cubic-native-program",
+      "layer": 6,
+      "startup": "lazy",
+      "max_source_bytes": 360000,
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic",
+        "linear-algebra",
+        "number-field-algorithms",
+        "python-stdlib"
+      ],
+      "modules": [
+        "sagejs.number_fields.cubic_class_number_native",
+        "sagejs.number_fields.cubic_class_number_native_runtime"
+      ],
+      "files": [
+        "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+        "src/lib/sagejs/number_fields/cubic_class_number_native_runtime.py"
+      ],
+      "prefixes": []
+    },
+    {
       "id": "number-field-relation-matrix",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 115000,
+      "max_source_bytes": 120000,
       "depends_on": [
         "core-runtime",
         "linear-algebra",
@@ -371,7 +409,7 @@
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 1620000,
+      "max_source_bytes": 1720000,
       "depends_on": [
         "core-runtime",
         "arithmetic",

@@ -56,7 +56,7 @@ function closePublicResource(value) {
 
 test("C5b exposes one authenticated owner and one lexical mutable borrow", async () => {
   const ir = await lowerSource(readFileSync(sourcePath, "utf8"), sourcePath);
-  assert.equal(ir.version, 34);
+  assert.equal(ir.version, 36);
   const [create, accumulate, reset] = ir.functions;
   assert.equal(create.returnType, "NativeExactWorkspace");
   assert.equal(create.params.length, 5);

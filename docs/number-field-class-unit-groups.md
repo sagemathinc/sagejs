@@ -43,15 +43,25 @@ quintic as well.
 explicit spelling of the same policy. A complete result has proof status
 `exact-unconditional`.
 
-`proof=False` permits the factor-base completeness theorem to assume GRH. A
-complete result then has status `exact-relations-conditional-grh`. The ideals,
-relations, Smith normal form, units, witnesses, and group operations are still
-exact; only the theorem that the searched factor base is sufficient is
-conditional. This is not a floating-point or heuristic group.
+`proof=False` permits two explicitly named GRH hypotheses. The
+Belabas--Diaz y Diaz--Friedman generator bound assumes nonvanishing to the
+right of the critical line for nontrivial class-group characters. Separately,
+the Belabas--Friedman omitted-tail bound used to prove the combined class/unit
+index is one assumes the corresponding nonvanishing for $\zeta_K$ and
+$\zeta_{\mathbb Q}$. A complete result then has status
+`exact-relations-conditional-grh` and records the hypotheses it actually used.
+The ideals, relations, Smith normal form, units, witnesses, and group
+operations are exact; this is not a floating-point or heuristic group.
 
 The two policies have distinct cache identities. Always retain
 `result.proof_status` with serialized results, and do not relabel a conditional
 result after an unrelated unconditional computation.
+
+The optimized complex-cubic route has a dedicated
+[correctness argument](complex-cubic-native-class-group-proof.md). It records
+the maximal-order, Minkowski, relation-lattice, unit-index, interval, and
+Belabas--Friedman steps; the precise GRH boundary; the current trusted
+computing base; and a staged Lean certificate-checker plan.
 
 If resource limits or cancellation prevent certification, `result.complete`
 is false and the status is `incomplete-resource-limit`. The result may expose

@@ -324,8 +324,11 @@ For general absolute fields, the deterministic Buchmann--Hecke-style engine
 collects exact ideal relations, retains factored principal witnesses, extracts
 units, and validates the combined class/unit index with a rigorous
 Dedekind-zeta residue enclosure. `proof=False` permits a named GRH factor-base
-theorem; `proof=True` additionally replays every prime ideal required by the
-exact Minkowski theorem. Both modes remain explicitly resource bounded.
+theorem and the separate $\zeta_K/\zeta_{\mathbb Q}$ GRH hypothesis used by
+the Belabas--Friedman omitted-tail bound in the index-one test. The exact
+factor-base plan and analytic completion record these premises independently.
+`proof=True` additionally replays every prime ideal required by the exact
+Minkowski theorem. Both modes remain explicitly resource bounded.
 
 The committed acceptance field
 `x^5 + x^3 - x^2 + 4*x + 1` has class group `C4` and unit rank two in both

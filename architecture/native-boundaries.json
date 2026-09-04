@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 244,
-    "declared-ffi": 456,
+    "declared-ffi": 463,
     "declared-ffi-resource": 34,
     "napi-export": 352,
     "runtime-intrinsic": 147,
@@ -2501,6 +2501,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpz_matrix_hnf_into",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_hnf_into",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixHnfInto",
+      "symbol": "sagejs_fmpz_matrix_hnf_into",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_hnf_transform",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -2531,6 +2542,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatrixIsZero",
       "symbol": "sagejs_fmpz_matrix_is_zero",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_lll_transform",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_lll_transform",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixLllTransform",
+      "symbol": "sagejs_fmpz_matrix_lll_transform",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -2751,6 +2773,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatrixSnf",
       "symbol": "sagejs_fmpz_matrix_snf",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_snf_into",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_snf_into",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixSnfInto",
+      "symbol": "sagejs_fmpz_matrix_snf_into",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -4085,6 +4118,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:integer_log_sqrt_balls_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "integer_log_sqrt_balls_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiIntegerLogSqrtBallsResource",
+      "symbol": "sagejs_flint_integer_log_sqrt_balls_resource",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:n_is_prime",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -5020,6 +5064,28 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:number_field_analysis_resource_project",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_analysis_resource_project",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldAnalysisResourceProject",
+      "symbol": "sagejs_number_field_analysis_resource_project",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:number_field_analysis_resource_project_proof",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_analysis_resource_project_proof",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldAnalysisResourceProjectProof",
+      "symbol": "sagejs_number_field_analysis_resource_project_proof",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:number_field_analyze_resource",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -5138,6 +5204,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiNumberFieldOrderWithRound2ProofResource",
       "symbol": "sagejs_number_field_order_with_round2_proof_resource",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:positive_rational_log_balls_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "positive_rational_log_balls_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiPositiveRationalLogBallsResource",
+      "symbol": "sagejs_flint_positive_rational_log_balls_resource",
       "disposition": "declared-safe-ffi"
     },
     {

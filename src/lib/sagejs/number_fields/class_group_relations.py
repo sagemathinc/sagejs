@@ -43,7 +43,7 @@ IDEAL_SCHEMA = "sagejs.number-fields/relation-ideal-v1"
 SEARCH_STATE_SCHEMA = "sagejs.number-fields/relation-search-state-v1"
 IDEAL_REDUCTION_STATE_SCHEMA = "sagejs.number-fields/ideal-reduction-state-v1"
 MINKOWSKI_LATTICE_SCHEMA = "sagejs.number-fields/minkowski-lll-lattice-v1"
-AUTOMORPHISM_PLAN_SCHEMA = "sagejs.number-fields/automorphism-orbit-plan-v1"
+AUTOMORPHISM_PLAN_SCHEMA = "sagejs.number-fields/automorphism-orbit-plan-v2"
 DEFAULT_RANK_PRIME = 2_147_483_647
 DEFAULT_RECONSTRUCTION_ROW_CACHE_SIZE = 512
 DEFAULT_FACTOR_POWER_CACHE_SIZE = 512
@@ -2692,13 +2692,59 @@ def minkowski_lll_lattice(
     return plan
 
 
-class AutomorphismOrbitPlan:
-    """Authenticated quadratic conjugation on one exact factor base.
+def _rational_square_root_if_square(value: Any) -> Any | None:
+    """Return the nonnegative exact rational square root when it exists."""
+    rational = sage.QQ(value)
+    if rational < 0:
+        return None
+    numerator = int(rational._numerator)
+    denominator = int(rational._denominator)
 
-    A plan is available only when the field is quadratic, conjugation preserves
-    the exact maximal order, and every conjugated factor-base prime has one
-    unique match in the same factor base.  This deliberately does not infer an
-    ideal action from an abstract Galois permutation.
+    def integer_square_root(nonnegative: int) -> int:
+        if nonnegative < 2:
+            return nonnegative
+        estimate = 1 << ((nonnegative.bit_length() + 1) // 2)
+        while True:
+            improved = (estimate + nonnegative // estimate) // 2
+            if improved >= estimate:
+                return estimate
+            estimate = improved
+
+    numerator_root = integer_square_root(numerator)
+    denominator_root = integer_square_root(denominator)
+    if (
+        numerator_root * numerator_root != numerator
+        or denominator_root * denominator_root != denominator
+    ):
+        return None
+    return sage.QQ(numerator_root) / sage.QQ(denominator_root)
+
+
+def _evaluate_at_field_element(coefficients: Iterable[Any], value: Any) -> Any:
+    """Evaluate low-to-high rational coefficients without changing fields."""
+    field = value.parent()
+    answer = field(0)
+    power = field(1)
+    for coefficient in coefficients:
+        answer += field(coefficient) * power
+        power *= value
+    return answer
+
+
+class AutomorphismOrbitPlan:
+    """Authenticate one exact automorphism on a complete factor base.
+
+    Quadratic fields use conjugation.  A cyclic cubic uses the exact root map
+
+    ```
+    a |-> (-b - a + sqrt(disc(f)) / f'(a)) / 2
+    ```
+
+    for its monic defining polynomial `f = x^3 + b*x^2 + c*x + d`.
+    The plan is available only after this map is proved to have the expected
+    order, to preserve the maximal order, and to permute every supplied
+    factor-base prime uniquely.  It never infers an ideal action from a
+    numerical root permutation.
     """
 
     def __init__(self, field: Any, factor_base: Iterable[Any]) -> None:
@@ -2707,11 +2753,56 @@ class AutomorphismOrbitPlan:
         self._factor_base = factors
         self._order = field.maximal_order()
         defining_coefficients = list(field.defining_polynomial().coefficients())
+        defining_coefficients.extend(
+            sage.QQ(0)
+            for _index in range(field.degree() + 1 - len(defining_coefficients))
+        )
         self._quadratic_linear = None
+        self._generator_image = None
+        self._order_coordinate_matrix: tuple[tuple[int, ...], ...] = ()
+        self.orbit_order = 0
         if field.degree() == 2:
             self._quadratic_linear = sage.QQ(defining_coefficients[1]) / sage.QQ(
                 defining_coefficients[2]
             )
+            self._generator_image = -self._quadratic_linear - field.gen()
+            self.orbit_order = 2
+        elif field.degree() == 3:
+            leading = sage.QQ(defining_coefficients[3])
+            if leading != 0:
+                constant = sage.QQ(defining_coefficients[0]) / leading
+                linear = sage.QQ(defining_coefficients[1]) / leading
+                quadratic = sage.QQ(defining_coefficients[2]) / leading
+                discriminant = (
+                    quadratic * quadratic * linear * linear
+                    - 4 * linear * linear * linear
+                    - 4 * quadratic * quadratic * quadratic * constant
+                    - 27 * constant * constant
+                    + 18 * quadratic * linear * constant
+                )
+                square_root = _rational_square_root_if_square(discriminant)
+                if square_root is not None and square_root != 0:
+                    generator = field.gen()
+                    derivative = (
+                        3 * generator * generator + 2 * quadratic * generator + linear
+                    )
+                    candidate = (
+                        -quadratic - generator + field(square_root) / derivative
+                    ) / 2
+                    normalized_coefficients = (
+                        constant,
+                        linear,
+                        quadratic,
+                        sage.QQ(1),
+                    )
+                    if (
+                        candidate != generator
+                        and _evaluate_at_field_element(
+                            normalized_coefficients, candidate
+                        ).is_zero()
+                    ):
+                        self._generator_image = candidate
+                        self.orbit_order = 3
         if any(prime.ring() is not self._order for prime in factors):
             raise TypeError("automorphism factor-base ideals belong to another order")
         self.available = False
@@ -2725,24 +2816,33 @@ class AutomorphismOrbitPlan:
         self.image_fingerprints: tuple[dict[str, Any], ...] = ()
         self.detected = {
             "quadratic_conjugation": field.degree() == 2,
+            "cyclic_cubic_root_map": (
+                field.degree() == 3 and self._generator_image is not None
+            ),
             "field_automorphisms": callable(getattr(field, "automorphisms", None)),
             "ideal_map": callable(getattr(field, "map_ideal_under_automorphism", None)),
             "factor_base_permutation": False,
         }
         self.reason = ""
-        if field.degree() != 2:
+        if self._generator_image is None:
             self.reason = (
-                "no exact generic field self-map API supplies element images, ideal "
-                "images, and an authenticated factor-base permutation"
+                "no supported exact quadratic or cyclic-cubic generator map is "
+                "available for this defining polynomial"
             )
         else:
-            conjugated_order = self._conjugate_ideal_unchecked(self._order.ideal(1))
-            if conjugated_order != self._order.ideal(1):
-                self.reason = "quadratic conjugation does not preserve the exact order"
-            else:
-                images = tuple(
-                    self._conjugate_ideal_unchecked(prime) for prime in factors
+            mapped_order = self._map_ideal_unchecked(self._order.ideal(1))
+            if mapped_order != self._order.ideal(1):
+                self.reason = (
+                    "the exact automorphism does not preserve the maximal order"
                 )
+            else:
+                self._order_coordinate_matrix = tuple(
+                    self._order_coordinates_unchecked(
+                        self._map_element_unchecked(element)
+                    )
+                    for element in self._order.basis()
+                )
+                images = tuple(self._map_ideal_unchecked(prime) for prime in factors)
                 permutation: list[int] = []
                 stable = True
                 for image in images:
@@ -2756,13 +2856,16 @@ class AutomorphismOrbitPlan:
                 if stable and sorted(permutation) == list(range(len(factors))):
                     candidate = tuple(permutation)
                     stable = all(
-                        candidate[candidate[index]] == index
+                        self._permutation_power_image(
+                            candidate, index, self.orbit_order
+                        )
+                        == index
                         for index in range(len(candidate))
                     )
                 if not stable:
                     self.reason = (
-                        "quadratic conjugation does not permute the complete supplied "
-                        "factor base"
+                        "the exact automorphism does not permute the complete supplied "
+                        "factor base with its expected order"
                     )
                 else:
                     self.available = True
@@ -2771,52 +2874,108 @@ class AutomorphismOrbitPlan:
                         _ideal_payload(image) for image in images
                     )
                     self.detected["factor_base_permutation"] = True
-                    self.strategy = "quadratic-conjugation-factor-base-permutation"
+                    self.strategy = (
+                        "quadratic-conjugation-factor-base-permutation"
+                        if self.orbit_order == 2
+                        else "cyclic-cubic-root-map-factor-base-permutation"
+                    )
                     self.useful = any(
                         image != index for index, image in enumerate(self.permutation)
                     )
                     if self.useful:
                         self.reason = (
-                            "exact quadratic conjugation permutes at least one "
-                            "factor-base prime"
-                        )
-                    else:
-                        self.reason = (
-                            "quadratic conjugation fixes every supplied factor-base "
+                            "the exact automorphism permutes at least one factor-base "
                             "prime"
                         )
+                    else:
+                        self.reason = "the exact automorphism fixes every supplied factor-base prime"
         self._content_sha256 = _content_hash(self._dictionary_body())
 
-    def _conjugate_element_unchecked(self, value: Any) -> Any:
+    @staticmethod
+    def _permutation_power_image(
+        permutation: tuple[int, ...], index: int, exponent: int
+    ) -> int:
+        image = index
+        for _step in range(exponent):
+            image = permutation[image]
+        return image
+
+    def _map_element_unchecked(self, value: Any) -> Any:
         coefficients = self._field(value).list()
-        linear = self._quadratic_linear
-        if linear is None:
-            raise NotImplementedError("quadratic conjugation needs a degree-two field")
-        return _field_element_from_coefficients(
-            self._field,
-            [coefficients[0] - linear * coefficients[1], -coefficients[1]],
+        image = self._generator_image
+        if image is None:
+            raise NotImplementedError(self.reason)
+        return _evaluate_at_field_element(coefficients, image)
+
+    def _conjugate_element_unchecked(self, value: Any) -> Any:
+        return self._map_element_unchecked(value)
+
+    def _map_ideal_unchecked(self, ideal: Any) -> Any:
+        return self._order.ideal(
+            [self._map_element_unchecked(element) for element in ideal.basis()]
         )
 
     def _conjugate_ideal_unchecked(self, ideal: Any) -> Any:
-        return self._order.ideal(
-            [self._conjugate_element_unchecked(element) for element in ideal.basis()]
-        )
+        return self._map_ideal_unchecked(ideal)
 
     def _require_available(self) -> None:
         if not self.available:
             raise NotImplementedError(self.reason)
 
     def conjugate_element(self, value: Any) -> Any:
-        """Apply the exact nontrivial quadratic field automorphism."""
+        """Apply the plan's exact nontrivial field automorphism."""
         self._require_available()
-        return self._conjugate_element_unchecked(value)
+        return self._map_element_unchecked(value)
+
+    def map_element(self, value: Any) -> Any:
+        """Apply the plan's exact nontrivial field automorphism."""
+        return self.conjugate_element(value)
+
+    def _order_coordinates_unchecked(self, value: Any) -> tuple[int, ...]:
+        degree = int(self._field.degree())
+        power_coordinates = tuple(sage.QQ(entry) for entry in self._field(value).list())
+        inverse = self._order._basis_inverse_matrix().rows()
+        answer: list[int] = []
+        for target in range(degree):
+            coordinate = sage.QQ(0)
+            for source in range(degree):
+                coordinate += power_coordinates[source] * inverse[source][target]
+            if coordinate.denominator() != 1:
+                raise ArithmeticError(
+                    "an authenticated automorphism left the maximal order"
+                )
+            answer.append(int(coordinate.numerator()))
+        return tuple(answer)
+
+    def map_order_coordinates(self, coordinates: Iterable[int]) -> tuple[int, ...]:
+        """Map exact maximal-order coordinates without retaining an element."""
+        self._require_available()
+        values = tuple(
+            _checked_integer(value, "maximal-order coordinate") for value in coordinates
+        )
+        degree = int(self._field.degree())
+        if len(values) != degree:
+            raise ValueError("an automorphism coordinate row has the wrong width")
+        if len(self._order_coordinate_matrix) != degree:
+            raise ArithmeticError("an automorphism plan lost its exact coordinate map")
+        answer = [0] * degree
+        for target in range(degree):
+            for source in range(degree):
+                answer[target] += (
+                    values[source] * self._order_coordinate_matrix[source][target]
+                )
+        return tuple(answer)
 
     def conjugate_ideal(self, ideal: Any) -> Any:
         """Map an ideal after checking its exact retained order."""
         self._require_available()
         if ideal.ring() is not self._order:
             raise TypeError("an automorphism plan cannot map an ideal of another order")
-        return self._conjugate_ideal_unchecked(ideal)
+        return self._map_ideal_unchecked(ideal)
+
+    def map_ideal(self, ideal: Any) -> Any:
+        """Map an ideal after checking its exact retained order."""
+        return self.conjugate_ideal(ideal)
 
     def permute_row(self, row: Iterable[int]) -> tuple[int, ...]:
         """Map a factor-base exponent row under the authenticated permutation."""
@@ -2830,26 +2989,27 @@ class AutomorphismOrbitPlan:
         return tuple(answer)
 
     def verify(self) -> bool:
-        """Replay the plan hash, exact ideal images, and involution."""
+        """Replay the plan hash, exact ideal images, and automorphism order."""
         try:
             if _content_hash(self._dictionary_body()) != self._content_sha256:
                 return False
             if not self.available:
                 return True
-            if self._conjugate_ideal_unchecked(
-                self._order.ideal(1)
-            ) != self._order.ideal(1):
+            if self._map_ideal_unchecked(self._order.ideal(1)) != self._order.ideal(1):
                 return False
-            if any(
-                self._conjugate_element_unchecked(
-                    self._conjugate_element_unchecked(element)
-                )
-                != element
+            if self._order_coordinate_matrix != tuple(
+                self._order_coordinates_unchecked(self._map_element_unchecked(element))
                 for element in self._order.basis()
             ):
                 return False
+            for element in self._order.basis():
+                image = element
+                for _step in range(self.orbit_order):
+                    image = self._map_element_unchecked(image)
+                if image != element:
+                    return False
             for index, prime in enumerate(self._factor_base):
-                image = self._conjugate_ideal_unchecked(prime)
+                image = self._map_ideal_unchecked(prime)
                 if image != self._factor_base[self.permutation[index]]:
                     return False
                 if _ideal_payload(image) != self.image_fingerprints[index]:
@@ -2896,14 +3056,14 @@ class AutomorphismOrbitPlan:
         mapped_witness = FactoredPrincipalWitness(
             self._field,
             [
-                [self._conjugate_element_unchecked(element), exponent]
+                [self._map_element_unchecked(element), exponent]
                 for element, exponent in witness.factors()
             ],
         )
         parent_source = reconstruct_factor_base_ideal(
             self._order, self._factor_base, parent.source_row
         )
-        mapped_source = self._conjugate_ideal_unchecked(parent_source)
+        mapped_source = self._map_ideal_unchecked(parent_source)
         reconstructed_mapped_source = collector.reconstruct_factor_base_ideal(
             mapped_source_row
         )
@@ -2916,7 +3076,11 @@ class AutomorphismOrbitPlan:
             source_ideal=mapped_source,
             source_row=mapped_source_row,
             provenance={
-                "algorithm": "quadratic-conjugation-orbit",
+                "algorithm": (
+                    "quadratic-conjugation-orbit"
+                    if self.orbit_order == 2
+                    else "cyclic-cubic-automorphism-orbit"
+                ),
                 "parent_relation_sha256": hashlib.sha256(
                     parent.canonical_key().encode("utf-8")
                 ).hexdigest(),
@@ -2945,6 +3109,7 @@ class AutomorphismOrbitPlan:
             "available": self.available,
             "useful": self.useful,
             "strategy": self.strategy,
+            "orbit_order": self.orbit_order,
             "factor_base_size": self.factor_base_size,
             "detected": dict(self.detected),
             "reason": self.reason,
@@ -2970,6 +3135,7 @@ class AutomorphismOrbitPlan:
             "available",
             "useful",
             "strategy",
+            "orbit_order",
             "factor_base_size",
             "detected",
             "reason",
@@ -2998,7 +3164,7 @@ class AutomorphismOrbitPlan:
 def plan_automorphism_orbits(
     field: Any, factor_base: Iterable[Any]
 ) -> AutomorphismOrbitPlan:
-    """Plan exact quadratic conjugation or report a deterministic fallback."""
+    """Plan an exact quadratic/cyclic-cubic orbit or report a fallback."""
     return AutomorphismOrbitPlan(field, factor_base)
 
 

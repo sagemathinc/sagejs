@@ -56,6 +56,33 @@ test("runs a generated dense integer matrix resource slice", () => {
     7n * (2n ** 100n + 17n) + 15n,
   );
 
+  const hnfSource = flint.ffiFmpzMatrixCreate(2n, 3n);
+  const hnfInto = flint.ffiFmpzMatrixCreate(2n, 3n);
+  for (const [row, column, value] of [
+    [0n, 0n, 2n], [0n, 1n, 4n], [0n, 2n, 4n],
+    [1n, 0n, -6n], [1n, 1n, 6n], [1n, 2n, 12n],
+  ]) {
+    flint.ffiFmpzMatrixSetEntry(hnfSource, row, column, value);
+  }
+  assert.equal(flint.ffiFmpzMatrixHnfInto(hnfInto, hnfSource), true);
+  const detachedHnf = flint.ffiFmpzMatrixHnf(hnfSource);
+  for (let row = 0n; row < 2n; row += 1n) {
+    for (let column = 0n; column < 3n; column += 1n) {
+      assert.equal(
+        flint.ffiFmpzMatrixEntry(hnfInto, row, column),
+        flint.ffiFmpzMatrixEntry(detachedHnf, row, column),
+      );
+    }
+  }
+  assert.throws(
+    () => flint.ffiFmpzMatrixHnfInto(hnfInto, hnfInto),
+    /dimensions or aliases/,
+  );
+  assert.throws(
+    () => flint.ffiFmpzMatrixHnfInto(matrix, hnfSource),
+    /dimensions or aliases/,
+  );
+
   const formatted = flint.ffiFmpzMatrixFormat(matrix);
   const formattedBytes = flint.ffiFlintByteRegionCopyBytes(formatted);
   close(formatted, flint.ffiFlintByteRegionClose);
@@ -92,11 +119,64 @@ test("runs a generated dense integer matrix resource slice", () => {
   assert.equal(liveResources(), beforeMultiplyFailure);
 
   close(incompatible, flint.ffiFmpzMatrixClose);
+  close(detachedHnf, flint.ffiFmpzMatrixClose);
+  close(hnfInto, flint.ffiFmpzMatrixClose);
+  close(hnfSource, flint.ffiFmpzMatrixClose);
   close(restored, flint.ffiFmpzMatrixClose);
   close(squared, flint.ffiFmpzMatrixClose);
   close(copy, flint.ffiFmpzMatrixClose);
   close(prefix, flint.ffiFmpzMatrixClose);
   close(matrix, flint.ffiFmpzMatrixClose);
+  assert.equal(liveResources(), 0n);
+});
+
+test("outward rational logarithm balls execute through the Wasm resource boundary", () => {
+  assert.equal(liveResources(), 0n);
+  const numerators = flint.ffiFmpzMatrixCreate(3n, 1n);
+  const denominators = flint.ffiFmpzMatrixCreate(3n, 1n);
+  const endpoints = flint.ffiFmpzMatrixCreate(6n, 1n);
+  try {
+    for (const [row, numerator, denominator] of [
+      [0n, 1n, 1n],
+      [1n, 2n, 1n],
+      [2n, 1n, 3n],
+    ]) {
+      flint.ffiFmpzMatrixSetEntry(numerators, row, 0n, numerator);
+      flint.ffiFmpzMatrixSetEntry(denominators, row, 0n, denominator);
+    }
+    assert.equal(
+      flint.ffiPositiveRationalLogBallsResource(
+        endpoints,
+        numerators,
+        denominators,
+        3n,
+        96n,
+      ),
+      true,
+    );
+    assert.equal(flint.ffiFmpzMatrixEntry(endpoints, 0n, 0n), 0n);
+    assert.equal(flint.ffiFmpzMatrixEntry(endpoints, 1n, 0n), 0n);
+    const positiveLower = flint.ffiFmpzMatrixEntry(endpoints, 2n, 0n);
+    const positiveUpper = flint.ffiFmpzMatrixEntry(endpoints, 3n, 0n);
+    const negativeLower = flint.ffiFmpzMatrixEntry(endpoints, 4n, 0n);
+    const negativeUpper = flint.ffiFmpzMatrixEntry(endpoints, 5n, 0n);
+    assert.ok(0n < positiveLower && positiveLower <= positiveUpper);
+    assert.ok(negativeLower <= negativeUpper && negativeUpper < 0n);
+    assert.throws(
+      () => flint.ffiPositiveRationalLogBallsResource(
+        numerators,
+        numerators,
+        denominators,
+        3n,
+        96n,
+      ),
+      /aliases/,
+    );
+  } finally {
+    close(endpoints, flint.ffiFmpzMatrixClose);
+    close(denominators, flint.ffiFmpzMatrixClose);
+    close(numerators, flint.ffiFmpzMatrixClose);
+  }
   assert.equal(liveResources(), 0n);
 });
 

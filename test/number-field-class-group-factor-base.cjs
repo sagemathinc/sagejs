@@ -209,6 +209,21 @@ for case in fixture["cases"]:
 # The pure cubic exercises authentication of ramified and split prime records.
 pure_plan = plans["pure-cubic-minus108"]
 pure_records = build_factor_base(pure_plan)
+# The theorem cutoff and the exact enumeration cutoff are deliberately
+# distinct.  A conservative native real enclosure may enumerate a strict
+# superset without changing the theorem or its assumptions.
+extended_plan = pure_plan.with_enumeration_bound(pure_plan.bound + 1)
+assert extended_plan.bound == pure_plan.bound
+assert extended_plan.bound_result is pure_plan.bound_result
+assert extended_plan.enumeration_bound == pure_plan.bound + 1
+assert extended_plan.to_dict()["enumeration_bound"] == pure_plan.bound + 1
+assert extended_plan.progress()["enumeration_bound"] == pure_plan.bound + 1
+assert extended_plan.estimated_rational_primes >= pure_plan.estimated_rational_primes
+try:
+    pure_plan.with_enumeration_bound(pure_plan.bound - 1)
+    raise AssertionError("an enumeration bound omitted proven generators")
+except ValueError:
+    pass
 record = pure_records[0]
 restored = factor_base_prime_from_dict(pure_plan.order, record.to_dict())
 assert restored.to_dict() == record.to_dict()
@@ -346,8 +361,9 @@ assert stream_plan.progress()["eligible_prime_ideals"] == 2
 
 # The alternate x^2-5 presentation has equation-order index two.  Its
 # splitting scan performs the required full finite-algebra decomposition only
-# at p=2; construction then reuses that cached certificate while p=5 remains
-# selective Dedekind--Kummer work.
+# at p=2, proves its unique unramified degree-two ideal is principal 2*O, and
+# omits that column.  The ramified p=5 factor remains selective
+# Dedekind--Kummer work.
 index_plan = factor_base_plan(
     fields["real-quadratic-index-two"],
     proof=False,
@@ -360,7 +376,7 @@ try:
     index_records = build_factor_base(index_plan)
 finally:
     factor_bases._prime_ideals.factor_rational_prime = original_factor
-assert [record.norm for record in index_records] == [4, 5]
+assert [record.norm for record in index_records] == [5]
 assert factor_calls == [2]
 
 # Preflight caps reject work before allocating any ideal record.
@@ -441,8 +457,9 @@ assert quintic_plan._retained_memory_bytes == sum(
     quintic_plan._record_memory_bytes.values()
 )
 assert quintic_plan.progress() == {
-    "schema": "sagejs.number-fields/factor-base-progress-v1",
+    "schema": "sagejs.number-fields/factor-base-progress-v2",
     "bound": 38,
+    "enumeration_bound": 38,
     "splitting_scan_complete": True,
     "factor_base_complete": True,
     "eligible_rational_primes": 8,
@@ -664,7 +681,9 @@ bdf_started = time.perf_counter()
 bdf = bdf_bound(order, max_bound=10000)
 bdf_seconds = time.perf_counter() - bdf_started
 assert bdf.bound == benchmark["bdf_bound"] == case["bounds"]["bdf"]
-assert bdf.assumptions == ("GRH for the Dedekind zeta function",)
+assert bdf.assumptions == (
+    "GRH: L(s, chi) is nonzero whenever Re(s) > 1/2 for every nontrivial character chi of Cl(K)",
+)
 assert bdf.details["strict_inequality"] is True
 assert bdf.interval.lower.numerator > 0
 assert bdf_seconds < benchmark["maximum_anchored_bdf_seconds"]
@@ -1000,12 +1019,53 @@ for index, (label, polynomial, expected_hash) in enumerate(cases):
     # Both ordinary materialization and the independently produced generic
     # factor base must reproduce the exact historical payload.
     ordinary, _ideals = cubic._materialize_packed_cubic_factor_records(packed)
+    verified = cubic.materialize_verified_packed_cubic_factor_records(packed)
+    assert verified is not None
+    verified_records, _verified_ideals = verified
     generic_plan = factor_bases.factor_base_plan(
         order, proof=True, theorem="minkowski"
     )
     generic = factor_bases.build_factor_base(generic_plan)
     assert [record.to_dict() for record in ordinary] == payload
+    assert [record.to_dict() for record in verified_records] == payload
     assert [record.to_dict() for record in generic] == payload
+
+    equation = prime_ideals._maximal.integral_equation_polynomial(field)
+    index_squared = abs(int(equation.discriminant())) // abs(int(order.discriminant()))
+    for prime in prime_ideals._nf_global("prime_range")(2, int(plan.bound) + 1):
+        if index_squared % int(prime):
+            continue
+        compact_record = tuple(
+            prime_ideals.splitting_records(
+                order,
+                prime,
+                prime + 1,
+                _index_prime_record=factor_bases._compact_index_prime_splitting_record,
+            )
+        )
+        assert len(compact_record) == 1
+        complete_record = prime_ideals.factor_rational_prime(
+            order, prime
+        ).splitting_record(False)
+        assert sorted(
+            (factor["e"], factor["f"])
+            for factor in compact_record[0]["factors"]
+        ) == sorted(
+            (factor["e"], factor["f"])
+            for factor in complete_record["factors"]
+        )
+
+    if index == 0:
+        index_record = next(record for record in packed if not record.dedekind_kummer)
+        retained_ramification = index_record.ramification
+        index_record.ramification = retained_ramification + 1
+        try:
+            cubic.materialize_verified_packed_cubic_factor_records(packed)
+            raise AssertionError("a corrupt finite-algebra ramification was accepted")
+        except ArithmeticError as error:
+            assert "ramification index changed" in str(error)
+        finally:
+            index_record.ramification = retained_ramification
 
     # The finite-algebra producer itself supplies the canonical payload.  Once
     # supplied, constructing a packed record must not redo the modular ideal
@@ -1053,6 +1113,29 @@ for index, (label, polynomial, expected_hash) in enumerate(cases):
     finally:
         prime_ideals._subspace_ideal_generated_by = original_generated
     results.append([label, int(plan.bound), len(payload), expected_hash])
+
+# A larger equation-index field has one canonical prime record for which the
+# ordinary basis search intentionally records no single (p, alpha) witness.
+# The packed verifier must authenticate the whole modular ideal and preserve
+# that absent payload, rather than inventing a different valid serialization.
+hard = NumberField(x**3 - x**2 - 576*x - 1665, "hard_missing_generator")
+hard_order = hard.maximal_order()
+hard_generic_plan = factor_bases.factor_base_plan(hard_order, proof=False)
+hard_generic = factor_bases.build_factor_base(hard_generic_plan)
+hard_compact_plan = factor_bases.factor_base_plan(
+    hard_order,
+    proof=False,
+    _compact_cubic_index_primes=True,
+)
+hard_packed = cubic.packed_cubic_factor_records(hard_compact_plan)
+assert hard_packed is not None
+assert any(record._second_generator_payload is None for record in hard_packed)
+hard_verified = cubic.materialize_verified_packed_cubic_factor_records(hard_packed)
+assert hard_verified is not None
+hard_verified_records, _hard_verified_ideals = hard_verified
+assert [record.to_dict() for record in hard_verified_records] == [
+    record.to_dict() for record in hard_generic
+]
 print(json.dumps(results, separators=(",", ":")))
 `);
   assert.deepEqual(JSON.parse(output), [
@@ -1089,7 +1172,9 @@ margin = bound.interval.to_dyadic_dict(64)
 assert int(order.discriminant()) == -1083
 assert bound.bound == 9
 assert bound.precision_bits == 64
-assert bound.assumptions == ("GRH for the Dedekind zeta function",)
+assert bound.assumptions == (
+    "GRH: L(s, chi) is nonzero whenever Re(s) > 1/2 for every nontrivial character chi of Cl(K)",
+)
 assert margin == {
     "scale_bits": 64,
     "lower_numerator": 12923988274345410010,

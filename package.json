@@ -337,6 +337,8 @@
     "bench:optimizer-packed-container": "node bench/optimizer-packed-container/benchmark.cjs",
     "bench:optimizer-machine-corpus": "node bench/optimizer-machine-corpus/run.cjs",
     "bench:number-field-resident-hnf": "node bin/sagejs --python bench/class-unit-groups/resident-hnf.py",
+    "bench:number-field-pari-adjacent-cubic-h5": "node bin/sagejs --python bench/class-unit-groups/pari-adjacent-cubic-h5.py",
+    "bench:number-field-cubic-native-class-number": "node bin/sagejs --python bench/class-unit-groups/cubic-native-class-number.py",
     "bench:rank-four-lattice-workspace": "node --test test/native-rank-four-lattice-workspace.cjs",
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",
     "bench:elliptic-rank": "node bench/compare-elliptic-rank.cjs",

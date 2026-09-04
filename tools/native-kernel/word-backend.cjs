@@ -383,6 +383,18 @@ function emitWordOperation(operation, context, indent) {
       `${indent}${target} = (int64_t) ${source};`,
     ].join("\n");
   }
+  if (operation.kind === "uint64.from_integer_checked") {
+    const source = value(operation.source);
+    return [
+      `${indent}if (${source} < 0)`,
+      `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"integer is outside unsigned 64-bit");`,
+      `${indent}    ${context.failure}`,
+      `${indent}}`,
+      `${indent}${target} = (uint64_t) ${source};`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.neg" || operation.kind === "integer.abs") {
     const source = value(operation.source);
     const expression = operation.kind === "integer.neg"

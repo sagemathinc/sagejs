@@ -98,6 +98,31 @@ print(answer)
   );
 });
 
+test("specialized dispatch skips the unit box after a class-group decline", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 + 4*x - 1, "a_decline")
+units_module = _optional_module("sagejs.number_fields.units")
+original_units = units_module.bounded_unit_subgroup
+unit_calls = []
+
+def forbidden_units(field):
+    unit_calls.append(field)
+    raise AssertionError("an incomplete class computation entered the unit box")
+
+units_module.bounded_unit_subgroup = forbidden_units
+try:
+    engine = ClassUnitGroupEngine(K, proof=False)
+    assert engine._specialized() is None
+    assert unit_calls == []
+finally:
+    units_module.bounded_unit_subgroup = original_units
+print("specialized-decline-short-circuited")
+`);
+  assert.equal(output, "specialized-decline-short-circuited");
+});
+
 test("class/unit engine cache binds producer identity and full policy", () => {
   const output = run(String.raw`
 R = PolynomialRing(QQ, "x")
@@ -895,7 +920,9 @@ class SteeringProbe(ClassUnitGroupEngine):
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-K = NumberField(x - 1, "a")
+# Live-basis reuse is deliberately restricted to cubic fields.  Keep this
+# synthetic object-cache test inside that production envelope.
+K = NumberField(x**3 - x**2 - 36*x - 18, "a")
 first = FakeRecord()
 second = FakeRecord()
 third = FakeRecord()
@@ -929,7 +956,9 @@ units, dependencies = engine._select_dependency_unit_basis(
 assert len(units) == 2
 assert dependencies == ((1, 0, 0), (0, 0, 1))
 assert len(engine.combinations) == 3
-assert engine._resource_usage["relation_dependency_unit_object_cache_hits"] == 2
+assert engine._resource_usage["relation_dependency_unit_object_cache_hits"] == 2, (
+    engine._resource_usage["relation_dependency_unit_object_cache_hits"]
+)
 assert engine._resource_usage["dependency_unit_steering_basis_hits"] == 1
 assert engine._resource_usage["dependency_unit_materializations"] == 0
 
@@ -1017,7 +1046,7 @@ print("monotone-log-steering")
   assert.equal(output, "monotone-log-steering");
 });
 
-test("cubic unit kernels are reduced before rigorous regulator evaluation", () => {
+test("cubic unit recovery reuses live state and retains its exact LLL fallback", () => {
   const output = run(String.raw`
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -1029,25 +1058,134 @@ assert result.class_number() == 1
 assert result.class_group().invariants() == ()
 assert result.saturation_record.verify(K, K.maximal_order())
 resources = result.diagnostics["resources"]
-assert resources["dependency_lattice_lll_requests"] == 1
-assert resources["dependency_lattice_lll_reductions"] == 1
+assert resources["dependency_unit_steering_basis_hits"] == 1
+assert resources["dependency_unit_steering_index_preflight_requests"] == 1
+assert resources["dependency_unit_steering_index_preflight_accepts"] == 1
+assert resources["dependency_unit_steering_index_preflight_rejections"] == 0
+assert resources["relation_dependency_unit_object_cache_hits"] == 2
+assert resources["dependency_unit_eager_candidates"] == 0
+assert resources["dependency_unit_materializations"] == 0
+assert resources["dependency_lattice_lll_requests"] == 0
+assert resources["dependency_lattice_lll_reductions"] == 0
 assert resources["dependency_lattice_lll_fallbacks"] == 0
-maximum_exponent = max(
-    abs(int(exponent))
-    for unit in result.units()
-    for _factor, exponent in unit.factors()
-)
-assert maximum_exponent <= 8
 regulator = result.regulator()
 assert regulator.rigorous
 assert regulator.precision_bits == 128
+
+# A full-rank retained lattice can still have nontrivial unit index.  This
+# ordinary cubic used to pay for a complete rigorous hR computation on its
+# index-three live lattice before falling back.  The coarse preflight must
+# reject it before consuming the live basis, then preserve the exact LLL route.
+nonprimitive_field = NumberField(x**3 - x**2 - 34*x - 57, "nonprimitive")
+nonprimitive = compute_class_unit_group(
+    nonprimitive_field, proof=False, algorithm="auto"
+)
+assert nonprimitive.complete and nonprimitive.class_number() == 4
+assert nonprimitive.class_group().invariants() == (2, 2)
+assert nonprimitive.saturation_record.verify(
+    nonprimitive_field, nonprimitive_field.maximal_order()
+)
+nonprimitive_resources = nonprimitive.diagnostics["resources"]
+assert nonprimitive_resources["dependency_unit_steering_index_preflight_requests"] == 1
+assert nonprimitive_resources["dependency_unit_steering_index_preflight_accepts"] == 0
+assert nonprimitive_resources["dependency_unit_steering_index_preflight_rejections"] == 1
+assert nonprimitive_resources["dependency_unit_steering_basis_hits"] == 0
+assert nonprimitive_resources["dependency_unit_steering_basis_fallbacks"] == 0
+assert nonprimitive_resources["dependency_lattice_lll_requests"] == 1
+assert nonprimitive_resources["dependency_lattice_lll_reductions"] == 1
+
+# A restored computation has no authenticated steering objects.  Its bounded
+# exact LLL path remains available and replays the unimodular transform and
+# complete left-kernel relation before accepting the shorter basis.
+class ZeroRecord:
+    row = (0,)
+
+fallback = ClassUnitGroupEngine(K, algorithm="buchmann-hecke")
+source = ((100, 1, 0), (1, 0, 0))
+reduced = fallback._reduce_dependency_lattice(
+    (ZeroRecord(), ZeroRecord(), ZeroRecord()), source
+)
+assert reduced != source
+fallback_resources = fallback._resource_usage
+assert fallback_resources["dependency_lattice_lll_requests"] == 1
+assert fallback_resources["dependency_lattice_lll_reductions"] == 1
+assert fallback_resources["dependency_lattice_lll_fallbacks"] == 0
+
+# Logarithmic independence is weaker than being a fundamental basis.  Force
+# the first otherwise-valid analytic result to expose a nontrivial index and
+# prove that the engine discards the live shortcut, executes the complete exact
+# dependency route, and only then accepts the rigorous index-one result.
+original_analytic_index = ClassUnitGroupEngine._analytic_index
+forced_nontrivial_index = [False]
+class NontrivialIndex:
+    index_one = False
+
+def force_first_steering_index(self, presentation, units, unit_rank):
+    answer = original_analytic_index(self, presentation, units, unit_rank)
+    if (
+        not forced_nontrivial_index[0]
+        and self._resource_usage["dependency_unit_steering_basis_hits"] > 0
+    ):
+        forced_nontrivial_index[0] = True
+        return answer[0], answer[1], NontrivialIndex()
+    return answer
+
+ClassUnitGroupEngine._analytic_index = force_first_steering_index
+try:
+    retry_field = NumberField(x**3 - x**2 - 36*x - 18, "retry")
+    retry = compute_class_unit_group(
+        retry_field, proof=False, algorithm="auto"
+    )
+finally:
+    ClassUnitGroupEngine._analytic_index = original_analytic_index
+assert retry.complete and retry.class_number() == 1
+retry_resources = retry.diagnostics["resources"]
+assert retry_resources["dependency_unit_steering_basis_hits"] == 1
+assert retry_resources["dependency_unit_steering_basis_fallbacks"] == 1
+assert retry_resources["dependency_lattice_lll_requests"] == 1
+assert retry_resources["dependency_lattice_lll_reductions"] == 1
+
+# The same retry contract covers a bounded analytic-resource rejection without
+# catching unrelated RuntimeError values or cancellation.
+original_analytic_index = ClassUnitGroupEngine._analytic_index
+forced_resource_error = [False]
+def force_first_steering_resource_error(self, presentation, units, unit_rank):
+    if (
+        not forced_resource_error[0]
+        and self._resource_usage["dependency_unit_steering_basis_hits"] > 0
+    ):
+        forced_resource_error[0] = True
+        raise self.components.analytic.AnalyticResourceError(
+            "forced steering-basis resource rejection"
+        )
+    return original_analytic_index(self, presentation, units, unit_rank)
+
+ClassUnitGroupEngine._analytic_index = force_first_steering_resource_error
+try:
+    resource_field = NumberField(x**3 - x**2 - 36*x - 18, "resource")
+    resource_retry = compute_class_unit_group(
+        resource_field, proof=False, algorithm="auto"
+    )
+finally:
+    ClassUnitGroupEngine._analytic_index = original_analytic_index
+assert resource_retry.complete and resource_retry.class_number() == 1
+resource_retry_resources = resource_retry.diagnostics["resources"]
+assert resource_retry_resources["dependency_unit_steering_basis_hits"] == 1
+assert resource_retry_resources["dependency_unit_steering_basis_fallbacks"] == 1
+assert resource_retry_resources["dependency_lattice_lll_requests"] == 1
+assert resource_retry_resources["dependency_lattice_lll_reductions"] == 1
 print((
     result.class_number(),
+    resources["dependency_unit_steering_basis_hits"],
     resources["dependency_lattice_lll_reductions"],
+    fallback_resources["dependency_lattice_lll_reductions"],
+    retry_resources["dependency_unit_steering_basis_fallbacks"],
+    resource_retry_resources["dependency_unit_steering_basis_fallbacks"],
+    nonprimitive_resources["dependency_unit_steering_index_preflight_rejections"],
     regulator.precision_bits,
 ))
 `);
-  assert.equal(output, "(1, 1, 128)");
+  assert.equal(output, "(1, 1, 0, 1, 1, 1, 1, 128)");
 });
 
 test("cubic class saturation searches nonzero p-torsion cosets", () => {

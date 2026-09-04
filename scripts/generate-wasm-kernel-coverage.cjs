@@ -31,7 +31,11 @@ function synchronizeKernelCapabilities(document, inventory) {
     module.additionalCapabilities = [
       ...retained,
       ...inventory.inventory
-        .filter((kernel) => kernel.domain === domain)
+        .filter(
+          (kernel) =>
+            kernel.domain === domain &&
+            kernel.functions.every((fn) => fn.status === "compiled-source"),
+        )
         .map((kernel) => `kernel:${kernel.id}`),
     ].sort();
   }
