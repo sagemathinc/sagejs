@@ -1,0 +1,2290 @@
+{
+  "backend": {
+    "name": "scipy",
+    "version": "1.18.0"
+  },
+  "corpus_schema": "sagejs.numerical-optimization-corpus/v1",
+  "elapsed_seconds": 32.472198247909546,
+  "environment": {
+    "implementation": "cpython",
+    "machine": "x86_64",
+    "node": null,
+    "platform": "Linux-6.17.0-1022-gcp-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "repository_revision": "5aaf6360a2a3a3213318bf6bc9723a17f58746b3"
+  },
+  "protocol": {
+    "clock": "time.perf_counter_ns",
+    "problem_setup_inside_timer": false,
+    "samples": 7,
+    "solver_and_callback_inside_timer": true,
+    "warmups": 1
+  },
+  "results": [
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "root.cos-minus-x",
+      "method": "brentq",
+      "metrics": {
+        "objective_gap": 0.0,
+        "residual_linf": 0.0,
+        "x_linf": 0.0
+      },
+      "operation": "root",
+      "reasons": [],
+      "result": {
+        "fun": 0.0,
+        "nfev": 8,
+        "nit": 7,
+        "status": "converged",
+        "success": true,
+        "x": [
+          0.7390851332151607
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.02303,
+          0.01667,
+          0.01434,
+          0.01368,
+          0.01309,
+          0.04622,
+          0.01729
+        ],
+        "median_ms": 0.01667,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "root.flat-cubic",
+      "method": "brentq",
+      "metrics": {
+        "objective_gap": 4.335214308641561e-37,
+        "residual_linf": 4.335214308641561e-37,
+        "x_linf": 7.568390358869692e-13
+      },
+      "operation": "root",
+      "reasons": [],
+      "result": {
+        "fun": -4.335214308641561e-37,
+        "nfev": 102,
+        "nit": 100,
+        "status": "convergence error",
+        "success": false,
+        "x": [
+          0.9999999999992432
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.13824
+        ],
+        "median_ms": 0.13824,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "root.endpoint",
+      "method": "brentq",
+      "metrics": {
+        "objective_gap": 0.0,
+        "residual_linf": 0.0,
+        "x_linf": 0.0
+      },
+      "operation": "root",
+      "reasons": [],
+      "result": {
+        "fun": 0.0,
+        "nfev": 2,
+        "nit": 6,
+        "status": "converged",
+        "success": true,
+        "x": [
+          2.0
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.01561
+        ],
+        "median_ms": 0.01561,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "root.scaled-exponential",
+      "method": "brentq",
+      "metrics": {
+        "objective_gap": 2.0827783941967937e-13,
+        "residual_linf": 2.0827783941967937e-13,
+        "x_linf": 6.94999613415348e-14
+      },
+      "operation": "root",
+      "reasons": [],
+      "result": {
+        "fun": -2.0827783941967937e-13,
+        "nfev": 10,
+        "nit": 9,
+        "status": "converged",
+        "success": true,
+        "x": [
+          1.0986122886680403
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.02068
+        ],
+        "median_ms": 0.02068,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": {
+        "message": "f(a) and f(b) must have different signs",
+        "type": "ValueError"
+      },
+      "id": "root.invalid-bracket",
+      "method": "brentq",
+      "metrics": {},
+      "operation": "root",
+      "reasons": [],
+      "result": null,
+      "timing": {
+        "durations_ms": [],
+        "median_ms": null,
+        "samples": 0,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "scalar.smooth-interior",
+      "method": "bounded",
+      "metrics": {
+        "objective_gap": 1.8856442374394614e-18,
+        "x_linf": 1.3731876191691583e-09
+      },
+      "operation": "scalar-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 1.8856442374394614e-18,
+        "nfev": 9,
+        "nit": 9,
+        "status": "Solution found.",
+        "success": true,
+        "x": [
+          0.24999999862681238
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.09115,
+          0.07963,
+          0.07304,
+          0.06947,
+          0.06704,
+          0.06737,
+          0.08655
+        ],
+        "median_ms": 0.07304,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "scalar.boundary",
+      "method": "bounded",
+      "metrics": {
+        "objective_gap": 5.725291130076471e-09,
+        "x_linf": 4.230449657249835e-08
+      },
+      "operation": "scalar-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 0.13533528896190383,
+        "nfev": 39,
+        "nit": 39,
+        "status": "Solution found.",
+        "success": true,
+        "x": [
+          -1.9999999576955034
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.20692
+        ],
+        "median_ms": 0.20692,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "nelder-mead.rosenbrock-2",
+      "method": "nelder-mead",
+      "metrics": {
+        "gradient_linf": 6.573356661075627e-06,
+        "objective_gap": 4.194029327603647e-14,
+        "x_linf": 2.452712705158788e-07
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 4.194029327603647e-14,
+        "nfev": 189,
+        "nit": 101,
+        "status": "Optimization terminated successfully.",
+        "success": true,
+        "x": [
+          0.9999998694739745,
+          0.9999997547287295
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          2.81193,
+          2.75519,
+          2.76939,
+          2.75124,
+          2.73399,
+          2.74078,
+          2.73203
+        ],
+        "median_ms": 2.75124,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "nelder-mead.beale",
+      "method": "nelder-mead",
+      "metrics": {
+        "objective_gap": 1.7714129117339765e-14,
+        "x_linf": 1.878566608937149e-07
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 1.7714129117339765e-14,
+        "nfev": 132,
+        "nit": 69,
+        "status": "Optimization terminated successfully.",
+        "success": true,
+        "x": [
+          2.999999812143339,
+          0.49999993054478986
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          2.008499
+        ],
+        "median_ms": 2.008499,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "nelder-mead.nonsmooth",
+      "method": "nelder-mead",
+      "metrics": {
+        "objective_gap": 1.1375211883546399e-10,
+        "x_linf": 9.021261515584911e-11
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 1.1375211883546399e-10,
+        "nfev": 179,
+        "nit": 94,
+        "status": "Optimization terminated successfully.",
+        "success": true,
+        "x": [
+          0.5000000000902126,
+          -0.24999999998823025
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          52.545356
+        ],
+        "median_ms": 52.545356,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "bfgs.rosenbrock-2",
+      "method": "bfgs",
+      "metrics": {
+        "gradient_linf": 1.704514472448793e-06,
+        "objective_gap": 2.5353057938593767e-15,
+        "x_linf": 5.388090351665653e-08
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 2.5353057938593767e-15,
+        "nfev": 39,
+        "nit": 32,
+        "status": "Optimization terminated successfully.",
+        "success": true,
+        "x": [
+          0.9999999710014011,
+          0.9999999461190965
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          11.053809
+        ],
+        "median_ms": 11.053809,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "bfgs.rosenbrock-20",
+      "method": "bfgs",
+      "metrics": {
+        "gradient_linf": 2.7287461439722494e-06,
+        "objective_gap": 2.0874795632200038e-14,
+        "x_linf": 2.6357726223835698e-08
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 2.0874795632200038e-14,
+        "nfev": 182,
+        "nit": 160,
+        "status": "Optimization terminated successfully.",
+        "success": true,
+        "x": [
+          1.0000000022925575,
+          1.0000000026458096,
+          1.0000000026337936,
+          1.0000000046088309,
+          1.0000000020894624,
+          0.9999999981759419,
+          0.999999999869633,
+          1.0000000000494866,
+          1.0000000003601692,
+          1.0000000007793977,
+          1.0000000027259648,
+          1.0000000040827648,
+          1.0000000046796302,
+          1.0000000038748231,
+          1.0000000025520235,
+          1.000000003768513,
+          1.0000000032078138,
+          1.0000000069629404,
+          1.0000000136696316,
+          1.0000000263577262
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          20.608899,
+          20.711838,
+          20.669939,
+          20.854439,
+          34.209677,
+          20.400268,
+          20.132569
+        ],
+        "median_ms": 20.669939,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "bfgs.ill-conditioned-20",
+      "method": "bfgs",
+      "metrics": {
+        "gradient_linf": 1.011302153131055e-06,
+        "objective_gap": 5.1283786285858075e-18,
+        "x_linf": 5.615931053526424e-10
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 5.1283786285858075e-18,
+        "nfev": 39,
+        "nit": 26,
+        "status": "Optimization terminated successfully.",
+        "success": true,
+        "x": [
+          -0.9999999999984719,
+          -0.8947368421023216,
+          -0.7894736842001824,
+          -0.6842105264335151,
+          -0.5789473678594595,
+          -0.47368421026423585,
+          -0.3684210526710022,
+          -0.26315789468993905,
+          -0.15789473682768299,
+          -0.05263157895727568,
+          0.05263157894641481,
+          0.15789473684336858,
+          0.2631578947369452,
+          0.36842105263153757,
+          0.47368421052630577,
+          0.5789473684210207,
+          0.6842105263157112,
+          0.7894736842103398,
+          0.8947368421048257,
+          0.9999999999989887
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          3.56825
+        ],
+        "median_ms": 3.56825,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "lbfgsb.active-box-50",
+      "method": "lbfgsb",
+      "metrics": {
+        "gradient_linf": 2.0,
+        "objective_gap": 0.0,
+        "projected_gradient_linf": 0.0,
+        "x_linf": 0.0
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 50.0,
+        "nfev": 2,
+        "nit": 1,
+        "status": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+        "success": true,
+        "x": [
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.3563,
+          0.34176,
+          0.322849,
+          0.30786,
+          0.328549,
+          0.30196,
+          0.309651
+        ],
+        "median_ms": 0.322849,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "lbfgsb.fixed-coordinate",
+      "method": "lbfgsb",
+      "metrics": {
+        "gradient_linf": 4.0,
+        "objective_gap": 0.0,
+        "projected_gradient_linf": 8.881784197001252e-16,
+        "x_linf": 4.440892098500626e-16
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 5.0,
+        "nfev": 3,
+        "nit": 2,
+        "status": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+        "success": true,
+        "x": [
+          0.0,
+          -1.0,
+          0.5000000000000002,
+          1.0000000000000002,
+          -0.49999999999999956
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.26458
+        ],
+        "median_ms": 0.26458,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "leastsq.linear-30",
+      "method": "levenberg-marquardt",
+      "metrics": {
+        "cost_gap": 1.232595164407831e-31,
+        "residual_l2": 4.965068306494546e-16,
+        "x_linf": 1.1102230246251565e-16
+      },
+      "operation": "least-squares",
+      "reasons": [],
+      "result": {
+        "fun": 1.232595164407831e-31,
+        "nfev": 7,
+        "nit": null,
+        "residuals": [
+          1.1102230246251565e-16,
+          0.0,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "status": "The relative error between two consecutive iterates is at most 0.000000",
+        "success": true,
+        "x": [
+          2.5,
+          -0.7499999999999999
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.19778,
+          0.15849,
+          0.14757,
+          0.16689,
+          0.15274,
+          0.14237,
+          0.1689
+        ],
+        "median_ms": 0.15849,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "leastsq.rosenbrock-residual",
+      "method": "levenberg-marquardt",
+      "metrics": {
+        "cost_gap": 0.0,
+        "residual_l2": 0.0,
+        "x_linf": 0.0
+      },
+      "operation": "least-squares",
+      "reasons": [],
+      "result": {
+        "fun": 0.0,
+        "nfev": 54,
+        "nit": null,
+        "residuals": [
+          0.0,
+          0.0
+        ],
+        "status": "The relative error between two consecutive iterates is at most 0.000000",
+        "success": true,
+        "x": [
+          1.0,
+          1.0
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.12483
+        ],
+        "median_ms": 0.12483,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "leastsq.rank-deficient",
+      "method": "levenberg-marquardt",
+      "metrics": {
+        "cost_gap": 0.0,
+        "residual_l2": 0.0
+      },
+      "operation": "least-squares",
+      "reasons": [],
+      "result": {
+        "fun": 0.0,
+        "nfev": 6,
+        "nit": null,
+        "residuals": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "status": "The cosine of the angle between func(x) and any column of the\n  Jacobian is at most 0.000000 in absolute value",
+        "success": true,
+        "x": [
+          3.999999999999999,
+          -2.999999999999999
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.11713
+        ],
+        "median_ms": 0.11713,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "leastsq.exponential-decay",
+      "method": "levenberg-marquardt",
+      "metrics": {
+        "cost_gap": 1.6023737137301802e-31,
+        "residual_l2": 5.661048867003676e-16,
+        "x_linf": 2.220446049250313e-16
+      },
+      "operation": "least-squares",
+      "reasons": [],
+      "result": {
+        "fun": 1.6023737137301802e-31,
+        "nfev": 31,
+        "nit": null,
+        "residuals": [
+          0.0,
+          0.0,
+          -2.220446049250313e-16,
+          -2.220446049250313e-16,
+          -2.220446049250313e-16,
+          -2.220446049250313e-16,
+          -1.1102230246251565e-16,
+          -1.1102230246251565e-16,
+          0.0,
+          -1.1102230246251565e-16,
+          0.0,
+          -2.220446049250313e-16,
+          -1.1102230246251565e-16,
+          -5.551115123125783e-17,
+          -5.551115123125783e-17,
+          -5.551115123125783e-17,
+          -5.551115123125783e-17,
+          -5.551115123125783e-17,
+          -5.551115123125783e-17,
+          0.0,
+          0.0,
+          -5.551115123125783e-17,
+          -5.551115123125783e-17,
+          0.0,
+          0.0
+        ],
+        "status": "The relative error between two consecutive iterates is at most 0.000000",
+        "success": true,
+        "x": [
+          2.0,
+          1.5000000000000002,
+          0.25
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.53787
+        ],
+        "median_ms": 0.53787,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "cobyla.linear-boundary",
+      "method": "cobyla",
+      "metrics": {
+        "max_constraint_violation": 0.0001767766952966987,
+        "objective_gap": 0.00026514811219779943,
+        "x_linf": 0.00011393973845197358
+      },
+      "operation": "constrained-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 1.1247348518878022,
+        "nfev": 31,
+        "nit": null,
+        "status": "Return from COBYLA because the trust region radius reaches its lower bound.",
+        "success": true,
+        "x": [
+          0.2500628369568447,
+          1.750113939738452
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          46.002797
+        ],
+        "median_ms": 46.002797,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "cobyla.circle-boundary",
+      "method": "cobyla",
+      "metrics": {
+        "max_constraint_violation": 0.0001007441788687391,
+        "objective_gap": 4.16596678244896e-05,
+        "x_linf": 0.0001887648411692533
+      },
+      "operation": "constrained-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 0.1715312155859854,
+        "nfev": 41,
+        "nit": null,
+        "status": "Return from COBYLA because the trust region radius reaches its lower bound.",
+        "success": true,
+        "x": [
+          0.7072955460277168,
+          0.7069892182687249
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          66.407576,
+          79.187514,
+          57.595227,
+          57.440167,
+          57.237137,
+          57.205986,
+          57.187137
+        ],
+        "median_ms": 57.440167,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "cobyla.infeasible",
+      "method": "cobyla",
+      "metrics": {
+        "max_constraint_violation": 0.5
+      },
+      "operation": "constrained-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 0.25,
+        "nfev": 4,
+        "nit": null,
+        "status": "Did not converge to a solution satisfying the constraints. See `maxcv` for the magnitude of the violation.",
+        "success": false,
+        "x": [
+          0.5
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          9.78992
+        ],
+        "median_ms": 9.78992,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "global.six-hump-camel",
+      "method": "differential-evolution",
+      "metrics": {
+        "objective_gap": 6.780801114603108e-06,
+        "success_rate": 1.0,
+        "x_linf": 0.0012125922968491687
+      },
+      "operation": "global-minimize",
+      "reasons": [],
+      "result": {
+        "fun": -1.0316216726887626,
+        "nfev": 390,
+        "nit": 12,
+        "status": "Optimization terminated successfully.",
+        "success": true,
+        "x": [
+          0.09105460597986248,
+          -0.7123647954708281
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          14.210799
+        ],
+        "median_ms": 14.210799,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": [
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 3.445914716171394e-05,
+            "x_linf": 0.002008230743224537
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0315939943427155,
+            "nfev": 390,
+            "nit": 12,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -0.0894591971837857,
+              0.714664634013638
+            ]
+          },
+          "seed": 0
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 9.17631991930179e-05,
+            "x_linf": 0.004693383421532749
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0315366902906842,
+            "nfev": 480,
+            "nit": 15,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -0.09453539710454606,
+              0.7138418599845613
+            ]
+          },
+          "seed": 1
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 3.746650454994338e-06,
+            "x_linf": 0.0007397601643275853
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316247068394222,
+            "nfev": 450,
+            "nit": 14,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0905817738473409,
+              -0.7131475513888135
+            ]
+          },
+          "seed": 2
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.6214981199524914e-05,
+            "x_linf": 0.001490626661540484
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316122385086777,
+            "nfev": 420,
+            "nit": 13,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0913326403445538,
+              -0.713711364886991
+            ]
+          },
+          "seed": 3
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 7.174417637756392e-07,
+            "x_linf": 0.0004257926493275721
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316277360481134,
+            "nfev": 450,
+            "nit": 14,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -0.08941622103368574,
+              0.712586056605391
+            ]
+          },
+          "seed": 4
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.031443638075061e-05,
+            "x_linf": 0.001906900398859157
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0315881390534964,
+            "nfev": 450,
+            "nit": 14,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -0.09174891408187247,
+              0.7145606729365124
+            ]
+          },
+          "seed": 5
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 9.2611227275885e-06,
+            "x_linf": 0.0009791672769020043
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316191923671496,
+            "nfev": 450,
+            "nit": 14,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.09082118095991532,
+              -0.7118923287333538
+            ]
+          },
+          "seed": 6
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 3.598623073086671e-06,
+            "x_linf": 0.000554002293515321
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.031624854866804,
+            "nfev": 420,
+            "nit": 13,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -0.09030381202457605,
+              0.7121024009768981
+            ]
+          },
+          "seed": 7
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.772681638787191e-06,
+            "x_linf": 0.0007408757122531195
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316236808082384,
+            "nfev": 420,
+            "nit": 13,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.09021824450556237,
+              -0.7133972789826666
+            ]
+          },
+          "seed": 8
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.810178147354513e-05,
+            "x_linf": 0.0021600437978582243
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316103517084037,
+            "nfev": 450,
+            "nit": 14,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.09200205748087154,
+              -0.7127015190558161
+            ]
+          },
+          "seed": 9
+        }
+      ]
+    },
+    {
+      "accepted": false,
+      "benchmark": true,
+      "error": null,
+      "id": "global.rastrigin-5",
+      "method": "differential-evolution",
+      "metrics": {
+        "objective_gap": 0.0,
+        "success_rate": 0.5,
+        "x_linf": 3.032419044757262e-09
+      },
+      "operation": "global-minimize",
+      "reasons": [
+        "success_rate=0.5 is below 0.8 over 20 seeds"
+      ],
+      "result": {
+        "fun": 0.0,
+        "nfev": 13700,
+        "nit": 136,
+        "status": "Optimization terminated successfully.",
+        "success": true,
+        "x": [
+          -1.282825223825057e-10,
+          -3.032419044757262e-09,
+          2.379741772529087e-09,
+          2.7833846161229303e-09,
+          1.506248281657463e-10
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          583.763442,
+          575.327643,
+          577.459853,
+          605.55943,
+          607.804901,
+          552.035104,
+          558.785544
+        ],
+        "median_ms": 577.459853,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": [
+        {
+          "accepted": false,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.9950016648576678,
+            "x_linf": 0.9948566206653425
+          },
+          "reasons": [
+            "x_linf=0.9948566206653425 exceeds 0.02",
+            "objective_gap=0.9950016648576678 exceeds 0.005"
+          ],
+          "result": {
+            "fun": 0.9950016648576678,
+            "nfev": 6700,
+            "nit": 66,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -0.9948566206653425,
+              -0.00018296241029020166,
+              -0.00011571917131391274,
+              5.138268476457597e-05,
+              0.00039351870737391436
+            ]
+          },
+          "seed": 0
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 3.1400827538163866e-09
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 16200,
+            "nit": 161,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -1.1813773426183617e-09,
+              -2.313555000910128e-09,
+              1.968819560715929e-09,
+              -7.30395868231426e-10,
+              -3.1400827538163866e-09
+            ]
+          },
+          "seed": 1
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 2.815489779095515e-09
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 13500,
+            "nit": 134,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              4.812920906260842e-10,
+              2.815489779095515e-09,
+              1.6496903754159575e-09,
+              1.0918529369519093e-09,
+              1.333703494310612e-09
+            ]
+          },
+          "seed": 2
+        },
+        {
+          "accepted": false,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.9950242448806463,
+            "x_linf": 0.9944601251504116
+          },
+          "reasons": [
+            "x_linf=0.9944601251504116 exceeds 0.02",
+            "objective_gap=0.9950242448806463 exceeds 0.005"
+          ],
+          "result": {
+            "fun": 0.9950242448806463,
+            "nfev": 7800,
+            "nit": 77,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              7.224447859016436e-05,
+              -0.00022321768917834108,
+              -0.00014060287115285066,
+              7.337383795857023e-05,
+              0.9944601251504116
+            ]
+          },
+          "seed": 3
+        },
+        {
+          "accepted": false,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.9949823553925015,
+            "x_linf": 0.9950242621082481
+          },
+          "reasons": [
+            "x_linf=0.9950242621082481 exceeds 0.02",
+            "objective_gap=0.9949823553925015 exceeds 0.005"
+          ],
+          "result": {
+            "fun": 0.9949823553925015,
+            "nfev": 7600,
+            "nit": 75,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -0.00018223759383317883,
+              0.00022305171350922137,
+              -0.9950242621082481,
+              9.854741799699696e-05,
+              0.00014302797198638474
+            ]
+          },
+          "seed": 4
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 1.93560936168069e-09
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 14500,
+            "nit": 144,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              1.7070681224140572e-09,
+              5.377478373702615e-10,
+              -7.18843580216344e-10,
+              1.93560936168069e-09,
+              -1.0721868193286355e-09
+            ]
+          },
+          "seed": 5
+        },
+        {
+          "accepted": false,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.9950545559947628,
+            "x_linf": 0.9953913401844466
+          },
+          "reasons": [
+            "x_linf=0.9953913401844466 exceeds 0.02",
+            "objective_gap=0.9950545559947628 exceeds 0.005"
+          ],
+          "result": {
+            "fun": 0.9950545559947628,
+            "nfev": 7100,
+            "nit": 70,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.9953913401844466,
+              -7.970795246933448e-05,
+              -9.153188081029384e-05,
+              0.0005284333601650815,
+              -1.5754294159933125e-05
+            ]
+          },
+          "seed": 6
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 3.399180741325836e-09
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 13600,
+            "nit": 135,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -2.480669536453206e-10,
+              9.568179848429282e-10,
+              -8.541547913409886e-10,
+              -3.0636027759101126e-09,
+              -3.399180741325836e-09
+            ]
+          },
+          "seed": 7
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 1.9666538264573318e-09
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 13600,
+            "nit": 135,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -5.389716761783348e-10,
+              -1.556950905978738e-09,
+              1.9666538264573318e-09,
+              4.3742261368606707e-10,
+              1.5077137049956945e-09
+            ]
+          },
+          "seed": 8
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 2.789561222016346e-09
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 14000,
+            "nit": 139,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              2.7729777229978935e-09,
+              1.0441362974233925e-09,
+              -2.588379857115797e-09,
+              1.845236283770646e-09,
+              2.789561222016346e-09
+            ]
+          },
+          "seed": 9
+        },
+        {
+          "accepted": false,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.9950760616432532,
+            "x_linf": 0.9951972502553338
+          },
+          "reasons": [
+            "x_linf=0.9951972502553338 exceeds 0.02",
+            "objective_gap=0.9950760616432532 exceeds 0.005"
+          ],
+          "result": {
+            "fun": 0.9950760616432532,
+            "nfev": 8300,
+            "nit": 82,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.00018191471897807787,
+              0.0003401301561461878,
+              0.9951972502553338,
+              0.0005185118556528324,
+              -0.00033944078446609185
+            ]
+          },
+          "seed": 10
+        },
+        {
+          "accepted": false,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.9951064906595377,
+            "x_linf": 0.994608730226646
+          },
+          "reasons": [
+            "x_linf=0.994608730226646 exceeds 0.02",
+            "objective_gap=0.9951064906595377 exceeds 0.005"
+          ],
+          "result": {
+            "fun": 0.9951064906595377,
+            "nfev": 6200,
+            "nit": 61,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.994608730226646,
+              0.00010191966697902898,
+              0.0004268187503748777,
+              -0.00018247780896274435,
+              -0.0006284200467808887
+            ]
+          },
+          "seed": 11
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 4.100382966498728e-09
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 13500,
+            "nit": 134,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -3.021862653440621e-09,
+              1.2836392215831438e-09,
+              -7.46747446100926e-10,
+              3.0848264032101726e-09,
+              4.100382966498728e-09
+            ]
+          },
+          "seed": 12
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 4.2483225115574896e-09
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 14700,
+            "nit": 146,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -6.875967528685578e-10,
+              3.5539892451197376e-09,
+              2.5872896003420466e-09,
+              4.2483225115574896e-09,
+              1.5559260191366775e-09
+            ]
+          },
+          "seed": 13
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 2.6000134312198496e-09
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 15100,
+            "nit": 150,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -1.4892407307343092e-09,
+              2.7085320652986414e-10,
+              -1.2162462326159585e-09,
+              -1.4707501350130769e-09,
+              -2.6000134312198496e-09
+            ]
+          },
+          "seed": 14
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 3.2974634223137402e-09
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 15300,
+            "nit": 152,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              2.2022254597686696e-09,
+              1.2106056601624006e-10,
+              4.760249794344418e-10,
+              2.018085751842591e-09,
+              -3.2974634223137402e-09
+            ]
+          },
+          "seed": 15
+        },
+        {
+          "accepted": false,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.995049740445701,
+            "x_linf": 0.9951940215396928
+          },
+          "reasons": [
+            "x_linf=0.9951940215396928 exceeds 0.02",
+            "objective_gap=0.995049740445701 exceeds 0.005"
+          ],
+          "result": {
+            "fun": 0.995049740445701,
+            "nfev": 8200,
+            "nit": 81,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.00014217367534342885,
+              -0.0005715878523994888,
+              0.9951940215396928,
+              -6.299906687900148e-05,
+              0.0002254290471296372
+            ]
+          },
+          "seed": 16
+        },
+        {
+          "accepted": false,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.9901754937079943,
+            "x_linf": 0.994409825694911
+          },
+          "reasons": [
+            "x_linf=0.994409825694911 exceeds 0.02",
+            "objective_gap=1.9901754937079943 exceeds 0.005"
+          ],
+          "result": {
+            "fun": 1.9901754937079943,
+            "nfev": 7300,
+            "nit": 72,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0002755931787623922,
+              0.994409825694911,
+              0.00010977109896657566,
+              -0.0005142799454040415,
+              0.9941560377531278
+            ]
+          },
+          "seed": 17
+        },
+        {
+          "accepted": false,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.9949736110922771,
+            "x_linf": 0.995191130784001
+          },
+          "reasons": [
+            "x_linf=0.995191130784001 exceeds 0.02",
+            "objective_gap=0.9949736110922771 exceeds 0.005"
+          ],
+          "result": {
+            "fun": 0.9949736110922771,
+            "nfev": 6800,
+            "nit": 67,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0001197216852733618,
+              0.995191130784001,
+              3.747192679611544e-05,
+              1.9726479426935838e-05,
+              5.662434964847307e-05
+            ]
+          },
+          "seed": 18
+        },
+        {
+          "accepted": false,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.9949746773724044,
+            "x_linf": 0.9951723857253916
+          },
+          "reasons": [
+            "x_linf=0.9951723857253916 exceeds 0.02",
+            "objective_gap=0.9949746773724044 exceeds 0.005"
+          ],
+          "result": {
+            "fun": 0.9949746773724044,
+            "nfev": 7100,
+            "nit": 70,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -0.00014681627975335232,
+              2.7416416224923525e-05,
+              1.5184142166617677e-05,
+              -0.9951723857253916,
+              -0.00010262103161323921
+            ]
+          },
+          "seed": 19
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "global.ackley-5",
+      "method": "differential-evolution",
+      "metrics": {
+        "objective_gap": 3.9968028886505635e-15,
+        "success_rate": 1.0,
+        "x_linf": 1.6653345369377348e-15
+      },
+      "operation": "global-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 3.9968028886505635e-15,
+        "nfev": 17000,
+        "nit": 169,
+        "status": "Optimization terminated successfully.",
+        "success": true,
+        "x": [
+          0.0,
+          -1.6653345369377348e-15,
+          -1.1102230246251565e-15,
+          0.0,
+          -1.6653345369377348e-15
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          771.67276
+        ],
+        "median_ms": 771.67276,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": [
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 5.551115123125783e-16
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18200,
+            "nit": 181,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              -5.551115123125783e-16,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 0
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18000,
+            "nit": 179,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 1
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 17900,
+            "nit": 178,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 2
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 3.9968028886505635e-15,
+            "x_linf": 1.6653345369377348e-15
+          },
+          "reasons": [],
+          "result": {
+            "fun": 3.9968028886505635e-15,
+            "nfev": 17700,
+            "nit": 176,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -1.1102230246251565e-15,
+              1.1102230246251565e-15,
+              1.1102230246251565e-15,
+              -1.6653345369377348e-15,
+              0.0
+            ]
+          },
+          "seed": 3
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 5.551115123125783e-16
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18400,
+            "nit": 183,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -5.551115123125783e-16
+            ]
+          },
+          "seed": 4
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18900,
+            "nit": 188,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 5
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 5.551115123125783e-16
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 19100,
+            "nit": 190,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -5.551115123125783e-16,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 6
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18300,
+            "nit": 182,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 7
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 3.9968028886505635e-15,
+            "x_linf": 1.6653345369377348e-15
+          },
+          "reasons": [],
+          "result": {
+            "fun": 3.9968028886505635e-15,
+            "nfev": 17200,
+            "nit": 171,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              -1.6653345369377348e-15,
+              0.0,
+              -1.6653345369377348e-15,
+              -5.551115123125783e-16
+            ]
+          },
+          "seed": 8
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18500,
+            "nit": 184,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 9
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 5.551115123125783e-16
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18200,
+            "nit": 181,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              -5.551115123125783e-16,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 10
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18600,
+            "nit": 185,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 11
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 5.551115123125783e-16
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18400,
+            "nit": 183,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -5.551115123125783e-16
+            ]
+          },
+          "seed": 12
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18000,
+            "nit": 179,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 13
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 5.551115123125783e-16
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18200,
+            "nit": 181,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              -5.551115123125783e-16,
+              0.0
+            ]
+          },
+          "seed": 14
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 5.551115123125783e-16
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18800,
+            "nit": 187,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              -5.551115123125783e-16,
+              0.0
+            ]
+          },
+          "seed": 15
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18100,
+            "nit": 180,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 16
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 19000,
+            "nit": 189,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 17
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18500,
+            "nit": 184,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 18
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 18900,
+            "nit": 188,
+            "status": "Optimization terminated successfully.",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 19
+        }
+      ]
+    }
+  ],
+  "schema": "sagejs.numerical-optimization-results/v1",
+  "started_unix": 1788141064.090326,
+  "subject_ref": "scipy-1.18.0",
+  "summary": {
+    "accepted": 24,
+    "cases": 25,
+    "failed": 1
+  }
+}

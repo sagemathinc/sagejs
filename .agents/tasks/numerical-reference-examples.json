@@ -1,0 +1,85 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerical-reference-examples",
+  "title": "Numerical Reference Examples",
+  "lane": "documentation-compat",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add and verify portable executable reference examples for every flagship numerical DocSpec entry without weakening website coverage",
+  "base_commit": "fa793b4a422638e82fe678e8be2412fda6082fd8",
+  "claims": [
+    "scripts/reference-examples.cjs",
+    "docs/reference/fixtures/numerical.cjs",
+    "docs/reference/api.md",
+    "website/reference-data.json",
+    "website/reference-results.json",
+    "website/reference.html"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/numerical-computing-product-plan.md",
+    "docs/numerical-computing/"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Sage.js reference doctest runner in a portable no-optional-native configuration"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm docs:check",
+    "pnpm test:tutorial",
+    "node --test test/reference-examples.cjs test/website.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.498,
+      "started_at": "2026-09-02T23:11:41.642Z",
+      "commit": "fa793b4a422638e82fe678e8be2412fda6082fd8",
+      "workspace_fingerprint": "81a435b76b0ea70241102903bb5edd6e42c9a8e1c4742bd7f67231390bbbd251",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.247,
+      "started_at": "2026-09-02T23:12:56.529Z",
+      "commit": "fa793b4a422638e82fe678e8be2412fda6082fd8",
+      "workspace_fingerprint": "81a435b76b0ea70241102903bb5edd6e42c9a8e1c4742bd7f67231390bbbd251",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/reference-examples.cjs test/website.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.144,
+      "started_at": "2026-09-02T23:13:05.086Z",
+      "commit": "fa793b4a422638e82fe678e8be2412fda6082fd8",
+      "workspace_fingerprint": "81a435b76b0ea70241102903bb5edd6e42c9a8e1c4742bd7f67231390bbbd251",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added eight small portable executable workflows for the flagship numerical DocSpec entries, registered their repository provenance with the reference collector, regenerated the published reference assets, and verified all examples through the public doctest pipeline.",
+    "risks": [
+      "The source-tree Sage-mode reference verifier still loads the repository's standard FLINT runtime infrastructure globally; these examples do not import optional native packages or request external numerical backends, and the normal verifier passed 224 examples with zero failures."
+    ],
+    "next_steps": [
+      "Cherry-pick this commit into the integration lane and regenerate reference assets if later DocSpec changes alter the same generated files.",
+      "Retain these workflows in browser and four-platform release qualification so public reference coverage stays executable."
+    ]
+  }
+}

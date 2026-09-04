@@ -98,6 +98,8 @@ test("the production artifact manifest is deterministic and uses dist-relative f
       [
         "algebraic",
         "m4ri",
+        "cminpack",
+        "nlopt",
         "compiled-flint",
         "compiled-gmp",
         "conway-data",

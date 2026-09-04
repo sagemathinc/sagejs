@@ -1,0 +1,1606 @@
+{
+  "backend": {
+    "name": "nlopt-ctypes",
+    "version": "2.11.0@/tmp/sagejs-numerical-backends/nlopt-build-shared/libnlopt.so.1.1.0"
+  },
+  "corpus_schema": "sagejs.numerical-optimization-corpus/v1",
+  "elapsed_seconds": 6.085850954055786,
+  "environment": {
+    "implementation": "cpython",
+    "machine": "x86_64",
+    "node": null,
+    "platform": "Linux-6.17.0-1022-gcp-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "repository_revision": "5aaf6360a2a3a3213318bf6bc9723a17f58746b3"
+  },
+  "protocol": {
+    "clock": "time.perf_counter_ns",
+    "problem_setup_inside_timer": false,
+    "samples": 7,
+    "solver_and_callback_inside_timer": true,
+    "warmups": 1
+  },
+  "results": [
+    {
+      "accepted": false,
+      "benchmark": true,
+      "error": null,
+      "id": "scalar.smooth-interior",
+      "method": "bounded",
+      "metrics": {
+        "objective_gap": 1.455191522838803e-11,
+        "x_linf": 3.814697265625e-06
+      },
+      "operation": "scalar-minimize",
+      "reasons": [
+        "x_linf=3.814697265625e-06 exceeds 5e-07",
+        "objective_gap=1.455191522838803e-11 exceeds 1e-12"
+      ],
+      "result": {
+        "fun": 1.455191522838803e-11,
+        "nfev": 36,
+        "nit": null,
+        "status": "NLopt: function tolerance reached",
+        "success": true,
+        "x": [
+          0.2500038146972656
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.07703,
+          0.05764,
+          0.05343,
+          0.0515,
+          0.0553,
+          0.05032,
+          0.05207
+        ],
+        "median_ms": 0.05343,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "scalar.boundary",
+      "method": "bounded",
+      "metrics": {
+        "objective_gap": 0.0,
+        "x_linf": 0.0
+      },
+      "operation": "scalar-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 0.1353352832366127,
+        "nfev": 4,
+        "nit": null,
+        "status": "NLopt: parameter tolerance reached",
+        "success": true,
+        "x": [
+          -2.0
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.03006
+        ],
+        "median_ms": 0.03006,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "nelder-mead.rosenbrock-2",
+      "method": "nelder-mead",
+      "metrics": {
+        "gradient_linf": 6.190453174225051e-05,
+        "objective_gap": 2.7378438920240845e-11,
+        "x_linf": 1.0010320652176219e-05
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 2.7378438920240845e-11,
+        "nfev": 196,
+        "nit": null,
+        "status": "NLopt: function tolerance reached",
+        "success": true,
+        "x": [
+          0.9999950844974547,
+          0.9999899896793478
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.32183,
+          0.31679,
+          0.32445,
+          0.31672,
+          0.30884,
+          0.32568,
+          0.31388
+        ],
+        "median_ms": 0.31679,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "nelder-mead.beale",
+      "method": "nelder-mead",
+      "metrics": {
+        "objective_gap": 4.903198942610882e-11,
+        "x_linf": 8.89500205669691e-06
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 4.903198942610882e-11,
+        "nfev": 87,
+        "nit": null,
+        "status": "NLopt: function tolerance reached",
+        "success": true,
+        "x": [
+          2.9999911049979433,
+          0.49999653855778414
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.12668
+        ],
+        "median_ms": 0.12668,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "nelder-mead.nonsmooth",
+      "method": "nelder-mead",
+      "metrics": {
+        "objective_gap": 3.4854655051042016e-08,
+        "x_linf": 3.107157603432498e-08
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 3.4854655051042016e-08,
+        "nfev": 126,
+        "nit": null,
+        "status": "NLopt: parameter tolerance reached",
+        "success": true,
+        "x": [
+          0.49999996892842397,
+          -0.2499999981084605
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.13865
+        ],
+        "median_ms": 0.13865,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "cobyla.linear-boundary",
+      "method": "cobyla",
+      "metrics": {
+        "max_constraint_violation": 0.0,
+        "objective_gap": 1.8256729461541e-10,
+        "x_linf": 9.554239279951915e-06
+      },
+      "operation": "constrained-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 1.1250000001825673,
+        "nfev": 60,
+        "nit": null,
+        "status": "NLopt: function tolerance reached",
+        "success": true,
+        "x": [
+          0.24999044576072005,
+          1.7500095542392797
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.31549
+        ],
+        "median_ms": 0.31549,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "cobyla.circle-boundary",
+      "method": "cobyla",
+      "metrics": {
+        "max_constraint_violation": 1.819322470453244e-12,
+        "objective_gap": 7.532585666325531e-13,
+        "x_linf": 1.0395791227857387e-08
+      },
+      "operation": "constrained-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 0.17157287525305664,
+        "nfev": 61,
+        "nit": null,
+        "status": "NLopt: function tolerance reached",
+        "success": true,
+        "x": [
+          0.7071067915823388,
+          0.7071067707920425
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.18538,
+          0.16157,
+          0.15943,
+          0.17239,
+          0.16063,
+          0.15967,
+          0.16387
+        ],
+        "median_ms": 0.16157,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": false,
+      "benchmark": false,
+      "error": null,
+      "id": "cobyla.infeasible",
+      "method": "cobyla",
+      "metrics": {
+        "max_constraint_violation": 0.5
+      },
+      "operation": "constrained-minimize",
+      "reasons": [
+        "solver reported success for a declared infeasible case"
+      ],
+      "result": {
+        "fun": 0.25,
+        "nfev": 16,
+        "nit": null,
+        "status": "NLopt: parameter tolerance reached",
+        "success": true,
+        "x": [
+          0.5
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.07594
+        ],
+        "median_ms": 0.07594,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "global.six-hump-camel",
+      "method": "differential-evolution",
+      "metrics": {
+        "objective_gap": 2.7641222644092522e-11,
+        "success_rate": 1.0,
+        "x_linf": 2.2522904640498442e-06
+      },
+      "operation": "global-minimize",
+      "reasons": [],
+      "result": {
+        "fun": -1.031628453462236,
+        "nfev": 832,
+        "nit": null,
+        "status": "CRS2-LM comparison: function tolerance reached",
+        "success": true,
+        "x": [
+          -0.08984426597347736,
+          0.712655551629608
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          1.01212
+        ],
+        "median_ms": 1.01212,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": [
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 3.692295358348474e-10,
+            "x_linf": 5.788231627001927e-06
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284531206477,
+            "nfev": 726,
+            "nit": null,
+            "status": "CRS2-LM comparison: function tolerance reached",
+            "success": true,
+            "x": [
+              -0.08984625984436079,
+              0.7126506150387865
+            ]
+          },
+          "seed": 0
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.4567014261501754e-11,
+            "x_linf": 1.6175938918061572e-06
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284534753102,
+            "nfev": 806,
+            "nit": null,
+            "status": "CRS2-LM comparison: function tolerance reached",
+            "success": true,
+            "x": [
+              -0.08984363127690512,
+              0.712657238039995
+            ]
+          },
+          "seed": 1
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 7.342570995660935e-11,
+            "x_linf": 3.067621510713381e-06
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284534164515,
+            "nfev": 789,
+            "nit": null,
+            "status": "CRS2-LM comparison: function tolerance reached",
+            "success": true,
+            "x": [
+              0.08984508130452402,
+              -0.7126587163051568
+            ]
+          },
+          "seed": 2
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.9717960597631645e-10,
+            "x_linf": 7.093551817854982e-06
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284532926976,
+            "nfev": 834,
+            "nit": null,
+            "status": "CRS2-LM comparison: function tolerance reached",
+            "success": true,
+            "x": [
+              0.08983492013119546,
+              -0.7126565306773148
+            ]
+          },
+          "seed": 3
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 2.2644108810254693e-12,
+            "x_linf": 4.3194548032809976e-07
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284534876128,
+            "nfev": 902,
+            "nit": null,
+            "status": "CRS2-LM comparison: function tolerance reached",
+            "success": true,
+            "x": [
+              -0.08984244562849364,
+              0.7126559956334061
+            ]
+          },
+          "seed": 4
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 3.643751966819764e-12,
+            "x_linf": 6.410115848121123e-07
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284534862334,
+            "nfev": 840,
+            "nit": null,
+            "status": "CRS2-LM comparison: function tolerance reached",
+            "success": true,
+            "x": [
+              -0.0898418166041222,
+              0.7126570442819983
+            ]
+          },
+          "seed": 5
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.1655567883935873e-11,
+            "x_linf": 2.21890227103394e-06
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284534482216,
+            "nfev": 791,
+            "nit": null,
+            "status": "CRS2-LM comparison: function tolerance reached",
+            "success": true,
+            "x": [
+              -0.08984107577278538,
+              0.7126541843681424
+            ]
+          },
+          "seed": 6
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 2.196176573932007e-11,
+            "x_linf": 1.5058874847095893e-06
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284534679154,
+            "nfev": 866,
+            "nit": null,
+            "status": "CRS2-LM comparison: function tolerance reached",
+            "success": true,
+            "x": [
+              -0.08984086668902287,
+              0.7126548973829288
+            ]
+          },
+          "seed": 7
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 2.6695978760926664e-11,
+            "x_linf": 1.7778400489554258e-06
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284534631812,
+            "nfev": 881,
+            "nit": null,
+            "status": "CRS2-LM comparison: function tolerance reached",
+            "success": true,
+            "x": [
+              -0.08984274961015581,
+              0.7126581811104624
+            ]
+          },
+          "seed": 8
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 2.614597427452736e-11,
+            "x_linf": 1.649828516914198e-06
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284534637312,
+            "nfev": 823,
+            "nit": null,
+            "status": "CRS2-LM comparison: function tolerance reached",
+            "success": true,
+            "x": [
+              0.0898432406625648,
+              -0.7126580530989304
+            ]
+          },
+          "seed": 9
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "global.rastrigin-5",
+      "method": "differential-evolution",
+      "metrics": {
+        "objective_gap": 0.0,
+        "success_rate": 1.0,
+        "x_linf": 0.0
+      },
+      "operation": "global-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 0.0,
+        "nfev": 50100,
+        "nit": null,
+        "status": "CRS2-LM comparison: maximum evaluations reached",
+        "success": true,
+        "x": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          114.191543,
+          114.045442,
+          114.334983,
+          114.056003,
+          114.017272,
+          114.404433,
+          114.182662
+        ],
+        "median_ms": 114.182662,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": [
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 0
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 1
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 2
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 3
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 4
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 5
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 6
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 7
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 8
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 9
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 10
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 11
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 12
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 13
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 14
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 15
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 16
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 17
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 18
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 19
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "global.ackley-5",
+      "method": "differential-evolution",
+      "metrics": {
+        "objective_gap": 4.440892098500626e-16,
+        "success_rate": 1.0,
+        "x_linf": 0.0
+      },
+      "operation": "global-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 4.440892098500626e-16,
+        "nfev": 50100,
+        "nit": null,
+        "status": "CRS2-LM comparison: maximum evaluations reached",
+        "success": true,
+        "x": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          135.154981
+        ],
+        "median_ms": 135.154981,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": [
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 0
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 1
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 2
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 3
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 4
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 5
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 6
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 7
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 8
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 9
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 10
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 11
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 12
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 13
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 14
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 15
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 16
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 17
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 18
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.440892098500626e-16,
+            "x_linf": 0.0
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.440892098500626e-16,
+            "nfev": 50100,
+            "nit": null,
+            "status": "CRS2-LM comparison: maximum evaluations reached",
+            "success": true,
+            "x": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 19
+        }
+      ]
+    }
+  ],
+  "schema": "sagejs.numerical-optimization-results/v1",
+  "started_unix": 1788141106.0567636,
+  "subject_ref": "6e6593f131ba3a38bc9edbed0a357bc01526e54b",
+  "summary": {
+    "accepted": 9,
+    "cases": 11,
+    "failed": 2
+  }
+}

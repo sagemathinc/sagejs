@@ -5329,17 +5329,28 @@ def ρσ_resolve_module_name(
     hoisted, so a direct read would instead yield `undefined` and suppress
     idioms such as `try: set; except NameError: ...`.
     """
+    declared_in_module = False
     if module_namespace is not None and _builtins_has_member(module_namespace, name):
-        # A present-but-undefined live cell is a deleted/uninitialized Python
-        # module binding. Return it so the surrounding unbound check raises
-        # NameError instead of accidentally exposing a same-named JS host.
-        return _builtins_get_member(module_namespace, name)
+        declared_in_module = True
+        module_value = _builtins_get_member(module_namespace, name)
+        if module_value is not runtime.undefined:
+            return module_value
+        # Reusable cells expose lexical variables through accessors before
+        # executing the cell body.  An undefined accessor is therefore the
+        # representation of a missing module-dictionary entry, not a Python
+        # binding which shadows builtins.  Match CPython's module LOAD_NAME:
+        # an annotated-but-unassigned, not-yet-assigned, or deleted module
+        # name falls through to builtins.  This is what makes both
+        # ``len = len([1])`` and Sage's ``i = CC(i)`` valid at top level.
     if value is not runtime.undefined:
         return value
     if _builtins_has_member(module_builtins, name):
         builtin_value = _builtins_get_member(module_builtins, name)
         if builtin_value is not runtime.undefined:
             return builtin_value
+    if declared_in_module:
+        # Deleted Python bindings may use Python builtins, never JS globals.
+        raise NameError("name '" + name + "' is not defined")
     if _builtins_has_member(runtime.global_object, name):
         global_value = _builtins_get_member(runtime.global_object, name)
         if global_value is not runtime.undefined:
@@ -7064,6 +7075,19 @@ def denominator(value: Any) -> Any:
     raise TypeError("denominator() is not defined for this value")
 
 
+def _factorial_product(start: Any, stop: Any) -> Any:
+    """Return the balanced exact product from `start` through `stop`."""
+    if start > stop:
+        return runtime.bigint(1)
+    if stop - start <= 32:
+        answer = runtime.bigint(1)
+        for factor in range(start, stop + 1):
+            answer *= runtime.bigint(factor)
+        return answer
+    middle = (start + stop) // 2
+    return _factorial_product(start, middle) * _factorial_product(middle + 1, stop)
+
+
 def factorial(value: Any) -> Any:
     if not runtime.is_exact_integer(value):
         raise TypeError("factorial() requires an integer")
@@ -7072,9 +7096,19 @@ def factorial(value: Any) -> Any:
         raise ValueError("factorial() is not defined for negative integers")
     if integer > runtime.bigint(4294967295):
         raise OverflowError("factorial() argument is too large")
-    return runtime.normalize_integer(
-        runtime.flint_backend().factorial(runtime.number(integer))
-    )
+    integer_number = runtime.number(integer)
+    backend = runtime.optional_flint_backend()
+    if backend is not None:
+        native_factorial = runtime.reflect.get(backend, "factorial")
+        if runtime.jstype(native_factorial) == "function":
+            return runtime.normalize_integer(
+                runtime.reflect.apply(
+                    native_factorial,
+                    backend,
+                    [integer_number],
+                )
+            )
+    return _factorial_product(2, integer_number)
 
 
 def binomial(n: Any, k: Any) -> Any:

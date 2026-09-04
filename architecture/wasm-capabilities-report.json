@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "7ae88846a7e9faf8775d50a20703896b2bedba07d6769bba2fe5192ba7fab774",
+  "source_sha256": "bfbda475231786996c22f2f39318e552ca767fd7480ef3cd5f15f1ccbfbd5c25",
   "counts": {
-    "total": 1047,
+    "total": 1049,
     "by_kind": {
       "declared-ffi-function": 456,
       "declared-ffi-resource": 34,
       "napi-export": 331,
       "production-kernel": 53,
       "runtime-intrinsic": 147,
-      "specialist-capability": 26
+      "specialist-capability": 28
     },
     "by_disposition": {
       "compiled-source": 53,
       "desktop-only": 47,
       "generated-wasm": 339,
       "portable-fallback": 560,
-      "shared-core": 48
+      "shared-core": 50
     },
     "by_status": {
-      "available": 582,
+      "available": 584,
       "desktop-only": 47,
       "fallback": 418
     }
@@ -184,8 +184,7 @@
       "ffi:flint:fmpz_matrix_right_kernel"
     ],
     "symbolic-numerical-kernels": [
-      "specialist:symbolic-numerical-integral-wasm",
-      "specialist:symbolic-find-root-wasm"
+      "specialist:symbolic-numerical-integral-wasm"
     ]
   },
   "capabilities": [
@@ -12847,6 +12846,25 @@
       "explanation": "The authoritative Tree-sitter frontend is already bundled as browser Wasm and tested through public evaluation."
     },
     {
+      "id": "wasm-library:cminpack:least-squares-explicit",
+      "family": "numerical",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-python-damped-gauss-newton-for-automatic-selection; explicit-requests-fail-closed",
+      "wasm_module": "cminpack",
+      "public_consumers": [
+        "sagejs.numerics.optimization.least_squares",
+        "sagejs.numerics.optimization.curve_fit"
+      ],
+      "explanation": "Explicit nonlinear least-squares requests can use authenticated cminpack lmdif or lmder in Node, browsers, and SEA; automatic planning remains on the ordinary-Python method.",
+      "resource_limits": {
+        "maximum_parameters": 256,
+        "maximum_residuals": 16384,
+        "maximum_workspace_bytes": 67108864,
+        "maximum_memory_bytes": 134217728
+      }
+    },
+    {
       "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",
       "family": "multivariate-polynomials",
       "disposition": "shared-core",
@@ -12857,6 +12875,24 @@
         "MultivariatePolynomialElement.resultant over ZZ"
       ],
       "explanation": "Supported exact ZZ multivariate resultants run as one bounded receipt-authenticated FLINT Wasm call; unsupported domains fail explicitly in browsers."
+    },
+    {
+      "id": "wasm-library:nlopt:derivative-free-explicit",
+      "family": "numerical",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-python-methods-for-automatic-selection; explicit-requests-fail-closed",
+      "wasm_module": "nlopt",
+      "public_consumers": [
+        "sagejs.numerics.optimization.minimize"
+      ],
+      "explanation": "Explicit derivative-free minimization can use authenticated NLopt Nelder-Mead in Node, browsers, and SEA. Automatic planning remains on ordinary Python, nonlinear constraints are unsupported pending a sanitizer-clean backend, and an unavailable or contradictory NLopt result fails closed.",
+      "resource_limits": {
+        "maximum_parameters": 128,
+        "maximum_constraints": 0,
+        "maximum_workspace_bytes": 67108864,
+        "maximum_memory_bytes": 134217728
+      }
     }
   ]
 }

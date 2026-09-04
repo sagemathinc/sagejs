@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-31",
+  "platform": "linux-x64",
+  "node": "26.7.0",
+  "command": "node bench/numerics/statistics/benchmark.cjs --check",
+  "workload": {
+    "descriptive_observations": 20000,
+    "student_t_cdf_evaluations": 2001,
+    "normal_draws": 5000,
+    "linear_regression_pairs": 5000,
+    "huber_regression_pairs": 160
+  },
+  "cpython": {
+    "describe_20000_ms": 19.222337985411286,
+    "huber_regression_160_ms": 2.7908800402656198,
+    "linear_regression_5000_ms": 14.566048979759216,
+    "normal_sample_5000_ms": 17.6563790300861,
+    "student_t_cdf_2001_ms": 13.951238943263888,
+    "witness": {
+      "cdf_sum": 1000.5,
+      "huber_slope": -0.7499778773418926,
+      "huber_status": "converged",
+      "linear_slope": 2.5000000244752014,
+      "sample_count": 5000,
+      "sample_first": [
+        0.16100429696574214,
+        -2.7208451548106254,
+        0.14944699404141848
+      ],
+      "summary_mean": 1000000049.95
+    }
+  },
+  "sagejs": {
+    "describe_20000_ms": 1856.0497760772705,
+    "huber_regression_160_ms": 223.73414039611816,
+    "linear_regression_5000_ms": 1379.305124282837,
+    "normal_sample_5000_ms": 884.749174118042,
+    "student_t_cdf_2001_ms": 608.0780029296875,
+    "witness": {
+      "cdf_sum": 1000.5,
+      "huber_slope": -0.7499778773418926,
+      "huber_status": "converged",
+      "linear_slope": 2.5000000244752014,
+      "sample_count": 5000,
+      "sample_first": [
+        0.16100429696574214,
+        -2.7208451548106254,
+        0.14944699404141848
+      ],
+      "summary_mean": 1000000049.95
+    }
+  },
+  "payload": {
+    "python_source_files": 11,
+    "raw_bytes": 186002,
+    "gzip_bytes": 35410,
+    "native_dependencies_added": 0
+  },
+  "equivalence": "development-host numeric witnesses within 2e-11 relative; observed sample prefix matched exactly"
+}

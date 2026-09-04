@@ -43,6 +43,8 @@ export interface SageEvaluationResult {
   commEvents: SageCommEvent[];
   /** Compiler-verified static optimizer decisions for this evaluation. */
   optimization: SageOptimizationReport;
+  /** Detached JSON-compatible result, present for `evaluateJSON()`. */
+  json?: unknown;
 }
 
 export interface SageEvaluationOptions {
@@ -55,6 +57,8 @@ export interface SageEvaluationOptions {
   parentId?: string;
   /** Parse this evaluation using a supported Sage.js language frontend. */
   language?: SageSourceLanguage;
+  /** @internal Request structured JSON transport. Prefer `evaluateJSON()`. */
+  structuredResult?: boolean;
 }
 
 export interface SageSessionOptions {
@@ -280,6 +284,7 @@ export class SageSession extends EventEmitter {
       onComm,
       parentId,
       language = this.mode,
+      structuredResult = false,
     }: SageEvaluationOptions = {},
   ): Promise<SageEvaluationResult> {
     if (this.closed) throw new SageSessionClosedError();
@@ -337,6 +342,7 @@ export class SageSession extends EventEmitter {
         language: prepared.compilerLanguage,
         suppressResult: prepared.suppressResult,
         parentId,
+        structuredResult,
       });
     });
   }
@@ -346,6 +352,18 @@ export class SageSession extends EventEmitter {
     options?: SageEvaluationOptions,
   ): Promise<SageEvaluationResult> {
     return this.evaluate(source, options);
+  }
+
+  /** Evaluate and return the final value as detached JSON-compatible data. */
+  async evaluateJSON(
+    source: string,
+    options: SageEvaluationOptions = {},
+  ): Promise<unknown> {
+    const result = await this.evaluate(source, {
+      ...options,
+      structuredResult: true,
+    });
+    return result.json;
   }
 
   private async request<T>(

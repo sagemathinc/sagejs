@@ -137,7 +137,7 @@
     {
       "id": "documentation-compat",
       "description": "DocSpec, searchable documentation, tutorials, and compatibility corpora",
-      "allowed_claims": ["DOCUMENTATION.md", "DOCSPEC.md", "website/", "src/baselib/builtins.py", "scripts/generate-docs.cjs", "scripts/reference-examples.cjs", "scripts/verify-reference-examples.cjs", "scripts/extract-sage", "scripts/run-sage", "tools/docs.ts", "tools/documentation.ts"],
+      "allowed_claims": ["DOCUMENTATION.md", "DOCSPEC.md", "docs/numerical-computing/gallery/", "test/numerics/gallery/", "bench/numerical-gallery/", "website/", "src/baselib/builtins.py", "scripts/generate-docs.cjs", "scripts/reference-examples.cjs", "scripts/verify-reference-examples.cjs", "scripts/extract-sage", "scripts/run-sage", "tools/docs.ts", "tools/documentation.ts"],
       "required_checks": ["pnpm docs:check", "pnpm test:tutorial"]
     },
     {
@@ -151,6 +151,7 @@
       "description": "Authenticated optimizer profiling, evidence schemas, opportunity dossiers, campaigns, and promotion validation",
       "allowed_claims": [
         ".agents/lanes.json",
+        ".agents/task.schema.json",
         "agents/compiler-development-engine-plan.md",
         "agents/optimization-engine-plan.md",
         "architecture/optimization-engine/",
@@ -188,9 +189,164 @@
       "required_checks": ["pnpm test:portable", "pnpm test:native", "pnpm test:sea"]
     },
     {
+      "id": "numerical-contracts",
+      "description": "Shared agent-facing numerical problem, plan, result, capability, provenance, resource-budget, and surface-classification contracts",
+      "allowed_claims": [
+        ".agents/lanes.json",
+        ".agents/task.schema.json",
+        ".agents/tasks/p0-contract-lane.json",
+        "agents/numerical-computing-product-plan.md",
+        "architecture/optimizer-opportunities.manifest.json",
+        "docs/optimizer-opportunities.md",
+        "package.json",
+        "pnpm-lock.yaml",
+        "docs/numerical-computing/gallery/evidence.json",
+        "docs/numerical-computing/gallery/index.html",
+        "docs/numerical-computing/qualification/README.md",
+        "docs/numerical-computing/qualification/cross-platform.md",
+        "docs/numerical-computing/qualification/matrix-report.schema.json",
+        "scripts/numerical-computing/receipt.cjs",
+        "scripts/numerical-computing/report.cjs",
+        "scripts/numerical-computing/qualification/render-matrix.cjs",
+        "test/numerical-root-laboratory.cjs",
+        "test/numerics/approximation/approximation-laboratory.test.cjs",
+        "test/numerics/gallery/root-gallery.test.cjs",
+        "test/numerics/gallery/generate-root-story.cjs",
+        "test/numerics/evidence/qualification-campaign.cjs",
+        "test/numerics/evidence/qualification.cjs",
+        "website/numerical-computing/stories/root-finding.json",
+        "scripts/check-numerical-surface.cjs",
+        "scripts/numerical-computing/contracts.cjs",
+        "src/lib/sagejs/numerics/capabilities.py",
+        "src/lib/sagejs/numerics/frontends/operations.py",
+        "src/lib/sagejs/numerics/frontends/registry.py",
+        "src/lib/sagejs/numerics/model.py",
+        "src/lib/sagejs/numerics/optimization/_core.py",
+        "src/lib/sagejs/numerics/approximation/_common.py",
+        "src/lib/sagejs/numerics/approximation/capabilities.py",
+        "src/lib/sagejs/numerics/approximation/finite_difference.py",
+        "src/lib/sagejs/numerics/integration/adaptive.py",
+        "src/lib/sagejs/numerics/linear_algebra/capabilities.py",
+        "src/lib/sagejs/numerics/roots.py",
+        "src/lib/sagejs/numerics/ode/capabilities.py",
+        "src/lib/sagejs/numerics/ode/model.py",
+        "src/lib/sagejs/numerics/spectral/__init__.py",
+        "src/lib/sagejs/numerics/statistics/capabilities.py",
+        "src/lib/sagejs/numerics/sweeps.py",
+        "src/lib/sagejs/numerics/trace.py"
+      ],
+      "required_checks": [
+        "pnpm test:baselib:strict",
+        "pnpm test:numerics",
+        "pnpm architecture:check"
+      ]
+    },
+    {
+      "id": "numerical-linear-algebra",
+      "description": "Agent-first dense and sparse numerical linear algebra, decompositions, conditioning, and independent validation",
+      "allowed_claims": ["src/lib/sagejs/numerics/linear_algebra/"],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:numerics", "pnpm architecture:check"]
+    },
+    {
+      "id": "numerical-approximation",
+      "description": "Interpolation, splines, finite differences, and polynomial and rational approximation",
+      "allowed_claims": ["src/lib/sagejs/numerics/approximation/"],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:numerics", "pnpm architecture:check"]
+    },
+    {
+      "id": "numerical-integration",
+      "description": "Adaptive quadrature and numerical integration with error evidence and bounded traces",
+      "allowed_claims": ["src/lib/sagejs/numerics/integration/"],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:numerics", "pnpm architecture:check"]
+    },
+    {
+      "id": "numerical-optimization",
+      "description": "Optimization, nonlinear systems, least squares, and fitting with validated results",
+      "allowed_claims": [
+        ".agents/lanes.json",
+        "architecture/native-audit.json",
+        "architecture/native-boundaries.json",
+        "architecture/native-code.json",
+        "architecture/native-exports.json",
+        "architecture/package-graph.json",
+        "architecture/wasm-capabilities.json",
+        "architecture/wasm-capabilities-report.json",
+        "architecture/wasm-workload-dashboard.json",
+        "docs/numerical-computing/optimization/README.md",
+        "packages/flint-wasm/evaluator.mjs",
+        "packages/flint-wasm/kernel-worker.mjs",
+        "packages/flint-wasm/kernel.d.ts",
+        "packages/flint-wasm/kernel.mjs",
+        "packages/flint-wasm/numerical/",
+        "packages/flint-wasm/package.json",
+        "packages/flint-wasm/release/production-capabilities.json",
+        "packages/flint-wasm/release/production-layout.json",
+        "packages/flint-wasm/release/wasm-abi-allowlist.json",
+        "packages/flint-wasm/scripts/build.cjs",
+        "packages/flint-wasm/test/",
+        "scripts/build-receipt.cjs",
+        "scripts/build-sea.cjs",
+        "scripts/build.cjs",
+        "src/baselib/sagejs/runtime.py",
+        "src/baselib/sagejs/runtime.pyi",
+        "src/lib/sagejs/numerics/model.py",
+        "src/lib/sagejs/numerics/optimization/",
+        "test/numerical-p3-nlopt/",
+        "test/numerical-p3-backends/browser-resource.test.mjs",
+        "tools/resources.ts"
+      ],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:numerics", "pnpm architecture:check"]
+    },
+    {
+      "id": "numerical-ode",
+      "description": "Initial-value ODE solvers, events, dense output, and adaptive-step diagnostics",
+      "allowed_claims": ["src/lib/sagejs/numerics/ode/"],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:numerics", "pnpm architecture:check"]
+    },
+    {
+      "id": "numerical-spectral",
+      "description": "Eigenproblems, SVD, FFT, convolution, and sparse iterative numerical methods",
+      "allowed_claims": ["src/lib/sagejs/numerics/spectral/"],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:numerics", "pnpm architecture:check"]
+    },
+    {
+      "id": "numerical-statistics",
+      "description": "Probability distributions, descriptive statistics, regression, and robust fitting",
+      "allowed_claims": ["src/lib/sagejs/numerics/statistics/"],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:numerics", "pnpm architecture:check"]
+    },
+    {
+      "id": "numerical-multilingual",
+      "description": "Canonical numerical frontend intent, MATLAB and Wolfram lowering, outward code translation, and round-trip evidence",
+      "allowed_claims": ["src/lib/sagejs/numerics/frontends/", "src/lib/matlab.py", "src/lib/wolfram.py"],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:numerics", "pnpm test:integration", "pnpm architecture:check"]
+    },
+    {
+      "id": "numerical-sweeps",
+      "description": "Deterministic bounded-concurrency numerical parameter sweeps and aggregate resource contracts",
+      "allowed_claims": ["src/lib/sagejs/numerics/sweeps.py"],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:numerics", "pnpm architecture:check"]
+    },
+    {
+      "id": "numerical-qualification",
+      "description": "Backend-neutral P0-P8 numerical corpora, executable artifact adapters, capability bindings, and fail-closed release evidence",
+      "allowed_claims": [
+        ".agents/lanes.json",
+        "bench/numerical-computing/qualification/",
+        "docs/numerical-computing/qualification/",
+        "scripts/numerical-computing/qualification/",
+        "test/numerics/evidence/qualification-campaign.cjs"
+      ],
+      "required_checks": [
+        "node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs",
+        "node scripts/numerical-computing/qualification/validate-campaign.cjs",
+        "pnpm architecture:check"
+      ]
+    },
+    {
       "id": "integration",
       "description": "Shared APIs, repository-wide refactors, release integration, and merge coordination",
-      "allowed_claims": [".gitattributes", "AGENTS.md", "ARCHITECTURE.md", "COMPILED-PYTHON.md", "FFI.md", "README.md", "HACKING.md", "TESTING.md", "TODO.md", "PARALLEL-DEVELOPMENT.md", "DISTRIBUTION.md", "architecture/", "bin/", "dispatch/", "ffi/", "licenses/", "src/baselib/matrix.py", "src/baselib/polynomial.py", "src/baselib/sagejs/runtime.py", "src/baselib/sagejs/runtime.pyi", "src/baselib/sagejs_bootstrap.py", "src/lib/multiprocessing.py", "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py", "src/lib/sagejs/hyperelliptic_curves/frobenius.py", "src/lib/sagejs/hyperelliptic_curves/jacobian.py", "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py", "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py", "src/lib/sagejs/hyperelliptic_curves/jacobian_rational_native.py", "src/lib/sagejs/ffi/", "src/lib/sagejs/number_fields/field_analysis_resource.py", "src/lib/sagejs/linear_algebra/", "src/lib/sagejs/polynomial_algorithms/", "src/lib/sagejs/kernels/matrix/", "src/lib/sagejs/kernels/polynomial/", "src/baselib/sagejs/ffi/", "packages/fflas/", "packages/m4ri/", "packages/flint-wasm/", "packages/flint/generated/", "packages/flint/include/sagejs/", "packages/flint/scripts/", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "pyrightconfig.json", "scripts/", "test/ffi.cjs", "test/hyperelliptic-rational-cantor.cjs", "test/node-test-manifest.cjs", "test/parallel-development.cjs", "test/production-native-kernels.cjs", "tools/cache.ts", "tools/cache-lease.ts", "tools/cli.js", "tools/ffi/", "tools/host.ts", "tools/math-dispatch/", "tools/native-compiler.ts", "tools/native-kernel/c-backend.cjs", "tools/native-kernel/compiler.cjs", "tools/native-kernel/ffi-codegen.cjs", "tools/native-kernel/ir.cjs", "tools/native-kernel/prime-field-backend.cjs", "tools/native-kernel/wasm-pack-loader.mjs", "tools/native-kernel/test/wasm-pack-loader.cjs", "tools/number-field-maximal-order/", "tools/repl.ts", "tools/runtime-bootstrap.ts", "tools/standalone-library.cjs", "tools/task-evaluator.ts", "tools/resources.ts", "tools/python/contract.ts", "tools/serialization.ts", "bench/hyperelliptic/benchmark-rational-cantor.cjs", ".agents/", ".github/"],
+      "allowed_claims": [".gitattributes", "AGENTS.md", "ARCHITECTURE.md", "COMPILED-PYTHON.md", "FFI.md", "README.md", "HACKING.md", "TESTING.md", "TODO.md", "PARALLEL-DEVELOPMENT.md", "DISTRIBUTION.md", "architecture/", "bin/", "dispatch/", "ffi/", "licenses/", "src/baselib/matrix.py", "src/baselib/polynomial.py", "src/baselib/sagejs/runtime.py", "src/baselib/sagejs/runtime.pyi", "src/baselib/sagejs_bootstrap.py", "src/lib/multiprocessing.py", "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py", "src/lib/sagejs/hyperelliptic_curves/frobenius.py", "src/lib/sagejs/hyperelliptic_curves/jacobian.py", "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py", "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py", "src/lib/sagejs/hyperelliptic_curves/jacobian_rational_native.py", "src/lib/sagejs/ffi/", "src/lib/sagejs/number_fields/field_analysis_resource.py", "src/lib/sagejs/linear_algebra/", "src/lib/sagejs/polynomial_algorithms/", "src/lib/sagejs/kernels/matrix/", "src/lib/sagejs/kernels/polynomial/", "src/lib/sagejs/numerics/optimization/least_squares.py", "src/lib/sagejs/numerics/optimization/planning.py", "src/baselib/sagejs/ffi/", "packages/fflas/", "packages/m4ri/", "packages/flint-wasm/", "packages/flint/generated/", "packages/flint/include/sagejs/", "packages/flint/scripts/", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "pyrightconfig.json", "scripts/", "test/ffi.cjs", "test/hyperelliptic-rational-cantor.cjs", "test/node-test-manifest.cjs", "test/parallel-development.cjs", "test/production-native-kernels.cjs", "tools/cache.ts", "tools/cache-lease.ts", "tools/cli.js", "tools/ffi/", "tools/host.ts", "tools/math-dispatch/", "tools/native-compiler.ts", "tools/native-kernel/c-backend.cjs", "tools/native-kernel/compiler.cjs", "tools/native-kernel/ffi-codegen.cjs", "tools/native-kernel/ir.cjs", "tools/native-kernel/prime-field-backend.cjs", "tools/native-kernel/wasm-pack-loader.mjs", "tools/native-kernel/test/wasm-pack-loader.cjs", "tools/number-field-maximal-order/", "tools/repl.ts", "tools/runtime-bootstrap.ts", "tools/standalone-library.cjs", "tools/task-evaluator.ts", "tools/resources.ts", "tools/python/contract.ts", "tools/serialization.ts", "EMBEDDING.md", "src/lib/sagejs/plotting/model.py", "src/lib/sagejs/plotting/animation.py", "tools/installed-kernel.cjs", "tools/stdio-kernel.ts", "tools/kernel.ts", "tools/kernel-worker.ts", "tools/kernel-evaluator.ts", "tools/docs.ts", "tools/documentation.ts", "website/live/examples.mjs", "website/reference-data.json", "website/reference.html", "bench/hyperelliptic/benchmark-rational-cantor.cjs", ".agents/", ".github/"],
       "required_checks": ["pnpm architecture:check", "pnpm test:portable", "pnpm test:baselib:strict"]
     }
   ]

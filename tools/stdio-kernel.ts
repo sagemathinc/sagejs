@@ -14,6 +14,8 @@ interface KernelRequest {
     | "inspect"
     | "isComplete"
     | "documentation"
+    | "comm"
+    | "commInfo"
     | "interrupt"
     | "reset"
     | "close";
@@ -22,6 +24,10 @@ interface KernelRequest {
   timeout?: number;
   cursorPosition?: number;
   language?: string;
+  parentId?: string;
+  structuredResult?: boolean;
+  event?: any;
+  targetName?: string;
 }
 
 function serializedError(error: unknown): {
@@ -67,6 +73,14 @@ async function dispatch(
         onOutput(text) {
           write({ type: "stdout", id: request.id, text });
         },
+        onEvent(event) {
+          write({ type: "output-event", id: request.id, event });
+        },
+        onComm(event) {
+          write({ type: "comm-event", id: request.id, event });
+        },
+        parentId: request.parentId,
+        structuredResult: request.structuredResult,
       });
     case "complete":
       return session.complete(request.source ?? "", request.cursorPosition ?? 0);
@@ -78,6 +92,11 @@ async function dispatch(
       });
     case "documentation":
       return session.documentation();
+    case "comm":
+      await session.comm(request.event);
+      return null;
+    case "commInfo":
+      return session.commInfo(request.targetName);
     case "interrupt":
       await session.interrupt();
       return null;

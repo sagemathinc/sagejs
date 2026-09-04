@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "maximum_ms": {
+    "cpython": {
+      "describe_20000_ms": 1000,
+      "student_t_cdf_2001_ms": 1000,
+      "normal_sample_5000_ms": 1000,
+      "linear_regression_5000_ms": 1000,
+      "huber_regression_160_ms": 1000
+    },
+    "sagejs": {
+      "describe_20000_ms": 10000,
+      "student_t_cdf_2001_ms": 10000,
+      "normal_sample_5000_ms": 10000,
+      "linear_regression_5000_ms": 10000,
+      "huber_regression_160_ms": 10000
+    }
+  },
+  "payload": {
+    "maximum_raw_bytes": 200000,
+    "maximum_gzip_bytes": 40000
+  }
+}

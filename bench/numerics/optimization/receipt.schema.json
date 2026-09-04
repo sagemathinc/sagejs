@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/numerics/optimization/receipt.schema.json",
+  "type": "object",
+  "required": ["schema_version", "source_revision", "platform"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "source_revision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "platform": { "type": "string", "minLength": 1 },
+    "corpus_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "passed": { "type": "integer", "minimum": 0 },
+    "total": { "type": "integer", "minimum": 0 },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "accepted", "checks"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "accepted": { "type": "boolean" },
+          "checks": { "type": "object" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "runtimes": { "type": "object" }
+  },
+  "anyOf": [
+    { "required": ["passed", "total", "cases"] },
+    { "required": ["runtimes"] }
+  ],
+  "additionalProperties": true
+}

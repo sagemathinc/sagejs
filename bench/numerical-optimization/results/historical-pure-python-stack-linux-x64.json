@@ -1,0 +1,2260 @@
+{
+  "backend": {
+    "name": "pull-request-stack",
+    "version": "origin/numerics/wolfram-domains-sweep@98be0227"
+  },
+  "corpus_schema": "sagejs.numerical-optimization-corpus/v1",
+  "elapsed_seconds": 16.913938522338867,
+  "environment": {
+    "implementation": "cpython",
+    "machine": "x86_64",
+    "node": null,
+    "platform": "Linux-6.17.0-1022-gcp-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "repository_revision": "5aaf6360a2a3a3213318bf6bc9723a17f58746b3"
+  },
+  "protocol": {
+    "clock": "time.perf_counter_ns",
+    "problem_setup_inside_timer": false,
+    "samples": 7,
+    "solver_and_callback_inside_timer": true,
+    "warmups": 1
+  },
+  "results": [
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "root.cos-minus-x",
+      "method": "brentq",
+      "metrics": {
+        "objective_gap": 0.0,
+        "residual_linf": 0.0,
+        "x_linf": 0.0
+      },
+      "operation": "root",
+      "reasons": [],
+      "result": {
+        "fun": 0.0,
+        "nfev": 8,
+        "nit": 7,
+        "status": "converged",
+        "success": true,
+        "x": [
+          0.7390851332151607
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.01686,
+          0.012709,
+          0.010669,
+          0.01096,
+          0.009871,
+          0.009189,
+          0.00836
+        ],
+        "median_ms": 0.010669,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "root.flat-cubic",
+      "method": "brentq",
+      "metrics": {
+        "objective_gap": 4.335214308641561e-37,
+        "residual_linf": 4.335214308641561e-37,
+        "x_linf": 7.568390358869692e-13
+      },
+      "operation": "root",
+      "reasons": [],
+      "result": {
+        "fun": -4.335214308641561e-37,
+        "nfev": 102,
+        "nit": 100,
+        "status": "convergence error",
+        "success": false,
+        "x": [
+          0.9999999999992432
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.127319
+        ],
+        "median_ms": 0.127319,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "root.endpoint",
+      "method": "brentq",
+      "metrics": {
+        "objective_gap": 0.0,
+        "residual_linf": 0.0,
+        "x_linf": 0.0
+      },
+      "operation": "root",
+      "reasons": [],
+      "result": {
+        "fun": 0.0,
+        "nfev": 2,
+        "nit": 0,
+        "status": "converged",
+        "success": true,
+        "x": [
+          2.0
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.00445
+        ],
+        "median_ms": 0.00445,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "root.scaled-exponential",
+      "method": "brentq",
+      "metrics": {
+        "objective_gap": 2.0827783941967937e-13,
+        "residual_linf": 2.0827783941967937e-13,
+        "x_linf": 6.94999613415348e-14
+      },
+      "operation": "root",
+      "reasons": [],
+      "result": {
+        "fun": -2.0827783941967937e-13,
+        "nfev": 10,
+        "nit": 9,
+        "status": "converged",
+        "success": true,
+        "x": [
+          1.0986122886680403
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.01672
+        ],
+        "median_ms": 0.01672,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": {
+        "message": "f(a) and f(b) must have different signs",
+        "type": "ValueError"
+      },
+      "id": "root.invalid-bracket",
+      "method": "brentq",
+      "metrics": {},
+      "operation": "root",
+      "reasons": [],
+      "result": null,
+      "timing": {
+        "durations_ms": [],
+        "median_ms": null,
+        "samples": 0,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "scalar.smooth-interior",
+      "method": "bounded",
+      "metrics": {
+        "objective_gap": 1.8856442374394614e-18,
+        "x_linf": 1.3731876191691583e-09
+      },
+      "operation": "scalar-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 1.8856442374394614e-18,
+        "nfev": 9,
+        "nit": 8,
+        "status": "converged",
+        "success": true,
+        "x": [
+          0.24999999862681238
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.01969,
+          0.01483,
+          0.01309,
+          0.01221,
+          0.01139,
+          0.01182,
+          0.01154
+        ],
+        "median_ms": 0.01221,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "scalar.boundary",
+      "method": "bounded",
+      "metrics": {
+        "objective_gap": 5.725291130076471e-09,
+        "x_linf": 4.230449657249835e-08
+      },
+      "operation": "scalar-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 0.13533528896190383,
+        "nfev": 39,
+        "nit": 38,
+        "status": "converged",
+        "success": true,
+        "x": [
+          -1.9999999576955034
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.03289
+        ],
+        "median_ms": 0.03289,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "nelder-mead.rosenbrock-2",
+      "method": "nelder-mead",
+      "metrics": {
+        "gradient_linf": 6.573381379077741e-06,
+        "objective_gap": 4.194049157858757e-14,
+        "x_linf": 2.4527123543283125e-07
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 4.194049157858757e-14,
+        "nfev": 189,
+        "nit": 101,
+        "status": "converged",
+        "success": true,
+        "x": [
+          0.9999998694739611,
+          0.9999997547287646
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.7458,
+          0.76817,
+          0.76628,
+          0.74026,
+          0.92181,
+          0.76761,
+          0.72427
+        ],
+        "median_ms": 0.76628,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "nelder-mead.beale",
+      "method": "nelder-mead",
+      "metrics": {
+        "objective_gap": 1.771412833756629e-14,
+        "x_linf": 1.8785666444642857e-07
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 1.771412833756629e-14,
+        "nfev": 132,
+        "nit": 69,
+        "status": "converged",
+        "success": true,
+        "x": [
+          2.9999998121433356,
+          0.4999999305447899
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.4757
+        ],
+        "median_ms": 0.4757,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "nelder-mead.nonsmooth",
+      "method": "nelder-mead",
+      "metrics": {
+        "objective_gap": 1.1372502939366314e-10,
+        "x_linf": 9.02227181853732e-11
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 1.1372502939366314e-10,
+        "nfev": 179,
+        "nit": 94,
+        "status": "converged",
+        "success": true,
+        "x": [
+          0.5000000000902227,
+          -0.24999999998824884
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.56334
+        ],
+        "median_ms": 0.56334,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "bfgs.rosenbrock-2",
+      "method": "bfgs",
+      "metrics": {
+        "gradient_linf": 1.7045160156587258e-06,
+        "objective_gap": 2.5353098673108937e-15,
+        "x_linf": 5.3880933048588986e-08
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 2.5353098673108937e-15,
+        "nfev": 39,
+        "nit": 32,
+        "status": "Optimization terminated successfully.",
+        "success": true,
+        "x": [
+          0.9999999710013845,
+          0.999999946119067
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          1.1698
+        ],
+        "median_ms": 1.1698,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "bfgs.rosenbrock-20",
+      "method": "bfgs",
+      "metrics": {
+        "gradient_linf": 6.197336125406162e-07,
+        "objective_gap": 7.744086256596313e-16,
+        "x_linf": 1.3009315846801428e-09
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 7.744086256596313e-16,
+        "nfev": 186,
+        "nit": 162,
+        "status": "Optimization terminated successfully.",
+        "success": true,
+        "x": [
+          1.0000000004273935,
+          0.9999999996840052,
+          0.9999999994222646,
+          0.999999999278939,
+          0.9999999998434504,
+          1.0000000000818368,
+          1.000000000002073,
+          1.0000000006244336,
+          1.0000000004320329,
+          1.0000000002818732,
+          1.0000000000816918,
+          1.0000000001898293,
+          1.0000000000537683,
+          1.000000000087816,
+          1.0000000000568225,
+          0.9999999997111663,
+          1.0000000000969806,
+          1.0000000002071918,
+          1.000000001220542,
+          1.0000000013009316
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          167.008859,
+          166.086969,
+          165.24687,
+          164.645259,
+          164.79672,
+          164.941479,
+          165.327589
+        ],
+        "median_ms": 165.24687,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "bfgs.ill-conditioned-20",
+      "method": "bfgs",
+      "metrics": {
+        "gradient_linf": 1.011302153131055e-06,
+        "objective_gap": 5.128378628585808e-18,
+        "x_linf": 5.615931053526424e-10
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 5.128378628585808e-18,
+        "nfev": 39,
+        "nit": 26,
+        "status": "Optimization terminated successfully.",
+        "success": true,
+        "x": [
+          -0.9999999999984719,
+          -0.8947368421023216,
+          -0.7894736842001824,
+          -0.6842105264335151,
+          -0.5789473678594595,
+          -0.47368421026423585,
+          -0.3684210526710022,
+          -0.26315789468993905,
+          -0.15789473682768299,
+          -0.05263157895727568,
+          0.05263157894641481,
+          0.15789473684336858,
+          0.2631578947369452,
+          0.36842105263153757,
+          0.47368421052630577,
+          0.5789473684210207,
+          0.6842105263157112,
+          0.7894736842103398,
+          0.8947368421048257,
+          0.9999999999989887
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          25.385609
+        ],
+        "median_ms": 25.385609,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "lbfgsb.active-box-50",
+      "method": "lbfgsb",
+      "metrics": {
+        "gradient_linf": 2.0,
+        "objective_gap": 0.0,
+        "projected_gradient_linf": 0.0,
+        "x_linf": 0.0
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 50.0,
+        "nfev": 2,
+        "nit": 1,
+        "status": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+        "success": true,
+        "x": [
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.21129,
+          0.196799,
+          0.211109,
+          0.19098,
+          0.19454,
+          0.185549,
+          0.184529
+        ],
+        "median_ms": 0.19454,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "lbfgsb.fixed-coordinate",
+      "method": "lbfgsb",
+      "metrics": {
+        "gradient_linf": 4.0,
+        "objective_gap": 0.0,
+        "projected_gradient_linf": 0.0,
+        "x_linf": 0.0
+      },
+      "operation": "minimize",
+      "reasons": [],
+      "result": {
+        "fun": 5.0,
+        "nfev": 3,
+        "nit": 2,
+        "status": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+        "success": true,
+        "x": [
+          0.0,
+          -1.0,
+          0.5,
+          1.0,
+          -0.5
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.167089
+        ],
+        "median_ms": 0.167089,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "leastsq.linear-30",
+      "method": "levenberg-marquardt",
+      "metrics": {
+        "cost_gap": 1.232595164407831e-31,
+        "residual_l2": 4.965068306494546e-16,
+        "x_linf": 1.1102230246251565e-16
+      },
+      "operation": "least-squares",
+      "reasons": [],
+      "result": {
+        "fun": 1.232595164407831e-31,
+        "nfev": 7,
+        "nit": 3,
+        "residuals": [
+          1.1102230246251565e-16,
+          0.0,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          1.1102230246251565e-16,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "status": "relative error between two consecutive iterates is at most xtol",
+        "success": true,
+        "x": [
+          2.5,
+          -0.7499999999999999
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.18572,
+          0.17584,
+          0.17116,
+          0.189411,
+          0.172031,
+          0.1786,
+          0.16982
+        ],
+        "median_ms": 0.17584,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "leastsq.rosenbrock-residual",
+      "method": "levenberg-marquardt",
+      "metrics": {
+        "cost_gap": 0.0,
+        "residual_l2": 0.0,
+        "x_linf": 0.0
+      },
+      "operation": "least-squares",
+      "reasons": [],
+      "result": {
+        "fun": 0.0,
+        "nfev": 54,
+        "nit": 17,
+        "residuals": [
+          0.0,
+          0.0
+        ],
+        "status": "relative error between two consecutive iterates is at most xtol",
+        "success": true,
+        "x": [
+          1.0,
+          1.0
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.890511
+        ],
+        "median_ms": 0.890511,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "leastsq.rank-deficient",
+      "method": "levenberg-marquardt",
+      "metrics": {
+        "cost_gap": 0.0,
+        "residual_l2": 0.0
+      },
+      "operation": "least-squares",
+      "reasons": [],
+      "result": {
+        "fun": 0.0,
+        "nfev": 6,
+        "nit": 2,
+        "residuals": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "status": "cosine of the angle between residuals and every Jacobian column is at most gtol",
+        "success": true,
+        "x": [
+          6.0,
+          -5.0
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.118549
+        ],
+        "median_ms": 0.118549,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "leastsq.exponential-decay",
+      "method": "levenberg-marquardt",
+      "metrics": {
+        "cost_gap": 1.6023737137301802e-31,
+        "residual_l2": 5.661048867003676e-16,
+        "x_linf": 2.220446049250313e-16
+      },
+      "operation": "least-squares",
+      "reasons": [],
+      "result": {
+        "fun": 1.6023737137301802e-31,
+        "nfev": 31,
+        "nit": 8,
+        "residuals": [
+          0.0,
+          0.0,
+          -2.220446049250313e-16,
+          -2.220446049250313e-16,
+          -2.220446049250313e-16,
+          -2.220446049250313e-16,
+          -1.1102230246251565e-16,
+          -1.1102230246251565e-16,
+          0.0,
+          -1.1102230246251565e-16,
+          0.0,
+          -2.220446049250313e-16,
+          -1.1102230246251565e-16,
+          -5.551115123125783e-17,
+          -5.551115123125783e-17,
+          -5.551115123125783e-17,
+          -5.551115123125783e-17,
+          -5.551115123125783e-17,
+          -5.551115123125783e-17,
+          0.0,
+          0.0,
+          -5.551115123125783e-17,
+          -5.551115123125783e-17,
+          0.0,
+          0.0
+        ],
+        "status": "relative error between two consecutive iterates is at most xtol",
+        "success": true,
+        "x": [
+          2.0,
+          1.5000000000000002,
+          0.25
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.89405
+        ],
+        "median_ms": 0.89405,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "cobyla.linear-boundary",
+      "method": "cobyla",
+      "metrics": {
+        "max_constraint_violation": 2.220446049250313e-16,
+        "objective_gap": 2.2313262348916396e-11,
+        "x_linf": 3.340157987086201e-06
+      },
+      "operation": "constrained-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 1.1250000000223133,
+        "nfev": 46,
+        "nit": 32,
+        "status": "converged",
+        "success": true,
+        "x": [
+          0.24999665984201305,
+          1.750003340157987
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          1.94625
+        ],
+        "median_ms": 1.94625,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": false,
+      "benchmark": true,
+      "error": null,
+      "id": "cobyla.circle-boundary",
+      "method": "cobyla",
+      "metrics": {
+        "max_constraint_violation": 0.00017788309271760117,
+        "objective_gap": 7.366539047323761e-05,
+        "x_linf": 0.00010498745485099104
+      },
+      "operation": "constrained-minimize",
+      "reasons": [
+        "objective_gap=7.366539047323761e-05 exceeds 5e-05"
+      ],
+      "result": {
+        "fun": 0.17149920986333667,
+        "nfev": 48,
+        "nit": 39,
+        "status": "converged",
+        "success": true,
+        "x": [
+          0.7071275679732919,
+          0.7072117686413986
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          1.74338,
+          1.73448,
+          1.72977,
+          1.74506,
+          1.74714,
+          1.726499,
+          1.74619
+        ],
+        "median_ms": 1.74338,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "cobyla.infeasible",
+      "method": "cobyla",
+      "metrics": {
+        "max_constraint_violation": 0.5
+      },
+      "operation": "constrained-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 0.25,
+        "nfev": 4,
+        "nit": 10,
+        "status": "converged:infeasible",
+        "success": false,
+        "x": [
+          0.5
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          0.32785
+        ],
+        "median_ms": 0.32785,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": null
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "global.six-hump-camel",
+      "method": "differential-evolution",
+      "metrics": {
+        "objective_gap": 9.515771526302785e-08,
+        "success_rate": 1.0,
+        "x_linf": 0.0001106822319156403
+      },
+      "operation": "global-minimize",
+      "reasons": [],
+      "result": {
+        "fun": -1.031628358332162,
+        "nfev": 1650,
+        "nit": 54,
+        "status": "converged",
+        "success": true,
+        "x": [
+          -0.08995269591492895,
+          0.7125867798875427
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          19.514028
+        ],
+        "median_ms": 19.514028,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": [
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.163573907867146e-08,
+            "x_linf": 9.332877640401416e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284118541381,
+            "nfev": 1860,
+            "nit": 61,
+            "status": "converged",
+            "success": true,
+            "x": [
+              0.08993534245941733,
+              -0.7126932458673475
+            ]
+          },
+          "seed": 0
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.6235302879863411e-07,
+            "x_linf": 0.0001893964213203203
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316282911368484,
+            "nfev": 1620,
+            "nit": 53,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -0.09003141010433363,
+              0.7127216519962095
+            ]
+          },
+          "seed": 1
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 2.5791237234784603e-07,
+            "x_linf": 0.00025208901708609344
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316281955775048,
+            "nfev": 1560,
+            "nit": 51,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -0.0900941027000994,
+              0.7127102473271729
+            ]
+          },
+          "seed": 2
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.4583648422217266e-07,
+            "x_linf": 0.00012249981295198165
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.031628307653393,
+            "nfev": 1860,
+            "nit": 61,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -0.08993600509041541,
+              0.7127789030833654
+            ]
+          },
+          "seed": 3
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.3541431198582643e-07,
+            "x_linf": 0.0001438477079027528
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316283180755652,
+            "nfev": 1500,
+            "nit": 49,
+            "status": "converged",
+            "success": true,
+            "x": [
+              0.08998586139091606,
+              -0.7127474123761255
+            ]
+          },
+          "seed": 4
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 8.174274590544428e-10,
+            "x_linf": 9.583851511951735e-06
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284526724497,
+            "nfev": 2640,
+            "nit": 87,
+            "status": "converged",
+            "success": true,
+            "x": [
+              0.08984751271660117,
+              -0.7126659871219254
+            ]
+          },
+          "seed": 5
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 2.2229157670139443e-07,
+            "x_linf": 0.0001650382842378617
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316282311983005,
+            "nfev": 1590,
+            "nit": 52,
+            "status": "converged",
+            "success": true,
+            "x": [
+              0.08983716724547149,
+              -0.7124913649861756
+            ]
+          },
+          "seed": 6
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.1388797460654132e-08,
+            "x_linf": 3.705980173629442e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284421010797,
+            "nfev": 1830,
+            "nit": 60,
+            "status": "converged",
+            "success": true,
+            "x": [
+              0.0898295718221457,
+              -0.7126193434686772
+            ]
+          },
+          "seed": 7
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.0236489766946022e-07,
+            "x_linf": 0.0001293600048012239
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316283511249795,
+            "nfev": 1500,
+            "nit": 49,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -0.08971265367821209,
+              0.7125807082878751
+            ]
+          },
+          "seed": 8
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.536966047297142e-08,
+            "x_linf": 0.00010078780082664607
+          },
+          "reasons": [],
+          "result": {
+            "fun": -1.0316284081202167,
+            "nfev": 2010,
+            "nit": 66,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -0.08974122588218666,
+              0.7126230081485952
+            ]
+          },
+          "seed": 9
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "benchmark": true,
+      "error": null,
+      "id": "global.rastrigin-5",
+      "method": "differential-evolution",
+      "metrics": {
+        "objective_gap": 1.9147719690693066e-05,
+        "success_rate": 1.0,
+        "x_linf": 0.0002331436360634724
+      },
+      "operation": "global-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 1.9147719690693066e-05,
+        "nfev": 25600,
+        "nit": 255,
+        "status": "converged",
+        "success": true,
+        "x": [
+          2.9201947516902362e-05,
+          -7.278367328521055e-06,
+          0.0002331436360634724,
+          -0.0002026352883965311,
+          1.3849350290202032e-05
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          399.889014,
+          401.146994,
+          404.019634,
+          397.670844,
+          402.420124,
+          402.171294,
+          397.344625
+        ],
+        "median_ms": 401.146994,
+        "samples": 7,
+        "warmups": 1
+      },
+      "trials": [
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.6565182299643766e-05,
+            "x_linf": 0.0001661057437188156
+          },
+          "reasons": [],
+          "result": {
+            "fun": 1.6565182299643766e-05,
+            "nfev": 25100,
+            "nit": 250,
+            "status": "converged",
+            "success": true,
+            "x": [
+              0.00015414133385221904,
+              -8.933002990532197e-05,
+              -0.0001661057437188156,
+              -0.00015545634555437656,
+              9.858879684908426e-09
+            ]
+          },
+          "seed": 0
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 2.1999440917852553e-05,
+            "x_linf": 0.00029940414198564364
+          },
+          "reasons": [],
+          "result": {
+            "fun": 2.1999440917852553e-05,
+            "nfev": 24400,
+            "nit": 243,
+            "status": "converged",
+            "success": true,
+            "x": [
+              8.789645530909637e-05,
+              -0.00029940414198564364,
+              -8.120571488667795e-05,
+              2.1277515097043354e-05,
+              -8.045495529997079e-05
+            ]
+          },
+          "seed": 1
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 7.237623620426348e-06,
+            "x_linf": 0.0001515602247136123
+          },
+          "reasons": [],
+          "result": {
+            "fun": 7.237623620426348e-06,
+            "nfev": 24800,
+            "nit": 247,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -1.5089345069973827e-05,
+              0.00010411776495305482,
+              4.776377253646843e-05,
+              -1.2701880678177817e-05,
+              0.0001515602247136123
+            ]
+          },
+          "seed": 2
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.431267065285738e-05,
+            "x_linf": 0.0004097914314521994
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.431267065285738e-05,
+            "nfev": 29800,
+            "nit": 297,
+            "status": "converged",
+            "success": true,
+            "x": [
+              0.0004097914314521994,
+              0.0001503121489975941,
+              -9.233456945791426e-05,
+              0.00015461717975313183,
+              2.010605596657728e-05
+            ]
+          },
+          "seed": 3
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.3586134208765088e-05,
+            "x_linf": 0.00019968717786557363
+          },
+          "reasons": [],
+          "result": {
+            "fun": 1.3586134208765088e-05,
+            "nfev": 21900,
+            "nit": 218,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -0.00019968717786557363,
+              -6.8752605382748985e-06,
+              -0.00016052370444652234,
+              -5.341440735223777e-07,
+              5.282853589935537e-05
+            ]
+          },
+          "seed": 4
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.769334466914188e-06,
+            "x_linf": 0.00011481187393498204
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.769334466914188e-06,
+            "nfev": 24500,
+            "nit": 244,
+            "status": "converged",
+            "success": true,
+            "x": [
+              6.360789682911805e-05,
+              0.00011481187393498204,
+              7.0686500864750425e-06,
+              -3.2341086745988235e-05,
+              7.560622331137374e-05
+            ]
+          },
+          "seed": 5
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.35106287710596e-05,
+            "x_linf": 0.0002907850541203812
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.35106287710596e-05,
+            "nfev": 24300,
+            "nit": 242,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -0.0002907850541203812,
+              2.3513588509374117e-05,
+              0.00024222178013313223,
+              8.566310690536752e-05,
+              0.00026114747873436745
+            ]
+          },
+          "seed": 6
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 5.155387948008183e-05,
+            "x_linf": 0.00029317091759333024
+          },
+          "reasons": [],
+          "result": {
+            "fun": 5.155387948008183e-05,
+            "nfev": 24800,
+            "nit": 247,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -0.00027538766396757177,
+              0.00014007019260854219,
+              -0.00027048438524762664,
+              7.27295930293285e-05,
+              0.00029317091759333024
+            ]
+          },
+          "seed": 7
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.94317522310439e-05,
+            "x_linf": 0.00034886866574439365
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.94317522310439e-05,
+            "nfev": 25500,
+            "nit": 254,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -0.00034886866574439365,
+              -1.1609679483887948e-05,
+              0.00021137322118108058,
+              0.00025858056570811686,
+              0.00012559978325161103
+            ]
+          },
+          "seed": 8
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 2.448694867496215e-05,
+            "x_linf": 0.0002554278420071948
+          },
+          "reasons": [],
+          "result": {
+            "fun": 2.448694867496215e-05,
+            "nfev": 27400,
+            "nit": 273,
+            "status": "converged",
+            "success": true,
+            "x": [
+              0.0002554278420071948,
+              -0.00016006419386191403,
+              0.0001569009616027864,
+              2.350762539171688e-06,
+              -8.910496219456828e-05
+            ]
+          },
+          "seed": 9
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 2.215452597198464e-05,
+            "x_linf": 0.00032580632578886484
+          },
+          "reasons": [],
+          "result": {
+            "fun": 2.215452597198464e-05,
+            "nfev": 25000,
+            "nit": 249,
+            "status": "converged",
+            "success": true,
+            "x": [
+              0.00032580632578886484,
+              3.3969749384244396e-05,
+              -3.08488528606753e-05,
+              -4.3351172387727694e-05,
+              3.91888512958795e-05
+            ]
+          },
+          "seed": 10
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 5.084347520778465e-06,
+            "x_linf": 0.00011204842182467183
+          },
+          "reasons": [],
+          "result": {
+            "fun": 5.084347520778465e-06,
+            "nfev": 25100,
+            "nit": 250,
+            "status": "converged",
+            "success": true,
+            "x": [
+              1.5946988772241302e-06,
+              -2.3233928125982427e-05,
+              3.262447642309209e-05,
+              -0.00010708039405909673,
+              0.00011204842182467183
+            ]
+          },
+          "seed": 11
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 2.3887986479564915e-05,
+            "x_linf": 0.00026637843054658564
+          },
+          "reasons": [],
+          "result": {
+            "fun": 2.3887986479564915e-05,
+            "nfev": 26600,
+            "nit": 265,
+            "status": "converged",
+            "success": true,
+            "x": [
+              8.50245921120089e-05,
+              3.5426047586804664e-05,
+              -0.00026637843054658564,
+              -2.7011315086221833e-05,
+              -0.0002005909166659345
+            ]
+          },
+          "seed": 12
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.190122245020575e-05,
+            "x_linf": 0.0001355944693707815
+          },
+          "reasons": [],
+          "result": {
+            "fun": 1.190122245020575e-05,
+            "nfev": 26400,
+            "nit": 263,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -0.00012564857184563932,
+              -0.00010469459724203367,
+              0.0001355944693707815,
+              0.00010392672941156105,
+              -6.366512190740422e-05
+            ]
+          },
+          "seed": 13
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 3.38117625204859e-05,
+            "x_linf": 0.00031567977347075335
+          },
+          "reasons": [],
+          "result": {
+            "fun": 3.38117625204859e-05,
+            "nfev": 24900,
+            "nit": 248,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -6.239499462133106e-05,
+              -4.264243426747616e-05,
+              0.00017514466853671288,
+              -0.00031567977347075335,
+              0.0001854403929076983
+            ]
+          },
+          "seed": 14
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 2.756811795734393e-06,
+            "x_linf": 7.726158445290745e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 2.756811795734393e-06,
+            "nfev": 27600,
+            "nit": 275,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -7.467479158243154e-05,
+              -2.8899172767375583e-05,
+              7.726158445290745e-05,
+              3.8700035304373905e-05,
+              -4.152500584070991e-06
+            ]
+          },
+          "seed": 15
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 1.3308170352388515e-06,
+            "x_linf": 5.626869005272367e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 1.3308170352388515e-06,
+            "nfev": 25200,
+            "nit": 251,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -5.626869005272367e-05,
+              -4.089375195729044e-05,
+              1.0080030188934182e-05,
+              -1.8632110443689195e-05,
+              3.769333786786465e-05
+            ]
+          },
+          "seed": 16
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 4.128463854158326e-05,
+            "x_linf": 0.00040662892932560586
+          },
+          "reasons": [],
+          "result": {
+            "fun": 4.128463854158326e-05,
+            "nfev": 25600,
+            "nit": 255,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -4.045320552273327e-05,
+              2.5550699260996272e-05,
+              -0.00014365012551624803,
+              -0.00040662892932560586,
+              0.00014079965175439356
+            ]
+          },
+          "seed": 17
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 2.0822797459629783e-05,
+            "x_linf": 0.0003012968641084538
+          },
+          "reasons": [],
+          "result": {
+            "fun": 2.0822797459629783e-05,
+            "nfev": 26700,
+            "nit": 266,
+            "status": "converged",
+            "success": true,
+            "x": [
+              1.930359309896374e-06,
+              7.70212162609905e-05,
+              -9.02314814410581e-05,
+              0.0003012968641084538,
+              1.0015714544046048e-05
+            ]
+          },
+          "seed": 18
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 3.899228975967617e-05,
+            "x_linf": 0.00036286681664073116
+          },
+          "reasons": [],
+          "result": {
+            "fun": 3.899228975967617e-05,
+            "nfev": 24900,
+            "nit": 248,
+            "status": "converged",
+            "success": true,
+            "x": [
+              1.4938954354062816e-05,
+              -5.113118268543996e-06,
+              -0.00016762024813965102,
+              0.00036286681664073116,
+              -0.0001911110399335703
+            ]
+          },
+          "seed": 19
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "benchmark": false,
+      "error": null,
+      "id": "global.ackley-5",
+      "method": "differential-evolution",
+      "metrics": {
+        "objective_gap": 0.0002013941677572184,
+        "success_rate": 1.0,
+        "x_linf": 9.9656234489844e-05
+      },
+      "operation": "global-minimize",
+      "reasons": [],
+      "result": {
+        "fun": 0.0002013941677572184,
+        "nfev": 11400,
+        "nit": 113,
+        "status": "converged",
+        "success": true,
+        "x": [
+          3.927142625810059e-05,
+          9.9656234489844e-05,
+          -3.133298011693132e-05,
+          1.0394992628184858e-05,
+          -9.720704348963508e-06
+        ]
+      },
+      "timing": {
+        "durations_ms": [
+          190.417018
+        ],
+        "median_ms": 190.417018,
+        "samples": 1,
+        "warmups": 0
+      },
+      "trials": [
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.00024036162209783996,
+            "x_linf": 8.462014218920636e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.00024036162209783996,
+            "nfev": 11300,
+            "nit": 112,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -7.494714822381469e-05,
+              2.4040678125706623e-05,
+              -5.787237851389966e-05,
+              8.462014218920636e-05,
+              3.634065374042621e-05
+            ]
+          },
+          "seed": 0
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.00016714742309220654,
+            "x_linf": 6.552186536858348e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.00016714742309220654,
+            "nfev": 11900,
+            "nit": 118,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -4.206874577716806e-05,
+              -4.26302572817238e-05,
+              2.801492769105451e-05,
+              6.552186536858348e-05,
+              -7.479040828771066e-06
+            ]
+          },
+          "seed": 1
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0001305468655883324,
+            "x_linf": 5.180773512560934e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0001305468655883324,
+            "nfev": 11600,
+            "nit": 115,
+            "status": "converged",
+            "success": true,
+            "x": [
+              8.33555587850991e-06,
+              1.5783971241137098e-05,
+              -2.9616145769914635e-05,
+              3.796551233402532e-05,
+              -5.180773512560934e-05
+            ]
+          },
+          "seed": 2
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0002886431041457804,
+            "x_linf": 0.00010848035571314167
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0002886431041457804,
+            "nfev": 11200,
+            "nit": 111,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -5.031125443607243e-05,
+              -6.822843771460765e-05,
+              0.00010848035571314167,
+              7.97337002164417e-05,
+              2.5965105433322303e-05
+            ]
+          },
+          "seed": 3
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.00020198135439786213,
+            "x_linf": 0.0001021022001133891
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.00020198135439786213,
+            "nfev": 11400,
+            "nit": 113,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -3.939341724941371e-06,
+              -2.4028626045966472e-06,
+              3.533619262330431e-05,
+              0.0001021022001133891,
+              -3.220224601233594e-05
+            ]
+          },
+          "seed": 4
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0003061726407875831,
+            "x_linf": 0.00015459507732264364
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0003061726407875831,
+            "nfev": 11500,
+            "nit": 114,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -5.067545437472815e-05,
+              0.00015459507732264364,
+              1.9227977670427496e-05,
+              4.477025908341842e-06,
+              -4.875778814265153e-05
+            ]
+          },
+          "seed": 5
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0002675151838542611,
+            "x_linf": 0.00010243582635772566
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0002675151838542611,
+            "nfev": 11400,
+            "nit": 113,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -6.275193470455011e-05,
+              -2.9071429129372763e-05,
+              -6.6896974790684415e-06,
+              8.368586562382678e-05,
+              0.00010243582635772566
+            ]
+          },
+          "seed": 6
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.00029716891221598374,
+            "x_linf": 0.00014678558200483265
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.00029716891221598374,
+            "nfev": 11800,
+            "nit": 117,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -5.517792201780212e-05,
+              -5.423380123400096e-05,
+              -1.4326594053428246e-06,
+              -0.00014678558200483265,
+              2.8720268807782114e-06
+            ]
+          },
+          "seed": 7
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0003082880126297205,
+            "x_linf": 0.0001458700418246743
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0003082880126297205,
+            "nfev": 11200,
+            "nit": 111,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -0.0001458700418246743,
+              -7.444148816459352e-05,
+              8.753657806705295e-06,
+              3.0760570948257595e-05,
+              4.239370769896972e-05
+            ]
+          },
+          "seed": 8
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.00021386337526552168,
+            "x_linf": 9.444215267914477e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.00021386337526552168,
+            "nfev": 11200,
+            "nit": 111,
+            "status": "converged",
+            "success": true,
+            "x": [
+              4.50670779599837e-05,
+              9.444215267914477e-05,
+              -3.38337332392344e-05,
+              1.6024054594048996e-05,
+              -4.382711299873366e-05
+            ]
+          },
+          "seed": 9
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.00017181116198417,
+            "x_linf": 5.433018093144988e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.00017181116198417,
+            "nfev": 11300,
+            "nit": 112,
+            "status": "converged",
+            "success": true,
+            "x": [
+              5.433018093144988e-05,
+              1.2473346130297015e-05,
+              -5.412824812069923e-05,
+              -4.640781172070789e-05,
+              3.198859297319967e-05
+            ]
+          },
+          "seed": 10
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.00014467116121652523,
+            "x_linf": 6.256816547169767e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.00014467116121652523,
+            "nfev": 11500,
+            "nit": 114,
+            "status": "converged",
+            "success": true,
+            "x": [
+              1.446172998150677e-05,
+              6.256816547169767e-05,
+              1.909690557487993e-05,
+              4.409852148436783e-05,
+              1.0048151985445221e-05
+            ]
+          },
+          "seed": 11
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.00018693321010276875,
+            "x_linf": 7.991262215516287e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.00018693321010276875,
+            "nfev": 11400,
+            "nit": 113,
+            "status": "converged",
+            "success": true,
+            "x": [
+              4.143711092316019e-05,
+              -4.4316696284595845e-05,
+              -2.6398225202765602e-05,
+              -7.991262215516287e-05,
+              -1.1939117222719672e-05
+            ]
+          },
+          "seed": 12
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0001555294646213845,
+            "x_linf": 7.620285217368338e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0001555294646213845,
+            "nfev": 11900,
+            "nit": 118,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -3.141016834448684e-05,
+              -2.2722941945729454e-05,
+              1.4965481541897994e-05,
+              -4.195763388186726e-06,
+              7.620285217368338e-05
+            ]
+          },
+          "seed": 13
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.00010206723469297074,
+            "x_linf": 4.113071814845277e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.00010206723469297074,
+            "nfev": 11700,
+            "nit": 116,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -8.083215689961489e-06,
+              -1.5455969417489852e-05,
+              1.2891236071971442e-05,
+              3.3033046311635415e-05,
+              -4.113071814845277e-05
+            ]
+          },
+          "seed": 14
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.00016775313564965089,
+            "x_linf": 7.926997875295404e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.00016775313564965089,
+            "nfev": 11500,
+            "nit": 114,
+            "status": "converged",
+            "success": true,
+            "x": [
+              4.30844962041707e-05,
+              2.12324629014283e-05,
+              1.7278071827922644e-06,
+              7.926997875295404e-05,
+              1.3801631825758236e-05
+            ]
+          },
+          "seed": 15
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0001766175034672024,
+            "x_linf": 8.069102247315607e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0001766175034672024,
+            "nfev": 12000,
+            "nit": 119,
+            "status": "converged",
+            "success": true,
+            "x": [
+              -1.0324271352372868e-05,
+              5.1350966051369516e-05,
+              -8.069102247315607e-05,
+              -1.1773152026328426e-05,
+              -1.853212072092229e-05
+            ]
+          },
+          "seed": 16
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0003773812822456257,
+            "x_linf": 0.00018246103023997619
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0003773812822456257,
+            "nfev": 11200,
+            "nit": 111,
+            "status": "converged",
+            "success": true,
+            "x": [
+              7.3431298440391265e-06,
+              -3.387448959541627e-05,
+              -5.1678394627710164e-05,
+              0.00018246103023997619,
+              -8.502736103843591e-05
+            ]
+          },
+          "seed": 17
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.00020221144940579805,
+            "x_linf": 0.00010789940266668285
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.00020221144940579805,
+            "nfev": 11300,
+            "nit": 112,
+            "status": "converged",
+            "success": true,
+            "x": [
+              0.00010789940266668285,
+              -4.336452121700261e-06,
+              -2.0472930926335127e-05,
+              -1.2508215065814207e-05,
+              -2.2893343303859725e-05
+            ]
+          },
+          "seed": 18
+        },
+        {
+          "accepted": true,
+          "error": null,
+          "metrics": {
+            "objective_gap": 0.0002315827584955521,
+            "x_linf": 8.515507086740123e-05
+          },
+          "reasons": [],
+          "result": {
+            "fun": 0.0002315827584955521,
+            "nfev": 11600,
+            "nit": 115,
+            "status": "converged",
+            "success": true,
+            "x": [
+              5.719042715476863e-05,
+              9.359231503576796e-06,
+              -7.812014882808368e-05,
+              -8.515507086740123e-05,
+              -4.6132946562775384e-06
+            ]
+          },
+          "seed": 19
+        }
+      ]
+    }
+  ],
+  "schema": "sagejs.numerical-optimization-results/v1",
+  "started_unix": 1788141121.5802968,
+  "subject_ref": "98be022783b00dd30df85d1fbc44b13f44235563",
+  "summary": {
+    "accepted": 24,
+    "cases": 25,
+    "failed": 1
+  }
+}
