@@ -137,6 +137,8 @@ jobs:
           pnpm build
           pnpm --dir packages/flint-wasm build
           node packages/flint-wasm/scripts/production-receipt.cjs validate
+          node scripts/numerical-product.cjs publish \
+            --output build/authenticated-numerical-product
           node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
             --headers website/live/_headers
           node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
@@ -148,12 +150,14 @@ jobs:
           name: wasm-clean-build-${{ matrix.replica }}
           path: |
             packages/flint-wasm/dist
+            build/authenticated-numerical-product
             build/wasm-artifact-${{ matrix.replica }}.json
             build/toolchain-${{ matrix.replica }}.json
           if-no-files-found: error
 
   cross-platform-toolchain:
     name: Direct toolchain and artifact (${{ matrix.platform }})
+    needs: clean-build
     runs-on: ${{ matrix.runner }}
     environment: sagejs-source-mirror
     timeout-minutes: 240
@@ -163,6 +167,8 @@ jobs:
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       SAGEJS_WASM_SOURCE_MIRROR_DIR: /tmp/sagejs-wasm-source-mirror-cross
+      SAGEJS_NUMERICAL_PRODUCT_ROOT: ${{ github.workspace }}/build/canonical/build/authenticated-numerical-product
+      SAGEJS_NUMERICAL_RUNTIME_REQUIRED: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -188,6 +194,10 @@ jobs:
           node tools/source-mirror/scripts/source-mirror.mjs fetch \
             --output "$SAGEJS_WASM_SOURCE_MIRROR_DIR"
       - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-clean-build-a
+          path: build/canonical
       - id: toolchain
         run: |
           path="$(node packages/wasm-toolchain/scripts/toolchain.cjs cache-path)"
@@ -208,6 +218,16 @@ jobs:
           pnpm build
           pnpm --dir packages/flint-wasm build
           node packages/flint-wasm/scripts/production-receipt.cjs validate
+          env -u SAGEJS_NUMERICAL_PRODUCT_ROOT \
+            -u SAGEJS_NUMERICAL_RUNTIME_REQUIRED \
+            node packages/flint-wasm/numerical/scripts/build.cjs
+          env -u SAGEJS_NUMERICAL_PRODUCT_ROOT \
+            -u SAGEJS_NUMERICAL_RUNTIME_REQUIRED \
+            node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/build.cjs
+          cmp packages/flint-wasm/numerical/build/cminpack.wasm \
+            "$SAGEJS_NUMERICAL_PRODUCT_ROOT/browser/cminpack.wasm"
+          cmp src/lib/sagejs/numerics/optimization/backends/nlopt/build/nlopt-methods.wasm \
+            "$SAGEJS_NUMERICAL_PRODUCT_ROOT/browser/nlopt-methods.wasm"
           node packages/flint-wasm/scripts/wasm-abi-allowlist.cjs --check
           node --test packages/flint-wasm/test/factor.test.mjs
       - uses: actions/upload-artifact@v7
@@ -215,6 +235,8 @@ jobs:
           name: wasm-cross-platform-${{ matrix.platform }}
           path: |
             packages/flint-wasm/dist
+            packages/flint-wasm/numerical/build/cminpack.wasm
+            src/lib/sagejs/numerics/optimization/backends/nlopt/build/nlopt-methods.wasm
             build/toolchain-${{ matrix.platform }}.json
             build/wasi-probe-${{ matrix.platform }}.json
           if-no-files-found: error
@@ -307,6 +329,14 @@ jobs:
             --budget bench/browser-wasm-budget.json \
             --compare-payload build/darwin-arm64/packages/flint-wasm/dist \
             --output build/reproducible-darwin-arm64.json
+          cmp build/a/packages/flint-wasm/dist/cminpack.wasm \
+            build/linux-arm64/packages/flint-wasm/numerical/build/cminpack.wasm
+          cmp build/a/packages/flint-wasm/dist/nlopt-methods.wasm \
+            build/linux-arm64/src/lib/sagejs/numerics/optimization/backends/nlopt/build/nlopt-methods.wasm
+          cmp build/a/packages/flint-wasm/dist/cminpack.wasm \
+            build/darwin-arm64/packages/flint-wasm/numerical/build/cminpack.wasm
+          cmp build/a/packages/flint-wasm/dist/nlopt-methods.wasm \
+            build/darwin-arm64/src/lib/sagejs/numerics/optimization/backends/nlopt/build/nlopt-methods.wasm
           tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner \
             -C build/a/packages/flint-wasm -czf build/sagejs-wasm.tar.gz dist
           sha256sum build/sagejs-wasm.tar.gz > build/sagejs-wasm.tar.gz.sha256
