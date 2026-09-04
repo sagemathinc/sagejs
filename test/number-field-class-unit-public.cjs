@@ -714,7 +714,7 @@ print("cubic-relation-seed-ok")
   assert.equal(output, "cubic-relation-seed-ok");
 });
 
-test("cubic fallback retains stable packed dependencies before unit saturation", () => {
+test("cubic fallback retains a stable packed dependency before unit saturation", () => {
   const output = runPublic(String.raw`
 import sagejs.number_fields.class_unit_analytic as analytic_module
 import sagejs.number_fields.class_group_factor_base as factor_base_module
@@ -726,9 +726,9 @@ K = NumberField(x**3 - x**2 + 9*x - 21, "a")
 
 # LMFDB 3.1.2856.1 needed a targeted saturation batch when the packed cubic
 # relation sieve retained only transform-dependent class-presentation support.
-# Stable lattice deletion instead retains two exact dependency relations from
+# Height-aware stable lattice deletion leaves one exact dependency relation in
 # the source-ordered packed candidates (and widens the box only if the primary
-# candidates have none).  Their unit quotient is already fundamental here, so
+# candidates have none).  Its unit quotient is already fundamental here, so
 # neither LLL relation saturation nor the much more expensive bounded p-th-root
 # search should run.
 original_saturate_unit_lattice = analytic_module.saturate_unit_lattice
@@ -786,13 +786,13 @@ assert detached_context["matrix_state"] == (
     result.conditional_presentation_evidence.to_dict()
 )
 assert "_live_artifacts" not in detached_context
-assert artifact_search["integral_sieve_dependency_candidates"] == 2
-assert artifact_search["integral_sieve_dependency_relations"] == 2
+assert artifact_search["integral_sieve_dependency_candidates"] == 1
+assert artifact_search["integral_sieve_dependency_relations"] == 1
 assert artifact_search["integral_sieve_dependency_validated_batch"] == 1
 assert artifact_search["integral_sieve_dependency_coefficient_bound"] == 2
 assert artifact.relation_records[-1].provenance["coefficient_bound"] == 2
 assert resources["cubic_relation_seed_uses"] == 1
-assert resources["cubic_relation_seed_relations"] == 8
+assert resources["cubic_relation_seed_relations"] == 7
 assert resources["saturation_rounds"] == 0
 assert resources["relation_attempts"] == 0
 assert resources["relation_candidates"] == 0
@@ -978,33 +978,33 @@ assert proof_result.saturation_record.complete
 assert proof_result.saturation_record.verify()
 
 # LMFDB 3.1.5448.1 has no duplicate valuation row in the primary coefficient
-# box.  The bounded coefficient-4 fallback finds two stable exact dependency
-# relations.  Rank-one cubics retain the previous exact rule: steering state
-# is reused only when LLL leaves the complete dependency basis unchanged.
+# box.  The bounded coefficient-4 fallback finds one stable exact dependency
+# relation.  It is already the complete rank-one dependency basis, so the live
+# authenticated unit is reused without an unnecessary LLL reduction.
 W = NumberField(x**3 - x**2 - 14*x + 30, "c")
 assert W.class_number(proof=False) == 8
 widened_artifact = W._bounded_cubic_class_number_artifact
 widened_search = widened_artifact.diagnostics["relation_search"]
-assert widened_search["integral_sieve_dependency_candidates"] == 2
-assert widened_search["integral_sieve_dependency_relations"] == 2
+assert widened_search["integral_sieve_dependency_candidates"] == 1
+assert widened_search["integral_sieve_dependency_relations"] == 1
 assert widened_search["integral_sieve_dependency_validated_batch"] == 1
 assert widened_search["integral_sieve_dependency_coefficient_bound"] == 4
-assert len(widened_artifact.relation_records) == 9
+assert len(widened_artifact.relation_records) == 8
 widened_projection = list(W._class_number_projection_cache.values())[-1]
 widened_result = W.class_unit_group(proof=False)
 assert widened_projection._completed is widened_result
 widened_resources = widened_result.diagnostics["resources"]
 assert widened_result.proof_status == "exact-relations-conditional-grh"
-assert widened_resources["cubic_relation_seed_relations"] == 9
+assert widened_resources["cubic_relation_seed_relations"] == 8
 assert widened_resources["relation_attempts"] == 0
 assert widened_resources["relation_candidates"] == 0
 assert widened_resources["unit_principal_authority_requests"] == 1
 assert widened_resources["unit_principal_authority_hits"] == 1
 assert widened_resources["unit_principal_authority_fallbacks"] == 0
-assert widened_resources["dependency_unit_steering_basis_hits"] == 0
+assert widened_resources["dependency_unit_steering_basis_hits"] == 1
 assert widened_resources["dependency_unit_steering_basis_fallbacks"] == 0
-assert widened_resources["dependency_lattice_lll_requests"] == 1
-assert widened_resources["dependency_lattice_lll_reductions"] == 1
+assert widened_resources["dependency_lattice_lll_requests"] == 0
+assert widened_resources["dependency_lattice_lll_reductions"] == 0
 assert widened_result.context.live_diagnostics()["authenticated_dependency_units"] == 1
 
 # Filtering the widened box by repeated absolute norm changes only the amount
