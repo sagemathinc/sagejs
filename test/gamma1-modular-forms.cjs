@@ -49,16 +49,16 @@ test("Gamma1 bases and operators agree with pinned Sage oracles", async (t) => {
   );
 });
 
-test("batched cyclotomic Hecke images equal full exact operators", async (t) => {
+test("direct cyclotomic Hecke images equal full exact operators", async (t) => {
   const session = await createSage();
   t.after(() => session.close());
   const result = await session.evaluate([
     "e = DirichletGroup(13).0^2",
     "S = ModularSymbols(e, 2, sign=1).cuspidal_submodule()",
+    "A = S.ambient_module()",
     "indices = list(range(1, 10))",
-    "fast = S._character_hecke_image_rows(0, indices)",
-    "slow = matrix(S.base_ring(), [S.hecke_matrix(n).row(0).list() for n in indices])",
-    "print(fast == slow, fast.nrows(), fast.ncols())",
+    "fast = A.p1list().character_hecke_images(A.weight(), A.sign(), A.character(), A.base_ring(), S.basis_matrix(), 0, 10)",
+    "print(all(fast.column(n-1).list() == S.hecke_matrix(n).row(0).list() for n in indices), fast.ncols(), fast.nrows())",
   ].join("\n"));
   assert.equal(result.stdout.trim(), "True 9 1");
 
@@ -66,10 +66,11 @@ test("batched cyclotomic Hecke images equal full exact operators", async (t) => 
     "M = ModularForms(Gamma1(53), 2)",
     "F = M.character_components()[1].fixed_character_space()",
     "S = F.cuspidal_subspace()._modular_symbols_cusp_space()",
+    "A = S.ambient_module()",
     "indices = list(range(1, 9))",
-    "fast = S._character_hecke_image_rows(0, indices)",
-    "slow = matrix(S.base_ring(), [S.hecke_matrix(n).row(0).list() for n in indices])",
-    "print(F.base_ring().degree(), fast == slow, fast.nrows(), fast.ncols(), fast[7,0])",
+    "fast = A.p1list().character_hecke_images(A.weight(), A.sign(), A.character(), A.base_ring(), S.basis_matrix(), 0, 9)",
+    "same = all(fast.column(n-1).list() == S.hecke_matrix(n).row(0).list() for n in indices)",
+    "print(F.base_ring().degree(), same, fast.ncols(), fast.nrows(), fast[0,7])",
   ].join("\n"));
   assert.equal(
     higherDegree.stdout.trim(),

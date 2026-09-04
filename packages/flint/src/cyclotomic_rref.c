@@ -967,7 +967,14 @@ int sagejs_cyclotomic_rref_multimodular(
             proven = converted && height_proves_reconstruction(
                 candidate, coefficient_count, columns,
                 scaled_source_bound, modulus);
-            certified = converted && rows <= 64 && columns <= 64 &&
+            /*
+             * Exact source certification is far sharper than the generic
+             * determinant-height bound for the moderately sized, tall
+             * Hecke-image matrices used in q-expansion reconstruction.  Keep
+             * an explicit work bound so enormous unrelated matrices still
+             * rely on the cheap height certificate.
+             */
+            certified = converted && rows <= 256 && columns <= 256 &&
                 candidate_certifies_source(
                     candidate, target_rank, rows, columns, target_pivots,
                     terms, term_count, order);

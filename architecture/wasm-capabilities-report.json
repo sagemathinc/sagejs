@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "220bc038cc68a1a97ef169ab90a233e3b93f14c4be7f04321b74274f4f68efd9",
+  "source_sha256": "e119bc32aa904b622349cb667aae116db7119802e4699b81fc2ef722a4608a94",
   "counts": {
     "total": 1081,
     "by_kind": {
@@ -9486,7 +9486,7 @@
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "Batched character Hecke images use an exact portable modular-symbol fallback when the Node acceleration is unavailable."
+      "explanation": "Higher-character q-expansions use the exact portable Hecke recurrence when the native bulk power-basis adapter is unavailable."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeMatrix",

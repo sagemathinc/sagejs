@@ -1694,6 +1694,10 @@ function readCensusPart(filename, expected, batch, options) {
 }
 
 function fsyncDirectory(directory) {
+  // Windows does not support fsync on a directory handle (it reports EPERM).
+  // The file itself has already been fsynced before publication, so retain the
+  // strongest durability primitive available on that platform.
+  if (process.platform === "win32") return;
   const descriptor = fs.openSync(directory, "r");
   try {
     fs.fsyncSync(descriptor);

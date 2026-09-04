@@ -63,7 +63,7 @@
     },
     {
       "path": "src/baselib/modular.py",
-      "sha256": "d34433c12a2d98a504aecfa84c83897782160071d1f4634ab365526a4f3fd489"
+      "sha256": "ae13004a5650c0ab148fabae2e44d743b458c894055fe319390dec59a6a3d49c"
     },
     {
       "path": "src/lib/sagejs/modular_forms/__init__.py",
@@ -87,7 +87,7 @@
     },
     {
       "path": "src/lib/sagejs/modular_forms/qexp.py",
-      "sha256": "fb73c863c5db7c888ea1396198c493376c1aa26b3bf0c4d1c1d78325a30a36a5"
+      "sha256": "098d664cdf9cecaa8258c5358660f5bdad4a83319e78a899dd9434fd75469841"
     },
     {
       "path": "src/lib/sagejs/modular_forms/qexp_algebra.py",
@@ -134,5 +134,5 @@
       "sha256": "a0915c967609f8aecd958a3ac4620e5a108e98746df1eaa49acb2f37c249a10f"
     }
   ],
-  "bundle_sha256": "c84f700a0e33288835a2c3316d33d6916122c229f0666d0bd4511b916f958bd4"
+  "bundle_sha256": "9e9baea57134a6668ae961aff9a3bf2a02fd3b837ab0382011f869b222e905ca"
 }

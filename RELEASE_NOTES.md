@@ -48,6 +48,39 @@ inputs; memory, startup, payload, and performance measurements; and raw
 producer artifacts. The tagged workflow reconstructs that gate twice and
 requires canonical byte identity before GitHub, npm, or Cloudflare publication.
 
+Interactive mathematics is substantially broader in this release:
+
+- Upstream `traitlets`, `comm`, and `ipywidgets` are bundled with a
+  transport-neutral comm implementation. Standard controls, binary widget
+  state, repeated updates, plots, and rich `Output` content work in the
+  browser app, and Sage-compatible `@interact` controls are available.
+- Real and complex interval fields support all five MPFR rounding modes and
+  use MPFR/Arb/Acb on native and WebAssembly targets. A pinned executable Sage
+  PREP corpus provides explicit coverage and expected-failure accounting for
+  undergraduate examples.
+
+The exact algebra and number-theory libraries also gained major foundations:
+
+- Classical integral-weight trivial-character `Gamma0(N)` modular forms over
+  `QQ` now have common parents, immutable exact coordinates, coercion,
+  membership, arithmetic, and certified good- and bad-prime Hecke actions for
+  ambient, cusp, Eisenstein, old, and new spaces.
+- Polynomial ideals over `QQ` and prime fields now include exact,
+  certificate-verified Buchberger bases, elimination, bounded FGLM order
+  conversion, quotient coordinates and multiplication matrices, and
+  base-field solving, on native and WebAssembly runtimes.
+- Complex cubic number fields have a narrowly gated native class-group
+  frontier with authenticated replayable certificates and fail-closed resource
+  limits. Its frozen 1,000-field survey and 20-field holdout agree exactly with
+  retained PARI and LMFDB reference data; this is explicitly not yet broad
+  PARI performance parity.
+
+Linux native worker teardown is now fork-safe. Mathematical addons that embed
+process-wide OpenBLAS `atfork` handlers remain mapped for process lifetime, and
+SEA workers share one atomically published extraction root. This closes an
+intermittent ARM64 worker-teardown/spawn crash without retaining one native
+image per worker.
+
 The supported release platforms remain:
 
 - macOS arm64, signed with Apple Developer ID and notarized by Apple;

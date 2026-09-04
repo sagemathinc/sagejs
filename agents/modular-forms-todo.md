@@ -421,6 +421,11 @@ The full $\Gamma_1$ extension is specified in
 `agents/gamma1-modular-forms-plan.md` and documented in
 `docs/gamma1-modular-forms.md`; it descends one fast fixed-character space per
 Galois orbit to a canonical Sturm-certified rational basis.
+Higher-order-character $q$-expansion reconstruction now uses direct exact
+Hecke images in the cyclotomic power basis.  The reproducible scaling grid in
+`bench/modular/higher-character-qexp/` checks degrees $4$ and $8$ through a
+nontrivial exact coefficient; its 2026-09-04 levels $101$, $157$, $241$, and
+$401$ receipt ranges from $3\times$ to $10\times$ faster than SageMath.
 
 ## P1: analytic modular-form functionality
 

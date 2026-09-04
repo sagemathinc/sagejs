@@ -256,9 +256,12 @@ def check_case(case_index, label, coefficients, invariants, proof):
 rows = []
 for case_index, case in enumerate(CASES):
     for proof in (False, True):
+        print("projection-case-start", case[0], "proof=" + str(proof))
         rows.append(check_case(case_index, case[0], case[1], case[2], proof))
+        print("projection-case-complete", case[0], "proof=" + str(proof))
 
 # Callback-bearing exact work never gains access to an existing projection.
+print("projection-callback-start")
 callback_field = make_field((1, 5, -1, 1), "callback")
 events = []
 callback_result = callback_field.class_unit_group(proof=True, progress=events.append)
@@ -266,5 +269,6 @@ assert callback_result.context._live_artifacts is not None
 assert callback_result.context._live_artifacts.public_class_group_projection is None
 if callback_result.complete:
     assert original_adapter(callback_result).verify()
+print("projection-callback-complete")
 
 print(json.dumps({"rows": rows, "status": "ok"}, sort_keys=True))

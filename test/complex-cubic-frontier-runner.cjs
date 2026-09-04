@@ -316,7 +316,7 @@ test("census CPU lists are explicit and never affect retained timing", () => {
     "--timing", ...required, "--census-file", "/tmp/census.json", "--census-cpus", "0,1",
   ]), /only valid with --census/);
   assert.equal(parseArguments(["--census", ...required]).censusPartsDir,
-    "/tmp/output.json.parts");
+    path.resolve("/tmp/output.json.parts"));
   assert.equal(parseArguments(["--census", ...required, "--no-census-parts"])
     .censusPartsDir, null);
   assert.throws(() => parseArguments([
@@ -982,7 +982,7 @@ test("full-survey warmup is a two-pass, content-bound runtime fixed point", () =
       const shard = spawnCount % partitions.length;
       spawnCount += 1;
       assert.equal(executable, "/node");
-      assert.deepEqual(args, ["/candidate/bin/sagejs", "--python", "-"]);
+      assert.deepEqual(args, [path.join("/candidate", "bin", "sagejs"), "--python", "-"]);
       assert.equal(options.input, expectedWarmupPrograms[shard]);
       return {
         error: null,

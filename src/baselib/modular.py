@@ -3605,51 +3605,35 @@ class P1List:
         sign: Any,
         character: Any,
         base_ring: Any,
-        source: Any,
-        indices: Any,
+        basis: Any,
+        functional_index: Any,
+        precision: Any,
     ) -> Any:
-        r"""Return selected exact rows of character Hecke operators.
-
-        This is an internal performance capability for the Hecke-dual
-        $q$-expansion algorithm.  A backend without the batch capability
-        returns `None` so the caller can use full exact Hecke matrices.
-        """
+        """Return direct $T_n$ images of one character-space functional."""
         weight = _positive_integer(weight, "modular-symbol weight")
         sign = _exact_integer(sign, "sign")
-        source = _exact_nonnegative_integer(source, "Hecke source row")
-        hecke_indices = [
-            _positive_integer(index, "Hecke index") for index in list(indices)
-        ]
-        if character.order() <= 2:
-            return None
+        functional_index = _exact_nonnegative_integer(
+            functional_index, "functional index"
+        )
+        precision = _positive_integer(precision, "q-expansion precision")
         presentation = self.character_presentation(weight, sign, character, base_ring)
-        if source >= presentation.dimension():
-            raise IndexError("Hecke source row out of range")
-        backend = runtime.flint_backend()
-        method = runtime.reflect.get(backend, "p1ListCharacterHeckeImages")
-        if runtime.jstype(method) != "function":
-            return None
-        native = runtime.reflect.apply(
-            method,
-            backend,
-            [
-                self._native,
-                weight,
-                sign,
-                source,
-                hecke_indices,
-                character._parent._native,
-                character._index,
-                presentation._native,
-            ],
+        native = runtime.flint_backend().p1ListCharacterHeckeImages(
+            self._native,
+            weight,
+            sign,
+            precision,
+            character._parent._native,
+            character._index,
+            presentation._native,
+            basis._native,
+            functional_index,
         )
-        matrix_space = MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-            base_ring, 1, presentation.dimension()
+        return Matrix(  # type: ignore[name-defined]  # noqa: F821
+            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                base_ring, basis.nrows(), precision - 1
+            ),
+            native,
         )
-        return [
-            Matrix(matrix_space, native[position])  # type: ignore[name-defined]  # noqa: F821
-            for position in range(len(hecke_indices))
-        ]
 
     def _hecke_matrix(
         self,
@@ -4248,11 +4232,105 @@ class ModularSymbolsSpace(sage.Parent):
         self._q_expansion_signed_cusp_space_cache = signed_space
         return signed_space
 
+    def _q_expansion_character_hecke_rows(
+        self,
+        functional_index: int,
+        precision: int,
+    ) -> list[Any]:
+        r"""Return one Hecke-dual coefficient block without composite matrices.
+
+        For a nonreal Dirichlet character, constructing every full $T_n$ and
+        multiplying cyclotomic matrices is much more expensive than applying
+        the prime matrices to one functional.  The multiplicativity and
+        prime-power recurrence for $T_n$ let us compute exactly the rows that
+        q-expansion reconstruction consumes.  This is the source-transparent
+        analogue of the direct Hecke-image strategy used by Sage's optimized
+        nonquadratic-character code.
+        """
+        native_images = runtime.reflect.get(
+            runtime.flint_backend(), "p1ListCharacterHeckeImages"
+        )
+        if runtime.jstype(native_images) == "function":
+            ambient = self.ambient_module()
+            block = ambient.p1list().character_hecke_images(
+                ambient.weight(),
+                ambient.sign(),
+                ambient.character(),
+                ambient.base_ring(),
+                self.basis_matrix(),
+                functional_index,
+                precision,
+            )
+            return block.transpose().rows()
+
+        dimension = self.dimension()
+        coefficient_ring = self.base_ring()
+        unit = vector(  # type: ignore[name-defined]  # noqa: F821
+            coefficient_ring,
+            [1 if index == functional_index else 0 for index in range(dimension)],
+        )
+        prime_matrices = runtime.reflect.construct(runtime.map_class, [])
+        rows = []
+        for index in range(1, precision):
+            image = unit
+            for prime_value, exponent_value in sage.factor(index):
+                prime = runtime.number(prime_value)
+                exponent = runtime.number(exponent_value)
+                prime_matrix = prime_matrices.get(prime)
+                if prime_matrix is runtime.undefined:
+                    prime_matrix = self.hecke_matrix(prime)
+                    prime_matrices.set(prime, prime_matrix)
+                previous = image
+                current = image * prime_matrix
+                if self.level() % prime == 0:
+                    recurrence_coefficient = coefficient_ring(0)
+                else:
+                    recurrence_coefficient = coefficient_ring(
+                        self.character()(prime)
+                    ) * (sage.ZZ(prime) ** (self.weight() - 1))
+                for _power in range(2, exponent + 1):
+                    following = (
+                        current * prime_matrix - previous * recurrence_coefficient
+                    )
+                    previous = current
+                    current = following
+                image = current
+            rows.append(image)
+        return rows
+
+    def _q_expansion_row_basis(self, rows: list[Any]) -> tuple[Any, Any]:
+        r"""Return the canonical row basis and its exact lift from `rows`.
+
+        In degree greater than two, two native cyclotomic kernels are far
+        cheaper than generic algebraic-number RREF.  Every native kernel
+        reconstruction is certified over the exact cyclotomic field.  The
+        character path subsequently computes Hecke action directly from the
+        canonical coefficient pivots, so it deliberately avoids constructing
+        a potentially enormous change-of-basis lift.  The ordinary row-space
+        and solve path remains the portable fallback.
+        """
+        coefficient_ring = self.base_ring()
+        raw_matrix = matrix(coefficient_ring, rows)  # type: ignore[name-defined]  # noqa: F821
+        if self._character is not None and not self.character().is_real():
+            kernel = raw_matrix.right_kernel().basis_matrix()
+            coefficient_basis = kernel.right_kernel().basis_matrix()
+            lift_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
+                coefficient_ring, 0, raw_matrix.nrows()
+            )
+            return coefficient_basis, lift_matrix
+        coefficient_basis = raw_matrix.row_space().basis_matrix()
+        lift_matrix = raw_matrix.solve_left(coefficient_basis)
+        if lift_matrix * raw_matrix != coefficient_basis:
+            raise ArithmeticError(
+                "could not lift the canonical q-expansion basis to Hecke-dual rows"
+            )
+        return coefficient_basis, lift_matrix
+
     def _q_expansion_data(
         self,
         precision: Any,
         use_cache: bool = True,
-    ) -> tuple[Any, Any, Any, Any, Any, Any]:
+    ) -> tuple[Any, Any, Any, Any, Any]:
         """Return the Hecke-dual basis and its exact modular-symbol lift."""
         precision = _exact_nonnegative_integer(precision, "q-expansion precision")
         if precision < 1:
@@ -4269,54 +4347,51 @@ class ModularSymbolsSpace(sage.Parent):
                 signed_space,
                 matrix(signed_space.base_ring(), 0, precision),  # type: ignore[name-defined]  # noqa: F821
                 runtime.math_tuple([]),
-                matrix(signed_space.base_ring(), 0, precision - 1),  # type: ignore[name-defined]  # noqa: F821
+                matrix(signed_space.base_ring(), 0, precision),  # type: ignore[name-defined]  # noqa: F821
                 matrix(signed_space.base_ring(), 0, 0),  # type: ignore[name-defined]  # noqa: F821
-                runtime.math_tuple([]),
             )
             if use_cache:
                 self._q_expansion_data_cache.set(precision, result)
             return result
 
-        hecke_matrices = None
-        hecke_indices = list(range(1, precision))
-        accumulated_matrix = None
+        direct_character_images = (
+            signed_space._character is not None
+            and not signed_space.character().is_real()
+        )
+        hecke_matrices = []
+        if not direct_character_images:
+            hecke_matrices = [
+                signed_space.hecke_matrix(index) for index in range(1, precision)
+            ]
+        accumulated_rows = []
         functional_indices = []
         coefficient_ring = signed_space.base_ring()
         coefficient_basis = matrix(  # type: ignore[name-defined]  # noqa: F821
             coefficient_ring, 0, precision - 1
         )
+        lift_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
+            coefficient_ring, 0, 0
+        )
         order = [0]
         order.extend(range(dimension - 1, 0, -1))
         for functional_index in order:
-            block_matrix = None
-            image_rows = signed_space._character_hecke_image_rows(
-                functional_index, hecke_indices
-            )
-            if image_rows is None:
-                if hecke_matrices is None:
-                    hecke_matrices = [
-                        signed_space.hecke_matrix(index) for index in hecke_indices
-                    ]
-                rows = [[] for _row in range(dimension)]
-                for operator in hecke_matrices:
-                    values = operator.row(functional_index).list()
-                    for row_index in range(dimension):
-                        rows[row_index].append(values[row_index])
-                block_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
-                    coefficient_ring,
-                    rows,
+            rows = [[] for _row in range(dimension)]
+            if direct_character_images:
+                hecke_rows = signed_space._q_expansion_character_hecke_rows(
+                    functional_index, precision
                 )
             else:
-                block_matrix = image_rows.transpose()
-            if block_matrix is None:
-                raise ArithmeticError("the Hecke image block was not constructed")
-            accumulated_matrix = (
-                block_matrix
-                if accumulated_matrix is None
-                else accumulated_matrix.stack(block_matrix)
-            )
+                hecke_rows = [
+                    operator.row(functional_index) for operator in hecke_matrices
+                ]
+            for values in hecke_rows:
+                for row_index in range(dimension):
+                    rows[row_index].append(values[row_index])
+            accumulated_rows.extend(rows)
             functional_indices.append(functional_index)
-            coefficient_basis = _exact_row_space_basis(accumulated_matrix)
+            coefficient_basis, lift_matrix = signed_space._q_expansion_row_basis(
+                accumulated_rows
+            )
             if coefficient_basis.nrows() >= target_dimension:
                 break
         if coefficient_basis.nrows() < target_dimension:
@@ -4330,44 +4405,18 @@ class ModularSymbolsSpace(sage.Parent):
         coefficient_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
             coefficient_ring, coefficient_rows
         )
+        # The native cyclotomic double-kernel path has already produced this
+        # canonical RREF.  Record that exact certificate so pivot discovery
+        # and public row-space construction never repeat algebraic reduction.
+        coefficient_matrix._rref_cache = coefficient_matrix
+        coefficient_matrix._rank_cache = coefficient_matrix.nrows()
         coefficient_matrix.set_immutable()
-        raw_matrix = accumulated_matrix
-        if raw_matrix is None:
-            raise ArithmeticError("the Hecke-dual construction produced no rows")
-        if target_dimension == dimension:
-            # The exact row-space computation above proves that `raw_matrix`
-            # and `coefficient_matrix` have the same full-dimensional row
-            # space.  Solve only on the RREF pivot columns: restriction to
-            # those columns is an isomorphism on that row space, so this small
-            # solve determines the unique lift without a prohibitively wide
-            # generic `QQbar` solve or matrix product.
-            pivots = list(coefficient_basis.pivots())
-            pivot_matrix = raw_matrix.matrix_from_columns(pivots)
-            independent_rows = list(
-                _exact_row_space_basis(pivot_matrix.transpose()).pivots()
-            )
-            square_pivot = pivot_matrix.matrix_from_rows(independent_rows)
-            inverse_pivot = square_pivot.inverse()
-            # Retain the compact inverse and the selected source rows
-            # separately.  Materializing a wider zero-padded matrix through
-            # Python entries would discard the native cyclotomic-coordinate
-            # representation that makes the subsequent transport fast.
-            lift_matrix = inverse_pivot
-            lift_indices = independent_rows
-            identity = identity_matrix(  # type: ignore[name-defined]  # noqa: F821
-                coefficient_ring, dimension
-            )
-            if inverse_pivot._sparse_left_multiply(square_pivot) != identity:
-                raise ArithmeticError(
-                    "could not lift the canonical q-expansion pivot basis"
-                )
-        else:
-            lift_matrix = raw_matrix.solve_left(coefficient_basis)
-            lift_indices = list(range(raw_matrix.nrows()))
-            if lift_matrix * raw_matrix != coefficient_basis:
-                raise ArithmeticError(
-                    "could not lift the canonical q-expansion basis to Hecke-dual rows"
-                )
+        raw_rows = []
+        for row in accumulated_rows:
+            raw_rows.append([coefficient_ring(0)] + list(row))
+        raw_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
+            coefficient_ring, raw_rows
+        )
         raw_matrix.set_immutable()
         lift_matrix.set_immutable()
         result = (
@@ -4376,11 +4425,66 @@ class ModularSymbolsSpace(sage.Parent):
             runtime.math_tuple(functional_indices),
             raw_matrix,
             lift_matrix,
-            runtime.math_tuple(lift_indices),
         )
         if use_cache:
             self._q_expansion_data_cache.set(precision, result)
         return result
+
+    def _q_expansion_character_hecke_matrix(
+        self,
+        index: int,
+        coefficients: Any,
+    ) -> Any:
+        r"""Return $T_n$ from certified cyclotomic q-expansion coefficients.
+
+        The canonical coefficient matrix is in RREF, so coefficients at its
+        pivot exponents are coordinates.  The usual exact formula
+
+        $$
+        a_m(T_n f)=\sum_{d\mid(m,n)}\chi(d)d^{k-1}a_{mn/d^2}(f)
+        $$
+
+        therefore gives the Hecke matrix without transporting a full symbol
+        matrix through several generic algebraic solves.
+        """
+        pivots = list(coefficients.pivots())
+        if len(pivots) != coefficients.nrows():
+            raise ArithmeticError(
+                "the separating q-expansion prefix has incomplete dimension"
+            )
+        maximum_coefficient = 0
+        for exponent in pivots:
+            common = gcd(exponent, index)  # type: ignore[name-defined]  # noqa: F821
+            for divisor in sage.divisors(common):
+                source = exponent * index // (runtime.number(divisor) ** 2)
+                maximum_coefficient = max(maximum_coefficient, source)
+        _signed, extended, _indices, _raw, _lift = self._q_expansion_data(
+            maximum_coefficient + 1
+        )
+        if extended.nrows() != coefficients.nrows():
+            raise ArithmeticError(
+                "extended q-expansions changed the certified cusp dimension"
+            )
+        coefficient_ring = self.base_ring()
+        rows = []
+        for basis_index in range(extended.nrows()):
+            row = []
+            for exponent in pivots:
+                value = coefficient_ring(0)
+                common = gcd(  # type: ignore[name-defined]  # noqa: F821
+                    exponent, index
+                )
+                for divisor_value in sage.divisors(common):
+                    divisor = runtime.number(divisor_value)
+                    source = exponent * index // (divisor * divisor)
+                    value += (
+                        coefficient_ring(self.character()(divisor))
+                        * (sage.ZZ(divisor) ** (self.weight() - 1))
+                        * extended[basis_index, source]
+                    )
+                row.append(value)
+            rows.append(row)
+        return matrix(coefficient_ring, rows)  # type: ignore[name-defined]  # noqa: F821
 
     def _q_expansion_hecke_matrix(
         self,
@@ -4409,59 +4513,39 @@ class ModularSymbolsSpace(sage.Parent):
                 raise
             precision = maximum
             data = self._q_expansion_data(precision)
-        signed_space, coefficients, indices, raw_matrix, lift_matrix, lift_indices = (
-            data
-        )
+        signed_space, coefficients, indices, raw_matrix, lift_matrix = data
         if coefficients.nrows() != dimension:
             if precision == maximum:
                 raise ArithmeticError(
                     "the separating q-expansion prefix has incomplete dimension"
                 )
-            (
-                signed_space,
-                coefficients,
-                indices,
-                raw_matrix,
-                lift_matrix,
-                lift_indices,
-            ) = self._q_expansion_data(maximum)
+            signed_space, coefficients, indices, raw_matrix, lift_matrix = (
+                self._q_expansion_data(maximum)
+            )
         if coefficients.nrows() != dimension:
             raise ArithmeticError(
                 "the Sturm q-expansion prefix has incomplete dimension"
             )
 
+        if self._character is not None and not self.character().is_real():
+            return self._q_expansion_character_hecke_matrix(hecke_index, coefficients)
+
         symbol_matrix = signed_space.hecke_matrix(hecke_index)
-        coefficient_pivots = list(coefficients.pivots())
-        pivot_basis = coefficients.matrix_from_columns(coefficient_pivots)
-        if pivot_basis != identity_matrix(  # type: ignore[name-defined]  # noqa: F821
-            signed_space.base_ring(), dimension
-        ):
-            raise ArithmeticError(
-                "the canonical q-expansion basis has nonidentity pivot columns"
-            )
-        # Cuspidal `raw_matrix` starts at q^1, whereas `coefficients` retains
-        # its explicit zero constant column for the public power series.
-        pivots = [pivot - 1 for pivot in coefficient_pivots]
-        image_matrix = None
+        image_rows = []
         for block_index in range(len(indices)):
             start = block_index * dimension
-            block = raw_matrix.matrix_from_rows(
-                range(start, start + dimension)
-            ).matrix_from_columns(pivots)
-            image_block = symbol_matrix.transpose()._sparse_left_multiply(block)
-            image_matrix = (
-                image_block if image_matrix is None else image_matrix.stack(image_block)
+            block = raw_matrix.matrix_from_rows(range(start, start + dimension))
+            image_rows.extend((symbol_matrix.transpose() * block).rows())
+        image_raw = matrix(  # type: ignore[name-defined]  # noqa: F821
+            signed_space.base_ring(), [row.list() for row in image_rows]
+        )
+        image_matrix = lift_matrix * image_raw
+        answer = coefficients.solve_left(image_matrix)
+        if answer * coefficients != image_matrix:
+            raise ArithmeticError(
+                "the modular-symbol Hecke action did not preserve the q-expansion span"
             )
-        # The basis is certified RREF, so restriction to its pivot columns is
-        # the coordinate isomorphism.  Transporting only these square blocks
-        # is exact and avoids multiplying wide cyclotomic matrices merely to
-        # solve the same coordinate problem again.
-        if image_matrix is None:
-            return matrix(  # type: ignore[name-defined]  # noqa: F821
-                signed_space.base_ring(), dimension, dimension
-            )
-        selected_image = image_matrix.matrix_from_rows(lift_indices)
-        return lift_matrix._sparse_left_multiply(selected_image)
+        return answer
 
     def diamond_bracket_matrix(self, value: Any) -> Any:
         """Return the scalar matrix of the diamond operator `<value>`."""
@@ -5425,47 +5509,6 @@ class ModularSymbolsSpace(sage.Parent):
             )
             result = prime_matrix**0
         return self._restrict_ambient_matrix(result)
-
-    def _character_hecke_image_rows(
-        self,
-        functional_index: int,
-        indices: list[int],
-    ) -> Any:
-        """Return rows `functional_index` of several $T_n$, if batched."""
-        ambient = self.ambient_module()
-        if not ambient._supports_native_character():
-            return None
-        basis = self.basis_matrix()
-        coefficients = basis.row(functional_index).list()
-        nonzero_sources = []
-        for source, coefficient in enumerate(coefficients):
-            if coefficient != 0:
-                nonzero_sources.append((source, coefficient))
-        answer = None
-        for source, coefficient in nonzero_sources:
-            images = ambient.p1list().character_hecke_images(
-                ambient.weight(),
-                ambient.sign(),
-                ambient._character,
-                ambient.base_ring(),
-                source,
-                indices,
-            )
-            if images is None:
-                return None
-            rows = images[0]
-            for image in images[1:]:
-                rows = rows.stack(image)
-            if coefficient != 1:
-                rows = rows * coefficient
-            answer = rows if answer is None else answer + rows
-        if answer is None:
-            answer = matrix(  # type: ignore[name-defined]  # noqa: F821
-                ambient.base_ring(), len(indices), ambient.dimension()
-            )
-        if self.is_ambient():
-            return answer
-        return answer.matrix_from_columns(list(basis.pivots()))
 
     def hecke_matrix(self, index: Any) -> Any:
         r"""

@@ -24,7 +24,7 @@
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "b455b3de726590e4d357aa0dfb0c118c2c28f594de6dc8bc8290c5414a90f386"
+      "sha256": "f5ce0b7429f6b7dc159302347a302f585c33586d0c885cc1d671aa7604ef216d"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",

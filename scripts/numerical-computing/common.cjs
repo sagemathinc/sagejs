@@ -347,8 +347,45 @@ function digestBundle(root, paths, label = "source paths") {
   const normalized = array(label, paths, (itemLabel, item) =>
     repositoryPath(root, nonemptyString(itemLabel, item), itemLabel).relative,
   { minimum: 1, uniqueBy: (item) => item }).sort();
-  const entries = normalized.map((name) => digestPath(root, name, `${label}.${name}`));
+  const entries = normalized.map((name) => digestTrackedPath(root, name, `${label}.${name}`));
   return { paths: normalized, entries, sha256: sha256(canonicalJson(entries)) };
+}
+
+// A qualification source bundle describes the candidate's version-controlled
+// source, not the mutable build workspace around it. Source directories can
+// contain ignored, platform-specific outputs (native objects, Wasm products,
+// Python bytecode, and dependency prefixes); recursively hashing those files
+// made one clean Git tree acquire a different source identity on every host.
+//
+// Bind every tracked descendant and its current bytes instead. The repository
+// commit/tree and clean-status bindings independently prove that this tracked
+// file set is the candidate being qualified. Artifact inputs continue to use
+// digestPath so generated products remain bound in full.
+function digestTrackedPath(root, candidate, label = "tracked path") {
+  const top = repositoryPath(root, candidate, label);
+  if (!fs.existsSync(top.absolute)) fail(label, `does not exist: ${top.relative}`);
+  const output = execFileSync(
+    "git", ["-C", root, "ls-files", "-z", "--", top.relative],
+    { encoding: "buffer", stdio: ["ignore", "pipe", "pipe"] },
+  );
+  const names = output.toString("utf8").split("\0").filter(Boolean).sort();
+  if (names.length === 0) fail(label, `has no Git-tracked files: ${top.relative}`);
+  const hash = createHash("sha256");
+  let bytes = 0;
+  let files = 0;
+  for (const name of names) {
+    const item = repositoryPath(root, name, label);
+    const status = fs.lstatSync(item.absolute);
+    if (status.isSymbolicLink()) fail(label, `symbolic links are not source inputs: ${name}`);
+    if (!status.isFile()) fail(label, `tracked source is not a regular file: ${name}`);
+    const content = fs.readFileSync(item.absolute);
+    hash.update(`file\0${name}\0${content.length}\0`);
+    hash.update(content);
+    hash.update("\0");
+    bytes += content.length;
+    files += 1;
+  }
+  return { path: top.relative, sha256: hash.digest("hex"), bytes, files };
 }
 
 function git(root, args) {
@@ -459,6 +496,7 @@ module.exports = {
   contentDigestPath,
   digestBundle,
   digestPath,
+  digestTrackedPath,
   enumeration,
   exactKeys,
   fail,

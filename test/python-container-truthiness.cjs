@@ -24,6 +24,11 @@ const {
 const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
+// Four platform-test files run concurrently.  On Windows, compiler-heavy
+// siblings can briefly starve these oracle processes even though both finish
+// in a few seconds when run alone.  Keep a bounded deadline without placing
+// ordinary scheduler variance directly on the five-second boundary.
+const oracleProcessTimeoutMs = 30_000;
 const parserOptions = {
   filename: "<container-truthiness>",
   for_linting: true,
@@ -214,13 +219,13 @@ test("Python truth testing is the safe OutputStream default", async () => {
     cpython = spawnSync(pythonExecutable(), [pythonPath], {
       cwd: root,
       encoding: "utf8",
-      timeout: 5_000,
+      timeout: oracleProcessTimeoutMs,
     });
     generated = spawnSync(process.execPath, [javascriptPath], {
       cwd: root,
       encoding: "utf8",
       env: { ...process.env, SAGEJS_NATIVE_DISABLE: "1" },
-      timeout: 5_000,
+      timeout: oracleProcessTimeoutMs,
     });
   } finally {
     rmSync(directory, { recursive: true, force: true });
