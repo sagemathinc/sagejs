@@ -36,6 +36,8 @@
 #include "matrix.h"
 #include "sparse_rational.h"
 
+static sagejs_matrix *unwrap_matrix(napi_env env, napi_value object);
+
 static int check_napi(napi_env env, napi_status status)
 {
     const napi_extended_error_info *info;
@@ -570,6 +572,113 @@ napi_value sagejs_qqbar_matrix_from_cyclotomic_gr_mat(
                     (gr_mat_struct *) entries, row, column,
                     (gr_ctx_struct *) context));
     return wrap_matrix(env, matrix);
+}
+
+/*
+ * Copy one algebraic matrix into rational power-basis coordinates.  Native
+ * mathematical consumers use this boundary to keep exact cyclotomic linear
+ * algebra out of generic qqbar arithmetic without depending on the private
+ * sagejs_matrix representation.
+ */
+int sagejs_matrix_cyclotomic_coordinates_copy(
+    napi_env env,
+    napi_value value,
+    ulong order,
+    slong *rows,
+    slong *columns,
+    size_t *degree,
+    fmpq **coordinates)
+{
+    sagejs_matrix *source = unwrap_matrix(env, value);
+    fmpq *answer = NULL;
+    size_t count;
+    fmpq_poly_t expression;
+    qqbar_t root;
+    int scalars_initialized = 0;
+
+    if (source == NULL)
+        return 0;
+    if (source->kind != SAGEJS_MATRIX_QQBAR || order < 3 ||
+        rows == NULL || columns == NULL || degree == NULL ||
+        coordinates == NULL)
+    {
+        napi_throw_type_error(env, NULL,
+            "expected an algebraic matrix and a cyclotomic order");
+        return 0;
+    }
+    *rows = matrix_nrows(source);
+    *columns = matrix_ncols(source);
+    *degree = (size_t) n_euler_phi(order);
+    *coordinates = NULL;
+    if (*degree == 0 ||
+        (*rows != 0 && (size_t) *columns > SIZE_MAX / (size_t) *rows) ||
+        (size_t) *rows * (size_t) *columns > SIZE_MAX / *degree ||
+        (size_t) *rows * (size_t) *columns * *degree > (size_t) WORD_MAX)
+    {
+        napi_throw_range_error(env, NULL,
+            "cyclotomic matrix dimensions are too large");
+        return 0;
+    }
+    count = (size_t) *rows * (size_t) *columns * *degree;
+    answer = _fmpq_vec_init((slong) (count == 0 ? 1 : count));
+    if (answer == NULL)
+    {
+        napi_throw_error(env, NULL,
+            "unable to allocate cyclotomic matrix coordinates");
+        return 0;
+    }
+    if (source->cyclotomic_coordinates != NULL &&
+        source->cyclotomic_order == order &&
+        source->cyclotomic_degree == *degree)
+    {
+        for (size_t index = 0; index < count; index++)
+            fmpq_set(answer + index,
+                source->cyclotomic_coordinates + index);
+        *coordinates = answer;
+        return 1;
+    }
+
+    fmpq_poly_init(expression);
+    qqbar_init(root);
+    scalars_initialized = 1;
+    qqbar_root_of_unity(root, 1, order);
+    for (slong row = 0; row < *rows; row++)
+        for (slong column = 0; column < *columns; column++)
+        {
+            qqbar_srcptr entry = (qqbar_srcptr) gr_mat_entry_ptr(
+                source->algebraic, row, column,
+                source->algebraic_context);
+            int expressed = qqbar_is_zero(entry);
+            fmpq_poly_zero(expression);
+            for (slong bits = 128; bits <= 8192 && !expressed; bits *= 2)
+                expressed = qqbar_express_in_field(
+                    expression, root, entry, bits, 0, bits);
+            if (!expressed)
+            {
+                napi_throw_range_error(env, NULL,
+                    "matrix entry is not in the cyclotomic field");
+                goto fail;
+            }
+            for (size_t power = 0; power < *degree; power++)
+                fmpq_poly_get_coeff_fmpq(
+                    answer +
+                        ((size_t) row * (size_t) *columns +
+                            (size_t) column) * *degree + power,
+                    expression, (slong) power);
+        }
+    qqbar_clear(root);
+    fmpq_poly_clear(expression);
+    *coordinates = answer;
+    return 1;
+
+fail:
+    if (scalars_initialized)
+    {
+        qqbar_clear(root);
+        fmpq_poly_clear(expression);
+    }
+    _fmpq_vec_clear(answer, (slong) (count == 0 ? 1 : count));
+    return 0;
 }
 
 napi_value sagejs_qq_matrix_from_qqbar_gr_mat(

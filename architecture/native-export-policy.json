@@ -1256,6 +1256,11 @@
       "decision": "migrate-to-typed-python"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
+      "family": "modular-symbols",
+      "decision": "migrate-to-typed-python"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",
       "family": "modular-symbols",
       "decision": "migrate-to-typed-python"
