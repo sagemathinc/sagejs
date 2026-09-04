@@ -501,7 +501,16 @@ function candidateRuntimeClosure(root = ROOT) {
     throw new Error("candidate runtime closure has no declared FLINT package boundary");
   }
   const runtimeRequireOrigin = path.join(root, "dist/tools/resources.js");
-  const expectedFlintLoader = path.join(root, "packages/flint/index.cjs");
+  // macOS can expose a temporary directory through a lexical `/var/...` path
+  // whose canonical spelling is `/private/var/...`.  Compare canonical package
+  // targets so that this provenance check rejects retargeting rather than a
+  // harmless host path alias.
+  const expectedFlintPackage = fs.realpathSync(
+    path.join(root, "packages/flint"),
+  );
+  const expectedFlintLoader = fs.realpathSync(
+    path.join(root, "packages/flint/index.cjs"),
+  );
   const shadowCandidates = [
     "dist/tools/node_modules/@sagemath/sagejs-flint",
     "dist/node_modules/@sagemath/sagejs-flint",
@@ -517,7 +526,7 @@ function candidateRuntimeClosure(root = ROOT) {
   const workspaceLink = path.join(root, workspaceLinkName);
   const workspaceLinkStatus = lstatOrNull(workspaceLink);
   if (!workspaceLinkStatus?.isSymbolicLink() ||
-      fs.realpathSync(workspaceLink) !== path.join(root, "packages/flint")) {
+      fs.realpathSync(workspaceLink) !== expectedFlintPackage) {
     throw new Error(
       "candidate runtime closure requires the workspace FLINT package link",
     );
@@ -1694,6 +1703,10 @@ function readCensusPart(filename, expected, batch, options) {
 }
 
 function fsyncDirectory(directory) {
+  // Windows does not support fsync on a directory handle (it reports EPERM).
+  // The file itself has already been fsynced before publication, so retain the
+  // strongest durability primitive available on that platform.
+  if (process.platform === "win32") return;
   const descriptor = fs.openSync(directory, "r");
   try {
     fs.fsyncSync(descriptor);
