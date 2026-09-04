@@ -1122,6 +1122,10 @@ function liveExactWorkspaceAnalysis(fn, backend) {
           canonicalAuthority: false,
         });
       } else if (operation.kind === "integer.arena.scope") {
+        const earlyCheckpoint = fmpzEarlyCheckpointLifetime(
+          operation,
+          backend,
+        );
         scopes.push({
           owner: operation.owner,
           memoryLimit: operation.memoryLimit,
@@ -1195,6 +1199,9 @@ function liveExactWorkspaceAnalysis(fn, backend) {
           ),
           cleanup: "reverse-child-order-all-exit-idempotent",
           canonicalAuthority: false,
+          ...(earlyCheckpoint === undefined
+            ? {}
+            : { checkpointLifetime: earlyCheckpoint }),
         });
       }
     },
@@ -1290,6 +1297,69 @@ const FMPZ_RESOURCE_IDS = new Set([
   "fmpz_polynomial",
   "number_field_analysis_resource",
 ]);
+
+/**
+ * Preserve the ownership proof needed to move the fmpz allocation checkpoint.
+ *
+ * `integer.arena.scope` children are compiler-owned lexical values: lowering
+ * rejects escapes, repeated ownership, and allocation outside the call-local
+ * arena body.  This additional proof deliberately admits only the current fmpz
+ * operation grammar, which contains no rewind operation.  A future operation
+ * therefore remains on the delayed generic checkpoint path until this list is
+ * reviewed explicitly rather than acquiring a shorter lifetime by accident.
+ */
+function fmpzEarlyCheckpointLifetime(scope, backend) {
+  if (backend?.kind !== "fmpz") return undefined;
+  if (
+    !scope.children.every(
+      (child) =>
+        child.type === "NativeIntegerVector" ||
+        (child.childKind === "foreign-resource" &&
+          FMPZ_RESOURCE_IDS.has(child.resourceId)),
+    )
+  ) {
+    return undefined;
+  }
+
+  let admitted = true;
+  function visit(statements) {
+    for (const statement of statements || []) {
+      if (statement.kind === "if") {
+        visit(statement.condition.operations);
+        visit(statement.body);
+        visit(statement.alternative);
+      } else if (statement.kind === "while") {
+        visit(statement.condition.operations);
+        visit(statement.body);
+      } else if (
+        statement.kind === "loop.range" ||
+        statement.kind === "loop.range_exact"
+      ) {
+        visit(statement.body);
+      } else if (statement.kind === "bool.short_circuit") {
+        if (!FMPZ_OPERATION_KINDS.has(statement.kind)) admitted = false;
+        visit(statement.right.operations);
+      } else if (
+        statement.kind === "integer.arena.scope" ||
+        !FMPZ_OPERATION_KINDS.has(statement.kind)
+      ) {
+        admitted = false;
+      }
+    }
+  }
+  visit(scope.setup);
+  visit(scope.body);
+  if (!admitted) return undefined;
+
+  return {
+    placement: "immediately-after-arena-init-before-child-init",
+    authority: "closed-fmpz-call-local-ownership-analysis-v1",
+    children: "all-nonescaping-call-local-vectors-and-resources",
+    rewind: "none-admitted-by-qualified-operation-grammar",
+    entry: "drain-flint-promotion-cache-before-arena-init",
+    cleanup: "reverse-children-before-checkpoint-end-on-every-exit",
+  };
+}
 
 /**
  * Inspect the deliberately small fmpz representation slice.
