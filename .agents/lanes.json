@@ -143,7 +143,7 @@
     {
       "id": "native-compiler",
       "description": "Source-transparent native IR, analysis, backends, ABIs, witnesses, and compiler benchmarks",
-      "allowed_claims": ["tools/native-kernel/", "tools/native-kernel.cjs", "src/lib/sagejs/native.py", "bench/NATIVE-COMPILER.md", "packages/flint/include/sagejs/native.h"],
+      "allowed_claims": ["tools/native-kernel/", "tools/native-kernel.cjs", "tools/runtime-bootstrap.ts", "scripts/build-production-native-kernels.cjs", "src/lib/sagejs/native.py", "bench/NATIVE-COMPILER.md", "packages/flint/include/sagejs/native.h"],
       "required_checks": ["pnpm architecture:check", "pnpm test:baselib:strict", "pnpm test:native"]
     },
     {
