@@ -387,7 +387,12 @@ function memoryMeasurement(subject) {
       !MEMORY_METHODS.includes(measurement_method)) {
     fail("memory measurement", `unsupported ${measurement_scope} method on ${process.platform}`);
   }
-  const sample_interval_ms = processTree && process.platform !== "linux" ? 50 : 5;
+  // A Linux process-tree sample scans the complete /proc process table before
+  // selecting descendants. Sampling that at 5 ms can consume a core and
+  // materially perturb long-running browser qualification. Twenty samples per
+  // second is sufficient for these sustained memory workloads and matches the
+  // other external-process collectors.
+  const sample_interval_ms = processTree ? 50 : 5;
   const read = processTree ? processTreeRssSnapshot : () => process.memoryUsage().rss;
   let peak = 0;
   let error = null;
@@ -799,8 +804,8 @@ function expectedPeakMemoryContract(platformId, subjectKind) {
     };
   }
   const external = {
-    "linux-x64": ["linux-procfs-process-tree-sampled-v1", 5],
-    "linux-arm64": ["linux-procfs-process-tree-sampled-v1", 5],
+    "linux-x64": ["linux-procfs-process-tree-sampled-v1", 50],
+    "linux-arm64": ["linux-procfs-process-tree-sampled-v1", 50],
     "macos-arm64": ["macos-ps-process-tree-sampled-v1", 50],
     "windows-x64": ["windows-cim-process-tree-sampled-v1", 50],
   }[platformId];
