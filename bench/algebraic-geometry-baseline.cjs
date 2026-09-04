@@ -18,10 +18,14 @@ const cases = [
     id: "intersection-and-saturation",
     profile: {
       field: "QQ",
+      characteristic: 0,
       variables: 3,
       order: "degrevlex with private lex elimination rings",
       generator_count: 4,
+      term_count: 4,
       degree_profile: [2, 2, 1, 1],
+      quotient_dimension: null,
+      coefficient_height_bits: 1,
     },
     source: `
 R = PolynomialRing(QQ, names=("x", "y", "z"))
@@ -37,10 +41,14 @@ S = I.saturation(R.ideal(x), proof=True)
     id: "sparse-hilbert-series",
     profile: {
       field: "QQ",
+      characteristic: 0,
       variables: 5,
       order: "degrevlex",
       generator_count: 5,
+      term_count: 5,
       degree_profile: [2, 3, 2, 3, 4],
+      quotient_dimension: null,
+      coefficient_height_bits: 1,
     },
     source: `
 R = PolynomialRing(QQ, names=("a", "b", "c", "d", "e"))
@@ -53,10 +61,14 @@ I = R.ideal(a^2, b^3, c*d, c*e^2, e^4)
     id: "projective-closure-and-image",
     profile: {
       field: "QQ",
+      characteristic: 0,
       variables: 2,
       order: "degrevlex with private lex elimination rings",
       generator_count: 1,
+      term_count: 3,
       degree_profile: [3],
+      quotient_dimension: null,
+      coefficient_height_bits: 1,
     },
     source: `
 A = AffineSpace(QQ, 2, names=("x", "y"))
@@ -73,10 +85,14 @@ image = T.hom([t, t^2], A).image(proof=True)
     id: "plane-curve-jacobian",
     profile: {
       field: "QQ",
+      characteristic: 0,
       variables: 2,
       order: "degrevlex",
       generator_count: 1,
+      term_count: 2,
       degree_profile: [3],
+      quotient_dimension: null,
+      coefficient_height_bits: 1,
     },
     source: `
 A = AffineSpace(QQ, 2, names=("x", "y"))
@@ -90,11 +106,14 @@ S = C.singular_subscheme(proof=True)
     id: "zero-dimensional-decomposition",
     profile: {
       field: "QQ",
+      characteristic: 0,
       variables: 2,
       order: "degrevlex",
       generator_count: 2,
+      term_count: 5,
       degree_profile: [4, 1],
       quotient_dimension: 4,
+      coefficient_height_bits: 2,
     },
     source: `
 R = PolynomialRing(QQ, names=("x", "y"))
@@ -152,6 +171,22 @@ function sourceRevision() {
 async function main() {
   assert.ok(Number.isInteger(samples) && samples >= 3 && samples % 2 === 1);
   assert.ok(Number.isInteger(warmups) && warmups >= 1);
+  const requiredProfileKeys = [
+    "field",
+    "characteristic",
+    "variables",
+    "order",
+    "generator_count",
+    "term_count",
+    "degree_profile",
+    "quotient_dimension",
+    "coefficient_height_bits",
+  ];
+  for (const selected of cases) {
+    for (const key of requiredProfileKeys) {
+      assert.ok(key in selected.profile, `${selected.id} profile omits ${key}`);
+    }
+  }
   const caseIndex = process.argv.indexOf("--case");
   if (caseIndex !== -1) {
     const selected = cases.find(({ id }) => id === process.argv[caseIndex + 1]);

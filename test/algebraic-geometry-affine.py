@@ -12,6 +12,7 @@ P = A(1, 2)
 assert P.coordinates() == (QQ(1), QQ(2))
 assert tuple(P) == (QQ(1), QQ(2))
 assert P in A
+assert hash(P) == hash(A(1, 2))
 
 X = A.subscheme([y - x**2])
 assert A(2, 4) in X
@@ -19,11 +20,15 @@ assert A(2, 3) not in X
 XP = X(2, 4)
 assert XP.parent() is X
 assert XP in X
+assert XP == A(2, 4)
+assert hash(XP) == hash(A(2, 4))
 assert X.dimension() == 1
 assert X.codimension() == 1
 Q = X.coordinate_ring()
 qx, qy = Q.gens()
 assert qy == qx**2
+assert X.coordinate_ring(proof=False) is X.coordinate_ring(proof=False)
+assert X.coordinate_ring(proof=False) is not X.coordinate_ring(proof=True)
 
 reduced = A.subscheme([x])
 nonreduced = A.subscheme([x**2])
@@ -69,3 +74,9 @@ try:
     raise AssertionError("boolean dimensions must not be guessed")
 except TypeError:
     pass
+
+try:
+    AffineSpace(QQ, 0)
+    raise AssertionError("zero-variable coordinate rings are not implemented")
+except NotImplementedError as error:
+    assert "zero-variable polynomial-ring" in str(error)

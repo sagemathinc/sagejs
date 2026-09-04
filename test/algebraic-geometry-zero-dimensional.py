@@ -39,6 +39,17 @@ finite_components = finite_product.primary_decomposition()
 assert len(finite_components) == 2
 assert finite_components[0].intersection(finite_components[1]).is_equal(finite_product)
 
+A = AffineSpace(QQ, 2, names=("a", "b"))
+a, b = A.gens()
+reduced_components = A.subscheme([(a - 1) ** 2 * (a + 1), b]).irreducible_components()
+assert len(reduced_components) == 2
+assert all(component.defining_ideal().is_radical() for component in reduced_components)
+try:
+    A.subscheme([a]).irreducible_components()
+    raise AssertionError("positive-dimensional components must be rejected")
+except NotImplementedError as error:
+    assert "zero-dimensional" in str(error)
+
 unit = R.ideal(1)
 assert unit.radical().is_one()
 assert unit.primary_decomposition() == []

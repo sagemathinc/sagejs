@@ -140,6 +140,10 @@ class AffinePoint:
             and other._coordinates == self._coordinates
         )
 
+    def __hash__(self) -> int:
+        key = str(id(self.ambient_space())) + ":" + repr(self._coordinates)
+        return hash(key)
+
     def __repr__(self) -> str:
         return "(" + ", ".join([repr(value) for value in self._coordinates]) + ")"
 
@@ -285,7 +289,7 @@ class AffineSubscheme:
                 equations = [equations]
             self._ideal = ring.ideal([ring(equation) for equation in equations])
         self._equations = self._ideal.gens()
-        self._coordinate_ring_cache = runtime.undefined
+        self._coordinate_ring_cache: dict[bool, Any] = {}
         self._kind = "AFFINE_SUBSCHEME"
         self._construction = {
             "kind": "affine_subscheme",
@@ -310,10 +314,13 @@ class AffineSubscheme:
 
     ideal = defining_ideal
 
-    def coordinate_ring(self) -> Any:
-        if self._coordinate_ring_cache is runtime.undefined:
-            self._coordinate_ring_cache = self._ideal.quotient_ring()
-        return self._coordinate_ring_cache
+    def coordinate_ring(self, proof: Any = None) -> Any:
+        resolved = _resolve_scheme_proof(proof)
+        if resolved not in self._coordinate_ring_cache:
+            self._coordinate_ring_cache[resolved] = self._ideal.quotient_ring(
+                proof=resolved
+            )
+        return self._coordinate_ring_cache[resolved]
 
     def dimension(self, proof: Any = None) -> int:
         return self._ideal.dimension(proof=proof)
@@ -408,40 +415,12 @@ class AffineSubscheme:
     points = rational_points
 
     def irreducible_components(self, proof: Any = None) -> list[AffineSubscheme]:
-        """Return components through the supported decomposition boundary."""
-        ring = self._ambient.coordinate_ring()
-        if len(self._equations) != 2 or ring.ngens() != 2:
-            components = self._ideal.primary_decomposition(proof=proof)
-            return [
-                AffineSubscheme(self._ambient, ideal.radical(proof=proof))
-                for ideal in components
-            ]
-        first = self._equations[0]
-        second = self._equations[1]
-        elimination = first.resultant(second, ring.gen(0))
-        factors = elimination.irreducible_factors()
-        ordered = []
-        for factor_value in factors:
-            insert_at = len(ordered)
-            for index in range(len(ordered)):
-                if factor_value.total_degree() < ordered[index].total_degree() or (
-                    factor_value.total_degree() == ordered[index].total_degree()
-                    and repr(factor_value) > repr(ordered[index])
-                ):
-                    insert_at = index
-                    break
-            ordered.insert(insert_at, factor_value)
-        answer = []
-        for factor_value in ordered:
-            basis = ring.ideal(first, second, factor_value).groebner_basis(proof=proof)
-            squarefree_basis = []
-            for polynomial in basis:
-                product = ring(1)
-                for irreducible in polynomial.irreducible_factors():
-                    product *= irreducible
-                squarefree_basis.append(product)
-            answer.append(AffineSubscheme(self._ambient, squarefree_basis))
-        return answer
+        """Return reduced components in the supported zero-dimensional scope."""
+        components = self._ideal.primary_decomposition(proof=proof)
+        return [
+            AffineSubscheme(self._ambient, ideal.radical(proof=proof))
+            for ideal in components
+        ]
 
     def hom(self, coordinates: Any, codomain: Any) -> Any:
         return _scheme_morphism_module().SchemeMorphism(self, codomain, coordinates)
@@ -489,8 +468,20 @@ def AffineSpace(
     second: Any,
     names: Any = "x",
 ) -> AffineSpaceParent:
-    """Construct affine space in either Sage-compatible argument order."""
+    """Construct affine space in either Sage-compatible argument order.
+
+    ```sage
+    sage: A = AffineSpace(QQ, 2, names=("x", "y"))
+    sage: A.dimension()
+    2
+    ```
+    """
     base, dimension = _construction_arguments(first, second, "affine-space")
+    if dimension == 0:
+        raise NotImplementedError(
+            "zero-dimensional affine ambient space awaits zero-variable "
+            "polynomial-ring support"
+        )
     ring = sage.PolynomialRing(base, dimension, names=names, order="degrevlex")
     coordinate_names = ring.variable_names()
     for cached in _affine_space_cache:
@@ -561,6 +552,10 @@ class ProjectivePoint:
             and other.ambient_space() is self.ambient_space()
             and other._coordinates == self._coordinates
         )
+
+    def __hash__(self) -> int:
+        key = str(id(self.ambient_space())) + ":" + repr(self._coordinates)
+        return hash(key)
 
     def __repr__(self) -> str:
         return "(" + " : ".join([repr(value) for value in self._coordinates]) + ")"
@@ -733,7 +728,7 @@ class ProjectiveSubscheme:
         self._submitted_ideal = ideal
         self._equations = ideal.gens()
         self._saturated_ideals: dict[bool, Any] = {}
-        self._coordinate_ring_cache = runtime.undefined
+        self._coordinate_ring_cache: dict[bool, Any] = {}
         self._kind = "PROJECTIVE_SUBSCHEME"
         self._construction = {
             "kind": "projective_subscheme",
@@ -766,10 +761,13 @@ class ProjectiveSubscheme:
 
     ideal = defining_ideal
 
-    def coordinate_ring(self) -> Any:
-        if self._coordinate_ring_cache is runtime.undefined:
-            self._coordinate_ring_cache = self._submitted_ideal.quotient_ring()
-        return self._coordinate_ring_cache
+    def coordinate_ring(self, proof: Any = None) -> Any:
+        resolved = _resolve_scheme_proof(proof)
+        if resolved not in self._coordinate_ring_cache:
+            self._coordinate_ring_cache[resolved] = self.defining_ideal(
+                resolved
+            ).quotient_ring(proof=resolved)
+        return self._coordinate_ring_cache[resolved]
 
     def is_empty(self, proof: Any = None) -> bool:
         return self.defining_ideal(proof).is_one(proof=proof)
@@ -852,10 +850,11 @@ class ProjectiveSubscheme:
     def __le__(self, other: Any) -> bool:
         return self.is_subscheme(other)
 
-    def intersection(self, other: Any) -> ProjectiveSubscheme:
+    def intersection(self, other: Any, proof: Any = None) -> ProjectiveSubscheme:
         other = self._require_same_ambient(other)
         return ProjectiveSubscheme(
-            self._ambient, self._submitted_ideal + other._submitted_ideal
+            self._ambient,
+            self.defining_ideal(proof) + other.defining_ideal(proof),
         )
 
     __mul__ = intersection
@@ -923,7 +922,14 @@ def ProjectiveSpace(
     second: Any,
     names: Any = "x",
 ) -> ProjectiveSpaceParent:
-    """Construct projective space in either Sage-compatible argument order."""
+    """Construct projective space in either Sage-compatible argument order.
+
+    ```sage
+    sage: P = ProjectiveSpace(QQ, 2, names=("x", "y", "z"))
+    sage: P(2, 4, 6) == P(1, 2, 3)
+    True
+    ```
+    """
     base, dimension = _construction_arguments(first, second, "projective-space")
     ring = sage.PolynomialRing(base, dimension + 1, names=names, order="degrevlex")
     coordinate_names = ring.variable_names()
@@ -1123,7 +1129,16 @@ class ProjectivePlaneCurve(ProjectiveSubscheme):
 
 
 def Curve(polynomial: Any) -> Any:
-    """Construct an affine or projective plane curve from one polynomial."""
+    """Construct an affine or projective plane curve from one polynomial.
+
+    ```sage
+    sage: R = PolynomialRing(QQ, names=("x", "y"))
+    sage: x, y = R.gens()
+    sage: C = Curve(y^2 - x^3)
+    sage: C.degree()
+    3
+    ```
+    """
     if not hasattr(polynomial, "parent"):
         raise TypeError("Curve needs a multivariate polynomial")
     variables = polynomial.parent().ngens()
@@ -1199,13 +1214,13 @@ for _geometry_name, _geometry_value in [
             },
             "provenance": [
                 {
-                    "kind": "sage-compatible",
+                    "kind": "sage-derived",
                     "source": "SageMath schemes public API",
                     "url": ("https://doc.sagemath.org/html/en/reference/schemes/"),
                     "license": "GPL-2.0-or-later",
                 },
                 {
-                    "kind": "independent-implementation",
+                    "kind": "sagejs-original",
                     "source": "Sage.js no-Singular algebraic geometry",
                     "url": (
                         "https://github.com/sagemathinc/sagejs/blob/main/"

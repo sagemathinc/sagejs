@@ -6,6 +6,11 @@ P2 = ProjectiveSpace(QQ, 2, names=("x", "y", "z"))
 assert P2 is ProjectiveSpace(2, QQ, names=("x", "y", "z"))
 x, y, z = P2.gens()
 assert P2(2, 4, 6) == P2(1, 2, 3)
+assert hash(P2(2, 4, 6)) == hash(P2(1, 2, 3))
+
+P0 = ProjectiveSpace(QQ, 0)
+assert P0.dimension() == 0
+assert P0(2) == P0(1)
 
 try:
     P2(0, 0, 0)
@@ -37,6 +42,15 @@ assert patch.defining_ideal().is_equal(
 line = P2.subscheme([x])
 line_with_irrelevant_component = P2.subscheme([x**2, x * y, x * z])
 assert line.is_equal(line_with_irrelevant_component)
+assert (
+    line_with_irrelevant_component.coordinate_ring()
+    .defining_ideal()
+    .is_equal(line.defining_ideal())
+)
+point = P2.subscheme([x, y])
+assert line.intersection(point).is_equal(
+    line_with_irrelevant_component.intersection(point)
+)
 
 A2 = AffineSpace(QQ, 2, names=("u", "v"))
 u, v = A2.gens()

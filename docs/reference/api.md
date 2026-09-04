@@ -17,6 +17,12 @@ AffineSpace(first: Any, second: Any, names: Any='x') -> AffineSpaceParent
 
 Construct affine space in either Sage-compatible argument order.
 
+```sage
+sage: A = AffineSpace(QQ, 2, names=("x", "y"))
+sage: A.dimension()
+2
+```
+
 ### Metadata
 
 - Kind: `function`
@@ -24,6 +30,11 @@ Construct affine space in either Sage-compatible argument order.
 - Tags: algebraic geometry, affine schemes, projective schemes, curves
 - Backends: Sage.js exact polynomial and ideal layers
 - Sage compatibility: partial — Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary.
+
+### Provenance
+
+- `sage-derived` — [SageMath schemes public API](https://doc.sagemath.org/html/en/reference/schemes/); license GPL-2.0-or-later
+- `sagejs-original` — [Sage.js no-Singular algebraic geometry](https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md); license GPL-3.0-only
 
 ## `animate`
 
@@ -590,6 +601,14 @@ Curve(polynomial: Any) -> Any
 
 Construct an affine or projective plane curve from one polynomial.
 
+```sage
+sage: R = PolynomialRing(QQ, names=("x", "y"))
+sage: x, y = R.gens()
+sage: C = Curve(y^2 - x^3)
+sage: C.degree()
+3
+```
+
 ### Metadata
 
 - Kind: `function`
@@ -597,6 +616,11 @@ Construct an affine or projective plane curve from one polynomial.
 - Tags: algebraic geometry, affine schemes, projective schemes, curves
 - Backends: Sage.js exact polynomial and ideal layers
 - Sage compatibility: partial — Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary.
+
+### Provenance
+
+- `sage-derived` — [SageMath schemes public API](https://doc.sagemath.org/html/en/reference/schemes/); license GPL-2.0-or-later
+- `sagejs-original` — [Sage.js no-Singular algebraic geometry](https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md); license GPL-3.0-only
 
 ## `curve_fit`
 
@@ -8066,6 +8090,12 @@ ProjectiveSpace(first: Any, second: Any, names: Any='x') -> ProjectiveSpaceParen
 
 Construct projective space in either Sage-compatible argument order.
 
+```sage
+sage: P = ProjectiveSpace(QQ, 2, names=("x", "y", "z"))
+sage: P(2, 4, 6) == P(1, 2, 3)
+True
+```
+
 ### Metadata
 
 - Kind: `function`
@@ -8073,6 +8103,11 @@ Construct projective space in either Sage-compatible argument order.
 - Tags: algebraic geometry, affine schemes, projective schemes, curves
 - Backends: Sage.js exact polynomial and ideal layers
 - Sage compatibility: partial — Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary.
+
+### Provenance
+
+- `sage-derived` — [SageMath schemes public API](https://doc.sagemath.org/html/en/reference/schemes/); license GPL-2.0-or-later
+- `sagejs-original` — [Sage.js no-Singular algebraic geometry](https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md); license GPL-3.0-only
 
 ## `Qp`
 

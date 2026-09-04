@@ -201,6 +201,9 @@ different algorithm:
 - finite extensions `GF(p^d)` with `d > 1` and number fields as scheme base
   fields; their separate implementation plan is
   [`agents/no-singular-extension-fields-plan.md`](../agents/no-singular-extension-fields-plan.md);
+- the degenerate affine ambient space `AffineSpace(K, 0)`, pending a genuine
+  zero-variable polynomial-ring parent (projective dimension zero is
+  supported);
 - general positive-dimensional radical or primary decomposition;
 - mixed-dimensional global singular loci without a certified component
   decomposition;

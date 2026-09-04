@@ -163,7 +163,7 @@
       "implementation": "src/baselib/schemes.py",
       "fallback": "coefficient-neutral public field operations",
       "resource_envelope": "point arity and coefficient coercion",
-      "limitation": "rational points over the declared base field"
+      "limitation": "positive affine dimensions over the declared base field; dimension zero awaits a zero-variable polynomial parent"
     },
     {
       "id": "affine.scheme-basics",
