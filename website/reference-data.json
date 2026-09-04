@@ -13402,8 +13402,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/schemes.py#e010c74c332f5782-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
           }
         },
         {
@@ -13417,8 +13418,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/schemes.py#f4ed007692290f8a-d4735e3a265e16ee",
+            "status": "pass",
+            "actual": "2\n"
           }
         }
       ]
@@ -14776,8 +14778,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/schemes.py#fd76c7c26e088c48-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
           }
         },
         {
@@ -14791,8 +14794,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/schemes.py#03ec444959c798d3-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
           }
         },
         {
@@ -14806,8 +14810,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/schemes.py#427af1e83a416cd4-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
           }
         },
         {
@@ -14821,8 +14826,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/schemes.py#ec0c4059d7824af6-4e07408562bedb8b",
+            "status": "pass",
+            "actual": "3\n"
           }
         }
       ]
@@ -35499,8 +35505,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/schemes.py#c4138a7a365c9405-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
           }
         },
         {
@@ -35514,8 +35521,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/schemes.py#dad19399d23b4f16-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
           }
         }
       ]
@@ -37921,11 +37929,11 @@
       "entries_with_examples": 227,
       "entries_without_examples": 95,
       "documented": 232,
-      "verified": 218,
+      "verified": 226,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,
-      "unverified": 8,
+      "unverified": 0,
       "random_seed": "sagejs-reference-0"
     }
   }
