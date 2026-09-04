@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // sagejs-test-tier: unit
-// sagejs-test-portable: true
+// sagejs-test-portable: false
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -26,6 +26,9 @@ const fixtures = [
 
 async function runFixture(filename) {
   try {
+    // Exercise the dynamic Python/JavaScript algorithm paths while retaining
+    // the FLINT polynomial-storage backend. The addon-free portable tier
+    // cannot construct these multivariate parents; browsers use its Wasm peer.
     await execFileAsync(process.execPath, [sagejs, join(__dirname, filename)], {
       cwd: root,
       encoding: "utf8",

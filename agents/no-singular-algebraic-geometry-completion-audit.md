@@ -55,7 +55,7 @@ boundary required by the separate `GF(p^d)` and number-field program.
 | Main-merge regressions | 36/36 tests passed for cubic-frontier portability, resident HNF, hardlink-safe numerical-product handoff, and startup budgets |
 | Architecture | Passed: 4 FFI declarations, 463 compiled functions, 1,315 native boundaries, 1,080 reviewed Wasm capabilities, and 307 production-closure entries |
 | Unit | 126/126 files passed in 1m27s |
-| Portable | 115/115 files passed in 1m17s |
+| Portable | 114/114 addon-free files passed after correcting the AG aggregate's tier metadata; the aggregate remains in unit/full integration and platform/browser qualification |
 | Full integration | 366/366 files passed in 42m28s at `fee8f7865`; subsequent changes were generated receipts, a cold-only timing calibration, and reviewed release-infrastructure updates from `main` |
 
 ### WebAssembly and browser
