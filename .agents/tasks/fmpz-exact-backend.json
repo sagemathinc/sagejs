@@ -4,7 +4,7 @@
   "id": "fmpz-exact-backend",
   "title": "Resident FLINT fmpz exact backend witness",
   "lane": "native-compiler",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement and qualify the smallest source-transparent compiler slice that represents resident exact integer-vector state with FLINT fmpz values, including promoted arithmetic, Python floor division and remainder, and direct fmpz matrix entry round trips without hot-loop mpz conversion",
   "base_commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
