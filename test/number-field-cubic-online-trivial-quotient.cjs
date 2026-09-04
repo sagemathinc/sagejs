@@ -31,6 +31,7 @@ test("trivial complex cubics close their exact relation quotient online", {
   timeout: 240_000,
 }, () => {
   runPython(`
+import sagejs.number_fields.cubic_class_number_native_runtime as cubic_runtime
 from sagejs.number_fields.cubic_class_number_native_runtime import certified_complex_cubic_class_number
 
 R = PolynomialRing(QQ, "x")
@@ -89,5 +90,26 @@ for name, coefficients, class_number, invariants in controls:
     assert receipt.invariants == invariants
     assert receipt.verify_conditional_grh()
     assert tuple(receipt._values[index] for index in range(50, 54)) == (0, 0, 0, 0)
+
+# Exercise the exhaustive small-unit collector directly.  It may maintain the
+# online quotient, but a nontrivial C5 quotient cannot close early: final exact
+# HNF/SNF and the analytic proof remain authoritative, and trivial-close
+# diagnostics remain absent.
+saved_efforts = cubic_runtime._CUBIC_RELATION_EFFORTS
+try:
+    cubic_runtime._CUBIC_RELATION_EFFORTS = (1,)
+    exhaustive = certified_complex_cubic_class_number(
+        field((-55, 9, 0, 1), "h5_exhaustive")
+    )
+finally:
+    cubic_runtime._CUBIC_RELATION_EFFORTS = saved_efforts
+assert exhaustive is not None
+assert exhaustive.class_number == 5
+assert exhaustive.invariants == (5,)
+assert exhaustive.relation_effort == 1
+assert exhaustive.relation_count == 17
+assert exhaustive.proof_status == "exact-relations-conditional-grh"
+assert exhaustive.verify_conditional_grh()
+assert tuple(exhaustive._values[index] for index in range(50, 54)) == (0, 0, 0, 0)
 `);
 });

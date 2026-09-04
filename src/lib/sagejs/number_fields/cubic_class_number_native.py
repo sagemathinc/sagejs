@@ -2980,6 +2980,7 @@ def _cubic_append_reduced_ideal_ellipsoid(
     hnf_source: FmpzMatrix,
     hnf_result: FmpzMatrix,
     streaming_relation_collection: bool,
+    online_relation_quotient_enabled: bool,
     online_relation_basis: FmpzMatrix,
     online_relation_source: FmpzMatrix,
     online_relation_hnf: FmpzMatrix,
@@ -3082,7 +3083,8 @@ def _cubic_append_reduced_ideal_ellipsoid(
                             online_relation_status,
                         )
                     while (
-                        online_relation_count < relation_count
+                        online_relation_quotient_enabled
+                        and online_relation_count < relation_count
                         and online_relation_status != 2
                     ):
                         online_relation_status = _cubic_online_relation_lattice_update(
@@ -6807,6 +6809,13 @@ def certified_complex_cubic_class_group_v1(
                 _CUBIC_ANALYTIC_PRECISION,
             )
         unit_found = small_unit_status == 1
+        # The online exact quotient serves two deliberately bounded regimes:
+        # PARI-shaped relation prefixes, and exhaustive retries for which the
+        # small-unit probe has already supplied the rank-one unit certificate.
+        # A no-unit exhaustive retry must construct the final HNF/SNF anyway,
+        # so retaining a second exact row lattice there cannot close the proof
+        # and only enlarges its resident exact state.
+        online_relation_quotient_enabled = bounded_relation_collection or unit_found
         unit_box = 9
         output[63] = 31
 
@@ -6975,17 +6984,22 @@ def certified_complex_cubic_class_group_v1(
         # reduced-plan code as soon as an ideal is visited.  PARI consumes this
         # order backward even when the selected prefix contains the whole small
         # factor base.
-        adjacent_order = arena.foreign_resource(fmpz_matrix, factor_count, 1)
+        adjacent_order_rows: uint64 = 1
+        if use_pari_permutation:
+            adjacent_order_rows = factor_count
+        adjacent_order = arena.foreign_resource(
+            fmpz_matrix,
+            adjacent_order_rows,
+            1,
+        )
         adjacent_order_index: uint64 = 0
-        while adjacent_order_index < factor_count:
+        while use_pari_permutation and adjacent_order_index < factor_count:
             adjacent_order_factor_base: uint64 = (
                 _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_order_index
             )
-            adjacent_order_position: uint64 = adjacent_order_index
-            if use_pari_permutation:
-                adjacent_order_position = checked_uint64(
-                    workspace[adjacent_order_factor_base + 9] - 1
-                )
+            adjacent_order_position: uint64 = checked_uint64(
+                workspace[adjacent_order_factor_base + 9] - 1
+            )
             adjacent_order[adjacent_order_position, 0] = adjacent_order_index + 1
             adjacent_order_index += 1
         while adjacent_factor_cursor < factor_count:
@@ -7401,20 +7415,29 @@ def certified_complex_cubic_class_group_v1(
             relation_capacity,
             3,
         )
+        # Keep well-typed 1x1 resources when the online quotient is disabled;
+        # every access below is guarded by the same eligibility predicate.
+        online_relation_rows: uint64 = 1
+        online_relation_source_rows: uint64 = 1
+        online_relation_columns: uint64 = 1
+        if online_relation_quotient_enabled:
+            online_relation_rows = factor_count
+            online_relation_source_rows = factor_count + 1
+            online_relation_columns = factor_count
         online_relation_basis = arena.foreign_resource(
             fmpz_matrix,
-            factor_count,
-            factor_count,
+            online_relation_rows,
+            online_relation_columns,
         )
         online_relation_source = arena.foreign_resource(
             fmpz_matrix,
-            factor_count + 1,
-            factor_count,
+            online_relation_source_rows,
+            online_relation_columns,
         )
         online_relation_hnf = arena.foreign_resource(
             fmpz_matrix,
-            factor_count + 1,
-            factor_count,
+            online_relation_source_rows,
+            online_relation_columns,
         )
         online_relation_count: uint64 = 0
         online_relation_status = 1
@@ -7490,7 +7513,11 @@ def certified_complex_cubic_class_group_v1(
                     return False
                 modular_relation_row += 1
 
-        while online_relation_count < relation_count and online_relation_status != 2:
+        while (
+            online_relation_quotient_enabled
+            and online_relation_count < relation_count
+            and online_relation_status != 2
+        ):
             online_relation_status = _cubic_online_relation_lattice_update(
                 online_relation_basis,
                 online_relation_source,
@@ -7510,7 +7537,9 @@ def certified_complex_cubic_class_group_v1(
         # the HNF, exact unit reconstruction, and rigorous index-one proof
         # below remain the authority, and an insufficient prefix declines so
         # that a later effort can resume with the exhaustive plan.
-        trivial_relation_prefix = online_relation_status == 2
+        trivial_relation_prefix = (
+            online_relation_quotient_enabled and online_relation_status == 2
+        )
         relation_collection_complete = trivial_relation_prefix or (
             streaming_relation_collection
             and _cubic_modular_relation_collection_complete(
@@ -7566,7 +7595,8 @@ def certified_complex_cubic_class_group_v1(
                             return False
                         relation_count = next_relation_count
                         while (
-                            online_relation_count < relation_count
+                            online_relation_quotient_enabled
+                            and online_relation_count < relation_count
                             and online_relation_status != 2
                         ):
                             online_relation_status = (
@@ -7582,7 +7612,10 @@ def certified_complex_cubic_class_group_v1(
                             if online_relation_status < 0:
                                 return False
                             online_relation_count += 1
-                        trivial_relation_prefix = online_relation_status == 2
+                        trivial_relation_prefix = (
+                            online_relation_quotient_enabled
+                            and online_relation_status == 2
+                        )
                         relation_collection_complete = trivial_relation_prefix or (
                             streaming_relation_collection
                             and _cubic_modular_relation_collection_complete(
@@ -7681,6 +7714,7 @@ def certified_complex_cubic_class_group_v1(
                         hnf_source,
                         hnf_result,
                         streaming_relation_collection,
+                        online_relation_quotient_enabled,
                         online_relation_basis,
                         online_relation_source,
                         online_relation_hnf,
@@ -7699,7 +7733,9 @@ def certified_complex_cubic_class_group_v1(
                         return False
                     relation_count = next_relation_count
                     adjacent_enumerated_count += admitted_ellipsoid_count
-                    trivial_relation_prefix = online_relation_status == 2
+                    trivial_relation_prefix = (
+                        online_relation_quotient_enabled and online_relation_status == 2
+                    )
                     relation_collection_complete = trivial_relation_prefix or (
                         streaming_relation_collection
                         and _cubic_modular_relation_collection_complete(
@@ -7784,7 +7820,8 @@ def certified_complex_cubic_class_group_v1(
                             return False
                         relation_count = next_relation_count
                         while (
-                            online_relation_count < relation_count
+                            online_relation_quotient_enabled
+                            and online_relation_count < relation_count
                             and online_relation_status != 2
                         ):
                             online_relation_status = (
@@ -7800,7 +7837,10 @@ def certified_complex_cubic_class_group_v1(
                             if online_relation_status < 0:
                                 return False
                             online_relation_count += 1
-                        trivial_relation_prefix = online_relation_status == 2
+                        trivial_relation_prefix = (
+                            online_relation_quotient_enabled
+                            and online_relation_status == 2
+                        )
                         relation_collection_complete = trivial_relation_prefix or (
                             streaming_relation_collection
                             and _cubic_modular_relation_collection_complete(
