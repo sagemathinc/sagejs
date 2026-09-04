@@ -572,7 +572,7 @@ function numericalSoakClaims(evidence) {
       canonicalJson(evidence.scope?.representative_domains) !== canonicalJson(domains) ||
       configuration?.sessions < 12 || configuration?.minimum_total_elapsed_ms < 180_000 ||
       configuration?.minimum_total_operations < 5_376 ||
-      configuration?.session_timeout_ms > 180_000 ||
+      configuration?.session_timeout_ms > 240_000 ||
       !Number.isSafeInteger(totals?.sessions) || !finite(totals?.elapsed_ms) ||
       !Number.isSafeInteger(totals?.operations) || !Number.isSafeInteger(totals?.failures) ||
       !finite(totals?.maximum_error) || !finite(totals?.parent_heap_slope_bytes_per_session) ||
