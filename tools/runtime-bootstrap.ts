@@ -478,9 +478,19 @@ export function runRuntimeBootstrap(
     "__sagejs_native_trace_enabled__",
     process.env.SAGEJS_NATIVE_TRACE === "1",
   );
+  const nativePrivateFallback = Object.freeze(Object.create(null));
+  Reflect.set(
+    globalThis,
+    "__sagejs_native_private_fallback__",
+    nativePrivateFallback,
+  );
   const nativeModules = new Map<
     string,
-    { sourceHash: string; functions: Record<string, unknown> }
+    {
+      sourceHash: string;
+      functions: Record<string, unknown>;
+      privateFunctions: ReadonlySet<string>;
+    }
   >();
   const nativeSourceHashes = new Map<string, string>();
   type NativeForeignDeclaration = {
@@ -493,6 +503,7 @@ export function runRuntimeBootstrap(
     sourceHash: string;
     nativeAbi: number;
     foreignDeclarations: NativeForeignDeclaration[];
+    privateFunctions: string[];
   };
   const nativeLogicalSourceKey = (filename: string): string | undefined => {
     const normalized = filename.replaceAll("\\", "/");
@@ -562,16 +573,34 @@ export function runRuntimeBootstrap(
     const sourceHash = Reflect.get(value, "sourceHash");
     const nativeAbi = Reflect.get(value, "nativeAbi");
     const declarations = Reflect.get(value, "foreignDeclarations");
+    const privateNames = Reflect.get(value, "privateFunctions");
     if (
       typeof cacheKey !== "string" || !/^[a-f0-9]{64}$/.test(cacheKey) ||
       sourceHash !== expectedSourceHash ||
       nativeAbi !== NATIVE_KERNEL_ABI_VERSION ||
-      !Array.isArray(declarations)
+      !Array.isArray(declarations) ||
+      !Array.isArray(privateNames)
     ) {
       throw staleNativeArtifact(
         filename,
         "source, cache, or native ABI metadata does not match",
       );
+    }
+    const privateFunctions: string[] = [];
+    let previousPrivateName: string | undefined;
+    for (const name of privateNames) {
+      if (
+        typeof name !== "string" ||
+        !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ||
+        (previousPrivateName !== undefined && name <= previousPrivateName)
+      ) {
+        throw staleNativeArtifact(
+          filename,
+          "invalid private native-function metadata",
+        );
+      }
+      privateFunctions.push(name);
+      previousPrivateName = name;
     }
     const foreignDeclarations: NativeForeignDeclaration[] = [];
     const seen = new Set<string>();
@@ -627,7 +656,13 @@ export function runRuntimeBootstrap(
       foreignDeclarations.push({ id, declarationIdentity, dynamicPackage });
     }
     foreignDeclarations.sort((left, right) => left.id.localeCompare(right.id));
-    return { cacheKey, sourceHash, nativeAbi, foreignDeclarations };
+    return {
+      cacheKey,
+      sourceHash,
+      nativeAbi,
+      foreignDeclarations,
+      privateFunctions,
+    };
   };
   const nativeCompatibilityKey = (value: NativeCompatibility): string =>
     JSON.stringify({
@@ -635,6 +670,7 @@ export function runRuntimeBootstrap(
       sourceHash: value.sourceHash,
       nativeAbi: value.nativeAbi,
       foreignDeclarations: value.foreignDeclarations,
+      privateFunctions: value.privateFunctions,
     });
   const registerNativeModule = (
     filename: string,
@@ -651,8 +687,24 @@ export function runRuntimeBootstrap(
     ) {
       throw new TypeError("invalid Sage.js native-module registration");
     }
-    validatedNativeCompatibility(filename, compatibility, sourceHash);
-    nativeModules.set(resolve(filename), { sourceHash, functions });
+    const validated = validatedNativeCompatibility(
+      filename,
+      compatibility,
+      sourceHash,
+    );
+    if (validated.privateFunctions.some((name) =>
+      typeof Reflect.get(functions, name) === "function"
+    )) {
+      throw staleNativeArtifact(
+        filename,
+        "private native-function metadata overlaps callable exports",
+      );
+    }
+    nativeModules.set(resolve(filename), {
+      sourceHash,
+      functions,
+      privateFunctions: new Set(validated.privateFunctions),
+    });
   };
   const resolveNativeFunction = (
     filename: string,
@@ -695,6 +747,7 @@ export function runRuntimeBootstrap(
     if (registered?.sourceHash === sourceHash) {
       const candidate = Reflect.get(registered.functions, name);
       if (usableNativeCandidate(candidate)) return candidate;
+      if (registered.privateFunctions.has(name)) return nativePrivateFallback;
     }
 
     // An explicit cache directory is an override, not an additional search
@@ -769,15 +822,17 @@ export function runRuntimeBootstrap(
             "cache index and generated wrapper metadata differ",
           );
         }
-        const candidate = Reflect.get(loaded, name);
-        if (!usableNativeCandidate(candidate)) continue;
         registerNativeModule(
           sourcePath,
           sourceHash,
           loaded,
           moduleCompatibility,
         );
-        return candidate;
+        const candidate = Reflect.get(loaded, name);
+        if (usableNativeCandidate(candidate)) return candidate;
+        if (moduleCompatibility.privateFunctions.includes(name)) {
+          return nativePrivateFallback;
+        }
       } catch (error) {
         // Generated wrappers self-register while `require` evaluates them.
         // Never retain that registration if the cache index or current FFI
