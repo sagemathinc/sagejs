@@ -12,6 +12,7 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { join, relative } = require("node:path");
+const { inspectBuildReceipt } = require("./build-receipt.cjs");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
@@ -119,6 +120,16 @@ function parseArguments(argv) {
     throw new Error("--check cannot be combined with --only");
   }
   return options;
+}
+
+function requireCurrentBuild(inspector = inspectBuildReceipt) {
+  const status = inspector(root);
+  if (!status.current) {
+    throw new Error(
+      `the Sage.js build is stale (${status.reason}); run pnpm build:check`,
+    );
+  }
+  return status;
 }
 
 function normalizeOutput(output) {
@@ -532,6 +543,7 @@ function compareBaseline(results, reference, excluded, baselinePath) {
 
 async function main() {
   const options = parseArguments(process.argv.slice(2));
+  requireCurrentBuild();
   const environment = {
     ...process.env,
     LC_ALL: "C.UTF-8",
@@ -594,7 +606,13 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(`python conformance: ${error.message}`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(`python conformance: ${error.message}`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  requireCurrentBuild,
+};
