@@ -355,7 +355,7 @@ function browserClaims(evidence) {
       evidence.memory?.measurement_scope !== "process_tree" ||
       evidence.memory?.authenticated_by !== "qualification-collector" ||
       evidence.memory?.measurement_method !== "linux-procfs-process-tree-sampled-v1" ||
-      evidence.memory?.sample_interval_ms !== 5 ||
+      evidence.memory?.sample_interval_ms !== 50 ||
       !Number.isSafeInteger(evidence.memory?.baseline_peak_bytes) ||
       !Number.isSafeInteger(evidence.memory?.pressure_peak_bytes) ||
       !Number.isSafeInteger(evidence.memory?.delta_bytes) ||

@@ -653,7 +653,7 @@ test("historical receipts enforce the exact platform and subject memory tuple", 
   assert.deepEqual(expectedPeakMemoryContract("linux-arm64", "npm"), {
     measurement_method: "linux-procfs-process-tree-sampled-v1",
     measurement_scope: "process_tree",
-    sample_interval_ms: 5,
+    sample_interval_ms: 50,
   });
   assert.deepEqual(expectedPeakMemoryContract("macos-arm64", "sea"), {
     measurement_method: "macos-ps-process-tree-sampled-v1",
