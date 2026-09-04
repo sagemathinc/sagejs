@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fmpz-backend-evidence",
+  "title": "Force and attest fmpz backend",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Allow an explicit fmpz native-backend override for qualified programs and bind the selected exact backend into authenticated complex-cubic frontier runtime evidence for source-matched GMP/fmpz A/B measurements",
+  "base_commit": "dcefab282bd06cd0fff95773b0482432a0263e73",
+  "claims": [
+    "tools/native-kernel/js-backend.cjs",
+    "tools/native-kernel/test/fmpz-backend-override.cjs",
+    "bench/class-unit-groups/run-complex-cubic-frontier.cjs",
+    "bench/class-unit-groups/complex-cubic-frontier-evidence.schema.json",
+    "test/complex-cubic-frontier-runner.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "explicit fmpz/GMP/direct fallback differential execution",
+      "frontier runtime identity and schema validation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

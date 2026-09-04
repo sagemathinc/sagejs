@@ -966,6 +966,14 @@ ${fn.params.map(exactValidation).join("\n")}
 }
 
 function backend_${fn.name}(${args}) {
+  if (integerBackendOverride === "fmpz" && ${fn.analysis.backend.kind !== "fmpz"}) {
+    throw new Error(
+      "fmpz backend was requested but ${fn.name} is not qualified for fmpz"
+    );
+  }
+  if (integerBackendOverride === "fmpz" && nativeAddon === null) {
+    throw new Error("fmpz backend was requested but is not available");
+  }
   if (integerBackendOverride === "gmp" && nativeAddon === null) {
     throw new Error("GMP backend was requested but is not available");
   }
@@ -1494,9 +1502,9 @@ if (!nativeAddonDisabled) {
 const integerBackendOverride =
   process.env.SAGEJS_NATIVE_INTEGER_BACKEND ||
   (requestedNativeMode === "native" ? "tagged" : "auto");
-if (!["auto", "bigint", "tagged", "gmp"].includes(integerBackendOverride)) {
+if (!["auto", "bigint", "tagged", "gmp", "fmpz"].includes(integerBackendOverride)) {
   throw new RangeError(
-    "SAGEJS_NATIVE_INTEGER_BACKEND must be auto, bigint, tagged, or gmp");
+    "SAGEJS_NATIVE_INTEGER_BACKEND must be auto, bigint, tagged, gmp, or fmpz");
 }
 
 let immutableUInt64LeaseBorrow = null;

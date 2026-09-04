@@ -100,6 +100,7 @@ const THREAD_ENV = Object.freeze({
   JULIA_NUM_THREADS: "1",
   FLINT_NUM_THREADS: "1",
 });
+const SAGEJS_INTEGER_BACKENDS = Object.freeze(["auto", "gmp", "fmpz"]);
 
 function usage() {
   return `Usage: node ${path.relative(ROOT, __filename)} MODE --corpus PATH --output PATH [options]
@@ -122,6 +123,8 @@ Options:
   --no-census-parts     disable checkpoint read/write for exploratory census runs
   --timeout-seconds N   fresh process/system/round timeout (default: 3600)
   --sagejs PATH         Sage.js launcher (default: bin/sagejs)
+  --sagejs-integer-backend B
+                        exact integer backend: auto, gmp, or fmpz (default: auto)
   --gp PATH             direct GP launcher (default: gp)
   --adapter SYSTEM=PATH generic JSON adapter; repeatable (required for Magma/Hecke)
   --allow-dirty         permit exploratory output, marked non-promotable
@@ -177,6 +180,7 @@ function parseArguments(argv) {
     censusPartsEnabled: true,
     timeoutSeconds: 3600,
     sagejs: process.env.SAGEJS_FRONTIER_EXECUTABLE || path.join(ROOT, "bin/sagejs"),
+    sagejsIntegerBackend: "auto",
     gp: process.env.GP_ORACLE || process.env.PARI_ORACLE || "gp",
     adapters: {},
     allowDirty: false,
@@ -198,7 +202,7 @@ function parseArguments(argv) {
     if (argument === "--no-census-parts") { options.censusPartsEnabled = false; continue; }
     if (!["--corpus", "--asset-dir", "--census-file", "--output", "--systems", "--boundaries",
       "--cpu", "--census-cpus", "--census-parts-dir", "--timeout-seconds", "--sagejs", "--gp",
-      "--adapter"].includes(argument)) {
+      "--sagejs-integer-backend", "--adapter"].includes(argument)) {
       throw new Error(`unknown argument: ${argument}`);
     }
     if (index + 1 >= argv.length) throw new Error(`${argument} needs a value`);
@@ -214,6 +218,12 @@ function parseArguments(argv) {
     else if (argument === "--census-parts-dir") options.censusPartsDir = path.resolve(value);
     else if (argument === "--timeout-seconds") options.timeoutSeconds = positiveInteger(value, argument);
     else if (argument === "--sagejs") options.sagejs = value;
+    else if (argument === "--sagejs-integer-backend") {
+      if (!SAGEJS_INTEGER_BACKENDS.includes(value)) {
+        throw new Error(`${argument} must be one of ${SAGEJS_INTEGER_BACKENDS.join(",")}`);
+      }
+      options.sagejsIntegerBackend = value;
+    }
     else if (argument === "--gp") options.gp = value;
     else {
       const separator = value.indexOf("=");
@@ -346,7 +356,7 @@ function validateDirectSagejsTool(tool, root = ROOT) {
 }
 
 const CANDIDATE_DIRECT_ENVIRONMENT_SCHEMA =
-  "sagejs.benchmark/complex-cubic-direct-environment-v3";
+  "sagejs.benchmark/complex-cubic-direct-environment-v4";
 
 function prepareCandidateDirectEnvironment(root = ROOT) {
   const cacheHome = path.join(
@@ -369,7 +379,15 @@ function prepareCandidateDirectEnvironment(root = ROOT) {
   return cacheHome;
 }
 
-function candidateDirectEnvironmentIdentity(root = ROOT) {
+function candidateDirectEnvironmentIdentity(
+  root = ROOT,
+  sagejsIntegerBackend = "auto",
+) {
+  if (!SAGEJS_INTEGER_BACKENDS.includes(sagejsIntegerBackend)) {
+    throw new Error(
+      "Sage.js frontier integer backend must be auto, gmp, or fmpz",
+    );
+  }
   const nodeExecutable = fs.realpathSync(process.execPath);
   const sitePackages = "/nonexistent/sagejs-complex-cubic-frontier-site-packages";
   const dynamicCache = "/nonexistent/sagejs-complex-cubic-frontier-dynamic";
@@ -392,6 +410,15 @@ function candidateDirectEnvironmentIdentity(root = ROOT) {
       version: process.version,
       argv_prefix: [fs.realpathSync(path.join(root, "bin/sagejs"))],
     },
+    exact_integer_backend: {
+      requested: sagejsIntegerBackend,
+      selected: sagejsIntegerBackend === "auto"
+        ? "per-function-qualified-policy"
+        : sagejsIntegerBackend,
+      enforcement: sagejsIntegerBackend === "auto"
+        ? "compiler-qualified-automatic-selection"
+        : "requested-backend-or-fail-closed",
+    },
     environment: {
       LANG: "C.UTF-8",
       LC_ALL: "C.UTF-8",
@@ -402,6 +429,7 @@ function candidateDirectEnvironmentIdentity(root = ROOT) {
       SAGEJS_NATIVE_MODE: "auto",
       SAGEJS_NATIVE_AUTOLOAD: "1",
       SAGEJS_NATIVE_REQUIRED: "1",
+      SAGEJS_NATIVE_INTEGER_BACKEND: sagejsIntegerBackend,
       SAGEJS_NATIVE_CACHE_DIR: path.join(root, "dist/native-kernels"),
       SAGEJS_MODULE_CACHE_AUTO_CLEANUP: "0",
       SAGEJS_PRECOMPILED_DYNAMIC_CACHE_DIR: precompiledDynamicCache,
@@ -413,7 +441,7 @@ function candidateDirectEnvironmentIdentity(root = ROOT) {
   return { ...payload, sha256: canonicalDigest(payload) };
 }
 
-function candidateRuntimeClosure(root = ROOT) {
+function candidateRuntimeClosure(root = ROOT, sagejsIntegerBackend = "auto") {
   prepareCandidateDirectEnvironment(root);
   const hash = crypto.createHash("sha256");
   let fileCount = 0;
@@ -613,7 +641,10 @@ function candidateRuntimeClosure(root = ROOT) {
     flintDirectAddonName,
   ]) include(name);
 
-  const directEnvironment = candidateDirectEnvironmentIdentity(root);
+  const directEnvironment = candidateDirectEnvironmentIdentity(
+    root,
+    sagejsIntegerBackend,
+  );
   hash.update("direct-process-environment\0");
   hash.update(canonicalJson(directEnvironment));
   hash.update("\0");
@@ -744,14 +775,23 @@ function assertRuntimeClosureUnchanged(recordedRuntimeClosure, currentRuntimeClo
   return currentRuntimeClosure;
 }
 
-function warmCandidateDirectEnvironment(corpus, root = ROOT, dependencies = {}) {
+function warmCandidateDirectEnvironment(
+  corpus,
+  root = ROOT,
+  dependencies = {},
+  sagejsIntegerBackend = "auto",
+) {
   const records = corpus?.records;
   if (!Array.isArray(records) || records.length !== 1000) {
     throw new Error("candidate direct environment warmup requires the full frozen survey");
   }
   const identifyEnvironment = dependencies.candidateDirectEnvironmentIdentity ||
-    candidateDirectEnvironmentIdentity;
-  const identifyClosure = dependencies.candidateRuntimeClosure || candidateRuntimeClosure;
+    ((candidateRoot) => candidateDirectEnvironmentIdentity(
+      candidateRoot,
+      sagejsIntegerBackend,
+    ));
+  const identifyClosure = dependencies.candidateRuntimeClosure ||
+    ((candidateRoot) => candidateRuntimeClosure(candidateRoot, sagejsIntegerBackend));
   const spawn = dependencies.spawnSync || childProcess.spawnSync;
   const makeSource = dependencies.sageWarmupSource || sageWarmupSource;
   const partitions = shardRecords(corpus);
@@ -814,7 +854,7 @@ function warmCandidateDirectEnvironment(corpus, root = ROOT, dependencies = {}) 
   return { attestation, candidate_runtime_closure: after };
 }
 
-function sourceIdentity(allowDirty = false) {
+function sourceIdentity(allowDirty = false, sagejsIntegerBackend = "auto") {
   const run = (args) => childProcess.execFileSync("git", ["-C", ROOT, ...args], {
     encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
   }).trim();
@@ -836,7 +876,10 @@ function sourceIdentity(allowDirty = false) {
       path: fs.existsSync(receiptPath) ? receiptPath : null,
       sha256: fs.existsSync(receiptPath) ? sha256(fs.readFileSync(receiptPath)) : null,
     },
-    candidate_runtime_closure: candidateRuntimeClosure(ROOT),
+    candidate_runtime_closure: candidateRuntimeClosure(
+      ROOT,
+      sagejsIntegerBackend,
+    ),
   };
 }
 
@@ -1465,11 +1508,13 @@ function pinnedSpec(executable, args, input, options) {
   };
 }
 
-function directProcessEnvironment(tool, root = ROOT) {
+function directProcessEnvironment(tool, root = ROOT, sagejsIntegerBackend = "auto") {
   if (tool.system !== "sagejs" || tool.adapter_kind !== "generated-sagejs-python") {
     return {};
   }
-  return { ...candidateDirectEnvironmentIdentity(root).environment };
+  return {
+    ...candidateDirectEnvironmentIdentity(root, sagejsIntegerBackend).environment,
+  };
 }
 
 function responseFromStdout(stdout) {
@@ -1906,7 +1951,10 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
     tool.adapter_kind === "generated-sagejs-python";
   if (directSagejs) validateDirectSagejsTool(tool);
   const directEnvironment = directSagejs
-    ? options.directEnvironmentIdentity ?? candidateDirectEnvironmentIdentity()
+    ? options.directEnvironmentIdentity ?? candidateDirectEnvironmentIdentity(
+      ROOT,
+      options.sagejsIntegerBackend,
+    )
     : null;
   const launchedExecutable = directEnvironment === null
     ? tool.executable
@@ -1915,7 +1963,7 @@ async function invokeAdapter(tool, corpus, mode, options = {}) {
   const processResult = await runFreshProcess(pinnedSpec(launchedExecutable, args, input, {
     ...options,
     env: directEnvironment === null
-      ? directProcessEnvironment(tool)
+      ? directProcessEnvironment(tool, ROOT, options.sagejsIntegerBackend)
       : { ...directEnvironment.environment },
     replaceEnv: directSagejs,
   }));
@@ -2749,8 +2797,16 @@ async function main(argv = process.argv.slice(2)) {
     os.hostname(),
   ].join(":"));
   const corpus = loadFrozenSurveyCorpus(options.corpus, options.assetDir);
-  const warmup = options.dryRun ? null : warmCandidateDirectEnvironment(corpus);
-  let source = sourceIdentity(options.allowDirty);
+  const warmup = options.dryRun ? null : warmCandidateDirectEnvironment(
+    corpus,
+    ROOT,
+    {},
+    options.sagejsIntegerBackend,
+  );
+  let source = sourceIdentity(
+    options.allowDirty,
+    options.sagejsIntegerBackend,
+  );
   if (warmup) source = bindWarmedRuntimeClosure(warmup, source, corpus.records);
   options.directEnvironmentIdentity =
     source.candidate_runtime_closure.direct_process_environment;
@@ -2802,7 +2858,7 @@ async function main(argv = process.argv.slice(2)) {
     );
   assertRuntimeClosureUnchanged(
     source.candidate_runtime_closure,
-    candidateRuntimeClosure(ROOT),
+    candidateRuntimeClosure(ROOT, options.sagejsIntegerBackend),
   );
   writeJsonAtomic(options.output, evidence);
   console.log(`${options.output}: ${evidence.schema}`);
