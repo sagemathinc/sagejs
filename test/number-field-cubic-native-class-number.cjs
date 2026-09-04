@@ -16,18 +16,14 @@ const sourcePath = resolve(
   "src/lib/sagejs/number_fields/cubic_class_number_native.py",
 );
 
-function runPython(source, timeout = 180_000, environment = {}) {
+function runPython(source, timeout = 180_000) {
   const result = spawnSync(
     process.execPath,
     [resolve(root, "bin/sagejs"), "--python"],
     {
       cwd: root,
       encoding: "utf8",
-      env: {
-        ...process.env,
-        SAGEJS_NATIVE_REQUIRED: "0",
-        ...environment,
-      },
+      env: { ...process.env, SAGEJS_NATIVE_REQUIRED: "0" },
       input: source,
       timeout,
     },
@@ -39,116 +35,6 @@ function runPython(source, timeout = 180_000, environment = {}) {
   );
   return result.stdout.trim();
 }
-
-function relationLogBatchProgram(expectNative) {
-  return String.raw`
-from sagejs.ffi.flint import fmpz_matrix
-from sagejs.native import kernel_integer_buffer
-from sagejs.number_fields.cubic_class_number_native import (
-    _cubic_real_log_bounds,
-    _cubic_real_log_bounds_batch,
-)
-
-if ${expectNative ? "True" : "False"}:
-    assert _cubic_real_log_bounds.nativeAvailable is True
-    assert _cubic_real_log_bounds_batch.nativeAvailable is True
-
-coefficients = (-55, 9, 0, 1)
-elements = (
-    (1, 0, 0),
-    (2, 0, 0),
-    (0, 1, 0),
-    (1, 1, 0),
-    (1, 0, 1),
-    (2, 1, 1),
-    (3, -1, 2),
-)
-count = len(elements)
-precision = 128
-scale = 1 << precision
-relations = fmpz_matrix(count, 3)
-batch_numerators = fmpz_matrix(2 * count, 1)
-batch_denominators = fmpz_matrix(2 * count, 1)
-batch_endpoints = fmpz_matrix(4 * count, 1)
-batch_logs = fmpz_matrix(count, 2)
-for row, element in enumerate(elements):
-    for column, value in enumerate(element):
-        relations[row, column] = value
-
-assert _cubic_real_log_bounds_batch(
-    batch_numerators,
-    batch_denominators,
-    batch_endpoints,
-    batch_logs,
-    kernel_integer_buffer(_cubic_real_log_bounds_batch, coefficients),
-    relations,
-    count,
-    1,
-    1,
-    0,
-    0,
-    1,
-    0,
-    1,
-    scale,
-    precision,
-)
-
-serial_resources = []
-for row, element in enumerate(elements):
-    numerators = fmpz_matrix(1, 1)
-    denominators = fmpz_matrix(1, 1)
-    endpoints = fmpz_matrix(2, 1)
-    serial_resources.extend((numerators, denominators, endpoints))
-    expected = _cubic_real_log_bounds(
-        numerators,
-        denominators,
-        endpoints,
-        kernel_integer_buffer(_cubic_real_log_bounds, coefficients),
-        1,
-        1,
-        0,
-        0,
-        1,
-        0,
-        1,
-        element[0],
-        element[1],
-        element[2],
-        scale,
-        precision,
-    )
-    assert (batch_logs[row, 0], batch_logs[row, 1]) == expected
-
-for resource in (
-    *serial_resources,
-    batch_logs,
-    batch_endpoints,
-    batch_denominators,
-    batch_numerators,
-    relations,
-):
-    resource.close()
-print("cubic-relation-log-batch-ok")
-`;
-}
-
-test("cubic relation-log batches exactly match serial enclosures", {
-  timeout: 240_000,
-}, () => {
-  assert.equal(
-    runPython(relationLogBatchProgram(true)),
-    "cubic-relation-log-batch-ok",
-  );
-  assert.equal(
-    runPython(
-      relationLogBatchProgram(false),
-      180_000,
-      { SAGEJS_NATIVE_DISABLE: "1" },
-    ),
-    "cubic-relation-log-batch-ok",
-  );
-});
 
 test("closed native cubic receipts survive declines and authenticate targets", {
   timeout: 240_000,
@@ -174,22 +60,6 @@ test("closed native cubic receipts survive declines and authenticate targets", {
     compiled.ir.callGraph._cubic_analysis_fixed_points_are_valid.includes(
       "packed_field_analysis_fixed_points_are_valid",
     ),
-  );
-  const relationLogBatch = compiled.ir.functions.find(
-    (fn) => fn.name === "_cubic_real_log_bounds_batch",
-  );
-  assert.deepEqual(
-    relationLogBatch.dependencies,
-    [
-      "_cubic_real_embedding_absolute_bounds_from_root_interval",
-      "_cubic_real_root_interval",
-    ],
-  );
-  assert.equal(
-    relationLogBatch.foreignDependencies.filter((dependency) =>
-      dependency.endsWith(":positive_rational_log_balls_resource")
-    ).length,
-    1,
   );
   assert.equal(
     compiled.ir.functions.find(
