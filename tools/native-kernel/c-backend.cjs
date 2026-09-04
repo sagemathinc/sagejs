@@ -92,6 +92,41 @@ function isUInt64BufferType(type) {
   return type === "UInt64Buffer";
 }
 
+/**
+ * Classify target properties that affect the generated isolated C core.
+ *
+ * Packed `IntegerBuffer` slots are arrays of 64-bit words.  The resident fmpz
+ * helpers deliberately borrow those words without allocating or repacking, so
+ * they are valid only when one FLINT limb is also 64 bits.  Keep this predicate
+ * beside the emitter that owns that representation invariant.  Target packers
+ * must call it before presenting a generated core as compilable.
+ */
+function classifyHostCoreTarget(ir, capabilities = {}) {
+  const exact = ir.functions.filter((fn) => fn.kernelKind === "integer");
+  const usesFmpz = exact.some((fn) =>
+    fn.analysis?.backend?.kind === "fmpz"
+  );
+  const usesIntegerBuffers = exact.some((fn) =>
+    fn.params.some((param) => isIntegerBufferType(param.type)) ||
+    fn.locals.some((local) => isIntegerBufferType(local.type))
+  );
+  if (usesFmpz && usesIntegerBuffers && capabilities.flintLimbBits !== 64) {
+    return {
+      supported: false,
+      reason: "fmpz-integer-buffer-requires-64-bit-flint-limbs",
+      requirement: {
+        integerBufferWordBits: 64,
+        flintLimbBits: 64,
+      },
+      actual: {
+        target: capabilities.target ?? null,
+        flintLimbBits: capabilities.flintLimbBits ?? null,
+      },
+    };
+  }
+  return { supported: true };
+}
+
 function exactBufferCType(type) {
   if (isInt64BufferType(type)) return "sagejs_int64_buffer";
   if (isUInt64BufferType(type)) return "sagejs_uint64_buffer";
@@ -4428,6 +4463,7 @@ function generateArtifacts(ir, options = {}) {
 module.exports = {
   NATIVE_ABI_VERSION,
   RESOURCE_FINALIZATION_CAPABILITY,
+  classifyHostCoreTarget,
   generateArtifacts,
   generateC,
   generateHostCore,
