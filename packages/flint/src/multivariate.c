@@ -2317,6 +2317,68 @@ napi_value sagejs_mpoly_reduce(napi_env env, napi_callback_info info)
         free(divisors); free(quotients); free(quotient_values);
         return object;
     }
+    if (context->kind == SAGEJS_MPOLY_QQ)
+    {
+        bool is_array;
+        uint32_t length, index;
+        fmpq_mpoly_struct **divisors = NULL, **quotients = NULL;
+        fmpq_mpoly_struct *quotient_values = NULL;
+        napi_value item;
+        sagejs_mpoly_value *divisor = NULL, *result;
+        if (!check_napi(env, napi_is_array(env, args[1], &is_array)) ||
+            !is_array ||
+            !check_napi(env, napi_get_array_length(env, args[1], &length)))
+            return NULL;
+        object = create_value(env, context);
+        if (object == NULL || (result = unwrap_value(env, object)) == NULL)
+            return NULL;
+        if (length == 0)
+        {
+            fmpq_mpoly_set(result->value.qq, poly->value.qq,
+                context->value.qq);
+            return object;
+        }
+        divisors = malloc((size_t) length * sizeof(*divisors));
+        quotients = malloc((size_t) length * sizeof(*quotients));
+        quotient_values = malloc((size_t) length * sizeof(*quotient_values));
+        if (divisors == NULL || quotients == NULL || quotient_values == NULL)
+        {
+            free(divisors); free(quotients); free(quotient_values);
+            napi_throw_error(env, NULL,
+                "unable to allocate rational multivariate reduction storage");
+            return NULL;
+        }
+        for (index = 0; index < length; index++)
+        {
+            divisor = NULL;
+            if (!check_napi(env, napi_get_element(env, args[1], index, &item)) ||
+                (divisor = unwrap_value(env, item)) == NULL ||
+                divisor->context != context ||
+                fmpq_mpoly_is_zero(divisor->value.qq, context->value.qq))
+            {
+                while (index > 0)
+                    fmpq_mpoly_clear(quotients[--index], context->value.qq);
+                free(divisors); free(quotients); free(quotient_values);
+                if (divisor != NULL && divisor->context == context &&
+                    fmpq_mpoly_is_zero(divisor->value.qq, context->value.qq))
+                    napi_throw_range_error(env, NULL,
+                        "multivariate reduction basis contains zero");
+                else if (divisor != NULL && divisor->context != context)
+                    napi_throw_type_error(env, NULL,
+                        "multivariate polynomials have different parents");
+                return NULL;
+            }
+            divisors[index] = divisor->value.qq;
+            quotients[index] = quotient_values + index;
+            fmpq_mpoly_init(quotients[index], context->value.qq);
+        }
+        fmpq_mpoly_divrem_ideal(quotients, result->value.qq, poly->value.qq,
+            divisors, length, context->value.qq);
+        for (index = 0; index < length; index++)
+            fmpq_mpoly_clear(quotients[index], context->value.qq);
+        free(divisors); free(quotients); free(quotient_values);
+        return object;
+    }
     if (context->kind != SAGEJS_MPOLY_ZZ &&
         context->kind != SAGEJS_MPOLY_QQ)
     {

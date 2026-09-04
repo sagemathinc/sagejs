@@ -17,6 +17,7 @@ _packed_polynomial_flint_module_cache = runtime.undefined
 _polynomial_structural_public_module_cache = runtime.undefined
 _arbitrary_prime_public_module_cache = runtime.undefined
 _polynomial_ideal_algorithms_module_cache = runtime.undefined
+_polynomial_quotient_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
 _generated_flint_resources_available_cache = runtime.undefined
 _generated_fmpz_polynomial_resources_available_cache = runtime.undefined
@@ -33,6 +34,17 @@ def _polynomial_ideal_algorithms() -> Any:
             fromlist=["groebner_basis"],
         )
     return _polynomial_ideal_algorithms_module_cache
+
+
+def _polynomial_quotient_module() -> Any:
+    """Load the small canonical polynomial quotient API lazily."""
+    global _polynomial_quotient_module_cache
+    if _polynomial_quotient_module_cache is runtime.undefined:
+        _polynomial_quotient_module_cache = __import__(
+            "sagejs._baselib.polynomial_quotient",
+            fromlist=["PolynomialQuotientRing"],
+        )
+    return _polynomial_quotient_module_cache
 
 
 def _closed_field_horner(base: Any, coefficients: Any, value: Any) -> Any:
@@ -4136,6 +4148,224 @@ class MultivariatePolynomialElement(sage.Element):
         """Return the sparse coefficient dictionary keyed by exponents."""
         return {exponents: coefficient for coefficient, exponents in self.terms()}
 
+    def _substitution_pairs(self, mapping: Any) -> list[Any]:
+        """Normalize a public substitution mapping without hashing generators."""
+        if not hasattr(mapping, "items"):
+            raise TypeError("polynomial substitution needs a mapping")
+        pairs = []
+        for key, value in mapping.items():
+            index = self._parent._generator_index(key)
+            for previous_index, _previous_value in pairs:
+                if previous_index == index:
+                    raise ValueError("a polynomial generator was substituted twice")
+            pairs.append(runtime.math_tuple([index, value]))
+        return pairs
+
+    def subs(self, mapping: Any = None, **kwds: Any) -> Any:
+        """Return an exact simultaneous substitution.
+
+        Keys may be ring generators or their names. Unspecified generators
+        remain unchanged. All replacements are interpreted simultaneously,
+        so `f.subs({x: y, y: x})` really swaps `x` and `y`.
+        """
+        pairs = []
+        if mapping is not None:
+            pairs.extend(self._substitution_pairs(mapping))
+        for name in runtime.object.keys(kwds):
+            index = self._parent._generator_index(name)
+            if any(previous_index == index for previous_index, _value in pairs):
+                raise ValueError("a polynomial generator was substituted twice")
+            pairs.append(runtime.math_tuple([index, runtime.reflect.get(kwds, name)]))
+        return self._substitute_pairs(pairs)
+
+    def _substitute_pairs(self, pairs: list[Any]) -> Any:
+        """Evaluate normalized simultaneous `(generator_index, value)` pairs."""
+        replacements = list(self._parent.gens())
+        for index, value in pairs:
+            replacements[index] = value
+
+        target = None
+        for value in replacements:
+            if isinstance(value, MultivariatePolynomialElement):
+                if target is None:
+                    target = value._parent
+                elif value._parent is not target:
+                    raise TypeError(
+                        "all polynomial substitutions must have the same parent"
+                    )
+        if target is None:
+            base = self._parent.base_ring()
+            scalars = [base(value) for value in replacements]
+            answer = base(0)
+            for coefficient, exponents in self.terms():
+                term = coefficient
+                for index in range(len(exponents)):
+                    if exponents[index]:
+                        term *= scalars[index] ** exponents[index]
+                answer += term
+            return answer
+
+        polynomial_values = [target(value) for value in replacements]
+        answer = target(0)
+        for coefficient, exponents in self.terms():
+            term = target(coefficient)
+            for index in range(len(exponents)):
+                if exponents[index]:
+                    term *= polynomial_values[index] ** exponents[index]
+            answer += term
+        return answer
+
+    substitute = subs
+
+    def __call__(self, *values: Any, **kwds: Any) -> Any:
+        """Evaluate at one value per generator, or use named values."""
+        if len(values) == 1 and isinstance(values[0], (list, tuple)):
+            values = tuple(values[0])
+        if len(runtime.object.keys(kwds)):
+            if len(values):
+                raise TypeError(
+                    "polynomial evaluation cannot mix positional and named values"
+                )
+            if len(runtime.object.keys(kwds)) != self._parent.ngens():
+                raise TypeError("polynomial evaluation needs one value per generator")
+            return self.subs(**kwds)
+        if len(values) != self._parent.ngens():
+            raise TypeError("polynomial evaluation needs one value per generator")
+        pairs = []
+        for index in range(len(values)):
+            pairs.append(runtime.math_tuple([index, values[index]]))
+        return self._substitute_pairs(pairs)
+
+    def derivative(
+        self,
+        variable: Any,
+        count: int = 1,
+    ) -> MultivariatePolynomialElement:
+        """Return an exact formal partial derivative."""
+        index = self._parent._generator_index(variable)
+        if not runtime.is_exact_integer(count):
+            raise TypeError("derivative order must be an integer")
+        count = int(count)
+        if count < 0:
+            raise ValueError("derivative order must be nonnegative")
+        answer = self
+        for _iteration in range(count):
+            terms = []
+            for coefficient, exponents_value in answer.terms():
+                exponents = list(exponents_value)
+                power = exponents[index]
+                if power == 0:
+                    continue
+                exponents[index] -= 1
+                terms.append(
+                    runtime.math_tuple(
+                        [coefficient * power, runtime.math_tuple(exponents)]
+                    )
+                )
+            answer = self._parent._from_sparse_terms(terms)
+        return answer
+
+    diff = derivative
+    differentiate = derivative
+
+    def gradient(self, variables: Any = None) -> Any:
+        """Return the tuple of formal partial derivatives."""
+        if variables is None:
+            variables = self._parent.gens()
+        return runtime.math_tuple([self.derivative(variable) for variable in variables])
+
+    def is_homogeneous(self) -> bool:
+        """Return whether all nonzero terms have the same total degree."""
+        selected = None
+        for _coefficient, exponents in self.terms():
+            degree = sum(exponents)
+            if selected is None:
+                selected = degree
+            elif degree != selected:
+                return False
+        return True
+
+    def homogenize(
+        self,
+        variable: Any = "h",
+        target: Any = None,
+    ) -> MultivariatePolynomialElement:
+        """Homogenize using one explicit new coordinate."""
+        source_names = list(self._parent.variable_names())
+        if target is None:
+            if not isinstance(variable, str):
+                raise TypeError(
+                    "homogenization without a target needs a new variable name"
+                )
+            if variable in source_names:
+                raise ValueError("homogenizing variable collides with the source ring")
+            target = PolynomialRing(
+                self._parent.base_ring(),
+                len(source_names) + 1,
+                names=source_names + [variable],
+                order=self._parent._order,
+            )
+        if target.base_ring() is not self._parent.base_ring():
+            raise TypeError("homogenization target has a different base field")
+        homogenizing_index = target._generator_index(variable)
+        source_to_target = []
+        target_names = list(target.variable_names())
+        for name in source_names:
+            if name not in target_names:
+                raise ValueError("homogenization target is missing a source variable")
+            source_to_target.append(target_names.index(name))
+        if len(set(source_to_target + [homogenizing_index])) != len(source_names) + 1:
+            raise ValueError("homogenizing coordinate must be new")
+        if target.ngens() != self._parent.ngens() + 1:
+            raise ValueError("homogenization target must have exactly one new variable")
+        degree = self.total_degree()
+        if degree < 0:
+            return target(0)
+        terms = []
+        for coefficient, source_exponents in self.terms():
+            target_exponents = [0] * target.ngens()
+            term_degree = 0
+            for source_index in range(len(source_exponents)):
+                exponent = source_exponents[source_index]
+                target_exponents[source_to_target[source_index]] = exponent
+                term_degree += exponent
+            target_exponents[homogenizing_index] = degree - term_degree
+            terms.append(
+                runtime.math_tuple([coefficient, runtime.math_tuple(target_exponents)])
+            )
+        return target._from_sparse_terms(terms)
+
+    def dehomogenize(
+        self,
+        variable: Any,
+        target: Any = None,
+    ) -> Any:
+        """Set one coordinate equal to one, optionally in a smaller target."""
+        index = self._parent._generator_index(variable)
+        source_names = list(self._parent.variable_names())
+        remaining_names = source_names[:index] + source_names[index + 1 :]
+        if target is None:
+            target = PolynomialRing(
+                self._parent.base_ring(),
+                len(remaining_names),
+                names=remaining_names,
+                order=self._parent._order,
+            )
+        if target.base_ring() is not self._parent.base_ring():
+            raise TypeError("dehomogenization target has a different base field")
+        if list(target.variable_names()) != remaining_names:
+            raise ValueError(
+                "dehomogenization target names must be the remaining coordinates"
+            )
+        terms = []
+        for coefficient, source_exponents in self.terms():
+            exponents = list(source_exponents)
+            del exponents[index]
+            terms.append(
+                runtime.math_tuple([coefficient, runtime.math_tuple(exponents)])
+            )
+        return target._from_sparse_terms(terms)
+
     def univariate_polynomial(
         self,
         variable: Any = None,
@@ -4428,6 +4658,18 @@ class MultivariatePolynomialRingParent(sage.Parent):
     def ideal(self, *generators: Any) -> PolynomialIdeal:
         selected = _ideal_generators(generators)
         return PolynomialIdeal(self, selected)
+
+    def quotient(self, defining_ideal: Any, **options: Any) -> Any:
+        """Return this ring modulo an ideal with canonical normal forms."""
+        if not isinstance(defining_ideal, PolynomialIdeal):
+            defining_ideal = self.ideal(defining_ideal)
+        if defining_ideal.ring() is not self:
+            raise TypeError("quotient ideal belongs to a different polynomial ring")
+        return _polynomial_quotient_module().PolynomialQuotientRing(
+            self, defining_ideal, **options
+        )
+
+    quotient_ring = quotient
 
     def __rmul__(self, generators: Any) -> PolynomialIdeal:
         if not isinstance(generators, (list, tuple)):
@@ -5225,6 +5467,10 @@ class PolynomialIdeal:
     def groebner_fan(self) -> GroebnerFan:
         """Return the Gröbner-fan computation attached to this ideal."""
         return GroebnerFan(self)
+
+    def quotient_ring(self, **options: Any) -> Any:
+        """Return the canonical quotient of the ambient ring by this ideal."""
+        return self._ring.quotient(self, **options)
 
     def _two_generator_monomial_staircase(self) -> Any:
         ring = self._ring

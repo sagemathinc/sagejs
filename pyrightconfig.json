@@ -27,6 +27,7 @@
     "src/baselib/padics.py",
     "src/baselib/piecewise.py",
     "src/baselib/polynomial.py",
+    "src/baselib/polynomial_quotient.py",
     "src/baselib/proof.py",
     "src/baselib/real_complex.py",
     "src/baselib/runtime_primitives.py",
