@@ -609,8 +609,10 @@ def stable_exact_relation_hnf_select_v1(
     This is deliberately a different kernel from the transform-based resident
     selector below.  It implements the ordinary stable selector exactly: all
     candidate rows begin retained, the canonical HNF basis is computed once,
-    and candidates are deleted from left to right precisely when the basis is
-    unchanged.  Four fixed-shape matrices are allocated before arithmetic;
+    and candidates are deleted from right to left precisely when the basis is
+    unchanged.  This retains the earliest sufficient relations, which the
+    caller deliberately orders by increasing witness complexity.  Four
+    fixed-shape matrices are allocated before arithmetic;
     there are no transformation matrices, determinant, or GMP replay
     accumulator.  The packed buffers are only transactional ingress/egress.
     """
@@ -670,55 +672,56 @@ def stable_exact_relation_hnf_select_v1(
         selected_count: uint64 = candidate_rows
         trials: uint64 = 0
         deletion_complete = True
-        candidate_index: uint64 = 0
-        while candidate_index < candidate_rows:
+        candidate_index: uint64 = candidate_rows
+        while candidate_index > 0:
             if trials >= maximum_trials:
                 deletion_complete = False
-                candidate_index = candidate_rows
-            elif initial_rows + selected_count - 1 < rank:
-                candidate_index = candidate_index + 1
+                candidate_index = 0
             else:
-                deleted_row: uint64 = initial_rows + candidate_index
-                for deleted_column in range(columns):
-                    work = work + 1
-                    if work > work_limit:
-                        return -1
-                    if not fmpz_matrix_set_entry(
-                        trial_source_matrix, deleted_row, deleted_column, 0
-                    ):
-                        return -1
-
-                if not fmpz_matrix_hnf_into(trial_hnf_matrix, trial_source_matrix):
-                    return -1
-                metadata[4] = metadata[4] + 1
-                same_lattice = True
-                for trial_row in range(rows):
-                    for trial_column in range(columns):
+                candidate_index = candidate_index - 1
+                if initial_rows + selected_count > rank:
+                    deleted_row: uint64 = initial_rows + candidate_index
+                    for deleted_column in range(columns):
                         work = work + 1
                         if work > work_limit:
                             return -1
-                        if fmpz_matrix_entry(
-                            trial_hnf_matrix, trial_row, trial_column
-                        ) != fmpz_matrix_entry(basis_matrix, trial_row, trial_column):
-                            same_lattice = False
-                trials = trials + 1
-                if same_lattice:
-                    selected[candidate_index] = 0
-                    selected_count = selected_count - 1
-                else:
-                    for restored_column in range(columns):
-                        work = work + 1
-                        if work > work_limit:
-                            return -1
-                        restored_index = deleted_row * columns + restored_column
                         if not fmpz_matrix_set_entry(
-                            trial_source_matrix,
-                            deleted_row,
-                            restored_column,
-                            source[restored_index],
+                            trial_source_matrix, deleted_row, deleted_column, 0
                         ):
                             return -1
-                candidate_index = candidate_index + 1
+
+                    if not fmpz_matrix_hnf_into(trial_hnf_matrix, trial_source_matrix):
+                        return -1
+                    metadata[4] = metadata[4] + 1
+                    same_lattice = True
+                    for trial_row in range(rows):
+                        for trial_column in range(columns):
+                            work = work + 1
+                            if work > work_limit:
+                                return -1
+                            if fmpz_matrix_entry(
+                                trial_hnf_matrix, trial_row, trial_column
+                            ) != fmpz_matrix_entry(
+                                basis_matrix, trial_row, trial_column
+                            ):
+                                same_lattice = False
+                    trials = trials + 1
+                    if same_lattice:
+                        selected[candidate_index] = 0
+                        selected_count = selected_count - 1
+                    else:
+                        for restored_column in range(columns):
+                            work = work + 1
+                            if work > work_limit:
+                                return -1
+                            restored_index = deleted_row * columns + restored_column
+                            if not fmpz_matrix_set_entry(
+                                trial_source_matrix,
+                                deleted_row,
+                                restored_column,
+                                source[restored_index],
+                            ):
+                                return -1
 
         metadata[0] = rank
         metadata[1] = initial_rows + selected_count

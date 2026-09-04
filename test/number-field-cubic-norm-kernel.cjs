@@ -391,7 +391,7 @@ assert result.proof_status == "exact-relations-conditional-grh"
 assert result.class_group().invariants() == (3, 3)
 assert resources["cubic_reduced_ideal_sieve_uses"] == 1
 assert resources["cubic_reduced_ideal_sieve_candidates"] == 37
-assert resources["cubic_reduced_ideal_sieve_relations"] == 4
+assert resources["cubic_reduced_ideal_sieve_relations"] == 5
 assert resources["cubic_reduced_ideal_sieve_dependency_relations"] == 8
 assert resources["cubic_reduced_ideal_sieve_source_norm"] == 19
 assert resources["cubic_packed_factor_base_uses"] == 1
