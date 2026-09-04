@@ -50,7 +50,7 @@ test("closed native cubic receipts survive declines and authenticate targets", {
   const checkerHash = createHash("sha256")
     .update(readFileSync(checkerPath))
     .digest("hex");
-  assert.equal(compiled.ir.version, 37);
+  assert.equal(compiled.ir.version, 38);
   assert.deepEqual(compiled.ir.nativeSourceDependencies, [{
     module: "sagejs.number_fields.field_analysis_resource",
     path: checkerPath,
