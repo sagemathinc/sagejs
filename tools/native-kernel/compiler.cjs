@@ -582,9 +582,7 @@ function repositoryHeaderDependencies(headers, includeDirectories, digestStore) 
 
 function resolveForeignCompilationInputs(ir, digestStore) {
   const includeDirectories = compilationIncludeDirectories(ir);
-  return Object.freeze(
-    (ir.foreignLibraries || [])
-      .map((library) => {
+  const inputs = (ir.foreignLibraries || []).map((library) => {
         const headers = Object.freeze(
           [...library.native.headers]
             .sort()
@@ -625,9 +623,43 @@ function resolveForeignCompilationInputs(ir, digestStore) {
           ...value,
           fingerprint: sha256(JSON.stringify(value)),
         });
-      })
-      .sort((left, right) => left.id.localeCompare(right.id)),
-  );
+      });
+  if (ir.functions.some((fn) => fn.analysis?.backend?.kind === "fmpz")) {
+    const headers = Object.freeze([
+      Object.freeze({
+        name: "flint/fmpz.h",
+        ...contentAddressedFile(
+          join(nativePrefix, "include", "flint", "fmpz.h"),
+          "resident fmpz backend header flint/fmpz.h",
+          digestStore,
+        ),
+      }),
+    ]);
+    const libraries = Object.freeze([
+      Object.freeze({
+        name: process.platform === "win32" ? "flint.lib" : "libflint.a",
+        ...contentAddressedFile(
+          nativeFlintLibrary,
+          "resident fmpz backend FLINT library",
+          digestStore,
+        ),
+      }),
+    ]);
+    const value = {
+      id: "sagejs-resident-fmpz",
+      prefix: portablePath(nativePrefix),
+      includeOrder: Object.freeze(includeDirectories.map(portablePath)),
+      headers,
+      transitiveHeaders: Object.freeze([]),
+      libraries,
+    };
+    inputs.push(Object.freeze({
+      ...value,
+      fingerprint: sha256(JSON.stringify(value)),
+    }));
+  }
+  inputs.sort((left, right) => left.id.localeCompare(right.id));
+  return Object.freeze(inputs);
 }
 
 function foreignCompilationInputs(ir, options = {}) {
@@ -659,6 +691,9 @@ function bindingGyp(
         record.fields.some((field) => field.type === "PrimeModulusValue")
       ))
   );
+  const usesResidentFmpz = ir.functions.some(
+    (fn) => fn.analysis?.backend?.kind === "fmpz",
+  );
   const matrixOnly = ir.functions.every(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
@@ -668,7 +703,11 @@ function bindingGyp(
       foreignLinkedLibraries(library, platform).map(({ path }) => path)
     ),
   ));
-  const usesForeignLibraries = foreignLibraries.length > 0;
+  const linkedForeignLibraries = Array.from(new Set([
+    ...foreignLibraries,
+    ...(usesResidentFmpz ? [nativeFlintLibrary] : []),
+  ]));
+  const usesForeignLibraries = linkedForeignLibraries.length > 0;
   const cxxLanguage = generatedCxxLanguageSettings(platform);
   const target = {
     target_name: "sagejs_native_kernel",
@@ -697,7 +736,7 @@ function bindingGyp(
   };
   if (platform === "win32") {
     target.libraries = [
-      ...foreignLibraries,
+      ...linkedForeignLibraries,
       ...(usesExplicitPrimeModulus ? [nativeFlintLibrary] : []),
       ...(!matrixOnly
         ? [
@@ -744,7 +783,7 @@ function bindingGyp(
     };
   } else {
     target.libraries = [
-      ...foreignLibraries,
+      ...linkedForeignLibraries,
       ...(usesExplicitPrimeModulus ? [nativeFlintLibrary] : []),
       ...(!matrixOnly
         ? [
@@ -754,7 +793,7 @@ function bindingGyp(
         ]
         : []),
       "-lm",
-      ...((ir.foreignLibraries || []).length > 0 ? ["-lpthread"] : []),
+      ...(usesForeignLibraries ? ["-lpthread"] : []),
     ];
     target.cflags = [
       "-O3",

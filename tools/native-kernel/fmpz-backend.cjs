@@ -40,6 +40,7 @@ function fmpzValue(name, context) {
     return `sagejs_arg_${name}`;
   }
   if (context.resourceParameters.has(name)) return `sagejs_arg_${name}`;
+  if (context.integerBufferParameters.has(name)) return `sagejs_arg_${name}`;
   return cName(name);
 }
 
@@ -48,6 +49,9 @@ function fmpzArgument(fn, param) {
   if (param.type === "Integer") return `const fmpz_t ${name}`;
   if (param.type === "uint64") return `uint64_t ${name}`;
   if (param.type === "bool") return `int ${name}`;
+  if (param.type === "IntegerBuffer") {
+    return `sagejs_integer_buffer ${name}`;
+  }
   const resource = resourceForFunctionType(fn, param.type);
   if (resource !== undefined) return `${resource.abi_type} ${name}`;
   throw new Error(`unsupported fmpz native parameter ${param.type}`);
@@ -119,6 +123,46 @@ function emitFmpzOperation(operation, context, indent) {
   }
   if (operation.kind === "value.discard") {
     return `${indent}(void) ${fmpzValue(operation.source, context)};`;
+  }
+  if (operation.kind === "integer.buffer.length") {
+    return `${indent}${target} = (uint64_t) ` +
+      `${fmpzValue(operation.buffer, context)}.length;`;
+  }
+  if (["integer.buffer.get", "integer.buffer.set"].includes(operation.kind)) {
+    const buffer = fmpzValue(operation.buffer, context);
+    const index = fmpzValue(operation.index, context);
+    let indexCheck;
+    if (operation.indexType === "Integer") {
+      indexCheck = `!sagejs_fmpz_integer_buffer_index(&${buffer}, ` +
+        `${index}, &sagejs_buffer_position)`;
+    } else if (operation.indexType === "uint64") {
+      indexCheck = `${index} >= (uint64_t) ${buffer}.length`;
+    } else {
+      throw new Error(
+        `${context.fn.name}: fmpz IntegerBuffer requires Integer or uint64 indices`,
+      );
+    }
+    const action = operation.kind === "integer.buffer.get"
+      ? `sagejs_integer_buffer_get_fmpz(&${buffer}, ` +
+        `sagejs_buffer_position, ${target});`
+      : `if (!sagejs_integer_buffer_set_fmpz(status, &${buffer}, ` +
+        `sagejs_buffer_position, ${fmpzValue(operation.value, context)}))\n` +
+        `${indent}        goto fail;`;
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    if (${indexCheck})`,
+      `${indent}    {`,
+      statusFailure(
+        "range",
+        "IntegerBuffer index out of range",
+        `${indent}        `,
+      ),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    ${action}`,
+      `${indent}}`,
+    ].join("\n");
   }
   if (operation.kind === "integer.vector.length") {
     return `${indent}${target} = (uint64_t) ` +
@@ -604,6 +648,7 @@ function fmpzDeclarations(fn) {
   }
   for (const param of fn.params) {
     if (param.type === "Integer" ||
+        param.type === "IntegerBuffer" ||
         resourceForFunctionType(fn, param.type) !== undefined) continue;
     declarations.push(
       `    ${param.type === "uint64" ? "uint64_t" : "int"} ` +
@@ -679,6 +724,11 @@ function fmpzDeclarations(fn) {
         .filter((param) =>
           resourceForFunctionType(fn, param.type) !== undefined
         )
+        .map((param) => param.name),
+    ),
+    integerBufferParameters: new Set(
+      fn.params
+        .filter((param) => param.type === "IntegerBuffer")
         .map((param) => param.name),
     ),
   };
