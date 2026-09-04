@@ -84,12 +84,35 @@
   },
   "selection": "explicit-only",
   "qualification": {
-    "status": "pending_source_current_requalification",
-    "reason": "SEA native-resource publication and worker lifetime semantics changed; the prior four-platform qualification remains historical evidence only.",
+    "status": "qualified",
+    "candidate_commit": "3717d9030d0033469a10a5a53449602c31227279",
+    "summary_sha256": "c6dd3dc7ccb39decae871907d26a67858e1f2558b3826286c3bb90c2284e85d3",
+    "summary_bytes": 121732,
     "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
     "qualification_tooling_bundle_sha256": "230de6626433dcdb84ace28ea3f96a9889cd59c794ef7e3873d7fb8fbc6da716",
     "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+    "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
-    "invalidated_summary": "qualification-v1.json"
+    "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+    "artifact_sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+    "artifact_bytes": 72592,
+    "case_execution_sha256": "5808cafb232387b71ddef0352dd444eec9cda4337fef9e1e221a5c6dfb4b2a16",
+    "campaign_challenge": "f1a310943317af8001033082bdb2f7a6a1f7a6ab6017b47ea669cce090a87da8",
+    "evidence_receipts_sha256": {
+      "sanitizer": "d89d2a2daa68f29fba69271a24ca6f42c10b0901b93a8a1e53a1dfb7b7b8a717",
+      "destructive-wasm": "1feed4a5c3f9021e50014ca51bc1d2ecea6a03acffaea5bfbcda9c039231787a",
+      "browser-lifecycle": "96751067374ff74f113da3c7ae0aecb4c8491a4afb785f59e6518c8e56adb0c3",
+      "public-integration": "c54463a67b089429291b179c7c424d914ded6e75fcc6fc2c176a066f65e12d1f",
+      "resource-corruption": "44ce2ae29d767965f439d53e2aa07c5daeef44768ca13435ad9ca457201eae3c",
+      "relocation": "010c140781f02145da0e1f173ba56d5a43b4228e624f7794d112dd7f8a1f44a3",
+      "sea": "211cfc96001878480d39fec33eef837a1c43f465323e82a3336f88b3916786c1"
+    },
+    "portable_receipts_sha256": {
+      "linux-x64": "5808cafb232387b71ddef0352dd444eec9cda4337fef9e1e221a5c6dfb4b2a16",
+      "linux-arm64": "843974552eba83b0dc81c74e8a020cc12512559a0e4293013ba9ee8481749f59",
+      "macos-arm64": "d214ebb32fa5db38e8c2a4ec760f2961cc990840cd484849f01733b648b9f97e",
+      "windows-x64": "3d344ad9261992fc208386656c9b00359f1f7086df149626425ce2719d2c150d"
+    },
+    "historical_cobyla_status": "excluded-not-qualified"
   }
 }
