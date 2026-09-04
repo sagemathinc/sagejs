@@ -12,6 +12,7 @@ const test = require("node:test");
 const {
   canonicalJson,
   contentId,
+  digestBundle,
   parseJsonText,
   platformIdentity,
 } = require("../../../scripts/numerical-computing/common.cjs");
@@ -525,6 +526,27 @@ test("collection requires a clean checkout before adapter code runs", async (t) 
     () => collectFixture(workspace),
     /requires a clean candidate checkout/,
   );
+});
+
+test("source bundles exclude ignored build products but bind tracked source bytes", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-source-bundle-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  initializeGit(root);
+  fs.mkdirSync(path.join(root, "source", "nested"), { recursive: true });
+  fs.writeFileSync(path.join(root, ".gitignore"), "source/nested/build/\n");
+  fs.writeFileSync(path.join(root, "source", "kernel.py"), "answer = 42\n");
+  fs.writeFileSync(path.join(root, "source", "nested", "method.py"), "method = 'brent'\n");
+  commitAll(root, "tracked source fixture");
+
+  const initial = digestBundle(root, ["source"]);
+  fs.mkdirSync(path.join(root, "source", "nested", "build"), { recursive: true });
+  fs.writeFileSync(path.join(root, "source", "nested", "build", "native.node"), "host one");
+  assert.deepEqual(digestBundle(root, ["source"]), initial);
+  fs.writeFileSync(path.join(root, "source", "nested", "build", "native.node"), "host two");
+  assert.deepEqual(digestBundle(root, ["source"]), initial);
+
+  fs.writeFileSync(path.join(root, "source", "kernel.py"), "answer = 43\n");
+  assert.notEqual(digestBundle(root, ["source"]).sha256, initial.sha256);
 });
 
 test("successful initialize results rejected by the collector are closed exactly once", async (t) => {
