@@ -88,8 +88,8 @@ test("closed native cubic receipts survive declines and authenticate targets", {
       ...directTranscriptBuffers,
       0,
       1,
-      1048576,
-      2097152,
+      1_048_576,
+      3_145_728,
     ), true);
     return directOutput.toArray().map(Number);
   };
@@ -647,6 +647,7 @@ test("large-regulator cubic receipts publish exact units across the survey regim
   timeout: 240_000,
 }, () => {
   const output = runPython(String.raw`
+import sagejs.number_fields.cubic_class_number_native_runtime as native_runtime
 from sagejs.number_fields.cubic_class_number_native_runtime import certified_complex_cubic_class_number
 
 R = PolynomialRing(QQ, "x")
@@ -678,6 +679,25 @@ cases = (
     # relation-transcript entries remain in their compact tier.
     ("3.1.69305231.3", (48016, 134, -1, 1), 3, (3,)),
 )
+
+# Moving the fmpz checkpoint before child initialization made allocation
+# accounting complete. This field deterministically exhausts the former 2-MiB
+# checkpoint, issues no receipt, and succeeds under the measured 3-MiB public
+# envelope. Use a fresh field so no certificate cache can mask either result.
+assert native_runtime._CUBIC_ARENA_CHECKPOINT_LIMIT == 3_145_728
+old_checkpoint_limit = native_runtime._CUBIC_ARENA_CHECKPOINT_LIMIT
+try:
+    native_runtime._CUBIC_ARENA_CHECKPOINT_LIMIT = 2_097_152
+    low_cap_polynomial = sum(
+        coefficient * x**exponent
+        for exponent, coefficient in enumerate((48016, 134, -1, 1))
+    )
+    low_cap_field = NumberField(low_cap_polynomial, "large_regulator_low_cap")
+    assert certified_complex_cubic_class_number(low_cap_field) is None
+    assert getattr(low_cap_field, "_native_cubic_class_number_certificate", None) is None
+finally:
+    native_runtime._CUBIC_ARENA_CHECKPOINT_LIMIT = old_checkpoint_limit
+
 for label, coefficients, class_number, invariants in cases:
     polynomial = sum(coefficient * x**exponent for exponent, coefficient in enumerate(coefficients))
     K = NumberField(polynomial, "large_" + label.replace(".", "_"))

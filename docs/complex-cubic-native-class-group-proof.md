@@ -43,6 +43,18 @@ uses the ordinary exact implementation. A raw native output buffer has no
 mathematical authority: only the adapter can issue an immutable receipt bound
 to the live irreducible field.
 
+The public native call currently admits a $1$ MiB resident exact-object budget
+and a $3$ MiB fmpz checkpoint soft limit. The checkpoint cap is a measured
+resource contract, not a mathematical premise. After the fmpz backend moved
+its checkpoint before child initialization so that all live GMP allocation is
+accounted, LMFDB field `3.1.69305231.3` required $2{,}656{,}608$ charged bytes
+on the measured Linux-x64 build's effort-$1$ path. That number is build and
+platform evidence, not a portable ABI promise or a theorem. The former $2$ MiB
+cap therefore declined on a valid computation; $3$ MiB restores that
+authenticated path with finite headroom. A computation that exceeds either
+cap still publishes no receipt and continues through the ordinary exact
+fallback.
+
 ## Proof ledger
 
 The accepted result follows from the following chain.

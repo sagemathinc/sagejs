@@ -22,6 +22,8 @@ const sourcePath = resolve(
 );
 const logicalSource = "sagejs/number_fields/cubic_class_number_native.py";
 const rootFunction = "certified_complex_cubic_class_group_v1";
+const publicArenaMemoryLimit = 1_048_576;
+const publicArenaCheckpointLimit = 3_145_728;
 const expectedNameDigest =
   "b3442051662cc70970c1f5c62c5da591cc02a4d51919144991df0acdccfef5c4";
 const expectedHostFunctions = Object.freeze([
@@ -297,6 +299,29 @@ test("the authenticated production pack executes five cubic regimes in fmpz", {
     ["3.1.69305231.3", [48016, 134, -1, 1], 3n, [3n]],
   ];
 
+  // Starting the fmpz checkpoint before child initialization makes every
+  // GMP/FLINT limb allocation visible to the cap.  The 8615-bit-unit field
+  // deterministically exceeds the former 2-MiB envelope at effort 1.  The
+  // exception is fail closed, and the successful sweep below proves that
+  // cleanup leaves the same kernel and buffers reusable at the public 3 MiB.
+  const lowCapLargeRegulator = kernel.packIntegerBuffer(
+    [48016, 134, -1, 1],
+    64,
+  );
+  assert.throws(
+    () => kernel.fmpz(
+      output,
+      lowCapLargeRegulator,
+      modularWorkspace,
+      ...buffers,
+      0,
+      1,
+      publicArenaMemoryLimit,
+      2_097_152,
+    ),
+    /NativeExactArena temporary capacity exhausted/,
+  );
+
   function runCase([label, coefficients, order, invariants]) {
     const packed = kernel.packIntegerBuffer(coefficients, 64);
     let accepted = false;
@@ -309,8 +334,8 @@ test("the authenticated production pack executes five cubic regimes in fmpz", {
         ...buffers,
         0,
         effort,
-        1_048_576,
-        2_097_152,
+        publicArenaMemoryLimit,
+        publicArenaCheckpointLimit,
       );
       if (accepted) {
         acceptedEffort = effort;
@@ -356,8 +381,8 @@ test("the authenticated production pack executes five cubic regimes in fmpz", {
         ...buffers,
         0,
         effort,
-        1_048_576,
-        2_097_152,
+        publicArenaMemoryLimit,
+        publicArenaCheckpointLimit,
       ),
       false,
     );

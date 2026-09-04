@@ -49,7 +49,13 @@ _CUBIC_BUFFER_WORD_CAPACITY = (_CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT + 63) // 64
 # while wide transcripts do not pay this capacity at every entry.
 _CUBIC_OUTPUT_WORD_CAPACITY = 256
 _CUBIC_ARENA_MEMORY_LIMIT = 1_048_576
-_CUBIC_ARENA_TEMPORARY_LIMIT = 2_097_152
+# The early fmpz checkpoint accounts for every GMP allocation made by the
+# closed program, including resident FLINT children initialized inside the
+# arena.  LMFDB 3.1.69305231.3 reaches 2_656_608 charged bytes on its exact
+# effort-1 path, so the previously qualified 2 MiB slab was no longer an
+# honest envelope after that lifetime correction.  Keep a finite power-of-two
+# cap with measured headroom; exhaustion still declines to the exact fallback.
+_CUBIC_ARENA_CHECKPOINT_LIMIT = 3_145_728
 # Try the measured PARI-shaped bounded regime once, then retain the monotone
 # exact fallbacks needed outside its qualified relation envelope.
 _CUBIC_RELATION_EFFORTS = (5, 1, 7, 8)
@@ -375,7 +381,7 @@ def _extract_relation_transcript(
                 1,
                 receipt.relation_effort,
                 _CUBIC_ARENA_MEMORY_LIMIT,
-                _CUBIC_ARENA_TEMPORARY_LIMIT,
+                _CUBIC_ARENA_CHECKPOINT_LIMIT,
             )
         finally:
             _resident_call_active = False
@@ -418,6 +424,7 @@ def _extract_relation_transcript(
         AttributeError,
         ImportError,
         IndexError,
+        MemoryError,
         OverflowError,
         RuntimeError,
         TypeError,
@@ -895,6 +902,7 @@ class CertifiedComplexCubicClassNumber:
             AttributeError,
             ImportError,
             KeyError,
+            MemoryError,
             OverflowError,
             RuntimeError,
             TypeError,
@@ -931,6 +939,7 @@ class CertifiedComplexCubicClassNumber:
                 AttributeError,
                 ImportError,
                 KeyError,
+                MemoryError,
                 OverflowError,
                 RuntimeError,
                 TypeError,
@@ -950,6 +959,7 @@ class CertifiedComplexCubicClassNumber:
             AttributeError,
             ImportError,
             KeyError,
+            MemoryError,
             OverflowError,
             RuntimeError,
             TypeError,
@@ -1149,7 +1159,7 @@ def certified_complex_cubic_class_number(
                     0,
                     relation_effort,
                     _CUBIC_ARENA_MEMORY_LIMIT,
-                    _CUBIC_ARENA_TEMPORARY_LIMIT,
+                    _CUBIC_ARENA_CHECKPOINT_LIMIT,
                 )
                 if accepted is True:
                     accepted_effort = relation_effort
@@ -1182,6 +1192,7 @@ def certified_complex_cubic_class_number(
     except (
         AttributeError,
         ImportError,
+        MemoryError,
         OverflowError,
         RuntimeError,
         TypeError,
