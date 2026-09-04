@@ -119,6 +119,34 @@ test("higher-order characters use exact cyclotomic scalars and exact eigenpacket
   );
 });
 
+test("degree-eight character q-expansions use certified direct Hecke images", async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "chi = DirichletGroup(17).gen(0)",
+    "C = ModularSymbols(chi, 3, sign=1).cuspidal_submodule()",
+    "A = C.ambient_module()",
+    "H = A.p1list().character_hecke_images(A.weight(), A.sign(), A.character(), A.base_ring(), C.basis_matrix(), 0, 10)",
+    "print(chi.order(), C.base_ring().degree(), C.dimension(), H.dimensions())",
+    "print(all(H.column(n-1).list() == C.hecke_matrix(n).row(0).list() for n in range(1,10)))",
+    "S = CuspForms(chi, 3, prec=10)",
+    "B = S.q_expansion_basis(10)",
+    "print(B[0][4])",
+    "print(B[1][2])",
+    "print(S.hecke_matrix(2).charpoly())",
+  ].join("\n"));
+  assert.equal(
+    result.stdout.trim(),
+    [
+      "16 8 2 (2, 9)",
+      "True",
+      "zeta16^6 + zeta16^4 - zeta16^3 + zeta16 - 1",
+      "1",
+      "x^2 + (-zeta16^6 + zeta16^5 - zeta16 + 1)*x + 3*zeta16^6 - zeta16^4 + zeta16^3 - zeta16 + 1",
+    ].join("\n"),
+  );
+});
+
 test("imprimitive characters have a Sturm-certified old/new direct sum", async (t) => {
   const session = await createSage();
   t.after(() => session.close());

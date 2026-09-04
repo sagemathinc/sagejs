@@ -413,6 +413,11 @@ The fixed-character extension is specified in
 reuses the same element hierarchy and covers quadratic characters over $\QQ$,
 higher-order characters over exact cyclotomic fields, imprimitive old/new
 decomposition, exact eigenpackets, and authenticated serialization.
+Higher-order-character $q$-expansion reconstruction now uses direct exact
+Hecke images in the cyclotomic power basis.  The reproducible scaling grid in
+`bench/modular/higher-character-qexp/` checks degrees $4$ and $8$ through a
+nontrivial exact coefficient; its 2026-09-04 levels $101$, $157$, $241$, and
+$401$ receipt ranges from $3\times$ to $10\times$ faster than SageMath.
 
 ## P1: analytic modular-form functionality
 

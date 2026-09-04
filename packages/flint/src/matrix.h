@@ -25,6 +25,14 @@ napi_value sagejs_qqbar_matrix_from_cyclotomic_gr_mat(
     ulong order,
     size_t degree,
     const fmpq *coordinates);
+int sagejs_matrix_cyclotomic_coordinates_copy(
+    napi_env env,
+    napi_value value,
+    ulong order,
+    slong *rows,
+    slong *columns,
+    size_t *degree,
+    fmpq **coordinates);
 napi_value sagejs_qq_matrix_from_qqbar_gr_mat(
     napi_env env,
     const gr_mat_t entries,

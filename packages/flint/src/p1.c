@@ -4439,6 +4439,448 @@ done:
     return result;
 }
 
+/*
+ * Compute the rows T_n(e_i), for every 1 <= n < precision, directly in a
+ * cuspidal RREF basis.  This is the power-basis version of the optimized
+ * nonquadratic-character Hecke-image strategy: no full composite Hecke
+ * matrices and no generic qqbar vector products are constructed.
+ */
+napi_value sagejs_p1list_character_hecke_images(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[9], result = NULL;
+    size_t argument_count = 9;
+    sagejs_p1list_value *list;
+    sagejs_character_presentation *presentation;
+    const dirichlet_group_struct *group = NULL;
+    dirichlet_char_t character;
+    int character_initialized = 0;
+    int64_t weight_value, sign_value, precision_value, functional_value;
+    ulong character_index;
+    slong basis_rows = 0, basis_columns = 0;
+    size_t basis_degree = 0, basis_coordinate_count = 0;
+    fmpq *basis_coordinates = NULL;
+    size_t *pivot_columns = NULL;
+    size_t *target_by_ambient = NULL;
+    size_t *target_by_column = NULL;
+    fmpz *root_actions = NULL;
+    fmpq *output = NULL;
+    fmpq *shifted_source = NULL;
+    size_t output_count = 0, action_count = 0;
+    p1_matrix_four *heilbronn = NULL;
+    size_t heilbronn_count = 0;
+    gr_mat_t matrix;
+    int matrix_initialized = 0;
+    fmpz_poly_t cyclotomic, monomial, remainder;
+    fmpz_t integer_coefficient;
+    fmpq_t product, weighted;
+    fmpq_poly_t polynomial;
+    qqbar_t root, value;
+    int scalars_initialized = 0, polynomials_initialized = 0;
+    size_t dimension, ambient_dimension, degree;
+    ulong order;
+
+    if (!p1_check_napi(env, napi_get_cb_info(
+            env, info, &argument_count, arguments, NULL, NULL)) ||
+        argument_count != 9)
+    {
+        napi_throw_type_error(env, NULL, "wrong number of arguments");
+        return NULL;
+    }
+    if ((list = p1_unwrap(env, arguments[0])) == NULL ||
+        !p1_safe_integer(env, arguments[1], &weight_value) ||
+        !p1_safe_integer(env, arguments[2], &sign_value) ||
+        !p1_safe_integer(env, arguments[3], &precision_value) ||
+        !p1_bigint_to_ulong(env, arguments[5], &character_index) ||
+        (presentation = p1_character_presentation_unwrap(
+            env, arguments[6])) == NULL ||
+        !p1_safe_integer(env, arguments[8], &functional_value) ||
+        !sagejs_dirichlet_character_init_native(
+            env, arguments[4], arguments[5], &group, character))
+        return NULL;
+    character_initialized = 1;
+    dimension = presentation->dimension;
+    ambient_dimension = presentation->dimension;
+    degree = presentation->cyclotomic_quotient.degree;
+    order = presentation->cyclotomic_quotient.order;
+    if (weight_value < 2 || weight_value > UINT32_MAX ||
+        (sign_value != -1 && sign_value != 0 && sign_value != 1) ||
+        precision_value < 1 || precision_value > INT32_MAX ||
+        functional_value < 0 || group->q != list->level ||
+        presentation->level != list->level ||
+        presentation->weight != (uint32_t) weight_value ||
+        presentation->sign != (int) sign_value ||
+        presentation->character_index != character_index ||
+        presentation->cyclotomic_quotient.coefficients == NULL ||
+        degree == 0 || order < 3)
+    {
+        napi_throw_range_error(env, NULL,
+            "character Hecke images require a matching nonreal presentation, positive precision, and a valid functional");
+        goto done;
+    }
+    if (!sagejs_matrix_cyclotomic_coordinates_copy(
+            env, arguments[7], order,
+            &basis_rows, &basis_columns, &basis_degree,
+            &basis_coordinates))
+        goto done;
+    if (basis_rows >= 0 && basis_columns >= 0)
+        basis_coordinate_count =
+            (size_t) basis_rows * (size_t) basis_columns * basis_degree;
+    if (basis_rows < 0 || basis_columns < 0 ||
+        (size_t) basis_columns != ambient_dimension ||
+        functional_value >= basis_rows || basis_degree != degree)
+    {
+        napi_throw_range_error(env, NULL,
+            "cuspidal basis dimensions do not match the character presentation");
+        goto done;
+    }
+    dimension = (size_t) basis_rows;
+    if ((dimension != 0 &&
+            (size_t) (precision_value - 1) > SIZE_MAX / dimension) ||
+        dimension * (size_t) (precision_value - 1) > SIZE_MAX / degree ||
+        degree > SIZE_MAX / degree ||
+        degree * degree > SIZE_MAX / order)
+    {
+        napi_throw_range_error(env, NULL,
+            "character Hecke-image dimensions are too large");
+        goto done;
+    }
+    output_count = dimension * (size_t) (precision_value - 1) * degree;
+    action_count = (size_t) order * degree * degree;
+    if (output_count > (size_t) WORD_MAX ||
+        action_count > (size_t) WORD_MAX)
+    {
+        napi_throw_range_error(env, NULL,
+            "character Hecke-image workspace is too large");
+        goto done;
+    }
+    output = _fmpq_vec_init(
+        (slong) (output_count == 0 ? 1 : output_count));
+    shifted_source = _fmpq_vec_init((slong) degree);
+    root_actions = _fmpz_vec_init((slong) action_count);
+    pivot_columns = malloc(
+        (dimension == 0 ? 1 : dimension) * sizeof(*pivot_columns));
+    target_by_ambient = malloc(
+        (ambient_dimension == 0 ? 1 : ambient_dimension) *
+            sizeof(*target_by_ambient));
+    target_by_column = malloc(
+        (presentation->two_term_generators == 0
+            ? 1 : presentation->two_term_generators) *
+            sizeof(*target_by_column));
+    if (output == NULL || shifted_source == NULL || root_actions == NULL ||
+        pivot_columns == NULL || target_by_ambient == NULL ||
+        target_by_column == NULL)
+    {
+        napi_throw_error(env, NULL,
+            "unable to allocate character Hecke-image workspace");
+        goto done;
+    }
+    for (size_t source = 0; source < ambient_dimension; source++)
+        target_by_ambient[source] = SIZE_MAX;
+    for (size_t column = 0;
+        column < presentation->two_term_generators; column++)
+        target_by_column[column] = SIZE_MAX;
+    for (size_t target = 0; target < ambient_dimension; target++)
+        target_by_column[presentation->free_columns[target]] = target;
+    {
+        size_t previous_pivot = SIZE_MAX;
+        for (size_t row = 0; row < dimension; row++)
+        {
+            size_t pivot = ambient_dimension;
+            for (size_t column = 0; column < ambient_dimension; column++)
+            {
+                int nonzero = 0;
+                for (size_t power = 0; power < degree; power++)
+                    nonzero |= !fmpq_is_zero(basis_coordinates +
+                        (row * ambient_dimension + column) * degree + power);
+                if (nonzero)
+                {
+                    pivot = column;
+                    break;
+                }
+            }
+            if (pivot == ambient_dimension ||
+                (row != 0 && pivot <= previous_pivot))
+            {
+                napi_throw_range_error(env, NULL,
+                    "cuspidal basis is not in canonical row echelon form");
+                goto done;
+            }
+            pivot_columns[row] = pivot;
+            target_by_ambient[pivot] = row;
+            previous_pivot = pivot;
+        }
+    }
+
+    fmpz_poly_init(cyclotomic);
+    fmpz_poly_init(monomial);
+    fmpz_poly_init(remainder);
+    fmpz_init(integer_coefficient);
+    fmpq_init(product);
+    fmpq_init(weighted);
+    fmpq_poly_init(polynomial);
+    qqbar_init(root);
+    qqbar_init(value);
+    polynomials_initialized = 1;
+    scalars_initialized = 1;
+    fmpz_poly_cyclotomic(cyclotomic, order);
+    for (ulong exponent = 0; exponent < order; exponent++)
+        for (size_t input_power = 0; input_power < degree; input_power++)
+        {
+            fmpz_poly_zero(monomial);
+            fmpz_poly_set_coeff_ui(
+                monomial, (slong) (input_power + exponent), 1);
+            fmpz_poly_rem(remainder, monomial, cyclotomic);
+            for (size_t output_power = 0;
+                output_power < degree; output_power++)
+                fmpz_poly_get_coeff_fmpz(
+                    root_actions +
+                        (exponent * degree + input_power) * degree +
+                        output_power,
+                    remainder, (slong) output_power);
+        }
+
+    for (ulong index = 1; index < (ulong) precision_value; index++)
+    {
+        if (!p1_heilbronn_merel(index, &heilbronn, &heilbronn_count))
+        {
+            napi_throw_error(env, NULL,
+                "unable to construct Merel-Heilbronn representatives");
+            goto done;
+        }
+        for (size_t source = 0; source < ambient_dimension; source++)
+        {
+            const fmpq *source_coefficient = basis_coordinates +
+                ((size_t) functional_value * ambient_dimension + source) *
+                    degree;
+            int source_nonzero = 0;
+            size_t generator;
+            uint32_t source_degree;
+            sagejs_p1_pair pair;
+            for (size_t power = 0; power < degree; power++)
+                source_nonzero |= !fmpq_is_zero(
+                    source_coefficient + power);
+            if (!source_nonzero)
+                continue;
+            generator = presentation->basis_generators[source];
+            source_degree = (uint32_t) (generator / list->count);
+            pair = list->pairs[generator % list->count];
+            for (size_t h = 0; h < heilbronn_count; h++)
+            {
+                int64_t a = heilbronn[h].a;
+                int64_t b = heilbronn[h].b;
+                int64_t c = heilbronn[h].c;
+                int64_t d = heilbronn[h].d;
+                __int128 image_u = (__int128) pair.u * a +
+                    (__int128) pair.v * c;
+                __int128 image_v = (__int128) pair.u * b +
+                    (__int128) pair.v * d;
+                sagejs_p1_pair normalized;
+                uint32_t scalar;
+                size_t image_coset;
+                ulong value_exponent;
+                if (!p1_normalize_pair(
+                        list->level,
+                        (int64_t) (image_u % list->level),
+                        (int64_t) (image_v % list->level),
+                        &normalized, &scalar))
+                    continue;
+                image_coset = p1_index_normalized(list, normalized);
+                if (image_coset >= list->count)
+                    continue;
+                value_exponent = p1_character_exponent(
+                    group, character, scalar, order);
+                if (value_exponent == UWORD_MAX)
+                    continue;
+                for (uint32_t target_degree = 0;
+                    target_degree + 2 <= (uint32_t) weight_value;
+                    target_degree++)
+                {
+                    size_t image_generator =
+                        (size_t) target_degree * list->count + image_coset;
+                    size_t column =
+                        presentation->generator_columns[image_generator];
+                    ulong combined_exponent;
+                    if (column == SIZE_MAX)
+                        continue;
+                    p1_monomial_matrix_coefficient(
+                        integer_coefficient, source_degree,
+                        (uint32_t) weight_value - 2, target_degree,
+                        a, b, c, d);
+                    if (fmpz_is_zero(integer_coefficient))
+                        continue;
+                    combined_exponent = p1_add_exponents(
+                        value_exponent,
+                        presentation->generator_exponents[image_generator],
+                        order);
+                    for (size_t output_power = 0;
+                        output_power < degree; output_power++)
+                        fmpq_zero(shifted_source + output_power);
+                    for (size_t input_power = 0;
+                        input_power < degree; input_power++)
+                        if (!fmpq_is_zero(source_coefficient + input_power))
+                            for (size_t output_power = 0;
+                                output_power < degree; output_power++)
+                            {
+                                const fmpz *action = root_actions +
+                                    (combined_exponent * degree + input_power) *
+                                        degree + output_power;
+                                if (fmpz_is_zero(action))
+                                    continue;
+                                fmpq_mul_fmpz(
+                                    weighted,
+                                    source_coefficient + input_power,
+                                    action);
+                                fmpq_add(
+                                    shifted_source + output_power,
+                                    shifted_source + output_power,
+                                    weighted);
+                            }
+                    if (presentation->pivot_rows[column] == SIZE_MAX)
+                    {
+                        size_t ambient_target = target_by_column[column];
+                        size_t target = ambient_target < ambient_dimension
+                            ? target_by_ambient[ambient_target] : SIZE_MAX;
+                        if (target == SIZE_MAX)
+                            continue;
+                        for (size_t output_power = 0;
+                            output_power < degree; output_power++)
+                        {
+                            fmpq *destination = output +
+                                (target * (size_t) (precision_value - 1) +
+                                    (size_t) (index - 1)) * degree +
+                                    output_power;
+                            fmpq_mul_fmpz(
+                                weighted, shifted_source + output_power,
+                                integer_coefficient);
+                            fmpq_add(destination, destination, weighted);
+                        }
+                    }
+                    else
+                    {
+                        size_t quotient_row =
+                            presentation->pivot_rows[column];
+                        for (size_t target = 0; target < dimension; target++)
+                        {
+                            size_t ambient_target = pivot_columns[target];
+                            fmpq *destination = output +
+                                (target * (size_t) (precision_value - 1) +
+                                    (size_t) (index - 1)) * degree;
+                            for (size_t left_power = 0;
+                                left_power < degree; left_power++)
+                                if (!fmpq_is_zero(
+                                        shifted_source + left_power))
+                                    for (size_t right_power = 0;
+                                        right_power < degree; right_power++)
+                                    {
+                                        const fmpq *quotient_coefficient =
+                                            presentation->cyclotomic_quotient
+                                                .coefficients +
+                                            (right_power *
+                                                    presentation->rank +
+                                                quotient_row) *
+                                                ambient_dimension +
+                                            ambient_target;
+                                        if (fmpq_is_zero(
+                                                quotient_coefficient))
+                                            continue;
+                                        fmpq_mul(product,
+                                            shifted_source + left_power,
+                                            quotient_coefficient);
+                                        fmpq_mul_fmpz(
+                                            product, product,
+                                            integer_coefficient);
+                                        for (size_t output_power = 0;
+                                            output_power < degree;
+                                            output_power++)
+                                        {
+                                            const fmpz *action = root_actions +
+                                                (right_power * degree +
+                                                    left_power) * degree +
+                                                output_power;
+                                            if (fmpz_is_zero(action))
+                                                continue;
+                                            fmpq_mul_fmpz(
+                                                weighted, product, action);
+                                            fmpq_sub(
+                                                destination + output_power,
+                                                destination + output_power,
+                                                weighted);
+                                        }
+                                    }
+                        }
+                    }
+                }
+            }
+        }
+        free(heilbronn);
+        heilbronn = NULL;
+        heilbronn_count = 0;
+    }
+
+    gr_mat_init(matrix, (slong) dimension,
+        precision_value - 1, presentation->context);
+    matrix_initialized = 1;
+    qqbar_root_of_unity(root, 1, order);
+    for (size_t row = 0; row < dimension; row++)
+        for (slong column = 0; column < precision_value - 1; column++)
+        {
+            fmpq_poly_zero(polynomial);
+            for (size_t power = 0; power < degree; power++)
+                fmpq_poly_set_coeff_fmpq(
+                    polynomial, (slong) power,
+                    output +
+                        (row * (size_t) (precision_value - 1) +
+                            (size_t) column) * degree + power);
+            qqbar_evaluate_fmpq_poly(value, polynomial, root);
+            qqbar_set(
+                p1_gr_entry(matrix, (slong) row, column,
+                    presentation->context),
+                value);
+        }
+    result = sagejs_qqbar_matrix_from_cyclotomic_gr_mat(
+        env, matrix, presentation->context,
+        order, degree, output);
+
+done:
+    free(heilbronn);
+    if (matrix_initialized)
+        gr_mat_clear(matrix, presentation->context);
+    if (scalars_initialized)
+    {
+        qqbar_clear(value);
+        qqbar_clear(root);
+        fmpq_poly_clear(polynomial);
+        fmpq_clear(weighted);
+        fmpq_clear(product);
+        fmpz_clear(integer_coefficient);
+    }
+    if (polynomials_initialized)
+    {
+        fmpz_poly_clear(remainder);
+        fmpz_poly_clear(monomial);
+        fmpz_poly_clear(cyclotomic);
+    }
+    free(target_by_column);
+    free(target_by_ambient);
+    free(pivot_columns);
+    if (root_actions != NULL)
+        _fmpz_vec_clear(
+            root_actions, (slong) (action_count == 0 ? 1 : action_count));
+    if (shifted_source != NULL)
+        _fmpq_vec_clear(shifted_source, (slong) degree);
+    if (output != NULL)
+        _fmpq_vec_clear(
+            output, (slong) (output_count == 0 ? 1 : output_count));
+    if (basis_coordinates != NULL)
+        _fmpq_vec_clear(basis_coordinates,
+            (slong) (basis_coordinate_count == 0
+                ? 1 : basis_coordinate_count));
+    if (character_initialized)
+        dirichlet_char_clear(character);
+    return result;
+}
+
 napi_value sagejs_p1list_reduce_path(
     napi_env env, napi_callback_info info)
 {
