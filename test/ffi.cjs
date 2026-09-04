@@ -2055,6 +2055,7 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     "-frtti",
   ]);
   assert.equal(linux.xcode_settings, undefined);
+  assert.ok(linux.ldflags.includes("-Wl,-z,nodelete"));
 
   const macos = bindingGyp(ir, true, true, "darwin").targets[0];
   assert.deepEqual(macos.cflags_cc, [
@@ -2070,6 +2071,7 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     MACOSX_DEPLOYMENT_TARGET:
       process.env.MACOSX_DEPLOYMENT_TARGET || "13.0",
   });
+  assert.equal(macos.ldflags, undefined);
 
   const windows = bindingGyp(ir, true, true, "win32").targets[0];
   assert.equal(windows.win_delay_load_hook, "true");
@@ -2094,6 +2096,18 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     exactWindows.configurations.Release.msbuild_toolset,
     "ClangCL",
   );
+
+  const flintBinding = JSON.parse(readFileSync(
+    join(root, "packages", "flint", "binding.gyp"),
+    "utf8",
+  ));
+  const linuxTargets = flintBinding.targets[0].conditions
+    .filter(([condition]) => condition.startsWith("OS=='linux'"))
+    .map(([, settings]) => settings);
+  assert.equal(linuxTargets.length, 2);
+  for (const settings of linuxTargets) {
+    assert.ok(settings.ldflags.includes("-Wl,-z,nodelete"));
+  }
 });
 
 test("Windows native builds use a short disposable junction", () => {

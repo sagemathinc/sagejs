@@ -50,7 +50,12 @@ function run(executable, filename, extraArguments = [], env = process.env) {
     encoding: "utf8",
     env,
   });
-  assert.equal(result.status, 0, result.stderr);
+  if (result.error) throw result.error;
+  assert.equal(
+    result.status,
+    0,
+    result.stderr || result.stdout || `SEA terminated by ${result.signal}`,
+  );
   return result.stdout.trim();
 }
 
@@ -110,6 +115,48 @@ function testDensePrimeSea() {
     }
     assert.match(result.stdout, /dense prime sea ok/);
   }
+}
+
+function testLinuxNativeWorkerSpawnLifecycle() {
+  if (process.platform !== "linux") return;
+  const program = join(temporaryDirectory, "native-worker-spawn-lifecycle.sage");
+  writeFileSync(
+    program,
+    [
+      "from multiprocessing import Pool",
+      "import subprocess, sys",
+      "from sagejs.kernels.polynomial.packed_flint import flint_byte_region_copy",
+      "def phi(n):",
+      "    return euler_phi(n)",
+      "assert str(factor(2026)) == '2 * 1013'",
+      "assert flint_byte_region_copy.nativeAvailable",
+      "for _ in range(20):",
+      "    with Pool(2) as workers:",
+      "        values = workers.map(phi, [1009, 1013, 1019])",
+      "    child = subprocess.run([sys.executable, '--version'], capture_output=True)",
+      "    assert child.returncode == 0",
+      "    assert values == [1008, 1012, 1018]",
+      "mapped = open('/proc/self/maps').read().splitlines()",
+      "for addon in ('sagejs_flint.node', 'sagejs_flint_ffi.node', 'sagejs_native_kernel_pack.node'):",
+      "    paths = set(line.split()[-1] for line in mapped if addon in line)",
+      "    assert len(paths) == 1, (addon, paths)",
+      "print('native worker/spawn lifecycle ok')",
+      "",
+    ].join("\n"),
+  );
+  const result = spawnSync(mathExecutable, [program], {
+    cwd: temporaryDirectory,
+    encoding: "utf8",
+    env: { ...process.env, SAGEJS_NATIVE_REQUIRED: "1" },
+    timeout: 120_000,
+  });
+  assert.equal(
+    result.status,
+    0,
+    `native worker/spawn lifecycle failed with signal ${result.signal}:\n` +
+      result.stderr,
+  );
+  assert.equal(result.stdout.trim(), "native worker/spawn lifecycle ok");
 }
 
 if (densePrimeOnly) {
@@ -335,6 +382,7 @@ try {
         "['3', '5', '5']",
     );
 
+    testLinuxNativeWorkerSpawnLifecycle();
     testDensePrimeSea();
   }
 } finally {
