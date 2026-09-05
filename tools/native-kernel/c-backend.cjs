@@ -4098,6 +4098,15 @@ function generateHostCore(ir, options = {}) {
   });
   const exact = functions.filter((fn) => fn.kernelKind === "integer");
   const exactEntries = exact.filter(hostCallable);
+  // Prime-source callers use the checked scalar core ABI, even when their
+  // integer dependency is not a public entry. Keep those adapters internal;
+  // removing a host export must not remove a cross-representation call edge.
+  const crossRepresentationCallees = new Set(functions
+    .filter((fn) => fn.kernelKind === "prime-field-source")
+    .flatMap((fn) => ir.callGraph?.[fn.name] || []));
+  const privateCoreAdapters = exact.filter((fn) =>
+    !hostCallable(fn) && crossRepresentationCallees.has(fn.name)
+  );
   const floats = functions.filter((fn) => fn.kernelKind === "float64");
   const fields = functions.filter((fn) =>
     ["real-field", "complex-field"].includes(fn.kernelKind)
@@ -4156,6 +4165,9 @@ function generateHostCore(ir, options = {}) {
     fmpz.functions,
     ...exact.map((fn) => emitExactInternalFunction(fn, functionMap)),
     ...exactEntries.map(publicCoreFunction),
+    ...privateCoreAdapters.map((fn) =>
+      publicCoreFunction(fn).replace(/^int sagejs_kernel_/m, "static int sagejs_kernel_")
+    ),
     ...floats.map(emitFloat64CoreFunction),
     ...fields.map(emitFieldCoreFunction),
     primeSources.length > 0 ? generatePrimeSourceSupport() : "",
