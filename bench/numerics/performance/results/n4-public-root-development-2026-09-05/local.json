@@ -1,0 +1,83 @@
+{
+  "schema": "sagejs.prepared-function-development/v1",
+  "scope": "public-prepared-root-with-independent-validation",
+  "batch": 20,
+  "warmups": 3,
+  "fresh_compile_ms": 1678.26101,
+  "source_sha256": {
+    "src/lib/sagejs/numerics/evaluators.py": "97c0f3c2b91c63931156444cf117a2724225b601b9102c470f7e3c9864982a48",
+    "src/lib/sagejs/numerics/_evaluation_core.py": "94cce18b09a7b6e7ad37ed84eb66a2d41e39e1e75001fbb6a76f6bb7684f2c06",
+    "src/lib/sagejs/numerics/frontends/expressions.py": "851473e0e686400ef579d4305f5d7d255fd8f592f902de98f4ebef1600ca9c5f",
+    "src/lib/sagejs/numerics/prepared_roots.py": "60dc80f7d2bfa6e8ac4486b90b44e9ea2639a4a3a21750afe472e629089f8f55",
+    "src/lib/sagejs/numerics/_evaluation_root.py": "fb61941b8a998718c0ce065efc38256d8c93c45c45d9f03fcb6671c86f93a0b1"
+  },
+  "source_dependencies": [
+    {
+      "module": "sagejs.numerics._evaluation_core",
+      "path": "/home/user/sagejs-worktrees/perf-numerical-prepared-evaluators/src/lib/sagejs/numerics/_evaluation_core.py",
+      "sha256": "94cce18b09a7b6e7ad37ed84eb66a2d41e39e1e75001fbb6a76f6bb7684f2c06"
+    }
+  ],
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.8.1",
+    "cpu": "AMD EPYC 7B13"
+  },
+  "samples_ms": {
+    "native": [
+      83.5731029510498,
+      91.84956550598145,
+      84.81001853942871,
+      85.70051193237305,
+      88.7751579284668,
+      88.8664722442627,
+      92.40841865539551
+    ],
+    "dynamic": [
+      377.0761489868164,
+      380.33390045166016,
+      369.4579601287842,
+      373.95763397216797,
+      366.1625385284424,
+      352.039098739624,
+      357.5453758239746
+    ]
+  },
+  "preparation_ms": {
+    "native": [
+      24.28436279296875,
+      9.639501571655273,
+      7.050275802612305,
+      6.54292106628418,
+      7.0743560791015625,
+      6.595373153686523,
+      6.638765335083008,
+      6.587743759155273,
+      6.272792816162109,
+      6.229639053344727
+    ],
+    "dynamic": [
+      24.848461151123047,
+      8.595705032348633,
+      7.635831832885742,
+      6.507396697998047,
+      13.253927230834961,
+      6.403207778930664,
+      6.880283355712891,
+      6.103277206420898,
+      6.26826286315918,
+      6.023168563842773
+    ]
+  },
+  "routes": {
+    "dynamic": "dynamic",
+    "native": "native"
+  },
+  "gaps": [
+    "four-host replication",
+    "browser",
+    "memory",
+    "cold process startup"
+  ]
+}

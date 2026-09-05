@@ -144,3 +144,47 @@ the regression includes signed zero and signed NaN as sign donors.
 This checkpoint does not yet connect prepared functions to public solvers,
 register a public browser pack, establish four-platform qualification, provide
 derivatives/vector outputs or meet any end-to-end performance target.
+
+## Public prepared root integration
+
+The next explicit extension is
+`sagejs.numerics.prepared_roots.solve_prepared_root(f, lower, upper,
+parameters=(...), ...)`. It solves for the first ordered input and snapshots
+the remaining parameters. Its method identity is
+`prepared-bisection-residual-width`, with both residual and width acceptance
+except for a computed zero. It returns the existing problem/plan/result and
+validation contracts, not an unstructured scalar or a purported exact root.
+
+The source-native route keeps evaluation and bisection in one compiled graph;
+missing native code or unsupported operations use a canonical-expression
+reference implementation of the same stopping policy. After a candidate,
+independent canonical evaluation checks its residual and both bracket ends.
+Three evaluations are reserved for those checks; result accounting separates
+solver and validation evaluations. A forged successful backend returning a
+wrong candidate and claimed zero residual is rejected. Workspace locks include
+parameter conversion and are released on exceptions.
+
+No backend is automatically promoted. The source-native plan remains explicitly
+unqualified and without invented artifact/receipt digests. This initial API
+supports no iteration trace, derivatives or rigorous certificate. Elapsed-time
+enforcement is after bounded synchronous execution; hard cancellation requires
+worker termination. Program visits are capped at one million and iterations
+at 1024. These limits do not imply a universal wall-clock deadline.
+The expression record is retained, but `replayable` stays false until the shared
+replay dispatcher supports this new method; reconstruction metadata alone does
+not establish working replay.
+
+`node bench/numerics/performance/prepared-function.cjs --root` measures complete
+public solves, including problem/plan construction, packing, independent checks
+and result construction. It separates expression preparation and fresh compile
+time, alternates dynamic/native order and checks the actual solver route.
+Serialization/rendering and process startup are not included. Persistent-host,
+browser, memory and cold-start qualification remain open; local development
+measurements must not be treated as acceptance receipts.
+
+The [local development samples](../bench/numerics/performance/results/n4-public-root-development-2026-09-05/local.json)
+retain individual timings, actual routes, source hashes and host details.
+CPython and fresh Sage.js native/dynamic/missing/stale routes pass the public
+fixture, including deliberately forged success and parameter changes. Strict
+Python passes with 375 modules and zero errors. These are focused checks, not
+whole-product qualification.
