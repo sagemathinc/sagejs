@@ -59,8 +59,8 @@
       "tools/runtime-bootstrap.ts",
       "tools/task-evaluator.ts"
     ],
-    "sha256": "a8f11bb9fbd6cbd85a62a0f2c4866879ab6767f23b70ad9d0c83e9d3ad87db34",
-    "source_commit": "03c9905eb5134d41fbebfecf9f6111deb2992780"
+    "sha256": "607fdcb1da0bf7ffd4d44900186cf3227d5705f0a2e07104bf7812ed8631ed06",
+    "source_commit": "a46f3d28d132a30f56ba755f01860f8055e42a58"
   },
   "entries": [
     {
@@ -74,7 +74,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "a8f11bb9fbd6cbd85a62a0f2c4866879ab6767f23b70ad9d0c83e9d3ad87db34",
+      "source_bundle_sha256": "607fdcb1da0bf7ffd4d44900186cf3227d5705f0a2e07104bf7812ed8631ed06",
       "corpus": {
         "id": "prime-cantor-domain-v1",
         "path": "bench/hyperelliptic/cross-platform/domain-corpus-v1.json",
@@ -220,7 +220,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "a8f11bb9fbd6cbd85a62a0f2c4866879ab6767f23b70ad9d0c83e9d3ad87db34",
+      "source_bundle_sha256": "607fdcb1da0bf7ffd4d44900186cf3227d5705f0a2e07104bf7812ed8631ed06",
       "corpus": {
         "id": "prime-cantor-domain-v1",
         "path": "bench/hyperelliptic/cross-platform/domain-corpus-v1.json",
@@ -366,7 +366,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "a8f11bb9fbd6cbd85a62a0f2c4866879ab6767f23b70ad9d0c83e9d3ad87db34",
+      "source_bundle_sha256": "607fdcb1da0bf7ffd4d44900186cf3227d5705f0a2e07104bf7812ed8631ed06",
       "corpus": {
         "id": "prime-cantor-domain-v1",
         "path": "bench/hyperelliptic/cross-platform/domain-corpus-v1.json",

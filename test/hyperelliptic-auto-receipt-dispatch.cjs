@@ -470,7 +470,7 @@ test("the release policy retains but disables the three stale Cantor envelopes",
   assert.equal(candidate.enabled, true);
   assert.equal(
     candidate.source_bundle.sha256,
-    "a8f11bb9fbd6cbd85a62a0f2c4866879ab6767f23b70ad9d0c83e9d3ad87db34",
+    "607fdcb1da0bf7ffd4d44900186cf3227d5705f0a2e07104bf7812ed8631ed06",
   );
   assert.deepEqual(
     candidate.entries.map((entry) => entry.id),
