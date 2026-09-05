@@ -26,6 +26,13 @@
       "specialist-capability"
     ],
     "test_evidence": {
+      "character-hecke-capability-limit": {
+        "differential": false,
+        "paths": [
+          "packages/flint-wasm/test/public-gap-closure.test.mjs",
+          "packages/flint-wasm/test/public-gap-closure-browser.mjs"
+        ]
+      },
       "gamma1-algebraic-wasm-differential": {
         "differential": true,
         "paths": [
@@ -16584,57 +16591,60 @@
       "kind": "napi-export",
       "family": "modular-symbols",
       "source": "packages/flint/src/p1.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
+      "disposition": "desktop-only",
+      "fallback": "unavailable",
+      "capability_error": "Character Hecke matrices are not yet supported in WebAssembly; use the native Sage.js backend.",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
       "tests": [
-        "modular-symbols-differential"
+        "character-hecke-capability-limit"
       ],
-      "status": "fallback",
+      "status": "desktop-only",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "Native character Hecke arithmetic is supported. The browser recurrence also needs the missing character Hecke matrix backend and is not an independent fallback.",
+      "public_explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
       "kind": "napi-export",
       "family": "modular-symbols",
       "source": "packages/flint/src/p1.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
+      "disposition": "desktop-only",
+      "fallback": "unavailable",
+      "capability_error": "Character Hecke matrices are not yet supported in WebAssembly; use the native Sage.js backend.",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
       "tests": [
-        "modular-symbols-differential"
+        "character-hecke-capability-limit"
       ],
-      "status": "fallback",
+      "status": "desktop-only",
       "reviewed": true,
-      "review_note": "The Node bulk power-basis adapter is optional; browser execution uses the exact prime-power Hecke recurrence.",
-      "public_explanation": "Higher-character q-expansions use the exact portable Hecke recurrence when the native bulk power-basis adapter is unavailable."
+      "review_note": "Native character Hecke arithmetic is supported. The browser recurrence also needs the missing character Hecke matrix backend and is not an independent fallback.",
+      "public_explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeSelectedRows",
       "kind": "napi-export",
       "family": "modular-symbols",
       "source": "packages/flint/src/p1.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
+      "disposition": "desktop-only",
+      "fallback": "unavailable",
+      "capability_error": "Character Hecke matrices are not yet supported in WebAssembly; use the native Sage.js backend.",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
       "tests": [
-        "modular-symbols-differential"
+        "character-hecke-capability-limit"
       ],
-      "status": "fallback",
+      "status": "desktop-only",
       "reviewed": true,
-      "review_note": "The Node selected-row power-basis adapter is optional; browser execution retains the exact direct character image and prime-power recurrence paths.",
-      "public_explanation": "Gamma1 character descent uses the exact direct or portable Hecke recurrence when the selected-row native adapter is unavailable."
+      "review_note": "Native character Hecke arithmetic is supported. The browser recurrence also needs the missing character Hecke matrix backend and is not an independent fallback.",
+      "public_explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",

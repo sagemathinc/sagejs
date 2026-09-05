@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "8add0db3288b1799d4704608307c7458bc3f04e7b0058e2104d4dc0075478707",
+  "source_sha256": "6cdaafd9a48ef5a57542a8b37acca93043a9298c8f8dd3be9f87c2ad3be59abb",
   "counts": {
     "total": 1090,
     "by_kind": {
@@ -14,15 +14,15 @@
     },
     "by_disposition": {
       "compiled-source": 55,
-      "desktop-only": 47,
+      "desktop-only": 50,
       "generated-wasm": 363,
-      "portable-fallback": 575,
+      "portable-fallback": 572,
       "shared-core": 50
     },
     "by_status": {
       "available": 609,
-      "desktop-only": 47,
-      "fallback": 434
+      "desktop-only": 50,
+      "fallback": 431
     }
   },
   "workflow_aliases": {
@@ -9551,38 +9551,38 @@
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
       "family": "modular-symbols",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "unavailable",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "Higher-character q-expansions use the exact portable Hecke recurrence when the native bulk power-basis adapter is unavailable."
+      "explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeMatrix",
       "family": "modular-symbols",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "unavailable",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeSelectedRows",
       "family": "modular-symbols",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-public-operation",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "unavailable",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "Gamma1 character descent uses the exact direct or portable Hecke recurrence when the selected-row native adapter is unavailable."
+      "explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",

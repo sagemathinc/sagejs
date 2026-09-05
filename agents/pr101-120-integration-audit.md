@@ -2,6 +2,25 @@
 
 Status: in progress. This is development integration, not a release.
 
+## Browser scope decision and final handoff
+
+The user approved merging with the missing character-Hecke browser backend
+deferred to a modular-forms follow-up PR. Native Gamma1 support is retained.
+Gamma1(7) descent and character presentations work in Wasm; Gamma1(13)
+cuspidal/newform workflows require the native backend for now. The three
+character-Hecke capability records now say desktop-only, not portable fallback.
+The public Node-Wasm and Chromium corpus checks the explicit capability error
+and continues checking the seven supported workflows in the same session.
+The native Gamma1(13) expected answer remains in the fixture for the follow-up.
+
+This negative test also exposed an orphan rejection in the worker dispatch
+chain: catching the original promise did not handle the child returned by
+`then`. The worker now catches the complete chain so ordinary evaluation
+errors do not terminate Node-Wasm sessions. Both public corpora and the
+merge-owned capability inventories pass after this correction.
+
+No new release or deployment is part of this integration.
+
 ## Combined candidate checkpoint (2026-09-05)
 
 The remaining stacks are integrated on `agent/integrate-prs101-120` through
