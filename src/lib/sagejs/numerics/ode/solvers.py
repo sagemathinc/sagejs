@@ -13,7 +13,6 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from .._json import canonical_json
 from ..diagnostics import NumericalDiagnostic
 from ..model import STATUS_CODES, NumericalValidation
 from ..trace import NumericalTrace, TraceEvent, TracePolicy
@@ -358,24 +357,20 @@ def _append_detailed_trace(
     force: bool = False,
 ) -> None:
     """Append a detail record only when it leaves room for the final record."""
+    if not isinstance(force, bool):
+        raise TypeError("trace force must be a boolean")
     if not force and not trace.wants(kind):
         return
     if not _retain_detailed_trace(trace):
         if isinstance(trace, _OdeTrace):
             trace.omitted_details += 1
         return
-    if len(trace.events) >= trace.policy.max_events - 1:
+    if len(trace._events) >= trace.policy.max_events - 1:
         if isinstance(trace, _OdeTrace):
             trace.omitted_details += 1
         return
-    sequence = 0
-    if trace.events:
-        previous_sequence = trace.events[-1].to_dict().get("sequence")
-        if not isinstance(previous_sequence, int):
-            raise TypeError("trace event sequence must be an integer")
-        sequence = previous_sequence + 1
     candidate = TraceEvent(
-        sequence,
+        trace._next_sequence,
         kind,
         iteration=iteration,
         evaluation=evaluation,
@@ -384,31 +379,13 @@ def _append_detailed_trace(
         diagnostics=diagnostics,
         important=important,
     )
-    projected = trace.to_dict()
-    projected_events = projected.get("events")
-    projected_observed = projected.get("observed_events")
-    if not isinstance(projected_events, list) or not isinstance(
-        projected_observed, int
-    ):
-        raise TypeError("trace projection has an invalid shape")
-    projected_events.append(candidate.to_dict())
-    projected["observed_events"] = projected_observed + 1
-    projected["retained_events"] = len(projected_events)
-    projected_size = len(canonical_json(projected).encode("utf-8"))
+    projected_size = trace._projected_record_bytes(candidate)
     if projected_size + _TRACE_FINISH_RESERVE > trace.policy.max_bytes:
         if isinstance(trace, _OdeTrace):
             trace.omitted_details += 1
         return
-    trace.append(
-        kind,
-        iteration=iteration,
-        evaluation=evaluation,
-        accepted=accepted,
-        data=data,
-        diagnostics=diagnostics,
-        important=important,
-        force=force,
-    )
+    trace._observed += 1
+    trace._retain_prepared(candidate)
 
 
 def _trace_event_record(occurrence: OdeEventOccurrence) -> dict[str, Any]:
