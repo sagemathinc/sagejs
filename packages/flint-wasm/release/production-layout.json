@@ -140,6 +140,16 @@
         }
       },
       {
+        "id": "floating-kernel-loader",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": ["runtime/floating-kernels.mjs"],
+        "maximumCompressedDelta": {
+          "gzipBytes": 4096,
+          "brotliBytes": 4096
+        }
+      },
+      {
         "id": "release-source",
         "kind": "support",
         "dependencies": [],

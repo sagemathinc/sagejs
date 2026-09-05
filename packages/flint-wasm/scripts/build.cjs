@@ -914,69 +914,13 @@ for (const filename of treeSitterAssets) {
     path.join(outputDirectory, filename),
   );
 }
-function pythonSources(directory) {
-  const sources = [];
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const filename = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      sources.push(...pythonSources(filename));
-    } else if (entry.isFile() && entry.name.endsWith(".py")) {
-      sources.push(filename);
-    }
-  }
-  return sources.sort();
-}
-
-function requireBrowserModuleCache(name) {
-  const generated = path.join(
-    standardLibraryCacheDirectory,
-    `${name.replaceAll(".", "-")}.json`,
-  );
-  requirePath(
-    `compiled browser module ${name} (run \`pnpm build\` first)`,
-    generated,
-  );
-}
-
-for (const name of browserAdditionalModules) {
-  requireBrowserModuleCache(name);
-}
-
-const standardLibraryModules = {};
-const standardLibraryReceiptInputs = [];
-for (const filename of pythonSources(standardLibrarySourceDirectory)) {
-  const relative = path.relative(standardLibrarySourceDirectory, filename);
-  const components = relative.slice(0, -3).split(path.sep);
-  if (components.at(-1) === "__init__") components.pop();
-  const name = components.join(".");
-  if (!name) continue;
-  const cacheFilename = path.join(
-    standardLibraryCacheDirectory,
-    `${name.replaceAll(".", "-")}.json`,
-  );
-  if (!fs.existsSync(cacheFilename)) continue;
-  const source = fs.readFileSync(filename, "utf8");
-  const cache = JSON.parse(fs.readFileSync(cacheFilename, "utf8"));
-  const sourceSignature = createHash("sha1").update(source).digest("hex");
-  if (cache.signature !== sourceSignature) {
-    throw new Error(
-      `compiled browser module ${name} is stale (run \`pnpm build\` first)`,
-    );
-  }
-  standardLibraryReceiptInputs.push(filename, cacheFilename);
-  standardLibraryModules[name] = {
-    package: path.basename(filename) === "__init__.py",
-    source,
-    cache,
-  };
-}
-fs.writeFileSync(
-  standardLibraryOutput,
-  JSON.stringify({
-    modules: standardLibraryModules,
-    preload: browserAdditionalModules,
-  }),
-);
+const { buildBrowserStandardLibrary } = require("./browser-python-resources.cjs");
+const standardLibraryReceiptInputs = buildBrowserStandardLibrary({
+  sourceDirectory: standardLibrarySourceDirectory,
+  cacheDirectory: standardLibraryCacheDirectory,
+  requiredModules: browserAdditionalModules,
+  output: standardLibraryOutput,
+});
 fs.copyFileSync(lazyModulesSource, lazyModulesOutput);
 fs.copyFileSync(conwayDataSource, conwayDataOutput);
 fs.copyFileSync(kernelCoverageSource, kernelCoverageOutput);
@@ -1132,6 +1076,7 @@ const receipt = writeProductionReceipt({
     baselibSource,
     numpyBackendSource,
     compilerFrontendBuildHelper,
+    path.join(packageRoot, "scripts", "browser-python-resources.cjs"),
     foreignFrontendBuildHelper,
     browserMagmaEnvironmentShim,
     ...treeSitterAssets.map((name) => path.join(vendorDirectory, name)),
