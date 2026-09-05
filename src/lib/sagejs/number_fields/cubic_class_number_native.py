@@ -19,10 +19,12 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_set_coefficient,
     fmpz_matrix,
     fmpz_matrix_hnf_into,
+    fmpz_matrix_hnf_prefix_into,
     fmpz_matrix_hnf_transform,
     fmpz_matrix_lll_transform,
     fmpz_matrix_snf,
     fmpz_matrix_snf_into,
+    fmpz_matrix_snf_prefix_into,
     integer_log_sqrt_balls_resource,
     number_field_analysis_resource_project,
     number_field_analysis_resource_project_proof,
@@ -6433,6 +6435,228 @@ def _cubic_collect_adjacent_relation_prefix(
     )
 
 
+def _cubic_prepare_full_relation_presentation(
+    relation_candidates: FmpzMatrix,
+    online_relation_basis: FmpzMatrix,
+    relation_matrix: FmpzMatrix,
+    relation_hnf: FmpzMatrix,
+    output: IntegerBuffer,
+    relation_count: uint64,
+    factor_count: uint64,
+    reuse_online_relation_hnf: bool,
+    established_full_rank: bool,
+) -> tuple[int, uint64]:
+    """Copy and reduce an exact live prefix into borrowed proof scratch.
+
+    Return `(1, rank)` for full rank, `(0, rank)` for insufficient relations,
+    or `(-1, rank)` for inconsistent evidence. An independently established
+    full modular or exact rank for this prefix makes rank loss inconsistent,
+    never permission to resume collection. Synchronized row counts alone do
+    not establish full rank.
+
+    All owners remain in the caller's arena. Only the logical prefixes of
+    `relation_matrix` and `relation_hnf` change; unused capacity, discovery
+    rows, and the retained online HNF are untouched. Their owners must be
+    distinct and large enough for the requested prefixes. Invalid resource
+    bounds, aliases, or exhausted allocation budgets fail through the FFI or
+    arena error path, not the mathematical-insufficiency return.
+    """
+    relation_rank: uint64 = 0
+    output[63] = 41
+    if factor_count == 0:
+        return -1, relation_rank
+    if relation_count < factor_count:
+        if established_full_rank:
+            return -1, relation_rank
+        return 0, relation_rank
+    relation_row: uint64 = 0
+    while relation_row < relation_count:
+        factor_index: uint64 = 0
+        while factor_index < factor_count:
+            relation_matrix[relation_row, factor_index] = relation_candidates[
+                relation_row, factor_index
+            ]
+            factor_index += 1
+        relation_row += 1
+    relation_hnf_rows: uint64 = relation_count
+    if reuse_online_relation_hnf:
+        relation_hnf_rows = factor_count
+        relation_row = 0
+        while relation_row < factor_count:
+            factor_index = 0
+            while factor_index < factor_count:
+                relation_hnf[relation_row, factor_index] = online_relation_basis[
+                    relation_row, factor_index
+                ]
+                factor_index += 1
+            relation_row += 1
+    elif not fmpz_matrix_hnf_prefix_into(
+        relation_hnf, relation_matrix, relation_count, factor_count
+    ):
+        return -1, relation_rank
+    relation_row = 0
+    while relation_row < relation_hnf_rows:
+        row_nonzero = False
+        factor_index = 0
+        while factor_index < factor_count:
+            if relation_hnf[relation_row, factor_index] != 0:
+                row_nonzero = True
+            factor_index += 1
+        if row_nonzero:
+            relation_rank += 1
+        relation_row += 1
+    output[53] = relation_rank
+    output[63] = 42
+    if relation_rank > factor_count:
+        return -1, relation_rank
+    if relation_rank < factor_count:
+        if established_full_rank:
+            return -1, relation_rank
+        return 0, relation_rank
+    return 1, relation_rank
+
+
+def _cubic_finish_full_relation_presentation(
+    workspace: NativeIntegerVector,
+    relation_matrix: FmpzMatrix,
+    relation_smith: FmpzMatrix,
+    output: IntegerBuffer,
+    relation_count: uint64,
+    factor_count: uint64,
+) -> tuple[int, int, uint64]:
+    """Compute the full-rank quotient in caller-owned exact Smith scratch.
+
+    The preceding presentation preparation must have established full rank.
+    Return `(1, index, invariant_count)` on success, `(-1, 0, 0)` for invalid
+    evidence, or `(-2, 0, 0)` when the eight-invariant publication envelope is
+    exhausted. Neither failure authorizes collection of more relations.
+    The returned index is only an upper class-group presentation until the
+    remaining certificate succeeds, except when that index is one.
+
+    Only the live Smith prefix and the reported invariant prefix in the
+    phase-local row scratch are written. Failed results and scratch are not
+    publishable. Keeping this separate from rank preparation lets a one-shot
+    caller allocate Smith storage only after full rank is known.
+    """
+    empty_count: uint64 = 0
+    if factor_count == 0 or relation_count < factor_count:
+        return -1, 0, empty_count
+    if not fmpz_matrix_snf_prefix_into(
+        relation_smith, relation_matrix, relation_count, factor_count
+    ):
+        return -1, 0, empty_count
+    class_number_upper = 1
+    invariant_count: uint64 = 0
+    factor_index: uint64 = 0
+    while factor_index < factor_count:
+        invariant = relation_smith[factor_index, factor_index]
+        if invariant < 0:
+            invariant = -invariant
+        if invariant < 1:
+            return -1, 0, empty_count
+        if factor_index > 0:
+            previous_invariant = relation_smith[factor_index - 1, factor_index - 1]
+            if previous_invariant < 0:
+                previous_invariant = -previous_invariant
+            if invariant % previous_invariant != 0:
+                return -1, 0, empty_count
+        class_number_upper *= invariant
+        if invariant > 1:
+            if invariant_count >= 8:
+                return -2, 0, empty_count
+            workspace[_ROW_SCRATCH_OFFSET + invariant_count] = invariant
+            invariant_count += 1
+        factor_index += 1
+    output[54] = class_number_upper
+    output[55] = invariant_count
+    output[63] = 43
+    return 1, class_number_upper, invariant_count
+
+
+def _cubic_publish_trivial_relation_presentation(
+    workspace: NativeIntegerVector,
+    relation_matrix: FmpzMatrix,
+    relation_elements: FmpzMatrix,
+    output: IntegerBuffer,
+    transcript_factor_rows: IntegerBuffer,
+    transcript_relation_rows: IntegerBuffer,
+    transcript_relation_elements: IntegerBuffer,
+    transcript_mode: uint64,
+    relation_count: uint64,
+    factor_count: uint64,
+    group_count: uint64,
+    relation_rank: uint64,
+    used_compound_multiplier_limit: uint64,
+    generator_bound: int,
+    identity_zero: int,
+    identity_one: int,
+    identity_two: int,
+    order_discriminant: int,
+    equation_order_index: int,
+    denominator: int,
+    relation_box: int,
+    unit_box: int,
+    equation_discriminant: int,
+    use_grh_generator_base: bool,
+    adjacent_planned_count: uint64,
+    adjacent_enumerated_count: uint64,
+    online_relation_count: uint64,
+) -> bool:
+    """Publish a previously established index-one relation presentation.
+
+    The caller must have checked the generator theorem, the principal rows,
+    and the exact full-rank Smith quotient of index one. No unit or analytic
+    index computation can strengthen that class-group conclusion. Transcript
+    shape failures are publication errors, not evidence insufficiency, and
+    cannot authorize a collection retry. Success preserves the established
+    scalar receipt layout and its private discovery diagnostics.
+    """
+    if transcript_mode == 1:
+        if not _cubic_publish_relation_factor_rows(
+            workspace, factor_count, transcript_factor_rows
+        ):
+            return False
+        if not _cubic_publish_relation_rows(
+            relation_matrix,
+            relation_elements,
+            relation_count,
+            factor_count,
+            transcript_relation_rows,
+            transcript_relation_elements,
+        ):
+            return False
+    output_index: uint64 = 0
+    while output_index < len(output):
+        output[output_index] = 0
+        output_index += 1
+    output[0] = 2
+    output[1] = 1
+    output[19] = used_compound_multiplier_limit
+    output[20] = generator_bound
+    output[21] = factor_count
+    output[22] = group_count
+    output[23] = relation_count
+    output[24] = 1
+    output[25] = identity_zero
+    output[26] = identity_one
+    output[27] = identity_two
+    output[28] = order_discriminant
+    output[29] = equation_order_index
+    output[30] = denominator
+    output[31] = relation_box
+    output[32] = unit_box
+    output[33] = relation_rank
+    output[34] = equation_discriminant
+    output[35] = _CUBIC_PROOF_TRIVIAL_MINKOWSKI
+    if use_grh_generator_base:
+        output[35] = _CUBIC_PROOF_TRIVIAL_GRH
+    output[50] = adjacent_planned_count
+    output[51] = adjacent_enumerated_count
+    output[52] = relation_count
+    output[53] = online_relation_count
+    return True
+
+
 def _cubic_prepare_proof_relation_support(
     relation_matrix: FmpzMatrix,
     relation_hnf: FmpzMatrix,
@@ -8606,15 +8830,6 @@ def certified_complex_cubic_class_group_v1(
             relation_count,
             factor_count,
         )
-        relation_row = 0
-        while relation_row < relation_count:
-            factor_index = 0
-            while factor_index < factor_count:
-                relation_matrix[relation_row, factor_index] = relation_candidates[
-                    relation_row, factor_index
-                ]
-                factor_index += 1
-            relation_row += 1
         relation_hnf_rows: uint64 = relation_count
         if reuse_online_relation_hnf:
             relation_hnf_rows = factor_count
@@ -8623,118 +8838,84 @@ def certified_complex_cubic_class_group_v1(
             relation_hnf_rows,
             factor_count,
         )
-        if relation_count < factor_count:
-            return False
-        if reuse_online_relation_hnf:
-            relation_row = 0
-            while relation_row < factor_count:
-                factor_index = 0
-                while factor_index < factor_count:
-                    relation_hnf[relation_row, factor_index] = online_relation_basis[
-                        relation_row, factor_index
-                    ]
-                    factor_index += 1
-                relation_row += 1
-        elif not fmpz_matrix_hnf_into(relation_hnf, relation_matrix):
-            return False
-        relation_rank: uint64 = 0
-        relation_row: uint64 = 0
-        while relation_row < relation_hnf_rows:
-            row_nonzero = False
-            factor_index = 0
-            while factor_index < factor_count:
-                if relation_hnf[relation_row, factor_index] != 0:
-                    row_nonzero = True
-                factor_index += 1
-            if row_nonzero:
-                relation_rank += 1
-            relation_row += 1
-        output[53] = relation_rank
-        output[63] = 42
-        if relation_rank != factor_count:
+        # Modular full rank and an exact online index-one certificate are
+        # independent rank witnesses. Row synchronization alone is not one.
+        presentation_full_rank_established = (
+            streaming_relation_collection
+            and modular_workspace[_CUBIC_MODULAR_RANK_OFFSET] == factor_count
+        ) or (
+            online_relation_quotient_enabled
+            and online_relation_count == relation_count
+            and online_relation_status == 2
+        )
+        presentation_status, relation_rank = _cubic_prepare_full_relation_presentation(
+            relation_candidates,
+            online_relation_basis,
+            relation_matrix,
+            relation_hnf,
+            output,
+            relation_count,
+            factor_count,
+            reuse_online_relation_hnf,
+            presentation_full_rank_established,
+        )
+        # Status zero describes genuine rank insufficiency, not an error.
+        # This extraction does not authorize root-level resumable collection.
+        if presentation_status != 1:
             return False
         relation_smith = arena.foreign_resource(
-            fmpz_matrix_snf,
-            relation_matrix,
+            fmpz_matrix,
+            relation_count,
+            factor_count,
         )
-        class_number_upper = 1
-        invariant_count: uint64 = 0
-        factor_index = 0
-        while factor_index < factor_count:
-            invariant = relation_smith[factor_index, factor_index]
-            if invariant < 0:
-                invariant = -invariant
-            if invariant < 1:
-                return False
-            if factor_index > 0:
-                previous_invariant = relation_smith[factor_index - 1, factor_index - 1]
-                if previous_invariant < 0:
-                    previous_invariant = -previous_invariant
-                if invariant % previous_invariant != 0:
-                    return False
-            class_number_upper *= invariant
-            if invariant > 1:
-                if invariant_count >= 8:
-                    return False
-                workspace[_ROW_SCRATCH_OFFSET + invariant_count] = invariant
-                invariant_count += 1
-            factor_index += 1
-        output[54] = class_number_upper
-        output[55] = invariant_count
-        output[63] = 43
+        (
+            presentation_status,
+            class_number_upper,
+            invariant_count,
+        ) = _cubic_finish_full_relation_presentation(
+            workspace,
+            relation_matrix,
+            relation_smith,
+            output,
+            relation_count,
+            factor_count,
+        )
+        if presentation_status != 1:
+            return False
 
         # Principal rows present an upper group surjecting onto the class
         # group. If that exact quotient is trivial, no unit or analytic index
         # calculation can strengthen the class-group conclusion.
         if class_number_upper == 1:
-            if transcript_mode == 1:
-                if not _cubic_publish_relation_factor_rows(
-                    workspace,
-                    factor_count,
-                    transcript_factor_rows,
-                ):
-                    return False
-                if not _cubic_publish_relation_rows(
-                    relation_matrix,
-                    relation_elements,
-                    relation_count,
-                    factor_count,
-                    transcript_relation_rows,
-                    transcript_relation_elements,
-                ):
-                    return False
-            output_index = 0
-            while output_index < len(output):
-                output[output_index] = 0
-                output_index += 1
-            output[0] = 2
-            output[1] = 1
-            output[19] = used_compound_multiplier_limit
-            output[20] = generator_bound
-            output[21] = factor_count
-            output[22] = group_count
-            output[23] = relation_count
-            output[24] = 1
-            output[25] = identity_zero
-            output[26] = identity_one
-            output[27] = identity_two
-            output[28] = order_discriminant
-            output[29] = equation_order_index
-            output[30] = denominator
-            output[31] = relation_box
-            output[32] = unit_box
-            output[33] = relation_rank
-            output[34] = equation_discriminant
-            output[35] = _CUBIC_PROOF_TRIVIAL_MINKOWSKI
-            if use_grh_generator_base:
-                output[35] = _CUBIC_PROOF_TRIVIAL_GRH
-            # Private deterministic diagnostics authenticate that the online
-            # certificate actually avoided the eager all-ideal schedule.
-            output[50] = adjacent_planned_count
-            output[51] = adjacent_enumerated_count
-            output[52] = relation_count
-            output[53] = online_relation_count
-            return True
+            return _cubic_publish_trivial_relation_presentation(
+                workspace,
+                relation_matrix,
+                relation_elements,
+                output,
+                transcript_factor_rows,
+                transcript_relation_rows,
+                transcript_relation_elements,
+                transcript_mode,
+                relation_count,
+                factor_count,
+                group_count,
+                relation_rank,
+                used_compound_multiplier_limit,
+                generator_bound,
+                identity_zero,
+                identity_one,
+                identity_two,
+                order_discriminant,
+                equation_order_index,
+                denominator,
+                relation_box,
+                unit_box,
+                equation_discriminant,
+                use_grh_generator_base,
+                adjacent_planned_count,
+                adjacent_enumerated_count,
+                online_relation_count,
+            )
 
         # Retain exactly the rows that change the incremental canonical HNF.
         # Once the prefix has full rank, an exact triangular membership test
