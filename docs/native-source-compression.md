@@ -33,6 +33,12 @@ tuple or host callback is introduced by native lowering.
 
 ## Borrowed workspace bundles
 
+`NativeRecord` remains the fixed-layout value-record facility, including its
+existing synchronous buffer-borrow ABI. A workspace is deliberately different:
+it groups live arena/FFI owners without creating a value layout or public ABI.
+Keeping these contracts separate avoids making an owned resource silently
+copyable merely because it appears inside a record.
+
 ```python
 class ProofScratch(NativeWorkspace):
     relations: FmpzMatrix
@@ -136,9 +142,11 @@ Baseline artifact:
 `b2f3f30228cfeda824ebb860d7e414e98558c0fd5f0bb60df1c4ff894f0027bd`.
 Candidate artifact:
 `13492e47d036ea622eadce8189f0fbbbb6367aeb97f722ab807a68c77b6811d0`.
-The valid executable IR of all 101 functions also agrees after normalizing
-flattened parameter names/order and provenance; that structural check is
-stronger evidence of zero native bundle overhead than timing alone.
+With the same slice migration applied to both sides, the executable IR of all
+101 functions agrees after normalizing flattened parameter names/order and
+provenance. This isolates bundle erasure; it does not claim that adding
+checked slices leaves the explicit-store IR byte-identical. The structural
+check is stronger evidence of zero native bundle overhead than timing alone.
 
 Nine initialization blocks now use slices. The staged proof helper groups
 38 owners and drops from 73 source parameters to 36. This first migration is

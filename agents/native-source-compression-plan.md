@@ -1,5 +1,20 @@
 # Native source compression driven by cubic class groups
 
+Implementation checkpoint (2026-09-05): both language features now have
+fallback/native implementations and focused regression tests. CPython,
+ordinary Sage.js, generated JavaScript, GMP and fmpz witnesses pass. Bundle
+erasure matches explicit-argument executable IR; allocation probes have equal
+checkpoint peaks and counts. Sanitizer failure/recovery witnesses pass.
+Controlled paired opt measurements are within about 0.5% of explicit code
+after correcting redundant slice literal temporaries. Nine cubic store blocks
+have been migrated; the staged proof helper has a 38-owner bundle, reducing
+73 source parameters to 36. Both final 39-family production rebuilds and all
+seven cubic public/closure tests pass, including independent exact replay and
+large-regulator witnesses; the production-pack suite also passes. Strict Python,
+the broad native compiler suite and root architecture checks pass. Broader
+platform CI is queued; final evidence publication and staged handoff remain open.
+See `docs/native-source-compression.md` for the contract and evidence.
+
 Goal: implement and qualify fixed-length slice assignment, then borrowed
 workspace bundles; migrate real mathematical source with no measured speed
 regression. These are reusable language features, not cubic-name intrinsics.

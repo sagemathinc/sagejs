@@ -5916,10 +5916,12 @@ def _cubic_complementary_prime_basis(
         entry += 1
     workspace[_HNF_SCRATCH_OFFSET] = prime
     workspace[_HNF_SCRATCH_OFFSET + 4] = prime
-    workspace[_HNF_SCRATCH_OFFSET + 8] = prime
-    workspace[_HNF_SCRATCH_OFFSET + 9] = idempotent_zero
-    workspace[_HNF_SCRATCH_OFFSET + 10] = idempotent_one
-    workspace[_HNF_SCRATCH_OFFSET + 11] = idempotent_two
+    workspace[_HNF_SCRATCH_OFFSET + 8 : _HNF_SCRATCH_OFFSET + 12] = (
+        prime,
+        idempotent_zero,
+        idempotent_one,
+        idempotent_two,
+    )
     if not _cubic_workspace_hnf3(
         workspace,
         _HNF_SCRATCH_OFFSET,
@@ -6306,10 +6308,12 @@ def certified_complex_cubic_class_group_v1(
                 coordinate_two = remaining_two // basis_two_two
                 if coordinate_two * basis_two_two != remaining_two:
                     return False
-                table_offset = (left_basis * 3 + right_basis) * 3
-                workspace[table_offset] = coordinate_zero
-                workspace[table_offset + 1] = coordinate_one
-                workspace[table_offset + 2] = coordinate_two
+                table_offset: uint64 = (left_basis * 3 + right_basis) * 3
+                workspace[table_offset : table_offset + 3] = (
+                    coordinate_zero,
+                    coordinate_one,
+                    coordinate_two,
+                )
                 right_basis += 1
             left_basis += 1
 
@@ -6332,9 +6336,11 @@ def certified_complex_cubic_class_group_v1(
             != 0
         ):
             return False
-        workspace[_IDENTITY_OFFSET] = identity_zero
-        workspace[_IDENTITY_OFFSET + 1] = identity_one
-        workspace[_IDENTITY_OFFSET + 2] = identity_two
+        workspace[_IDENTITY_OFFSET : _IDENTITY_OFFSET + 3] = (
+            identity_zero,
+            identity_one,
+            identity_two,
+        )
         basis_index: uint64 = 0
         while basis_index < 3:
             basis_coordinate_zero = 0
@@ -6390,15 +6396,17 @@ def certified_complex_cubic_class_group_v1(
             or one_two_two_numerator % 2 != 0
         ):
             return False
-        workspace[_NORM_FORM_OFFSET] = norm_zero
-        workspace[_NORM_FORM_OFFSET + 1] = zero_zero_one_numerator // 2 - norm_one
-        workspace[_NORM_FORM_OFFSET + 2] = zero_one_one_numerator // 2 - norm_zero
-        workspace[_NORM_FORM_OFFSET + 3] = norm_one
-        workspace[_NORM_FORM_OFFSET + 4] = zero_zero_two_numerator // 2 - norm_two
-        workspace[_NORM_FORM_OFFSET + 5] = zero_two_two_numerator // 2 - norm_zero
-        workspace[_NORM_FORM_OFFSET + 6] = norm_two
-        workspace[_NORM_FORM_OFFSET + 7] = one_one_two_numerator // 2 - norm_two
-        workspace[_NORM_FORM_OFFSET + 8] = one_two_two_numerator // 2 - norm_one
+        workspace[_NORM_FORM_OFFSET : _NORM_FORM_OFFSET + 9] = (
+            norm_zero,
+            zero_zero_one_numerator // 2 - norm_one,
+            zero_one_one_numerator // 2 - norm_zero,
+            norm_one,
+            zero_zero_two_numerator // 2 - norm_two,
+            zero_two_two_numerator // 2 - norm_zero,
+            norm_two,
+            one_one_two_numerator // 2 - norm_two,
+            one_two_two_numerator // 2 - norm_one,
+        )
         norm_all_one = _cubic_coordinate_norm(workspace, 1, 1, 1)
         workspace[_NORM_FORM_OFFSET + 9] = norm_all_one
         norm_coefficient_index: uint64 = 0
@@ -6573,9 +6581,11 @@ def certified_complex_cubic_class_group_v1(
                             ):
                                 return False
                             map_base: uint64 = _MAP_SCRATCH_OFFSET + 3 * map_count
-                            workspace[map_base] = map_zero
-                            workspace[map_base + 1] = map_one
-                            workspace[map_base + 2] = map_two
+                            workspace[map_base : map_base + 3] = (
+                                map_zero,
+                                map_one,
+                                map_two,
+                            )
                             map_count += 1
                         root += 1
                 else:
@@ -6651,9 +6661,11 @@ def certified_complex_cubic_class_group_v1(
                                 if map_count >= 3:
                                     return False
                                 map_base = _MAP_SCRATCH_OFFSET + 3 * map_count
-                                workspace[map_base] = map_zero
-                                workspace[map_base + 1] = map_one
-                                workspace[map_base + 2] = map_two
+                                workspace[map_base : map_base + 3] = (
+                                    map_zero,
+                                    map_one,
+                                    map_two,
+                                )
                                 map_count += 1
                             second_value += 1
                         first_value += 1
@@ -6677,16 +6689,18 @@ def certified_complex_cubic_class_group_v1(
                             ramification = 3
                         elif map_count == 2:
                             ramification = 0
-                        workspace[factor_base] = prime
-                        workspace[factor_base + 1] = ramification
-                        workspace[factor_base + 2] = 1
-                        workspace[factor_base + 3] = workspace[map_base]
-                        workspace[factor_base + 4] = workspace[map_base + 1]
-                        workspace[factor_base + 5] = workspace[map_base + 2]
-                        workspace[factor_base + 6] = 1
-                        workspace[factor_base + 7] = group_count
-                        workspace[factor_base + 8] = 0
-                        workspace[factor_base + 9] = 0
+                        workspace[factor_base : factor_base + 10] = (
+                            prime,
+                            ramification,
+                            1,
+                            workspace[map_base],
+                            workspace[map_base + 1],
+                            workspace[map_base + 2],
+                            1,
+                            group_count,
+                            0,
+                            0,
+                        )
                         power_base: uint64 = (
                             _POWER_OFFSET + factor_count * _CUBIC_MAX_POWERS * 9
                         )
@@ -6709,16 +6723,18 @@ def certified_complex_cubic_class_group_v1(
                         and prime * prime <= factor_search_bound
                     ):
                         factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * factor_count
-                        workspace[factor_base] = prime
-                        workspace[factor_base + 1] = 1
-                        workspace[factor_base + 2] = 2
-                        workspace[factor_base + 3] = 0
-                        workspace[factor_base + 4] = 0
-                        workspace[factor_base + 5] = 0
-                        workspace[factor_base + 6] = 0
-                        workspace[factor_base + 7] = group_count
-                        workspace[factor_base + 8] = 1
-                        workspace[factor_base + 9] = 0
+                        workspace[factor_base : factor_base + 10] = (
+                            prime,
+                            1,
+                            2,
+                            0,
+                            0,
+                            0,
+                            0,
+                            group_count,
+                            1,
+                            0,
+                        )
                         power_base: uint64 = (
                             _POWER_OFFSET + factor_count * _CUBIC_MAX_POWERS * 9
                         )
@@ -6741,10 +6757,12 @@ def certified_complex_cubic_class_group_v1(
                         workspace[factor_base + 6] = 1
                         factor_count += 1
                     group_factor_count = factor_count - group_factor_start
-                    workspace[group_base] = prime
-                    workspace[group_base + 1] = group_factor_start
-                    workspace[group_base + 2] = group_factor_count
-                    workspace[group_base + 3] = 0
+                    workspace[group_base : group_base + 4] = (
+                        prime,
+                        group_factor_start,
+                        group_factor_count,
+                        0,
+                    )
 
                     # A two-map ramified cubic has local type (2,1),(1,1).
                     # Determine which kernel has e=2 from exact P^2 membership.
