@@ -6758,6 +6758,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/algebraic-gamma1-boundaries.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "src/baselib/matrix.py"
       ],

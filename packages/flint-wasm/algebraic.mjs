@@ -483,7 +483,7 @@ export function createAlgebraicBackend(instance, {
     "matrix_entry_handles", "matrix_live_count", "matrix_close", "matrix_create",
     "matrix_binary", "matrix_unary", "matrix_scalar_mul", "matrix_entry",
     "matrix_det", "matrix_rank", "matrix_equal", "matrix_charpoly",
-    "matrix_select", "matrix_right_kernel", "cyclotomic_coefficients",
+    "matrix_select", "matrix_right_kernel", "matrix_pivots", "cyclotomic_coefficients",
   ];
   for (const name of required) {
     if (typeof wasm[`sagejs_wasm_algebraic_${name}`] !== "function") {
@@ -1251,6 +1251,15 @@ export function createAlgebraicBackend(instance, {
       );
       recordMatrix("determinant", 4);
       return result;
+    },
+    matrixPivots(value) {
+      if (!liveMatrices.has(value)) return fallbackMatrix("matrixPivots", [value]);
+      check(wasm.sagejs_wasm_algebraic_matrix_pivots(matrixHandleOf(value)),
+        "qqbar matrix pivots");
+      const count = wasm.sagejs_wasm_algebraic_result_count() >>> 0;
+      const columns = Array.from(new Uint32Array(memory.buffer, matrixEntryHandlesPointer, count));
+      recordMatrix("pivots", 4, count * 4);
+      return columns;
     },
     matrixRank(value) {
       if (!liveMatrices.has(value)) return fallbackMatrix("matrixRank", [value]);

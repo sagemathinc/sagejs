@@ -681,6 +681,7 @@ const algebraicExports = [
   "sagejs_wasm_algebraic_matrix_scalar_mul",
   "sagejs_wasm_algebraic_matrix_entry",
   "sagejs_wasm_algebraic_matrix_det",
+  "sagejs_wasm_algebraic_matrix_pivots",
   "sagejs_wasm_algebraic_matrix_rank",
   "sagejs_wasm_algebraic_matrix_equal",
   "sagejs_wasm_algebraic_matrix_charpoly",
@@ -695,9 +696,9 @@ const declaredAlgebraicExports = [...fs.readFileSync(
   "utf8",
 ).matchAll(/EXPORT\s+[\w\s*]+\s+(sagejs_wasm_algebraic_\w+)\s*\(/g)]
   .map((match) => match[1]);
-if (declaredAlgebraicExports.length !== 46 ||
+if (declaredAlgebraicExports.length !== 47 ||
     declaredAlgebraicExports.some((name, index) => name !== algebraicExports[index])) {
-  throw new Error("the reviewed 46-function algebraic Wasm export closure drifted");
+  throw new Error("the reviewed 47-function algebraic Wasm export closure drifted");
 }
 const exportNames = [
   "sagejs_factor_input",

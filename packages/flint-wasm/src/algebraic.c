@@ -441,6 +441,16 @@ EXPORT int32_t sagejs_wasm_algebraic_matrix_det(uint32_t source)
     return last_status;
 }
 
+EXPORT int32_t sagejs_wasm_algebraic_matrix_pivots(uint32_t source)
+{
+    if (!ensure_context())
+        return last_status;
+    last_status = sagejs_algebraic_matrix_pivots(
+        context, source, matrix_entry_handles,
+        SAGEJS_ALGEBRAIC_MAX_MATRIX_ENTRIES, &result_count);
+    return last_status;
+}
+
 EXPORT int32_t sagejs_wasm_algebraic_matrix_rank(uint32_t source)
 {
     if (!ensure_context())

@@ -35,10 +35,12 @@ test("FLINT Wasm right kernels have canonical row bases, including empty shapes"
     rational(0n), rational(1n), rational(-2n, 3n),
   ], true));
   assert.equal(api.matrixEqual(kernel, expected), true);
+  assert.deepEqual(api.matrixPivots(kernel), [0, 1]);
   const transpose = matrix(api.matrixTranspose(kernel));
   const annihilator = matrix(api.matrixMul(source, transpose));
   assert.equal(api.matrixRank(annihilator), 0);
   const empty = matrix(api.qqbarMatrix(0, 3, [], true));
+  assert.deepEqual(api.matrixPivots(empty), []);
   const full = matrix(api.matrixRightKernel(empty));
   assert.equal(full.rows, 3);
   assert.equal(api.matrixRank(full), 3);

@@ -222,6 +222,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_algebraic_matrix_pivots",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_algebraic_matrix_rank",
           "kind": "function"
         },

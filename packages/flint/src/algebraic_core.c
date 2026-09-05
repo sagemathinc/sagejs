@@ -1537,6 +1537,34 @@ int sagejs_algebraic_matrix_rank(
     return SAGEJS_ALGEBRAIC_OK;
 }
 
+int sagejs_algebraic_matrix_pivots(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    uint32_t *columns,
+    uint32_t capacity,
+    uint32_t *count)
+{
+    sagejs_algebraic_matrix_slot *slot = lookup_matrix(context, source);
+    gr_ctx_struct *gr_context;
+    slong row, column;
+    if (count == NULL)
+        return SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+    *count = 0;
+    if (slot == NULL)
+        return SAGEJS_ALGEBRAIC_INVALID_HANDLE;
+    if (columns == NULL || capacity < (uint32_t) slot->value->r)
+        return SAGEJS_ALGEBRAIC_RESOURCE_LIMIT;
+    gr_context = matrix_context(context, slot->real_only);
+    for (row = 0; row < slot->value->r; row++)
+        for (column = 0; column < slot->value->c; column++)
+            if (!qqbar_is_zero(gr_mat_entry_srcptr(slot->value, row, column, gr_context)))
+            {
+                columns[(*count)++] = (uint32_t) column;
+                break;
+            }
+    return SAGEJS_ALGEBRAIC_OK;
+}
+
 int sagejs_algebraic_matrix_equal(
     sagejs_algebraic_context *context,
     uint32_t left,

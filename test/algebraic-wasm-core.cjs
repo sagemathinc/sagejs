@@ -100,6 +100,14 @@ int main(void) {
     uint32_t indices[] = {2, 0};
     assert(sagejs_algebraic_matrix_create(context, 2, 3, entries, 6, 1, &matrix) == 0);
     assert(sagejs_algebraic_matrix_right_kernel(context, matrix, &kernel, &nullity) == 0);
+    uint32_t pivot_columns[128], pivot_count;
+    assert(sagejs_algebraic_matrix_pivots(context, kernel, pivot_columns, 128, &pivot_count) == 0);
+    assert(pivot_count == nullity);
+    for (uint32_t i = 1; i < pivot_count; i++) assert(pivot_columns[i-1] < pivot_columns[i]);
+    assert(sagejs_algebraic_matrix_pivots(context, matrix, pivot_columns, 0, &pivot_count) == SAGEJS_ALGEBRAIC_RESOURCE_LIMIT);
+    assert(pivot_count == 0);
+    assert(sagejs_algebraic_matrix_pivots(context, matrix, NULL, 128, &pivot_count) == SAGEJS_ALGEBRAIC_RESOURCE_LIMIT);
+    assert(sagejs_algebraic_matrix_pivots(context, matrix, pivot_columns, 128, NULL) == SAGEJS_ALGEBRAIC_INVALID_ARGUMENT);
     assert(nullity == 2);
     assert(sagejs_algebraic_matrix_unary(context, SAGEJS_ALGEBRAIC_MATRIX_TRANSPOSE, kernel, &transposed) == 0);
     assert(sagejs_algebraic_matrix_binary(context, SAGEJS_ALGEBRAIC_MATRIX_MUL, matrix, transposed, &annihilator) == 0);

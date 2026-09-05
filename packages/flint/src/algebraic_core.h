@@ -267,6 +267,15 @@ int sagejs_algebraic_matrix_rank(
     uint32_t source,
     int32_t *rank);
 
+/* First nonzero column of each nonzero row; caller supplies echelon form
+   when mathematical pivot columns are required. No scalar handles escape. */
+int sagejs_algebraic_matrix_pivots(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    uint32_t *columns,
+    uint32_t capacity,
+    uint32_t *count);
+
 int sagejs_algebraic_matrix_equal(
     sagejs_algebraic_context *context,
     uint32_t left,
