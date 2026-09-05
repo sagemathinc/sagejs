@@ -56,6 +56,23 @@ test("native list and tuple slicing preserves Python values and result types", a
   ].join("\n"));
 });
 
+test("native sequence slices accept exact BigInt-backed bounds", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "values = [0, 1, 2, 3, 4]",
+    "start = (1 << 70) % 3",
+    "stop = (1 << 70) % 5",
+    "print(values[start:stop], tuple(values)[start:stop])",
+    "print(values[-(1 << 70):(1 << 70)])",
+    "print(values[::(1 << 70)], values[::-(1 << 70)])",
+  ].join("\n"));
+  assert.equal(
+    result.stdout.trim(),
+    "[1, 2, 3] (1, 2, 3)\n[0, 1, 2, 3, 4]\n[0] [4]",
+  );
+});
+
 test("native slice fast path defers to concrete list subclass overrides", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());

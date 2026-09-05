@@ -1301,6 +1301,12 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
             stop = indices[1]
             step = indices[2]
             if step == 1:
+                # `slice.indices()` has clamped these bounds to the native
+                # sequence length, so converting exact BigInt-backed values
+                # to JavaScript Numbers is lossless. `Array.prototype.slice`
+                # rejects BigInt arguments even when their values are small.
+                start = runtime.number(start)
+                stop = runtime.number(stop)
                 answer = runtime.reflect.apply(
                     runtime.array.prototype.slice,
                     value,
