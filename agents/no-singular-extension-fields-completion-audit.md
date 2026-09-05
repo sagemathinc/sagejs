@@ -207,6 +207,40 @@ optimizer evidence is
 local and unpublished. Regenerating the modular source manifest for the shared
 package-graph budget change does not renew its historical platform receipts.
 
+## F0 exact sparse storage and checked packets
+
+The internal `SparseContext`/`SparsePolynomial` substrate now supports canonical
+terms, arithmetic, powers, single-divisor quotient/remainder, degrees,
+derivatives, and evaluation through actual exact-field operations. It does not
+create a second public polynomial class. Each operation starts a fresh bounded
+workspace; stored values do not retain expired algorithm deadlines, and binary
+operations reject a foreign parent-owned context.
+
+The SJFM v1 multivariate transfer format includes the defining polynomial,
+characteristic, extension degree, variable count, and monomial order. A packet
+for an isomorphic but differently presented field is rejected. All coordinate
+and exponent rows are checked before constructing coefficient elements.
+The SJFF v1 factorization container preserves the unit and exact multiplicities
+and preflights every nested packet before reconstructing any coefficient.
+Transfer integrity does not itself certify factor irreducibility/completeness.
+
+Independent CPython fixtures exercise QQ/GF(4)/GF(9) sparse arithmetic and
+adversarial truncations, trailing bytes, coefficient ranges, presentation
+mismatches, and factorization framing. A Sage.js fixture exercises actual QQ,
+GF(5), GF(4), GF(9), and GF(25) parents in all three orders, including canonical
+coordinate round trips and parent identity. This remains an internal F0
+substrate, not an enabled public extension-geometry capability.
+
+The lazy polynomial source allowance is 300000 bytes for this substrate and
+its checked codecs. Any regenerated shared modular source manifest records the
+package-graph change only; it does not renew historical platform evidence.
+
+Separately, checkpoint `f94747f7a` has green routine CI, Linux ARM64/macOS
+ARM64/Windows x64 platform smoke, Chromium parity, and iPhone/iPad simulators.
+Its production artifact `bc302298…9324dc` also passed the full local Chromium
+mathematics/plotting smoke in 134 seconds. Those receipts do not qualify this
+new sparse substrate or the forthcoming public multivariate implementation.
+
 ## Still required
 
 - Finish E0 fixtures, capability routing, generic v2 contracts/certificates,
