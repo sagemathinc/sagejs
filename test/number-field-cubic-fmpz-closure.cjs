@@ -118,7 +118,7 @@ test("the complete cubic closure is one direct fmpz program", {
 
   assert.equal(ir.version, 38);
   assert.equal(functions.size, 84);
-  assert.equal(edges.length, 194);
+  assert.equal(edges.length, 195);
   assert.equal(
     createHash("sha256").update(names.join("\n")).digest("hex"),
     expectedNameDigest,
