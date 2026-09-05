@@ -73,6 +73,16 @@ static inline size_t sagejs_fq_mpoly_allocated_bytes(const sagejs_fq_mpoly_t val
             sagejs_retained_size_multiply((size_t) value->value->exps_alloc, sizeof(ulong))));
 }
 
+/* Charge a shared context conservatively to each cached child. This counts
+ * retained FLINT buffers, not allocator metadata or transient algorithm RSS. */
+static inline uint64_t sagejs_fq_mpoly_cache_bytes(const sagejs_fq_mpoly_t value)
+{
+    sagejs_fq_mpoly_context_struct context = {value->context};
+    return (uint64_t) sagejs_retained_size_add(
+        sagejs_fq_mpoly_allocated_bytes(value),
+        sagejs_fq_mpoly_context_allocated_bytes(&context));
+}
+
 static inline void sagejs_fq_mpoly_state_release(
     sagejs_fq_mpoly_context_state *state)
 {

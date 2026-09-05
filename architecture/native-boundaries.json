@@ -14,8 +14,8 @@
   },
   "counts": {
     "classified-native-file": 246,
-    "declared-ffi": 463,
-    "declared-ffi-resource": 34,
+    "declared-ffi": 474,
+    "declared-ffi-resource": 37,
     "napi-export": 354,
     "runtime-intrinsic": 147,
     "wasm-export": 74
@@ -340,6 +340,49 @@
       "close_export": "ffiFqElementClose",
       "clear_symbol": "sagejs_fq_element_clear",
       "size_symbol": "sagejs_fq_element_allocated_bytes",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "FqMpoly",
+      "abi_type": "sagejs_fq_mpoly_t",
+      "close_export": "ffiFqMpolyClose",
+      "clear_symbol": "sagejs_fq_mpoly_clear",
+      "size_symbol": "sagejs_fq_mpoly_allocated_bytes",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly_bytes",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "FqMpolyBytes",
+      "abi_type": "sagejs_fq_mpoly_bytes_t",
+      "close_export": "ffiFqMpolyBytesClose",
+      "clear_symbol": "sagejs_flint_byte_region_clear",
+      "size_symbol": "sagejs_flint_byte_region_allocated_bytes",
+      "host_transfer": {
+        "kind": "copied_bytes",
+        "dynamic_export": "ffiFqMpolyBytesCopyBytes",
+        "data_symbol": "sagejs_flint_byte_region_data",
+        "length_symbol": "sagejs_flint_byte_region_length",
+        "wasm": true
+      },
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly_context",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "FqMpolyContext",
+      "abi_type": "sagejs_fq_mpoly_context_t",
+      "close_export": "ffiFqMpolyContextClose",
+      "clear_symbol": "sagejs_fq_mpoly_context_clear",
+      "size_symbol": "sagejs_fq_mpoly_context_allocated_bytes",
       "disposition": "declared-owned-ffi-resource"
     },
     {
@@ -3972,6 +4015,127 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFqElementSub",
       "symbol": "sagejs_fq_element_sub",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_binary",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_mpoly_binary",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqMpolyBinary",
+      "symbol": "sagejs_fq_mpoly_binary",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_cache_bytes",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_mpoly_cache_bytes",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqMpolyCacheBytes",
+      "symbol": "sagejs_fq_mpoly_cache_bytes",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_context",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_mpoly_context",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqMpolyContextCreate",
+      "symbol": "sagejs_fq_mpoly_context_init",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_copy",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_mpoly_copy",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqMpolyCopy",
+      "symbol": "sagejs_fq_mpoly_copy",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_equal",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_mpoly_equal",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqMpolyEqual",
+      "symbol": "sagejs_fq_mpoly_equal",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_factor_bytes",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_mpoly_factor_bytes",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqMpolyFactorBytes",
+      "symbol": "sagejs_fq_mpoly_factor_bytes",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_from_terms",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_mpoly_from_terms",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqMpolyFromTerms",
+      "symbol": "sagejs_fq_mpoly_init_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_gcd",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_mpoly_gcd",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqMpolyGcd",
+      "symbol": "sagejs_fq_mpoly_gcd",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_neg",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_mpoly_neg",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqMpolyNeg",
+      "symbol": "sagejs_fq_mpoly_neg",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_resultant",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_mpoly_resultant",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqMpolyResultant",
+      "symbol": "sagejs_fq_mpoly_resultant",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_term_bytes",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_mpoly_term_bytes",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqMpolyTermBytes",
+      "symbol": "sagejs_fq_mpoly_term_bytes",
       "disposition": "declared-safe-ffi"
     },
     {

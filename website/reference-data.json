@@ -35032,16 +35032,16 @@
         "name": "PolynomialRing",
         "qualified": "PolynomialRing",
         "path": "src/baselib/polynomial.py",
-        "line": 6074,
+        "line": 6107,
         "excerpt": {
-          "start_line": 6062,
+          "start_line": 6095,
           "text": "        ρσ_polynomial_ring_cache.set(base, by_variable)\n    cache_key = \",\".join(variables) + \"|multivariate|\" + order\n    parent = by_variable.get(cache_key)\n    if parent is runtime.undefined:\n        if approximate:\n            parent = ApproximatePolynomialRingParent(base, variables, order)\n        else:\n            parent = MultivariatePolynomialRingParent(base, variables, order)\n        by_variable.set(cache_key, parent)\n    return parent\n\n\ndef PolynomialRing(\n    base: sage.Parent,\n    variable: Any = None,\n    names: Any = None,\n    sparse: bool = False,\n    implementation: Any = None,\n    order: str = \"degrevlex\",\n) -> Any:\n    r\"\"\"\n    Construct a univariate or multivariate polynomial ring.\n\n    Coefficient rings currently include `ZZ`, `QQ`, prime and extension\n    finite fields, `Zmod(n)`, exact algebraic fields, and approximate real"
         }
       },
       "examples": [
         {
           "id": "src/baselib/polynomial.py#0589052cd70c5442-e3b0c44298fc1c14",
-          "line": 6094,
+          "line": 6127,
           "source": "R.<x> = QQ[]",
           "want": "",
           "tags": [],
@@ -35057,7 +35057,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#211d1a07c12a56d3-c3f7c1d6f3b011af",
-          "line": 6095,
+          "line": 6128,
           "source": "(x^4 - 1).factor()",
           "want": "(x + 1) * (x - 1) * (x^2 + 1)\n",
           "tags": [],
@@ -35073,7 +35073,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#879acf70128b6be0-e3b0c44298fc1c14",
-          "line": 6097,
+          "line": 6130,
           "source": "S.<x,y> = GF(4, 'a')[]",
           "want": "",
           "tags": [],
@@ -35089,7 +35089,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#2935ab1a54b6ef2c-050305b3ec2996f0",
-          "line": 6098,
+          "line": 6131,
           "source": "(x + y)^3",
           "want": "x^3 + x^2*y + x*y^2 + y^3\n",
           "tags": [],

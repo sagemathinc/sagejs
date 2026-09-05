@@ -36,6 +36,7 @@ flint = Library(
         "sagejs/fmpq_matrix_ffi.h",
         "sagejs/fmpz_mod_polynomial_ffi.h",
         "sagejs/fq_polynomial_ffi.h",
+        "sagejs/fq_mpoly_ffi.h",
         "sagejs/hyperelliptic/rational_jacobian_ffi.h",
         "sagejs/nmod_matrix_ffi.h",
         "sagejs/native_exact_workspace_ffi.h",
@@ -327,6 +328,42 @@ FmpzModPolynomialRoots = flint.resource(
 # context.  Every operation below is therefore explicitly `thread_safe=False`.
 # Dependents survive closing the public context wrapper and retain the context
 # until the last element or polynomial closes.
+FqMpolyContext = flint.resource(
+    id="fq_mpoly_context",
+    abi=sagejs_fq_mpoly_context_t,
+    ownership="owned",
+    close="ffiFqMpolyContextClose",
+    clear="sagejs_fq_mpoly_context_clear",
+    size="sagejs_fq_mpoly_context_allocated_bytes",
+    wasm=True,
+)
+
+FqMpoly = flint.resource(
+    id="fq_mpoly",
+    abi=sagejs_fq_mpoly_t,
+    ownership="owned",
+    close="ffiFqMpolyClose",
+    clear="sagejs_fq_mpoly_clear",
+    size="sagejs_fq_mpoly_allocated_bytes",
+    wasm=True,
+)
+
+FqMpolyBytes = flint.resource(
+    id="fq_mpoly_bytes",
+    abi=sagejs_fq_mpoly_bytes_t,
+    ownership="owned",
+    close="ffiFqMpolyBytesClose",
+    clear="sagejs_flint_byte_region_clear",
+    size="sagejs_flint_byte_region_allocated_bytes",
+    host_transfer=copied_bytes(
+        dynamic="ffiFqMpolyBytesCopyBytes",
+        data="sagejs_flint_byte_region_data",
+        length="sagejs_flint_byte_region_length",
+        wasm=True,
+    ),
+    wasm=True,
+)
+
 FqContext = flint.resource(
     id="fq_context",
     abi=sagejs_fq_context_t,
@@ -11468,3 +11505,283 @@ def positive_rational_log_balls_resource(
     count: uint64,
     precision: uint64,
 ) -> bool: ...
+
+
+# Bounded finite-extension multivariate representation primitives.
+
+
+@flint.function(
+    dynamic="ffiFqMpolyContextCreate",
+    symbol="sagejs_fq_mpoly_context_init",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_mpoly_context_t),
+        in_(
+            "modulus",
+            uint64_t_ptr,
+            packed_slice(
+                data="modulus",
+                length="modulus_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("modulus_length", uint64_t),
+        in_("characteristic", uint64_t),
+        in_("variables", uint64_t),
+        in_("order", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite-extension multivariate input or result is outside the declared resource envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_context(
+    modulus: UInt64Buffer,
+    modulus_length: uint64,
+    characteristic: uint64,
+    variables: uint64,
+    order: uint64,
+) -> FqMpolyContext: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyFromTerms",
+    symbol="sagejs_fq_mpoly_init_packed",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_mpoly_t),
+        in_("context", sagejs_fq_mpoly_context_t),
+        in_(
+            "data",
+            uint64_t_ptr,
+            packed_slice(
+                data="data",
+                length="length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("length", uint64_t),
+        in_("terms", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite-extension multivariate input or result is outside the declared resource envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_from_terms(
+    context: FqMpolyContext, data: UInt64Buffer, length: uint64, terms: uint64
+) -> FqMpoly: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyCopy",
+    symbol="sagejs_fq_mpoly_copy",
+    returns=int,
+    abi=[out("result", sagejs_fq_mpoly_t), in_("source", sagejs_fq_mpoly_t)],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite-extension multivariate input or result is outside the declared resource envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_copy(source: FqMpoly) -> FqMpoly: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyNeg",
+    symbol="sagejs_fq_mpoly_neg",
+    returns=int,
+    abi=[out("result", sagejs_fq_mpoly_t), in_("source", sagejs_fq_mpoly_t)],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite-extension multivariate input or result is outside the declared resource envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_neg(source: FqMpoly) -> FqMpoly: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyBinary",
+    symbol="sagejs_fq_mpoly_binary",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_mpoly_t),
+        in_("left", sagejs_fq_mpoly_t),
+        in_("right", sagejs_fq_mpoly_t),
+        in_("operation", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite-extension multivariate input or result is outside the declared resource envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_binary(left: FqMpoly, right: FqMpoly, operation: uint64) -> FqMpoly: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyTermBytes",
+    symbol="sagejs_fq_mpoly_term_bytes",
+    returns=int,
+    abi=[out("result", sagejs_fq_mpoly_bytes_t), in_("source", sagejs_fq_mpoly_t)],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite-extension multivariate input or result is outside the declared resource envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_term_bytes(source: FqMpoly) -> FqMpolyBytes: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyEqual",
+    symbol="sagejs_fq_mpoly_equal",
+    returns=int,
+    abi=[in_("left", sagejs_fq_mpoly_t), in_("right", sagejs_fq_mpoly_t)],
+    effects=Effects(pure=False, thread_safe=False),
+    result=Direct(),
+    wasm=True,
+)
+def fq_mpoly_equal(left: FqMpoly, right: FqMpoly) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyGcd",
+    symbol="sagejs_fq_mpoly_gcd",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_mpoly_t),
+        in_("left", sagejs_fq_mpoly_t),
+        in_("right", sagejs_fq_mpoly_t),
+    ],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT fq_mpoly_gcd failed or exceeded the finite-extension representation envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_gcd(left: FqMpoly, right: FqMpoly) -> FqMpoly: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyResultant",
+    symbol="sagejs_fq_mpoly_resultant",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_mpoly_t),
+        in_("left", sagejs_fq_mpoly_t),
+        in_("right", sagejs_fq_mpoly_t),
+        in_("variable", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT fq_mpoly_resultant failed or exceeded the finite-extension representation envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_resultant(left: FqMpoly, right: FqMpoly, variable: uint64) -> FqMpoly: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyFactorBytes",
+    symbol="sagejs_fq_mpoly_factor_bytes",
+    returns=int,
+    abi=[out("result", sagejs_fq_mpoly_bytes_t), in_("source", sagejs_fq_mpoly_t)],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT fq_mpoly_factor_bytes failed or exceeded the finite-extension representation envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_factor_bytes(source: FqMpoly) -> FqMpolyBytes: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyCacheBytes",
+    symbol="sagejs_fq_mpoly_cache_bytes",
+    returns=uint64_t,
+    abi=[in_("source", sagejs_fq_mpoly_t)],
+    effects=Effects(pure=False, thread_safe=False),
+    result=Direct(),
+    wasm=True,
+)
+def fq_mpoly_cache_bytes(source: FqMpoly) -> uint64: ...

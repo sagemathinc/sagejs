@@ -275,11 +275,61 @@ and closing the context before using its children. The runner supports native
 Windows ClangCL and Unix hosts, but those targets are not yet qualified for
 this change. Release builds explicitly retain assertions in the C witness.
 
-This boundary is not yet declared in the production FFI surface or wired into
-public polynomials. Its production adapter, bounded resident-value ownership,
-lazy specialist delivery, and complete cross-platform qualification remain F0
-work. A separate generated-ABI experiment also passed Wasm ownership and
+At that checkpoint the boundary was not yet declared or wired into public
+polynomials. The subsequent native dispatch checkpoint below adds those parts.
+A separate generated-ABI experiment also passed Wasm ownership and
 memory-growth tests; it is not a production artifact receipt.
+
+## F0 public native dispatch and bounded residency
+
+The existing `MultivariatePolynomialElement` now delegates extension-field
+storage through `extension_mpoly_backend.py`. Other coefficient domains retain
+their existing backend. Three owned FFI resources and eleven declared calls
+provide canonical context ingress, resource arithmetic, copied term/factor
+packets, and conservative retained-buffer accounting. Coefficients never cross
+this boundary as scalar resource pointers.
+
+Arithmetic retains immutable FLINT values. A 64-value / 16 MiB cache spills
+exact canonical bytes and rehydrates them on demand; all operands are pinned
+before either is rehydrated. Contexts close only after their last resident child
+and operation pin disappear. The cache charges a shared context conservatively
+to each child. It does not claim to bound FLINT temporary RSS, total Python
+object storage, or time inside a synchronous foreign call.
+
+Local Linux x64 evidence:
+
+- Public arithmetic covers GF(4), GF(8), GF(9), GF(27), GF(25), GF(65519²), and
+  an explicit degree-two extension at p=4294967291, in all three orders.
+  It checks gcd, exact division, resultant, distinct factors, term parents,
+  evaluation/substitution, derivatives, homogenization, univariate extraction,
+  ring conversion, collision rejection, and recovery after resource errors.
+- Cache limits of one, two, and four values, and a one-byte limit forcing all
+  values to spill, preserve exact results and bounded retained counts.
+- Nine existing/generic polynomial tests pass, including prime/rational ideals,
+  structural calculus, ring conversion, and independent sparse fixtures.
+- The C boundary again passes ASAN/UBSAN/LSAN and standalone locked-toolchain
+  Wasm checks. Neither is a production browser receipt.
+- Strict Python passes 383 modules with zero errors.
+
+`bench/extension-mpoly-residency.py` is a reproducible prepared-product witness:
+100 products per sample, one warmup and five retained samples, GF(9), two
+variables, degrevlex, input term counts 4/3 and output count 6. One local run
+measured median 0.068 s public versus 0.693 s generic sparse, with exact equality
+checked outside timing. Construction/initial decoding is excluded; normal
+cache eviction remains inside the public timing. This is not a cross-platform
+performance receipt, an automatic algorithm-selection envelope, or a claim
+about Gröbner/factorization speed.
+
+The polynomial lazy-source budget increases from 300000 to 313000 bytes for
+the private resident delegate (311421 measured total). It does not increase an
+eager Wasm payload budget. The modular source-freeze update records only this
+shared package-graph change, not renewed modular mathematical qualification.
+
+The fourteen new resource/function capability records remain **planned** for
+production Wasm. The historical production artifact does not contain them.
+Independent specialist delivery, authentication, compressed-size review,
+public Node-Wasm/Chromium tests, and the other native platforms remain open.
+Public ideals and geometry still reject extension coefficients until F1/F2.
 
 ## Still required
 
