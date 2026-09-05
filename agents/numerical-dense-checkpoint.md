@@ -53,3 +53,9 @@ by infinity. It does not claim extended-range validation is implemented.
 Focused tests include deliberately wrong factors and the public structured
 failure path. A future scaled normalization implementation needs its own
 evidence; acceleration must not bypass these guards.
+
+The [overflow qualification](../bench/numerics/performance/results/validation-overflow-2026-09-05/README.md)
+retains matching four-host CPython/dynamic receipts and twelve source-browser
+routes. A combined-fixture WebKit assertion remains unexplained; the
+filename-labeled separate-fixture harness passed. This is source qualification,
+not full product or performance qualification.

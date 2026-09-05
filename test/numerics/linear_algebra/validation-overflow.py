@@ -22,21 +22,23 @@ def rejects(call):
     try:
         call()
     except LinearAlgebraError as error:
-        assert error.code == "nonfinite_intermediate"
-        assert error.details["phase"] == "independent_validation_normalization"
+        assert error.code == "nonfinite_intermediate", repr(error.code)
+        assert error.details["phase"] == "independent_validation_normalization", repr(
+            error.details
+        )
         return
     raise AssertionError("unrepresentable validation normalization was accepted")
 
 
 matrix = DenseMatrix(2, 2, [1e308, 1e308, 0.0, 1e308])
 wrong = DenseMatrix(2, 2, [9e307, 1e308, 0.0, 1e308])
-assert math.isinf(matrix.norm_infinity())
+assert math.isinf(matrix.norm_infinity()), repr(matrix.norm_infinity())
 bad_lu = LUFactorization(matrix, wrong, [0, 1], 0, 0.0)
 # Previously this ten-percent entry error reported residual=0 and passed=True.
 rejects(lambda: validate_lu(matrix, bad_lu))
 result = lu(matrix, trace="none").to_dict()
-assert not result["success"] and result["status"] == "validation_failed"
-assert result["validation"]["truth_level"] == "indeterminate"
+assert not result["success"] and result["status"] == "validation_failed", repr(result)
+assert result["validation"]["truth_level"] == "indeterminate", repr(result)
 
 
 class BadQR:
