@@ -5290,6 +5290,8 @@ def ρσ_getattr_internal(
                 or ρσ_is_bound_method(class_member)
                 or (
                     _builtins_is_baselib_function(class_member)
+                    and runtime.native_get(class_member, "__sagejs_native_method__")
+                    is not True
                     and _builtins_get_member(class_member, "__python_descriptor__")
                     is not True
                     and _builtins_get_member(
@@ -5316,7 +5318,7 @@ def ρσ_getattr_internal(
                 is not True
             ):
                 return runtime.unbound_method_adapter(class_member)
-            elif class_member is not runtime.undefined:
+            else:
                 return class_member
         # A Python class is an instance of its metaclass.  Methods inherited
         # from that metaclass (for example pytest's ``NodeMeta._create``) bind
