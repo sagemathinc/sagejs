@@ -13,7 +13,7 @@ const {
 
 test("the exact modular q-expansion source bundle is frozen", () => {
   const manifest = verifySourceFreeze();
-  assert.equal(manifest.files.length, 35);
+  assert.equal(manifest.files.length, 37);
   assert.ok(manifest.files.some(({ path }) =>
     path === "src/lib/sagejs/modular_forms/gamma1.py"));
   assert.deepEqual(manifest.required_checks, REQUIRED_CHECKS);

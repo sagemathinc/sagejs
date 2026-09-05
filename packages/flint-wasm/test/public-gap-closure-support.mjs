@@ -17,14 +17,11 @@ export const publicGapCases = Object.freeze([
   gamma1ModularFormsCase,
   {
     name: "Gamma1 cuspidal newform descent",
-    expectedError: "Character Hecke matrices are not yet supported in WebAssembly; use the native Sage.js backend.",
     source: [
       "S=ModularForms(Gamma1(13),2,prec=8).cuspidal_subspace()",
       "[S.dimension(), S.q_expansion_basis(), S.hecke_matrix(2),",
       " len(S.newforms()), S.q_expansion_basis_certificate().verify()]",
     ].join("\n"),
-    // Native differential fixture for the follow-up character-Hecke backend.
-    // Until that backend exists, assert the explicit capability error instead.
     expected: "[2, [q - 4*q^3 - q^4 + 3*q^5 + 6*q^6 + O(q^8), q^2 - 2*q^3 - q^4 + 2*q^5 + 2*q^6 + O(q^8)], [ 0 -3]\n[ 1 -3], 1, True]",
   },
   {

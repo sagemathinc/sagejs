@@ -812,6 +812,16 @@
       "prefixes": []
     },
     {
+      "id": "modular-character-hecke",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 8000,
+      "depends_on": ["core-runtime", "modular-forms", "linear-algebra"],
+      "modules": ["sagejs.modular_forms.character_hecke"],
+      "files": ["src/lib/sagejs/modular_forms/character_hecke.py"],
+      "prefixes": []
+    },
+    {
       "id": "modular-form-qexp-algebra",
       "layer": 6,
       "startup": "lazy",

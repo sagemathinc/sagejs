@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "6cdaafd9a48ef5a57542a8b37acca93043a9298c8f8dd3be9f87c2ad3be59abb",
+  "source_sha256": "b706c463e3fc2a60dfc0d451059a7cf867d74ce4af44bed8b75c658dec289de7",
   "counts": {
     "total": 1090,
     "by_kind": {
@@ -14,15 +14,15 @@
     },
     "by_disposition": {
       "compiled-source": 55,
-      "desktop-only": 50,
+      "desktop-only": 47,
       "generated-wasm": 363,
-      "portable-fallback": 572,
+      "portable-fallback": 575,
       "shared-core": 50
     },
     "by_status": {
       "available": 609,
-      "desktop-only": 50,
-      "fallback": 431
+      "desktop-only": 47,
+      "fallback": 434
     }
   },
   "workflow_aliases": {
@@ -9551,38 +9551,38 @@
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
       "family": "modular-symbols",
-      "disposition": "desktop-only",
-      "status": "desktop-only",
-      "fallback": "unavailable",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
+      "explanation": "Exact character Hecke action and Gamma1 cusp/newform descent have a portable Python implementation using the browser's exact coefficient-field and matrix operations."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeMatrix",
       "family": "modular-symbols",
-      "disposition": "desktop-only",
-      "status": "desktop-only",
-      "fallback": "unavailable",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
+      "explanation": "Exact character Hecke action and Gamma1 cusp/newform descent have a portable Python implementation using the browser's exact coefficient-field and matrix operations."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeSelectedRows",
       "family": "modular-symbols",
-      "disposition": "desktop-only",
-      "status": "desktop-only",
-      "fallback": "unavailable",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
+      "explanation": "Exact character Hecke action and Gamma1 cusp/newform descent have a portable Python implementation using the browser's exact coefficient-field and matrix operations."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",
