@@ -23,6 +23,8 @@ const {
   inspectSourceBuildReceipt,
   validateBuildReceipt,
   workspaceFingerprint,
+  outputBindings,
+  outputWitnesses,
 } = require("../scripts/build-receipt.cjs");
 const {
   estimateRemaining,
@@ -221,24 +223,33 @@ test("build scheduling defaults are bounded and independently configurable", () 
   assert.throws(() => buildJobs({ SAGEJS_BUILD_JOBS: "0" }), /positive integer/);
 });
 
-test("build receipts require identical inputs and every output witness", () => {
+test("build receipts require identical inputs and every output witness", (context) => {
+  const root = mkdtempSync(join(tmpdir(), "sagejs-build-witness-"));
+  context.after(() => require("node:fs").rmSync(root, { recursive: true }));
+  for (const name of ["compiler", "tools", "vendor", "module-cache", "runtime-cache"]) {
+    mkdirSync(join(root, "dist", name), { recursive: true });
+  }
+  for (const name of ["compiler/compiler.js", "tools/kernel.js", "runtime-cache/manifest.json", "sagejs-version.json"]) {
+    writeFileSync(join(root, "dist", name), "built\n");
+  }
   const identity = { source: "same", node: "same" };
   const receipt = {
-    schema: "sagejs.build-receipt/v1",
+    schema: "sagejs.build-receipt/v2",
     completedAt: "2026-08-20T00:00:00.000Z",
     durationMilliseconds: 12,
     identity,
-    outputs: ["package.json"],
+    outputs: outputWitnesses(root, identity),
+    outputBindings: outputBindings(root, outputWitnesses(root, identity)),
   };
-  assert.equal(validateBuildReceipt(receipt, identity).current, true);
+  assert.equal(validateBuildReceipt(receipt, identity, root).current, true);
   assert.deepEqual(
-    validateBuildReceipt(receipt, { ...identity, source: "changed" }),
+    validateBuildReceipt(receipt, { ...identity, source: "changed" }, root),
     { current: false, reason: "build inputs changed" },
   );
   assert.match(
-    validateBuildReceipt({ ...receipt, outputs: ["definitely-missing"] }, identity)
+    validateBuildReceipt({ ...receipt, outputs: ["definitely-missing"] }, identity, root)
       .reason,
-    /output is missing/,
+    /witness contract/,
   );
 });
 
@@ -286,7 +297,13 @@ test("native bootstrap refreshes a proven source-build receipt", (context) => {
   context.after(() => require("node:fs").rmSync(root, { recursive: true }));
   mkdirSync(join(root, "dist"), { recursive: true });
   writeFileSync(join(root, "package.json"), '{}\n');
-  writeFileSync(join(root, "dist", "witness"), "built\n");
+  for (const name of ["compiler", "tools", "vendor", "module-cache", "runtime-cache"]) {
+    mkdirSync(join(root, "dist", name));
+    writeFileSync(join(root, "dist", name, "witness"), "built\n");
+  }
+  for (const name of ["compiler/compiler.js", "tools/kernel.js", "runtime-cache/manifest.json", "sagejs-version.json"]) {
+    writeFileSync(join(root, "dist", name), "built\n");
+  }
   const identity = {
     workspaceSha256: workspaceFingerprint(root),
     nativeInputs: [{ package: "flint", status: "absent" }],
@@ -298,11 +315,12 @@ test("native bootstrap refreshes a proven source-build receipt", (context) => {
   writeFileSync(
     join(root, "dist", "build-receipt.json"),
     `${JSON.stringify({
-      schema: "sagejs.build-receipt/v1",
+      schema: "sagejs.build-receipt/v2",
       completedAt: "2026-08-20T00:00:00.000Z",
       durationMilliseconds: 12,
       identity,
-      outputs: ["dist/witness"],
+      outputs: outputWitnesses(root, identity),
+      outputBindings: outputBindings(root, outputWitnesses(root, identity)),
     })}\n`,
   );
   assert.equal(inspectSourceBuildReceipt(root).current, true);
