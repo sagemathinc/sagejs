@@ -190,6 +190,8 @@
     "src/lib/sagejs/modular_forms/sparse_krylov.py",
     "src/lib/sagejs/modular_forms/sparse_hecke.py",
     "src/lib/sagejs/modular_forms/supersingular.py",
+    "src/lib/sagejs/modular_abelian_varieties/__init__.py",
+    "src/lib/sagejs/modular_abelian_varieties/abelian_variety.py",
     "src/lib/sagejs/quaternion_algebras/__init__.py",
     "src/lib/sagejs/quaternion_algebras/algebra.py",
     "src/lib/sagejs/quaternion_algebras/class_set.py",

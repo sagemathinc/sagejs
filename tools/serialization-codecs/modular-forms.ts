@@ -125,6 +125,9 @@ function encodeParent(value: unknown, context: EncodeContext): WireValue {
         kind: "OldModularFormsSubspace",
         cuspSpace: Reflect.get(Object(value), "_cusp_space"),
       });
+    case "ModularAbelianVariety":
+    case "AbelianVarietyHomology":
+      return require("./modular-abelian-varieties").encodeModularAbelianParent(value, context);
     default:
       throw new SageSerializationError("unsupported modular-forms parent");
   }
@@ -183,6 +186,9 @@ function decodeParent(payload: WireValue, context: DecodeContext): unknown {
       ]);
     case "OldModularFormsSubspace":
       return callMethod(data.cuspSpace, "old_subspace", []);
+    case "ModularAbelianVariety":
+    case "AbelianVarietyHomology":
+      return require("./modular-abelian-varieties").decodeModularAbelianParent(data);
     default:
       throw new SageSerializationError(
         `unsupported modular-forms parent ${String(data.kind)}`,
@@ -219,6 +225,10 @@ function encodeOperator(value: unknown, context: EncodeContext): WireValue {
         space: Reflect.get(Object(value), "_space"),
         index: Reflect.get(Object(value), "_value"),
       });
+    case "AbelianVarietyHeckeOperator":
+    case "ModularAbelianVarietyMap":
+    case "AbelianVarietySerializationCertificate":
+      return require("./modular-abelian-varieties").encodeModularAbelianOperator(value, context);
     default:
       throw new SageSerializationError("unsupported modular-symbol operator");
   }
@@ -242,6 +252,10 @@ function decodeOperator(payload: WireValue, context: DecodeContext): unknown {
       return callMethod(data.space, "T", [data.index]);
     case "ClassicalModularFormsDiamondOperator":
       return callMethod(data.space, "diamond_bracket_operator", [data.index]);
+    case "AbelianVarietyHeckeOperator":
+    case "ModularAbelianVarietyMap":
+    case "AbelianVarietySerializationCertificate":
+      return require("./modular-abelian-varieties").decodeModularAbelianOperator(data);
     default:
       throw new SageSerializationError(
         `unsupported modular-symbol operator ${String(data.kind)}`,
@@ -370,6 +384,8 @@ const parentCodec: SageCodec = {
     "ModularFormsSubspace",
     "EisensteinSubspace",
     "OldModularFormsSubspace",
+    "ModularAbelianVariety",
+    "AbelianVarietyHomology",
   ].includes(
     kind(value) ?? "",
   ),
@@ -402,6 +418,9 @@ const operatorCodec: SageCodec = {
     "ModularSymbolsLinearOperator",
     "ClassicalModularFormsDiamondOperator",
     "ClassicalModularFormsHeckeOperator",
+    "AbelianVarietyHeckeOperator",
+    "ModularAbelianVarietyMap",
+    "AbelianVarietySerializationCertificate",
   ].includes(
     kind(value) ?? "",
   ),

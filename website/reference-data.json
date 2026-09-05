@@ -5,6 +5,43 @@
     "entries": [
       {
         "schema_version": 1,
+        "name": "AbelianVariety",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.abvar.constructor",
+        "signature": "AbelianVariety(X: Any) -> Any",
+        "summary": "Construct a weight-$2$ $\\Gamma_0(N)$ modular abelian variety.",
+        "doc": "Construct a weight-$2$ $\\Gamma_0(N)$ modular abelian variety.\n\nA level or `Gamma0` group constructs $J_0(N)`. A sign-zero cuspidal\nmodular-symbol subspace constructs its saturated embedded subvariety, and\na normalized newform constructs the connected quotient $A_f$.",
+        "tags": [
+          "modular abelian varieties",
+          "newforms",
+          "quotients",
+          "integral homology"
+        ],
+        "backends": [
+          "Sage.js exact modular symbols",
+          "FLINT integer kernels, Hermite forms, and Smith forms"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Accepts Gamma0 levels/groups, sign-zero cuspidal modular symbols, and weight-two normalized newforms. Newforms construct connected quotients and also expose the embedded isogenous subvariety."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath modular abelian variety constructors",
+            "url": "https://doc.sagemath.org/html/en/reference/modabvar/",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Products and arbitrary Hecke-ideal quotients are not implemented.",
+          "Only weight-two Gamma0 spaces over QQ are accepted."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "AffineSpace",
         "aliases": [],
         "kind": "function",
@@ -7675,6 +7712,47 @@
       },
       {
         "schema_version": 1,
+        "name": "J0",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.abvar.constructor",
+        "signature": "J0(N: Any) -> Any",
+        "summary": "Return the modular Jacobian $J_0(N)$ over $\\mathbf Q$.",
+        "doc": "Return the modular Jacobian $J_0(N)$ over $\\mathbf Q$.\n\n```sage\nsage: J = J0(37)\nsage: (J.dimension(), J.integral_homology().rank())\n(2, 4)\n```",
+        "tags": [
+          "modular abelian varieties",
+          "modular symbols",
+          "integral homology",
+          "Hecke operators"
+        ],
+        "backends": [
+          "Sage.js exact modular symbols",
+          "FLINT integer kernels and normal forms"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The weight-two Gamma0/Q object and integral-homology core are implemented; general groups and arithmetic invariants remain future slices."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath modular abelian variety object model",
+            "url": "https://doc.sagemath.org/html/en/reference/modabvar/",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Connected quotient lattice and construction-authenticated SagePack representation"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Only weight two, Gamma0, trivial character, and base field QQ are supported.",
+          "Period lattices, polarizations, modular degrees, and component groups are deferred."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "Jacobian",
         "aliases": [],
         "kind": "function",
@@ -13284,6 +13362,54 @@
     ]
   },
   "entries": [
+    {
+      "schema_version": 1,
+      "name": "AbelianVariety",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.abvar.constructor",
+      "signature": "AbelianVariety(X: Any) -> Any",
+      "summary": "Construct a weight-$2$ $\\Gamma_0(N)$ modular abelian variety.",
+      "doc": "Construct a weight-$2$ $\\Gamma_0(N)$ modular abelian variety.\n\nA level or `Gamma0` group constructs $J_0(N)`. A sign-zero cuspidal\nmodular-symbol subspace constructs its saturated embedded subvariety, and\na normalized newform constructs the connected quotient $A_f$.",
+      "tags": [
+        "modular abelian varieties",
+        "newforms",
+        "quotients",
+        "integral homology"
+      ],
+      "backends": [
+        "Sage.js exact modular symbols",
+        "FLINT integer kernels, Hermite forms, and Smith forms"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Accepts Gamma0 levels/groups, sign-zero cuspidal modular symbols, and weight-two normalized newforms. Newforms construct connected quotients and also expose the embedded isogenous subvariety."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath modular abelian variety constructors",
+          "url": "https://doc.sagemath.org/html/en/reference/modabvar/",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Products and arbitrary Hecke-ideal quotients are not implemented.",
+        "Only weight-two Gamma0 spaces over QQ are accepted."
+      ],
+      "source": {
+        "name": "AbelianVariety",
+        "qualified": "AbelianVariety",
+        "path": "src/baselib/modular.py",
+        "line": 124,
+        "excerpt": {
+          "start_line": 112,
+          "text": "def J0(N: Any) -> Any:\n    r\"\"\"Return the modular Jacobian $J_0(N)$ over $\\mathbf Q$.\n\n    ```sage\n    sage: J = J0(37)\n    sage: (J.dimension(), J.integral_homology().rank())\n    (2, 4)\n    ```\n    \"\"\"\n    return _modular_abelian_variety_module().J0(N)\n\n\ndef AbelianVariety(X: Any) -> Any:\n    r\"\"\"Construct a weight-$2$ $\\Gamma_0(N)$ modular abelian variety.\n\n    A level or `Gamma0` group constructs $J_0(N)`. A sign-zero cuspidal\n    modular-symbol subspace constructs its saturated embedded subvariety, and\n    a normalized newform constructs the connected quotient $A_f$.\n    \"\"\"\n    return _modular_abelian_variety_module().AbelianVariety(X)\n\n\ndef BrandtModule(\n    D: Any,\n    N: Any = 1,"
+        }
+      },
+      "examples": []
+    },
     {
       "schema_version": 1,
       "name": "AffineSpace",
@@ -28695,6 +28821,91 @@
       "limitations": [],
       "source": null,
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "J0",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.abvar.constructor",
+      "signature": "J0(N: Any) -> Any",
+      "summary": "Return the modular Jacobian $J_0(N)$ over $\\mathbf Q$.",
+      "doc": "Return the modular Jacobian $J_0(N)$ over $\\mathbf Q$.\n\n```sage\nsage: J = J0(37)\nsage: (J.dimension(), J.integral_homology().rank())\n(2, 4)\n```",
+      "tags": [
+        "modular abelian varieties",
+        "modular symbols",
+        "integral homology",
+        "Hecke operators"
+      ],
+      "backends": [
+        "Sage.js exact modular symbols",
+        "FLINT integer kernels and normal forms"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The weight-two Gamma0/Q object and integral-homology core are implemented; general groups and arithmetic invariants remain future slices."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath modular abelian variety object model",
+          "url": "https://doc.sagemath.org/html/en/reference/modabvar/",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Connected quotient lattice and construction-authenticated SagePack representation"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Only weight two, Gamma0, trivial character, and base field QQ are supported.",
+        "Period lattices, polarizations, modular degrees, and component groups are deferred."
+      ],
+      "source": {
+        "name": "J0",
+        "qualified": "J0",
+        "path": "src/baselib/modular.py",
+        "line": 112,
+        "excerpt": {
+          "start_line": 100,
+          "text": "\ndef _modular_abelian_variety_module() -> Any:\n    \"\"\"Load the weight-two modular-abelian-variety implementation lazily.\"\"\"\n    global _modular_abelian_variety_module_cache\n    if _modular_abelian_variety_module_cache is runtime.undefined:\n        _modular_abelian_variety_module_cache = __import__(\n            \"sagejs.modular_abelian_varieties\",\n            fromlist=[\"AbelianVariety\", \"J0\"],\n        )\n    return _modular_abelian_variety_module_cache\n\n\ndef J0(N: Any) -> Any:\n    r\"\"\"Return the modular Jacobian $J_0(N)$ over $\\mathbf Q$.\n\n    ```sage\n    sage: J = J0(37)\n    sage: (J.dimension(), J.integral_homology().rank())\n    (2, 4)\n    ```\n    \"\"\"\n    return _modular_abelian_variety_module().J0(N)\n\n\ndef AbelianVariety(X: Any) -> Any:"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#1665a8c36eb3b94f-e3b0c44298fc1c14",
+          "line": 116,
+          "source": "J = J0(37)",
+          "want": "",
+          "tags": [],
+          "owner": "J0",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#1665a8c36eb3b94f-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/modular.py#9ae049674c64cb20-91e727de99f94075",
+          "line": 117,
+          "source": "(J.dimension(), J.integral_homology().rank())",
+          "want": "(2, 4)\n",
+          "tags": [],
+          "owner": "J0",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#9ae049674c64cb20-91e727de99f94075",
+            "status": "pass",
+            "actual": "(2, 4)\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,

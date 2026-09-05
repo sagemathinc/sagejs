@@ -870,6 +870,28 @@
       "prefixes": []
     },
     {
+      "id": "modular-abelian-varieties",
+      "layer": 6,
+      "startup": "lazy",
+      "max_source_bytes": 70000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "modular-forms",
+        "modular-form-expansions"
+      ],
+      "modules": [
+        "sagejs.modular_abelian_varieties"
+      ],
+      "files": [
+        "src/lib/sagejs/modular_abelian_varieties/__init__.py",
+        "src/lib/sagejs/modular_abelian_varieties/abelian_variety.py"
+      ],
+      "typescript_files": ["tools/serialization-codecs/modular-abelian-varieties.ts"],
+      "prefixes": []
+    },
+    {
       "id": "rational-quaternion-algebras",
       "layer": 4,
       "startup": "lazy",

@@ -209,14 +209,16 @@ class NormalizedNewform(sage.Element):
                     ground_field,
                 )
         identity = _global("identity_matrix")(ground_field, self._dimension)
-        powers = [identity]
+        # The primitive polynomial is irreducible of degree d, so every
+        # nonzero row is cyclic. A d-by-d Krylov basis determines elements of
+        # K[primitive], without storing d full d-by-d matrix powers.
+        rows = [identity.row(0)]
         for _index in range(1, self._dimension):
-            powers.append(powers[-1] * primitive)
-        self._powers = runtime.math_tuple(powers)
-        self._power_rows = _global("matrix")(
-            ground_field, [power.list() for power in powers]
+            rows.append(rows[-1] * primitive)
+        self._cyclic_basis = _global("matrix")(
+            ground_field, [row.list() for row in rows]
         )
-        if self._power_rows.rank() != self._dimension:
+        if self._cyclic_basis.rank() != self._dimension:
             raise ArithmeticError("primitive Hecke powers are linearly dependent")
         self._coefficient_cache = runtime.map()
         self._coefficient_cache.set(1, self._coefficient_field(1))
@@ -254,11 +256,20 @@ class NormalizedNewform(sage.Element):
     def hecke_constituent(self) -> Any:
         return self._constituent
 
+    def abelian_variety(self) -> Any:
+        r"""Return the connected quotient $A_f$ attached to this newform."""
+        return _global("AbelianVariety")(self)
+
     def _coordinates_for_operator(self, operator: Any) -> Any:
         ground_field = self._parent.base_ring()
-        solution = self._power_rows.solve_left(
-            _global("vector")(ground_field, operator.list())
-        )
+        # Commutation and agreement on a cyclic row imply agreement on the
+        # whole module. Preserve the old full-matrix membership check: an
+        # arbitrary matrix cannot masquerade as a Hecke algebra element by
+        # merely sharing its first row.
+        primitive = self._primitive_operator
+        if operator * primitive != primitive * operator:
+            raise ArithmeticError("operator is not in the primitive Hecke algebra")
+        solution = self._cyclic_basis.solve_left(operator.row(0))
         return _global("vector")(ground_field, solution.list())
 
     def hecke_eigenvalue(self, index: Any) -> Any:
@@ -467,10 +478,10 @@ class NewformCertificate:
             coordinates = form._coordinates_for_operator(
                 form.hecke_constituent().hecke_matrix(index)
             )
-            replay = form._powers[0] * coordinates[0]
-            for exponent in range(1, form._dimension):
-                replay += form._powers[exponent] * coordinates[exponent]
-            if replay != form.hecke_constituent().hecke_matrix(index):
+            # _coordinates_for_operator verifies commutation; equality on
+            # this cyclic row then certifies equality of the full matrices.
+            replay = coordinates * form._cyclic_basis
+            if replay != form.hecke_constituent().hecke_matrix(index).row(0):
                 return False
             if form._dimension == 1:
                 expected = coordinates[0]

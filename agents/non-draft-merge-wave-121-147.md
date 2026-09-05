@@ -59,6 +59,19 @@ release lane's changes; do not move tags or publish release artifacts.
   quotient flag, then reconstructs a canonical inclusion/quotient. Reject
   unsupported maps or bind and reconstruct their actual matrix; add a
   noncanonical-map regression so loading cannot silently change the map.
+  Integration fixes this by accepting canonical maps only, binding their
+  endpoints and exact matrix at both encoding and decoding. Unknown variety
+  construction tags are rejected. Focused tests cover changed matrices,
+  endpoints, missing matrix data, and nonboolean map selectors.
+- The combined modular-forms source exceeded its 350,000-byte budget.
+  Move the abelian-variety codec implementation behind actual on-demand
+  dispatch into its owning lazy package; retain small routes in the modular
+  codec. The resulting modular-forms source is 348,679 bytes without changing
+  its limit. A test verifies registration alone does not load the new module.
+- Keep main's existing optimizer evidence manifest and matching documentation
+  as a historical snapshot. Neither branch's earlier generated snapshot is
+  evidence for the current integrated compiler; use actual integration tests
+  and scoped comparative benchmarks for the acceptance decision.
 - Composite-level full-Hecke isotypic decomposition is explicitly not Sage's
   finer degeneracy-labelled isogeny decomposition. Preserve this documented
   boundary and the exact oldspace comparison.
