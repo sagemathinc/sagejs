@@ -138,21 +138,35 @@ def _solve(
     if native is not None:
         from sagejs.native import kernel_float64_buffer, kernel_uint64_buffer
 
-        arguments = [
-            kernel_uint64_buffer(native, v)
-            for v in (function._opcodes, function._left, function._right)
-        ]
-        arguments += [
-            kernel_float64_buffer(native, function._constants),
-            kernel_float64_buffer(native, [0.0] + list(parameters)),
-            kernel_float64_buffer(native, [0.0] * len(function._opcodes)),
-        ]
-        work = kernel_float64_buffer(native, [0.0, 0.0])
-        output = kernel_float64_buffer(native, [0.0] * 5)
+        # Retain only owned buffers, under the same lock as scalar evaluation.
+        # A changed callable must receive freshly constructed buffers even if
+        # it advertises the same target; backend identity is not a name string.
+        if function._root_function is not native:
+            buffers = [
+                kernel_uint64_buffer(native, v)
+                for v in (function._opcodes, function._left, function._right)
+            ]
+            buffers += [
+                kernel_float64_buffer(native, function._constants),
+                kernel_float64_buffer(native, [0.0] * len(function._names)),
+                kernel_float64_buffer(native, [0.0] * len(function._opcodes)),
+                kernel_float64_buffer(native, [0.0, 0.0]),
+                kernel_float64_buffer(native, [0.0] * 5),
+            ]
+            function._root_workspace = buffers
+            function._root_function = native
+        arguments = function._root_workspace
+        arguments[4][0] = 0.0
+        for index, parameter in enumerate(parameters):
+            arguments[4][index + 1] = parameter
+        work, output = arguments[6], arguments[7]
+        # Never allow an incomplete failing backend to reuse a prior success.
+        for index in range(2):
+            work[index] = 0.0
+        for index in range(5):
+            output[index] = math.nan
         code = native(
             *arguments,
-            work,
-            output,
             len(function._opcodes),
             lower,
             upper,

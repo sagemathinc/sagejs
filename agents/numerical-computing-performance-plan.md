@@ -91,8 +91,11 @@ The [prepared evaluator foundation](numerical-evaluator-checkpoint.md) now
 implements a private nine-operation source-transparent expression machine,
 with CPython, dynamic Sage.js, native and Node-Wasm checks. It remains an
 experimental N4 foundation: draft PR #164 adds owned public scalar prepared
-functions; private compiled root calls are in #162. Public solver integration,
-derivatives and full qualification are still open. Tiny-call measurements
+functions; #165 adds a public independently validated root path with focused
+four-host source receipts, and #166 adds optional browser integration tested in
+three engines. Public roots remain above the 1 ms target. Derivatives, vector
+residuals, external solver integration and full qualification are still open.
+Tiny-call measurements
 reinforce the need to keep solver and evaluator inside one compiled region.
 
 Make the **existing supported numerical laboratory** fast enough for interactive
