@@ -1256,10 +1256,20 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
 function generateJavaScript(ir, options = {}) {
+  const float64Functions = new Map(ir.functions.filter(fn => fn.kernelKind === "float64").map(fn => [fn.name, fn]));
+  const usesBigUint64 = fn => hasUint64Bitwise(fn.body) || fn.params.some(param => param.type === "UInt64Buffer");
   const publicFunctions = ir.functions.filter(
     (fn) => fn.hostCallable !== false,
   );
   function emitFloat64Statement(operation, indent, uint64BigInt) {
+    if (operation.kind === "float64.call") {
+      const callee = float64Functions.get(operation.function);
+      if (!callee) throw new Error("unknown binary64 helper " + operation.function);
+      const args = operation.arguments.map(argument => argument.type === "uint64"
+        ? `${usesBigUint64(callee) ? "BigInt" : "Number"}(${argument.name})`
+        : argument.name);
+      return `${indent}${operation.target} = javascript_${operation.function}(${args.join(", ")});`;
+    }
     if (operation.kind === "uint64.constant") {
       return `${indent}${operation.target} = ${operation.value}` +
         `${uint64BigInt ? "n" : ""};`;
@@ -1372,7 +1382,7 @@ function generateJavaScript(ir, options = {}) {
   }
 
   function emitFloat64PublicFunction(fn) {
-    const uint64BigInt = hasUint64Bitwise(fn.body) || fn.params.some(param => param.type === "UInt64Buffer");
+    const uint64BigInt = usesBigUint64(fn);
     const params = fn.params.map((param) => param.name).join(", ");
     const locals = fn.locals.map((local) => local.name);
     const declaration = locals.length === 0 ? "" : `  let ${locals.join(", ")};\n`;

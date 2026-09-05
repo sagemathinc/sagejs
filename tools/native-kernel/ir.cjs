@@ -9,6 +9,7 @@ const {
   signatureFromFunction,
 } = require("./integer-ir.cjs");
 const {
+  analyzeFloat64Calls,
   isFloat64Signature,
   lowerFloat64Function,
 } = require("./float64-ir.cjs");
@@ -1031,6 +1032,7 @@ async function lowerSource(source, filename, options = {}) {
             signature,
             filename,
             decoratedMode,
+            signatures,
           )
         : isPrimeFieldSignature(signature)
         ? isPrimeFieldIntrinsicFunction(fn)
@@ -1112,7 +1114,7 @@ async function lowerSource(source, filename, options = {}) {
       ...(imported.ir.nativeSourceDependencies || []),
     );
   }
-  const selected = analyzeExactModule([...lowered, ...importedLowered]).map(
+  const selected = analyzeFloat64Calls(analyzeExactModule([...lowered, ...importedLowered])).map(
     (fn, index) => index < lowered.length
       ? finalizeFunctionProvenance(
           fn,

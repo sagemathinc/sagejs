@@ -2536,6 +2536,11 @@ function emitFieldNodeAdapter(fn) {
 
 function emitFloat64Operation(operation, indent) {
   const target = cName(operation.target);
+  if (operation.kind === "float64.call") {
+    const args = operation.arguments.map(argument => cName(argument.name));
+    return `${indent}if (!sagejs_kernel_${operation.function}(status, &${target}` +
+      `${args.length ? ", " + args.join(", ") : ""})) goto fail;`;
+  }
   if (operation.kind === "uint64.constant") {
     return `${indent}${target} = UINT64_C(${operation.value});`;
   }
