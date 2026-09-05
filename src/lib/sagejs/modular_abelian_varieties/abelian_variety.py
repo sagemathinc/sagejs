@@ -989,7 +989,16 @@ def _matching_sign_zero_factor(newform: Any) -> tuple[Any, Any]:
 
 
 def AbelianVariety(defining_data: Any) -> ModularAbelianVariety:
-    r"""Construct a weight-$2$ $\Gamma_0(N)$ modular abelian variety."""
+    r"""Construct a weight-$2$ $\Gamma_0(N)$ modular abelian variety.
+
+    A level constructs its Jacobian. A normalized weight-$2$ newform instead
+    constructs its connected quotient of the Jacobian.
+
+    ```sage
+    sage: AbelianVariety(11).dimension()
+    1
+    ```
+    """
     if runtime.is_exact_integer(defining_data):
         return J0(defining_data)
     if getattr(defining_data, "_kind", None) == "CongruenceSubgroup":

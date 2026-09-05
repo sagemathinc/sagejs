@@ -46,6 +46,8 @@
     "sagejs.kernels.quaternion.brandt_rank4",
     "sagejs.linear_algebra.combinatorial",
     "sagejs.linear_algebra.sparse_random_m4ri",
+    "sagejs.modular_abelian_varieties",
+    "sagejs.modular_abelian_varieties.abelian_variety",
     "sagejs.modular_forms",
     "sagejs.modular_forms.brandt",
     "sagejs.modular_forms.component_groups",

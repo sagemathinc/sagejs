@@ -13,7 +13,20 @@ export const gamma1ModularFormsCase = Object.freeze({
     expected: "[5, 5, [(3, 2, 4), (1, 1, 1)], True, True, True, True]",
 });
 
+export const modularAbelianVarietyCase = Object.freeze({
+  name: "modular abelian varieties and canonical quotient serialization",
+  source: [
+    "J=J0(11)",
+    "A=AbelianVariety(CuspForms(11,2).newforms()[0])",
+    "q=A.quotient_map()",
+    "[J.dimension(), J.integral_homology().rank(), A.dimension(),",
+    " q.is_surjective(), q.verify(), loads(dumps(q)).matrix()==q.matrix()]",
+  ].join("\n"),
+  expected: "[1, 2, 1, True, True, True]",
+});
+
 export const publicGapCases = Object.freeze([
+  modularAbelianVarietyCase,
   gamma1ModularFormsCase,
   {
     name: "Gamma1 cuspidal newform descent",

@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 223,
+    "pass": 225,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
