@@ -42,8 +42,14 @@ function sourceKey(source) {
   return source.slice(prefix.length);
 }
 
-function domainFor(identity) {
+function domainFor(identity, ir, isolateFloat64) {
   const dependencies = new Set(identity.canonicalCore.audit.nativeDependencies);
+  if (isolateFloat64 && ir.functions.length !== 0 &&
+      ir.functions.every((fn) => fn.kernelKind === "float64") &&
+      identity.foreignDeclarations.length === 0 &&
+      [...dependencies].every((name) => name === "libc" || name === "libm")) {
+    return "float64";
+  }
   return dependencies.has("FLINT") || identity.foreignDeclarations.length !== 0
     ? "flint"
     : dependencies.has("MPC") || dependencies.has("MPFR")
@@ -99,7 +105,7 @@ function packIdentity(domain, modules, ownershipAdapter = null) {
   return { identity, packKey: sha256(JSON.stringify(identity)) };
 }
 
-async function inventoryProductionKernels({ root, manifestPath }) {
+async function inventoryProductionKernels({ root, manifestPath, isolateFloat64 = false }) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const production = manifest.kernels.filter((kernel) =>
     kernel.id.endsWith("-production") && kernel.wasm_production !== false
@@ -160,7 +166,7 @@ async function inventoryProductionKernels({ root, manifestPath }) {
       };
     });
     const supported = functions.filter((fn) => fn.status === "compiled-source");
-    const domain = domainFor(identity);
+    const domain = domainFor(identity, ir, isolateFloat64);
     const record = {
       id: kernel.id,
       source: kernel.source,
@@ -272,6 +278,9 @@ function compilerVersion(clang) {
 }
 
 function domainConfiguration(domain, toolchain) {
+  if (domain === "float64") {
+    return { prefixes: [], libraries: ["m"] };
+  }
   const gmp = toolchain.gmpPrefix;
   if (domain === "gmp") {
     return {
@@ -411,18 +420,18 @@ __attribute__((weak)) clock_t clock(void)
     "-fvisibility=hidden",
     "-ffunction-sections",
     "-fdata-sections",
-    "-D_WASI_EMULATED_SIGNAL",
+    ...(domain === "float64" ? ["-ffp-contract=off"] : ["-D_WASI_EMULATED_SIGNAL"]),
     ...configuration.prefixes.flatMap((prefix) => [
       "-isystem",
       join(prefix, "include"),
     ]),
-    `-I${join(root, "packages", "flint", "include")}`,
+    ...(domain === "float64" ? [] : [`-I${join(root, "packages", "flint", "include")}`]),
     ...modules.flatMap((module) => [
       join(module.directory, "kernel_core.c"),
       join(module.directory, "wasm_bridge.c"),
     ]),
     ...adapterSources,
-    compatibilityPath,
+    ...(domain === "float64" ? [] : [compatibilityPath]),
     ...configuration.prefixes.map((prefix) => `-L${join(prefix, "lib")}`),
     ...configuration.libraries.map((library) => `-l${library}`),
     ...exports.map((name) => `-Wl,--export=${name}`),
@@ -455,7 +464,8 @@ async function buildWasmProductionPacks(options) {
   const outputRoot = resolve(options.outputRoot);
   const manifestPath = resolve(options.manifestPath);
   mkdirSync(outputRoot, { recursive: true });
-  const discovered = await inventoryProductionKernels({ root, manifestPath });
+  const discovered = await inventoryProductionKernels({ root, manifestPath,
+    isolateFloat64: options.isolateFloat64 === true });
   const emitted = discovered.modules.map((module) =>
     emitModule(outputRoot, module)
   );
@@ -585,6 +595,10 @@ function parseArguments(argv, root = resolve(__dirname, "..", "..")) {
     const argument = argv[index];
     if (argument === "--emit-only") {
       options.emitOnly = true;
+      continue;
+    }
+    if (argument === "--isolate-float64") {
+      options.isolateFloat64 = true;
       continue;
     }
     if (argument === "--domain") {
