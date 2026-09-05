@@ -1,0 +1,77 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-fmpz-closure-acceptance",
+  "title": "Cubic Fmpz Closure Acceptance",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Prove and execute the complete 83-function complex-cubic fmpz closure, including atomic rejection, five exact mathematical cases, authenticated replay extension, and sanitizer lifecycle evidence",
+  "base_commit": "d1a670199bca9661947fc9ccae4f7ef2677d2902",
+  "claims": [
+    "test/number-field-cubic-fmpz-closure.cjs",
+    "test/number-field-cubic-native-class-number.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-cubic-fmpz-closure.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.758,
+      "started_at": "2026-09-04T14:01:31.286Z",
+      "commit": "8dab500275200d7dfdb954849d2df3f826063ac6",
+      "workspace_fingerprint": "c93ee1761b44709ba7574fec83f160a5bac0169a13257de6aa6715909d13baf8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-fmpz-closure.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.822,
+      "started_at": "2026-09-04T14:23:32.971Z",
+      "commit": "b5047e0320686de0218d664cc9b272b67730c23b",
+      "workspace_fingerprint": "b384d3a7b1088fd50d4e0b1b1ac2b3dc258f3e3e2475ffa19a245daa348b7e6a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-native-class-number.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 243.701,
+      "started_at": "2026-09-04T14:25:10.032Z",
+      "commit": "b5047e0320686de0218d664cc9b272b67730c23b",
+      "workspace_fingerprint": "b384d3a7b1088fd50d4e0b1b1ac2b3dc258f3e3e2475ffa19a245daa348b7e6a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Pinned the live 83-function/187-edge complex-cubic closure, its 22-public/61-private export policy, direct fmpz calls on every internal edge, absence of mpz bridges from every fmpz body, and atomic whole-closure rejection. Executed five mathematical regimes through the authenticated production .fmpz entry with production-sized buffers, including the refined h=42 proof and an 8615-bit unit, around a deterministic decline in one process. Added 3.1.12763.1 to independent ordinary exact receipt replay.",
+    "risks": [
+      "The v38 full cubic receipt suite was run with SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY=off to isolate known unrelated checked-in hyperelliptic source-bundle drift introduced by the compiler change; this lane does not edit or regenerate those artifacts.",
+      "The complete 15.4 MB cubic core is not rebuilt under sanitizers in this focused test. It proves generated checkpoint guards/cleanup structurally and exercises success-decline-success in the production addon; lower-level fmpz allocator and resource sanitizer tests remain the C-safety oracle."
+    ],
+    "next_steps": [
+      "Regenerate or otherwise resolve the unrelated checked-in hyperelliptic source bundle in its owning lane before the combined unisolated runtime gate.",
+      "Run the final platform matrix and controlled opt-VM corpus timing after integration."
+    ]
+  }
+}

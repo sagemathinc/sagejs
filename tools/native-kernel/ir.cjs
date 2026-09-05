@@ -25,7 +25,7 @@ const {
 } = require("./provenance.cjs");
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 
-const IR_VERSION = 36;
+const IR_VERSION = 38;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -849,6 +849,91 @@ function ffiImports(topLevel, filename) {
   return { functions, resources };
 }
 
+function rejectNestedArenaCalls(functions, filename) {
+  function walk(statements, insideArena, visit) {
+    for (const statement of statements || []) {
+      visit(statement, insideArena);
+      walk(statement.setup, insideArena, visit);
+      walk(statement.condition?.operations, insideArena, visit);
+      walk(
+        statement.body,
+        insideArena || statement.kind === "integer.arena.scope",
+        visit,
+      );
+      walk(statement.alternative, insideArena, visit);
+      walk(statement.right?.operations, insideArena, visit);
+    }
+  }
+
+  // A callee may hide its arena behind any number of ordinary native helpers
+  // (including imported helpers). Track that effect to a fixed point, rather
+  // than relying on the per-function lexical nesting check or fmpz eligibility.
+  const entersArena = new Map();
+  for (const fn of functions) {
+    walk(fn.body, false, (statement) => {
+      if (statement.kind === "integer.arena.scope") {
+        entersArena.set(fn.name, [fn.name]);
+      }
+    });
+  }
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const fn of functions) {
+      if (entersArena.has(fn.name)) continue;
+      const dependency = (fn.dependencies || []).find(
+        (name) => entersArena.has(name),
+      );
+      if (dependency !== undefined) {
+        entersArena.set(fn.name, [fn.name, ...entersArena.get(dependency)]);
+        changed = true;
+      }
+    }
+  }
+  for (const fn of functions) {
+    walk(fn.body, false, (statement, insideArena) => {
+      if (
+        insideArena && statement.kind === "native.call" &&
+        entersArena.has(statement.function)
+      ) {
+        const path = [fn.name, ...entersArena.get(statement.function)];
+        fail(
+          `${filename}: ${fn.name}: nested NativeExactArena scopes through ` +
+          `native calls are not supported (${path.join(" -> ")}); ` +
+          "an independent checkpoint may invalidate borrowed exact storage",
+        );
+      }
+    });
+  }
+  for (const fn of functions) {
+    if (!entersArena.has(fn.name)) continue;
+    const resourceTypes = new Set((fn.foreignResources || []).map(
+      (resource) => resource.compiler_type || resource.python_name,
+    ));
+    const arenaOwned = new Set();
+    walk(fn.body, false, (statement) => {
+      if (statement.kind === "integer.arena.scope") {
+        for (const child of statement.children || []) {
+          if (child.childKind === "foreign-resource") arenaOwned.add(child.owner);
+        }
+      }
+    });
+    // Even a single checkpoint can invalidate promoted limbs in a borrowed
+    // resource. Until allocator/provenance effects prove otherwise, require
+    // foreign resources to be constructed and destroyed inside this arena.
+    // Arena-free helpers may still borrow their caller's resident resources.
+    const external = [...fn.params, ...fn.locals].find((value) =>
+      resourceTypes.has(value.type) &&
+      !arenaOwned.has(fn.resourceAliases?.[value.name] || value.name),
+    );
+    if (external !== undefined) {
+      fail(`${filename}: ${fn.name}: NativeExactArena cannot retain external ` +
+        `foreign resource ${external.name} across a checkpoint; ` +
+        "construct it as an arena-owned resource or use the exact dynamic fallback");
+    }
+  }
+}
+
 async function lowerSource(source, filename, options = {}) {
   const compiler = createCompiler();
   const { createPythonCompilerFrontend } = require(
@@ -1068,7 +1153,14 @@ async function lowerSource(source, filename, options = {}) {
     definitions.map((fn) => [fn.name.name, fn]),
   );
   for (let index = 0; index < loweredDefinitions.length; index += 1) {
-    const result = lowerDefinition(loweredDefinitions[index]);
+    const definition = loweredDefinitions[index];
+    const result = lowerDefinition(definition);
+    // `decorated` predates dependency-graph and requested-subset lowering: it
+    // records the lowering mode, not whether this particular definition had a
+    // lexical `@native` decorator.  Keep the two facts distinct.  Artifact
+    // discovery uses this per-definition provenance to distinguish intentional
+    // private native entry points from ordinary undecorated helpers.
+    result.lexicallyNative = nativeDecorator(definition);
     lowered.push(result);
     for (const dependency of result.dependencies || []) {
       if (included.has(dependency)) continue;
@@ -1112,7 +1204,9 @@ async function lowerSource(source, filename, options = {}) {
       ...(imported.ir.nativeSourceDependencies || []),
     );
   }
-  const selected = analyzeExactModule([...lowered, ...importedLowered]).map(
+  const combined = [...lowered, ...importedLowered];
+  rejectNestedArenaCalls(combined, filename);
+  const selected = analyzeExactModule(combined).map(
     (fn, index) => index < lowered.length
       ? finalizeFunctionProvenance(
           fn,

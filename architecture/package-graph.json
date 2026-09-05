@@ -313,7 +313,7 @@
       "id": "complex-cubic-native-program",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 360000,
+      "max_source_bytes": 420000,
       "depends_on": [
         "core-runtime",
         "native-integration",

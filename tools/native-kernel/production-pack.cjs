@@ -83,6 +83,7 @@ function packIdentity(items) {
         oracleIdentity: portable.oracleIdentity,
         portableIdentity: portable.identityHash,
         nativeAbi: item.nativeAbi,
+        privateFunctions: item.privateFunctions,
         functionDeclarations: portable.functionDeclarations,
         foreignInputs: item.foreignInputs.map((input) => ({
           id: input.id,
@@ -288,6 +289,7 @@ function manifestFor(items, identity, packKey, addonPath) {
           moduleIdentity: item.moduleIdentity,
           sourceHash: item.sourceHash,
           nativeAbi: item.nativeAbi,
+          privateFunctions: item.privateFunctions,
           functionDeclarations: portable.functionDeclarations,
           foreignDeclarations: item.foreignDeclarations,
         };

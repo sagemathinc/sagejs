@@ -233,6 +233,7 @@ async function main() {
         .update(readFileSync(absoluteSource))
         .digest("hex"),
       nativeAbi: compiled.nativeAbi,
+      privateFunctions: compiled.privateFunctions,
       foreignDeclarations: compiled.foreignDeclarations,
       automaticSelections: compiled.automaticSelections,
       foreignInputs: compiled.foreignInputs,
@@ -291,6 +292,7 @@ async function main() {
       packKey: pack.packKey,
       sourceHash: item.sourceHash,
       nativeAbi: item.nativeAbi,
+      privateFunctions: item.privateFunctions,
       foreignDeclarations: item.foreignDeclarations,
       automaticSelections: item.automaticSelections,
     };

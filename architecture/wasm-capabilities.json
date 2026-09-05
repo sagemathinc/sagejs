@@ -1071,9 +1071,9 @@
       "kind": "declared-ffi-resource",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "generated-wasm",
-      "fallback": "declared-ffi-capability-fallback",
-      "wasm_module": "flint",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
@@ -5234,6 +5234,26 @@
       "public_explanation": "The reviewed caller-owned HNF declaration is included in the generated WebAssembly resource closure for the source-transparent stable selector."
     },
     {
+      "id": "ffi:flint:fmpz_matrix_hnf_prefix_into",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded caller-owned HNF prefix operation is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_hnf_transform",
       "kind": "declared-ffi-function",
       "family": "flint",
@@ -5254,6 +5274,26 @@
       "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
     {
+      "id": "ffi:flint:fmpz_matrix_hnf_transform_prefix",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded caller-owned HNF transform is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_lll_transform",
       "kind": "declared-ffi-function",
       "family": "flint",
@@ -5270,6 +5310,26 @@
       "status": "fallback",
       "reviewed": true,
       "review_note": "The caller-owned LLL transform is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_lll_transform_prefix",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded caller-owned LLL transform is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
       "wasm_declared": false,
       "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
@@ -5764,6 +5824,26 @@
       "status": "fallback",
       "reviewed": true,
       "review_note": "The caller-owned SNF operation is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_snf_prefix_into",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded caller-owned SNF operation is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
       "wasm_declared": false,
       "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
@@ -11076,16 +11156,18 @@
         "production-kernel-differential",
         "complex-cubic-native-class-group-differential"
       ],
-      "status": "available",
+      "status": "fallback",
       "reviewed": true,
-      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
-      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "review_note": "The production pack compiles 0 of 1 functions. The remaining 1 functions use their tested same-source dynamic fallback (fmpz-integer-buffer-requires-64-bit-flint-limbs).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 functions.",
       "compiled_coverage": {
-        "compiled_functions": 1,
-        "fallback_functions": 0,
+        "compiled_functions": 0,
+        "fallback_functions": 1,
         "total_functions": 1,
         "production_pack": true,
-        "fallback_reasons": []
+        "fallback_reasons": [
+          "fmpz-integer-buffer-requires-64-bit-flint-limbs"
+        ]
       }
     },
     {

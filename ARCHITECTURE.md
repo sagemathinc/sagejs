@@ -277,6 +277,15 @@ private acceleration state, while canonical detached data remains the durable
 proof authority. Arena children and reusable workspace borrows cannot escape,
 and all successful public results cross one transactional publication boundary.
 
+`NativeExactArena` qualification rejects nested checkpoints through direct,
+transitive, or imported calls. A function entering an arena, directly or through
+a callee, may not retain foreign resources from its caller or allocate them
+outside its own arena. This conservative restriction prevents variable-size
+limbs from surviving the checkpoint that allocated them. Aliases of arena-owned
+resources and arena-free helpers borrowing those resources remain supported.
+Read-only external-resource exceptions require a future explicit provenance and
+allocator-effect proof; the exact dynamic implementation remains the fallback.
+
 On Node, univariate polynomials over `ZZ` and `QQ` canonically own sealed,
 generated `FmpzPolynomial` and `FmpqPolynomial` resources. The checked wrapper
 owns the FLINT object without exposing its pointer; construction, coefficient

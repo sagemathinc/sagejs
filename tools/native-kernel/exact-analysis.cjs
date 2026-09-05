@@ -1,6 +1,9 @@
 "use strict";
 
 const {
+  tupleElementTypes,
+} = require("./integer-ir.cjs");
+const {
   UINT64_SEMANTICS,
   hasUint64Bitwise,
   isUint64Bitwise,
@@ -178,6 +181,8 @@ function operationInputs(operation) {
       return operation.arguments.map((argument) => argument.name);
     case "return":
       return operation.values || [operation.value];
+    case "range.validate_step":
+      return [operation.step];
     default:
       return [];
   }
@@ -213,16 +218,27 @@ function walkStatements(statements, handlers) {
     }
     if (statement.kind === "loop.range" ||
         statement.kind === "loop.range_exact") {
-      handlers.loop("range");
+      handlers.loop("range", statement);
       handlers.enterLoop?.("range");
-      if (statement.kind === "loop.range_exact") {
+      if (statement.iterator !== undefined) {
+        handlers.read(statement.start);
+        handlers.read(statement.stop);
+        handlers.read(statement.step);
+        handlers.write(statement.iterator);
+        handlers.read(statement.iterator);
+        handlers.write(statement.index);
+      } else if (statement.kind === "loop.range_exact") {
         handlers.read(statement.start);
         handlers.read(statement.stop);
         handlers.write(statement.index);
         handlers.read(statement.index);
       }
       walkStatements(statement.body, handlers);
-      if (statement.kind === "loop.range_exact") {
+      if (statement.iterator !== undefined) {
+        handlers.read(statement.iterator);
+        handlers.read(statement.step);
+        handlers.write(statement.iterator);
+      } else if (statement.kind === "loop.range_exact") {
         handlers.read(statement.index);
         handlers.write(statement.index);
       }
@@ -591,6 +607,9 @@ function localEffects(fn) {
       if (operation.kind === "integer.round_sqrt") {
         mayRaise.add("ValueError");
         mayRaise.add("OverflowError");
+      }
+      if (operation.kind === "range.validate_step") {
+        mayRaise.add("ValueError");
       }
       if (operation.kind === "integer.sequence.get") {
         mayRaise.add("IndexError");
@@ -1078,7 +1097,7 @@ function taggedIntegerProof(fn, effects) {
   };
 }
 
-function liveExactWorkspaceAnalysis(fn) {
+function liveExactWorkspaceAnalysis(fn, backend) {
   const scopes = [];
   walkStatements(fn.body, {
     loop() {},
@@ -1103,6 +1122,10 @@ function liveExactWorkspaceAnalysis(fn) {
           canonicalAuthority: false,
         });
       } else if (operation.kind === "integer.arena.scope") {
+        const earlyCheckpoint = fmpzEarlyCheckpointLifetime(
+          operation,
+          backend,
+        );
         scopes.push({
           owner: operation.owner,
           memoryLimit: operation.memoryLimit,
@@ -1133,7 +1156,9 @@ function liveExactWorkspaceAnalysis(fn) {
               : child.type === "NativeIntegerVector"
                 ? {
                     owner: child.owner,
-                    storage: "mpz-vector",
+                    storage: backend?.kind === "fmpz"
+                      ? "inline-promoting-fmpz-vector"
+                      : "mpz-vector",
                     capacity: child.capacity,
                     maximumBits: child.maximumBits,
                   }
@@ -1174,6 +1199,9 @@ function liveExactWorkspaceAnalysis(fn) {
           ),
           cleanup: "reverse-child-order-all-exit-idempotent",
           canonicalAuthority: false,
+          ...(earlyCheckpoint === undefined
+            ? {}
+            : { checkpointLifetime: earlyCheckpoint }),
         });
       }
     },
@@ -1195,6 +1223,391 @@ function liveExactWorkspaceAnalysis(fn) {
       : "reported-by-receipt-not-semantic-limit",
     automaticSelection: "receipt-gated",
   };
+}
+
+const FMPZ_OPERATION_KINDS = new Set([
+  "bool.binary",
+  "bool.compare",
+  "bool.constant",
+  "bool.copy",
+  "bool.not",
+  "bool.short_circuit",
+  "ffi.arena.resource.allocate",
+  "ffi.call",
+  "integer.abs",
+  "integer.arena.vector.allocate",
+  "integer.binary",
+  "integer.buffer.get",
+  "integer.buffer.length",
+  "integer.buffer.set",
+  "integer.compare",
+  "integer.constant",
+  "integer.copy",
+  "integer.divmod",
+  "integer.from_uint64",
+  "integer.mod_uint64",
+  "integer.neg",
+  "integer.pow_uint",
+  "integer.truth",
+  "integer.vector.addmul",
+  "integer.vector.borrow",
+  "integer.vector.get",
+  "integer.vector.length",
+  "integer.vector.set",
+  "integer.vector.submul",
+  "integer.vector.swap",
+  "native.call",
+  "range.validate_step",
+  "raise",
+  "return",
+  "uint64.binary",
+  "uint64.buffer.copy",
+  "uint64.buffer.get",
+  "uint64.buffer.length",
+  "uint64.buffer.set",
+  "uint64.compare",
+  "uint64.constant",
+  "uint64.copy",
+  "uint64.from_integer_checked",
+  "uint64.truth",
+  "value.discard",
+]);
+
+const FMPZ_FFI_DECLARATIONS = new Set([
+  "flint:fmpz_matrix",
+  "flint:fmpz_matrix_entry",
+  "flint:fmpz_matrix_set_entry",
+  "flint:fmpz_polynomial",
+  "flint:fmpz_polynomial_set_coefficient",
+  "flint:fmpz_polynomial_seal",
+  "flint:number_field_analyze_resource",
+  "flint:number_field_analysis_resource_project",
+  "flint:number_field_analysis_resource_project_proof",
+  "flint:integer_log_sqrt_balls_resource",
+  "flint:positive_rational_log_balls_resource",
+  "flint:fmpz_matrix_hnf_into",
+  "flint:fmpz_matrix_hnf_transform",
+  "flint:fmpz_matrix_lll_transform",
+  "flint:fmpz_matrix_snf",
+  "flint:fmpz_matrix_snf_into",
+]);
+
+const FMPZ_RESOURCE_IDS = new Set([
+  "fmpz_matrix",
+  "fmpz_polynomial",
+  "number_field_analysis_resource",
+]);
+
+/**
+ * Preserve the ownership proof needed to move the fmpz allocation checkpoint.
+ *
+ * `integer.arena.scope` children are compiler-owned lexical values: lowering
+ * rejects escapes, repeated ownership, and allocation outside the call-local
+ * arena body.  This additional proof deliberately admits only the current fmpz
+ * operation grammar, which contains no rewind operation.  A future operation
+ * therefore remains on the delayed generic checkpoint path until this list is
+ * reviewed explicitly rather than acquiring a shorter lifetime by accident.
+ */
+function fmpzEarlyCheckpointLifetime(scope, backend) {
+  if (backend?.kind !== "fmpz") return undefined;
+  if (
+    !scope.children.every(
+      (child) =>
+        child.type === "NativeIntegerVector" ||
+        (child.childKind === "foreign-resource" &&
+          FMPZ_RESOURCE_IDS.has(child.resourceId)),
+    )
+  ) {
+    return undefined;
+  }
+
+  let admitted = true;
+  function visit(statements) {
+    for (const statement of statements || []) {
+      if (statement.kind === "if") {
+        visit(statement.condition.operations);
+        visit(statement.body);
+        visit(statement.alternative);
+      } else if (statement.kind === "while") {
+        visit(statement.condition.operations);
+        visit(statement.body);
+      } else if (
+        statement.kind === "loop.range" ||
+        statement.kind === "loop.range_exact"
+      ) {
+        visit(statement.body);
+      } else if (statement.kind === "bool.short_circuit") {
+        if (!FMPZ_OPERATION_KINDS.has(statement.kind)) admitted = false;
+        visit(statement.right.operations);
+      } else if (
+        statement.kind === "integer.arena.scope" ||
+        !FMPZ_OPERATION_KINDS.has(statement.kind)
+      ) {
+        admitted = false;
+      }
+    }
+  }
+  visit(scope.setup);
+  visit(scope.body);
+  if (!admitted) return undefined;
+
+  return {
+    placement: "immediately-after-arena-init-before-child-init",
+    authority: "closed-fmpz-call-local-ownership-analysis-v1",
+    children: "all-nonescaping-call-local-vectors-and-resources",
+    rewind: "none-admitted-by-qualified-operation-grammar",
+    entry: "drain-flint-promotion-cache-before-arena-init",
+    cleanup: "reverse-children-before-checkpoint-end-on-every-exit",
+  };
+}
+
+/**
+ * Inspect the deliberately small fmpz representation slice.
+ *
+ * Semantic Integer values remain exact.  A root owns one closed arena with
+ * unbounded exact vectors, borrowed packed IntegerBuffer boundary views, and
+ * direct resident FLINT matrix, polynomial, and number-field-analysis
+ * declarations.  A root may pass its vectors, foreign resources, and packed
+ * boundary views through an acyclic helper graph without transferring ownership
+ * or exposing an aggregate host ABI.  Anything outside this list continues
+ * through the mature GMP backend.
+ */
+function fmpzReturnTypeSupported(type) {
+  return (tupleElementTypes(type) || [type]).every((element) =>
+    ["Integer", "uint64", "bool"].includes(element)
+  );
+}
+
+function inspectFmpzFunction(fn) {
+  if (!fmpzReturnTypeSupported(fn.returnType)) return null;
+  const fmpzResourceTypes = new Set(
+    (fn.foreignResources || [])
+      .filter((resource) => FMPZ_RESOURCE_IDS.has(resource.id))
+      .map((resource) => resource.compiler_type || resource.python_name),
+  );
+  const scalarParameter = (param) =>
+    ["Integer", "uint64", "bool", "IntegerBuffer", "UInt64Buffer"]
+      .includes(param.type);
+  const borrowedAggregateParameter = (param) =>
+    param.type === "IntegerBuffer" ||
+    param.type === "UInt64Buffer" ||
+    param.type === "NativeIntegerVector" || fmpzResourceTypes.has(param.type);
+  if (!fn.params.every((param) =>
+    scalarParameter(param) || borrowedAggregateParameter(param)
+  )) return null;
+  if (!fn.locals.every((local) =>
+    [
+      "Integer", "uint64", "bool", "UInt64Buffer", "NativeExactArena",
+      "NativeIntegerVector",
+    ].includes(local.type) ||
+    (fn.foreignResources || []).some((resource) =>
+      (resource.compiler_type || resource.python_name) === local.type &&
+      FMPZ_RESOURCE_IDS.has(resource.id)
+    )
+  )) return null;
+
+  const constants = new Map();
+  let arenas = 0;
+  let vectors = 0;
+  let eligible = true;
+  function visit(statements) {
+    for (const statement of statements || []) {
+      if (statement.kind === "if") {
+        visit(statement.condition.operations);
+        visit(statement.body);
+        visit(statement.alternative);
+        continue;
+      }
+      if (statement.kind === "while") {
+        visit(statement.condition.operations);
+        visit(statement.body);
+        continue;
+      }
+      if (statement.kind === "loop.range" ||
+          statement.kind === "loop.range_exact") {
+        visit(statement.body);
+        continue;
+      }
+      if (statement.kind === "integer.arena.scope") {
+        arenas += 1;
+        if (!statement.children.every((child) =>
+          child.type === "NativeIntegerVector" ||
+          (child.childKind === "foreign-resource" &&
+            FMPZ_RESOURCE_IDS.has(child.resourceId))
+        )) eligible = false;
+        visit(statement.setup);
+        visit(statement.body);
+        continue;
+      }
+      if (!FMPZ_OPERATION_KINDS.has(statement.kind)) eligible = false;
+      if (statement.kind === "uint64.constant") {
+        constants.set(statement.target, statement.value);
+      }
+      if (statement.kind === "integer.arena.vector.allocate") {
+        vectors += 1;
+      }
+      if (statement.kind.startsWith("integer.vector.") &&
+          statement.kind !== "integer.vector.length") {
+        if (statement.indexType !== undefined &&
+            !["Integer", "uint64"].includes(statement.indexType)) eligible = false;
+        if (statement.leftType !== undefined &&
+            !["Integer", "uint64"].includes(statement.leftType)) eligible = false;
+        if (statement.rightType !== undefined &&
+            !["Integer", "uint64"].includes(statement.rightType)) eligible = false;
+      }
+      if (statement.kind.startsWith("integer.buffer.")) {
+        if (statement.bufferType !== "IntegerBuffer") eligible = false;
+        if (statement.kind !== "integer.buffer.length" &&
+            !["Integer", "uint64"].includes(statement.indexType)) {
+          eligible = false;
+        }
+      }
+      if (statement.kind.startsWith("uint64.buffer.")) {
+        if (statement.bufferType !== "UInt64Buffer" &&
+            statement.kind !== "uint64.buffer.copy") eligible = false;
+        if (["uint64.buffer.get", "uint64.buffer.set"].includes(statement.kind) &&
+            !["Integer", "uint64"].includes(statement.indexType)) {
+          eligible = false;
+        }
+      }
+      if ((statement.kind === "ffi.call" ||
+          statement.kind === "ffi.arena.resource.allocate") &&
+          !FMPZ_FFI_DECLARATIONS.has(statement.foreign?.declarationId)) {
+        eligible = false;
+      }
+      if (statement.kind === "bool.short_circuit") {
+        visit(statement.right.operations);
+      }
+    }
+  }
+  visit(fn.body);
+  if (!eligible) return null;
+
+  let zeroBoundedVectors = true;
+  walkStatements(fn.body, {
+    loop() {},
+    operation(operation) {
+      if (operation.kind === "integer.arena.vector.allocate" &&
+          constants.get(operation.maximumBits) !== "0") {
+        zeroBoundedVectors = false;
+      }
+    },
+    read() {},
+    write() {},
+  });
+  if (!zeroBoundedVectors) return null;
+  if (
+    arenas === 1 && vectors > 0 &&
+    fn.params.every(scalarParameter)
+  ) return { role: "root" };
+  if (
+    arenas === 0 && vectors === 0 &&
+    fn.params.every((param) =>
+      ["Integer", "uint64", "bool"].includes(param.type) ||
+      borrowedAggregateParameter(param)
+    ) &&
+    fn.locals.every((local) =>
+      ["Integer", "uint64", "bool", "UInt64Buffer"].includes(local.type)
+    )
+  ) {
+    return {
+      role: "helper",
+      borrowedAggregates: fn.params.some(borrowedAggregateParameter),
+    };
+  }
+  return null;
+}
+
+function fmpzBackendPolicy(fn) {
+  const inspection = inspectFmpzFunction(fn);
+  if (inspection?.role !== "root" || fn.dependencies.length !== 0) return null;
+  const packedBuffers = fn.params.some((param) =>
+    param.type === "IntegerBuffer"
+  );
+  return {
+    kind: "fmpz",
+    reason: packedBuffers
+      ? "a closed unbounded exact arena is qualified for direct packed-limb fmpz ingress and publication"
+      : "a closed unbounded exact arena is qualified for inline-promoting FLINT fmpz storage",
+    requiresExactWorkspace: true,
+    qualification: packedBuffers
+      ? "direct-fmpz-packed-buffer-call-graph-v3"
+      : "direct-fmpz-vector-matrix-v1",
+  };
+}
+
+function fmpzClosedCallGraphPolicies(functions, recursive) {
+  const exact = new Map(
+    functions
+      .filter((fn) => fn.kernelKind === "integer")
+      .map((fn) => [fn.name, fn]),
+  );
+  const inspections = new Map(
+    Array.from(exact, ([name, fn]) => [name, inspectFmpzFunction(fn)]),
+  );
+  const policies = new Map();
+  for (const [rootName, root] of exact) {
+    if (inspections.get(rootName)?.role !== "root" ||
+        recursive.has(rootName)) continue;
+    const selected = new Set([rootName]);
+    const visiting = new Set();
+    const qualified = new Set();
+    function qualify(name, isRoot = false) {
+      if (qualified.has(name)) return true;
+      if (visiting.has(name) || recursive.has(name)) return false;
+      const fn = exact.get(name);
+      const inspection = inspections.get(name);
+      if (fn === undefined || inspection === null || inspection === undefined ||
+          (!isRoot && inspection.role !== "helper")) return false;
+      visiting.add(name);
+      for (const dependency of fn.dependencies) {
+        if (!qualify(dependency)) {
+          visiting.delete(name);
+          return false;
+        }
+      }
+      visiting.delete(name);
+      qualified.add(name);
+      selected.add(name);
+      return true;
+    }
+    if (!qualify(rootName, true)) continue;
+    const packedBuffers = root.params.some((param) =>
+      param.type === "IntegerBuffer"
+    );
+    const borrowedAggregates = Array.from(qualified).some((name) =>
+      inspections.get(name)?.borrowedAggregates
+    );
+    policies.set(rootName, root.dependencies.length === 0
+      ? fmpzBackendPolicy(root)
+      : {
+          kind: "fmpz",
+          reason: borrowedAggregates
+            ? "a closed exact call graph is qualified for borrowed resident fmpz vectors and matrices"
+            : packedBuffers
+            ? "a closed exact call graph is qualified for direct packed-limb fmpz ingress and publication"
+            : "a closed exact call graph is qualified for inline-promoting FLINT fmpz storage",
+          requiresExactWorkspace: true,
+          qualification: borrowedAggregates
+            ? "direct-fmpz-borrowed-aggregate-call-graph-v4"
+            : packedBuffers
+            ? "direct-fmpz-packed-buffer-call-graph-v3"
+            : "direct-fmpz-vector-matrix-call-graph-v2",
+        });
+    for (const name of selected) {
+      if (name === rootName) continue;
+      policies.set(name, {
+        kind: "fmpz",
+        reason:
+          "a helper is transitively contained in a qualified closed fmpz exact program",
+        requiresExactWorkspace: false,
+        qualification: borrowedAggregates
+          ? "direct-fmpz-borrowed-aggregate-helper-call-graph-v4"
+          : "direct-fmpz-helper-call-graph-v2",
+      });
+    }
+  }
+  return policies;
 }
 
 function residentCodeQualityAnalysis(fn) {
@@ -1264,7 +1677,9 @@ function residentCodeQualityAnalysis(fn) {
   };
 }
 
-function backendPolicy(fn, profile, recursive) {
+function backendPolicy(fn, profile, recursive, fmpzPolicies = new Map()) {
+  const fmpz = fmpzPolicies.get(fn.name) || fmpzBackendPolicy(fn);
+  if (fmpz !== null) return fmpz;
   if (fn.params.some((param) => param.type === "NativeIntegerVector")) {
     return {
       kind: "gmp",
@@ -1293,7 +1708,9 @@ function backendPolicy(fn, profile, recursive) {
   }
   if (
     profile.uint64BitwiseOperations > 0 &&
-    fn.params.every((param) => param.type !== "Integer")
+    fn.params.every((param) =>
+      !["Integer", "IntegerBuffer"].includes(param.type)
+    )
   ) {
     return {
       kind: "tagged",
@@ -1303,7 +1720,9 @@ function backendPolicy(fn, profile, recursive) {
   if (
     profile.uint64ArithmeticOperations > 0 &&
     profile.rangeLoops + profile.whileLoops > 0 &&
-    fn.params.every((param) => param.type !== "Integer")
+    fn.params.every((param) =>
+      !["Integer", "IntegerBuffer"].includes(param.type)
+    )
   ) {
     return {
       kind: "tagged",
@@ -1408,6 +1827,7 @@ function analyzeExactModule(functions) {
     if (fn.kernelKind === "integer") introduceResidentBorrows(fn);
   }
   const recursive = recursiveFunctions(functions);
+  const fmpzPolicies = fmpzClosedCallGraphPolicies(functions, recursive);
   const effects = effectAnalyses(functions);
   const exact = new Map(
     functions
@@ -1432,10 +1852,15 @@ function analyzeExactModule(functions) {
       ...executionProfile(fn),
       dependencyDepth: dependencyDepth(fn.name),
     };
-    let backend = backendPolicy(fn, profile, recursive.has(fn.name));
+    let backend = backendPolicy(
+      fn,
+      profile,
+      recursive.has(fn.name),
+      fmpzPolicies,
+    );
     if (
       profile.rangeLoops > 0 &&
-      !["gmp", "integer-buffer-values"].includes(backend.kind)
+      !["fmpz", "gmp", "integer-buffer-values"].includes(backend.kind)
     ) {
       backend = {
         kind: "tagged",
@@ -1444,6 +1869,15 @@ function analyzeExactModule(functions) {
     }
     const effect = effects.get(fn.name);
     const residentCodeQuality = residentCodeQualityAnalysis(fn);
+    const borrowedFmpzAggregates = fn.params.some((param) =>
+      (profile.liveExactScopes === 0 &&
+        ["IntegerBuffer", "UInt64Buffer"].includes(param.type)) ||
+      param.type === "NativeIntegerVector" ||
+      (fn.foreignResources || []).some((resource) =>
+        FMPZ_RESOURCE_IDS.has(resource.id) &&
+        (resource.compiler_type || resource.python_name) === param.type
+      )
+    );
     fn.analysis = {
       storage: storageAnalysis(fn),
       execution: { ...profile, recursive: recursive.has(fn.name) },
@@ -1451,11 +1885,43 @@ function analyzeExactModule(functions) {
       effects: effect,
       taggedInteger: taggedIntegerProof(fn, effect),
       ...(profile.liveExactScopes > 0
-        ? { liveExactWorkspace: liveExactWorkspaceAnalysis(fn) }
+        ? { liveExactWorkspace: liveExactWorkspaceAnalysis(fn, backend) }
         : {}),
+      ...(backend.kind === "fmpz" ? {
+        fmpzExact: {
+          semanticType: "Integer",
+          representation: "flint-fmpz-inline-word-with-gmp-promotion",
+          residentContainers: profile.liveExactScopes > 0
+            ? fn.params.some((param) => param.type === "IntegerBuffer")
+              ? "inline-promoting-fmpz-vector-and-borrowed-packed-integer-buffer"
+              : "inline-promoting-fmpz-vector"
+            : borrowedFmpzAggregates
+              ? "caller-owned-borrowed-fmpz-aggregates"
+            : "caller-owned-fmpz-values",
+          promotion: "transparent-and-owning",
+          ffiBoundary: "direct-fmpz_t",
+          hostBoundary: profile.liveExactScopes > 0
+            ? fn.params.some((param) => param.type === "IntegerBuffer")
+              ? "borrowed-packed-limb-views-plus-one-mpz-fmpz-scalar-conversion-on-entry-and-exit"
+              : "one-mpz-fmpz-conversion-on-entry-and-exit"
+            : borrowedFmpzAggregates
+              ? "none-internal-borrowed-aggregate-only"
+            : "mpz-fmpz-conversion-only-when-the-helper-is-called-from-the-host",
+          cleanup: "clear-promoted-values-before-flint-cache-drain-and-arena-rewind",
+          qualification: backend.qualification,
+        },
+      } : {}),
       ...(residentCodeQuality === undefined ? {} : { residentCodeQuality }),
       ...(hasUint64Bitwise(fn.body) ? { uint64: UINT64_SEMANTICS } : {}),
     };
+    if (
+      backend.kind === "fmpz" &&
+      borrowedFmpzAggregates
+    ) {
+      // These values are borrowed only inside one qualified closed native
+      // program.  They deliberately never acquire a public aggregate ABI.
+      fn.hostCallable = false;
+    }
   }
   const primeSourceEffects = primeSourceEffectAnalyses(functions);
   for (const fn of functions) {
@@ -1476,5 +1942,6 @@ module.exports = {
   primeSourceEffectAnalyses,
   storageAnalysis,
   taggedIntegerProof,
+  fmpzBackendPolicy,
   residentCodeQualityAnalysis,
 };

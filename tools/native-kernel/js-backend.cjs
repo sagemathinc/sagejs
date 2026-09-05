@@ -198,6 +198,10 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "bool.constant") {
     return `${indent}${operation.target} = ${operation.value};`;
   }
+  if (operation.kind === "range.validate_step") {
+    return `${indent}if (${operation.step} === 0n) ` +
+      `nativeRaise("ValueError", "range() arg 3 must not be zero");`;
+  }
   if (
     operation.kind === "integer.copy" ||
     operation.kind === "bool.copy" ||
@@ -541,27 +545,30 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     ].join("\n");
   }
   if (operation.kind === "loop.range") {
-    const condition = operation.boundIsStop
-      ? `${operation.index} < ${operation.count}`
-      : `${operation.index} - ${operation.start} < ${operation.count}`;
     return [
-      `${indent}for (${operation.index} = ${BigInt(operation.start)}n; ` +
-        `${condition}; ` +
-        `${operation.index} += ${BigInt(operation.step || 1)}n) {`,
+      `${indent}${operation.iterator} = ${operation.start};`,
+      `${indent}while (${operation.iterator} < ${operation.stop}) {`,
+      `${indent}  ${operation.index} = ${operation.iterator};`,
       ...operation.body.map((item) =>
         emitExactStatement(item, `${indent}  `, resourceStack)
       ),
+      `${indent}  if (${operation.step} >= ` +
+        `${operation.stop} - ${operation.iterator}) break;`,
+      `${indent}  ${operation.iterator} += ${operation.step};`,
       `${indent}}`,
     ].join("\n");
   }
   if (operation.kind === "loop.range_exact") {
     return [
-      `${indent}for (${operation.index} = ${operation.start}; ` +
-        `${operation.index} < ${operation.stop}; ` +
-        `${operation.index} += 1n) {`,
+      `${indent}${operation.iterator} = ${operation.start};`,
+      `${indent}while (${operation.step} > 0n ? ` +
+        `${operation.iterator} < ${operation.stop} : ` +
+        `${operation.iterator} > ${operation.stop}) {`,
+      `${indent}  ${operation.index} = ${operation.iterator};`,
       ...operation.body.map((item) =>
         emitExactStatement(item, `${indent}  `, resourceStack)
       ),
+      `${indent}  ${operation.iterator} += ${operation.step};`,
       `${indent}}`,
     ].join("\n");
   }
@@ -875,7 +882,7 @@ function exactNativeExpression(fn, backend) {
 
 function backendDecision(fn) {
   const policy = fn.analysis.backend;
-  if (["tagged", "gmp", "bigint"].includes(policy.kind)) {
+  if (["tagged", "fmpz", "gmp", "bigint"].includes(policy.kind)) {
     return `  return ${jsString(policy.kind)};`;
   }
   if (policy.kind === "iterations") {
@@ -966,6 +973,14 @@ ${fn.params.map(exactValidation).join("\n")}
 }
 
 function backend_${fn.name}(${args}) {
+  if (integerBackendOverride === "fmpz" && ${fn.analysis.backend.kind !== "fmpz"}) {
+    throw new Error(
+      "fmpz backend was requested but ${fn.name} is not qualified for fmpz"
+    );
+  }
+  if (integerBackendOverride === "fmpz" && nativeAddon === null) {
+    throw new Error("fmpz backend was requested but is not available");
+  }
   if (integerBackendOverride === "gmp" && nativeAddon === null) {
     throw new Error("GMP backend was requested but is not available");
   }
@@ -1006,6 +1021,14 @@ ${normalized.join("\n")}
   }
   return ${exactReturn(fn, exactNativeExpression(fn, '"gmp"'))};
 };
+${fn.analysis.backend.kind === "fmpz" ? `${fn.name}.fmpz = function (${declaredParams}) {
+  validate_${fn.name}(${params});
+${normalized.join("\n")}
+  if (nativeAddon === null) {
+    throw new Error("fmpz native backend is not available");
+  }
+  return ${exactReturn(fn, exactNativeExpression(fn, '"fmpz"'))};
+};` : ""}
 ${fn.name}.backendFor = function (${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
@@ -1486,9 +1509,9 @@ if (!nativeAddonDisabled) {
 const integerBackendOverride =
   process.env.SAGEJS_NATIVE_INTEGER_BACKEND ||
   (requestedNativeMode === "native" ? "tagged" : "auto");
-if (!["auto", "bigint", "tagged", "gmp"].includes(integerBackendOverride)) {
+if (!["auto", "bigint", "tagged", "gmp", "fmpz"].includes(integerBackendOverride)) {
   throw new RangeError(
-    "SAGEJS_NATIVE_INTEGER_BACKEND must be auto, bigint, tagged, or gmp");
+    "SAGEJS_NATIVE_INTEGER_BACKEND must be auto, bigint, tagged, gmp, or fmpz");
 }
 
 let immutableUInt64LeaseBorrow = null;
@@ -2694,7 +2717,9 @@ function float64NativeBuffer(value, argument) {
 }
 
 function integerFloorDiv(left, right) {
-  if (right === 0n) throw new RangeError("integer division or modulo by zero");
+  if (right === 0n) {
+    nativeRaise("ZeroDivisionError", "integer division or modulo by zero");
+  }
   let quotient = left / right;
   const remainder = left % right;
   if (remainder !== 0n && (remainder < 0n) !== (right < 0n)) quotient -= 1n;
@@ -2717,7 +2742,7 @@ function integerDivmod(left, right) {
 }
 
 function integerRoundSqrt(value) {
-  if (value < 0n) throw new RangeError("math domain error");
+  if (value < 0n) nativeRaise("ValueError", "math domain error");
   const input = Number(value);
   if (!Number.isFinite(input)) {
     throw new RangeError("int too large to convert to float");
@@ -2760,7 +2785,13 @@ function nativeRaise(name, message) {
 
 function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) {
   try {
-    const property = backend === "gmp" ? name + "$gmp" : name;
+    const taggedProperty = name + "$tagged";
+    const property = backend === "gmp"
+      ? name + "$gmp"
+      : backend === "tagged" &&
+          Object.prototype.hasOwnProperty.call(nativeAddon, taggedProperty)
+        ? taggedProperty
+        : name;
     return nativeAddon[property](...args);
   } catch (error) {
     const message = String(error && error.message || error);
@@ -2771,6 +2802,9 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
     }
     if (message.includes("division") || message.includes("modulo")) {
       nativeRaise("ZeroDivisionError", message);
+    }
+    if (message.includes("range() arg 3 must not be zero")) {
+      nativeRaise("ValueError", message);
     }
     if (message.includes("math domain")) nativeRaise("ValueError", message);
     if (message.includes("too large to convert")) {
@@ -2794,6 +2828,8 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
     if (message.includes("NativeIntegerVector memory limit") ||
         message.includes("NativeIntegerMatrix memory limit") ||
         message.includes("NativeExactArena memory limit") ||
+        message.includes("NativeExactArena checkpoint allocation failed") ||
+        message.includes("NativeExactArena temporary capacity exhausted") ||
         message.includes("NativeIntegerVector allocation failed")) {
       nativeRaise("MemoryError", message);
     }
@@ -2932,6 +2968,9 @@ const nativeCompatibility = Object.freeze({
   cacheKey: ${jsString(options.cacheKey || "")},
   sourceHash: ${jsString(options.sourceHash || "")},
   nativeAbi: ${Number(options.nativeAbi || 0)},
+  privateFunctions: Object.freeze(${JSON.stringify(
+    options.privateFunctions || [],
+  )}),
   foreignDeclarations: Object.freeze(${JSON.stringify(
     options.foreignDeclarations || [],
   )}.map((declaration) => Object.freeze(declaration))),
@@ -2973,6 +3012,7 @@ module.exports = {
   cacheKey: nativeCompatibility.cacheKey,
   sourceHash: nativeCompatibility.sourceHash,
   nativeAbi: nativeCompatibility.nativeAbi,
+  privateFunctions: nativeCompatibility.privateFunctions,
   foreignDeclarations: nativeCompatibility.foreignDeclarations,
   executionMode: compiledExecutionMode,
   nativeAvailable: nativeAddon !== null,

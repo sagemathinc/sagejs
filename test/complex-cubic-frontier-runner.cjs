@@ -32,6 +32,7 @@ const {
   WARMUP_SCHEMA,
   assertRuntimeClosureUnchanged,
   bindWarmedRuntimeClosure,
+  candidateDirectEnvironmentIdentity,
   censusBatchPlan,
   censusPartFilename,
   censusPartKey,
@@ -64,6 +65,7 @@ const {
   validateRuntimeWarmupAttestation,
   validateWarmupResponse,
   validateCensusProcessTopology,
+  validateCheckpointObservation,
   validateRuntimeIdentity,
   warmCandidateDirectEnvironment,
 } = require("../bench/class-unit-groups/run-complex-cubic-frontier.cjs");
@@ -297,7 +299,15 @@ test("census isolates Sage fields while retaining PARI timing strata", () => {
 
 test("census CPU lists are explicit and never affect retained timing", () => {
   const required = ["--corpus", "/tmp/corpus.json", "--output", "/tmp/output.json"];
-  assert.deepEqual(parseArguments(["--census", ...required, "--cpu", "2"]).censusCpus, [2]);
+  const defaults = parseArguments(["--census", ...required, "--cpu", "2"]);
+  assert.deepEqual(defaults.censusCpus, [2]);
+  assert.equal(defaults.sagejsIntegerBackend, "auto");
+  assert.equal(parseArguments([
+    "--census", ...required, "--sagejs-integer-backend", "fmpz",
+  ]).sagejsIntegerBackend, "fmpz");
+  assert.throws(() => parseArguments([
+    "--census", ...required, "--sagejs-integer-backend", "tagged",
+  ]), /must be one of auto,gmp,fmpz/);
   assert.deepEqual(
     parseArguments(["--census", ...required, "--cpu", "2", "--census-cpus", "0,3,1"])
       .censusCpus,
@@ -327,6 +337,35 @@ test("census CPU lists are explicit and never affect retained timing", () => {
   ]), /conflicts/);
 });
 
+test("candidate runtime identity authenticates the requested exact backend", () => {
+  const automatic = candidateDirectEnvironmentIdentity(root);
+  const forcedGmp = candidateDirectEnvironmentIdentity(root, "gmp");
+  const forcedFmpz = candidateDirectEnvironmentIdentity(root, "fmpz");
+  assert.equal(automatic.schema,
+    "sagejs.benchmark/complex-cubic-direct-environment-v4");
+  assert.deepEqual(automatic.exact_integer_backend, {
+    requested: "auto",
+    selected: "per-function-qualified-policy",
+    enforcement: "compiler-qualified-automatic-selection",
+  });
+  assert.equal(automatic.environment.SAGEJS_NATIVE_INTEGER_BACKEND, "auto");
+  for (const [identity, backend] of [[forcedGmp, "gmp"], [forcedFmpz, "fmpz"]]) {
+    assert.deepEqual(identity.exact_integer_backend, {
+      requested: backend,
+      selected: backend,
+      enforcement: "requested-backend-or-fail-closed",
+    });
+    assert.equal(identity.environment.SAGEJS_NATIVE_INTEGER_BACKEND, backend);
+    const { sha256: recorded, ...payload } = identity;
+    assert.equal(recorded, canonicalDigest(payload));
+    assert.notEqual(recorded, automatic.sha256);
+  }
+  assert.throws(
+    () => candidateDirectEnvironmentIdentity(root, "tagged"),
+    /must be auto, gmp, or fmpz/,
+  );
+});
+
 test("bounded census workers dynamically refill CPUs and preserve shard order", async () => {
   const batches = Array.from({ length: 9 }, (_, shard) => ({ shard }));
   const active = new Set();
@@ -353,7 +392,15 @@ test("bounded census workers dynamically refill CPUs and preserve shard order", 
 test("verified Sage singleton checkpoints publish atomically and resume exactly", async (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-frontier-parts-"));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  const corpus = corpusFixture();
+  const corpus = structuredClone(corpusFixture());
+  // This test exercises mathematical receipt admission as well as checkpoint
+  // authentication. Use a real index-three equation for the singleton.
+  Object.assign(corpus.records[0], {
+    coefficients: ["-63", "-11", "-1", "1"],
+    discriminant: "-12716",
+    discriminant_absolute: "12716",
+  });
+  corpus.digests.records_sha256 = canonicalDigest(corpus.records);
   const tool = {
     system: "sagejs",
     status: "available",
@@ -465,6 +512,16 @@ test("verified Sage singleton checkpoints publish atomically and resume exactly"
   );
   assert.equal(second.checkpoint, "reused");
   assert.deepEqual(second.invocation.response, response);
+
+  // A self-consistent digest cannot authorize the wrong equation index, even
+  // when that wrong value equals the frozen LMFDB field-index metadata.
+  const wrongIndex = structuredClone(response.payload.records[0]);
+  wrongIndex.receipt.equation_order_index = "1";
+  wrongIndex.receipt_digest = sha256(
+    JSON.stringify(JSON.parse(canonicalJson(wrongIndex.receipt))),
+  );
+  assert.throws(() => validateCheckpointObservation(wrongIndex, record),
+    /invalid native proof branch/);
 
   const structurallyInvalid = JSON.parse(originalPart);
   delete structurallyInvalid.process.execution_epoch;
@@ -1216,6 +1273,27 @@ test("timing accepts only clean matching source and current build closures", () 
     mutate(changed);
     assert.equal(sourceIdentitiesMatchForTiming(source, changed), false);
   }
+
+  const automatic = {
+    ...source,
+    candidate_runtime_closure: {
+      direct_process_environment: {
+        exact_integer_backend: {
+          requested: "auto",
+          selected: "per-function-qualified-policy",
+          enforcement: "compiler-qualified-automatic-selection",
+        },
+      },
+    },
+  };
+  const forcedFmpz = structuredClone(automatic);
+  forcedFmpz.candidate_runtime_closure.direct_process_environment
+    .exact_integer_backend = {
+      requested: "fmpz",
+      selected: "fmpz",
+      enforcement: "requested-backend-or-fail-closed",
+    };
+  assert.equal(sourceIdentitiesMatchForTiming(automatic, forcedFmpz), false);
 });
 
 test("metrics retain absolute round totals and paired shard/field summaries", () => {
@@ -1245,7 +1323,17 @@ test("metrics retain absolute round totals and paired shard/field summaries", ()
 });
 
 test("frontier selection prioritizes the smallest-discriminant native decline", () => {
-  const corpus = corpusFixture();
+  const corpus = { records: [
+    { label: "3.1.23.1", coefficients: ["1", "0", "-1", "1"],
+      discriminant: "-23", discriminant_absolute: "23", equation_order_index: "1",
+      class_number: "1" },
+    { label: "3.1.12716.2", coefficients: ["-63", "-11", "-1", "1"],
+      discriminant: "-12716", discriminant_absolute: "12716", equation_order_index: "1",
+      class_number: "3" },
+    { label: "3.1.84591.1", coefficients: ["-55", "9", "0", "1"],
+      discriminant: "-84591", discriminant_absolute: "84591", equation_order_index: "1",
+      class_number: "5" },
+  ] };
   const sorted = [...corpus.records].sort((left, right) =>
     Number(BigInt(left.discriminant_absolute) - BigInt(right.discriminant_absolute)));
   const chosen = sorted[2];
