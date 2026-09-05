@@ -2836,8 +2836,12 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
         message.includes("NativeIntegerVector allocation failed")) {
       nativeRaise("MemoryError", message);
     }
-    if (message.includes("NativeIntegerVector index")) {
+    if (message.includes("NativeIntegerVector index") ||
+        message.includes("NativeIntegerVector slice out of range")) {
       nativeRaise("IndexError", message);
+    }
+    if (message.includes("NativeIntegerVector slice cannot resize storage")) {
+      nativeRaise("ValueError", message);
     }
     if (message.includes("matrix modulus must be at least") ||
         message.includes("buffer length does not match dimensions")) {
