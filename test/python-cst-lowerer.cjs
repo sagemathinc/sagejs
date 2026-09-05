@@ -44,6 +44,23 @@ const outputOptions = {
   python_attributes: true,
 };
 
+test("compact output terminates fragments containing internal semicolons", () => {
+  const compiler = createCompiler();
+  for (const semicolons of [true, false]) {
+    const output = new compiler.OutputStream({ beautify: false, semicolons });
+    output.print("function answer(){return (() => {const value = 42; return value;})()");
+    output.semicolon();
+    output.print("return null}");
+    const source = output.get();
+    assert.equal(new Script(`${source}; answer()`).runInNewContext(), 42);
+  }
+  const terminated = new compiler.OutputStream({ beautify: false });
+  terminated.print("const value = 42;");
+  terminated.semicolon();
+  terminated.print("value");
+  assert.equal(terminated.get(), "const value = 42;value");
+});
+
 function wrapTimeitStatement(compiler, ast, { number, repeat = 7 } = {}) {
   const statements = ast.body;
   const body =

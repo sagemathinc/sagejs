@@ -67,6 +67,34 @@ comments before final publication; branch authors may still be working.
 - The 63 CST lowering tests and strict Python checks (367 modules, zero errors)
   pass. The performance lab's five policy tests and real end-to-end smoke pass;
   cold standalone corpus compilation took 179 seconds on this loaded host.
+- Full cache validation caught an oversized compiler bootstrap (4,412,866
+  bytes). A source-builder comparison shows compacting only the private
+  compiler-support modules saves 234,023 bytes, with no removal of function
+  names, documentation or annotations. Restore main's original compiler size
+  ceiling rather than adopting the PR's higher allowance. Rebuild and recheck.
+- #118's 25 promotion tests pass; its tooling digest is refreshed and release
+  qualification remains explicitly pending.
+- The first complete native build passed all eight stages in 18m26s. A quiet
+  bench-1 Python build also passed; its startup medians were 383.6 ms full and
+  176.1 ms empty against unchanged 400/225 ms budgets. These precede the private
+  compiler compaction follow-up and do not replace final validation.
+- Compact emission exposed an old statement-printer defect: a semicolon
+  anywhere inside the previous fragment suppressed the required separator.
+  Inspect only its final character. The focused regression fails before and
+  passes after the fix, including newline-based and explicit-semicolon modes.
+  Self-hosting probes that behavior before compacting, so stage-zero/older
+  compilers still produce a valid bootstrap pass.
+- The corrected compact build passes all eight stages (12m22s), with all five
+  native adapters and all 41 production kernel families reused. Compiler size
+  is 4,178,882 bytes; the public runtime SHA-256 remains exactly
+  `647f58fc76ce5c8048ed34a9516393dea62612684c8bab2b170fbfb1a36c5275`.
+  Focused compiler/runtime/cache checks pass (71 tests), architecture passes,
+  strict Python passes (367 modules), and portable passes (116/116 files,
+  1m38s). Startup passes at 389.4 ms full / 182.9 ms empty without any timing
+  threshold changes.
+- Before publication, main advanced to `25571014c` with the release owner's
+  narrow symbolic-root Wasm fast-path restoration. Preserve that correction
+  when advancing the integration branch; the receipts above precede that merge.
 - Initial build was deliberately stopped after defect reproduction. Cache
   tests attempted during module-cache construction saw missing artifacts and
   must be rerun after the final build; they are not passing receipts.
@@ -80,12 +108,25 @@ comments before final publication; branch authors may still be working.
   if the public matrix engine cannot handle this coefficient domain directly.
 - Check #101's implicit FLINT backend fingerprint includes transitive headers,
   not only `fmpz.h` and the static library.
+- Confirmed #101 defect: `integer.buffer.get/set` checks uint64 indices but
+  uses an uninitialized `sagejs_buffer_position` for the access. Initialize the
+  checked position and test distinct-entry native reads/writes before merging.
+  The author separately identified call-induced nested arena ownership risk;
+  review the fail-closed guard in follow-up #123 as an integration prerequisite.
 - #101 advanced to `f7f00552dd4178993ceef4522cc2897622cdf2c6` during review;
   review the new online relation-support reuse and equation-index diagnostics
   before merging that head.
 - Check geometry resource limits before dense Hilbert-numerator allocation,
   stop high-order derivatives once zero, and reject constant/zero defining
   equations as plane curves without misclassifying empty affine patches.
+- Review the new rational multivariate reduction adapter's array validation and
+  allocation-size checks, especially size_t overflow on Wasm32. Also check
+  ambient-space identity when the bounded geometry parent cache evicts entries
+  that still have live points or schemes.
+- #106's global strong maps retain every Gamma1 parent and its large descent
+  matrices. Prefer lazy parent-owned caches. Follow-up #125 separately repairs
+  a demonstrated large-level row-space/publication memory cliff; its inclusion
+  has been offered to the user while original-scope validation continues.
 - Measure combined bootstrap source and emitted runtime growth. Preserve all
   startup and compressed-size guardrails; explain any narrow reviewed source
   budget change with actual measurements.
