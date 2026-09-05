@@ -420,6 +420,20 @@ print(
     );
     await runSource("QQ['x'].gen()", "x");
     await runSource(
+      "A = AffineSpace(QQ, 2, names=('u', 'v'))\n" +
+        "u, v = A.gens()\n" +
+        "X = A.subscheme([v-u^2])\n" +
+        "print(X.dimension(), A(3,9) in X)\n" +
+        "X.coordinate_ring().gens()[1] == X.coordinate_ring().gens()[0]^2",
+      "1 True\nTrue",
+    );
+    await runSource(
+      "AffineSpace(GF(4, 'a'), 2)",
+      "Error: algebraic geometry currently supports QQ and " +
+        "prime GF(p); finite extensions and number fields are planned in " +
+        "agents/no-singular-extension-fields-plan.md",
+    );
+    await runSource(
       "R.<x> = QQ[]\nx^2 - 2*x + 1",
       "x^2 - 2*x + 1",
     );

@@ -136,6 +136,24 @@ B = matrix(QQ, [[1/2, 1/3], [2/5, 3/7]])
 B.inverse()`,
   },
   {
+    id: "algebraic-geometry",
+    title: "Algebraic geometry",
+    description: "Construct schemes, close a curve projectively, and compute exact singular data without a server.",
+    source: `A = AffineSpace(QQ, 2, names=("x", "y"))
+x, y = A.gens()
+C = Curve(y^2 - x^3)
+O = C(0, 0)
+print(C)
+print("dimension:", C.dimension())
+print("origin smooth:", C.is_smooth(O))
+print("tangent dimension:", C.tangent_space(O).dimension())
+
+projective = C.projective_closure("z")
+print("projective degree:", projective.degree())
+print("arithmetic genus:", projective.arithmetic_genus())
+projective`,
+  },
+  {
     id: "numerical-laboratory",
     title: "Validated numerical root",
     description:

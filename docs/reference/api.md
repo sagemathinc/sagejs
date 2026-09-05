@@ -12,36 +12,29 @@ adjacent public docstring and registration metadata, then regenerate it.
 ## `AffineSpace`
 
 ```sage
-AffineSpace(dimension: int, base: sage.Parent, names: Any='x') -> AffineSpaceParent
+AffineSpace(first: Any, second: Any, names: Any='x') -> AffineSpaceParent
 ```
 
-Construct affine space with the requested coordinate names.
-
-### Example
+Construct affine space in either Sage-compatible argument order.
 
 ```sage
-sage: A = AffineSpace(2, QQ, 'xy')
-sage: A
-Affine Space of dimension 2 over Rational Field
-sage: A.gens()
-(x, y)
+sage: A = AffineSpace(QQ, 2, names=("x", "y"))
+sage: A.dimension()
+2
 ```
-
-The coordinate ring is a FLINT-backed multivariate polynomial ring.
 
 ### Metadata
 
 - Kind: `function`
 - Module: `sage.schemes`
-- Tags: algebraic geometry, affine schemes, curves, multivariate polynomials
-- Backends: FLINT, Sage.js algebraic geometry layer
-- Sage compatibility: partial — Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation.
-- Limitations: General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal.
+- Tags: algebraic geometry, affine schemes, projective schemes, curves
+- Backends: Sage.js exact polynomial and ideal layers
+- Sage compatibility: partial — Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary.
 
 ### Provenance
 
-- `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
-- `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
+- `sage-derived` — [SageMath schemes public API](https://doc.sagemath.org/html/en/reference/schemes/); license GPL-2.0-or-later
+- `sagejs-original` — [Sage.js no-Singular algebraic geometry](https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md); license GPL-3.0-only
 
 ## `animate`
 
@@ -603,39 +596,31 @@ Return a cube centered at `center` with side length `size`.
 ## `Curve`
 
 ```sage
-Curve(polynomial: Any) -> AffinePlaneCurve
+Curve(polynomial: Any) -> Any
 ```
 
-Construct an affine plane curve from a multivariate polynomial.
-
-### Example
+Construct an affine or projective plane curve from one polynomial.
 
 ```sage
-sage: x, y = AffineSpace(2, QQ, 'xy').gens()
-sage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))
-sage: C.irreducible_components()
-[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
-  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
-  x^3 + y^3 - 1]
+sage: R = PolynomialRing(QQ, names=("x", "y"))
+sage: x, y = R.gens()
+sage: C = Curve(y^2 - x^3)
+sage: C.degree()
+3
 ```
-
-Hypersurface components use FLINT multivariate factorization. Plane-curve
-intersections over `QQ` use a resultant followed by factorization and
-Gröbner bases. General primary decomposition is not yet implemented.
 
 ### Metadata
 
 - Kind: `function`
 - Module: `sage.schemes`
-- Tags: algebraic geometry, affine schemes, curves, multivariate polynomials
-- Backends: FLINT, Sage.js algebraic geometry layer
-- Sage compatibility: partial — Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation.
-- Limitations: General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal.
+- Tags: algebraic geometry, affine schemes, projective schemes, curves
+- Backends: Sage.js exact polynomial and ideal layers
+- Sage compatibility: partial — Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary.
 
 ### Provenance
 
-- `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
-- `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
+- `sage-derived` — [SageMath schemes public API](https://doc.sagemath.org/html/en/reference/schemes/); license GPL-2.0-or-later
+- `sagejs-original` — [Sage.js no-Singular algebraic geometry](https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md); license GPL-3.0-only
 
 ## `curve_fit`
 
@@ -8047,6 +8032,33 @@ sage: prime_range(10, 20)
 ### References
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `ProjectiveSpace`
+
+```sage
+ProjectiveSpace(first: Any, second: Any, names: Any='x') -> ProjectiveSpaceParent
+```
+
+Construct projective space in either Sage-compatible argument order.
+
+```sage
+sage: P = ProjectiveSpace(QQ, 2, names=("x", "y", "z"))
+sage: P(2, 4, 6) == P(1, 2, 3)
+True
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.schemes`
+- Tags: algebraic geometry, affine schemes, projective schemes, curves
+- Backends: Sage.js exact polynomial and ideal layers
+- Sage compatibility: partial — Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary.
+
+### Provenance
+
+- `sage-derived` — [SageMath schemes public API](https://doc.sagemath.org/html/en/reference/schemes/); license GPL-2.0-or-later
+- `sagejs-original` — [Sage.js no-Singular algebraic geometry](https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md); license GPL-3.0-only
 
 ## `Qp`
 

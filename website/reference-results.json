@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 221,
+    "pass": 223,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -11,19 +11,14 @@
   },
   "results": [
     {
-      "id": "src/baselib/polynomial.py#def14d007f6d9a12-e3b0c44298fc1c14",
+      "id": "src/baselib/schemes.py#e010c74c332f5782-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/polynomial.py#559aead08264d579-febf41a036cd0868",
+      "id": "src/baselib/schemes.py#f4ed007692290f8a-d4735e3a265e16ee",
       "status": "pass",
-      "actual": "Affine Space of dimension 2 over Rational Field\n"
-    },
-    {
-      "id": "src/baselib/polynomial.py#f319b20047dab08a-814095bbc622eed7",
-      "status": "pass",
-      "actual": "(x, y)\n"
+      "actual": "2\n"
     },
     {
       "id": "src/baselib/graphics3d.py#dd36051673d700fc-e3b0c44298fc1c14",
@@ -81,19 +76,24 @@
       "actual": "(3, [0.0, 0.0, 0], 3)\n"
     },
     {
-      "id": "src/baselib/polynomial.py#1d12daf28af8136a-e3b0c44298fc1c14",
+      "id": "src/baselib/schemes.py#fd76c7c26e088c48-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/polynomial.py#2eddafb4d0f5672a-e3b0c44298fc1c14",
+      "id": "src/baselib/schemes.py#03ec444959c798d3-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/polynomial.py#06c5e7960cda410c-5badf7217b080d99",
+      "id": "src/baselib/schemes.py#427af1e83a416cd4-e3b0c44298fc1c14",
       "status": "pass",
-      "actual": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n"
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/schemes.py#ec0c4059d7824af6-4e07408562bedb8b",
+      "status": "pass",
+      "actual": "3\n"
     },
     {
       "id": "docs/reference/fixtures/numerical.cjs#65881c7f41cc6e9f-3cbc87c7681f34db",
@@ -1205,6 +1205,16 @@
       "id": "src/baselib/builtins.py#c0bc81d3429aebdb-0f03cde178fa9f37",
       "status": "pass",
       "actual": "37607912018\n"
+    },
+    {
+      "id": "src/baselib/schemes.py#c4138a7a365c9405-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/schemes.py#dad19399d23b4f16-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
     },
     {
       "id": "src/baselib/number_fields.py#27641fc0831ac6e7-e3b0c44298fc1c14",

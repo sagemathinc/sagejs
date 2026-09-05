@@ -35,7 +35,7 @@
     }
   },
   "markdown": {
-    "bytes": 25285,
+    "bytes": 25255,
     "path": "docs/optimizer-opportunities.md",
     "sha256": "94128537bde92b68ed4dd129f3685396710b9286355cc7b010f8de65730c820c"
   },
@@ -105,9 +105,9 @@
         "records": 14309
       },
       {
-        "digest": "e43c2f09cff4ce18bd26795cfea48ee6d7ba65ef528cec93e72cda6ad2b50ba1",
+        "digest": "8d0bcb406c12c1c33a9ad7b47b45d55a300e0b64ae88ae1eea5e802e7d72e516",
         "name": "nearMisses",
-        "records": 267
+        "records": 270
       },
       {
         "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",

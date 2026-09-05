@@ -1,0 +1,144 @@
+{
+  "$schema": "./upstream-algebra-provenance.schema.json",
+  "schema": "sagejs.upstream-algebra-provenance/v1",
+  "policy": {
+    "production_dependency": false,
+    "copied_fragments_require_source_notice": true,
+    "oracle_values_are_verified_structurally": true
+  },
+  "projects": [
+    {
+      "id": "sagemath",
+      "revision": "6cd06ec1acdec7a4516ed9928bd575b7a63999b8",
+      "license": "GPL-2.0-or-later",
+      "copyright": "SageMath contributors",
+      "repository": "https://github.com/sagemath/sage"
+    },
+    {
+      "id": "singular",
+      "revision": "cca73e3ef1deb1b75c8bbd112dab699fd4fcb888",
+      "license": "GPL-2.0-or-later",
+      "copyright": "Singular contributors",
+      "repository": "https://github.com/Singular/Singular"
+    },
+    {
+      "id": "cocoa",
+      "revision": "9cb5ce485bb5ec56d426747a9c7db2fbf9888d2d",
+      "license": "GPL-3.0-or-later",
+      "copyright": "CoCoA contributors",
+      "repository": "https://github.com/cocoa-official/CoCoALib"
+    },
+    {
+      "id": "macaulay2",
+      "revision": "1a37f6fe95badb1e5f99707a485503d213fd9d49",
+      "license": "GPL-2.0-or-later",
+      "copyright": "Macaulay2 contributors",
+      "repository": "https://github.com/Macaulay2/M2"
+    },
+    {
+      "id": "oscar",
+      "revision": "63ed738cd9192d9561f79f39a4004c9472d7290b",
+      "license": "GPL-3.0-or-later",
+      "copyright": "Oscar contributors",
+      "repository": "https://github.com/oscar-system/Oscar.jl"
+    }
+  ],
+  "records": [
+    {
+      "id": "public-scheme-semantics",
+      "project": "sagemath",
+      "relationship": "reference-only",
+      "copied_code": false,
+      "sources": [
+        "src/sage/schemes/affine/affine_space.py",
+        "src/sage/schemes/affine/affine_subscheme.py",
+        "src/sage/schemes/projective/projective_space.py",
+        "src/sage/schemes/projective/projective_subscheme.py"
+      ],
+      "symbols_or_lines": "public constructors, points, subschemes, affine patches, and user-visible exceptions",
+      "sagejs_files": ["src/baselib/schemes.py", "test/algebraic-geometry-affine.py", "test/algebraic-geometry-projective.py"],
+      "note": "Sage-compatible public semantics; Sage.js uses an independent small object model and no Sage source at runtime."
+    },
+    {
+      "id": "ideal-intersection-colon-saturation",
+      "project": "cocoa",
+      "relationship": "independently-reimplemented",
+      "copied_code": false,
+      "sources": ["src/AlgebraicCore/TmpGOperations.C"],
+      "symbols_or_lines": "ComputeIntersection and colon/saturation helpers, lines 869-986 and 1106-1137",
+      "sagejs_files": ["src/lib/sagejs/polynomial_algorithms/ideal_operations.py", "test/algebraic-geometry-ideals.py"],
+      "algorithm_citation": "classical auxiliary-variable elimination and ideal-quotient identities",
+      "note": "Ordinary Python implementation through public ideal APIs; no translated C++ fragments."
+    },
+    {
+      "id": "hilbert-poincare-data",
+      "project": "cocoa",
+      "relationship": "independently-reimplemented",
+      "copied_code": false,
+      "sources": [
+        "src/AlgebraicCore/SparsePolyOps-hilbert.C",
+        "src/AlgebraicCore/TmpHilbertDir/TmpPoincareCPP.C"
+      ],
+      "symbols_or_lines": "HilbertNumQuot, HilbertSeriesQuot, HilbertPoly, and Poincare numerator routines; SparsePolyOps-hilbert.C lines 119-302",
+      "sagejs_files": ["src/lib/sagejs/polynomial_algorithms/hilbert.py", "test/algebraic-geometry-ideals.py"],
+      "algorithm_citation": "monomial-ideal Hilbert numerator by exact inclusion-exclusion and denominator cancellation",
+      "note": "Independent immutable Python combinatorics, structurally compared with the upstream formulation."
+    },
+    {
+      "id": "zero-dimensional-radical-primary",
+      "project": "cocoa",
+      "relationship": "independently-reimplemented",
+      "copied_code": false,
+      "sources": ["src/AlgebraicCore/SparsePolyOps-ideal-ZeroDim.C"],
+      "symbols_or_lines": "radical and PrimaryDecomposition0, lines 165-735",
+      "sagejs_files": ["src/lib/sagejs/polynomial_algorithms/zero_dimensional.py", "test/algebraic-geometry-zero-dimensional.py"],
+      "algorithm_citation": "zero-dimensional perfect-field radical criterion and splitting by minimal-polynomial factors",
+      "note": "Independent Python algorithm with exact containment, maximal-radical, and recomposition checks."
+    },
+    {
+      "id": "elimination-saturation-oracle",
+      "project": "singular",
+      "relationship": "oracle-only",
+      "copied_code": false,
+      "sources": ["Singular/LIB/elim.lib"],
+      "symbols_or_lines": "elim and sat documentation/implementations, lines 404-761",
+      "sagejs_files": ["test/fixtures/algebraic-geometry-oracles-v1.json"],
+      "note": "Independent expected ideals only; Singular is never loaded by Sage.js."
+    },
+    {
+      "id": "saturation-hilbert-decomposition-oracle",
+      "project": "macaulay2",
+      "relationship": "oracle-only",
+      "copied_code": false,
+      "sources": ["M2/Macaulay2/packages/Saturation.m2", "M2/Macaulay2/packages/PrimaryDecomposition.m2"],
+      "symbols_or_lines": "saturate methods lines 352-525 and zero-dimensional primary decomposition examples",
+      "sagejs_files": ["test/fixtures/algebraic-geometry-oracles-v1.json"],
+      "note": "Fixtures store mathematical results and commands, not Macaulay2 implementation code."
+    },
+    {
+      "id": "modern-scheme-object-model",
+      "project": "oscar",
+      "relationship": "reference-and-oracle",
+      "copied_code": false,
+      "sources": [
+        "src/AlgebraicGeometry/Schemes/AffineSchemes",
+        "src/AlgebraicGeometry/Schemes/ProjectiveSchemes/Objects",
+        "src/AlgebraicGeometry/Schemes/ProjectiveSchemes/Objects/Properties.jl"
+      ],
+      "symbols_or_lines": "affine/projective constructors, closed subschemes, and Jacobian smoothness capability boundaries",
+      "sagejs_files": ["src/baselib/schemes.py", "src/lib/sagejs/schemes/jacobian.py", "test/fixtures/algebraic-geometry-oracles-v1.json"],
+      "note": "API and capability-boundary reference only; no Julia code or runtime is shipped."
+    },
+    {
+      "id": "graph-and-image-elimination",
+      "project": "sagemath",
+      "relationship": "independently-reimplemented",
+      "copied_code": false,
+      "sources": ["src/sage/schemes/generic/morphism.py", "src/sage/schemes/affine/affine_morphism.py"],
+      "symbols_or_lines": "polynomial morphism validation and image/graph public semantics",
+      "sagejs_files": ["src/lib/sagejs/schemes/morphism.py", "test/algebraic-geometry-morphisms.py"],
+      "algorithm_citation": "classical graph-ideal elimination",
+      "note": "Independent bounded implementation using Sage.js simultaneous substitution and elimination."
+    }
+  ]
+}

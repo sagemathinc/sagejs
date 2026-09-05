@@ -354,6 +354,9 @@ function serializeError(error) {
     name: error instanceof Error ? error.name : "Error",
     message: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined,
+    sagejsErrorName: typeof error?.sagejsErrorName === "string"
+      ? error.sagejsErrorName
+      : undefined,
   };
 }
 

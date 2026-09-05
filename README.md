@@ -863,10 +863,11 @@ probabilistic `proof=False` computation. Backend choice and proof status are
 inspectable through `groebner_basis_metadata()`.
 
 See [Gröbner bases](docs/groebner-bases.md) for examples, exact capability and
-resource limits, and the operations that remain future work. Primary
-decomposition, associated primes, modules, local orders, comprehensive
-coefficient-domain support, and the broader algebraic-geometry layer are not
-silently presented as msolve capabilities.
+resource limits. The [algebraic-geometry guide](docs/algebraic-geometry.md)
+builds exact affine/projective schemes, morphisms, Hilbert data, Jacobian
+geometry, plane curves, and zero-dimensional decomposition on that interface,
+without making Singular a dependency. Modules, local orders, and general
+positive-dimensional decomposition remain explicit future work.
 
 Generator declarations are parsed contextually and lowered to ordinary
 assignment AST nodes. For example, `R.<x> = ZZ[]` constructs

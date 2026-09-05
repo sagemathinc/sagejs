@@ -112,7 +112,9 @@ const {
 } = outputRenderer;
 
 function userErrorText(error) {
-  const name = error?.name === "ReferenceError"
+  const name = typeof error?.sagejsErrorName === "string"
+    ? error.sagejsErrorName
+    : error?.name === "ReferenceError"
     ? "NameError"
     : error?.name || "Error";
   return `${name}: ${error?.message || String(error)}`;

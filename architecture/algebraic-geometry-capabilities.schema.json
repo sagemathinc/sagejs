@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/algebraic-geometry-capabilities-v1.json",
+  "title": "Sage.js no-Singular algebraic-geometry capability matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "scope",
+    "routing_key",
+    "supported_base_fields",
+    "deferred_base_fields",
+    "platforms",
+    "forbidden_runtime_dependencies",
+    "operations",
+    "explicit_rejections"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema": { "const": "sagejs.algebraic-geometry-capabilities/v1" },
+    "scope": { "type": "string", "minLength": 1 },
+    "routing_key": {
+      "type": "array",
+      "minItems": 6,
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    },
+    "supported_base_fields": { "type": "array", "minItems": 2 },
+    "deferred_base_fields": { "type": "array", "minItems": 2 },
+    "platforms": { "type": "array", "minItems": 6, "uniqueItems": true },
+    "forbidden_runtime_dependencies": { "type": "array", "minItems": 5, "uniqueItems": true },
+    "operations": {
+      "type": "array",
+      "minItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "phase", "domains", "orders", "proof_modes", "platforms", "implementation", "fallback", "resource_envelope", "limitation"]
+      }
+    },
+    "explicit_rejections": { "type": "array", "minItems": 5 }
+  }
+}

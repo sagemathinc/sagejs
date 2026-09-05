@@ -9,40 +9,38 @@
         "aliases": [],
         "kind": "function",
         "module": "sage.schemes",
-        "signature": "AffineSpace(dimension: int, base: sage.Parent, names: Any='x') -> AffineSpaceParent",
-        "summary": "Construct affine space with the requested coordinate names.",
-        "doc": "Construct affine space with the requested coordinate names.\n\n### Example\n\n```sage\nsage: A = AffineSpace(2, QQ, 'xy')\nsage: A\nAffine Space of dimension 2 over Rational Field\nsage: A.gens()\n(x, y)\n```\n\nThe coordinate ring is a FLINT-backed multivariate polynomial ring.",
+        "signature": "AffineSpace(first: Any, second: Any, names: Any='x') -> AffineSpaceParent",
+        "summary": "Construct affine space in either Sage-compatible argument order.",
+        "doc": "Construct affine space in either Sage-compatible argument order.\n\n```sage\nsage: A = AffineSpace(QQ, 2, names=(\"x\", \"y\"))\nsage: A.dimension()\n2\n```",
         "tags": [
           "algebraic geometry",
           "affine schemes",
-          "curves",
-          "multivariate polynomials"
+          "projective schemes",
+          "curves"
         ],
         "backends": [
-          "FLINT",
-          "Sage.js algebraic geometry layer"
+          "Sage.js exact polynomial and ideal layers"
         ],
         "sage_compatibility": {
           "status": "partial",
-          "notes": "Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation."
+          "notes": "Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary."
         },
         "provenance": [
           {
             "kind": "sage-derived",
-            "source": "SageMath schemes and plane curves API",
-            "url": "https://doc.sagemath.org/html/en/reference/curves/",
+            "source": "SageMath schemes public API",
+            "url": "https://doc.sagemath.org/html/en/reference/schemes/",
             "license": "GPL-2.0-or-later"
           },
           {
-            "kind": "library-backed",
-            "source": "FLINT multivariate polynomial arithmetic",
-            "url": "https://flintlib.org/doc/"
+            "kind": "sagejs-original",
+            "source": "Sage.js no-Singular algebraic geometry",
+            "url": "https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md",
+            "license": "GPL-3.0-only"
           }
         ],
         "references": [],
-        "limitations": [
-          "General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal."
-        ]
+        "limitations": []
       },
       {
         "schema_version": 1,
@@ -969,40 +967,38 @@
         "aliases": [],
         "kind": "function",
         "module": "sage.schemes",
-        "signature": "Curve(polynomial: Any) -> AffinePlaneCurve",
-        "summary": "Construct an affine plane curve from a multivariate polynomial.",
-        "doc": "Construct an affine plane curve from a multivariate polynomial.\n\n### Example\n\n```sage\nsage: x, y = AffineSpace(2, QQ, 'xy').gens()\nsage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))\nsage: C.irreducible_components()\n[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n```\n\nHypersurface components use FLINT multivariate factorization. Plane-curve\nintersections over `QQ` use a resultant followed by factorization and\nGröbner bases. General primary decomposition is not yet implemented.",
+        "signature": "Curve(polynomial: Any) -> Any",
+        "summary": "Construct an affine or projective plane curve from one polynomial.",
+        "doc": "Construct an affine or projective plane curve from one polynomial.\n\n```sage\nsage: R = PolynomialRing(QQ, names=(\"x\", \"y\"))\nsage: x, y = R.gens()\nsage: C = Curve(y^2 - x^3)\nsage: C.degree()\n3\n```",
         "tags": [
           "algebraic geometry",
           "affine schemes",
-          "curves",
-          "multivariate polynomials"
+          "projective schemes",
+          "curves"
         ],
         "backends": [
-          "FLINT",
-          "Sage.js algebraic geometry layer"
+          "Sage.js exact polynomial and ideal layers"
         ],
         "sage_compatibility": {
           "status": "partial",
-          "notes": "Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation."
+          "notes": "Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary."
         },
         "provenance": [
           {
             "kind": "sage-derived",
-            "source": "SageMath schemes and plane curves API",
-            "url": "https://doc.sagemath.org/html/en/reference/curves/",
+            "source": "SageMath schemes public API",
+            "url": "https://doc.sagemath.org/html/en/reference/schemes/",
             "license": "GPL-2.0-or-later"
           },
           {
-            "kind": "library-backed",
-            "source": "FLINT multivariate polynomial arithmetic",
-            "url": "https://flintlib.org/doc/"
+            "kind": "sagejs-original",
+            "source": "Sage.js no-Singular algebraic geometry",
+            "url": "https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md",
+            "license": "GPL-3.0-only"
           }
         ],
         "references": [],
-        "limitations": [
-          "General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal."
-        ]
+        "limitations": []
       },
       {
         "schema_version": 1,
@@ -11711,6 +11707,45 @@
       },
       {
         "schema_version": 1,
+        "name": "ProjectiveSpace",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.schemes",
+        "signature": "ProjectiveSpace(first: Any, second: Any, names: Any='x') -> ProjectiveSpaceParent",
+        "summary": "Construct projective space in either Sage-compatible argument order.",
+        "doc": "Construct projective space in either Sage-compatible argument order.\n\n```sage\nsage: P = ProjectiveSpace(QQ, 2, names=(\"x\", \"y\", \"z\"))\nsage: P(2, 4, 6) == P(1, 2, 3)\nTrue\n```",
+        "tags": [
+          "algebraic geometry",
+          "affine schemes",
+          "projective schemes",
+          "curves"
+        ],
+        "backends": [
+          "Sage.js exact polynomial and ideal layers"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath schemes public API",
+            "url": "https://doc.sagemath.org/html/en/reference/schemes/",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Sage.js no-Singular algebraic geometry",
+            "url": "https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md",
+            "license": "GPL-3.0-only"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
         "name": "Qp",
         "aliases": [
           "Zp"
@@ -13255,97 +13290,79 @@
       "aliases": [],
       "kind": "function",
       "module": "sage.schemes",
-      "signature": "AffineSpace(dimension: int, base: sage.Parent, names: Any='x') -> AffineSpaceParent",
-      "summary": "Construct affine space with the requested coordinate names.",
-      "doc": "Construct affine space with the requested coordinate names.\n\n### Example\n\n```sage\nsage: A = AffineSpace(2, QQ, 'xy')\nsage: A\nAffine Space of dimension 2 over Rational Field\nsage: A.gens()\n(x, y)\n```\n\nThe coordinate ring is a FLINT-backed multivariate polynomial ring.",
+      "signature": "AffineSpace(first: Any, second: Any, names: Any='x') -> AffineSpaceParent",
+      "summary": "Construct affine space in either Sage-compatible argument order.",
+      "doc": "Construct affine space in either Sage-compatible argument order.\n\n```sage\nsage: A = AffineSpace(QQ, 2, names=(\"x\", \"y\"))\nsage: A.dimension()\n2\n```",
       "tags": [
         "algebraic geometry",
         "affine schemes",
-        "curves",
-        "multivariate polynomials"
+        "projective schemes",
+        "curves"
       ],
       "backends": [
-        "FLINT",
-        "Sage.js algebraic geometry layer"
+        "Sage.js exact polynomial and ideal layers"
       ],
       "sage_compatibility": {
         "status": "partial",
-        "notes": "Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation."
+        "notes": "Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary."
       },
       "provenance": [
         {
           "kind": "sage-derived",
-          "source": "SageMath schemes and plane curves API",
-          "url": "https://doc.sagemath.org/html/en/reference/curves/",
+          "source": "SageMath schemes public API",
+          "url": "https://doc.sagemath.org/html/en/reference/schemes/",
           "license": "GPL-2.0-or-later"
         },
         {
-          "kind": "library-backed",
-          "source": "FLINT multivariate polynomial arithmetic",
-          "url": "https://flintlib.org/doc/"
+          "kind": "sagejs-original",
+          "source": "Sage.js no-Singular algebraic geometry",
+          "url": "https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md",
+          "license": "GPL-3.0-only"
         }
       ],
       "references": [],
-      "limitations": [
-        "General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal."
-      ],
+      "limitations": [],
       "source": {
         "name": "AffineSpace",
         "qualified": "AffineSpace",
-        "path": "src/baselib/polynomial.py",
-        "line": 5507,
+        "path": "src/baselib/schemes.py",
+        "line": 466,
         "excerpt": {
-          "start_line": 5495,
-          "text": "    def __repr__(self) -> str:\n        return (\n            \"Affine Space of dimension \"\n            + str(self._dimension)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef AffineSpace(\n    dimension: int,\n    base: sage.Parent,\n    names: Any = \"x\",\n) -> AffineSpaceParent:\n    \"\"\"\n    Construct affine space with the requested coordinate names.\n\n    ### Example\n\n    ```sage\n    sage: A = AffineSpace(2, QQ, 'xy')\n    sage: A"
+          "start_line": 454,
+          "text": "        if len(equations) == 0:\n            lines.append(\"  0\")\n        else:\n            for index, equation in enumerate(equations):\n                suffix = \",\" if index + 1 < len(equations) else \"\"\n                lines.append(\"  \" + repr(equation) + suffix)\n        return \"\\n\".join(lines)\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef AffineSpace(\n    first: Any,\n    second: Any,\n    names: Any = \"x\",\n) -> AffineSpaceParent:\n    \"\"\"Construct affine space in either Sage-compatible argument order.\n\n    ```sage\n    sage: A = AffineSpace(QQ, 2, names=(\"x\", \"y\"))\n    sage: A.dimension()\n    2\n    ```\n    \"\"\""
         }
       },
       "examples": [
         {
-          "id": "src/baselib/polynomial.py#def14d007f6d9a12-e3b0c44298fc1c14",
-          "line": 5518,
-          "source": "A = AffineSpace(2, QQ, 'xy')",
+          "id": "src/baselib/schemes.py#e010c74c332f5782-e3b0c44298fc1c14",
+          "line": 474,
+          "source": "A = AffineSpace(QQ, 2, names=(\"x\", \"y\"))",
           "want": "",
           "tags": [],
           "owner": "AffineSpace",
-          "path": "src/baselib/polynomial.py",
+          "path": "src/baselib/schemes.py",
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py#def14d007f6d9a12-e3b0c44298fc1c14",
+            "id": "src/baselib/schemes.py#e010c74c332f5782-e3b0c44298fc1c14",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/polynomial.py#559aead08264d579-febf41a036cd0868",
-          "line": 5519,
-          "source": "A",
-          "want": "Affine Space of dimension 2 over Rational Field\n",
+          "id": "src/baselib/schemes.py#f4ed007692290f8a-d4735e3a265e16ee",
+          "line": 475,
+          "source": "A.dimension()",
+          "want": "2\n",
           "tags": [],
           "owner": "AffineSpace",
-          "path": "src/baselib/polynomial.py",
+          "path": "src/baselib/schemes.py",
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py#559aead08264d579-febf41a036cd0868",
+            "id": "src/baselib/schemes.py#f4ed007692290f8a-d4735e3a265e16ee",
             "status": "pass",
-            "actual": "Affine Space of dimension 2 over Rational Field\n"
-          }
-        },
-        {
-          "id": "src/baselib/polynomial.py#f319b20047dab08a-814095bbc622eed7",
-          "line": 5521,
-          "source": "A.gens()",
-          "want": "(x, y)\n",
-          "tags": [],
-          "owner": "AffineSpace",
-          "path": "src/baselib/polynomial.py",
-          "origin": "sagejs",
-          "language": "sage",
-          "verification": {
-            "id": "src/baselib/polynomial.py#f319b20047dab08a-814095bbc622eed7",
-            "status": "pass",
-            "actual": "(x, y)\n"
+            "actual": "2\n"
           }
         }
       ]
@@ -14649,97 +14666,111 @@
       "aliases": [],
       "kind": "function",
       "module": "sage.schemes",
-      "signature": "Curve(polynomial: Any) -> AffinePlaneCurve",
-      "summary": "Construct an affine plane curve from a multivariate polynomial.",
-      "doc": "Construct an affine plane curve from a multivariate polynomial.\n\n### Example\n\n```sage\nsage: x, y = AffineSpace(2, QQ, 'xy').gens()\nsage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))\nsage: C.irreducible_components()\n[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n```\n\nHypersurface components use FLINT multivariate factorization. Plane-curve\nintersections over `QQ` use a resultant followed by factorization and\nGröbner bases. General primary decomposition is not yet implemented.",
+      "signature": "Curve(polynomial: Any) -> Any",
+      "summary": "Construct an affine or projective plane curve from one polynomial.",
+      "doc": "Construct an affine or projective plane curve from one polynomial.\n\n```sage\nsage: R = PolynomialRing(QQ, names=(\"x\", \"y\"))\nsage: x, y = R.gens()\nsage: C = Curve(y^2 - x^3)\nsage: C.degree()\n3\n```",
       "tags": [
         "algebraic geometry",
         "affine schemes",
-        "curves",
-        "multivariate polynomials"
+        "projective schemes",
+        "curves"
       ],
       "backends": [
-        "FLINT",
-        "Sage.js algebraic geometry layer"
+        "Sage.js exact polynomial and ideal layers"
       ],
       "sage_compatibility": {
         "status": "partial",
-        "notes": "Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation."
+        "notes": "Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary."
       },
       "provenance": [
         {
           "kind": "sage-derived",
-          "source": "SageMath schemes and plane curves API",
-          "url": "https://doc.sagemath.org/html/en/reference/curves/",
+          "source": "SageMath schemes public API",
+          "url": "https://doc.sagemath.org/html/en/reference/schemes/",
           "license": "GPL-2.0-or-later"
         },
         {
-          "kind": "library-backed",
-          "source": "FLINT multivariate polynomial arithmetic",
-          "url": "https://flintlib.org/doc/"
+          "kind": "sagejs-original",
+          "source": "Sage.js no-Singular algebraic geometry",
+          "url": "https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md",
+          "license": "GPL-3.0-only"
         }
       ],
       "references": [],
-      "limitations": [
-        "General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal."
-      ],
+      "limitations": [],
       "source": {
         "name": "Curve",
         "qualified": "Curve",
-        "path": "src/baselib/polynomial.py",
-        "line": 5667,
+        "path": "src/baselib/schemes.py",
+        "line": 1131,
         "excerpt": {
-          "start_line": 5655,
-          "text": "    def __repr__(self) -> str:\n        return (\n            \"Affine Plane Curve over \"\n            + str(self._polynomial._parent.base_ring())\n            + \" defined by\\n   \"\n            + repr(self._polynomial)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef Curve(polynomial: Any) -> AffinePlaneCurve:\n    \"\"\"\n    Construct an affine plane curve from a multivariate polynomial.\n\n    ### Example\n\n    ```sage\n    sage: x, y = AffineSpace(2, QQ, 'xy').gens()\n    sage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))\n    sage: C.irreducible_components()\n    [Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n      x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n      x^3 + y^3 - 1]"
+          "start_line": 1119,
+          "text": "    def __repr__(self) -> str:\n        return (\n            \"Projective Plane Curve over \"\n            + str(self.base_ring())\n            + \" defined by\\n   \"\n            + repr(self._polynomial)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef Curve(polynomial: Any) -> Any:\n    \"\"\"Construct an affine or projective plane curve from one polynomial.\n\n    ```sage\n    sage: R = PolynomialRing(QQ, names=(\"x\", \"y\"))\n    sage: x, y = R.gens()\n    sage: C = Curve(y^2 - x^3)\n    sage: C.degree()\n    3\n    ```\n    \"\"\"\n    if not hasattr(polynomial, \"parent\"):\n        raise TypeError(\"Curve needs a multivariate polynomial\")"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/polynomial.py#1d12daf28af8136a-e3b0c44298fc1c14",
-          "line": 5674,
-          "source": "x, y = AffineSpace(2, QQ, 'xy').gens()",
+          "id": "src/baselib/schemes.py#fd76c7c26e088c48-e3b0c44298fc1c14",
+          "line": 1135,
+          "source": "R = PolynomialRing(QQ, names=(\"x\", \"y\"))",
           "want": "",
           "tags": [],
           "owner": "Curve",
-          "path": "src/baselib/polynomial.py",
+          "path": "src/baselib/schemes.py",
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py#1d12daf28af8136a-e3b0c44298fc1c14",
+            "id": "src/baselib/schemes.py#fd76c7c26e088c48-e3b0c44298fc1c14",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/polynomial.py#2eddafb4d0f5672a-e3b0c44298fc1c14",
-          "line": 5675,
-          "source": "C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))",
+          "id": "src/baselib/schemes.py#03ec444959c798d3-e3b0c44298fc1c14",
+          "line": 1136,
+          "source": "x, y = R.gens()",
           "want": "",
           "tags": [],
           "owner": "Curve",
-          "path": "src/baselib/polynomial.py",
+          "path": "src/baselib/schemes.py",
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py#2eddafb4d0f5672a-e3b0c44298fc1c14",
+            "id": "src/baselib/schemes.py#03ec444959c798d3-e3b0c44298fc1c14",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/polynomial.py#06c5e7960cda410c-5badf7217b080d99",
-          "line": 5676,
-          "source": "C.irreducible_components()",
-          "want": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n",
+          "id": "src/baselib/schemes.py#427af1e83a416cd4-e3b0c44298fc1c14",
+          "line": 1137,
+          "source": "C = Curve(y^2 - x^3)",
+          "want": "",
           "tags": [],
           "owner": "Curve",
-          "path": "src/baselib/polynomial.py",
+          "path": "src/baselib/schemes.py",
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py#06c5e7960cda410c-5badf7217b080d99",
+            "id": "src/baselib/schemes.py#427af1e83a416cd4-e3b0c44298fc1c14",
             "status": "pass",
-            "actual": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n"
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/schemes.py#ec0c4059d7824af6-4e07408562bedb8b",
+          "line": 1138,
+          "source": "C.degree()",
+          "want": "3\n",
+          "tags": [],
+          "owner": "Curve",
+          "path": "src/baselib/schemes.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/schemes.py#ec0c4059d7824af6-4e07408562bedb8b",
+            "status": "pass",
+            "actual": "3\n"
           }
         }
       ]
@@ -35001,16 +35032,16 @@
         "name": "PolynomialRing",
         "qualified": "PolynomialRing",
         "path": "src/baselib/polynomial.py",
-        "line": 5897,
+        "line": 6061,
         "excerpt": {
-          "start_line": 5885,
+          "start_line": 6049,
           "text": "        ρσ_polynomial_ring_cache.set(base, by_variable)\n    cache_key = \",\".join(variables) + \"|multivariate|\" + order\n    parent = by_variable.get(cache_key)\n    if parent is runtime.undefined:\n        if approximate:\n            parent = ApproximatePolynomialRingParent(base, variables, order)\n        else:\n            parent = MultivariatePolynomialRingParent(base, variables, order)\n        by_variable.set(cache_key, parent)\n    return parent\n\n\ndef PolynomialRing(\n    base: sage.Parent,\n    variable: Any = None,\n    names: Any = None,\n    sparse: bool = False,\n    implementation: Any = None,\n    order: str = \"degrevlex\",\n) -> Any:\n    r\"\"\"\n    Construct a univariate or multivariate polynomial ring.\n\n    Coefficient rings currently include `ZZ`, `QQ`, prime and extension\n    finite fields, `Zmod(n)`, exact algebraic fields, and approximate real"
         }
       },
       "examples": [
         {
           "id": "src/baselib/polynomial.py#0589052cd70c5442-e3b0c44298fc1c14",
-          "line": 5917,
+          "line": 6081,
           "source": "R.<x> = QQ[]",
           "want": "",
           "tags": [],
@@ -35026,7 +35057,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#211d1a07c12a56d3-c3f7c1d6f3b011af",
-          "line": 5918,
+          "line": 6082,
           "source": "(x^4 - 1).factor()",
           "want": "(x + 1) * (x - 1) * (x^2 + 1)\n",
           "tags": [],
@@ -35042,7 +35073,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#879acf70128b6be0-e3b0c44298fc1c14",
-          "line": 5920,
+          "line": 6084,
           "source": "S.<x,y> = GF(4, 'a')[]",
           "want": "",
           "tags": [],
@@ -35058,7 +35089,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#2935ab1a54b6ef2c-050305b3ec2996f0",
-          "line": 5921,
+          "line": 6085,
           "source": "(x + y)^3",
           "want": "x^3 + x^2*y + x*y^2 + y^3\n",
           "tags": [],
@@ -35237,6 +35268,89 @@
       "limitations": [],
       "source": null,
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "ProjectiveSpace",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.schemes",
+      "signature": "ProjectiveSpace(first: Any, second: Any, names: Any='x') -> ProjectiveSpaceParent",
+      "summary": "Construct projective space in either Sage-compatible argument order.",
+      "doc": "Construct projective space in either Sage-compatible argument order.\n\n```sage\nsage: P = ProjectiveSpace(QQ, 2, names=(\"x\", \"y\", \"z\"))\nsage: P(2, 4, 6) == P(1, 2, 3)\nTrue\n```",
+      "tags": [
+        "algebraic geometry",
+        "affine schemes",
+        "projective schemes",
+        "curves"
+      ],
+      "backends": [
+        "Sage.js exact polynomial and ideal layers"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath schemes public API",
+          "url": "https://doc.sagemath.org/html/en/reference/schemes/",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Sage.js no-Singular algebraic geometry",
+          "url": "https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md",
+          "license": "GPL-3.0-only"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "ProjectiveSpace",
+        "qualified": "ProjectiveSpace",
+        "path": "src/baselib/schemes.py",
+        "line": 920,
+        "excerpt": {
+          "start_line": 908,
+          "text": "        if len(self._equations) == 0:\n            lines.append(\"  0\")\n        else:\n            for index, equation in enumerate(self._equations):\n                suffix = \",\" if index + 1 < len(self._equations) else \"\"\n                lines.append(\"  \" + repr(equation) + suffix)\n        return \"\\n\".join(lines)\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ProjectiveSpace(\n    first: Any,\n    second: Any,\n    names: Any = \"x\",\n) -> ProjectiveSpaceParent:\n    \"\"\"Construct projective space in either Sage-compatible argument order.\n\n    ```sage\n    sage: P = ProjectiveSpace(QQ, 2, names=(\"x\", \"y\", \"z\"))\n    sage: P(2, 4, 6) == P(1, 2, 3)\n    True\n    ```\n    \"\"\""
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/schemes.py#c4138a7a365c9405-e3b0c44298fc1c14",
+          "line": 928,
+          "source": "P = ProjectiveSpace(QQ, 2, names=(\"x\", \"y\", \"z\"))",
+          "want": "",
+          "tags": [],
+          "owner": "ProjectiveSpace",
+          "path": "src/baselib/schemes.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/schemes.py#c4138a7a365c9405-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/schemes.py#dad19399d23b4f16-3cbc87c7681f34db",
+          "line": 929,
+          "source": "P(2, 4, 6) == P(1, 2, 3)",
+          "want": "True\n",
+          "tags": [],
+          "owner": "ProjectiveSpace",
+          "path": "src/baselib/schemes.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/schemes.py#dad19399d23b4f16-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -37623,23 +37737,23 @@
     },
     "documentation": {
       "schema_version": 1,
-      "registry_entries": 320,
-      "with_docstring": 320,
-      "with_summary": 320,
-      "with_tags": 320,
-      "with_backend": 320,
-      "with_provenance": 320,
-      "with_compatibility_notes": 320,
+      "registry_entries": 321,
+      "with_docstring": 321,
+      "with_summary": 321,
+      "with_tags": 321,
+      "with_backend": 321,
+      "with_provenance": 321,
+      "with_compatibility_notes": 321,
       "with_references": 93,
-      "markdown_docstrings": 320,
+      "markdown_docstrings": 321,
       "invalid_markdown_entries": [],
       "incomplete_entries": []
     },
     "examples": {
-      "entries_with_examples": 225,
+      "entries_with_examples": 226,
       "entries_without_examples": 95,
-      "documented": 227,
-      "verified": 221,
+      "documented": 229,
+      "verified": 223,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,

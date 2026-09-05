@@ -268,12 +268,10 @@ def groebner_basis(
     """Return a reduced Gröbner basis using reviewed public dispatch."""
     if not isinstance(algorithm, str):
         raise TypeError("Gröbner basis algorithm must be a string")
-    if proof is not None and not isinstance(proof, bool):
-        raise TypeError("Gröbner basis proof flag must be a boolean")
-    proof_required = proof
-    if proof_required is None:
-        proof_module = __import__("sagejs._baselib.proof", fromlist=["proof"])
-        proof_required = proof_module.proof.polynomial()
+    proof_module = __import__(
+        "sagejs._baselib.proof", fromlist=["resolve_polynomial_proof"]
+    )
+    proof_required = proof_module.resolve_polynomial_proof(proof)
     ring = ideal._ring
     base = ring.base_ring()
     if base._kind == "GF":

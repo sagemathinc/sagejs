@@ -71,6 +71,7 @@ convenience, not a performance ranking.
 | [src/lib/sagejs/number_fields/om_maxmin.py:152](../src/lib/sagejs/number_fields/om_maxmin.py#L152) | `packed_incremental_row_hnf_in_place` | `math.bounded-integer-region.v1` | `bounded-integer.mutable-buffer-access` | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
 | [src/lib/sagejs/numerics/spectral/_common.py:301](../src/lib/sagejs/numerics/spectral/_common.py#L301) | `_identity` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/numerics/spectral/dense.py:877](../src/lib/sagejs/numerics/spectral/dense.py#L877) | `_orthogonal_completion` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| [src/lib/sagejs/schemes/jacobian.py:28](../src/lib/sagejs/schemes/jacobian.py#L28) | `_combinations` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/linear_algebra/combinatorial.py:160](../src/lib/sagejs/linear_algebra/combinatorial.py#L160) | `_index_combinations` | `math.bounded-integer-region.v1` | `bounded-integer.mutable-buffer-access` | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
 | [src/lib/sagejs/number_fields/buchmann_lenstra.py:1642](../src/lib/sagejs/number_fields/buchmann_lenstra.py#L1642) | `_inverse_fraction_matrix` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/number_fields/buchmann_lenstra.py:2434](../src/lib/sagejs/number_fields/buchmann_lenstra.py#L2434) | `_minor_indices.visit` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
@@ -116,7 +117,6 @@ convenience, not a performance ranking.
 | [src/lib/sagejs/hyperelliptic_curves/lseries.py:523](../src/lib/sagejs/hyperelliptic_curves/lseries.py#L523) | `_theta_grid` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/hyperelliptic_curves/lseries.py:839](../src/lib/sagejs/hyperelliptic_curves/lseries.py#L839) | `_central_weight_contour` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/hyperelliptic_curves/lseries.py:847](../src/lib/sagejs/hyperelliptic_curves/lseries.py#L847) | `_central_weight_contour` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
-| [src/lib/sagejs/hyperelliptic_curves/periods.py:1557](../src/lib/sagejs/hyperelliptic_curves/periods.py#L1557) | `_periods_from_edges` | `math.bounded-integer-region.v1` | `bounded-integer.mutable-buffer-access` | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
 
 ## Most frequent reason codes
 
@@ -144,7 +144,7 @@ convenience, not a performance ranking.
 | `bounded-integer.unsupported-operation:||` | 258 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:unary!` | 247 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:>=` | 219 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:*=` | 208 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:*=` | 209 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation://=` | 182 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:<=` | 146 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:-=` | 130 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |

@@ -675,6 +675,40 @@ assert.equal(
   "0",
 );
 
+// Rational normal forms retain their content. The ideal-division API must
+// not use FLINT's primitive-part helper, which intentionally normalizes a
+// one-term remainder and would make distinct quotient elements equal.
+{
+  const context = flint.mpolyContext("qq", 2, "degrevlex", 0n);
+  const x = flint.mpolyGen(context, 0);
+  const y = flint.mpolyGen(context, 1);
+  const twoX = flint.mpolyMul(
+    flint.mpolyConstant(context, 2n, 1n),
+    x,
+  );
+  const basis = [
+    flint.mpolySub(flint.mpolyPow(x, 2), y),
+    flint.mpolySub(
+      flint.mpolyPow(y, 2),
+      flint.mpolyConstant(context, 1n, 1n),
+    ),
+  ];
+  assert.equal(
+    flint.mpolyToString(flint.mpolyReduce(twoX, basis), ["x", "y"]),
+    "2*x",
+  );
+  assert.equal(
+    flint.mpolyToString(
+      flint.mpolyReduce(
+        flint.mpolyConstant(context, 2n, 1n),
+        basis,
+      ),
+      ["x", "y"],
+    ),
+    "2",
+  );
+}
+
 {
   const context = flint.mpolyContext("nmod", 2, "degrevlex", 65537n);
   const x = flint.mpolyGen(context, 0);
