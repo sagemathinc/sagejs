@@ -2,6 +2,8 @@
 
 import math
 
+from sagejs.numerics.trace import NumericalTrace, TracePolicy
+
 from sagejs.numerics.model import (
     NumericalPlan,
     NumericalProblem,
@@ -103,5 +105,37 @@ raises(ValueError, lambda: result_for(problem, selected, value=math.inf))
 raises(ValueError, lambda: result_for(problem, selected, evaluations=10000))
 raises(ValueError, lambda: result_for(problem, selected, iterations=10000))
 raises(ValueError, lambda: result_for(problem, selected, elapsed_ms=-1))
+
+
+class ObservedPolicy(TracePolicy):
+    def __init__(self, level="summary"):
+        TracePolicy.__init__(self, level)
+        self.snapshots = 0
+
+    def to_dict(self):
+        self.snapshots += 1
+        return TracePolicy.to_dict(self)
+
+
+policy = ObservedPolicy()
+problem = NumericalProblem("test", "trace_binding", trace_policy=policy)
+selected = plan_for(problem)
+first = result_for(problem, selected)
+second = result_for(problem, selected)
+assert first.trace is not second.trace
+assert first.trace.policy is policy
+assert policy.snapshots == 0
+trace = NumericalTrace(policy)
+assert result_for(problem, selected, trace=trace).trace is trace
+assert policy.snapshots == 0
+equivalent = ObservedPolicy()
+result_for(problem, selected, trace=NumericalTrace(equivalent))
+assert policy.snapshots == 1 and equivalent.snapshots == 1
+equivalent._level = "none"
+raises(
+    ValueError, lambda: result_for(problem, selected, trace=NumericalTrace(equivalent))
+)
+assert policy.snapshots == 2 and equivalent.snapshots == 2
+raises(TypeError, lambda: result_for(problem, selected, trace=object()))
 
 print("result bookkeeping passed")

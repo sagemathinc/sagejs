@@ -69,6 +69,8 @@ class PreparedFunction:
         self._reason = "dynamic requested"
         self._function: Any = None
         self._workspace: Any = None
+        self._root_function: Any = None
+        self._root_workspace: Any = None
         self._opcodes: list[int] = []
         self._left: list[int] = []
         self._right: list[int] = []
@@ -268,6 +270,8 @@ class PreparedFunction:
             raise RuntimeError("PreparedFunction workspace is in use")
         self._workspace = None
         self._function = None
+        self._root_workspace = None
+        self._root_function = None
         self._opcodes, self._left, self._right, self._constants = [], [], [], []
         self._record = {}
         self._closed = True

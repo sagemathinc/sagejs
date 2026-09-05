@@ -741,8 +741,12 @@ class NumericalResult:
         self._elapsed_ms = _nonnegative_finite(elapsed_ms, "result elapsed_ms")
         if trace is not None and not isinstance(trace, NumericalTrace):
             raise TypeError("result trace must be a NumericalTrace")
-        self._trace = NumericalTrace(problem.trace_policy) if trace is None else trace
-        if self._trace.policy.to_dict() != problem.trace_policy.to_dict():
+        policy = problem.trace_policy
+        self._trace = NumericalTrace(policy) if trace is None else trace
+        # The usual trace retains the problem's policy object. Compare wire
+        # records only for distinct policies; do not cache mutable records.
+        trace_policy = self._trace.policy
+        if trace_policy is not policy and trace_policy.to_dict() != policy.to_dict():
             raise ValueError(
                 "result trace policy differs from the problem trace policy"
             )

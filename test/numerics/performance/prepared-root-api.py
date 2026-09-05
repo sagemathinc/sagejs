@@ -15,8 +15,10 @@ assert d["measurements"]["validation_evaluations"] == 3
 assert d["evaluations"] == d["measurements"]["solver_evaluations"] + 3
 assert d["backend"] == EXPECTED_BACKEND
 assert f(3.0, 2.0) == 7.0
+workspace = f._root_workspace
 changed = solve_prepared_root(f, 1.0, 2.0, parameters=(3.0,)).to_dict()
 assert changed["success"] and abs(changed["value"] - math.sqrt(3.0)) < 1e-12
+assert f._root_workspace is workspace
 for source, lo, hi, expected in [
     ("x", 0.0, 2.0, "converged"),
     ("x", -2.0, 0.0, "converged"),
@@ -66,4 +68,30 @@ try:
 finally:
     core.bisect_program = original
 assert f(3.0, 2.0) == 7.0
+recovered = solve_prepared_root(f, 1.0, 2.0, parameters=(2.0,))
+assert recovered.success and abs(recovered.value - math.sqrt(2.0)) < 1e-12
+assert abs(d["value"] - math.sqrt(2.0)) < 1e-12
+
+# An incomplete success on the same callable must not inherit old output.
+backend_calls = [0]
+
+
+def incomplete(*args):
+    backend_calls[0] += 1
+    if backend_calls[0] == 1:
+        return original(*args)
+    return 0.0
+
+
+incomplete.__sagejs_native_compiled__ = True
+incomplete.nativeAvailable = True
+core.bisect_program = incomplete
+try:
+    assert solve_prepared_root(f, 1.0, 2.0, parameters=(2.0,)).success
+    stale = solve_prepared_root(f, 1.0, 2.0, parameters=(2.0,))
+    assert not stale.success and stale.status == "backend_failure"
+finally:
+    core.bisect_program = original
+f.close()
+assert f._root_workspace is None and f._root_function is None
 print("prepared root API passed")

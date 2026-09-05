@@ -220,3 +220,22 @@ of Chromium/Firefox/WebKit and disabled/enabled/stale/missing optional packs.
 The [prepared-root development report](../bench/numerics/performance/results/n4-prepared-browser-development-2026-09-05/README.md)
 retains source and generated-resource hashes, actual Wasm selection and all
 samples. This is source integration, not full release-artifact qualification.
+
+## Repeated-root bookkeeping follow-up
+
+`perf/numerical-root-bookkeeping` retains a separate owned root workspace on
+the prepared function. It is protected by the existing reentrancy lock, is
+recreated for a changed backend callable, and is released by `close()`. Each
+solve overwrites parameter slots and clears result/counter slots before entry;
+an incomplete backend success cannot reuse an earlier answer. Scalar calls
+retain their separate workspace. No external input buffer or result aliases
+this storage. Candidate validation still uses the canonical expression path.
+
+Result construction also avoids serializing two trace-policy records when the
+trace holds the very same policy object as the problem. Distinct policy objects
+are still compared on every construction, and each default trace is separate.
+Focused CPython and native/dynamic/missing/stale tests cover parameter changes,
+backend replacement, incomplete success, close, and the distinct-policy guard.
+Initial local timings remain around 4 ms per complete native root: these small
+changes do not establish a target pass or resolve the larger record-construction
+cost. Full product and performance qualification remain open.
