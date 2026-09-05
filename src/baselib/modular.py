@@ -1351,18 +1351,11 @@ def _character_eisenstein_basis_qexp(
 def _exact_row_space_basis(source: Any) -> Any:
     r"""Return the canonical exact row-space basis of `source`.
 
-    The FLINT matrix boundary retains power-basis coordinates for matrices
-    over cyclotomic fields.  For degree greater than two, computing the
-    orthogonal complement twice uses the certified multimodular cyclotomic
-    kernel and avoids generic `QQbar` elimination on a wide matrix.  The
-    second kernel is the canonical RREF basis of the original row space.
+    The matrix layer selects the certified multimodular cyclotomic RREF for
+    higher-degree cyclotomic fields and the appropriate exact backend for all
+    other coefficient rings.  In particular, it does not recover a short row
+    basis by constructing the almost-square intermediate in `ker(ker(A))`.
     """
-    base_ring = source.base_ring()
-    if getattr(base_ring, "_kind", None) == "CyclotomicField" and runtime.number(
-        base_ring.zeta_order()
-    ) not in [3, 4, 6]:
-        orthogonal = source.right_kernel().basis_matrix()
-        return orthogonal.right_kernel().basis_matrix()
     return source.row_space().basis_matrix()
 
 
@@ -4305,7 +4298,7 @@ class ModularSymbolsSpace(sage.Parent):
                 functional_index, list(range(1, precision))
             )
             if selected is not None:
-                return selected.rows()
+                return selected
 
         native_images = runtime.reflect.get(
             runtime.flint_backend(), "p1ListCharacterHeckeImages"
@@ -4362,8 +4355,16 @@ class ModularSymbolsSpace(sage.Parent):
         self,
         functional_index: int,
         indices: list[int],
-    ) -> Any:
-        """Return selected rows of several $T_n$ using retained coordinates."""
+    ) -> list[Any] | None:
+        r"""Return selected rows of several $T_n$ using retained coordinates.
+
+        The low-level capability returns one ambient row for every requested
+        Hecke index.  At large Sturm precision, retaining all of those
+        algebraic matrices until a final stack creates an artificial memory
+        cliff.  Process a bounded block at a time, immediately restrict to
+        the cuspidal pivot columns, and retain only the rows that the
+        q-expansion reconstruction actually consumes.
+        """
         ambient = self.ambient_module()
         if not ambient._supports_native_character():
             return None
@@ -4373,41 +4374,48 @@ class ModularSymbolsSpace(sage.Parent):
         for source, coefficient in enumerate(coefficients):
             if coefficient != 0:
                 nonzero_sources.append((source, coefficient))
-        answer = None
-        for source, coefficient in nonzero_sources:
-            images = ambient.p1list().character_hecke_selected_rows(
-                ambient.weight(),
-                ambient.sign(),
-                ambient._character,
-                ambient.base_ring(),
-                source,
-                indices,
-            )
-            if images is None:
-                return None
-            rows = images[0]
-            for image in images[1:]:
-                rows = rows.stack(image)
-            if coefficient != 1:
-                rows = rows * coefficient
-            answer = rows if answer is None else answer + rows
-        if answer is None:
-            answer = matrix(  # type: ignore[name-defined]  # noqa: F821
-                ambient.base_ring(), len(indices), ambient.dimension()
-            )
-        if self.is_ambient():
-            return answer
-        return answer.matrix_from_columns(list(basis.pivots()))
+        answer_rows = []
+        pivot_columns = None if self.is_ambient() else list(basis.pivots())
+        block_size = 16
+        for start in range(0, len(indices), block_size):
+            selected_indices = indices[start : start + block_size]
+            answer = None
+            for source, coefficient in nonzero_sources:
+                images = ambient.p1list().character_hecke_selected_rows(
+                    ambient.weight(),
+                    ambient.sign(),
+                    ambient._character,
+                    ambient.base_ring(),
+                    source,
+                    selected_indices,
+                )
+                if images is None:
+                    return None
+                rows = images[0]
+                for image in images[1:]:
+                    rows = rows.stack(image)
+                if coefficient != 1:
+                    rows = rows * coefficient
+                answer = rows if answer is None else answer + rows
+            if answer is None:
+                answer = matrix(  # type: ignore[name-defined]  # noqa: F821
+                    ambient.base_ring(), len(selected_indices), ambient.dimension()
+                )
+            if pivot_columns is not None:
+                answer = answer.matrix_from_columns(pivot_columns)
+            answer_rows.extend(answer.rows())
+        return answer_rows
 
     def _q_expansion_row_basis(self, rows: list[Any]) -> tuple[Any, Any]:
         r"""Return the canonical row basis and its exact lift from `rows`.
 
-        In degree greater than two, two native cyclotomic kernels are far
-        cheaper than generic algebraic-number RREF.  Every native kernel
-        reconstruction is certified over the exact cyclotomic field.  The
-        character path subsequently computes Hecke action directly from the
-        canonical coefficient pivots, so it deliberately avoids constructing
-        a potentially enormous change-of-basis lift.  The ordinary row-space
+        In degree greater than two, the native cyclotomic row-space path uses
+        modular pivot discovery and an exactly certified RREF.  It returns
+        only the short row basis, rather than materializing the almost-square
+        first kernel in a `ker(ker(A))` reconstruction.  The character path
+        subsequently computes Hecke action directly from the canonical
+        coefficient pivots, so it deliberately avoids constructing a
+        potentially enormous change-of-basis lift.  The ordinary row-space
         and solve path remains the portable fallback.
         """
         coefficient_ring = self.base_ring()
@@ -4417,8 +4425,7 @@ class ModularSymbolsSpace(sage.Parent):
             and not self.character().is_real()
             and coefficient_ring.degree() > 2
         ):
-            kernel = raw_matrix.right_kernel().basis_matrix()
-            coefficient_basis = kernel.right_kernel().basis_matrix()
+            coefficient_basis = raw_matrix.row_space().basis_matrix()
             lift_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
                 coefficient_ring, 0, raw_matrix.nrows()
             )
@@ -4510,7 +4517,7 @@ class ModularSymbolsSpace(sage.Parent):
         coefficient_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
             coefficient_ring, coefficient_rows
         )
-        # The native cyclotomic double-kernel path has already produced this
+        # The native cyclotomic row-space path has already produced this
         # canonical RREF.  Record that exact certificate so pivot discovery
         # and public row-space construction never repeat algebraic reduction.
         coefficient_matrix._rref_cache = coefficient_matrix

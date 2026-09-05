@@ -5455,6 +5455,27 @@ def fmpq_matrix_echelon_pivots(source: FmpqMatrix) -> FlintByteRegion:
 
 
 @flint.function(
+    dynamic="ffiFmpqMatrixFullRowRankPivots",
+    symbol="sagejs_fmpq_matrix_full_row_rank_pivots",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="rational matrix was not certified to have full row rank",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_full_row_rank_pivots(source: FmpqMatrix) -> FlintByteRegion:
+    """Return a certifying prime followed by full-row-rank pivot columns."""
+    ...
+
+
+@flint.function(
     dynamic="ffiFmpqValueNumerator",
     symbol="sagejs_fmpq_value_numerator",
     returns=void,

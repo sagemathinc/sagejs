@@ -1050,6 +1050,11 @@ def _cyclotomic_order(value: Any) -> Any:
     return value.zeta_order() if order is None else order
 
 
+def _cyclotomic_degree(value: Any) -> int:
+    """Return the degree after the caller has recognized a cyclotomic field."""
+    return int(value.degree())
+
+
 def _canonical_base(base: sage.Parent) -> sage.Parent:
     if base is sage.ZZ or getattr(base, "_kind", None) == "ZZ":
         return sage.ZZ
@@ -3063,6 +3068,8 @@ class Matrix(sage.Element):
         self._right_kernel_cache = runtime.undefined
         self._left_kernel_cache = runtime.undefined
         self._pivots_cache = runtime.undefined
+        self._full_row_rank_pivots_cache = runtime.undefined
+        self._full_row_rank_prime_cache = runtime.undefined
         self._charpoly_cache = runtime.map()
         self._minpoly_cache = runtime.map()
         self._row_vectors_cache: Any = runtime.undefined
@@ -3450,6 +3457,18 @@ class Matrix(sage.Element):
             values = self._exact_host_values()
             return [values[start + index * stride] for index in range(count)]
         raise TypeError("bulk exact selection requires a generated matrix resource")
+
+    def _packed_rational_row(self, index: Any) -> Any:
+        """Serialize one `QQ` row without materializing host rationals."""
+        index = _normalize_named_index(index, self.nrows(), "row")
+        if not self._has_fmpq_matrix_resource() or not _flint_backend_has_function(
+            "ffiFmpqMatrixSerializeSequence"
+        ):
+            raise TypeError("packed rational rows require a generated FLINT matrix")
+        region = _flint_ffi_module().fmpq_matrix_serialize_sequence(
+            self._rational_resource(), index * self.ncols(), 1, self.ncols()
+        )
+        return region.take_bytes()
 
     def _cached_row_vectors(self) -> list[Vector]:
         """Return the canonical cached immutable row vectors."""
@@ -5729,6 +5748,8 @@ class Matrix(sage.Element):
         self._right_kernel_cache = runtime.undefined
         self._left_kernel_cache = runtime.undefined
         self._pivots_cache = runtime.undefined
+        self._full_row_rank_pivots_cache = runtime.undefined
+        self._full_row_rank_prime_cache = runtime.undefined
         # Scalar construction may invalidate an already empty matrix thousands
         # of times. Reuse these two identity-insensitive lookup tables rather
         # than allocate fresh maps for every successful write.
@@ -6625,7 +6646,68 @@ class Matrix(sage.Element):
         )
         return self._pivots_cache
 
+    def _full_row_rank_pivots(self) -> Any:
+        r"""Return columns whose minor certifies full row rank over `QQ`.
+
+        The generated FLINT boundary reduces modulo a prime avoiding all
+        denominators.  A nonzero maximal minor there is an exact certificate
+        that the same minor is nonzero over `QQ`; no rational RREF is formed.
+        """
+        if self.base_ring() is not sage.QQ:
+            raise TypeError("full-row-rank pivot certification requires QQ")
+        if self._full_row_rank_pivots_cache is runtime.undefined:
+            if not self._has_fmpq_matrix_resource() or not _flint_backend_has_function(
+                "ffiFmpqMatrixFullRowRankPivots"
+            ):
+                pivots = runtime.math_tuple(self.pivots())
+                if len(pivots) != self.nrows():
+                    raise ArithmeticError("matrix does not have full row rank")
+                self._full_row_rank_pivots_cache = pivots
+                self._full_row_rank_prime_cache = None
+                return pivots
+            region = _flint_ffi_module().fmpq_matrix_full_row_rank_pivots(
+                self._rational_resource()
+            )
+            packed = region.take_bytes()
+            if len(packed) != 8 * (self.nrows() + 1):
+                raise RuntimeError("invalid full-row-rank pivot certificate length")
+            values = runtime.uint64_unpack_le(packed, 8, self.nrows() + 1)
+            self._full_row_rank_prime_cache = runtime.number(values[0])
+            self._full_row_rank_pivots_cache = runtime.math_tuple(
+                [runtime.number(values[index + 1]) for index in range(self.nrows())]
+            )
+            self._rank_cache = self.nrows()
+        return self._full_row_rank_pivots_cache
+
     def row_space(self, base_ring: Any = None) -> VectorSubspaceParent:
+        matrix_base = self.base_ring()
+        if (
+            base_ring is None
+            and getattr(matrix_base, "_kind", None) == "CyclotomicField"
+            and _cyclotomic_degree(matrix_base) > 2
+        ):
+            native_row_basis = runtime.reflect.get(
+                runtime.flint_backend(), "cyclotomicMatrixRowBasis"
+            )
+            if runtime.jstype(native_row_basis) == "function":
+                cyclotomic_order = int(_cyclotomic_order(matrix_base))
+                native_result = native_row_basis(
+                    self._native,
+                    runtime.integer_bigint(cyclotomic_order),
+                )
+                rank = int(native_result[1])
+                basis = Matrix(
+                    MatrixSpace(self.base_ring(), rank, self.ncols()),
+                    native_result[0],
+                )
+                basis._rref_cache = basis
+                basis._rank_cache = rank
+                basis.set_immutable()
+                self._rank_cache = rank
+                return VectorSubspaceParent(
+                    VectorSpace(self.base_ring(), self.ncols()),
+                    basis,
+                )
         plan = _matrix_subspaces_public_module().prepare_public_row_space(
             self, base_ring
         )

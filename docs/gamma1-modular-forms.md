@@ -168,7 +168,24 @@ through Sturm precision $890$ and its first cuspidal $T_2$ in $330.50$
 seconds.  The matched SageMath computation exceeded the $1800$-second bound,
 giving a conservative end-to-end speedup greater than $5.45\times$.  The
 dispatcher uses direct reduction for the few rows over quadratic coefficient
-fields and native double-kernel reconstruction for higher-degree fields,
-avoiding a large artificial kernel at this scale.  Magma remains the
-performance target.  See the committed receipt for exact commands, host
-details, and operator timings.
+fields and a native, certified multimodular row-basis computation for
+higher-degree fields.  It returns the short reduced row basis directly instead
+of materializing the nearly full right kernel of a wide coefficient matrix.
+This distinction becomes essential at $N=101$, where a double-kernel
+reconstruction would contain tens of millions of rational coordinates even
+though the desired character-component row space has only a handful of rows.
+
+The formerly failing $N=101$, $k=2$ case now constructs all $475$ basis
+elements through Sturm precision $1702$ in $1160.3$ seconds.  A fresh process
+under a $10$ GiB virtual-memory ceiling peaked at $2.66$ GiB while constructing
+the basis.  Three independent changes make that bound possible: each
+higher-degree character component selects its row basis directly, selected
+Hecke rows are reduced in bounded blocks, and the final rational matrix rows
+are imported directly into FLINT power-series polynomials without first
+creating hundreds of thousands of host rational objects.  The benchmark's
+subsequent $T_2$ phase exceeded the artificial memory ceiling inside OpenBLAS;
+that operator scaling issue is reported separately rather than being hidden
+inside the successful basis result.
+
+Magma remains the performance target.  See the committed receipts for exact
+commands, host details, and operator timings.

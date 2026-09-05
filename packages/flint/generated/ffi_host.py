@@ -277,6 +277,7 @@ from sagejs.ffi.flint import (
     fmpq_matrix_augment as _ffi_fmpq_matrix_augment,
     fmpq_matrix_nonzero_count as _ffi_fmpq_matrix_nonzero_count,
     fmpq_matrix_echelon_pivots as _ffi_fmpq_matrix_echelon_pivots,
+    fmpq_matrix_full_row_rank_pivots as _ffi_fmpq_matrix_full_row_rank_pivots,
     fmpq_value_numerator as _ffi_fmpq_value_numerator,
     fmpq_value_denominator as _ffi_fmpq_value_denominator,
     fmpq_matrix_format as _ffi_fmpq_matrix_format,
@@ -3091,6 +3092,15 @@ def ffiFmpqMatrixEchelonPivots(
     source: FmpqMatrix,
 ) -> FlintByteRegion:
     return _ffi_fmpq_matrix_echelon_pivots(
+        source,
+    )
+
+
+@native
+def ffiFmpqMatrixFullRowRankPivots(
+    source: FmpqMatrix,
+) -> FlintByteRegion:
+    return _ffi_fmpq_matrix_full_row_rank_pivots(
         source,
     )
 

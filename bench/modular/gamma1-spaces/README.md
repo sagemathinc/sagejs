@@ -10,8 +10,9 @@ node bench/modular/gamma1-spaces/benchmark.cjs
 GAMMA1_CASES=53:2,73:2 node bench/modular/gamma1-spaces/benchmark.cjs --json
 ```
 
-See `receipt-2026-09-04.md` for the pinned host, exact invariants, timings,
-and the component profile that explains larger-level scaling.
+See `receipt-2026-09-04.md` for the cross-system timings and
+`receipt-2026-09-05-row-basis.md` for the bounded $N=101$ memory-cliff
+qualification.
 
 Magma's modular-form parent currently rejects a full multi-character Hecke
 operator, so its Hecke phase uses the sign-$+1$ cuspidal modular-symbol space.

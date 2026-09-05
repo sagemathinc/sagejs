@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5405,
-      "bytes": 178306,
+      "lines": 5553,
+      "bytes": 183440,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -79,8 +79,8 @@
     },
     {
       "path": "packages/flint/src/matrix.c",
-      "lines": 6350,
-      "bytes": 209748,
+      "lines": 6572,
+      "bytes": 218145,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [

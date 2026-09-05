@@ -11,6 +11,9 @@
 #include <flint/fmpq_mat.h>
 #include <flint/fmpz.h>
 #include <flint/fmpz_extras.h>
+#include <flint/nmod.h>
+#include <flint/nmod_mat.h>
+#include <flint/ulong_extras.h>
 
 /*
  * Host-neutral resource ABI for dense rational matrices.
@@ -931,6 +934,83 @@ failure:
     free(result->data);
     result->data = NULL;
     result->length = 0;
+    return 0;
+}
+
+/*
+ * Return a prime followed by pivot columns certifying full row rank.
+ *
+ * Every denominator is invertible modulo the selected prime, and the
+ * selected minor is nonzero modulo that prime.  It is therefore nonzero over
+ * QQ.  This bounded certificate avoids exact RREF coefficient swell when the
+ * input rows are already the basis that a caller wants to retain.
+ */
+static inline int sagejs_fmpq_matrix_full_row_rank_pivots(
+    sagejs_flint_byte_region_t result,
+    const sagejs_fmpq_matrix_t source)
+{
+    const slong rows = fmpq_mat_nrows(source->value);
+    const slong columns = fmpq_mat_ncols(source->value);
+    ulong prime = UWORD(1000000000);
+    result->data = NULL;
+    result->length = 0;
+    if (rows > columns || (size_t) rows > SIZE_MAX / sizeof(uint64_t) - 1)
+        return 0;
+    result->length = ((size_t) rows + 1) * sizeof(uint64_t);
+    result->data = (unsigned char *) malloc(result->length == 0 ? 1 : result->length);
+    if (result->data == NULL)
+        return 0;
+
+    for (size_t attempt = 0; attempt < 32; attempt++)
+    {
+        nmod_mat_t reduced;
+        int valid = 1;
+        prime = n_nextprime(prime + 1, 1);
+        nmod_mat_init(reduced, rows, columns, prime);
+        for (slong row = 0; row < rows && valid; row++)
+            for (slong column = 0; column < columns; column++)
+            {
+                const fmpq *entry = fmpq_mat_entry(
+                    source->value, row, column);
+                const ulong denominator =
+                    fmpz_fdiv_ui(fmpq_denref(entry), prime);
+                if (denominator == 0)
+                {
+                    valid = 0;
+                    break;
+                }
+                const ulong numerator =
+                    fmpz_fdiv_ui(fmpq_numref(entry), prime);
+                nmod_mat_entry(reduced, row, column) = nmod_mul(
+                    numerator, nmod_inv(denominator, reduced->mod), reduced->mod);
+            }
+        if (valid && nmod_mat_rref(reduced) == rows)
+        {
+            slong pivot_column = 0;
+            sagejs_flint_byte_region_write_u64(result->data, 0, prime);
+            for (slong row = 0; row < rows; row++)
+            {
+                while (pivot_column < columns &&
+                    nmod_mat_entry(reduced, row, pivot_column) == 0)
+                    pivot_column++;
+                if (pivot_column == columns)
+                {
+                    nmod_mat_clear(reduced);
+                    goto failure;
+                }
+                sagejs_flint_byte_region_write_u64(
+                    result->data, ((size_t) row + 1) * sizeof(uint64_t),
+                    (uint64_t) pivot_column);
+                pivot_column++;
+            }
+            nmod_mat_clear(reduced);
+            return 1;
+        }
+        nmod_mat_clear(reduced);
+    }
+
+failure:
+    sagejs_flint_byte_region_clear(result);
     return 0;
 }
 

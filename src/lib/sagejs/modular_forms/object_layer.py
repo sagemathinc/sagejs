@@ -332,7 +332,20 @@ def _recover_coordinates(space: Any, value: Any) -> Any:
             raise ValueError("q-expansion is not in this zero-dimensional space")
         return _coordinate_vector(space, [])
     try:
-        solution = basis.solve_left(target)
+        if _is_gamma1(space):
+            from . import gamma1
+
+            certificate = gamma1.descent_certificate(space)
+            if certificate.uses_rank_profile_basis():
+                pivot_target = _global("vector")(
+                    coefficient_ring,
+                    [target[index] for index in certificate.pivot_columns()],
+                )
+                solution = certificate.pivot_matrix().solve_left(pivot_target)
+            else:
+                solution = basis.solve_left(target)
+        else:
+            solution = basis.solve_left(target)
     except Exception as error:
         raise ValueError("q-expansion is not in this modular-form space") from error
     coordinates = _coordinate_vector(space, solution.list())

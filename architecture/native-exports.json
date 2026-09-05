@@ -4,10 +4,10 @@
   "counts": {
     "declared-ffi": 7,
     "migrate-to-declared-ffi": 238,
-    "migrate-to-typed-python": 36,
+    "migrate-to-typed-python": 37,
     "retain-differential-oracle": 6,
     "retain-host-adapter": 35,
-    "retain-representation-primitive": 33
+    "retain-representation-primitive": 34
   },
   "exports": [
     {
@@ -109,7 +109,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3450,
+        "line": 3593,
         "lines": 18,
         "sha256": "14321bdd4cbe2dac73da67890e6021d179fa25ffc74e6e097a1daab841aa3213",
         "calls": [
@@ -148,7 +148,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4628,
+        "line": 4771,
         "lines": 16,
         "sha256": "409bad240e5f70fbd1c23111062903d0600dfd04efb76c1756539062fb7e87f3",
         "calls": [
@@ -1638,6 +1638,71 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRowBasis",
+      "package": "@sagemath/sagejs-flint",
+      "export": "cyclotomicMatrixRowBasis",
+      "callback": "sagejs_cyclotomic_matrix_row_basis",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/matrix.c",
+        "line": 4935,
+        "lines": 213,
+        "sha256": "313e0328b776aba26f345d7c2cea4031eb2692092ce154fd05be1114c2e3c51c",
+        "calls": [
+          "_fmpq_vec_clear",
+          "_fmpq_vec_init",
+          "bigint_to_ulong",
+          "check_napi",
+          "fmpq_denref",
+          "fmpq_is_zero",
+          "fmpq_numref",
+          "fmpq_one",
+          "fmpq_set",
+          "fmpz_abs",
+          "fmpz_add",
+          "fmpz_clear",
+          "fmpz_divexact",
+          "fmpz_init",
+          "fmpz_init_set",
+          "fmpz_init_set_ui",
+          "fmpz_lcm",
+          "fmpz_mul",
+          "fmpz_one",
+          "free",
+          "gr_mat_clear",
+          "gr_mat_entry_ptr",
+          "gr_mat_init",
+          "malloc",
+          "napi_create_array_with_length",
+          "napi_create_int64",
+          "napi_set_element",
+          "napi_throw_error",
+          "qqbar_is_zero",
+          "qqbar_set",
+          "require_arguments",
+          "sagejs_cyclotomic_matrix_clear",
+          "sagejs_cyclotomic_rref_multimodular",
+          "sagejs_matrix_cyclotomic_coordinates_copy",
+          "sagejs_qqbar_matrix_from_cyclotomic_gr_mat",
+          "unwrap_matrix"
+        ]
+      },
+      "family": "dense-matrix-algorithms",
+      "decision": "migrate-to-typed-python",
+      "note": null,
+      "rationale": "Dense matrix operations must separate mature FLINT algorithms from locally implemented control flow and Node conversion.",
+      "fallback": "The portable matrix backend and ordinary Matrix methods remain correctness fallbacks.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicPolyFactor",
       "package": "@sagemath/sagejs-flint",
       "export": "cyclotomicPolyFactor",
@@ -2953,7 +3018,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3469,
+        "line": 3612,
         "lines": 73,
         "sha256": "c581fb3e7f4996c5cb208086a99615c519cd54a83338181f5679eddcaacc8ab0",
         "calls": [
@@ -3016,7 +3081,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3435,
+        "line": 3578,
         "lines": 4,
         "sha256": "0b795ed955bf2a0e66db7f59375bb1f0d7b2ebcb8f774f5920692f5a348707be",
         "calls": [
@@ -3053,7 +3118,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3440,
+        "line": 3583,
         "lines": 4,
         "sha256": "7e505d85d392f22a06cd8fd5d11cef818b488ce0236a7ded5f9938034011dd39",
         "calls": [
@@ -4894,7 +4959,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3384,
+        "line": 3527,
         "lines": 28,
         "sha256": "dab527d177e239b7f5483b93d5b0dc62c90ee30f493bf485d14202358e9a7573",
         "calls": [
@@ -5131,7 +5196,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4608,
+        "line": 4751,
         "lines": 5,
         "sha256": "b93b2564514c055d247081ec8990b737afb2b6177ca20e04cb736051d3ccedae",
         "calls": [
@@ -5564,7 +5629,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3365,
+        "line": 3508,
         "lines": 18,
         "sha256": "412f4142bec919fd791f8399cc5ef100d4d949d79efa50400dabcf88eceec761",
         "calls": [
@@ -5613,7 +5678,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1678,
+        "line": 1821,
         "lines": 21,
         "sha256": "24640c96629ab76a2aa6ae105fc16e98702aebec861c5f11e494708a9bd2637e",
         "calls": [
@@ -5810,7 +5875,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 6213,
+        "line": 6435,
         "lines": 138,
         "sha256": "c0321410e8f404d1c1f2fee1aff7924d7ed1b5735699c0378d720c118d625d41",
         "calls": [
@@ -5903,7 +5968,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5283,
+        "line": 5505,
         "lines": 175,
         "sha256": "6aefccff0be813cb8f88640567481081dac1dd11300e79e3de0993eedcae6e05",
         "calls": [
@@ -6162,7 +6227,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5970,
+        "line": 6192,
         "lines": 105,
         "sha256": "61e864471287c4814458b9ccc4b2d42fa8b3e8a786d23e5c70b89e182a0a56ec",
         "calls": [
@@ -6385,7 +6450,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5872,
+        "line": 6094,
         "lines": 97,
         "sha256": "a9c09d4e7e014376f159f5de0991133b21c85ff39199e95bb6e4881b10814b14",
         "calls": [
@@ -6480,7 +6545,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5459,
+        "line": 5681,
         "lines": 47,
         "sha256": "02aeaa3b720fef515576dcf6fa0b3bd1bc658281c70d2e58d7b78942172474c7",
         "calls": [
@@ -7076,7 +7141,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5577,
+        "line": 5799,
         "lines": 179,
         "sha256": "da462d027e6967f0930906a1721b57c7a0764e5fdde06f2286d55cc253522d63",
         "calls": [
@@ -7324,7 +7389,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4602,
+        "line": 4745,
         "lines": 5,
         "sha256": "410eec0af09e0df2e0c095f9e5e525ee8743bb8218e0d58678424fc62bb40f63",
         "calls": [
@@ -7356,7 +7421,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4596,
+        "line": 4739,
         "lines": 5,
         "sha256": "c3d6c929e1876b3e4a0e45cf51f9ebacbf17d2153b156f70e7a8b1b2155bf1d6",
         "calls": [
@@ -8530,7 +8595,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4574,
+        "line": 4717,
         "lines": 10,
         "sha256": "e06ff2d4c4953a7b949b3ee2d15670b367fad62213b8a11252009c245399ad89",
         "calls": [
@@ -8562,7 +8627,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1700,
+        "line": 1843,
         "lines": 23,
         "sha256": "ad0a19c28083bc840128280c0464ba93a7659f052c76ccff1714cdd72ec9166a",
         "calls": [
@@ -8755,7 +8820,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1769,
+        "line": 1912,
         "lines": 29,
         "sha256": "dd1feb7feb36f6d5539abe184830be836d02626914468a67884471bf72abc985",
         "calls": [
@@ -8797,7 +8862,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2968,
+        "line": 3111,
         "lines": 27,
         "sha256": "272140686be0fa57410a26efbeeeeaf2889191e6748cc05d08ca8c46fc64c1fa",
         "calls": [
@@ -8836,7 +8901,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2867,
+        "line": 3010,
         "lines": 28,
         "sha256": "b35f190537afdc3afd5fe6a557bd5c9dfff149261e589610870adeb977cfe1cd",
         "calls": [
@@ -8873,7 +8938,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1799,
+        "line": 1942,
         "lines": 19,
         "sha256": "30635cf32ab7af8e30952541141402f3d9253ad9cef90e767bdb5bf1e9712dba",
         "calls": [
@@ -8911,7 +8976,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2896,
+        "line": 3039,
         "lines": 19,
         "sha256": "259812fa3092d3466ac3443ef7e59ccb2a2fa8ad6185fa860e78c7cbb1f8ed8c",
         "calls": [
@@ -8947,7 +9012,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3145,
+        "line": 3288,
         "lines": 58,
         "sha256": "8202e939a43d23d800a720242ed181ac3fe98af2228264627c4c48bfe9e3a940",
         "calls": [
@@ -10250,7 +10315,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2009,
+        "line": 2152,
         "lines": 4,
         "sha256": "c26f52404f53b0f76b6c666707f3ec5e1b13bfdb8b4e8c4a10c23ce143090dca",
         "calls": [
@@ -10286,7 +10351,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2537,
+        "line": 2680,
         "lines": 54,
         "sha256": "101935c7beb926eee8e1d662451aea17f20487e5897ccb87133e3ae852aefb51",
         "calls": [
@@ -10337,7 +10402,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2464,
+        "line": 2607,
         "lines": 71,
         "sha256": "b44fc6eab8c8451fc6c74847cff354c1c74029db5daeefb3763347227afb0366",
         "calls": [
@@ -10392,7 +10457,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3103,
+        "line": 3246,
         "lines": 41,
         "sha256": "6c6820f5ffa60b06799b84a09ea4ad8da86bcdd2d96896f748d6c959072481a4",
         "calls": [
@@ -10432,7 +10497,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2388,
+        "line": 2531,
         "lines": 23,
         "sha256": "959f61408b67b01eeb90c85deecd2664a832b08667f8eb4b1c8c6d3f309bc87b",
         "calls": [
@@ -10472,7 +10537,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3234,
+        "line": 3377,
         "lines": 130,
         "sha256": "3348b7e82a37d65068b06e219fd388fde9f77b3ca61d983d5df948086c22f622",
         "calls": [
@@ -10531,7 +10596,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3054,
+        "line": 3197,
         "lines": 48,
         "sha256": "7a6d9e996b3db5b6ce60a06445083ee5e26a251cce086d4e57c371d01147490f",
         "calls": [
@@ -10580,7 +10645,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2122,
+        "line": 2265,
         "lines": 51,
         "sha256": "196eec07aa9c23ec6acce201195dcec60067fe389cb6676c4d266f8d72e6345f",
         "calls": [
@@ -10624,7 +10689,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2335,
+        "line": 2478,
         "lines": 52,
         "sha256": "c25ca887901768f28b135cd6c6e8c5f64aedfea33949277304ce37650d7ebb13",
         "calls": [
@@ -10670,7 +10735,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2019,
+        "line": 2162,
         "lines": 4,
         "sha256": "c47eae19c1ca0e9732a1d7637be7cad238ecc8f75d6c4dc8390fa051c4c5c6c3",
         "calls": [
@@ -10706,7 +10771,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2174,
+        "line": 2317,
         "lines": 34,
         "sha256": "58deb2882b818398264f50096bd57840bc2f3d19a8eac1b5d385db8a0feef4d3",
         "calls": [
@@ -10746,7 +10811,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2024,
+        "line": 2167,
         "lines": 29,
         "sha256": "92f6e560c707705c7d19ffa6fb355a9c7bcd3ad38a9955eab302c9920007c72d",
         "calls": [
@@ -10784,7 +10849,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2054,
+        "line": 2197,
         "lines": 31,
         "sha256": "2abda6ce4f40c4ce7efe8401eb9ae80205c0f93a40584cd2b2145f98abc2feba",
         "calls": [
@@ -10827,7 +10892,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2209,
+        "line": 2352,
         "lines": 32,
         "sha256": "f37714c385196f3611cbe00f7198c97600dcdf35a0cec17ce37b0508e6dcf692",
         "calls": [
@@ -10866,7 +10931,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2287,
+        "line": 2430,
         "lines": 4,
         "sha256": "fa445f9072d31a48dc3b25c1f4a31c4ab68a8239b209d4738d5ce9daa395077a",
         "calls": [
@@ -10899,7 +10964,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2292,
+        "line": 2435,
         "lines": 4,
         "sha256": "cddeda8ad29aee25e25b0b6f59b23f4d82af0e5a1d5b12849110bbfbc0411cfb",
         "calls": [
@@ -10932,7 +10997,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2014,
+        "line": 2157,
         "lines": 4,
         "sha256": "fdd9987082f9bb620e686791d9f93c16828f3ce8f975d32f2e45d7d158d0f610",
         "calls": [
@@ -10968,7 +11033,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2412,
+        "line": 2555,
         "lines": 51,
         "sha256": "739ed7d05a4fb45fbe3832dd30a5d38074c202a92314fb9ec5eebb55f7ea6953",
         "calls": [
@@ -11014,7 +11079,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2086,
+        "line": 2229,
         "lines": 35,
         "sha256": "541da55195e1e5103937d9a7e7da09177f1d8810f8d3b6ad1fa12086574da10e",
         "calls": [
@@ -11055,7 +11120,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2297,
+        "line": 2440,
         "lines": 37,
         "sha256": "5e3a8eb33e4b87655b6283ec5d536d714fd71588f763beec69312ac72d7d2879",
         "calls": [
@@ -11095,7 +11160,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1724,
+        "line": 1867,
         "lines": 26,
         "sha256": "a2f69bd8b09061483d56eb0db04e41aefa46c422d4aca9fe82337943b6e69203",
         "calls": [
@@ -11136,7 +11201,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3445,
+        "line": 3588,
         "lines": 4,
         "sha256": "5cbe49af6cbdf98e6f071a2d3b8cb33d44499407221a7431dd9ffc3791596e9d",
         "calls": [
@@ -11168,7 +11233,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3688,
+        "line": 3831,
         "lines": 115,
         "sha256": "8a480900935cf1708a8c03416eea753271ec4d1231c856a621dd6cab60104f56",
         "calls": [
@@ -11222,7 +11287,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3667,
+        "line": 3810,
         "lines": 20,
         "sha256": "c3e8f559e18bdebcb00a81d8376d0868899dd67c5fd31b6660b24ac319df8b46",
         "calls": [
@@ -11259,7 +11324,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3804,
+        "line": 3947,
         "lines": 49,
         "sha256": "b2aab653e9648b386786ffe3b3d5d6968007281d0a2e60b39b4fad401c19cf48",
         "calls": [
@@ -11303,7 +11368,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3854,
+        "line": 3997,
         "lines": 44,
         "sha256": "6795ad175fc7972d892557f0e5617a157c451a66b9e04a0e5425b0a0bdd7cc99",
         "calls": [
@@ -11347,7 +11412,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 3620,
+        "line": 3763,
         "lines": 46,
         "sha256": "85c6d5a53bbc6c28253f77d487763a2c3c7dc7b524f7ae67d0f73b850228925b",
         "calls": [
@@ -12467,7 +12532,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2702,
+        "line": 2845,
         "lines": 164,
         "sha256": "e87ec763aefbeafd8f72eca41863f0f52ac7d9ca47838a219b04de3583e1b2df",
         "calls": [
@@ -12725,7 +12790,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1596,
+        "line": 1739,
         "lines": 16,
         "sha256": "8b686b85a5e643558448ded3dad571ce9d6db10f1a9fd8b73a9bd826cd8a7e77",
         "calls": [
@@ -12753,6 +12818,59 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyPacked",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqPolyPacked",
+      "callback": "qq_poly_packed",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/addon.c",
+        "line": 1594,
+        "lines": 127,
+        "sha256": "caa575a6740f3419453aa9bac24f3fd361ac5e4fccf8152d8d31484d8097a508",
+        "calls": [
+          "UINT32_C",
+          "bigint_to_ulong",
+          "calloc",
+          "check_napi",
+          "create_poly",
+          "fmpq_clear",
+          "fmpq_init",
+          "fmpq_poly_set_coeff_fmpq",
+          "fmpq_set_fmpz_frac",
+          "fmpz_clear",
+          "fmpz_init",
+          "fmpz_is_zero",
+          "fmpz_neg",
+          "fmpz_set_ui_array",
+          "fmpz_zero",
+          "free",
+          "memset",
+          "napi_get_typedarray_info",
+          "napi_throw_error",
+          "napi_throw_range_error",
+          "napi_throw_type_error",
+          "poly_read_uint32_le",
+          "require_arguments",
+          "unwrap_poly"
+        ]
+      },
+      "family": "polynomials",
+      "decision": "retain-representation-primitive",
+      "note": "This bounded transitional adapter imports an existing canonical packed rational row directly into the legacy series polynomial owner, avoiding a host BigInt decode-and-repack cycle.",
+      "rationale": "Univariate polynomial exports primarily adapt mature FLINT algorithms and packed coefficient representations.",
+      "fallback": "Ordinary polynomial arithmetic remains the tested semantic fallback.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:qqPolyToZZExact",
       "package": "@sagemath/sagejs-flint",
       "export": "qqPolyToZZExact",
@@ -12762,7 +12880,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1636,
+        "line": 1779,
         "lines": 27,
         "sha256": "a74fb261c6fe03b794897e9f94fb83676d6aeb6ae215affc1e8e2ecb94492741",
         "calls": [
@@ -13889,7 +14007,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4505,
+        "line": 4648,
         "lines": 57,
         "sha256": "fafc148f40ec1c88440f20a802db96207ca1c22d7619550e9c750940b3233dee",
         "calls": [
@@ -13937,7 +14055,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4430,
+        "line": 4573,
         "lines": 74,
         "sha256": "498698d66f37a1f227c95bbf14d24545b34efca6ea8188b7af4a050c12da853d",
         "calls": [
@@ -14155,7 +14273,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4264,
+        "line": 4407,
         "lines": 64,
         "sha256": "a41e51b344b4a5ff45a7db414533f373fcaf9f0f2f117edc283d62d7798f5b2b",
         "calls": [
@@ -14200,7 +14318,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4156,
+        "line": 4299,
         "lines": 76,
         "sha256": "35eba215326210b3fd9c80afee726cbc4728b01d0b9360c370ce69e8138d0a4e",
         "calls": [
@@ -14243,7 +14361,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4095,
+        "line": 4238,
         "lines": 60,
         "sha256": "5d02ecbb95d6365c3e56e9c7d8f617ece19dd0d9a01c8cad39c39629b9b3276b",
         "calls": [
@@ -14288,7 +14406,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4614,
+        "line": 4757,
         "lines": 13,
         "sha256": "ed65b49ad723a350bcb65f2608181df0fd803d87df7d5b9a800780734d134c3b",
         "calls": [
@@ -14321,7 +14439,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 4563,
+        "line": 4706,
         "lines": 10,
         "sha256": "89079d7fea4034f172606828b79afe145f22ce4bfbc1f5ba276982f83ec56de1",
         "calls": [
@@ -14370,7 +14488,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1664,
+        "line": 1807,
         "lines": 13,
         "sha256": "b011668fe96d4a18ec7e25a797515a0dbd48b173167f287b06a9d2a918cda887",
         "calls": [
@@ -14407,7 +14525,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1751,
+        "line": 1894,
         "lines": 17,
         "sha256": "89b5edff657f859c955ae89468c28641e379390734544c5e2ca33f431280eeef",
         "calls": [
@@ -14593,7 +14711,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1857,
+        "line": 2000,
         "lines": 29,
         "sha256": "c953693f089cb0686c21d1246ecc354ec5173c39076a49ef0635e6c850b079a6",
         "calls": [
@@ -14633,7 +14751,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1887,
+        "line": 2030,
         "lines": 21,
         "sha256": "ad092e90f431db54928c8b9f95f86072952bf3142e447457567a011a8f809e67",
         "calls": [
@@ -14888,7 +15006,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1579,
+        "line": 1722,
         "lines": 16,
         "sha256": "f4a8412933fb0416504893ce132edd20559a305e2e86df174cdbcf25684520dd",
         "calls": [
@@ -14927,7 +15045,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1819,
+        "line": 1962,
         "lines": 37,
         "sha256": "034ed78b3d3754c530e99187de6fe5d89cbdc01f3b592bdc83a491af84fe12eb",
         "calls": [
@@ -14968,7 +15086,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1613,
+        "line": 1756,
         "lines": 21,
         "sha256": "fb8cb2cd20300f72ee8957a38adc24580905c454e4f60e6bef91fba8bfed7491",
         "calls": [
@@ -15004,7 +15122,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 1909,
+        "line": 2052,
         "lines": 36,
         "sha256": "3d4c9f55dd41e1652935fef332a48d8a1eb93ebfcccd10480ff4f99fa0c24657",
         "calls": [
@@ -15043,7 +15161,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/addon.c",
-        "line": 2597,
+        "line": 2740,
         "lines": 97,
         "sha256": "b7f9d4fc41e8b525688fe6f5434c2d59553983d9c6c28e50b229be0d4cf3873e",
         "calls": [

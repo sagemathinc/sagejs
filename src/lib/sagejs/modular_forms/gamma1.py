@@ -335,14 +335,32 @@ class Gamma1DescentCertificate:
             component.rational_dimension() for component in self._components
         )
         self._raw_matrix = _raw_basis_matrix(list(self._components), self._precision)
-        self._basis_matrix = self._raw_matrix.row_space().basis_matrix()
-        if self._basis_matrix.nrows() != self._expected_dimension:
-            raise ArithmeticError(
-                "Gamma1 character descent has rank "
-                + str(self._basis_matrix.nrows())
-                + " instead of component dimension "
-                + str(self._expected_dimension)
+        # At moderate size an exact RREF gives the familiar normalized basis.
+        # At large Sturm precision that normalization can suffer catastrophic
+        # rational coefficient swell even though character descent has
+        # already supplied exactly the desired number of basis rows.  A
+        # full-rank modular minor is then a complete exact certificate for
+        # retaining those deterministic rows directly.
+        self._uses_rank_profile_basis = (
+            self._raw_matrix.nrows() * self._raw_matrix.ncols() >= 400000
+        )
+        if self._uses_rank_profile_basis:
+            self._pivot_columns = runtime.math_tuple(
+                self._raw_matrix._full_row_rank_pivots()
             )
+            self._basis_matrix = self._raw_matrix
+        else:
+            self._basis_matrix = self._raw_matrix.row_space().basis_matrix()
+            if self._basis_matrix.nrows() != self._expected_dimension:
+                raise ArithmeticError(
+                    "Gamma1 character descent has rank "
+                    + str(self._basis_matrix.nrows())
+                    + " instead of component dimension "
+                    + str(self._expected_dimension)
+                )
+            self._raw_matrix._rref_cache = self._basis_matrix
+            self._raw_matrix._rank_cache = self._expected_dimension
+            self._pivot_columns = runtime.math_tuple(self._basis_matrix.pivots())
         public_dimension = _public_dimension(space, self._subspace_kind)
         if public_dimension != self._expected_dimension:
             raise ArithmeticError(
@@ -362,10 +380,16 @@ class Gamma1DescentCertificate:
             # change of basis is the inverse of this one small square block;
             # solving against every Sturm coefficient is mathematically
             # redundant and becomes very expensive at larger level.
-            pivots = list(self._basis_matrix.pivots())
+            pivots = list(self._pivot_columns)
             self._pivot_matrix = self._raw_matrix.matrix_from_columns(pivots)
-            self._transformation = self._pivot_matrix.inverse()
-            self._inverse_transformation = self._pivot_matrix
+            if self._uses_rank_profile_basis:
+                self._transformation = _global("identity_matrix")(
+                    sage.QQ, self._expected_dimension
+                )
+                self._inverse_transformation = self._transformation
+            else:
+                self._transformation = self._pivot_matrix.inverse()
+                self._inverse_transformation = self._pivot_matrix
         self._raw_matrix.set_immutable()
         self._basis_matrix.set_immutable()
         self._pivot_matrix.set_immutable()
@@ -405,6 +429,18 @@ class Gamma1DescentCertificate:
     def inverse_transformation_matrix(self) -> Any:
         return self._inverse_transformation
 
+    def pivot_columns(self) -> Any:
+        """Return columns of a certified nonsingular basis minor."""
+        return self._pivot_columns
+
+    def pivot_matrix(self) -> Any:
+        """Return the exact basis minor on `pivot_columns()`."""
+        return self._pivot_matrix
+
+    def uses_rank_profile_basis(self) -> bool:
+        """Return whether normalization was replaced by a modular rank proof."""
+        return self._uses_rank_profile_basis
+
     def verify(self) -> bool:
         if (
             self._precision <= self.sturm_bound()
@@ -413,21 +449,29 @@ class Gamma1DescentCertificate:
         ):
             return False
         identity = _global("identity_matrix")(sage.QQ, self._expected_dimension)
+        if self._uses_rank_profile_basis:
+            if (
+                self._basis_matrix != self._raw_matrix
+                or len(self._pivot_columns) != self._expected_dimension
+                or self._raw_matrix.matrix_from_columns(self._pivot_columns)
+                != self._pivot_matrix
+                or self._raw_matrix._full_row_rank_pivots() != self._pivot_columns
+                or self._transformation != identity
+                or self._inverse_transformation != identity
+            ):
+                return False
+            return True
         if (
-            self._basis_matrix.matrix_from_columns(self._basis_matrix.pivots())
-            != identity
+            self._basis_matrix.matrix_from_columns(self._pivot_columns) != identity
             or self._transformation._sparse_left_multiply(self._pivot_matrix)
             != identity
             or self._inverse_transformation != self._pivot_matrix
         ):
             return False
-        # Equality of exact right kernels certifies equality of the two row
-        # spaces without multiplying a dense square transformation through
-        # every coefficient up to the Gamma1 Sturm bound.
-        return (
-            self._raw_matrix.right_kernel().basis_matrix()
-            == self._basis_matrix.right_kernel().basis_matrix()
-        )
+        # Equality with the exact cached RREF certifies equality of row spaces
+        # without multiplying a dense square transformation through every
+        # coefficient or materializing the nearly square right kernel.
+        return self._raw_matrix.row_space().basis_matrix() == self._basis_matrix
 
     def __repr__(self) -> str:
         return (
@@ -493,16 +537,31 @@ def q_expansion_basis(
     else:
         raw = _raw_basis_matrix(certificate.components(), construction_precision)
         basis = certificate.transformation_matrix()._sparse_left_multiply(raw)
-    if basis.rank() != certificate.dimension():
-        raise ArithmeticError("Gamma1 descended basis lost rank at higher precision")
+    if construction_precision > certificate.precision():
+        proof_prefix = basis.matrix_from_columns(range(certificate.precision()))
+        if proof_prefix != certificate.basis_matrix():
+            raise ArithmeticError(
+                "Gamma1 descended basis changed below the Sturm bound"
+            )
     ring = _global("PowerSeriesRing")(
         sage.QQ,
         variable,
         default_prec=max(1, construction_precision),
     )
-    answer = [
-        ring(row.list()).add_bigoh(construction_precision) for row in basis.rows()
-    ]
+    if (
+        basis.base_ring() is sage.QQ
+        and basis._has_fmpq_matrix_resource()
+        and runtime.jstype(runtime.reflect.get(runtime.flint_backend(), "qqPolyPacked"))
+        == "function"
+    ):
+        answer = [
+            ring._from_rational_matrix_row(basis, row, construction_precision)
+            for row in range(basis.nrows())
+        ]
+    else:
+        answer = [
+            ring(row.list()).add_bigoh(construction_precision) for row in basis.rows()
+        ]
     if requested < construction_precision:
         return [series.add_bigoh(requested) for series in answer]
     return answer
@@ -588,11 +647,14 @@ def _canonical_operator(space: Any, raw_operator: Any) -> Any:
     certificate = descent_certificate(space)
     if certificate.dimension() == 0:
         return _global("matrix")(sage.QQ, 0, 0)
-    answer = (
-        certificate.transformation_matrix()
-        * raw_operator
-        * certificate.inverse_transformation_matrix()
-    )
+    if certificate.uses_rank_profile_basis():
+        answer = raw_operator
+    else:
+        answer = (
+            certificate.transformation_matrix()
+            * raw_operator
+            * certificate.inverse_transformation_matrix()
+        )
     if answer.base_ring() is not sage.QQ:
         answer = answer.change_ring(sage.QQ)
     return answer

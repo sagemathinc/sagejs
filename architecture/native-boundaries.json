@@ -14,9 +14,9 @@
   },
   "counts": {
     "classified-native-file": 244,
-    "declared-ffi": 463,
+    "declared-ffi": 464,
     "declared-ffi-resource": 34,
-    "napi-export": 355,
+    "napi-export": 357,
     "runtime-intrinsic": 147,
     "wasm-export": 74
   },
@@ -991,6 +991,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqMatrixFromFmpz",
       "symbol": "sagejs_fmpq_matrix_from_fmpz",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_full_row_rank_pivots",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_full_row_rank_pivots",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixFullRowRankPivots",
+      "symbol": "sagejs_fmpq_matrix_full_row_rank_pivots",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -5951,6 +5962,16 @@
       "family": "dense-matrix-algorithms"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRowBasis",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "cyclotomicMatrixRowBasis",
+      "symbol": "sagejs_cyclotomic_matrix_row_basis",
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicPolyFactor",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -8419,6 +8440,16 @@
       "export": "qqPolyGen",
       "symbol": "qq_poly_gen",
       "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyPacked",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqPolyPacked",
+      "symbol": "qq_poly_packed",
+      "disposition": "retain-representation-primitive",
       "family": "polynomials"
     },
     {

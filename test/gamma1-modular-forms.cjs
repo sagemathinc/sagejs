@@ -78,6 +78,51 @@ test("direct cyclotomic Hecke images equal full exact operators", async (t) => {
   );
 });
 
+test("wide higher-degree cyclotomic row spaces stay short", async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "K = CyclotomicField(25)",
+    "z = K.gen()",
+    "rows = []",
+    "for i in range(8):",
+    "    row = [K(0) for _ in range(1701)]",
+    "    row[i] = K(1)",
+    "    row[100 + 173*i] = z^(i+1)",
+    "    rows.append(row)",
+    "A = matrix(K, rows)",
+    "B = A.row_space().basis_matrix()",
+    "print(K.degree(), B.nrows(), B.ncols(), B == A, B == B.rref(), A.rank())",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), "20 8 1701 True True 8");
+});
+
+test("rational rank profiles certify an existing wide basis", async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "A = matrix(QQ, [[1/2,0,3,0,7,0,0,1], [0,2/3,5,0,0,11,0,1], [0,0,0,5/7,0,0,13,1]])",
+    "P = A._full_row_rank_pivots()",
+    "print(P, P == A.pivots(), A._full_row_rank_prime_cache > 10^9, A.matrix_from_columns(P).det() != 0)",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), "(0, 1, 3) True True True");
+});
+
+test("rational matrix rows publish as exact series without host coefficients", async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "A = matrix(QQ, [[0,1/2,-7/3,0], [5/11,0,13/17,-19]])",
+    "R = PowerSeriesRing(QQ, 'q', default_prec=4)",
+    "f = R._from_rational_matrix_row(A, 1, 4)",
+    "print(f, f.padded_list(), f.prec())",
+  ].join("\n"));
+  assert.equal(
+    result.stdout.trim(),
+    "5/11 + 13/17*q^2 - 19*q^3 + O(q^4) [5/11, 0, 13/17, -19] 4",
+  );
+});
+
 test("Gamma1 object arithmetic, coordinates, and serialization are exact", async (t) => {
   const session = await createSage();
   t.after(() => session.close());

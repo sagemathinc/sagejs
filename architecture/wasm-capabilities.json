@@ -2630,6 +2630,26 @@
       "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
+      "id": "ffi:flint:fmpq_matrix_full_row_rank_pivots",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
       "id": "ffi:flint:fmpq_matrix_from_fmpz",
       "kind": "declared-ffi-function",
       "family": "flint",
@@ -13221,6 +13241,25 @@
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRowBasis",
+      "kind": "napi-export",
+      "family": "dense-matrix-algorithms",
+      "source": "packages/flint/src/matrix.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/matrix.py"
+      ],
+      "tests": [
+        "native-public-fallback-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
+      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicPolyFactor",
       "kind": "napi-export",
       "family": "algebraic",
@@ -17984,6 +18023,25 @@
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/polynomial.py"
+      ],
+      "tests": [
+        "native-public-fallback-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
+      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyPacked",
+      "kind": "napi-export",
+      "family": "polynomials",
+      "source": "packages/flint/src/addon.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/series.py"
       ],
       "tests": [
         "native-public-fallback-differential"
