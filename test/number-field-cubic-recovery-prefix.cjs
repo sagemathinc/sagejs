@@ -31,8 +31,15 @@ function run(command, args, timeout = 180000, env = process.env) {
   return result.stdout;
 }
 
-test("recovery statuses, result publication and caller/host retry gate fail closed", () => {
-  assert.match(run("python3", [join(__dirname, "fixtures/cubic-recovery-status-faults.py"),
+test("recovery statuses, result publication and caller/host retry gate fail closed", (t) => {
+  const candidates = process.platform === "win32"
+    ? [["py", "-3"], ["python"], ["python3"]]
+    : [["python3"], ["python"]];
+  const command = candidates.find(([exe, ...args]) =>
+    spawnSync(exe, [...args, "--version"], { encoding: "utf8" }).status === 0);
+  if (!command) return t.skip("CPython is needed for source-extracted fault injection");
+  const [exe, ...args] = command;
+  assert.match(run(exe, [...args, join(__dirname, "fixtures/cubic-recovery-status-faults.py"),
     productionPath, runtimePath]), /recovery-status-contract-ok/);
 });
 
