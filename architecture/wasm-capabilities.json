@@ -89,6 +89,13 @@
           "test/native-reusable-exact-workspace.cjs"
         ]
       },
+      "integer-log-sqrt-prefix-differential": {
+        "differential": true,
+        "paths": [
+          "test/integer-log-sqrt-prefix-resource.cjs",
+          "test/fixtures/integer-log-sqrt-prefix-resource.py"
+        ]
+      },
       "partition-count-wasm-differential": {
         "differential": true,
         "paths": [
@@ -4599,6 +4606,30 @@
         "status": "included"
       },
       "public_explanation": "Rigorous packed logarithm and square-root endpoints are available in the receipt-authenticated production WebAssembly artifact, with the same-source exact fallback retained."
+    },
+    {
+      "id": "ffi:flint:integer_log_sqrt_balls_prefix_resource",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "integer-log-sqrt-prefix-differential"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The borrowed-prefix adapter reuses the shared Arb endpoint implementation. Native dynamic/GMP/fmpz differential tests and checkpoint sanitizer tests cover the prefix contract; this new entry has not yet been published or executed in a WebAssembly production artifact.",
+      "wasm_declared": true,
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Integrate the generated entry into the next production WebAssembly closure and execute its active-prefix and inactive-tail differential witness before advertising browser availability."
+      },
+      "public_explanation": "The resident logical-prefix logarithm and square-root operation is implemented for native execution. Browser publication and validation remain pending; the existing exact-shape operation remains available."
     },
     {
       "id": "ffi:flint:integer_log_sqrt_balls_resource",
