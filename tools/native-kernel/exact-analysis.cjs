@@ -1286,10 +1286,14 @@ const FMPZ_FFI_DECLARATIONS = new Set([
   "flint:integer_log_sqrt_balls_resource",
   "flint:positive_rational_log_balls_resource",
   "flint:fmpz_matrix_hnf_into",
+  "flint:fmpz_matrix_hnf_prefix_into",
   "flint:fmpz_matrix_hnf_transform",
+  "flint:fmpz_matrix_hnf_transform_prefix",
   "flint:fmpz_matrix_lll_transform",
+  "flint:fmpz_matrix_lll_transform_prefix",
   "flint:fmpz_matrix_snf",
   "flint:fmpz_matrix_snf_into",
+  "flint:fmpz_matrix_snf_prefix_into",
 ]);
 
 const FMPZ_RESOURCE_IDS = new Set([
