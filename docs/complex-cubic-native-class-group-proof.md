@@ -274,6 +274,48 @@ conditionally expands to the same canonical class support plus eighteen final
 witnesses and attempts exact unit reconstruction there. It never makes the
 exceptional HNF/LLL/log workspace operate on the entire raw collection matrix.
 
+For eligible searches without an already known small unit, the collector
+records this support during its online HNF updates. If the admitted rows are
+$r_0,\ldots,r_i\in\mathbb Z^n$, define
+
+$$
+L_i=\langle r_0,\ldots,r_i\rangle_{\mathbb Z},\qquad L_{-1}=0.
+$$
+
+Starting with the zero $n\times n$ matrix $B_{-1}$, let $B_i$ be the first
+$n$ rows of the row HNF of $\begin{pmatrix}B_{i-1}\\r_i\end{pmatrix}$.
+FLINT's canonical row HNF places nonzero rows before trailing zero rows;
+there are at most $n$ nonzero rows. Induction therefore gives
+$\operatorname{rowspan}_{\mathbb Z}(B_i)=L_i$. Uniqueness of this padded
+canonical basis gives the exact support criterion
+
+$$
+s_i=1\iff B_i\ne B_{i-1}\iff r_i\notin L_{i-1}.
+$$
+
+The rows marked by $s_i=1$ span every prefix lattice. The online marks thus
+select exactly the same source rows, in the same order, as the former second
+support-selection pass. At full rank, exact triangular membership can skip
+an HNF computation for a contained row. Before full rank, the update computes
+the HNF even when pivots skip columns. A same-rank decrease in lattice index
+still sets the support bit.
+
+Reuse requires every admitted row to have been processed online and no
+small-unit shortcut to be active. The small-unit branch keeps its original
+tall HNF, because it retains all principal rows. The reused square HNF
+supplies rank, while Smith reduction of the complete relation matrix and
+independent compact HNF and Smith-index checks remain in place. Publication
+retains the original principal elements associated with the selected rows;
+it does not substitute HNF basis rows without corresponding elements.
+
+LMFDB `3.1.83062751.1`, defined by $x^3-x^2-146x-22763$, checks this reuse
+with $36$ factor-base ideals, $38$ support rows, and $4$ redundant tail rows.
+Its compact $C_{15}$ transcript is identical to the preceding implementation
+($4405$ JSON bytes, SHA-256
+`b1282d038400684fb1c3116fe21e9ecddb7d20513b94a490ed6fd662c123d5e8`)
+and passes ordinary exact conditional-GRH replay. Transcript equality is a
+regression check; the prefix-lattice argument above justifies the reuse.
+
 Relation effort remains adaptive. For factor bases of dimension at most $11$,
 the host first invokes the closed native program with the three largest
 canonical factor-base ideals and no compound multiplier. Larger bases start

@@ -53,7 +53,7 @@ _CUBIC_ARENA_MEMORY_LIMIT = 1_048_576
 # closed program, including resident FLINT children initialized inside the
 # arena.  LMFDB 3.1.69305231.3 reaches 2_656_608 charged bytes on its exact
 # effort-1 path, so the previously qualified 2 MiB slab was no longer an
-# honest envelope after that lifetime correction.  Keep a finite power-of-two
+# honest envelope after that lifetime correction.  Keep a finite whole-MiB
 # cap with measured headroom; exhaustion still declines to the exact fallback.
 _CUBIC_ARENA_CHECKPOINT_LIMIT = 3_145_728
 # Try the measured PARI-shaped bounded regime once, then retain the monotone
