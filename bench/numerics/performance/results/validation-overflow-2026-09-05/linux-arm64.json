@@ -1,0 +1,43 @@
+{
+  "schema": "sagejs.validation-overflow-qualification/v1",
+  "passed": true,
+  "scope": "isolated-validation-regression-not-product-release",
+  "declared_source_commit": "0f3f7472a",
+  "host": {
+    "platform": "linux",
+    "arch": "arm64",
+    "node": "v26.5.1",
+    "python": "Python 3.12.3",
+    "cpu": "Neoverse-N1"
+  },
+  "before": {
+    "sha256": "7243c402f6db6270a5b33fd2cbde3c0cd7b531dcaefc833501ce774dc82752d2",
+    "files": 3096
+  },
+  "after": {
+    "sha256": "7243c402f6db6270a5b33fd2cbde3c0cd7b531dcaefc833501ce774dc82752d2",
+    "files": 3096
+  },
+  "unchanged": true,
+  "collector_sha256": "9681adb8c948fa614a24c277a929b5db600497e1a9f322d154968a56724f83ae",
+  "test_exit_code": 0,
+  "test_signal": null,
+  "tests": [
+    "✔ unrepresentable validation scales fail closed in CPython and Sage.js (1648.782407ms)",
+    "ℹ tests 1",
+    "ℹ suites 0",
+    "ℹ pass 1",
+    "ℹ fail 0",
+    "ℹ cancelled 0",
+    "ℹ skipped 0",
+    "ℹ todo 0",
+    "ℹ duration_ms 1720.697683"
+  ],
+  "diagnostics": [],
+  "limitations": [
+    "not-browser-product",
+    "not-npm-or-SEA",
+    "not-performance-qualification",
+    "not-full-suite"
+  ]
+}

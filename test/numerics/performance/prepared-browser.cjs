@@ -98,9 +98,9 @@ test("public prepared numerical APIs use the optional pack in real browser sessi
     });
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const origin = `http://127.0.0.1:${server.address().port}`;
-    const source = evaluators
-      ? ["prepared-functions.py", "prepared-root-api.py"].map(name => fs.readFileSync(path.join(__dirname,name),"utf8")).join("\n")
-      : fs.readFileSync(path.join(__dirname, "prepared-statistics.py"), "utf8");
+    const sources = (evaluators
+      ? ["prepared-functions.py", "prepared-root-api.py", "../linear_algebra/validation-overflow.py"]
+      : ["prepared-statistics.py"]).map(name => ({name, source:fs.readFileSync(path.join(__dirname,name),"utf8")}));
     const benchmark = measurementPath ? fs.readFileSync(path.join(root,
       evaluators ? "bench/numerics/performance/prepared-root.py" : "bench/numerics/performance/prepared-statistics.py"), "utf8") : null;
     for (const engine of (process.env.SAGEJS_NUMERICAL_BROWSER_ENGINE
@@ -111,7 +111,7 @@ test("public prepared numerical APIs use the optional pack in real browser sessi
         await page.goto(origin);
         for (const [route, expected] of [["disabled", "ordinary-python"], ["floating", "source-native"], ["stale", "ordinary-python"], ["missing", "ordinary-python"]]) {
           const start = requests.length;
-          const observation = await page.evaluate(async ({ origin, route, expected, source, start, benchmark, evaluators }) => {
+          const observation = await page.evaluate(async ({ origin, route, expected, sources, start, benchmark, evaluators }) => {
             const { createSage } = await import(origin + "/kernel.mjs");
             const sage = await createSage({ mode: "python",
               compiler: origin + "/__witness/compiler.js", baselib: origin + "/__witness/baselib.js",
@@ -125,7 +125,13 @@ test("public prepared numerical APIs use the optional pack in real browser sessi
               if (fetched.some((url) => url.startsWith(`/__witness/${route}/`))) {
                 throw new Error("floating pack was fetched before a statistics import");
               }
-              const result = await sage.evaluate(`EXPECTED_BACKEND = ${JSON.stringify(expected)}\nEXPECTED_TARGET = ${JSON.stringify(expected === "source-native" ? "wasm" : "dynamic")}\n` + source, { timeout: 180000 });
+              const outputs = [];
+              for (const {name,source} of sources) {
+                try {
+                  const result = await sage.evaluate(`EXPECTED_BACKEND = ${JSON.stringify(expected)}\nEXPECTED_TARGET = ${JSON.stringify(expected === "source-native" ? "wasm" : "dynamic")}\n` + source, { timeout: 180000 });
+                  outputs.push(result.stdout.trim());
+                } catch (error) { throw new Error(`${route}:${name}: ${error.message}\n${error.stack}`); }
+              }
               if (route === "floating") await sage.evaluate(
                 evaluators
                   ? 'from sagejs.numerics._evaluation_core import evaluate_program\nassert evaluate_program.executionTarget == "wasm"'
@@ -141,10 +147,10 @@ test("public prepared numerical APIs use the optional pack in real browser sessi
                 measured = { evaluate_wall_ms: performance.now() - start,
                   ...JSON.parse(result.stdout.trim()) };
               }
-              return { stdout: result.stdout, recovery: recovery.stdout, measured };
+              return { stdout: outputs.join("\n"), recovery: recovery.stdout, measured };
             } finally { sage.close(); }
-          }, { origin, route, expected, source, start, benchmark, evaluators });
-          assert.equal(observation.stdout.trim(), evaluators ? "prepared functions passed\nprepared root API passed" : "prepared statistics passed", engine + ":" + route);
+          }, { origin, route, expected, sources, start, benchmark, evaluators });
+          assert.equal(observation.stdout.trim(), evaluators ? "prepared functions passed\nprepared root API passed\nvalidation overflow guards passed" : "prepared statistics passed", engine + ":" + route);
           assert.equal(observation.recovery.trim(), "42");
           if (observation.measured) {
             measurements.push({ engine, version: browser.version(), ...observation.measured });
@@ -165,7 +171,9 @@ test("public prepared numerical APIs use the optional pack in real browser sessi
         "dist/lazy-modules.json", "packages/flint-wasm/evaluator.mjs",
         "packages/flint-wasm/compiler-worker.mjs", "packages/flint-wasm/floating-kernels.mjs",
         "packages/flint-wasm/dist/flint-factor.wasm", "tools/native-kernel/wasm-pack-loader.mjs",
-        "test/numerics/performance/prepared-browser.cjs"];
+        "test/numerics/performance/prepared-browser.cjs",
+        ...(evaluators ? ["test/numerics/linear_algebra/validation-overflow.py",
+          "src/lib/sagejs/numerics/linear_algebra/validation.py"] : [])];
       const report = {
         schema: evaluators ? "sagejs.prepared-root-browser-development/v1" : "sagejs.prepared-statistics-browser-development/v1",
         classification: "source-integration-development-not-release-qualification",

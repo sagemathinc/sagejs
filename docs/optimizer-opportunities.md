@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `ee16b3ac89f2d51ecbca80b10143e33712aafa5f28f423508735e852d46b6e62` (714 files, 14453082 bytes).
-Analyzed source bundle: `sha256:aeef4e5d8e21b903d7cec3aa2b1c01d09a149f2abee35c8bd1735d2b48e4ee95`; compiler identity: `sha256:ca1a3c5a7189d0bb53b5a7db3f38f18ed39475b17f2b539f62625222cab7eb7d`.
+Input identity: `c80b4d91e2b5a943fdb77b0050c7113931d32f729ce4e4b286a46fdeb5de6f9c` (714 files, 14454104 bytes).
+Analyzed source bundle: `sha256:4db08043907f8ee07c2e459ce378fdf711d713ad575557153c6bec99b74da7bf`; compiler identity: `sha256:ca1a3c5a7189d0bb53b5a7db3f38f18ed39475b17f2b539f62625222cab7eb7d`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -35,7 +35,7 @@ pnpm optimizer:opportunities:query -- sha256:<digest>
 | Source modules compiled | 631 / 631 |
 | Library modules compiled | 618 / 618 |
 | Explicit control sources compiled | 13 / 13 |
-| Functions and methods compiled | 16263 |
+| Functions and methods compiled | 16264 |
 | Loop-bearing functions and methods | 5124 |
 | Loops in functions | 14258 |
 | Selected optimized loops | 55 |
@@ -49,11 +49,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 95301
+- Potential object-result sites: 95305
 - Collection-allocation sites: 11492
 - Known coercion sites: 19730
 - Potential boundary-call sites: 101
-- Unresolved call sites: 48227
+- Unresolved call sites: 48231
 - Selected-target allocations: 3 known; 51 runtime-dependent
 - Selected-target representation conversions: 3 known; 53 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent

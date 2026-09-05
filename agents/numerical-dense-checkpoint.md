@@ -38,3 +38,24 @@ Windows required moving the large oracle corpus from argv to stdin; no kernel
 change was needed. Strict Python passes with 376 modules, architecture passes,
 and Node 22.22.2 and three-engine Wasm source checks pass. Public integration
 and the broader qualification gates above remain open.
+
+## Validation overflow correction
+
+Before public acceleration, inspection found an existing false-success path:
+`[[1e308, 1e308], [0, 1e308]]` has an infinite binary64 infinity norm, and a
+factorization with a ten-percent error in its first entry was accepted with
+zero relative residual. Related normalization divisions exist in QR, Cholesky,
+linear-system backward errors and least-squares checks.
+
+`fix/numerical-lu-validation-overflow` rejects unrepresentable normalization
+as `nonfinite_intermediate` / indeterminate validation, rather than dividing
+by infinity. It does not claim extended-range validation is implemented.
+Focused tests include deliberately wrong factors and the public structured
+failure path. A future scaled normalization implementation needs its own
+evidence; acceleration must not bypass these guards.
+
+The [overflow qualification](../bench/numerics/performance/results/validation-overflow-2026-09-05/README.md)
+retains matching four-host CPython/dynamic receipts and twelve source-browser
+routes. A combined-fixture WebKit assertion remains unexplained; the
+filename-labeled separate-fixture harness passed. This is source qualification,
+not full product or performance qualification.

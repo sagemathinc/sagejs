@@ -10,10 +10,28 @@ from ..model import NumericalValidation
 from .factorizations import (
     MACHINE_EPSILON,
     CholeskyFactorization,
+    LinearAlgebraError,
     LUFactorization,
     QRFactorization,
 )
 from .storage import DenseMatrix, stable_norm_two
+
+
+def _finite_validation_scale(value: float) -> float:
+    """Reject unrepresentable normalization instead of manufacturing zero error.
+
+    Finite entries do not imply representable norms or norm products. Until a
+    scaled normalization path is qualified, nonzero residuals with these
+    scales are indeterminate. Exact computed zero residuals may be handled
+    explicitly before constructing a denominator.
+    """
+    if not math.isfinite(value):
+        raise LinearAlgebraError(
+            "nonfinite_intermediate",
+            "the validation normalization exceeds the finite binary64 envelope",
+            details={"phase": "independent_validation_normalization"},
+        )
+    return value
 
 
 def _difference_norm_infinity(
@@ -79,7 +97,7 @@ def validate_lu(
         check=check,
     )
     absolute_error = _difference_norm_infinity(matrix, reconstructed, check=check)
-    scale = matrix.norm_infinity()
+    scale = _finite_validation_scale(matrix.norm_infinity())
     relative_error = absolute_error / scale if scale != 0.0 else absolute_error
     threshold = _factorization_threshold(matrix)
     passed = relative_error <= threshold
@@ -117,7 +135,7 @@ def validate_qr(
     else:
         target = matrix
     reconstruction_error = _difference_norm_infinity(target, reconstructed, check=check)
-    scale = matrix.norm_infinity()
+    scale = _finite_validation_scale(matrix.norm_infinity())
     relative_error = (
         reconstruction_error / scale if scale != 0.0 else reconstruction_error
     )
@@ -160,7 +178,7 @@ def validate_cholesky(
     lower = factorization.lower()
     reconstructed = _independent_product(lower, lower.transpose(), check=check)
     absolute_error = _difference_norm_infinity(matrix, reconstructed, check=check)
-    scale = matrix.norm_infinity()
+    scale = _finite_validation_scale(matrix.norm_infinity())
     relative_error = absolute_error / scale if scale != 0.0 else absolute_error
     positive_diagonal = all(
         lower.entry(index, index) > 0.0 for index in range(lower.nrows)
@@ -229,7 +247,9 @@ def normwise_backward_error(
         else residual
     )
     residual_norm = checked_residual.norm_infinity()
-    denominator = (
+    if residual_norm == 0.0:
+        return 0.0, 0.0
+    denominator = _finite_validation_scale(
         matrix.norm_infinity() * solution.norm_infinity() + right.norm_infinity()
     )
     if denominator == 0.0:
@@ -294,8 +314,9 @@ def least_squares_stationarity(
     residual = independent_residual(matrix, solution, right, check=check)
     gradient = _independent_product(matrix.transpose(), residual, check=check)
     residual_norm = residual.norm_infinity()
-    denominator = matrix.norm_one() * residual_norm + MACHINE_EPSILON * max(
-        1.0, right.norm_infinity()
+    denominator = _finite_validation_scale(
+        matrix.norm_one() * residual_norm
+        + MACHINE_EPSILON * max(1.0, right.norm_infinity())
     )
     stationarity = gradient.norm_infinity() / denominator
     return residual_norm, stationarity
@@ -321,7 +342,7 @@ def minimum_norm_row_space_error(
         if check is not None:
             check()
         source = matrix.row(row)
-        source_norm = stable_norm_two(source)
+        source_norm = _finite_validation_scale(stable_norm_two(source))
         if source_norm == 0.0:
             return 1.0
         vector = [value / source_norm for value in source]
@@ -332,7 +353,7 @@ def minimum_norm_row_space_error(
                 )
                 for index in range(matrix.ncols):
                     vector[index] -= projection * direction[index]
-        norm = stable_norm_two(vector)
+        norm = _finite_validation_scale(stable_norm_two(vector))
         if norm == 0.0:
             return 1.0
         basis.append(tuple(value / norm for value in vector))
@@ -349,8 +370,8 @@ def minimum_norm_row_space_error(
             for index in range(solution.nrows):
                 projected[index] += coefficient * direction[index]
         rejected = [vector[index] - projected[index] for index in range(solution.nrows)]
-        rejected_norm = stable_norm_two(rejected)
-        solution_norm = stable_norm_two(vector)
+        rejected_norm = _finite_validation_scale(stable_norm_two(rejected))
+        solution_norm = _finite_validation_scale(stable_norm_two(vector))
         if solution_norm == 0.0:
             column_error = 0.0 if rejected_norm == 0.0 else 1.0
         else:
