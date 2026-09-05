@@ -1509,7 +1509,11 @@ export class PythonCstLowerer {
       : mode === "sage" ? "RealNumber" : "ρσ_float";
     return this.make("AST_Call", node, {
       expression: this.make("AST_SymbolRef", node, { name: constructor }),
-      args: [this.make("AST_String", node, { value: raw })],
+      // Normalize only grammar-validated integer tokens, not constructor
+      // strings. Preserve exact digits and the original node's source span.
+      args: [this.make("AST_String", node, {
+        value: integer ? raw.replaceAll("_", "") : raw,
+      })],
       direct_call: constructor === "ρσ_float",
     });
   }
@@ -1521,6 +1525,14 @@ export class PythonCstLowerer {
       node.type === "sage_number" &&
       (/^0[xob]/i.test(raw) || (!raw.includes(".") && !/[eE]/.test(raw)))
     );
+    // The CST grammar can accept trailing separators (for example `1_`).
+    // Reject malformed tokens before normalization instead of repairing them.
+    if (
+      integer && raw.includes("_") &&
+      !/^(?:[0-9](?:_?[0-9])*|0[xX]_?[0-9a-fA-F](?:_?[0-9a-fA-F])*|0[oO]_?[0-7](?:_?[0-7])*|0[bB]_?[01](?:_?[01])*)$/.test(raw)
+    ) {
+      throw new SyntaxError("invalid separator in integer literal");
+    }
     const decimalDigits = raw.replaceAll("_", "");
     if (
       integer && /^0[0-9_]+$/.test(raw) && /[1-9]/.test(decimalDigits)
