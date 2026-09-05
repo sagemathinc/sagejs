@@ -333,6 +333,14 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
     ans.pretty +=
       'ρσ_baselib_modules["sagejs"].runtime = ' +
       'ρσ_baselib_modules["sagejs.runtime"];\n';
+    // This explicit host boundary declares names whose values can legitimately
+    // be JavaScript undefined (notably undefined and last_exception). Ordinary
+    // Python module introspection hides unbound lexical slots, so give the
+    // intrinsic namespace its own directory without changing that behavior.
+    ans.pretty +=
+      'ρσ_baselib_modules["sagejs.runtime"].__dir__ = function() {\n' +
+      'return Object.keys(ρσ_baselib_modules["sagejs.runtime"]);\n' +
+      '};\n';
     // Retain the exact Python/Sage facade for builtins lookup.
     ans.pretty +=
       "globalThis.__sagejs_baselib_facade_names__ = " +
