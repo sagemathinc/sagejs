@@ -1,6 +1,6 @@
 # N1 result-binding evidence and refreshed bottlenecks
 
-Status: **provisional local measurements**, 2026-09-05. This is the second,
+Status: local measurements plus **independent Linux x64 confirmation**, 2026-09-05. This is the second,
 separately reviewable N1 change, stacked on [PR #132](https://github.com/sagemathinc/sagejs/pull/132).
 It does not complete the performance program or qualify new native defaults.
 
@@ -53,6 +53,33 @@ The structural result is stronger than the timing attribution: the common
 identity-bound constructor makes zero problem snapshots instead of hashing
 twice. There is no timing noise in that count. This still leaves cheap roots
 well above the proposed 1 ms target and classroom ODEs above 5 ms.
+
+## Independent persistent x64 comparison
+
+After the disk expansion, `bench-1` built both exact source candidates in
+dedicated detached worktrees without optional native addons. The files
+`result-paired-{A1,B1,B2,A2}.json` use whole-corpus A/B/B/A blocks on AMD EPYC
+7B13 / Node 26.5.1. There was no concurrent build or timing campaign on the
+host. Each row has three warmups and seven samples, with required public
+validation/result creation included. All nine mathematical/work/trace
+observations match, as do collector/workload hashes; each candidate's built
+artifact digest is identical between its two blocks.
+
+| Public case (ms) | A1 trace only | B1 result fix | B2 result fix | A2 trace only |
+| --- | ---: | ---: | ---: | ---: |
+| Brent root / none | 30.953 | 18.652 | 20.303 | 30.703 |
+| Brent root / summary | 26.881 | 15.826 | 15.825 | 26.963 |
+| Brent root / iterations | 38.632 | 27.744 | 27.517 | 38.353 |
+| Bounded minimum / none | 26.979 | 17.250 | 17.087 | 26.437 |
+| Bounded minimum / summary | 35.510 | 26.213 | 25.828 | 35.949 |
+| Bounded minimum / iterations | 38.162 | 28.253 | 27.729 | 38.171 |
+| Classroom ODE / none | 114.889 | 88.030 | 91.354 | 117.337 |
+| Classroom ODE / summary | 112.002 | 84.778 | 87.472 | 115.713 |
+| Classroom ODE / iterations | 145.547 | 127.807 | 132.457 | 149.405 |
+
+This independently confirms the local improvement on these workloads. It is
+not browser/four-platform performance qualification, a tail-latency study or
+a pass of the program's much tighter public-call targets.
 
 ## Broader current baseline
 
