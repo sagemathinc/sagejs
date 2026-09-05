@@ -1011,6 +1011,8 @@ test("dirty mode is forbidden for freeze and holdout", () => {
 });
 
 test("direct Sage.js execution is ROOT-bound and forced to source mode", () => {
+  const { outputBindings } = require("../scripts/build-receipt.cjs");
+  const before = outputBindings(root, ["dist/runtime-cache"]);
   const fixture = completeFixture();
   assert.equal(validateDirectSagejsTool(fixture.candidateTools[0]), fixture.candidateTools[0]);
   const identity = candidateDirectEnvironmentIdentity();
@@ -1029,7 +1031,7 @@ test("direct Sage.js execution is ROOT-bound and forced to source mode", () => {
     "sagejs.benchmark/complex-cubic-launch-wrappers-v1");
   assert.equal(
     environment.XDG_CACHE_HOME,
-    path.join(root, "dist/runtime-cache/complex-cubic-frontier-xdg"),
+    path.join(root, "dist/benchmark-state/complex-cubic-frontier-xdg"),
   );
   assert.equal(
     environment.SAGEJS_NATIVE_CACHE_DIR,
@@ -1045,6 +1047,8 @@ test("direct Sage.js execution is ROOT-bound and forced to source mode", () => {
     identity.node_executable.sha256,
     sha256(fs.readFileSync(process.execPath)),
   );
+  assert.deepEqual(outputBindings(root, ["dist/runtime-cache"]), before,
+    "benchmark setup must not mutate authenticated build outputs");
   assert.deepEqual(identity.node_executable.argv_prefix, [
     fs.realpathSync(path.join(root, "bin/sagejs")),
   ]);
