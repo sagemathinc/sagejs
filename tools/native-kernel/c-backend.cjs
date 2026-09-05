@@ -3985,6 +3985,9 @@ ${pieces.join("\n\n")}
 
 function generateNodeAdapter(ir) {
   const functions = ir.functions.filter(hostCallable);
+  const floatOnly = ir.functions.length > 0 &&
+    ir.functions.every((fn) => fn.kernelKind === "float64") &&
+    (ir.foreignLibraries || []).length === 0;
   const exact = exactFunctions(ir);
   const exactEntries = exact.filter(hostCallable);
   const usesExactArena = exact.some((fn) =>
@@ -4164,7 +4167,17 @@ ${fields.some((fn) => fn.kernelKind === "real-field") ? "#include <mpfr.h>" : ""
 ${fields.some((fn) => fn.kernelKind === "complex-field") ? "#include <mpc.h>" : ""}
 ${primeSources.length + primeFields.length > 0
     ? "#include <flint/nmod_mat.h>" : ""}
-#include <sagejs/native.h>
+${floatOnly ? `/* Binary64 buffers need no FLINT/MPFR/MPC representation ABI. */
+static inline int sagejs_native_check_napi(napi_env env, napi_status status)
+{
+    const napi_extended_error_info *info = NULL;
+    if (status == napi_ok) return 1;
+    napi_get_last_error_info(env, &info);
+    napi_throw_error(env, NULL,
+        info != NULL && info->error_message != NULL
+            ? info->error_message : "Node-API call failed");
+    return 0;
+}` : "#include <sagejs/native.h>"}
 
 #include "kernel_core.c"
 
