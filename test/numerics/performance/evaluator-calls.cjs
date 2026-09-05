@@ -106,4 +106,5 @@ test("recursive, mistyped and opaque binary64 calls fail closed", async () => {
   ]) await assert.rejects(lowerSource(prefix + source, "recursive-float.py"), /recursive binary64/);
   await assert.rejects(lowerSource(prefix + "@native\ndef first(x: float) -> float:\n    return missing(x)\n", "opaque-float.py"), /unsupported binary64 call/);
   await assert.rejects(lowerSource(prefix + "@native\ndef first(x: float) -> float:\n    return second(x,x)\n@native\ndef second(x: float) -> float:\n    return x\n", "arity-float.py"), /argument count/);
+  await assert.rejects(lowerSource(prefix + "@native\ndef first(abs: float) -> float:\n    return abs(1.0)\n", "shadowed-float.py"), /shadowed binary64 callable/);
 });
