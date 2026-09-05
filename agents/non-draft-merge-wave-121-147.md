@@ -135,3 +135,53 @@ Small-case counterexamples remain explicit. These are scoped observations,
 not universal speed claims or timing guarantees. Raw reports retain source
 hashes and all samples in [quotient evidence](validation/ready-wave-quotient-linux-x64.json)
 and [decomposition evidence](validation/ready-wave-decomposition-linux-x64.json).
+
+## Final integration checks and follow-up boundary
+
+The corrected runtime at `901a1118c` passed a genuine eight-stage build,
+144/144 unit files, 129/129 portable files, 95 focused integration tests,
+strict Python (379 modules, zero errors), and all architecture checks.
+The CPython gate passed 506 exact cases plus two explicitly reviewed GC
+outcomes; the targeted RustPython callable case passed. This is not a claim
+that the entire diagnostic RustPython tranche passes.
+
+The generated reference corpus has 226 passing examples, two expected
+failures and four skips; the website's nine checks pass without increasing
+the missing-example ceiling. The public constructor example must live on
+the exported wrapper, not only the implementation it delegates to.
+
+The packaged Wasm artifact
+`sha256:44a18c2466d7a494c6fd0c8ad0f0455bebb30829aa8d4b30aa0fe62f6003af8a`
+passed Chromium public-gap and Web Worker mathematics/plotting smoke tests.
+Additional native/Wasm comparisons at levels 11 and 37 agree on exact
+quotient/inclusion maps and serialization. Wasm callable, runtime namespace,
+and explicit-self native container method checks also pass.
+
+An initially failing new Wasm codec test assumed that ordinary Python
+variables persisted between separate `evaluate` calls. A minimal `x = 5`
+then `x + 1` probe shows that this is pre-existing behavior, and the existing
+algebraic-geometry tests already recreate bindings per evaluation. However,
+the Wasm README promises persistence. Record this as a separate runtime/docs
+follow-up; this merge does **not** fix that discrepancy. The codec regression
+now uses a self-contained program and tests the intended rejection directly.
+
+Commit `f384e17db` changes only that test and the build-input classification:
+direct Wasm Node test entry points are validation-only, while shared support
+files, fixtures and explicitly source-reviewed tests remain artifact inputs.
+All seven partition regressions pass. A fresh Node build and post-build checks
+also passed for this tooling change; no existing receipt was relabelled:
+
+- Genuine eight-stage build: 10m49s, all 41 native families reused.
+- Complete routine gate: 1m58s, including portable tests and startup budgets.
+- Unit: 144/144 files in 2m13s; architecture passes.
+- CPython: 506 exact cases and two reviewed GC outcomes, baseline matches.
+- Node-Wasm: 10/10 tests, including the corrected canonical-map regression.
+
+The fresh compiler and module outputs have identical bytes to the inputs
+recorded by the tested Wasm artifact. Its eight transient dynamic-cache inputs
+were removed by the normal Node rebuild; all remaining recorded inputs match,
+and the packaged output inventory still authenticates. The Wasm receipt is
+retained with its original provenance, not rewritten as a new build.
+
+Ready PRs #153, #154 and #155 appeared after the plan was pinned. They remain
+outside this wave along with every draft PR. No product release is requested.
