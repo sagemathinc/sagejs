@@ -360,12 +360,12 @@ function validateDirectSagejsTool(tool, root = ROOT) {
 }
 
 const CANDIDATE_DIRECT_ENVIRONMENT_SCHEMA =
-  "sagejs.benchmark/complex-cubic-direct-environment-v4";
+  "sagejs.benchmark/complex-cubic-direct-environment-v5";
 
 function prepareCandidateDirectEnvironment(root = ROOT) {
   const cacheHome = path.join(
     root,
-    "dist/runtime-cache/complex-cubic-frontier-xdg",
+    "dist/benchmark-state/complex-cubic-frontier-xdg",
   );
   const historyDirectory = path.join(cacheHome, "sagejs");
   const historyFilename = path.join(historyDirectory, "history-python");
@@ -491,6 +491,9 @@ function candidateRuntimeClosure(root = ROOT, sagejsIntegerBackend = "auto") {
     "dist/tools",
     "dist/module-cache",
     "dist/runtime-cache",
+    // Controlled benchmark state is bound by this benchmark closure, not by
+    // the immutable successful-build output inventory.
+    "dist/benchmark-state/complex-cubic-frontier-xdg",
   ]) include(name);
 
   const cacheRoot = "dist/native-kernels";
