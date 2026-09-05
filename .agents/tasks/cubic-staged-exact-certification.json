@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Certify bounded complex-cubic relation prefixes and resume only on explicit mathematical insufficiency within the same resident native computation",
-  "base_commit": "1ad8cbd4af20062739e612c85c80d6b9d720c3f4",
+  "base_commit": "24dfde35b1472436c6d77a6f10313233863d01a3",
   "claims": [
     "src/lib/sagejs/number_fields/cubic_class_number_native.py",
     "docs/cubic-presentation-extraction-audit.md",
@@ -99,23 +99,39 @@
       "commit": "1ad8cbd4af20062739e612c85c80d6b9d720c3f4",
       "workspace_fingerprint": "e3b364f724ee02cd56ff3dc83f48281657189cfe2c6f58ed1883f584d84e9cb3",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1176.177,
+      "started_at": "2026-09-05T20:12:30.839Z",
+      "commit": "24dfde35b1472436c6d77a6f10313233863d01a3",
+      "workspace_fingerprint": "f20806d76d340cc3eb1e99bb86d11ac0b3532b5ca7eb5ebebf1f20140c574030",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.592,
+      "started_at": "2026-09-05T20:32:30.124Z",
+      "commit": "24dfde35b1472436c6d77a6f10313233863d01a3",
+      "workspace_fingerprint": "f20806d76d340cc3eb1e99bb86d11ac0b3532b5ca7eb5ebebf1f20140c574030",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implemented the bounded effort-five two-attempt driver (n+6 then n+22) using one resident collector and root-owned proof scratch. Shared extracted mathematical helpers preserve the one-shot path. Explicit insufficiency alone permits resumption; unknown/fatal statuses fail closed, no-progress skips a repeated proof, and Smith data is refreshed after appended rows. Current direct fmpz execution returns the expected class numbers on four known fields; twenty adversarial actual-root scheduler scenarios pass. Full production qualification and controlled performance evidence remain pending. Earlier recorded runs retain their original workspace fingerprints and do not qualify this revision.",
+    "summary": "Implemented and qualified the bounded effort-five two-attempt driver with one resident collector and root-owned proof scratch. CubicProofWorkspace groups 38 borrowed owners, reducing 73 source parameters to 36 without changing the 101-function executable bundle IR. The final production rebuild and 18 public/arithmetic/scheduler tests pass, including authenticated receipts, independent exact replay, pinned invariants and large-regulator units. Classified materialization limits can trigger only a fresh closed alternate effort, never continuation of failed scratch. Fourteen-field controlled source-compression comparisons show no measured slowdown; this is not a new PARI-frontier claim.",
     "risks": [
-      "The staged implementation has no new controlled PARI speed claim. Four known-field successes do not establish frontier coverage.",
-      "Standalone ASan/UBSan core checks on four fields fit the 3 MiB checkpoint without retries, exhaustion or upstream allocations, but do not yet qualify a real two-proof-attempt case or the full regime.",
-      "The source family measures 480058 bytes within the integration-owned 485000 allowance. Architecture checks stop at stale optimizer provenance, which requires an integration-owned refresh.",
-      "Full current-source native/platform qualification remains pending; prerequisite baseline separately reproduces rational cache-pressure and synthetic portable discriminant-ratio gate failures.",
-      "Frozen f7f00552 timings retain the target and show a substantial PARI gap. None of the twenty registered neighbors has executed; freeze the candidate before using them."
+      "Full cross-platform CI is queued; current Wasm routine CI fails its production export allowlist after compiling 280 supported kernels. Local sanitizer/WASI and compiler differential evidence does not substitute for release execution.",
+      "The complete native suite passes through compiler/ownership/matrix migration checks, then fails the same three QQ selection/stack timing budgets as clean pre-feature cf82b0eb. No thresholds are waived; the task remains active rather than claiming a passing release handoff.",
+      "The frozen thousand-field frontier and twenty registered unseen neighbors belong to the separate staged PARI campaign and are not newly qualified by these source-compression measurements.",
+      "Existing source allowance 485000 and arena/checkpoint limits are unchanged. Published optimizer evidence 3382c44514037290603db4edcca46ef772749ac2b3329ba2328739cb29d00e32 binds the staged source separately from its prerequisite branch."
     ],
     "next_steps": [
-      "Finish the production rebuild and authenticated receipt/replay regressions for the combined staged implementation.",
-      "Find a previously exposed real field requiring both proof attempts and qualify its exact replay and retained-state memory behavior.",
-      "Qualify complete scratch at <=3 MiB with one core invocation and zero retry shift, exhaustion or upstream allocation; use the integrated generic prefix-Arb binding.",
-      "Freeze and time the staged candidate and registered neighbors on opt, then recheck the thousand-field frontier.",
-      "Complete integration-owned source-size/provenance and current-source platform gates before promotion."
+      "Complete queued platform qualification and review both prerequisite and staged PRs before release.",
+      "Resume the independently scoped frozen-corpus/PARI frontier campaign without treating source-compression parity as a PARI win."
     ]
   }
 }
