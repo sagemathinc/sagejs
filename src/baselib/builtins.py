@@ -3942,9 +3942,16 @@ def ρσ_chr(code: _Int) -> _Str:
 
 
 def ρσ_callable(value: Any) -> _Bool:
-    return runtime.strict_equal(
-        runtime.jstype(value), "function"
-    ) or _builtins_special_is_function(value, "__call__")
+    if (
+        runtime.strict_equal(runtime.jstype(value), "function")
+        and _builtins_get_member(value, "__sagejs_callable_instance__") is not True
+    ):
+        return True
+    if value is None or value is runtime.undefined:
+        return False
+    # Slot presence, not its value or descriptor result, determines callable().
+    prototype = runtime.object.getPrototypeOf(runtime.object(value))
+    return prototype is not None and runtime.reflect.has(prototype, "__call__")
 
 
 def ρσ_classmethod(target: Any) -> Any:
