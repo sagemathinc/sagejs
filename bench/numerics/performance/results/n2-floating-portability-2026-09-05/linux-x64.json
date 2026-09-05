@@ -1,0 +1,82 @@
+{
+  "schema": "sagejs.floating-pack-portability/v1",
+  "status": "passed",
+  "scope": "isolated-loader-and-pack-not-full-product",
+  "observed_at": "2026-09-05T19:39:35.108Z",
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.5.1",
+    "os": "6.17.0-1022-gcp",
+    "cpu": "AMD EPYC 7B13"
+  },
+  "collector_sha256": "4988794b640e97df8cb59557adfe91c1cf5b6b39351da10b57fc2ae375e3c1be",
+  "inputs": [
+    {
+      "path": "index.json",
+      "bytes": 12560,
+      "sha256": "b02517a5afafb1c9eb8a3833f6e652acdde1c661f52521c45c17879d0665428b"
+    },
+    {
+      "path": "wasm-pack-loader.mjs",
+      "bytes": 30202,
+      "sha256": "bab3c1fb8425981a506bd66a52b06b5688a0aeaa0bcdc71fd4b7e7702836c1e9"
+    },
+    {
+      "path": "floating-pack-exercise.cjs",
+      "bytes": 3272,
+      "sha256": "d7646ed1b4b35ff5753e1b5d66ed97b5a1ec6f6ac0b5e9c060e4750cf5291879"
+    },
+    {
+      "path": "packs/float64/a6b9b8648de02d0444d9e71bf9acd21ae67415b812b811a10db277dac1f1461d.wasm",
+      "bytes": 57847,
+      "sha256": "47b87308ed77f2c55cd3db7d2e11d0fab3f5f84c533c0e818d50296aaac4a15c"
+    }
+  ],
+  "exercise_elapsed_ms": 27.015097,
+  "observation": {
+    "domains": [
+      "float64"
+    ],
+    "status": 0,
+    "total": 1,
+    "input": [
+      10000000000000000,
+      1,
+      -10000000000000000,
+      0
+    ],
+    "signs": [
+      "-3",
+      "0",
+      "-0",
+      "0",
+      "-0",
+      "2"
+    ],
+    "original": [
+      "0",
+      "-0",
+      "2",
+      "0",
+      "-0",
+      "-3"
+    ],
+    "boxedOrder": [
+      1,
+      3
+    ],
+    "hooks": 0,
+    "rejected": [
+      true,
+      true,
+      true
+    ],
+    "wrongSource": true,
+    "boundSource": true,
+    "corruptionRejected": true,
+    "unavailable": true,
+    "target": "wasm",
+    "capacityStable": true
+  }
+}
