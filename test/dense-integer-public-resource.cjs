@@ -144,11 +144,13 @@ def elapsed(function):
 
 A, random_ms = elapsed(lambda: random_matrix(ZZ, 300, x=-1000, y=1001))
 B, second_ms = elapsed(lambda: random_matrix(ZZ, 300, x=-1000, y=1001))
+warm = A + B
 C, add_ms = elapsed(lambda: A + B)
 M = A.matrix_from_rows(range(80)).matrix_from_columns(range(80))
 P, multiply_ms = elapsed(lambda: M*M)
 text, format_ms = elapsed(lambda: A.str())
 assert C._has_fmpz_matrix_resource()
+assert warm._has_fmpz_matrix_resource()
 assert P._has_fmpz_matrix_resource()
 assert len(text) > 100000
 print('TIMES', random_ms, second_ms, add_ms, multiply_ms, format_ms)
@@ -185,7 +187,9 @@ print('TIMES', random_ms, second_ms, add_ms, multiply_ms, format_ms)
     // about 600 ms while the integration runner executes a second file.
     // Two-worker Linux validation has likewise measured 259 ms versus about
     // 196 ms in isolation. Give process-cold initialization realistic host
-    // contention headroom while retaining all arithmetic-specific ceilings.
+    // contention headroom. Warm the generated addition path explicitly before
+    // applying the arithmetic-only ceiling below: loading that path is another
+    // process-cold cost, not dense-matrix addition throughput.
     const randomLimit =
       process.platform === "darwin" && process.arch === "arm64" ? 700 : 350;
     assert.ok(Math.max(randomMs, secondMs) < randomLimit, timing);
