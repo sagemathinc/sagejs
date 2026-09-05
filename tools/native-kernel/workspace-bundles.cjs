@@ -28,7 +28,7 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
       requireThat(!name(field.target).startsWith("_"), filename,
         "workspace field names cannot start with underscore");
       requireThat(type === "NativeIntegerVector" ||
-        (resources.has(type) && resources.get(type).ownership !== "borrowed"),
+        (resources.has(type) && resources.get(type).ownership === "owned"),
       filename, `unsupported workspace field ${name(node.name)}.${name(field.target)}: ${type}`);
       requireThat(!fields.some(item => item.name === name(field.target)), filename, "duplicate workspace field");
       fields.push({ name: name(field.target), type, annotation: field.annotation });
@@ -39,6 +39,27 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
     schemas.set(schemaName, { name: schemaName, fields });
   }
   const functions = topLevel.filter(node => kind(node) === "AST_Function");
+  const checkShadow = target => {
+    if (!target || typeof target !== "object") return;
+    if (kind(target) === "AST_SymbolRef") {
+      requireThat(!schemas.has(target.name) && target.name !== "NativeWorkspace", filename,
+        "workspace schema names cannot be shadowed by value bindings");
+    }
+    for (const key of ["elements", "car", "cdr"]) {
+      if (Array.isArray(target[key])) target[key].forEach(checkShadow);
+      else if (target[key]) checkShadow(target[key]);
+    }
+  };
+  if (schemas.size) {
+    for (const statement of topLevel) {
+      if (kind(statement) === "AST_SimpleStatement") {
+        const assignment = statement.body;
+        checkShadow(kind(assignment) === "AST_Assign" ? assignment.left : assignment?.target);
+      }
+    }
+    for (const fn of functions) requireThat(!schemas.has(name(fn.name)), filename,
+      "workspace schema names cannot be shadowed by functions");
+  }
   const contracts = new Map(functions.map(fn => [name(fn.name), list(fn.argnames).map(arg =>
     ({ arg, schema: schemas.get(name(arg.annotation)) }))]));
   const symbol = (text, source) => new compiler.AST_SymbolRef({ name: text, start: source.start, end: source.end });
@@ -49,11 +70,14 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
     if (schemas.size === 0) return { fn, metadata: [] };
     const environment = new Map();
     const usedNames = new Set();
+    const boundNames = new Set(list(fn.argnames).map(arg => arg.name));
     const metadata = [];
     const params = [];
     // Generated flattened names must not capture a user local or parameter.
     const visitNames = node => {
       if (!node || typeof node !== "object") return;
+      if (kind(node) === "AST_Assign") checkShadow(node.left);
+      if (kind(node) === "AST_AnnotatedAssignment") checkShadow(node.target);
       if (typeof node.name === "string") requireThat(!node.name.startsWith("sagejs_workspace_"),
         filename, "sagejs_workspace_ is reserved for flattened workspace bindings");
       for (const [key, value] of Object.entries(node)) {
@@ -65,6 +89,8 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
     };
     visitNames(fn);
     for (const { arg, schema } of contracts.get(name(fn.name))) {
+      requireThat(!schemas.has(arg.name) && arg.name !== "NativeWorkspace", filename,
+        "workspace schema names cannot be shadowed by parameters");
       if (!schema) { params.push(arg); continue; }
       requireThat(arg.default_value == null, filename, "workspace parameters cannot have defaults");
       const members = schema.fields.map(field => {
@@ -123,7 +149,7 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
         if (kind(statement) === "AST_SimpleStatement" &&
             ["AST_Call", "AST_New"].includes(kind(rhs)) && schemas.has(name(rhs.expression))) {
           const schema = schemas.get(name(rhs.expression));
-          requireThat(kind(target) === "AST_SymbolRef" && !usedNames.has(target.name),
+          requireThat(kind(target) === "AST_SymbolRef" && !usedNames.has(target.name) && !boundNames.has(target.name),
             filename, "workspace binding must be a new immutable local");
           requireThat(list(rhs.args).length === schema.fields.length && list(rhs.kwargs).length === 0,
             filename, "workspace construction requires all positional fields");
@@ -131,6 +157,7 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
           requireThat(members.every(member => kind(member) === "AST_SymbolRef"),
             filename, "workspace members must be existing borrowed owners");
           usedNames.add(target.name);
+          boundNames.add(target.name);
           env.set(target.name, { schema, members });
           metadata.push({ kind: "binding", name: target.name, schema: schema.name,
             members: schema.fields.map((field, i) => ({ name: field.name, type: field.type, binding: members[i].name })) });
@@ -147,6 +174,7 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
           entry.members.some(member => member.name === target.name))) {
           fail(filename, "workspace owner binding cannot be reassigned while borrowed");
         }
+        if (kind(target) === "AST_SymbolRef") boundNames.add(target.name);
         if (["AST_With", "AST_If", "AST_While", "AST_ForIn", "AST_For"].includes(kind(statement))) {
           const changes = {};
           for (const key of ["condition", "expression", "object", "init", "step"]) {

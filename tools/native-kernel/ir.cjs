@@ -989,6 +989,10 @@ async function lowerSource(source, filename, options = {}) {
       missing.length === 0,
       `requested native functions are not defined: ${missing.join(", ")}`,
     );
+    for (const fn of selectedDefinitions) {
+      expect(!workspaces.contracts.get(fn.name.name)?.some(param => param.schema),
+        `${fn.name.name}: workspace bundle parameters have no public host ABI; select a closed caller`);
+    }
   } else if (decorated.length > 0) {
     selectedDefinitions = decorated;
   } else {
