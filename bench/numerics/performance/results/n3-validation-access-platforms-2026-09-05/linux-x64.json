@@ -1,0 +1,44 @@
+{
+  "schema": "sagejs.validation-access-qualification/v1",
+  "passed": true,
+  "scope": "isolated-validation-regression-not-product-release",
+  "declared_source_commit": "513996d0f",
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.5.1",
+    "python": "Python 3.12.3",
+    "cpu": "AMD EPYC 7B13"
+  },
+  "before": {
+    "sha256": "965954b1c7c80d854fd078818052789714aecaaa2380f927c7131269a0bc7319",
+    "files": 3098
+  },
+  "after": {
+    "sha256": "965954b1c7c80d854fd078818052789714aecaaa2380f927c7131269a0bc7319",
+    "files": 3098
+  },
+  "unchanged": true,
+  "collector_sha256": "cc6c8e7ae2de914e19cedeaeac3e41f57693ffbdb664fa4627d80a2b2a59505e",
+  "test_exit_code": 0,
+  "test_signal": null,
+  "tests": [
+    "✔ independent product storage snapshots preserve sums and cancellation (3717.358805ms)",
+    "✔ unrepresentable validation scales fail closed in CPython and Sage.js (3755.359282ms)",
+    "ℹ tests 2",
+    "ℹ suites 0",
+    "ℹ pass 2",
+    "ℹ fail 0",
+    "ℹ cancelled 0",
+    "ℹ skipped 0",
+    "ℹ todo 0",
+    "ℹ duration_ms 3826.334775"
+  ],
+  "diagnostics": [],
+  "limitations": [
+    "not-browser-product",
+    "not-npm-or-SEA",
+    "not-performance-qualification",
+    "not-full-suite"
+  ]
+}

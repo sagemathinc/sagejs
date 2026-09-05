@@ -1,0 +1,135 @@
+{
+  "schema": "sagejs.dense-validation-access-development/v1",
+  "qualification": false,
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.8.1",
+    "cpu": "AMD EPYC 7B13"
+  },
+  "inputs": [
+    {
+      "path": "bench/numerics/performance/validation-access.py",
+      "sha256": "a5f179b3897a535f0d50c7693d85fc30d6bb22554743eb922f6814b198c7423b"
+    },
+    {
+      "path": "bench/numerics/performance/validation-access.cjs",
+      "sha256": "8a52eab5f839f2eb5d1ebfadc72a69e34fd88b77f6535a837712649e4393741a"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/linear_algebra/validation.py",
+      "sha256": "0d24b4bd46fee86455b03391b63d48d3163303e708d4c25d18910b254410b9ee"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/linear_algebra/operations.py",
+      "sha256": "dc75c8e9767272c2d4901ae5d4145fa4e1aa200a8f0ed9c46d4c3fc63d12dfc1"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/linear_algebra/factorizations.py",
+      "sha256": "0d43e715ad8c126a6e5ce8fff45efa0f492478cc7be7e77818ceb367f87f5977"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/linear_algebra/storage.py",
+      "sha256": "61f7852ed5061912c722e7f7f4bf80f347e9e52a577b16234df9fd0f40a07e78"
+    },
+    {
+      "path": "dist/compiler/compiler.js",
+      "sha256": "05655bf541d9f4102ab02ad9793b4e3d8ceec3f7443dd093f761129646d74c7f"
+    },
+    {
+      "path": "dist/compiler/baselib-plain-pretty.js",
+      "sha256": "48a2577f6dcb31ef15867b894211f49ec5f6d1fdf2f0613420fc9b5f9305c366"
+    }
+  ],
+  "warmups": 3,
+  "samples": 7,
+  "order": "alternating paired blocks",
+  "baseline": "85a84375d independent-product body only; all other code identical",
+  "included": [
+    "public LU on preconstructed DenseMatrix",
+    "factorization",
+    "independent validation",
+    "result construction"
+  ],
+  "excluded": [
+    "input matrix construction",
+    "serialization",
+    "startup",
+    "peak memory",
+    "browser/native/SEA qualification",
+    "matched SciPy comparison"
+  ],
+  "trace": "none",
+  "backend": "ordinary-python",
+  "records": [
+    {
+      "n": 8,
+      "samples_ms": {
+        "previous": [
+          77.28266716003418,
+          74.48577880859375,
+          66.57576560974121,
+          62.868356704711914,
+          58.74752998352051,
+          60.59741973876953,
+          64.42546844482422
+        ],
+        "snapshot": [
+          57.286977767944336,
+          51.66912078857422,
+          47.48678207397461,
+          47.308921813964844,
+          51.97644233703613,
+          47.00970649719238,
+          44.32964324951172
+        ]
+      }
+    },
+    {
+      "n": 16,
+      "samples_ms": {
+        "previous": [
+          291.4896011352539,
+          282.7603816986084,
+          284.4705581665039,
+          275.6686210632324,
+          290.3463840484619,
+          285.6278419494629,
+          284.5721244812012
+        ],
+        "snapshot": [
+          178.29608917236328,
+          178.44343185424805,
+          181.0917854309082,
+          176.21922492980957,
+          179.53991889953613,
+          174.35789108276367,
+          178.32374572753906
+        ]
+      }
+    },
+    {
+      "n": 32,
+      "samples_ms": {
+        "previous": [
+          1737.0901107788086,
+          1744.032621383667,
+          1751.4784336090088,
+          1763.6330127716064,
+          1763.7033462524414,
+          1757.4903964996338,
+          1766.8087482452393
+        ],
+        "snapshot": [
+          957.0777416229248,
+          949.8138427734375,
+          952.9857635498047,
+          960.4618549346924,
+          969.4118499755859,
+          977.2510528564453,
+          946.387529373169
+        ]
+      }
+    }
+  ]
+}

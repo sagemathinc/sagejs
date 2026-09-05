@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `c80b4d91e2b5a943fdb77b0050c7113931d32f729ce4e4b286a46fdeb5de6f9c` (714 files, 14454104 bytes).
-Analyzed source bundle: `sha256:4db08043907f8ee07c2e459ce378fdf711d713ad575557153c6bec99b74da7bf`; compiler identity: `sha256:ca1a3c5a7189d0bb53b5a7db3f38f18ed39475b17f2b539f62625222cab7eb7d`.
+Input identity: `5581c9115227222ea4d0fffa7571df7f3e9dc8001d0c53fb39a963f421000907` (714 files, 14454553 bytes).
+Analyzed source bundle: `sha256:b7303e3ddebe4fb9d5d7b73a674c4a6b0d1ee06c5b5d96d92bfe13f0bdb09573`; compiler identity: `sha256:ca1a3c5a7189d0bb53b5a7db3f38f18ed39475b17f2b539f62625222cab7eb7d`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -49,11 +49,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 95305
+- Potential object-result sites: 95307
 - Collection-allocation sites: 11492
 - Known coercion sites: 19730
 - Potential boundary-call sites: 101
-- Unresolved call sites: 48231
+- Unresolved call sites: 48229
 - Selected-target allocations: 3 known; 51 runtime-dependent
 - Selected-target representation conversions: 3 known; 53 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -126,7 +126,7 @@ convenience, not a performance ranking.
 | `dashboard.dynamic-call-sites` | 9601 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
 | `dashboard.no-mathematical-domain-evidence` | 9064 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
 | `dashboard.comprehension-loop` | 5265 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
-| `dashboard.indexed-access-sites` | 3826 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
+| `dashboard.indexed-access-sites` | 3827 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
 | `bounded-integer.dynamic-call` | 2835 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | `dashboard.control-flow-sites` | 2569 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
 | `bounded-integer.unsupported-iterator` | 2269 | Use a proved built-in `range` iteration shape or add a verifier for the required iterator semantics. |
