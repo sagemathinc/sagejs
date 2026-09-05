@@ -1,6 +1,5 @@
 {
-  "schema": 1,
-  "python": "3.14",
+  "schema": 2,
   "packages": [
     {
       "name": "packaging",
@@ -8,7 +7,14 @@
       "wheel": "packaging-26.2-py3-none-any.whl",
       "sha256": "5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e",
       "source": "from packaging.version import Version\nversions = sorted([Version('2'), Version('1.0rc1'), Version('1.0')])\nprint([str(value) for value in versions])\nprint(Version('1!2.0.post3+linux.1').epoch)\n",
-      "stdout": "['1.0rc1', '1.0', '2']\n1\n"
+      "stdout": "['1.0rc1', '1.0', '2']\n1\n",
+      "module": "packaging",
+      "phases": {
+        "import": "from packaging.version import Version\nimport packaging\n",
+        "setup": "version_texts = ['2', '1.0rc1', '1.0']\nepoch_text = '1!2.0.post3+linux.1'\n",
+        "workload": "return ([str(value) for value in sorted([Version(text) for text in version_texts])], Version(epoch_text).epoch)\n",
+        "verification": "assert result == (['1.0rc1', '1.0', '2'], 1)\n"
+      }
     },
     {
       "name": "six",
@@ -16,15 +22,23 @@
       "wheel": "six-1.17.0-py2.py3-none-any.whl",
       "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274",
       "source": "import six\nprint(six.__version__)\nprint(list(six.moves.range(4)))\nprint(six.ensure_text(b'sagejs'))\n",
-      "stdout": "1.17.0\n[0, 1, 2, 3]\nsagejs\n"
+      "stdout": "1.17.0\n[0, 1, 2, 3]\nsagejs\n",
+      "module": "six",
+      "phases": {
+        "import": "import six\n",
+        "setup": "text = b'sagejs'\n",
+        "workload": "return (six.__version__, list(six.moves.range(4)), six.ensure_text(text))\n",
+        "verification": "assert result == ('1.17.0', [0, 1, 2, 3], 'sagejs')\n"
+      }
     },
     {
       "name": "pyparsing",
       "version": "3.3.2",
       "wheel": "pyparsing-3.3.2-py3-none-any.whl",
       "sha256": "850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d",
-      "source": "from pyparsing import Word, nums, delimited_list\ninteger = Word(nums).set_parse_action(lambda tokens: int(tokens[0]))\nprint(delimited_list(integer).parse_string('2, 3, 5, 7').as_list())\n",
-      "stdout": "[2, 3, 5, 7]\n"
+      "source": "from pyparsing import Word, nums, DelimitedList\ninteger = Word(nums).set_parse_action(lambda tokens: int(tokens[0]))\nprint(DelimitedList(integer).parse_string('2, 3, 5, 7').as_list())\n",
+      "stdout": "[2, 3, 5, 7]\n",
+      "module": "pyparsing"
     },
     {
       "name": "attrs",
@@ -32,7 +46,8 @@
       "wheel": "attrs-25.4.0-py3-none-any.whl",
       "sha256": "adcf7e2a1fb3b36ac48d97835bb6d8ade15b8dcce26aba8bf1d14847b57a3373",
       "source": "import attrs\n@attrs.define\nclass Point:\n    x: int\n    y: int = 2\np = Point(3)\nprint(p)\nprint(attrs.asdict(p))\n",
-      "stdout": "Point(x=3, y=2)\n{'x': 3, 'y': 2}\n"
+      "stdout": "Point(x=3, y=2)\n{'x': 3, 'y': 2}\n",
+      "module": "attrs"
     },
     {
       "name": "idna",
@@ -40,15 +55,23 @@
       "wheel": "idna-3.11-py3-none-any.whl",
       "sha256": "771a87f49d9defaf64091e6e6fe9c18d4833f140bd19464795bc32d966ca37ea",
       "source": "import idna\nencoded = idna.encode('bücher.de')\nprint(encoded)\nprint(idna.decode(encoded))\n",
-      "stdout": "b'xn--bcher-kva.de'\nbücher.de\n"
+      "stdout": "b'xn--bcher-kva.de'\nbücher.de\n",
+      "module": "idna"
     },
     {
       "name": "tomli",
       "version": "2.3.0",
       "wheel": "tomli-2.3.0-py3-none-any.whl",
       "sha256": "e95b1af3c5b07d9e643909b5abbec77cd9f1217e6d0bca72b0234736b9fb1f1b",
-      "source": "import tomli\ndata = tomli.loads('title = \\\"Sage.js\\\"\\n[owner]\\nname = \\\"Ada\\\"\\n')\nprint(data['title'])\nprint(data['owner']['name'])\n",
-      "stdout": "Sage.js\nAda\n"
+      "source": "import tomli\ndata = tomli.loads('title = \"Sage.js\"\\n[owner]\\nname = \"Ada\"\\n')\nprint(data['title'])\nprint(data['owner']['name'])\n",
+      "stdout": "Sage.js\nAda\n",
+      "module": "tomli",
+      "phases": {
+        "import": "import tomli\n",
+        "setup": "text = 'title = \"Sage.js\"\\n[owner]\\nname = \"Ada\"\\n'\n",
+        "workload": "data = tomli.loads(text)\nreturn (data['title'], data['owner']['name'])\n",
+        "verification": "assert result == ('Sage.js', 'Ada')\n"
+      }
     },
     {
       "name": "decorator",
@@ -56,7 +79,8 @@
       "wheel": "decorator-5.2.1-py3-none-any.whl",
       "sha256": "d316bb415a2d9e2d2b3abcc4084c6502fc09240e292cd76a76afc106a1c8e04a",
       "source": "from decorator import decorator\n@decorator\ndef traced(func, *args, **kwargs):\n    return func(*args, **kwargs)\n@traced\ndef add(a, b):\n    return a + b\nprint(add(20, 22))\n",
-      "stdout": "42\n"
+      "stdout": "42\n",
+      "module": "decorator"
     },
     {
       "name": "sortedcontainers",
@@ -64,7 +88,8 @@
       "wheel": "sortedcontainers-2.4.0-py2.py3-none-any.whl",
       "sha256": "a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0",
       "source": "from sortedcontainers import SortedDict, SortedList\nvalues = SortedList([5, 1, 3, 3])\nvalues.add(2)\nprint(list(values))\nprint(list(SortedDict({'b': 2, 'a': 1}).items()))\n",
-      "stdout": "[1, 2, 3, 3, 5]\n[('a', 1), ('b', 2)]\n"
+      "stdout": "[1, 2, 3, 3, 5]\n[('a', 1), ('b', 2)]\n",
+      "module": "sortedcontainers"
     },
     {
       "name": "mpmath",
@@ -72,7 +97,8 @@
       "wheel": "mpmath-1.3.0-py3-none-any.whl",
       "sha256": "a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c",
       "source": "from mpmath import mp\nmp.dps = 30\nprint(mp.nstr(mp.sqrt(2), 20))\nprint(mp.nstr(mp.zeta(2), 20))\n",
-      "stdout": "1.4142135623730950488\n1.6449340668482264365\n"
+      "stdout": "1.4142135623730950488\n1.6449340668482264365\n",
+      "module": "mpmath"
     },
     {
       "name": "pytz",
@@ -80,7 +106,8 @@
       "wheel": "pytz-2025.2-py2.py3-none-any.whl",
       "sha256": "5ddf76296dd8c44c26eb8f4b6f35488f3ccbf6fbbd7adee0b7262d43f0ec2f00",
       "source": "from datetime import datetime\nimport pytz\neastern = pytz.timezone('US/Eastern')\nlocal = eastern.localize(datetime(2024, 3, 10, 1, 30))\nprint(local.strftime('%Y-%m-%d %H:%M %z'))\nprint(local.astimezone(pytz.utc).strftime('%Y-%m-%d %H:%M %z'))\n",
-      "stdout": "2024-03-10 01:30 -0500\n2024-03-10 06:30 +0000\n"
+      "stdout": "2024-03-10 01:30 -0500\n2024-03-10 06:30 +0000\n",
+      "module": "pytz"
     },
     {
       "name": "python-dateutil",
@@ -88,7 +115,12 @@
       "wheel": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
       "sha256": "a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427",
       "source": "from datetime import datetime, timezone\nfrom dateutil.relativedelta import relativedelta\nstart = datetime(2024, 1, 31, 12, 30, tzinfo=timezone.utc)\nprint(start.isoformat())\nprint((start + relativedelta(months=1)).isoformat())\n",
-      "stdout": "2024-01-31T12:30:00+00:00\n2024-02-29T12:30:00+00:00\n"
+      "stdout": "2024-01-31T12:30:00+00:00\n2024-02-29T12:30:00+00:00\n",
+      "module": "dateutil"
     }
-  ]
+  ],
+  "oracle": {
+    "implementation": "CPython",
+    "version": "3.14.4"
+  }
 }
