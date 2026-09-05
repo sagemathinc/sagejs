@@ -35,6 +35,7 @@ Start with:
 - [Exploring elliptic-curve L-series](elliptic-curve-lseries.md)
 - [Exact modular-form q-expansion bases](modular-form-q-expansions.md)
 - [Classical modular-form elements and parents](classical-modular-form-elements.md)
+- [Full Gamma1 modular-form spaces](gamma1-modular-forms.md)
 - [A guided tour from modular-form spaces to L-series input](modular-forms-tour.md)
 - [Half-integral-weight modular forms](half-integral-modular-forms.md)
 - [Brandt modules over the rational numbers](brandt-modules.md)

@@ -521,7 +521,15 @@ def _descended_character(character: Any, lower_level: int) -> Any:
     raise ArithmeticError("could not descend the Dirichlet character")
 
 
-def _old_q_expansion_matrix(space: Any, precision: int) -> Any:
+def _old_q_expansion_matrix(
+    space: Any,
+    precision: int,
+    prime: Any = None,
+) -> Any:
+    if space.group()._family == "Gamma1":
+        from . import gamma1
+
+        return gamma1.q_expansion_basis_matrix(space, precision, "Old")
     rows: list[list[Any]] = []
     level = space.level()
     coefficient_ring = space.base_ring()
@@ -531,9 +539,16 @@ def _old_q_expansion_matrix(space: Any, precision: int) -> Any:
     character = ambient.character()
     has_character = runtime.reflect.get(ambient, "_character") is not None
     conductor = runtime.number(character.conductor()) if has_character else 1
-    for prime, _exponent in sage.factor(level):
-        prime = runtime.number(prime)
-        lower_level = level // prime
+    selected_prime = None
+    if prime is not None:
+        selected_prime = _nonnegative(prime, "old-subspace prime")
+        if not sage.is_prime(selected_prime) or level % selected_prime != 0:
+            raise ValueError("p must be a prime divisor of the level")
+    for factor_prime, _exponent in sage.factor(level):
+        factor_prime = runtime.number(factor_prime)
+        if selected_prime is not None and factor_prime != selected_prime:
+            continue
+        lower_level = level // factor_prime
         if lower_level % conductor != 0:
             continue
         defining_data = (
@@ -550,7 +565,7 @@ def _old_q_expansion_matrix(space: Any, precision: int) -> Any:
         )
         algorithm = "formulas" if lower_level == 1 else "modular_symbols"
         for form in lower.q_expansion_basis(precision, algorithm=algorithm):
-            for factor in [1, prime]:
+            for factor in [1, factor_prime]:
                 inflated = form._inflate(factor, precision)
                 rows.append(
                     [coefficient_ring(inflated[index]) for index in range(precision)]
@@ -568,9 +583,14 @@ class OldModularFormsSubspace(sage.Parent):
         self._kind = "OldModularFormsSubspace"
         self._subspace_kind = "Old"
         self._cusp_space = cusp_space
-        self._dimension = _old_q_expansion_matrix(
-            cusp_space, _sturm_precision(cusp_space)
-        ).rank()
+        if cusp_space.group()._family == "Gamma1":
+            from . import gamma1
+
+            self._dimension = gamma1.descended_dimension(cusp_space, "Old")
+        else:
+            self._dimension = _old_q_expansion_matrix(
+                cusp_space, _sturm_precision(cusp_space)
+            ).rank()
         self._classical_qexp_basis_cache = runtime.map()
         self._classical_hecke_cache = runtime.map()
         runtime.object.freeze(self)
@@ -780,14 +800,20 @@ class NewOldDecompositionCertificate:
 def modular_forms_new_subspace(space: Any, prime: Any = None) -> Any:
     if getattr(space, "_subspace_kind", None) == "New" and prime is None:
         return space
+    if space.group()._family == "Gamma1":
+        from . import gamma1
+
+        dimension = gamma1.descended_dimension(space, "New", prime)
+        answer = space.__class__(space.ambient_space(), "New", dimension)
+        if prime is not None:
+            answer._new_prime = _nonnegative(prime, "new prime")
+        return answer
     source_symbols = space._modular_symbols_cusp_space()
     try:
         symbols = source_symbols.new_submodule(prime)
     except NotImplementedError:
-        if prime is not None:
-            raise
         precision = _sturm_precision(space)
-        old_matrix = _old_q_expansion_matrix(space, precision)
+        old_matrix = _old_q_expansion_matrix(space, precision, prime)
         selected = []
         for constituent in source_symbols.decomposition(anemic=False):
             expansions = constituent.q_expansion_basis(precision)
@@ -846,6 +872,10 @@ def modular_forms_old_subspace(space: Any) -> OldModularFormsSubspace:
 def modular_forms_newforms(space: Any, names: str = "a") -> list[NormalizedNewform]:
     if not isinstance(names, str) or len(names) == 0:
         raise TypeError("newform generator name must be a nonempty string")
+    if space.group()._family == "Gamma1":
+        from . import gamma1
+
+        return gamma1.newforms(space, names)
     new_space = modular_forms_new_subspace(space)
     constituents = new_space._modular_symbols_cusp_space().decomposition(anemic=False)
     answer = []

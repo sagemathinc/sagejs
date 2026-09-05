@@ -111,8 +111,9 @@ comments before final publication; branch authors may still be working.
 
 ## Review follow-ups
 
-- Finalize the Python stack's complete build and cache/portable/startup checks
-  before advancing main; intermediate merge commits are on the staging branch.
+- The Python stack and #118 are published on main at `d520ed4df` after the
+  checks above. The stacked #119/#120 PRs were closed as already integrated;
+  their complete commit ancestry is on main, not rejected or discarded.
 - Review #114's recursive Laplace determinant for Jacobian minors: order eight
   is bounded but still factorial work. Prefer a division-free subset recurrence
   if the public matrix engine cannot handle this coefficient domain directly.
@@ -160,3 +161,93 @@ comments before final publication; branch authors may still be working.
 
 Final combined build, mathematical regressions, architecture checks, portable
 tests, browser/Wasm checks, and main CI remain pending.
+
+## Gamma1 integration and main-CI follow-up
+
+- Reviewed #125 head `acee1f9d31b8955e5aec72426fe2c43eb788c5e4`, which includes
+  #106. Combined native build passed all eight stages in 18m05s.
+- Parent-owned Gamma1 caches remove process-global retention of parents and
+  descent matrices. The missing-cache sentinel is `None`; a focused test caught
+  that this runtime interprets `runtime.undefined` as an omitted default.
+- Exhausting the 32 modular full-row-rank trial primes is inconclusive, not a
+  rank-deficiency proof. The public operation now falls back to exact pivots.
+  Full-rank adversarial numerator and denominator fixtures cover all trial
+  primes; standalone ASan/UBSan header checks and public matrix tests pass.
+- Packed matrix allocation sizes are checked before multiplication by element
+  size. New packed-series ingress tests cover large exact coefficients, offset
+  views, malformed/truncated buffers and invalid denominators.
+- All 13 focused Gamma1/algebraic/ingress/cache tests pass, including pinned
+  Sage operators, nonreal characters, wide degree-20 row spaces, old/new
+  descent, and the bounded public sweep. All 15 native Dirichlet/modular tests
+  pass with their required `--expose-gc` flag.
+- Gamma1 is explicitly included in the browser lazy-module manifest. The
+  Node-Wasm and Chromium shared corpus now contains a pinned level-7 Gamma1
+  Hecke matrix and diamond-operator consistency checks. First execution caught
+  the pre-existing missing q-expansion lazy family as well; include `qexp`,
+  `qexp_algebra`, `newforms`, and their eta-product helper. Re-execution is pending.
+- The Wasm build compiled 287 production functions with zero unsupported and
+  then correctly stopped at the ABI gate. Inspection shows only source-bound
+  module-hash prefix changes in the FLINT kernel: the normalized import/export
+  inventory is identical. The reviewed allowlist is regenerated, not disabled.
+- Extend the q-expansion source freeze itself to include the new Gamma1
+  implementation, its documentation and oracle test. Merely regenerating the
+  previous file list would leave the new mathematical source unauthenticated.
+- Portable passes 117/117 files in 2m06s, strict Python passes 368 modules with
+  zero errors, and refreshed architecture checks pass. An 11-sample startup
+  check with the compilation worker briefly paused passes at 397.0 ms full /
+  177.9 ms empty; earlier overlapping-build runs were slower. Existing 400/225
+  ms thresholds are unchanged.
+- Main's routine CI timed out computing the full disabled-native S8 center.
+  Retain that exact witness in the integration tier (11.6s locally) and use a
+  degree-eight dihedral witness for routine coverage (under one second warm).
+  Both still assert the fallback decision and independent exact result.
+- Main's Wasm CI exceeded the eager-core compressed-size budgets. Browser
+  compiler entry points use only beautified module outputs, with and without
+  docstrings, but packaging shipped all four variants. Keep both used outputs
+  byte-for-byte and all source/metadata, omit the unused compact variants, and
+  bind the selector into the production receipt. A prior artifact measurement
+  drops stdlib JSON from 62.9 MB to 34.7 MB and gzip from 5.36 MB to 2.97 MB.
+  No compressed-size allowance is raised; final artifact checks are pending.
+
+### Browser execution corrections under qualification
+
+- The first complete browser artifact passed the unchanged eager-core budgets
+  at 15,283,365 gzip / 9,102,820 Brotli bytes (artifact `dc5f9527...`), before
+  the additional algebraic and dynamic-import corrections below. It is not
+  the final candidate receipt.
+- Real Gamma1 execution exposed missing algebraic matrix selection, stacking,
+  right kernel, and recognition of matrix-produced cyclotomic values. The
+  shared FLINT core now supplies canonical row kernels and exact field
+  recognition. Selection uses one checked index-buffer transfer and stacking
+  uses FLINT's matrix concatenation, not scalar host crossings. Five focused
+  actual-Wasm algebraic/resource tests pass, including exact reconstruction,
+  zero/rectangular kernels and deterministic resource cleanup.
+- FLINT 3.6.0 registers `nfloat_set` (returning `int`) as the `void` shallow-copy
+  method. LLL's matrix multiplication triggers a Wasm signature trap. A
+  Wasm-local signature adapter calls the same FLINT copy operation; it neither
+  changes the arithmetic nor modifies a shared installed toolchain prefix.
+- Classical Eisenstein series had no browser entry point. A lazy ordinary
+  Python divisor sieve preserves all three normalizations and avoids factoring
+  every coefficient or creating algebraic objects inside the sieve. Sixty
+  native-FLINT differential cases pass. Native execution is unchanged;
+  high-weight Bernoulli cost remains an explicit optimization opportunity.
+- Dynamic `exec` originally constructed an import registry containing only its
+  private module. The baselib lexical registry is itself a prototype view;
+  copy descriptors from the canonical interpreter registry instead, preserving
+  module identity and laziness while keeping dynamic assignments isolated.
+  Three source-extracted primitive regressions and the rebuilt native public
+  `exec` regression pass. This defect predates cache pruning; browser
+  import-identity tests remain pending the fresh artifact.
+- The isolated #114 preparation now passes all nine geometry fixtures, both
+  malformed multivariate ingress tests, strict Python (376 modules), and merge
+  invariants. Regression fault injection now targets the actual instance-bound
+  reducer, and weak-parent-cache cleanup uses the explicit runtime `delete`
+  property rather than a renamed Python identifier. Integration onto the
+  current main-based Gamma1 stack remains pending.
+
+This source checkpoint is committed on the integration branch so the numerical
+build verifier can bind the reviewed runtime source to a real candidate tree.
+It is not a main promotion. The numerical manifest remains explicitly pending
+source-current requalification, and the browser end-to-end/build receipts must
+still pass before advancing main. Current strict Python is 368 modules with
+zero errors; merge inventories and native architecture pass unchanged caps.

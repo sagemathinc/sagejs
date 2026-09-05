@@ -24,6 +24,40 @@ def _global(name: str) -> Any:
     return runtime.reflect.get(runtime.global_object, name)
 
 
+def _classical_eisenstein_qexp(
+    weight: int,
+    precision: int,
+    coefficient_ring: Any,
+    variable: str,
+    normalization: str,
+) -> Any:
+    """Exact portable divisor sieve for the validated classical entry point.
+
+    Accumulate integral divisor sums in `O(prec log prec)` additions, then
+    publish rational coefficients once. Do not factor every index or allocate
+    algebraic numbers in the inner loop. Native hosts retain their FLINT path.
+    """
+    ring = _global("PowerSeriesRing")(
+        coefficient_ring, variable, default_prec=max(1, precision)
+    )
+    if precision == 0:
+        return ring(0).add_bigoh(0)
+    constant = -sage.QQ(_global("bernoulli")(weight)) / (2 * weight)
+    scale = sage.QQ(1)
+    if normalization == "constant":
+        scale = 1 / constant
+    elif normalization == "integral":
+        scale = sage.QQ(constant.denominator())
+    sums = [0 for _index in range(precision)]
+    for divisor in range(1, precision):
+        power = divisor ** (weight - 1)
+        for multiple in range(divisor, precision, divisor):
+            sums[multiple] += power
+    coefficients = [coefficient_ring(constant * scale)]
+    coefficients.extend(coefficient_ring(scale * value) for value in sums[1:])
+    return ring(coefficients).add_bigoh(precision)
+
+
 def _integer(value: Any, label: str) -> int:
     normalized = runtime.normalize_integer(value)
     if runtime.jstype(normalized) != "number" or not runtime.number.isSafeInteger(
@@ -1020,30 +1054,132 @@ def character_eisenstein_series_qexp(
     coefficients = [target(0) for _index in range(short_precision)]
     if short_precision and runtime.number(chi.conductor()) == 1:
         modulus = runtime.number(psi.conductor())
-        generalized = target(0)
-        binomial = _global("binomial")
-        bernoulli = _global("bernoulli")
-        for residue in range(1, modulus + 1):
-            polynomial_value = target(0)
-            rational = sage.QQ(residue) / modulus
-            for index in range(weight + 1):
-                bernoulli_value = sage.QQ(-1) / 2 if index == 1 else bernoulli(index)
-                polynomial_value += target(
-                    binomial(weight, index) * bernoulli_value
-                ) * target(rational) ** (weight - index)
-            generalized += character_value(psi, residue) * polynomial_value
-        generalized *= target(modulus) ** (weight - 1)
+        if (
+            getattr(target, "_kind", None) == "CyclotomicField"
+            and runtime.number(psi.modulus()) == modulus
+        ):
+            # The Dirichlet layer already computes this exact primitive
+            # generalized Bernoulli number in one FLINT call on native hosts.
+            generalized = target(psi.bernoulli(weight))
+        else:
+            generalized = target(0)
+            binomial = _global("binomial")
+            bernoulli = _global("bernoulli")
+            for residue in range(1, modulus + 1):
+                polynomial_value = target(0)
+                rational = sage.QQ(residue) / modulus
+                for index in range(weight + 1):
+                    bernoulli_value = (
+                        sage.QQ(-1) / 2 if index == 1 else bernoulli(index)
+                    )
+                    polynomial_value += target(
+                        binomial(weight, index) * bernoulli_value
+                    ) * target(rational) ** (weight - index)
+                generalized += character_value(psi, residue) * polynomial_value
+            generalized *= target(modulus) ** (weight - 1)
         coefficients[0] = -generalized / (2 * weight)
-    for index in range(1, short_precision):
-        value = target(0)
-        for divisor in sage.divisors(index):
-            divisor = runtime.number(divisor)
-            value += (
-                character_value(psi, divisor)
-                * character_value(chi, index // divisor)
-                * divisor ** (weight - 1)
+    if getattr(target, "_kind", None) == "CyclotomicField":
+        # Accumulate the divisor sums in the declared cyclotomic power basis.
+        # Constructing and adding one QQbar object for every divisor dominates
+        # high-precision character Eisenstein series, even though every term
+        # is merely an integral multiple of a root of unity.  The coordinate
+        # sieve below is the same formula, with roots reduced modulo Phi_n
+        # once and exact algebraic elements materialized only at publication.
+        target_order = runtime.number(target._order)
+        target_degree = runtime.number(target.degree())
+
+        def character_exponents(character: Any) -> list[Any]:
+            conductor = runtime.number(character.conductor())
+            modulus = runtime.number(character.modulus())
+            source_order = runtime.number(character._parent.zeta_order())
+            answer = []
+            for residue in range(conductor):
+                if runtime.number(_global("gcd")(residue, conductor)) != 1:
+                    answer.append(None)
+                    continue
+                evaluated = None
+                lift = residue
+                while lift < modulus:
+                    if runtime.number(_global("gcd")(lift, modulus)) == 1:
+                        evaluated = character(lift)
+                        break
+                    lift += conductor
+                if evaluated is None or evaluated.is_zero():
+                    answer.append(None)
+                    continue
+                numerator = runtime.number(evaluated._exponent) * target_order
+                if numerator % source_order != 0:
+                    raise ArithmeticError(
+                        "character value is not in the requested cyclotomic field"
+                    )
+                answer.append((numerator // source_order) % target_order)
+            return answer
+
+        left_exponents = character_exponents(chi)
+        right_exponents = character_exponents(psi)
+        backend = runtime.flint_backend()
+        root_coordinates = []
+        for exponent in range(target_order):
+            raw = backend.cyclotomicRootCoefficients(
+                runtime.integer_bigint(exponent),
+                runtime.integer_bigint(target_order),
             )
-        coefficients[index] = value
+            row = [runtime.normalize_integer(value) for value in raw]
+            row.extend([0 for _index in range(target_degree - len(row))])
+            root_coordinates.append(row)
+        coordinate_rows = [
+            [0 for _coordinate in range(target_degree)]
+            for _index in range(short_precision)
+        ]
+        left_conductor = len(left_exponents)
+        right_conductor = len(right_exponents)
+        for divisor in range(1, short_precision):
+            right_exponent = right_exponents[divisor % right_conductor]
+            if right_exponent is None:
+                continue
+            scalar = divisor ** (weight - 1)
+            quotient = 1
+            while divisor * quotient < short_precision:
+                left_exponent = left_exponents[quotient % left_conductor]
+                if left_exponent is not None:
+                    root_row = root_coordinates[
+                        (right_exponent + left_exponent) % target_order
+                    ]
+                    output_row = coordinate_rows[divisor * quotient]
+                    for coordinate in range(target_degree):
+                        output_row[coordinate] += scalar * root_row[coordinate]
+                quotient += 1
+        publish = runtime.reflect.get(
+            backend,
+            "cyclotomicElementsFromIntegralCoordinates",
+        )
+        if runtime.jstype(publish) == "function" and short_precision > 1:
+            flattened = []
+            for index in range(1, short_precision):
+                flattened.extend(
+                    [runtime.integer_bigint(value) for value in coordinate_rows[index]]
+                )
+            native_values = runtime.reflect.apply(
+                publish,
+                backend,
+                [flattened, runtime.integer_bigint(target_order)],
+            )
+            for index in range(1, short_precision):
+                coefficients[index] = target._from_native(native_values[index - 1])
+        else:
+            for index in range(1, short_precision):
+                coefficients[index] = target._from_coefficients(coordinate_rows[index])
+    else:
+        for index in range(1, short_precision):
+            value = target(0)
+            for divisor in sage.divisors(index):
+                divisor = runtime.number(divisor)
+                value += (
+                    character_value(psi, divisor)
+                    * character_value(chi, index // divisor)
+                    * divisor ** (weight - 1)
+                )
+            coefficients[index] = value
     ring = _global("PowerSeriesRing")(
         target,
         variable,
@@ -1263,6 +1399,8 @@ def from_serialized_element(
 
 
 __all__ = [
+    # Explicit internal entry point used by the lazy baselib facade.
+    "_classical_eisenstein_qexp",
     "ExactModularForm",
     "LevelOneBasisCertificate",
     "ModularSymbolsQExpansionCertificate",

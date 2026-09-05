@@ -1,4 +1,30 @@
+export const gamma1ModularFormsCase = Object.freeze({
+    name: "Gamma1 rational descent with nonreal characters",
+    source: [
+      "M=ModularForms(Gamma1(7),2,prec=8)",
+      "T=M.hecke_matrix(2)",
+      "D=M.diamond_bracket_matrix(3)",
+      "[M.dimension(), len(M.q_expansion_basis()),",
+      " [(c.character().order(),c.field_degree(),c.rational_dimension()) for c in M.character_components()],",
+      " T==matrix(QQ,[[-93,0,-168,-840,-1680],[-26,0,-48,-234,-471],[4,1,8,39,76],[6,0,10,55,108],[2,0,5,17,36]]),",
+      " T*D==D*T, M.diamond_bracket_matrix(2)*D==M.diamond_bracket_matrix(6),",
+      " M.q_expansion_basis_certificate().verify()]",
+    ].join("\n"),
+    expected: "[5, 5, [(3, 2, 4), (1, 1, 1)], True, True, True, True]",
+});
+
 export const publicGapCases = Object.freeze([
+  gamma1ModularFormsCase,
+  {
+    name: "Gamma1 cuspidal newform descent",
+    source: [
+      "S=ModularForms(Gamma1(13),2,prec=8).cuspidal_subspace()",
+      "[S.dimension(), S.q_expansion_basis(), S.hecke_matrix(2),",
+      " len(S.newforms()), S.q_expansion_basis_certificate().verify()]",
+    ].join("\n"),
+    // Differential fixture from the independently tested native Gamma1 path.
+    expected: "[2, [q - 4*q^3 - q^4 + 3*q^5 + 6*q^6 + O(q^8), q^2 - 2*q^3 - q^4 + 2*q^5 + 2*q^6 + O(q^8)], [ 0 -3]\n[ 1 -3], 1, True]",
+  },
   {
     name: "extension-field polynomial arithmetic",
     source: [

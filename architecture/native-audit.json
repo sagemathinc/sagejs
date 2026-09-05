@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5399,
-      "bytes": 177970,
+      "lines": 5553,
+      "bytes": 183440,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -79,16 +79,17 @@
     },
     {
       "path": "packages/flint/src/matrix.c",
-      "lines": 5960,
-      "bytes": 194848,
+      "lines": 6584,
+      "bytes": 218519,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
         "Node-API matrix representation",
         "FLINT dense and sparse matrix calls",
+        "coordinate-preserving cyclotomic representation primitives",
         "locally implemented matrix algorithms and conversion paths"
       ],
-      "rationale": "The largest mixed native source combines an essential packed FLINT boundary with Sage.js-owned algorithms. Retain mature FLINT calls, split the ABI by representation, and use existing prime-field typed witnesses to migrate local control flow where it is competitive.",
+      "rationale": "The largest mixed native source combines an essential packed FLINT boundary with Sage.js-owned algorithms. Retain mature FLINT calls and coordinate-preserving cyclotomic representation primitives, split the ABI by representation, and use existing prime-field typed witnesses to migrate local control flow where it is competitive.",
       "fallback": "Every matrix operation retains its tested Python/JavaScript implementation or an explicit native capability diagnostic.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Preserve the exact 50-export symbol ratchet, migrate the 22 thin operations through declarations, and replace the 12 documented source-owned exceptions one typed algorithm at a time."
@@ -127,8 +128,8 @@
     },
     {
       "path": "packages/flint/src/p1.c",
-      "lines": 5045,
-      "bytes": 181412,
+      "lines": 5273,
+      "bytes": 190508,
       "decision": "typed-remediation-pilot",
       "priority": "critical",
       "responsibilities": [

@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include <string.h>
+#include <flint/nfloat.h>
+#include <flint/gr.h>
 
 #include "../../flint/src/algebraic_core.h"
 
@@ -19,10 +21,28 @@ static uint32_t result_handle = 0;
 static int32_t result_value = 0;
 static int32_t last_status = SAGEJS_ALGEBRAIC_OK;
 
+/* FLINT 3.6.0 registers the int-returning nfloat_set as the void-returning
+   GR_METHOD_SET_SHALLOW. Native ABIs tolerate that mismatch; Wasm correctly
+   traps it in LLL's nfloat matrix multiplication. Adapt only the ABI, keeping
+   FLINT's copy operation and shared method table unchanged otherwise. */
+static void nfloat_set_shallow_compatible(gr_ptr target, gr_srcptr source, gr_ctx_t ctx)
+{
+    (void) nfloat_set(target, source, ctx);
+}
+
 static int ensure_context(void)
 {
     if (context != NULL)
         return 1;
+    gr_ctx_t nfloat_context;
+    if (nfloat_ctx_init(nfloat_context, 64, 0) != GR_SUCCESS)
+    {
+        last_status = SAGEJS_ALGEBRAIC_INVALID_ARGUMENT;
+        return 0;
+    }
+    nfloat_context->methods[GR_METHOD_SET_SHALLOW] =
+        (gr_funcptr) nfloat_set_shallow_compatible;
+    gr_ctx_clear(nfloat_context);
     context = sagejs_algebraic_context_create();
     if (context == NULL)
     {
@@ -253,6 +273,15 @@ EXPORT int32_t sagejs_wasm_algebraic_minpoly(uint32_t handle)
     return last_status;
 }
 
+EXPORT int32_t sagejs_wasm_algebraic_cyclotomic_coefficients(uint32_t handle, uint32_t order)
+{
+    if (!ensure_context())
+        return last_status;
+    last_status = sagejs_algebraic_cyclotomic_coefficients(
+        context, handle, order, output_buffer, BUFFER_CAPACITY, &output_length);
+    return last_status;
+}
+
 EXPORT int32_t sagejs_wasm_algebraic_enclosure(uint32_t handle, uint32_t precision)
 {
     if (!ensure_context())
@@ -359,6 +388,24 @@ EXPORT int32_t sagejs_wasm_algebraic_matrix_unary(
         return last_status;
     last_status = sagejs_algebraic_matrix_unary(
         context, operation, source, &result_handle);
+    return last_status;
+}
+
+EXPORT int32_t sagejs_wasm_algebraic_matrix_select(uint32_t source, uint32_t count, uint32_t columns)
+{
+    if (!ensure_context())
+        return last_status;
+    last_status = sagejs_algebraic_matrix_select(
+        context, source, matrix_entry_handles, count, columns, &result_handle);
+    return last_status;
+}
+
+EXPORT int32_t sagejs_wasm_algebraic_matrix_right_kernel(uint32_t source)
+{
+    if (!ensure_context())
+        return last_status;
+    last_status = sagejs_algebraic_matrix_right_kernel(
+        context, source, &result_handle, &result_count);
     return last_status;
 }
 

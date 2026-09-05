@@ -57,7 +57,8 @@ enum sagejs_algebraic_matrix_binary_operation
 {
     SAGEJS_ALGEBRAIC_MATRIX_ADD = 1,
     SAGEJS_ALGEBRAIC_MATRIX_SUB = 2,
-    SAGEJS_ALGEBRAIC_MATRIX_MUL = 3
+    SAGEJS_ALGEBRAIC_MATRIX_MUL = 3,
+    SAGEJS_ALGEBRAIC_MATRIX_STACK = 4
 };
 
 enum sagejs_algebraic_matrix_unary_operation
@@ -224,6 +225,30 @@ int sagejs_algebraic_matrix_scalar_mul(
     uint32_t source,
     uint32_t scalar,
     uint32_t *matrix_handle);
+
+/* Return the canonical row basis of the right kernel, not FLINT's column basis. */
+int sagejs_algebraic_matrix_right_kernel(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    uint32_t *matrix_handle,
+    uint32_t *nullity);
+
+int sagejs_algebraic_matrix_select(
+    sagejs_algebraic_context *context,
+    uint32_t source,
+    const uint32_t *indices,
+    uint32_t count,
+    uint32_t select_columns,
+    uint32_t *matrix_handle);
+
+/* Packed integers: common denominator followed by the power-basis numerators. */
+int sagejs_algebraic_cyclotomic_coefficients(
+    sagejs_algebraic_context *context,
+    uint32_t handle,
+    uint32_t order,
+    uint8_t *output,
+    uint32_t capacity,
+    uint32_t *output_length);
 
 int sagejs_algebraic_matrix_entry(
     sagejs_algebraic_context *context,

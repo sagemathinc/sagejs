@@ -115,8 +115,10 @@ classical API.
 - [x] Dirichlet-character cusp spaces over their exact cyclotomic value
   fields, including full sign-zero and directly constructed signed spaces;
   arbitrary proper sign-zero subspaces remain excluded.
-- [ ] $\Gamma_1(N)$ via its exact character decomposition or an equally
-  audited direct construction.
+- [x] $\Gamma_1(N)$ via exact character-orbit decomposition and rational
+  Galois descent, with complete ambient/cusp/Eisenstein bases, old/new spaces,
+  exact Hecke and diamond action, normalized packets, and serialization in
+  integral weight $k\geq2$.
 - [ ] A declared bounded domain for weight $1$, or an explicit fail-closed
   exclusion until the weight-$1$ project is complete.
 
@@ -374,7 +376,9 @@ Linux arm64, macOS arm64, native Windows x64, and real-browser Chromium.
 
 ## P1: complete the classical modular-form object layer
 
-- [ ] General `ModularForms` spaces for $\Gamma_1(N)$ and $\Gamma_H(N)$.
+- [x] General `ModularForms` spaces for $\Gamma_1(N)$ in integral weight
+  $k\geq2$, using exact cyclotomic character-orbit descent over $\QQ$.
+- [ ] General `ModularForms` spaces for $\Gamma_H(N)$.
 - [x] General `ModularForms(chi,k)` and `CuspForms(chi,k)` parents in the
   integral-weight $k\geq2$ Dirichlet-character domain, over $\QQ$ for
   quadratic characters and exact cyclotomic fields for higher order.
@@ -413,6 +417,10 @@ The fixed-character extension is specified in
 reuses the same element hierarchy and covers quadratic characters over $\QQ$,
 higher-order characters over exact cyclotomic fields, imprimitive old/new
 decomposition, exact eigenpackets, and authenticated serialization.
+The full $\Gamma_1$ extension is specified in
+`agents/gamma1-modular-forms-plan.md` and documented in
+`docs/gamma1-modular-forms.md`; it descends one fast fixed-character space per
+Galois orbit to a canonical Sturm-certified rational basis.
 Higher-order-character $q$-expansion reconstruction now uses direct exact
 Hecke images in the cyclotomic power basis.  The reproducible scaling grid in
 `bench/modular/higher-character-qexp/` checks degrees $4$ and $8$ through a

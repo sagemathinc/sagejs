@@ -24,7 +24,7 @@ const UNARY = Object.freeze({
 
 const BINARY = Object.freeze({ add: 1, sub: 2, mul: 3, div: 4 });
 const PROPERTY = Object.freeze({ real: 1, rational: 2, degree: 3 });
-const MATRIX_BINARY = Object.freeze({ add: 1, sub: 2, mul: 3 });
+const MATRIX_BINARY = Object.freeze({ add: 1, sub: 2, mul: 3, stack: 4 });
 const MATRIX_UNARY = Object.freeze({
   neg: 1,
   transpose: 2,
@@ -276,6 +276,18 @@ function reduceCyclotomic(coefficients, order) {
   return polynomialDivmod(coefficients, cyclotomicPolynomial(order))[1];
 }
 
+function rootOfUnityCoordinates(exponent, order) {
+  order = BigInt(order);
+  if (order < 1n || order > 4096n) {
+    throw new RangeError("exact browser cyclotomic coordinates require order at most 4096");
+  }
+  exponent = ((BigInt(exponent) % order) + order) % order;
+  return reduceCyclotomic(Array.from(
+    { length: Number(exponent) + 1 },
+    (_, index) => index === Number(exponent) ? rationalOne : rationalZero,
+  ), order);
+}
+
 function convertCyclotomic(expression, order) {
   order = BigInt(order);
   if (order % expression.order !== 0n) {
@@ -471,6 +483,7 @@ export function createAlgebraicBackend(instance, {
     "matrix_entry_handles", "matrix_live_count", "matrix_close", "matrix_create",
     "matrix_binary", "matrix_unary", "matrix_scalar_mul", "matrix_entry",
     "matrix_det", "matrix_rank", "matrix_equal", "matrix_charpoly",
+    "matrix_select", "matrix_right_kernel", "cyclotomic_coefficients",
   ];
   for (const name of required) {
     if (typeof wasm[`sagejs_wasm_algebraic_${name}`] !== "function") {
@@ -759,6 +772,30 @@ export function createAlgebraicBackend(instance, {
     return Reflect.apply(method, matrixFallback, arguments_);
   }
 
+  function checkedSelection(indices, size) {
+    const answer = Array.from(indices, Number);
+    if (answer.length > 128 || answer.some((index) =>
+      !Number.isSafeInteger(index) || index < 0 || index >= size)) {
+      throw new RangeError("algebraic matrix selection is out of range");
+    }
+    return answer;
+  }
+
+  function matrixSelect(value, indices, columns) {
+    const selected = checkedSelection(indices, columns ? value.columns : value.rows);
+    // Hydrate before publishing the index buffer: hydration also uses the
+    // shared ingress arena. Selection itself is one packed Wasm crossing.
+    const handle = matrixHandleOf(value);
+    new Uint32Array(memory.buffer, matrixEntryHandlesPointer, selected.length).set(selected);
+    return matrixResult(
+      wasm.sagejs_wasm_algebraic_matrix_select(handle, selected.length, columns ? 1 : 0),
+      columns ? "select-columns" : "select-rows",
+      columns ? value.rows : selected.length,
+      columns ? selected.length : value.columns,
+      value.realOnly, 12 + selected.length * 4,
+    );
+  }
+
   function recordMatrix(operation, ingressBytes, egressBytes = 4) {
     recordCapability(
       "algebraic:qqbar-resource-core",
@@ -821,7 +858,7 @@ export function createAlgebraicBackend(instance, {
         MATRIX_BINARY[name], matrixHandleOf(left), matrixHandleOf(right),
       ),
       name,
-      left.rows,
+      name === "stack" ? left.rows + right.rows : left.rows,
       columns,
       left.realOnly,
       8,
@@ -933,15 +970,7 @@ export function createAlgebraicBackend(instance, {
       const expression = order <= 4096n
         ? Object.freeze({
             order,
-            coefficients: Object.freeze(reduceCyclotomic(
-              Array.from(
-                { length: Number(exponent) + 1 },
-                (_, index) => index === Number(exponent)
-                  ? rationalOne
-                  : rationalZero,
-              ),
-              order,
-            )),
+            coefficients: Object.freeze(rootOfUnityCoordinates(exponent, order)),
           })
         : undefined;
       return resultNative(
@@ -1031,6 +1060,20 @@ export function createAlgebraicBackend(instance, {
     qqbarMinpolyCoefficients(value) {
       return unpackExactIntegers(encodedOutput("minpoly", value));
     },
+    cyclotomicRootCoefficients(exponent, order) {
+      const result = rootOfUnityCoordinates(exponent, order).map((value) => {
+        if (value.denominator !== 1n) {
+          throw new Error("root-of-unity power coordinates must be integral");
+        }
+        return value.numerator;
+      });
+      recordCapability(
+        "napi:@sagemath/sagejs-flint:cyclotomicRootCoefficients",
+        "shared-runtime-js",
+        { executionTarget: "host-runtime-js", ingressBytes: 16 },
+      );
+      return result;
+    },
     cyclotomicElementCoefficients(value, order) {
       order = BigInt(order);
       if (order < 1n || order > 0xffff_ffffn) {
@@ -1038,10 +1081,15 @@ export function createAlgebraicBackend(instance, {
       }
       const expression = cyclotomicExpressions.get(value);
       if (expression === undefined) {
-        throw new TypeError(
-          "exact browser cyclotomic coordinates require an expression built " +
-          "from rationals and roots of unity",
+        const [denominator, ...numerators] = unpackExactIntegers(
+          encodedOutput("cyclotomic_coefficients", value, Number(order)),
         );
+        recordCapability(
+          "napi:@sagemath/sagejs-flint:cyclotomicElementCoefficients",
+          "receipt-backed-wasm-artifact",
+          { executionTarget: "wasm-artifact", ingressBytes: 8 },
+        );
+        return numerators.map((numerator) => [numerator, denominator]);
       }
       const result = convertCyclotomic(expression, order).coefficients.map(
         (coefficient) => [coefficient.numerator, coefficient.denominator],
@@ -1049,7 +1097,7 @@ export function createAlgebraicBackend(instance, {
       recordCapability(
         "napi:@sagemath/sagejs-flint:cyclotomicElementCoefficients",
         "shared-runtime-js",
-        { executionTarget: "host-js", ingressBytes: 8 },
+        { executionTarget: "host-runtime-js", ingressBytes: 8 },
       );
       return result;
     },
@@ -1145,12 +1193,27 @@ export function createAlgebraicBackend(instance, {
         pruneValues();
       }
     },
+    matrixSelectRows(value, indices) {
+      if (!liveMatrices.has(value)) return fallbackMatrix("matrixSelectRows", [value, indices]);
+      return matrixSelect(value, indices, false);
+    },
+    matrixSelectColumns(value, indices) {
+      if (!liveMatrices.has(value)) return fallbackMatrix("matrixSelectColumns", [value, indices]);
+      return matrixSelect(value, indices, true);
+    },
+    matrixStack(top, bottom) { return matrixBinary("stack", top, bottom); },
     matrixAdd(left, right) { return matrixBinary("add", left, right); },
     matrixSub(left, right) { return matrixBinary("sub", left, right); },
     matrixMul(left, right) { return matrixBinary("mul", left, right); },
     matrixNeg(value) { return matrixUnary("neg", value); },
     matrixTranspose(value) { return matrixUnary("transpose", value); },
     matrixRref(value) { return matrixUnary("rref", value); },
+    matrixRightKernel(value) {
+      if (!liveMatrices.has(value)) return fallbackMatrix("matrixRightKernel", [value]);
+      const status = wasm.sagejs_wasm_algebraic_matrix_right_kernel(matrixHandleOf(value));
+      return matrixResult(status, "right-kernel",
+        wasm.sagejs_wasm_algebraic_result_count(), value.columns, value.realOnly);
+    },
     matrixInverse(value) { return matrixUnary("inverse", value); },
     qqbarMatrixScalarMul(value, scalar) {
       if (!liveMatrices.has(value)) {

@@ -751,7 +751,7 @@
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 345000,
+      "max_source_bytes": 350000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",
@@ -765,18 +765,20 @@
       "id": "modular-form-expansions",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 130000,
+      "max_source_bytes": 160000,
       "depends_on": [
         "core-runtime", "python-stdlib", "arithmetic", "linear-algebra",
         "modular-forms"
       ],
       "modules": [
         "sagejs.modular_forms.half_integral",
+        "sagejs.modular_forms.gamma1",
         "sagejs.modular_forms.newforms",
         "sagejs.modular_forms.qexp"
       ],
       "files": [
         "src/lib/sagejs/modular_forms/half_integral.py",
+        "src/lib/sagejs/modular_forms/gamma1.py",
         "src/lib/sagejs/modular_forms/newforms.py",
         "src/lib/sagejs/modular_forms/qexp.py"
       ],

@@ -5,6 +5,7 @@ const { createHash } = require("node:crypto");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const esbuild = require("esbuild");
+const { browserModuleCache } = require("./browser-module-cache.cjs");
 const { loadRegistry } = require("../../../tools/ffi/declarations.cjs");
 const {
   generatedWasmResourceAdapter,
@@ -662,6 +663,7 @@ const algebraicExports = [
   "sagejs_wasm_algebraic_property",
   "sagejs_wasm_algebraic_polynomial_roots",
   "sagejs_wasm_algebraic_minpoly",
+  "sagejs_wasm_algebraic_cyclotomic_coefficients",
   "sagejs_wasm_algebraic_enclosure",
   "sagejs_wasm_algebraic_format",
   "sagejs_wasm_algebraic_serialize",
@@ -671,6 +673,8 @@ const algebraicExports = [
   "sagejs_wasm_algebraic_matrix_create",
   "sagejs_wasm_algebraic_matrix_binary",
   "sagejs_wasm_algebraic_matrix_unary",
+  "sagejs_wasm_algebraic_matrix_select",
+  "sagejs_wasm_algebraic_matrix_right_kernel",
   "sagejs_wasm_algebraic_matrix_scalar_mul",
   "sagejs_wasm_algebraic_matrix_entry",
   "sagejs_wasm_algebraic_matrix_det",
@@ -688,9 +692,9 @@ const declaredAlgebraicExports = [...fs.readFileSync(
   "utf8",
 ).matchAll(/EXPORT\s+[\w\s*]+\s+(sagejs_wasm_algebraic_\w+)\s*\(/g)]
   .map((match) => match[1]);
-if (declaredAlgebraicExports.length !== 43 ||
+if (declaredAlgebraicExports.length !== 46 ||
     declaredAlgebraicExports.some((name, index) => name !== algebraicExports[index])) {
-  throw new Error("the reviewed 43-function algebraic Wasm export closure drifted");
+  throw new Error("the reviewed 46-function algebraic Wasm export closure drifted");
 }
 const exportNames = [
   "sagejs_factor_input",
@@ -967,7 +971,7 @@ for (const filename of pythonSources(standardLibrarySourceDirectory)) {
   standardLibraryModules[name] = {
     package: path.basename(filename) === "__init__.py",
     source,
-    cache,
+    cache: browserModuleCache(cache, name),
   };
 }
 fs.writeFileSync(
@@ -1147,6 +1151,7 @@ const receipt = writeProductionReceipt({
     ...dynamicProgramInputs,
     lazyModuleGenerator,
     lazyModuleConfig,
+    require.resolve("./browser-module-cache.cjs"),
     path.join(repositoryRoot, "scripts", "numerical-product.cjs"),
     conwayDataSource,
     kernelCoverageSource,
