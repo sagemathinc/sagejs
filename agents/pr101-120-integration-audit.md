@@ -251,3 +251,16 @@ It is not a main promotion. The numerical manifest remains explicitly pending
 source-current requalification, and the browser end-to-end/build receipts must
 still pass before advancing main. Current strict Python is 368 modules with
 zero errors; merge inventories and native architecture pass unchanged caps.
+
+### Exact slice integration regression
+
+The freshly compiled cubic kernel produced a valid-looking success record but
+its public validator returned no certificate. Exposing the caught exception
+identified a runtime TypeError in `exact[3:3 + invariant_count]`: native-backed
+integers remain BigInts, and the #120 unit-stride fast path passed normalized
+bounds directly to JavaScript `Array.slice`. A standalone regression reproduces
+the same failure in both Python and Sage modes. Convert only the already
+array-length-clamped start/stop bounds to host numbers at that boundary; retain
+arbitrary-size Python slice semantics before clamping and preserve strided
+iteration. No cubic proof condition is relaxed. The previous full candidate
+build was stopped before receipt publication; fresh validation is pending.

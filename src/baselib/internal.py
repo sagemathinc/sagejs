@@ -1304,7 +1304,10 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
                 answer = runtime.reflect.apply(
                     runtime.array.prototype.slice,
                     value,
-                    [start, stop],
+                    # indices() has already clamped these to the native array
+                    # length. Exact Python integers may still be BigInts,
+                    # which Array.slice does not accept directly.
+                    [runtime.number(start), runtime.number(stop)],
                 )
             else:
                 answer = []
