@@ -138,6 +138,9 @@ const GROEBNER_STANDALONE_MODULES = Object.freeze([
   ...POLYNOMIAL_STANDALONE_MODULES,
   "sagejs.polynomial_algorithms.groebner_contract",
   "sagejs.polynomial_algorithms.ideal",
+  "sagejs.polynomial_algorithms.ideal_operations",
+  "sagejs.polynomial_algorithms.hilbert",
+  "sagejs.polynomial_algorithms.zero_dimensional",
 ]);
 
 const BASELIB_STANDALONE_MODULES = Object.freeze([
