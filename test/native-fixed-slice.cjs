@@ -1,5 +1,6 @@
 // sagejs-test-tier: specialized
 "use strict";
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { resolve } = require("node:path");
@@ -115,7 +116,7 @@ test("unsupported native slice forms fail closed", async () => {
 });
 
 test("fixed vector slices preserve snapshots and reject resizing before mutation", () => {
-  const result = spawnSync("python3", ["-c", String.raw`
+  const result = spawnSync(pythonExecutable(), ["-c", String.raw`
 import importlib.util
 spec = importlib.util.spec_from_file_location("native", ${JSON.stringify(resolve(__dirname, "../src/lib/sagejs/native.py"))})
 m = importlib.util.module_from_spec(spec)

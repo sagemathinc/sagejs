@@ -1,5 +1,6 @@
 // sagejs-test-tier: specialized
 "use strict";
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const assert = require("node:assert/strict");
 const { mkdtempSync, writeFileSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -181,7 +182,7 @@ else:
     raise AssertionError("expired owner")
 print("workspace-fallback-ok")
 `);
-  for (const [command, args] of [["python3", [path]], [process.execPath, [join(__dirname, "../bin/sagejs"), "--python", path]]]) {
+  for (const [command, args] of [[pythonExecutable(), [path]], [process.execPath, [join(__dirname, "../bin/sagejs"), "--python", path]]]) {
     const result = spawnSync(command, args, { encoding: "utf8", timeout: 120000 });
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.match(result.stdout, /workspace-fallback-ok/);

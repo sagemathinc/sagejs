@@ -48,6 +48,7 @@ int main(void) {
                 (unsigned long long)before.allocation_calls, (unsigned long long)after.allocation_calls);
             assert(after.capacity == before.capacity);
             assert(after.high_water <= before.high_water);
+            assert(after.allocation_calls <= before.allocation_calls);
             assert(after.upstream_allocations <= before.upstream_allocations);
             assert(after.soft_limit_exhaustions == 0);
         }
