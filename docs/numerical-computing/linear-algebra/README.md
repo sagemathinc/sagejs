@@ -199,6 +199,15 @@ linear-algebra reason:
 | `cancellation_callback_error` | `validation_failed` | The cancellation callback raised; repair the callback before retrying. |
 | `nonfinite_intermediate` | `validation_failed` | A mathematically required intermediate is outside representable binary64 range; rescale or use a wider numeric type. |
 
+This includes validation norms and norm products: finite matrix entries do not
+guarantee that their normalization denominator is representable. An overflowed
+denominator must not turn a nonzero error into an apparently perfect zero.
+Such cases currently fail closed with `indeterminate` validation rather than
+certifying the answer. A scale-safe extended-range validation path is not yet
+qualified; do not interpret this failure as proof that the factorization is wrong.
+An independently computed zero solve residual is handled explicitly before
+forming its denominator, preserving the valid zero-residual case.
+
 Domain-specific failures use the shared `ill_conditioned`,
 `validation_failed`, and `cancelled` diagnostics as applicable, while the
 domain code and structured details preserve the precise identity. Elapsed-time
