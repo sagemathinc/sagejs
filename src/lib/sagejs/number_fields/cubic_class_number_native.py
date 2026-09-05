@@ -3026,15 +3026,30 @@ def _cubic_append_reduced_ideal_ellipsoid(
     online_membership_coordinates: FmpzMatrix,
     online_relation_count: uint64,
     online_relation_status: int,
-) -> tuple[uint64, uint64, uint64, int]:
-    """Admit bounded ellipsoid candidates until an exact quotient closes."""
+    coefficient_zero: int,
+    coefficient_one: int,
+    coefficient_two: int,
+    candidate_count: uint64,
+    proposal_budget: uint64,
+) -> tuple[uint64, uint64, uint64, int, int, int, int]:
+    """Admit a resumable prefix of the lexicographic ellipsoid proposals.
+
+    The returned coefficients identify the next unexamined proposal, including
+    when the last proposal was rejected or duplicated an existing relation.
+    `candidate_count` is cumulative for this ellipsoid, not this invocation;
+    pausing must not reset its candidate limit. Callers retain the relation and
+    online-lattice workspaces alongside this cursor, with the prepared basis,
+    ellipsoid and factor base unchanged. A zero budget is a no-op. Exhaustion
+    is represented by `coefficient_two > limit_two`. Capacity overflow and
+    negative online status are fatal: their cursors must not be resumed.
+    """
     limit_zero = parameters[parameter_row, 7]
     limit_one = parameters[parameter_row, 8]
     limit_two = parameters[parameter_row, 9]
-    candidate_count: uint64 = 0
-    coefficient_two = -limit_two
+    proposal_count: uint64 = 0
     while (
         coefficient_two <= limit_two
+        and proposal_count < proposal_budget
         and online_relation_status != 2
         and not (
             streaming_relation_collection
@@ -3046,106 +3061,93 @@ def _cubic_append_reduced_ideal_ellipsoid(
             )
         )
     ):
-        coefficient_one = -limit_one
-        while (
-            coefficient_one <= limit_one
-            and online_relation_status != 2
-            and not (
-                streaming_relation_collection
-                and _cubic_modular_relation_collection_complete(
-                    modular_workspace,
+        status, coordinate_zero, coordinate_one, coordinate_two = (
+            _cubic_reduced_ellipsoid_candidate(
+                workspace,
+                basis_offset,
+                transforms,
+                transform_row_offset,
+                parameters,
+                parameter_row,
+                coefficient_zero,
+                coefficient_one,
+                coefficient_two,
+            )
+        )
+        # Advance after every examined proposal, before any early return.
+        proposal_count += 1
+        coefficient_zero += 1
+        if coefficient_zero > limit_zero:
+            coefficient_zero = -limit_zero
+            coefficient_one += 1
+            if coefficient_one > limit_one:
+                coefficient_one = -limit_one
+                coefficient_two += 1
+        if status == 1:
+            candidate_count += 1
+            if candidate_count > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES:
+                overflow_relation_count: uint64 = relation_capacity
+                overflow_relation_count += 1
+                return (
+                    overflow_relation_count,
+                    candidate_count,
+                    online_relation_count,
+                    online_relation_status,
+                    coefficient_zero,
+                    coefficient_one,
+                    coefficient_two,
+                )
+            relation_count = _cubic_append_smooth_principal_relation(
+                workspace,
+                modular_workspace,
+                relation_matrix,
+                relation_elements,
+                relation_count,
+                relation_capacity,
+                factor_count,
+                group_count,
+                coordinate_zero,
+                coordinate_one,
+                coordinate_two,
+                hnf_source,
+                hnf_result,
+                streaming_relation_collection,
+                relation_target,
+            )
+            if relation_count > relation_capacity:
+                return (
                     relation_count,
-                    relation_target,
+                    candidate_count,
+                    online_relation_count,
+                    online_relation_status,
+                    coefficient_zero,
+                    coefficient_one,
+                    coefficient_two,
+                )
+            while (
+                online_relation_quotient_enabled
+                and online_relation_count < relation_count
+                and online_relation_status != 2
+            ):
+                online_relation_status = _cubic_online_relation_lattice_update(
+                    online_relation_basis,
+                    online_relation_source,
+                    online_relation_hnf,
+                    online_relation_support,
+                    online_membership_coordinates,
+                    relation_matrix,
+                    online_relation_count,
                     factor_count,
                 )
-            )
-        ):
-            coefficient_zero = -limit_zero
-            while (
-                coefficient_zero <= limit_zero
-                and online_relation_status != 2
-                and not (
-                    streaming_relation_collection
-                    and _cubic_modular_relation_collection_complete(
-                        modular_workspace,
-                        relation_count,
-                        relation_target,
-                        factor_count,
-                    )
-                )
-            ):
-                status, coordinate_zero, coordinate_one, coordinate_two = (
-                    _cubic_reduced_ellipsoid_candidate(
-                        workspace,
-                        basis_offset,
-                        transforms,
-                        transform_row_offset,
-                        parameters,
-                        parameter_row,
-                        coefficient_zero,
-                        coefficient_one,
-                        coefficient_two,
-                    )
-                )
-                if status == 1:
-                    candidate_count += 1
-                    if candidate_count > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES:
-                        overflow_relation_count: uint64 = relation_capacity
-                        overflow_relation_count += 1
-                        return (
-                            overflow_relation_count,
-                            candidate_count,
-                            online_relation_count,
-                            online_relation_status,
-                        )
-                    relation_count = _cubic_append_smooth_principal_relation(
-                        workspace,
-                        modular_workspace,
-                        relation_matrix,
-                        relation_elements,
-                        relation_count,
-                        relation_capacity,
-                        factor_count,
-                        group_count,
-                        coordinate_zero,
-                        coordinate_one,
-                        coordinate_two,
-                        hnf_source,
-                        hnf_result,
-                        streaming_relation_collection,
-                        relation_target,
-                    )
-                    if relation_count > relation_capacity:
-                        return (
-                            relation_count,
-                            candidate_count,
-                            online_relation_count,
-                            online_relation_status,
-                        )
-                    while (
-                        online_relation_quotient_enabled
-                        and online_relation_count < relation_count
-                        and online_relation_status != 2
-                    ):
-                        online_relation_status = _cubic_online_relation_lattice_update(
-                            online_relation_basis,
-                            online_relation_source,
-                            online_relation_hnf,
-                            online_relation_support,
-                            online_membership_coordinates,
-                            relation_matrix,
-                            online_relation_count,
-                            factor_count,
-                        )
-                        online_relation_count += 1
-                coefficient_zero += 1
-            coefficient_one += 1
-        coefficient_two += 1
+                online_relation_count += 1
     return (
         relation_count,
         candidate_count,
         online_relation_count,
         online_relation_status,
+        coefficient_zero,
+        coefficient_one,
+        coefficient_two,
     )
 
 
@@ -7750,11 +7752,17 @@ def certified_complex_cubic_class_group_v1(
                     active_relation_target: uint64 = relation_capacity
                     if streaming_relation_collection:
                         active_relation_target = relation_collection_target
+                    initial_ellipsoid_count: uint64 = 0
+                    # Preparation bounds each coordinate by 64: (2 * 64 + 1)^3.
+                    complete_ellipsoid_budget: uint64 = 2146689
                     (
                         next_relation_count,
                         admitted_ellipsoid_count,
                         online_relation_count,
                         online_relation_status,
+                        next_ellipsoid_zero,
+                        next_ellipsoid_one,
+                        next_ellipsoid_two,
                     ) = _cubic_append_reduced_ideal_ellipsoid(
                         workspace,
                         modular_workspace,
@@ -7781,6 +7789,11 @@ def certified_complex_cubic_class_group_v1(
                         online_membership_coordinates,
                         online_relation_count,
                         online_relation_status,
+                        -adjacent_ellipsoid_parameters[adjacent_factor_index, 7],
+                        -adjacent_ellipsoid_parameters[adjacent_factor_index, 8],
+                        -adjacent_ellipsoid_parameters[adjacent_factor_index, 9],
+                        initial_ellipsoid_count,
+                        complete_ellipsoid_budget,
                     )
                     if (
                         online_relation_status < 0
