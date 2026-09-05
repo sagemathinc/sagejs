@@ -24,6 +24,7 @@ const {
   finalizeFunctionProvenance,
 } = require("./provenance.cjs");
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
+const { isBundleClass, prepareWorkspaceBundles } = require("./workspace-bundles.cjs");
 
 const IR_VERSION = 39;
 const MAX_SMALL_POWER = 64n;
@@ -717,6 +718,7 @@ function supportedModulePreamble(statement) {
   if (isEmptyDecoratorStatement(statement) ||
       nodeType(statement) === "AST_EmptyStatement") return true;
   if (isNativeRecordClass(statement)) return true;
+  if (isBundleClass(statement)) return true;
   if (nodeType(statement) !== "AST_Imports") return false;
   return array(statement.imports).every((item) => {
     const moduleName = item.module?.name;
@@ -970,6 +972,7 @@ async function lowerSource(source, filename, options = {}) {
   const foreignImports = ffiImports(topLevel, filename);
   const foreignFunctions = foreignImports.functions;
   const foreignResources = foreignImports.resources;
+  const workspaces = prepareWorkspaceBundles(topLevel, compiler, foreignResources, filename);
   const definitions = topLevel.filter(
     (statement) => nodeType(statement) === "AST_Function",
   );
@@ -1015,12 +1018,13 @@ async function lowerSource(source, filename, options = {}) {
   // be compiled into the same native dependency graph rather than becoming
   // an unresolved call or a name-based intrinsic.
   for (const fn of definitions) {
+    const expandedFn = workspaces.lower(fn).fn;
     const returnType = canonicalType(
-      fn.return_annotation,
+      expandedFn.return_annotation,
       records,
       foreignResources,
     );
-    const paramTypes = array(fn.argnames).map((arg) =>
+    const paramTypes = array(expandedFn.argnames).map((arg) =>
       canonicalType(arg.annotation, records, foreignResources)
     );
     const legacyFieldSignature = [
@@ -1046,7 +1050,7 @@ async function lowerSource(source, filename, options = {}) {
     );
     if (completeSignature || partiallyTypedSelected) {
       const signature = signatureFromFunction(
-        fn,
+        expandedFn,
         filename,
         records,
         foreignResources,
@@ -1085,8 +1089,10 @@ async function lowerSource(source, filename, options = {}) {
     );
   }
   function lowerDefinition(fn) {
+    const expanded = workspaces.lower(fn);
+    fn = expanded.fn;
     const signature = signatures.get(fn.name.name);
-    return signature === undefined
+    const result = signature === undefined
       ? lowerLegacyFunction(fn, decoratedMode)
       : isFloat64Signature(signature)
         ? lowerFloat64Function(
@@ -1123,6 +1129,11 @@ async function lowerSource(source, filename, options = {}) {
             integerConstants,
             foreignImports.canonicalResources,
           );
+    if (expanded.metadata.length) {
+      result.workspaceBundles = expanded.metadata;
+      if (expanded.metadata.some(item => item.kind === "parameter")) result.hostCallable = false;
+    }
+    return result;
   }
   const loweredDefinitions = [...selectedDefinitions];
   const lowered = [];

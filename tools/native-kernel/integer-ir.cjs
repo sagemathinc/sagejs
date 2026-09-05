@@ -2157,6 +2157,17 @@ function assignScalar(targetNode, value, context, operations) {
 }
 
 function lowerBufferAssignment(item, right, operator, context) {
+  if (nodeType(item.property) === "AST_New" &&
+      item.property.expression?.name === "slice") {
+    expect(context, item, !context.variables.has("slice"),
+      "native fixed slices require the unshadowed built-in slice");
+    const bounds = array(item.property.args);
+    expect(context, item, operator === "=" && bounds.length === 3 &&
+      nodeType(bounds[2]) === "AST_Null",
+      "native fixed slices require contiguous assignment without a step");
+    return lowerFixedVectorSlice({ ...item, property: bounds[0],
+      property2: bounds[1], assignment: right }, context);
+  }
   const operations = [];
   const liveOwnerType = nodeType(item.expression) === "AST_SymbolRef"
     ? context.variables.get(item.expression.name)
@@ -2731,9 +2742,75 @@ function lowerArenaAllocation(statement, context) {
   return operations;
 }
 
+function lowerFixedVectorSlice(assign, context) {
+  expect(context, assign, nodeType(assign.expression) === "AST_SymbolRef" &&
+    context.variables.get(assign.expression.name) === LIVE_INTEGER_VECTOR_TYPE,
+    "native fixed slices require NativeIntegerVector storage");
+  expect(context, assign, assign.property && assign.property2,
+    "native fixed slices require explicit bounds");
+  const rhs = assign.assignment;
+  expect(context, rhs, nodeType(rhs) === "AST_Array" && rhs.is_tuple,
+    "native fixed slices require a literal tuple");
+  const operations = [];
+  // Snapshot every RHS before evaluating the target bounds or publishing a
+  // store. In particular, a tuple that permutes vector entries must not borrow
+  // references which subsequent stores can overwrite.
+  const values = array(rhs.elements).map((element) => {
+    // Literal values have no evaluation effects and cannot be invalid RHS
+    // types. Materialize them at their store, avoiding an unnecessarily live
+    // array of GMP temporaries. Allocation failure retains scalar-store
+    // semantics (the slice does not promise transactional limb allocation).
+    const literal = integerLiteral(element);
+    if (literal !== undefined) return { literal, element };
+    const value = coerceInteger(lowerExpression(element, context, operations),
+      context, element, operations);
+    // Scalar locals and literals cannot be changed by stores to this vector.
+    // Their value is already stable; copying them again only adds exact limb
+    // traffic. Keep explicit snapshots for reads/calls with possible aliases.
+    if (nodeType(element) === "AST_SymbolRef") {
+      return { name: value.name };
+    }
+    const target = temporary(context, element, "Integer");
+    operations.push({ kind: "integer.copy", target, source: value.name });
+    return { name: target };
+  });
+  const vector = liveIntegerVectorName(assign.expression, context);
+  const start = lowerUint64Operand(assign.property, context, operations);
+  const stop = lowerUint64Operand(assign.property2, context, operations);
+  expect(context, assign, start.type === "uint64" && stop.type === "uint64",
+    "native fixed slice bounds currently require uint64 expressions");
+  const length = temporary(context, assign, "uint64");
+  operations.push({ kind: "integer.vector.length", target: length, vector });
+  const guard = (operation, left, right, exception, message) => {
+    const condition = temporary(context, assign, "bool");
+    operations.push({ kind: "uint64.compare", operation, target: condition, left, right });
+    operations.push({ kind: "if", condition: { operations: [], value: condition },
+      body: [{ kind: "raise", exception, message }], alternative: [] });
+  };
+  guard("lt", stop.name, start.name, "IndexError", "NativeIntegerVector slice out of range");
+  guard("gt", stop.name, length, "IndexError", "NativeIntegerVector slice out of range");
+  const width = temporary(context, assign, "uint64");
+  operations.push({ kind: "uint64.binary", operation: "sub", target: width,
+    left: stop.name, right: start.name });
+  const count = emitUint64Constant(context, assign, operations, BigInt(values.length));
+  guard("ne", width, count.name, "ValueError", "NativeIntegerVector slice cannot resize storage");
+  values.forEach((value, offset) => {
+    const delta = emitUint64Constant(context, assign, operations, BigInt(offset));
+    const index = temporary(context, assign, "uint64");
+    operations.push({ kind: "uint64.binary", operation: "add", target: index,
+      left: start.name, right: delta.name });
+    const stored = value.name ?? emitConstant(context, value.element, operations, value.literal).name;
+    operations.push({ kind: "integer.vector.set", vector, index, indexType: "uint64", value: stored });
+  });
+  return operations;
+}
+
 function lowerAssignment(statement, context) {
   context.scalarCoercions = new Map();
   const assign = statement.body;
+  if (nodeType(assign) === "AST_Splice" && assign.assignment !== undefined) {
+    return lowerFixedVectorSlice(assign, context);
+  }
   if (nodeType(assign) === "AST_AnnotatedAssignment") {
     expect(
       context,
@@ -3073,6 +3150,17 @@ function lowerRange(node, context, targetName = undefined) {
 function lowerStatements(statements, context) {
   const result = [];
   for (const statement of statements) {
+    if (nodeType(statement) === "AST_WorkspaceBind") {
+      const operations = [];
+      for (const member of statement.members) {
+        const value = lowerExpression(member.expression, context, operations, member.type);
+        expect(context, statement, value.type === member.type,
+          `workspace member requires ${member.type}, got ${value.type}`);
+      }
+      annotateOperations(operations, sourceSpan(statement, context.filename));
+      result.push(...operations);
+      continue;
+    }
     if (nodeType(statement) === "AST_SimpleStatement") {
       const arenaAllocation = lowerArenaAllocation(statement, context);
       if (arenaAllocation !== undefined) {
