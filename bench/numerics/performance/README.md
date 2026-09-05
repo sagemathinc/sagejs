@@ -47,6 +47,8 @@ phase profiles, isolated startup/memory/payload measurements, matched SciPy
 oracles, backend variants and browser/four-platform evidence remain explicitly
 listed in each report. A completed file means collection finished, **not** that
 the program or performance targets passed. Partial files retain `complete: false`.
+An interrupted batch is recorded as `censored-batch` with its batch timeout;
+that timeout is not treated as a per-call time or a lower bound for its median.
 
 Before calling a speedup confirmed, collect paired/interleaved before/after runs
 and an independent repeat on a quiet persistent host, inspect distributions and

@@ -84,6 +84,24 @@ function save(options, report) {
   fs.writeFileSync(options.output, `${JSON.stringify(report, null, 2)}\n`);
 }
 
+function failedBatch(error, batch) {
+  return {
+    ...batch,
+    classification: error.name === "SageSessionTimeoutError" || error.code === "ETIMEDOUT"
+      ? "censored-batch" : "failed-batch",
+    error_name: error.name,
+    error_message: error.message,
+  };
+}
+
+async function closeSession(session) {
+  // A timed-out evaluation starts a replacement worker. Observe that worker's
+  // readiness before closing it, including its expected close rejection.
+  const ready = session.ready().catch(() => {});
+  await session.close();
+  await ready;
+}
+
 async function main(args = process.argv.slice(2)) {
   const options = parseArguments(args);
   // Every numerical case in this tranche measures the documented dynamic path.
@@ -114,6 +132,7 @@ async function main(args = process.argv.slice(2)) {
     complete: false,
   };
   let session;
+  let activeBatch = { phase: "initialization" };
   if (options.runtime === "sagejs") {
     const { inspectBuildReceipt } = require(path.join(options.root, "scripts/build-receipt.cjs"));
     const build = inspectBuildReceipt(options.root);
@@ -138,6 +157,7 @@ async function main(args = process.argv.slice(2)) {
       if (loaded.error) throw new Error(JSON.stringify(loaded.error));
     }
     for (const name of options.cases) for (const level of options.levels) {
+      activeBatch = { phase: "measurement", case: name, trace: level, timeout_ms: options.timeout };
       process.stderr.write(`[numerical-perf] ${options.runtime} ${name}/${level}\n`);
       const call = callSource(name, level, options);
       const start = performance.now();
@@ -168,13 +188,18 @@ async function main(args = process.argv.slice(2)) {
       save(options, report);
       process.stderr.write(`[numerical-perf] ${record.median_ms.toFixed(3)} ms median\n`);
     }
+    activeBatch = { phase: "final-identity-check" };
     assert.deepEqual(sourceIdentity(options.root), before, "source changed during collection");
     report.memory_after = process.memoryUsage();
     report.complete = true;
     save(options, report);
     if (!options.output) process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  } catch (error) {
+    report.failure = failedBatch(error, activeBatch);
+    save(options, report);
+    throw error;
   } finally {
-    if (session) await session.close();
+    if (session) await closeSession(session);
   }
   return report;
 }
@@ -182,4 +207,7 @@ async function main(args = process.argv.slice(2)) {
 if (require.main === module) {
   main().catch((error) => { console.error(error); process.exitCode = 1; });
 }
-module.exports = { CASES, LEVELS, parseArguments, parseRecord, pythonPrefix, callSource, main };
+module.exports = {
+  CASES, LEVELS, parseArguments, parseRecord, pythonPrefix, callSource,
+  failedBatch, closeSession, main,
+};

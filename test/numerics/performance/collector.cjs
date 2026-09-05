@@ -4,7 +4,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
-  parseArguments, parseRecord, callSource,
+  parseArguments, parseRecord, callSource, failedBatch, closeSession,
 } = require("../../../bench/numerics/performance/run.cjs");
 
 test("performance collection requires explicit valid workloads and sampling options", () => {
@@ -21,6 +21,30 @@ test("performance collection requires explicit valid workloads and sampling opti
     ["--samples", "0"], ["--samples", "Infinity"], ["--samples", "1.5"],
     ["--timeout", "-1"], ["--warmups", "9007199254740992"],
   ]) assert.throws(() => parseArguments(args), undefined, JSON.stringify(args));
+});
+
+test("timeouts are censored batches, not fabricated per-call timing samples", () => {
+  const error = new Error("time limit reached");
+  error.name = "SageSessionTimeoutError";
+  const failure = failedBatch(error, { case: "trace-256", timeout_ms: 600000 });
+  assert.equal(failure.classification, "censored-batch");
+  assert.equal(failure.timeout_ms, 600000);
+  assert.equal(failure.median_ms, undefined);
+  error.name = "Error";
+  error.code = "ETIMEDOUT";
+  assert.equal(failedBatch(error, {}).classification, "censored-batch");
+  assert.equal(failedBatch(new Error("bad answer"), {}).classification, "failed-batch");
+});
+
+test("collector teardown observes a pending replacement worker's readiness", async () => {
+  let rejectReady;
+  const readiness = new Promise((resolve, reject) => { rejectReady = reject; });
+  const calls = [];
+  await closeSession({
+    ready() { calls.push("ready"); return readiness; },
+    async close() { calls.push("close"); rejectReady(new Error("session closed")); },
+  });
+  assert.deepEqual(calls, ["ready", "close"]);
 });
 
 test("performance records cannot silently select one of duplicate outputs", () => {
