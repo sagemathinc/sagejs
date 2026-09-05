@@ -84,12 +84,35 @@
   },
   "selection": "explicit-only",
   "qualification": {
-    "status": "pending_source_current_requalification",
-    "reason": "Portable build-report binding now excludes only host-builder provenance; exact source-current qualification is required.",
+    "status": "qualified",
+    "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+    "summary_sha256": "e70a52f22382a2d02353f6792d08f17aca7bc3542bd56ada6b390022ccd9517e",
+    "summary_bytes": 121831,
     "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
     "qualification_tooling_bundle_sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1",
     "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+    "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
-    "invalidated_summary": "qualification-v1.json"
+    "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+    "artifact_sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+    "artifact_bytes": 72592,
+    "case_execution_sha256": "13b574546279cfaa3e5bc4226d81bbae5b860481280cddc048684a5b368f9762",
+    "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+    "evidence_receipts_sha256": {
+      "sanitizer": "00a111a04aca3e56a90ed5befb9c4fca0102b9e95ad07d2228c4072d5e06005e",
+      "destructive-wasm": "133defdc8b497e808dda27476588be5b58d20adecdd0877c062b05b2bd186110",
+      "browser-lifecycle": "70a3ffe2efcde7c0f02a6bab4ed7d495d5210c8fbc2db4980b116bcb08d37dff",
+      "public-integration": "78606e12c42c11c6f6e69d7014dd88667ac36505c9316943d7d5215fd2716d13",
+      "resource-corruption": "83e29d6b2b0b51f5dcf785241676dc9a02ada8684544f7e020b48d5a719e8dc3",
+      "relocation": "4637cc942efabd4f3b613f45ee2683d6c21f34aec16e9578dd48c90a970e07ed",
+      "sea": "dfd34bf94fc87e39371579dff5f953a5b0d24d87c6f4f12e97bc15c5edbd0d15"
+    },
+    "portable_receipts_sha256": {
+      "linux-x64": "13b574546279cfaa3e5bc4226d81bbae5b860481280cddc048684a5b368f9762",
+      "linux-arm64": "bbfe1b7f57b0f0bd5d0ff307ee3a859a9eb60e783248b14b497ed967cf9824ad",
+      "macos-arm64": "7b50184dbb2e277ba5f4ccd543cce668850eb0af4c71ba9e4893fcb8b5f8d9b4",
+      "windows-x64": "6cd54335368b97e322f93a4415e76f35dc64e4654d675ff403119e9e5ecfa6c1"
+    },
+    "historical_cobyla_status": "excluded-not-qualified"
   }
 }
