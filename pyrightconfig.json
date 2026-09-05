@@ -243,6 +243,7 @@
     "src/lib/sagejs/numerics/_json.py",
     "src/lib/sagejs/numerics/_evaluation_core.py",
     "src/lib/sagejs/numerics/_evaluation_root.py",
+    "src/lib/sagejs/numerics/linear_algebra/_packed_lu.py",
     "src/lib/sagejs/numerics/evaluators.py",
     "src/lib/sagejs/numerics/prepared_roots.py",
     "src/lib/sagejs/numerics/capabilities.py",

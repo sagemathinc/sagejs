@@ -370,6 +370,10 @@ shared storage and evidence contracts before parallel domain acceleration.
 
 ### N3 — Dense linear algebra and spectral kernels
 
+The [dense checkpoint](numerical-dense-checkpoint.md) records the initial
+bounded source-LU candidate and the existing prefix audit. It is not yet a
+public backend, library selection or N3 acceptance pass.
+
 Audit already linked numerical dependencies and reuse a suitable validated
 prefix. Compare typed-source small-matrix kernels with a narrow mature-library
 adapter for LU/Cholesky/QR, then eigen/SVD. Use independent backward-error,
