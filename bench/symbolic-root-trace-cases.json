@@ -1,0 +1,20 @@
+{
+  "schema": "sagejs.browser-wasm-performance-cases/v1",
+  "description": "Compare the scalar symbolic root default with explicitly requested iteration traces through the same validated root solver. Use browser-wasm-performance.mjs with --workloads and either runtime; both workloads return the same root.",
+  "cases": [
+    {
+      "id": "scalar-root-default-trace",
+      "family": "numerical",
+      "requires": [],
+      "source": "x=var('x')\nprint(float((x^2-2).find_root(1,2)))",
+      "timeout_ms": 30000
+    },
+    {
+      "id": "scalar-root-explicit-iterations",
+      "family": "numerical",
+      "requires": [],
+      "source": "x=var('x')\nprint(float((x^2-2).find_root(1,2,trace='iterations')))",
+      "timeout_ms": 30000
+    }
+  ]
+}
