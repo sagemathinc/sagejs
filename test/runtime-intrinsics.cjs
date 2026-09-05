@@ -38,9 +38,13 @@ const bootstrapAssignments = Array.from(
   (match) => [match[1], match[2] ?? match[3]],
 );
 const moduleStateNames = ["_numerical_backends"];
+// Python module protocol hooks are discovered dynamically, not lowered as
+// low-level compiler intrinsics. Keep this exception exact and explicit.
+const moduleProtocolNames = ["__dir__"];
+assert.ok(moduleProtocolNames.every((name) => bootstrapFunctions.includes(name)));
 const bootstrapNames = [
   ...new Set([
-    ...bootstrapFunctions,
+    ...bootstrapFunctions.filter((name) => !moduleProtocolNames.includes(name)),
     ...bootstrapAssignments.map(([name]) => name),
     ...moduleStateNames,
     "undefined",
