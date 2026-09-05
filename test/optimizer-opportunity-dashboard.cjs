@@ -11,9 +11,11 @@ const root = path.resolve(__dirname, "..");
 const {
   analyzeSources,
   dashboardJson,
+  dashboardInputFiles,
   formatQuery,
   queryDashboard,
   renderMarkdown,
+  inputIdentity,
   validateDashboard,
 } = require("../scripts/optimizer-opportunity-dashboard.cjs");
 const {
@@ -31,6 +33,27 @@ const {
   semanticRegionIdentity,
   sourceUnitIdentity,
 } = require("../tools/optimizer-development/identity.cjs");
+
+test("generated dependency trees cannot change first-party dashboard inputs", () => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-dashboard-inputs-"));
+  try {
+    const moduleDirectory = path.join(temporary, "src/lib/sagejs/numerics/backend");
+    fs.mkdirSync(moduleDirectory, { recursive: true });
+    fs.writeFileSync(path.join(moduleDirectory, "build.py"), "def answer():\n    return 42\n");
+    const before = inputIdentity(temporary);
+    for (const name of ["build", "dist", ".native", ".cache", "__pycache__", "node_modules", ".git"]) {
+      const generated = path.join(moduleDirectory, name, "source/vendor/test");
+      fs.mkdirSync(generated, { recursive: true });
+      fs.writeFileSync(path.join(generated, "unrelated.py"), "not valid first-party Python\n");
+    }
+    assert.deepEqual(inputIdentity(temporary), before);
+    assert.deepEqual(dashboardInputFiles(temporary), [path.join(moduleDirectory, "build.py")]);
+    fs.writeFileSync(path.join(moduleDirectory, "build.py"), "def answer():\n    return 43\n");
+    assert.notEqual(inputIdentity(temporary).digest, before.digest);
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
+});
 
 function identityRange(source) {
   return {
