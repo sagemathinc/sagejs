@@ -395,6 +395,7 @@
     "bench:numbers:check": "node bench/cowasm/run.cjs --budget bench/cowasm/numbers-budget.json",
     "bench:brython": "node bench/cowasm/run.cjs --suite brython",
     "bench:programs": "node bench/cowasm/run.cjs --suite programs",
+    "bench:python:compat": "node bench/cowasm/run.cjs --suite python-compat-warm-v1 --policy bench/python-compat/performance-policy.json",
     "bench:micropython": "node bench/micropython-conformance.cjs",
     "bench:mpmath": "node bench/compare-mpmath.cjs",
     "bench:mpmath:aot": "node bench/compare-mpmath-aot.cjs",
