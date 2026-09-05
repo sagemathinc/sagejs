@@ -83,7 +83,7 @@ class Arena:
         return Endpoints()
 
 
-def run_case(function, names, bounds, accepted):
+def run_case(function, names, bounds, accepted, analytic_ready=True):
     calls = []
 
     def result(name, value):
@@ -104,17 +104,17 @@ def run_case(function, names, bounds, accepted):
         dependency_scan_active=True,
         dependency_log_scale=10,
         analytic_scale=1,
-        regulator_lower=100,
-        regulator_upper=110,
-        unit_zero=1,
-        unit_one=0,
-        unit_two=0,
+        proof_regulator_lower=100,
+        proof_regulator_upper=110,
+        proof_unit_zero=1,
+        proof_unit_one=0,
+        proof_unit_two=0,
         identity_zero=1,
         identity_one=0,
         identity_two=0,
         denominator=1,
         factor_count=3,
-        relation_count=6,
+        proof_relation_count=6,
         relation_rank=3,
         invariant_count=1,
         class_number_upper=3,
@@ -134,16 +134,25 @@ def run_case(function, names, bounds, accepted):
         _CUBIC_PROOF_ANALYTIC_GRH=1,
         _cubic_reconstruct_archimedean_unit=result("reconstruct", (1, 7, 8, 9)),
         _cubic_regulator_bounds=result("authenticate", bounds),
-        _cubic_prepare_bf_plan=result("bf_plan", (True, 1, 5)),
+        _cubic_prepare_bf_plan=result("bf_plan", (analytic_ready, 1, 5)),
         _cubic_evaluate_bf_plan=result("bf_enclosure", (True, 350, 352, 1)),
         _cubic_log_interval_bounds=result("regulator_log", (100, 101)),
         _cubic_log_two_pi_bounds=result("two_pi_log", (200, 201)),
         _cubic_arb_log_positive_rational_bounds=result("log_two", (69, 70)),
         _cubic_dyadic_ceiling_quotient=lambda x, y: (x + y - 1) // y,
     )
+    if not analytic_ready:
+        state.update(
+            transcript_mode=1,
+            _cubic_publish_relation_factor_rows=result("publish_factors", True),
+            _cubic_publish_relation_rows=result("publish_rows", True),
+        )
     actual = function(**{name: state[name] for name in names})
     assert actual is accepted, (bounds, actual, output[25:28], calls)
-    if accepted:
+    if not analytic_ready:
+        assert output[0] == -991 and output[25:28] == [-991] * 3, output
+        assert calls == ["reconstruct", "authenticate", "bf_plan"], calls
+    elif accepted:
         assert output[25:28] == [7, 8, 9], output
         assert output[40:42] == list(bounds), output
         assert output[35] == 1 and output[44:46] == [-3, 3], output
@@ -172,9 +181,14 @@ def main():
         run_case(function, names, bounds, True)
     for bounds in invalid:
         run_case(function, names, bounds, False)
+    run_case(function, names, (10, 11), False, analytic_ready=False)
     print(
         json.dumps(
-            {"accepted": len(valid), "rejected_before_publication": len(invalid)}
+            {
+                "accepted": len(valid),
+                "rejected_before_publication": len(invalid),
+                "analytic_failure_before_publication": 1,
+            }
         )
     )
 

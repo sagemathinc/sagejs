@@ -1,0 +1,85 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-staged-exact-certification",
+  "title": "Cubic Staged Exact Certification",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Certify bounded complex-cubic relation prefixes and resume only on explicit mathematical insufficiency within the same resident native computation",
+  "base_commit": "fab12fdff948ca3dfbc555ce29df6fa322b10108",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+    "test/number-field-cubic-staged-certification.cjs",
+    "test/number-field-cubic-adjacent-cursor.cjs",
+    "test/number-field-cubic-fmpz-closure.cjs",
+    "test/fixtures/cubic-staged-certification.py",
+    "test/fixtures/cubic-reconstructed-regulator-guard.py",
+    "test/number-field-cubic-reconstructed-regulator-guard.cjs",
+    "docs/cubic-staged-exact-closure-design.md",
+    "docs/cubic-staged-neighbor-protocol.md",
+    "docs/complex-cubic-native-class-group-proof.md",
+    "bench/class-unit-groups/cubic-staged-certification.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI and independent exact certificate replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-cubic-adjacent-cursor.cjs test/number-field-cubic-resumable-ellipsoid.cjs test/number-field-cubic-staged-certification.cjs test/number-field-cubic-reconstructed-regulator-guard.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.707,
+      "started_at": "2026-09-05T06:16:27.384Z",
+      "commit": "855c8cd991240e974a0bb25133e5d54a70320c62",
+      "workspace_fingerprint": "196c74e0f6c724f252ffcb4dbd7699e74df2fdba861cc741bd2cd77f35a69761",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.483,
+      "started_at": "2026-09-05T06:16:35.713Z",
+      "commit": "855c8cd991240e974a0bb25133e5d54a70320c62",
+      "workspace_fingerprint": "196c74e0f6c724f252ffcb4dbd7699e74df2fdba861cc741bd2cd77f35a69761",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Pre-registered twenty benchmark-unseen C3/index-three neighbors. Separated proof state from retained discovery; added complete resumable outer ideal/ellipsoid/shell cursor and terminal online-failure propagation. Revision a31e5b9b passed a fresh 39-family IR39 production build, ten cubic ledger/receipt/replay regressions, eight cursor/support/publication tests (including actual compiled cursor and exact support sanitizer witnesses), and strict 247. Recorded runs qualify that pre-merge workspace, not the later 813e77a1 dependency merge. Independent review found no valid-state one-shot proposal or root live-output regression. Production still makes one complete collector call; the full staged proof driver remains pending.",
+    "risks": [
+      "The complete reusable proof suffix, explicit mathematical insufficiency statuses and attempt/resume schedule are not implemented; no new PARI speed claim.",
+      "The measured support-only checkpoint envelope is not a bound for complete repeated certification. Public wrapper retry must not count as one resident attempt.",
+      "The source family measures 422246 bytes and passes the integration-owned 425000 allowance. Optimizer provenance refresh and combined-dependency qualification remain pending after merging prefix-Arb and inferred-resource-indexing prerequisites.",
+      "Full current-source native/platform qualification remains pending; prerequisite baseline separately reproduces rational cache-pressure and synthetic portable discriminant-ratio gate failures.",
+      "The twenty neighbors are conditional on retaining the provisional target after frozen timings; none has executed. The opt baseline remains f7f00552."
+    ],
+    "next_steps": [
+      "Use two thin root allocation paths with shared borrowed proof helpers: fixed bounded scratch for staged execution, existing lazy exact-sized allocations for other regimes.",
+      "Split ambiguous recovery statuses; implement at most two same-state attempts (n+6 then n+22) with rigorous fatal/recoverable distinctions and no repeated proof when no rows were added.",
+      "Qualify complete scratch at <=3 MiB with one core invocation and zero retry shift, exhaustion or upstream allocation; use the integrated generic prefix-Arb binding.",
+      "Finish opt baseline; freeze and time the staged candidate and registered neighbors, then recheck the thousand-field frontier.",
+      "Complete integration-owned source-size/provenance and current-source platform gates before promotion."
+    ]
+  }
+}
