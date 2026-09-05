@@ -239,3 +239,8 @@ backend replacement, incomplete success, close, and the distinct-policy guard.
 Initial local timings remain around 4 ms per complete native root: these small
 changes do not establish a target pass or resolve the larger record-construction
 cost. Full product and performance qualification remain open.
+
+The [owned-workspace browser witness](../bench/numerics/performance/results/n4-root-owned-workspace-2026-09-05/README.md)
+now passes all 12 public configurations at `7ad42f014`. Eleven focused contract,
+trace and prepared-API tests, Node 22.22.2, strict Python (375 modules) and
+architecture checks also pass. None of these claims full product qualification.
