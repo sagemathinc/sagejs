@@ -18,6 +18,147 @@ const fixture = JSON.parse(
   ),
 );
 
+test("large Jacobians retain the exact Sage homology polynomials and factors", { timeout: 240_000 }, async (t) => {
+  const oracle = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures/modular-abelian-varieties-large-sage.json"), "utf8"));
+  const session = await createSage();
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "import json",
+    "answers=[]",
+    "for N in [1009,2003]:",
+    "    J=J0(N)",
+    "    T=J.integral_homology().hecke_matrix(2)",
+    "    D=J.decomposition()",
+    "    assert all(A.lattice().rank()==2*A.dimension() for A in D)",
+    "    answers.append({'level':N,'dimension':J.dimension(),'factors':sorted(A.dimension() for A in D),'hecke2_coefficients':[str(c) for c in T.charpoly().list()]})",
+    "print(json.dumps(answers))",
+  ].join("\n"));
+  assert.deepEqual(JSON.parse(result.stdout), oracle.cases);
+});
+
+test("blocked exact matrix polynomials and denominator clearing", { timeout: 120_000 }, async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "from sagejs.modular_abelian_varieties.abelian_variety import _polynomial_at_matrix, _clear_denominators, _integral_matrix",
+    "R=PolynomialRing(QQ,'x'); x=R.gen()",
+    "matrices=[matrix(QQ,[[1,2,0],[0,1,3],[0,0,1]]),matrix(QQ,[[1/2,2/3],[3/7,-2]])]",
+    "for A in matrices:",
+    "    for degree in [0,1,4,5,8,17,37,75]:",
+    "        f=R([(-1)^i*(i+1)/3 for i in range(degree+1)])",
+    "        assert _polynomial_at_matrix(f,A)==f(A)",
+    "d=2^80+7",
+    "A=matrix(QQ,[[1/d,1/(3*d)],[0,2/d]])",
+    "B,den=_clear_denominators(A)",
+    "assert den==3*d and B==matrix(ZZ,[[3,1],[0,6]])",
+    "try:",
+    "    _integral_matrix(A,'fractional input')",
+    "    assert False",
+    "except ArithmeticError:",
+    "    pass",
+    "print('exact matrix arithmetic verified')",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), "exact matrix arithmetic verified");
+});
+
+test("cyclic newform coordinates certify full operators, not just one row", { timeout: 120_000 }, async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "from sagejs.modular_abelian_varieties.abelian_variety import _polynomial_at_matrix",
+    "for N in [23,43,101]:",
+    "    for f in CuspForms(N,2).newforms():",
+    "        d=f.defining_polynomial().degree()",
+    "        assert f._cyclic_basis.nrows()==d and f._cyclic_basis.ncols()==d",
+    "        for n in [1,2,3,5,7]:",
+    "            T=f.hecke_constituent().hecke_matrix(n)",
+    "            c=f._coordinates_for_operator(T)",
+    "            polynomial=PolynomialRing(QQ,'x')(c.list())",
+    "            assert _polynomial_at_matrix(polynomial,f._primitive_operator)==T",
+    "        assert f.certificate().verify()",
+    "        if d>1:",
+    "            fake=matrix(QQ,d,d); fake[1,0]=1",
+    "            assert fake.row(0)==vector(QQ,[0]*d)",
+    "            try:",
+    "                f._coordinates_for_operator(fake)",
+    "                assert False",
+    "            except ArithmeticError:",
+    "                pass",
+    "print('faithful cyclic representation verified')",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), "faithful cyclic representation verified");
+});
+
+test("integral surjectivity uses the exact row lattice without Smith transforms", { timeout: 120_000 }, async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "from sagejs.modular_abelian_varieties.abelian_variety import _is_integrally_surjective",
+    "examples=[(matrix(ZZ,[[2,0],[0,3],[1,1]]),True),(matrix(ZZ,[[2,0],[0,2]]),False),(matrix(ZZ,[[1,0]]),False),(matrix(ZZ,0,2),False),(matrix(ZZ,3,0),True)]",
+    "for A,want in examples:",
+    "    assert _is_integrally_surjective(A)==want",
+    "a=2^80+7",
+    "assert _is_integrally_surjective(matrix(ZZ,[[a,a+1],[a-1,a]]))",
+    "cls=type(matrix(ZZ,1,1)); original=cls.smith_form",
+    "def forbidden(*args,**kwds):",
+    "    raise AssertionError('surjectivity must not compute Smith transforms')",
+    "cls.smith_form=forbidden",
+    "try:",
+    "    f=max(CuspForms(43,2).newforms(),key=lambda g:g.defining_polynomial().degree())",
+    "    Q=AbelianVariety(f); q=Q.quotient_map()",
+    "    assert q.is_surjective() and q.verify()",
+    "    assert not _is_integrally_surjective(2*q.matrix())",
+    "finally:",
+    "    cls.smith_form=original",
+    "print('integral surjectivity verified')",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), "integral surjectivity verified");
+});
+
+test("homology decomposition stops at certified sign multiplicity two", { timeout: 120_000 }, async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "J = J0(101)",
+    "cls = type(J.modular_symbols())",
+    "original_hecke = cls.hecke_matrix",
+    "calls = []",
+    "def checked_hecke(self, index):",
+    "    calls.append(index)",
+    "    assert index <= 3, ('unnecessary Hecke operator', index)",
+    "    return original_hecke(self, index)",
+    "cls.hecke_matrix = checked_hecke",
+    "try:",
+    "    D = J.decomposition()",
+    "    assert [A.dimension() for A in D] == [1, 7]",
+    "    assert all(A.lattice().rank() == 2*A.dimension() for A in D)",
+    "    assert all(A.modular_symbols(1).dimension() == A.dimension() for A in D)",
+    "    assert all(A.modular_symbols(-1).dimension() == A.dimension() for A in D)",
+    "    assert all(A.inclusion_map().verify() for A in D)",
+    "finally:",
+    "    cls.hecke_matrix = original_hecke",
+    "print(sorted(set(calls)))",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), "[2, 3]");
+});
+
+test("sign-aware homology decomposition preserves oldspace refinement", { timeout: 240_000 }, async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "for N in [33, 49, 121, 143, 169]:",
+    "    J = J0(N)",
+    "    reference = J.modular_symbols().decomposition(anemic=False)",
+    "    D = J.decomposition()",
+    "    assert sorted(A.dimension()*2 for A in D) == sorted(B.dimension() for B in reference)",
+    "    spaces = [B.basis_matrix().row_space() for B in reference]",
+    "    assert all(A.modular_symbols().basis_matrix().row_space() in spaces for A in D)",
+    "    assert all(A.inclusion_map().verify() for A in D)",
+    "print('exact oldspace agreement')",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), "exact oldspace agreement");
+});
+
 test(
   "J0 exact homology and Hecke data match the Sage/Magma corpus",
   { timeout: 240_000 },

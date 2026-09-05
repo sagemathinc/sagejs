@@ -30244,9 +30244,9 @@
         "name": "ModularSymbols",
         "qualified": "ModularSymbols",
         "path": "src/baselib/modular.py",
-        "line": 5691,
+        "line": 5695,
         "excerpt": {
-          "start_line": 5679,
+          "start_line": 5683,
           "text": "            + \") of weight \"\n            + str(self._weight)\n            + \" with sign \"\n            + str(self._sign)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ModularSymbols(\n    group: Any = 1,\n    weight: Any = 2,\n    sign: Any = 0,\n    base_ring: Any = None,\n) -> ModularSymbolsSpace:\n    r\"\"\"\n    Construct a modular-symbol Hecke module.\n\n    Weight-2 full `Gamma_0(N)` spaces with sign zero provide exact matrices\n    for every Hecke operator `T_n`. Prime operators are assembled natively\n    from a minimal Manin presentation; general indices use multiplicativity\n    and the weight-2 prime-power recurrence. Higher even weights over `QQ`"
         }
       },
@@ -30439,9 +30439,9 @@
         "name": "cuspidal_submodule",
         "qualified": "ModularSymbolsSpace.cuspidal_submodule",
         "path": "src/baselib/modular.py",
-        "line": 5448,
+        "line": 5452,
         "excerpt": {
-          "start_line": 5436,
+          "start_line": 5440,
           "text": "        sage: M = ModularSymbols(1000, 2)\n        sage: M.hecke_matrix(6).trace()\n        60\n        ```\n        \"\"\"\n        return self.T(index).matrix()\n\n    def T(self, index: Any) -> HeckeOperator:\n        return HeckeOperator(self, _positive_integer(index, \"Hecke index\"))\n\n    hecke_operator = T\n\n    def cuspidal_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the exact kernel of the boundary map.\"\"\"\n        if self._is_cuspidal:\n            return self\n        if self._supports_native_weight2():\n            if self._cuspidal_cache is None:\n                ambient = self.ambient_module()\n                change = ambient._ambient_change_of_basis()\n                if self.is_ambient():\n                    if change is None:\n                        basis = (\n                            ambient.p1list()\n                            .cuspidal_basis_matrix()"
         }
       },
@@ -30799,7 +30799,7 @@
       "examples": [
         {
           "id": "src/baselib/modular.py#1e0fada8cc8c7990-e3b0c44298fc1c14",
-          "line": 5436,
+          "line": 5440,
           "source": "M = ModularSymbols(1000, 2)",
           "want": "",
           "tags": [],
@@ -30815,7 +30815,7 @@
         },
         {
           "id": "src/baselib/modular.py#92b5ba6413319e6f-39fa9ec190eee7b6",
-          "line": 5437,
+          "line": 5441,
           "source": "M.hecke_matrix(6).trace()",
           "want": "60\n",
           "tags": [],
@@ -30904,9 +30904,9 @@
         "name": "minus_submodule",
         "qualified": "ModularSymbolsSpace.minus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 5275,
+        "line": 5279,
         "excerpt": {
-          "start_line": 5263,
+          "start_line": 5267,
           "text": "            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:\n        ambient = self.ambient_module()\n        projective_line = ambient.p1list()\n        dimension = ambient.dimension()\n        result = None\n        for prime, exponent in sage.factor(index):\n            p = runtime.number(prime)"
         }
       },
@@ -31219,9 +31219,9 @@
         "name": "plus_submodule",
         "qualified": "ModularSymbolsSpace.plus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 5269,
+        "line": 5273,
         "excerpt": {
-          "start_line": 5257,
+          "start_line": 5261,
           "text": "            basis = (\n                eigenspace if self.is_ambient() else self._intersect_basis(eigenspace)\n            )\n        prefix = \"Cuspidal \" if self._is_cuspidal else \"\"\n        result = self._new_coordinate_subspace(\n            basis,\n            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:"
         }
       },
@@ -31310,7 +31310,7 @@
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14",
-          "line": 5552,
+          "line": 5556,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -31326,7 +31326,7 @@
         },
         {
           "id": "src/baselib/modular.py#af2fb6f84988516a-b5e9ab680a923c0f",
-          "line": 5553,
+          "line": 5557,
           "source": "S.q_expansion_basis(6)",
           "want": "[q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)]\n",
           "tags": [],
@@ -31425,7 +31425,7 @@
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14~3",
-          "line": 5623,
+          "line": 5627,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -31441,7 +31441,7 @@
         },
         {
           "id": "src/baselib/modular.py#f4aeb5aa7208c1f6-e3b0c44298fc1c14",
-          "line": 5624,
+          "line": 5628,
           "source": "C = S.q_expansion_basis_certificate()",
           "want": "",
           "tags": [],
@@ -31457,7 +31457,7 @@
         },
         {
           "id": "src/baselib/modular.py#449784d892aed5b0-db814fb8aef595e4",
-          "line": 5625,
+          "line": 5629,
           "source": "(C.dimension(), C.is_sturm_certified(), C.verify())",
           "want": "(1, True, True)\n",
           "tags": [],
@@ -31556,7 +31556,7 @@
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14~2",
-          "line": 5599,
+          "line": 5603,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -31572,7 +31572,7 @@
         },
         {
           "id": "src/baselib/modular.py#34c87c2bfa3e38a6-ed61d37e25515866",
-          "line": 5600,
+          "line": 5604,
           "source": "S.q_expansion_module(5, ZZ).basis_matrix()",
           "want": "[ 0  1 -2 -1  2]\n",
           "tags": [],
