@@ -1,0 +1,12 @@
+"use strict";
+const fs=require("node:fs"),path=require("node:path"),os=require("node:os"),assert=require("node:assert/strict");
+const {spawnSync}=require("node:child_process"),{createHash}=require("node:crypto");
+const root=path.resolve(__dirname,"../../..");
+const inputs=["bench/numerics/performance/validation-access.py","bench/numerics/performance/validation-access.cjs","src/lib/sagejs/numerics/linear_algebra/validation.py","src/lib/sagejs/numerics/linear_algebra/operations.py","src/lib/sagejs/numerics/linear_algebra/factorizations.py","src/lib/sagejs/numerics/linear_algebra/storage.py","dist/compiler/compiler.js","dist/compiler/baselib-plain-pretty.js"];
+const snapshot=()=>inputs.map(file=>({path:file,sha256:createHash("sha256").update(fs.readFileSync(path.join(root,file))).digest("hex")}));
+const before=snapshot();
+const result=spawnSync(process.execPath,["--require",path.join(root,"test/helpers/assert-no-exact-numerical-load.cjs"),path.join(root,"bin/sagejs"),"--python",path.join(__dirname,"validation-access.py")],{cwd:root,encoding:"utf8",timeout:300000,env:{...process.env,SAGEJSPATH:path.join(root,"src/lib"),SAGEJS_NATIVE_DISABLE:"1"}});
+if(result.error)throw result.error;
+assert.equal(result.status,0,result.stderr || result.stdout);
+assert.deepEqual(snapshot(),before,"measured inputs changed");
+console.log(JSON.stringify({schema:"sagejs.dense-validation-access-development/v1",qualification:false,host:{platform:process.platform,arch:process.arch,node:process.version,cpu:os.cpus()[0]?.model},inputs:before,warmups:3,samples:7,order:"alternating paired blocks",baseline:"85a84375d independent-product body only; all other code identical",included:["public LU on preconstructed DenseMatrix","factorization","independent validation","result construction"],excluded:["input matrix construction","serialization","startup","peak memory","browser/native/SEA qualification","matched SciPy comparison"],trace:"none",backend:"ordinary-python",records:JSON.parse(result.stdout)},null,2));

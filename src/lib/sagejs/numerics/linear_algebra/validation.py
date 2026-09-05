@@ -63,19 +63,26 @@ def _independent_product(
     """Multiply with `math.fsum`, separately from the storage implementation."""
     if left.ncols != right.nrows:
         raise ValueError("matrix dimensions do not conform during validation")
+    # DenseMatrix publishes immutable row-major entries. Validate the shape
+    # once, then retain those snapshots instead of repeating checked scalar
+    # method calls in the cubic loop. Keep every product and fsum in its
+    # original order; this remains independent of factorization arithmetic.
+    rows, inner, columns = left.nrows, left.ncols, right.ncols
+    left_entries, right_entries = left.entries, right.entries
     entries: list[float] = []
-    for row in range(left.nrows):
+    for row in range(rows):
         if check is not None:
             check()
-        for column in range(right.ncols):
+        offset = row * inner
+        for column in range(columns):
             if check is not None:
                 check()
             terms = [
-                left.entry(row, index) * right.entry(index, column)
-                for index in range(left.ncols)
+                left_entries[offset + index] * right_entries[index * columns + column]
+                for index in range(inner)
             ]
             entries.append(math.fsum(terms))
-    return DenseMatrix(left.nrows, right.ncols, entries)
+    return DenseMatrix(rows, columns, entries)
 
 
 def _factorization_threshold(matrix: DenseMatrix) -> float:

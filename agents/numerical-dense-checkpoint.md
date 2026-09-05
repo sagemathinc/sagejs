@@ -59,3 +59,13 @@ retains matching four-host CPython/dynamic receipts and twelve source-browser
 routes. A combined-fixture WebKit assertion remains unexplained; the
 filename-labeled separate-fixture harness passed. This is source qualification,
 not full product or performance qualification.
+
+## Dynamic reconstruction access
+
+`perf/numerical-dense-validation-access` retains immutable row-major entry
+snapshots inside the independent product, preserving every `math.fsum` and
+cancellation checkpoint. The [local paired public-LU probe](../bench/numerics/performance/results/n3-validation-access-2026-09-05/README.md)
+measures 32-square calls at roughly 1.76 s before and 0.96 s after this one
+change. This is a development observation, not a target pass or a compiled
+backend speedup. It identifies validation overhead that must be addressed
+alongside factorization before promoting a public dense acceleration path.
