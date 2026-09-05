@@ -16,6 +16,10 @@ platform CI is queued. Raw qualification evidence and both optimizer snapshots
 are published. The full native gate encounters the same rational-matrix timing
 failures as the clean pre-feature baseline; no limits have been loosened.
 Final platform qualification and staged handoff remain open.
+Both final Wasm artifacts now pass receipt validation, real prefix-Arb/public
+Chromium witnesses and routine browser parity. The combined browser payload
+exceeds its existing eager-core gzip/Brotli limits; attribution and release
+approval remain open, and those limits have not been raised.
 See `docs/native-source-compression.md` for the contract and evidence.
 
 Goal: implement and qualify fixed-length slice assignment, then borrowed

@@ -221,3 +221,26 @@ Wasm adapter's exact endpoints, ignored poisoned tail, invalid active entry
 exception without mutation, and resource cleanup. Its public Chromium witness
 also passes. Only after these executions was the public capability report moved
 from planned to available; the routine Chromium workflow requires this witness.
+
+#### Final release-gate status
+
+The [follow-up evidence release](https://github.com/sagemathinc/sagejs/releases/tag/native-source-compression-final-2026-09-05-2dde994e)
+preserves both final Wasm receipts, passing routine Chromium parity, the
+prefix/ownership witnesses and portable run, plus the native QQ failure and
+its pre-feature reproduction. The earlier source/timing release remains
+immutable and unchanged.
+
+The final prerequisite Wasm artifact is
+`sha256:c78bcc171b86bcbbfa6d2a6095d0c6c412b90698d437faffa3f1e73bdd5f4998`;
+the staged artifact is
+`sha256:7415e1b120ded47b75282d683bed118738f8d65422ddacf2b089220e2da41d0c`.
+Both pass receipt validation and routine Chromium parity. Browser serialization,
+interruption and memory checks also pass.
+
+The combined prerequisite browser package fails the existing eager-core payload
+gate: gzip is 14,622,048 bytes against 14,107,000, and Brotli is 8,115,742 against
+7,860,000. This measures the combined branch, not an isolated feature delta;
+the growth has not been causally attributed to source compression. No packaging
+limit is raised. Alongside the reproduced native QQ timing failures and pending
+native platform matrix, this leaves full release qualification open despite the
+passing feature, allocation, controlled timing and exact mathematical tests.
