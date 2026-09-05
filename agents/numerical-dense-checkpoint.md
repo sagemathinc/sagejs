@@ -83,3 +83,20 @@ remain unqualified. This makes Eigen a concrete contender, not a selected or
 integrated backend. Matched performance, independent broad correctness,
 generic floating FFI storage and production memory/failure contracts remain
 required. No new runtime dependency is introduced.
+
+## Floating predicate boundary
+
+The next generic compiler prerequisite supports boolean-returning binary64
+functions, typed boolean locals/literals, and boolean results from compiled
+helpers. C uses an `int` result slot, Node exposes a boolean, and Wasm uses
+the existing boolean result ABI. Integer-only boolean signatures retain their
+existing compiler path. This does not add floating foreign calls or select
+Eigen. Focused tests compare CPython, generated JavaScript, native Node and
+standalone/browser-shaped Wasm, including NaN, infinities and signed zero;
+these loader tests are not a new three-browser qualification receipt.
+The focused compiler suite passes on Node 22.22.2 and 26.8.1; nine existing
+evaluator/helper/root/LU regressions, architecture and strict Python pass.
+The broad `test/native-kernel.cjs` run is incomplete in this portable worktree:
+after exercising generated cores it requires the absent FLINT Node addon.
+Its standalone compilation checks now honor `SAGEJS_FLINT_PREFIX`, as the
+compiler already does. No exact addon was built or installed for this change.

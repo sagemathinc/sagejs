@@ -1477,7 +1477,8 @@ compileKernel({
         temporary,
         `isolated-${family.replaceAll(/[^a-z0-9]+/gi, "-")}.o`,
       );
-      const nativePrefix = join(root, "packages", "flint", ".native", "prefix");
+      const nativePrefix = process.env.SAGEJS_FLINT_PREFIX ||
+        join(root, "packages", "flint", ".native", "prefix");
       const independent = spawnSync(process.env.CC || "cc", [
         "-std=c11", "-O2", "-fPIC", "-c",
         `-I${compiled.outputPath}`,
@@ -2426,7 +2427,8 @@ int main(void)
   if (process.platform !== "win32" &&
       spawnSync(process.env.CC || "cc", ["--version"]).status === 0) {
     const standalone = join(temporary, "native-core-standalone");
-    const nativePrefix = join(root, "packages", "flint", ".native", "prefix");
+    const nativePrefix = process.env.SAGEJS_FLINT_PREFIX ||
+      join(root, "packages", "flint", ".native", "prefix");
     const buildStandalone = spawnSync(process.env.CC || "cc", [
       "-O3",
       `-I${integerKernel.outputPath}`,

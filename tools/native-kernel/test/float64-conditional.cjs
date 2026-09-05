@@ -34,6 +34,21 @@ const sagejs = join(root, "bin", "sagejs");
 const witnessPath = join(__dirname, "float64_branch_witness.py");
 const witnessSource = readFileSync(witnessPath, "utf8");
 
+test("floating predicates preserve strict return types and integer routing", async () => {
+  const { isFloat64Signature } = require("../float64-ir.cjs");
+  assert.equal(isFloat64Signature({ returnType: "bool", params: [{ type: "uint64" }] }), false);
+  for (const [returnType, body] of [
+    ["bool", "return value"],
+    ["float", "return True"],
+    ["float", "return value > 0.0"],
+  ]) {
+    await assert.rejects(lowerSource(
+      `from sagejs.native import native\n@native\ndef invalid(value: float) -> ${returnType}:\n    ${body}\n`,
+      "invalid_float_predicate.py",
+    ));
+  }
+});
+
 function operations(body) {
   const result = [];
   function visit(items) {
@@ -68,6 +83,10 @@ test("binary64 comparisons and conditionals preserve inspectable source", async 
   const unsigned = ir.functions.find((fn) => fn.name === "uint64_branch");
   const batch = ir.functions.find((fn) => fn.name === "scaled_buffer_batch");
   assert.equal(choose.kernelKind, "float64");
+  const predicate = ir.functions.find(fn => fn.name === "is_positive");
+  assert.equal(predicate.kernelKind, "float64");
+  assert.equal(predicate.returnType, "bool");
+  assert.deepEqual(classifyWasmFunction(predicate), { supported: true, results: ["bool"] });
   assert.equal(choose.analysis.effects.pure, false);
   assert.deepEqual(choose.analysis.effects.mutates, ["state"]);
   assert.ok(operations(choose.body).some((operation) =>
@@ -205,6 +224,16 @@ print("FLOAT64_BRANCH_OK")
     assert.match(stale.stderr, /has no matching compiled artifact/);
 
     const compiledModule = require(compiled.modulePath);
+    for (const implementation of [compiledModule.is_positive, compiledModule.is_positive.javascript]) {
+      for (const value of [-Infinity, -1, -0, 0, Number.MIN_VALUE, 1, Infinity, NaN]) {
+        assert.equal(implementation(value), value > 0);
+      }
+    }
+    for (const implementation of [compiledModule.positive_buffer_head, compiledModule.positive_buffer_head.javascript]) {
+      assert.equal(implementation(new Float64Array()), false);
+      assert.equal(implementation(new Float64Array([1])), true);
+      assert.equal(implementation(new Float64Array([-1])), false);
+    }
     const sort = compiledModule.comparison_score.sortedFloat64Buffer;
     const original = new Float64Array([3, +0, -0, +0, -2, -0, 1]);
     const ordered = sort(original);
@@ -249,7 +278,9 @@ print("FLOAT64_BRANCH_OK")
       "import sys",
       `sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})`,
       `sys.path.insert(0, ${JSON.stringify(__dirname)})`,
-      "from float64_branch_witness import choose_sqrt_sign, comparison_score, scaled_buffer_batch, uint64_branch",
+      "from float64_branch_witness import choose_sqrt_sign, comparison_score, scaled_buffer_batch, uint64_branch, is_positive, positive_buffer_head",
+      "assert is_positive(1.0) is True and is_positive(float('nan')) is False",
+      "assert positive_buffer_head([]) is False and positive_buffer_head([1.0]) is True",
       "state = [1.0, 0.0, -0.9, 0.1, -0.8, 0.2]",
       "assert abs(choose_sqrt_sign(state, 3) - 0.8) < 1e-14",
       "assert state[2:] == [0.9, -0.1, 0.8, -0.2]",
@@ -349,7 +380,7 @@ test("Float64 buffers execute in standalone and browser-shaped Wasm loaders", {
     const bridge = generateWasmBridge({
       ir,
       moduleIdentity,
-      functionNames: ["scaled_buffer_batch"],
+      functionNames: ["scaled_buffer_batch", "is_positive", "positive_buffer_head"],
     });
     const corePath = join(temporary, "kernel_core.c");
     const headerPath = join(temporary, "kernel_core.h");
@@ -425,6 +456,14 @@ test("Float64 buffers execute in standalone and browser-shaped Wasm loaders", {
       "sagejs/native/float64_branch_witness.py",
       "scaled_buffer_batch",
     );
+    const predicate = resolver.function("sagejs/native/float64_branch_witness.py", "is_positive");
+    for (const value of [-Infinity, -1, -0, 0, Number.MIN_VALUE, 1, Infinity, NaN]) {
+      assert.equal(predicate(value), value > 0);
+    }
+    const head = resolver.function("sagejs/native/float64_branch_witness.py", "positive_buffer_head");
+    assert.equal(head([]), false);
+    assert.equal(head([1]), true);
+    assert.equal(head([-1]), false);
     const source = Object.freeze([1.5, -2.0, 4.0]);
     const output = new Float64Array(3);
     assert.equal(batch(source, output, 2.0, 3n), 7.0);

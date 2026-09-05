@@ -6,6 +6,23 @@ from sagejs.native import Float64Buffer, native, uint64
 
 
 @native
+def is_positive(value: float) -> bool:
+    """Return a boolean without converting its ABI to a floating scalar."""
+    positive: bool = value > 0.0
+    return positive
+
+
+@native
+def positive_buffer_head(values: Float64Buffer) -> bool:
+    """Exercise boolean helper results and literal early returns."""
+    if len(values) == 0:
+        return False
+    if is_positive(values[0]):
+        return True
+    return False
+
+
+@native
 def choose_sqrt_sign(state: Float64Buffer, count: uint64) -> float:
     """Continue square-root signs by choosing the nearest adjacent value."""
     previous_real = state[0]
