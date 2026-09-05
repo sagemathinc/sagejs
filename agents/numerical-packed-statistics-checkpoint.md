@@ -46,7 +46,8 @@ sum at 0.119 ms with reused native buffers and 0.277 ms including input/scratch/
 output allocation; the generated JavaScript IR takes 11.53 ms. The standalone
 addon is 14,504 bytes and compilation took about 920 ms. These are one-run
 opportunity measurements on a dirty, source-hashed development candidate,
-not paired public-API speedups or accepted crossover thresholds. Frozen,+repeatable product measurements still have to include the surrounding costs.
+not paired public-API speedups or accepted crossover thresholds. Frozen,
+repeatable product measurements still have to include the surrounding costs.
 
 ## Required next steps
 
