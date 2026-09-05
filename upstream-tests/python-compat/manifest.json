@@ -1,0 +1,391 @@
+{
+  "schema": "sagejs.python-compat-manifest/v1",
+  "oracle": {
+    "implementation": "CPython",
+    "version": "3.14.4"
+  },
+  "suites": {
+    "rustpython": {
+      "root": "suites/rustpython",
+      "sourceSha256": "c886911c2310ee32ca2b96f99ef5f9dc47bfb55c26e4380369745a036e7ae749"
+    }
+  },
+  "cases": [
+    {
+      "id": "rustpython/syntax_call_nested",
+      "suite": "rustpython",
+      "path": "selected/syntax_call_nested.py",
+      "upstreamPath": "extra_tests/snippets/syntax_call_nested.py",
+      "sourceSha256": "3c8d3db5b48e5c48788384b500adffc165049ead62e1c6723f0d49433b32c34c",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "calls"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 1048576,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "rustpython/protocol_callable",
+      "suite": "rustpython",
+      "path": "selected/protocol_callable.py",
+      "upstreamPath": "extra_tests/snippets/protocol_callable.py",
+      "sourceSha256": "b5c6b3952d99df02cc23a968025ffd64883499bbb3bf893c0cac56ff5cc97fad",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "calls",
+        "object-model"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 1048576,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "rustpython/builtin_callable",
+      "suite": "rustpython",
+      "path": "selected/builtin_callable.py",
+      "upstreamPath": "extra_tests/snippets/builtin_callable.py",
+      "sourceSha256": "6a256f1597fb8234ca551ef6644e6b6551c071b72ab47901b56f3ad677c72963",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "calls",
+        "object-model"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 1048576,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "rustpython/builtin_object",
+      "suite": "rustpython",
+      "path": "selected/builtin_object.py",
+      "upstreamPath": "extra_tests/snippets/builtin_object.py",
+      "sourceSha256": "61a4171616bf219cae3b0fdaea5dfc4870a13cf695799b736428fea1b74348c5",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "object-model"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 1048576,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "rustpython/syntax_metaclass",
+      "suite": "rustpython",
+      "path": "selected/syntax_metaclass.py",
+      "upstreamPath": "extra_tests/snippets/syntax_metaclass.py",
+      "sourceSha256": "87244d99f94c1fbd7ed386b820d0c61bfeda3e4873ad185d7802488573e35ac0",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "metaclasses",
+        "argument-binding"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 1048576,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "rustpython/builtin_type_mro",
+      "suite": "rustpython",
+      "path": "selected/builtin_type_mro.py",
+      "upstreamPath": "extra_tests/snippets/builtin_type_mro.py",
+      "sourceSha256": "d16417ff747d25a4bf31155836e4d5275732664d4fab32415a1d293019ee9546",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "mro",
+        "object-model"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 1048576,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "rustpython/builtin_issubclass",
+      "suite": "rustpython",
+      "path": "selected/builtin_issubclass.py",
+      "upstreamPath": "extra_tests/snippets/builtin_issubclass.py",
+      "sourceSha256": "2b2beb1d37b2181f8ba83510d1d90e924233af82e54ac69c8a1eac8128579299",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "object-model"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 1048576,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "rustpython/builtin_isinstance",
+      "suite": "rustpython",
+      "path": "selected/builtin_isinstance.py",
+      "upstreamPath": "extra_tests/snippets/builtin_isinstance.py",
+      "sourceSha256": "aa1ca4690b27af7904289a399df006f1a49cfb342d591d88dd428e025538e9b3",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "object-model"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 1048576,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "rustpython/syntax_function_args",
+      "suite": "rustpython",
+      "path": "selected/syntax_function_args.py",
+      "upstreamPath": "extra_tests/snippets/syntax_function_args.py",
+      "sourceSha256": "9d920e2facc2972e11b25aaa4078d76e678e7e1f0f129c8c00a00f6180ec12b0",
+      "fixtures": [
+        {
+          "path": "support/testutils.py",
+          "destination": "testutils.py"
+        }
+      ],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "calls",
+        "argument-binding"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 1048576,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "rustpython/builtin_mappingproxy",
+      "suite": "rustpython",
+      "path": "selected/builtin_mappingproxy.py",
+      "upstreamPath": "extra_tests/snippets/builtin_mappingproxy.py",
+      "sourceSha256": "e12d21064c72451dd381b4177a9fac0f76e5393f50823a57faedb5eb3752e54f",
+      "fixtures": [
+        {
+          "path": "support/testutils.py",
+          "destination": "testutils.py"
+        }
+      ],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "mapping",
+        "object-model"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 1048576,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "rustpython/builtin_dict_union",
+      "suite": "rustpython",
+      "path": "selected/builtin_dict_union.py",
+      "upstreamPath": "extra_tests/snippets/builtin_dict_union.py",
+      "sourceSha256": "b11f1e85cbab06968a110b0e11bd201aefca6bb5df611120dcabba31e4cc3093",
+      "fixtures": [
+        {
+          "path": "support/testutils.py",
+          "destination": "testutils.py"
+        }
+      ],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "containers",
+        "operators"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 1048576,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "rustpython/builtin_property",
+      "suite": "rustpython",
+      "path": "selected/builtin_property.py",
+      "upstreamPath": "extra_tests/snippets/builtin_property.py",
+      "sourceSha256": "89f464dbdfd9a3ac07aed903a4aa9373051a4dc5a18927749b879027af402096",
+      "fixtures": [
+        {
+          "path": "support/testutils.py",
+          "destination": "testutils.py"
+        }
+      ],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "descriptors",
+        "object-model"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 1048576,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    }
+  ]
+}
