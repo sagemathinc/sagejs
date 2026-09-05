@@ -1,0 +1,73 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-implicit-resource-items",
+  "title": "Native Implicit Resource Items",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Resolve declared indexed operations for constructor-inferred native FFI resources without requiring unused type imports",
+  "base_commit": "a3a898b7186fcb3cae7aba59530140d4f416f308",
+  "claims": [
+    "tools/native-kernel/ir.cjs",
+    "tools/native-kernel/integer-ir.cjs",
+    "test/native-implicit-resource-items.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "IR equivalence for explicit versus constructor-only resource imports",
+      "Existing FFI declaration qualification and source provenance checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/native-implicit-resource-items.cjs",
+    "pnpm test:compiler",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.276,
+      "started_at": "2026-09-05T05:00:48.909Z",
+      "commit": "a3a898b7186fcb3cae7aba59530140d4f416f308",
+      "workspace_fingerprint": "24dec075f77ba2ad7542a5ccec738974fc0bece579ceecf7cd85d380ba210c34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-implicit-resource-items.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.769,
+      "started_at": "2026-09-05T05:04:47.287Z",
+      "commit": "a3a898b7186fcb3cae7aba59530140d4f416f308",
+      "workspace_fingerprint": "24dec075f77ba2ad7542a5ccec738974fc0bece579ceecf7cd85d380ba210c34",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Constructor-inferred FFI resources now use the same declaration-qualified indexed operations as explicitly imported resource types. Annotation visibility and private native import rules are unchanged. Six focused lowering/core-emission tests pass; the full changed-file qualification is still running.",
+    "risks": [
+      "The compiler changes invalidate content-addressed native artifacts and the optimizer evidence fingerprint; integration must regenerate and qualify current artifacts.",
+      "Full native and cross-platform qualification is pending; this lane remains active and its PR is draft."
+    ],
+    "next_steps": [
+      "Finish the source-matched build and run broader compiler and architecture checks without racing generated runtime updates.",
+      "Integrate the scoped compiler fix with staged cubic work only after its build is idle, then regenerate source-matched evidence."
+    ]
+  }
+}
