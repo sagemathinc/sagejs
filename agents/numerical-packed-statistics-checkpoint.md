@@ -96,5 +96,13 @@ registration while preserving lexical virtual/SEA resource names. A real
 directory-alias test reproduced the failure on Linux before the change and
 passes afterward, still rejecting changed source bytes and honoring an
 explicit empty cache. Native tests now use the repository's existing
-deferred Windows DLL cleanup helper. Target reruns must validate this newer
-source before claiming the complete focused suite green on all four hosts.
+deferred Windows DLL cleanup helper.
+
+The [frozen `fb9eb23f7` rerun receipts](../bench/numerics/performance/results/n2-source-2026-09-05/README.md)
+now pass: eight tests each on Linux x64, Linux ARM64 and macOS; six on native
+Windows with its two unavailable local Wasm builds still explicitly skipped.
+Each host rebuilt TypeScript in its own copied `dist`, preserving the baseline
+compiler/runtime. Source and generated artifact hashes are retained. The local
+merged-source eight-test run also passes with actual Chromium/Firefox/WebKit
+workers enabled. This closes the discovered native lookup/test-cleanup defects,
+not N2's public-operation, packaging or performance acceptance criteria.

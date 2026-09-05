@@ -8,6 +8,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compileKernel } = require("../../../tools/native-kernel/compiler.cjs");
+const { removeLoadedNativeCache } = require("../../../test/helpers/native-cache-cleanup.cjs");
 const { repositoryIdentity, sha256 } = require("../../../scripts/numerical-computing/common.cjs");
 
 const root = path.resolve(__dirname, "../../..");
@@ -99,7 +100,7 @@ print(json.dumps(dict(python=platform.python_version(), records=records)))
     fs.writeFileSync(filename, JSON.stringify(report, null, 2) + "\n");
     console.log(JSON.stringify(rows, null, 2));
   } finally {
-    fs.rmSync(cache, { recursive: true, force: true });
+    removeLoadedNativeCache(cache);
   }
 }
 

@@ -1,0 +1,103 @@
+{
+  "schema": "sagejs.numerics.n2-source-qualification/v1",
+  "scope": "explicit-private-source-and-rebuilt-host-tools-not-full-product-qualification",
+  "source": {
+    "commit": "fb9eb23f7e5c17d84fdd8a5fc83aac8ea23f2e8f",
+    "dirty": false
+  },
+  "runtime_basis": {
+    "compiler_and_baselib_commit": "14fdd4117f4ffcad7e0ef6f865a832b37faecb34",
+    "host_typescript_commit": "fb9eb23f7e5c17d84fdd8a5fc83aac8ea23f2e8f",
+    "host_build_command": "node node_modules/typescript/bin/tsc -p tsconfig.json",
+    "exact_arithmetic_prefix": "intentionally absent"
+  },
+  "host": {
+    "platform": "win32",
+    "architecture": "x64",
+    "node": "v26.5.1",
+    "os_release": "10.0.20348",
+    "cpu": "AMD EPYC 7B13",
+    "python": "Python 3.13.7"
+  },
+  "observed_at": "2026-09-05T08:27:53.316Z",
+  "collector_sha256": "674e393deee479d6755afc15f9a03553a8b37d3def4f860fc2f937f3c69cfbd0",
+  "files": [
+    {
+      "path": "src/lib/sagejs/numerics/statistics/_packed.py",
+      "sha256": "ab4e7d798dec5a66ba1d90c394734b8cb83b281ea00b5865dc5d292fc7b24c9d"
+    },
+    {
+      "path": "tools/native-kernel/compiler.cjs",
+      "sha256": "a356f9e44252176305952a1b2f021d24299eb102a8adf331ea14ad484ac80fc9"
+    },
+    {
+      "path": "tools/native-kernel/c-backend.cjs",
+      "sha256": "0cfb0f40f4e9570b1a9c1dae590afc0f84a8248a43b65c7204b01a8dbc3524b3"
+    },
+    {
+      "path": "tools/native-kernel/ir.cjs",
+      "sha256": "43a8744b41b7b7d67b0c3b387e11a99a0a9abe5c9536f62c02f33da08719ef01"
+    },
+    {
+      "path": "tools/native-kernel/float64-ir.cjs",
+      "sha256": "36775fe862db0e708eb84384a9c4d7e43c511e03d60d3f0a30554eecfd63a7bb"
+    },
+    {
+      "path": "tools/native-kernel/wasm-bridge.cjs",
+      "sha256": "f2f10bf4ea194240134fdf9a1de3877ce4f891ac07ce72bb87f7ba4df30008b3"
+    },
+    {
+      "path": "tools/runtime-bootstrap.ts",
+      "sha256": "88aca4e637cc19889f2fea6eb83e60c8eed43adfdd0ff888ff96b22bfbf83fd4"
+    },
+    {
+      "path": "test/numerics/performance/packed-reductions.cjs",
+      "sha256": "faa59d25148cd9b820a4f7956e073a261bb0034da6307928641a4a5101b93a64"
+    },
+    {
+      "path": "test/numerics/performance/packed-reductions.py",
+      "sha256": "2dc092ac396849ce656fee7d31bd01d158905ea29f8f8eb16caca8ca66543eb7"
+    },
+    {
+      "path": "tools/native-kernel/test/float64-conditional.cjs",
+      "sha256": "19248a6d95eae09cbfac031e04da3c50d410ce1da6a1221f97c7010d443f222e"
+    },
+    {
+      "path": "tools/native-kernel/test/float64_branch_witness.py",
+      "sha256": "305df82b6b8490a8e00aaf459e2fc57582a15a369e382fcf6b0cd7abe2cfed65"
+    },
+    {
+      "path": "test/helpers/native-cache-cleanup.cjs",
+      "sha256": "f24b4f136458af27c443785f25733c8bd2691a2bbf85917882c0b856f2af58ad"
+    },
+    {
+      "path": "dist/compiler/compiler.js",
+      "sha256": "26a0293cbdaf4900432e24efca0a3f8f0dac974f1cde9c57df804b0869097f9a"
+    },
+    {
+      "path": "dist/tools/runtime-bootstrap.js",
+      "sha256": "c390364bda6e93da3361baef436544f4568a498cd618b3c0261eacfded273248"
+    },
+    {
+      "path": "dist/tools/kernel.js",
+      "sha256": "0a27d4b745fc6a87ade3f309b7f4f040cf463e92fb6c87dd81dc94209bab044d"
+    }
+  ],
+  "test_command": "SAGEJS_FLINT_PREFIX=<nonexistent> node --test test/numerics/performance/packed-reductions.cjs tools/native-kernel/test/float64-conditional.cjs",
+  "limitations": [
+    "no public statistics dispatch",
+    "not npm/SEA qualification",
+    "no end-to-end performance claim",
+    "real-browser source witnesses are separate from these Node-Wasm tests"
+  ],
+  "result": {
+    "exit_code": 0,
+    "tests": 8,
+    "pass": 6,
+    "fail": 0,
+    "skipped": 2,
+    "cancelled": 0,
+    "duration_ms": 18648.4866,
+    "transcript": "fb9eb23f7e5c17d84fdd8a5fc83aac8ea23f2e8f\nv26.5.1\nPython 3.13.7\n✔ finite sums have isolated, source-transparent binary64 lowering (983.0396ms)\n✔ binary64 compilation and execution need no exact-arithmetic prefix (4796.6564ms)\n✔ ordinary Sage.js source preserves cancellation and final half-even rounding (7822.7038ms)\n✔ packed summation agrees bit-for-bit with exact rationals and CPython (4775.6867ms)\n﹣ packed sums execute in emitted Wasm without host callbacks (0.468ms) # prepared WASI toolchain required\n✔ binary64 comparisons and conditionals preserve inspectable source (955.1932ms)\n✔ binary64 branches agree in JavaScript, native, and CPython execution (16350.8669ms)\n﹣ Float64 buffers execute in standalone and browser-shaped Wasm loaders (0.754ms) # a WASI clang/sysroot toolchain is not available\nℹ tests 8\nℹ suites 0\nℹ pass 6\nℹ fail 0\nℹ cancelled 0\nℹ skipped 2\nℹ todo 0\nℹ duration_ms 18648.4866\n"
+  }
+}
