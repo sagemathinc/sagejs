@@ -818,16 +818,46 @@ def generate_code():
 
     def f_print_symbol(self, output):
         force_class_prebinding_fallback = self.python_class_prebinding_fallback is True
-        def_ = None if force_class_prebinding_fallback else self.definition()
+        parent = output.parent()
+        class_prebinding_assignment_target = force_class_prebinding_fallback and (
+            output.assignment_target
+            or (is_node_type(parent, AST_Assign) and parent.left is self)
+            or (is_node_type(parent, AST_AnnotatedAssignment) and parent.target is self)
+        )
+        def_ = (
+            None
+            if force_class_prebinding_fallback
+            and not class_prebinding_assignment_target
+            else self.definition()
+        )
         name = self.name
         if def_:
             name = def_.mangled_name or def_.name
 
         def python_lexically_bound():
+            # Cached-module analysis can replace a reference node without
+            # carrying its transient source-identifier marker.  The linked
+            # definition is the durable authority for the qualified Python
+            # spelling, so consult it before the reference-local hint.
+            if def_ and def_.python_identifier:
+                return True
             if not self.python_identifier:
                 return False
             if force_class_prebinding_fallback:
-                return True
+                if class_prebinding_assignment_target:
+                    # Sequential class lowering can preserve the LOAD_NAME
+                    # marker on a STORE_NAME symbol when imported modules are
+                    # rendered into the precompiled cache.  The marker changes
+                    # reads only: the corresponding write must still use the
+                    # hygienic qualified class binding.
+                    return True
+                # A class-local name which has not yet been assigned uses
+                # Python's class-body LOAD_NAME fallback.  In particular it
+                # must skip an identically named closure cell, so this read is
+                # deliberately not a JavaScript lexical binding.
+                return False
+            if self.python_resolution_provenance is "class-fallback":
+                return False
             stack = output.stack()
             if self.python_lexical_binding:
                 return True
@@ -835,8 +865,6 @@ def generate_code():
             # the enclosing AST scope is intentionally absent while a cached
             # module body is rendered.  Prefer that durable authority before
             # consulting the live output stack.
-            if def_ and def_.python_identifier:
-                return True
             for index in range(stack.length - 1, -1, -1):
                 scope = stack[index]
                 if not is_node_type(scope, AST_Scope):
@@ -1005,22 +1033,25 @@ def generate_code():
                         and is_node_type(scope, AST_Toplevel)
                         and self.python_identifier
                     )
-                    module_name_fallback = (
-                        (is_node_type(scope, AST_Toplevel) and check_unbound)
-                        or (
-                            output.module_control_flow_names
-                            and output.module_control_flow_names[self.name]
+                    module_name_fallback = resolution is "class-fallback" or (
+                        (
+                            (is_node_type(scope, AST_Toplevel) and check_unbound)
+                            or (
+                                output.module_control_flow_names
+                                and output.module_control_flow_names[self.name]
+                            )
                         )
-                    ) and (
-                        resolution in ("module", "class-fallback")
-                        or (
-                            not resolution
-                            and (
-                                is_node_type(scope, AST_Toplevel)
-                                or (
-                                    scope.module_global_names
-                                    and scope.module_global_names.indexOf(self.name)
-                                    is not -1
+                        and (
+                            resolution is "module"
+                            or (
+                                not resolution
+                                and (
+                                    is_node_type(scope, AST_Toplevel)
+                                    or (
+                                        scope.module_global_names
+                                        and scope.module_global_names.indexOf(self.name)
+                                        is not -1
+                                    )
                                 )
                             )
                         )
@@ -1091,14 +1122,10 @@ def generate_code():
             output.print("ρσ_check_unbound(")
         if module_name_fallback:
             output.print("ρσ_resolve_module_name(")
-        if star_import_fallback:
-            output.print("void 0")
-        elif (
-            output.options.reuse_main_module
-            and check_unbound
-            and self.python_identifier
-            and not python_binding
-        ):
+        if module_name_fallback and self.python_identifier and not python_binding:
+            # Runtime star imports can introduce a name for which JavaScript
+            # has no lexical declaration.  Pass an explicit missing value to
+            # the module resolver instead of evaluating a raw host identifier.
             output.print("void 0")
         else:
             output.print_name(name)

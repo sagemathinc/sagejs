@@ -76,6 +76,7 @@
     "pprint",
     "random",
     "re",
+    "reprlib",
     "shlex",
     "shutil",
     "socket",

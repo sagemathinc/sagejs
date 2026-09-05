@@ -615,7 +615,9 @@ def ρσ_fast_arrow_segment_geometry_region(
 def ρσ_fast_closed_binary(left, right, operation, missing):
     return r"""%js (() => {
         if (left !== null && right !== null &&
-            typeof left === "object" && typeof right === "object") {
+            typeof left === "object" && typeof right === "object" &&
+            Object.prototype.hasOwnProperty.call(left, "_parent") &&
+            Object.prototype.hasOwnProperty.call(right, "_parent")) {
             const parent = left._parent;
             if (parent !== undefined && parent === right._parent &&
                 parent._closedScalarArithmetic === true) {

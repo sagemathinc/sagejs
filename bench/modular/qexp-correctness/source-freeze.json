@@ -11,7 +11,7 @@
   "files": [
     {
       "path": "architecture/package-graph.json",
-      "sha256": "ac5f544367f9de84bae95ac2219f6a919ed38437a2714997a9c591932f8d44b7"
+      "sha256": "b9d326bbcb0edd7e8b48a16b9d4b22cb0a3e70ac89bc5db753df62bee1507c3a"
     },
     {
       "path": "bench/modular/qexp-correctness/README.md",
@@ -134,5 +134,5 @@
       "sha256": "0e1053e97df87edb5f76c17bea12edd78cb97f8f8d12d3041a662146ebd4ccd9"
     }
   ],
-  "bundle_sha256": "79e4f20548b4cd5f67508fd24572003f9e444b75d952fcb90590422b6233a37c"
+  "bundle_sha256": "eb0269f63615b93db3c1ac5aed12bef8ed1228d1ac99c135cde53b67f21a6949"
 }

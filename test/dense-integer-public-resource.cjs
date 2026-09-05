@@ -182,11 +182,12 @@ print('TIMES', random_ms, second_ms, add_ms, multiply_ms, format_ms)
       match.slice(1).map(Number);
     // Apple Silicon spends 257-348 ms initializing the first generated
     // dense-integer resource in an otherwise idle fresh process, and up to
-    // about 600 ms while the integration runner executes a second file. Keep
-    // that process-cold allowance platform-specific while retaining the
-    // original ceiling elsewhere and all arithmetic-specific ceilings below.
+    // about 600 ms while the integration runner executes a second file.
+    // Two-worker Linux validation has likewise measured 259 ms versus about
+    // 196 ms in isolation. Give process-cold initialization realistic host
+    // contention headroom while retaining all arithmetic-specific ceilings.
     const randomLimit =
-      process.platform === "darwin" && process.arch === "arm64" ? 700 : 250;
+      process.platform === "darwin" && process.arch === "arm64" ? 700 : 350;
     assert.ok(Math.max(randomMs, secondMs) < randomLimit, timing);
     assert.ok(addMs < 100, timing);
     assert.ok(multiplyMs < 250, timing);

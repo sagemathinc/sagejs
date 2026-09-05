@@ -35,6 +35,17 @@ def _internal_builtin(name: str) -> Any:
     return runtime.reflect.get(builtins_module, name)
 
 
+def _internal_bound_method_helper(name: str) -> Any:
+    """Resolve a bound-method helper in runtime and standalone bundles."""
+    helper = _internal_builtin(name)
+    if _internal_type_is(runtime.jstype(helper), "function"):
+        return helper
+    # The self-hosting bootstrap predates the baselib module registry and
+    # publishes these helpers directly. Keep that path as a stage-zero
+    # fallback, but do not require production standalone bundles to do so.
+    return runtime.reflect.get(runtime.global_object, name)
+
+
 def _internal_get_member(value: Any, name: Any) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
@@ -216,8 +227,35 @@ class _PythonSequenceIterator:
             raise StopIteration  # noqa: B904
 
 
+ρσ_cleared_exception = runtime.reflect.get(
+    runtime.global_object, "ρσ_cleared_exception"
+)
+if ρσ_cleared_exception is runtime.undefined:
+    # Multiple compiled artifacts can initialize the compatibility runtime in
+    # one process.  Keep one process-wide identity so every cached module and
+    # helper agrees about which value represents a deliberately cleared name.
+    ρσ_cleared_exception = runtime.object.create(None)
+    runtime.reflect.set(
+        runtime.global_object, "ρσ_cleared_exception", ρσ_cleared_exception
+    )
+ρσ_deleted_builtin = runtime.reflect.get(runtime.global_object, "ρσ_deleted_builtin")
+if ρσ_deleted_builtin is runtime.undefined:
+    ρσ_deleted_builtin = runtime.object.create(None)
+    runtime.reflect.set(ρσ_deleted_builtin, "__sagejs_deleted_builtin__", True)
+    runtime.reflect.set(runtime.global_object, "ρσ_deleted_builtin", ρσ_deleted_builtin)
+
+
+def ρσ_is_missing_binding(value: Any) -> bool:
+    """Return whether a host value represents an absent Python binding."""
+    return (
+        value is runtime.undefined
+        or value is ρσ_cleared_exception
+        or value is ρσ_deleted_builtin
+    )
+
+
 def ρσ_check_unbound(value: Any, name: str) -> Any:
-    if value is runtime.undefined:
+    if ρσ_is_missing_binding(value):
         raise NameError("local variable '" + name + "' referenced before assignment")
     return value
 
@@ -439,6 +477,9 @@ def ρσ_sequence_proxy(instance: Any) -> Any:
             _internal_type_is(runtime.jstype(value), "function")
             and runtime.reflect.get(value, "__self__") is target
         ):
+            is_bound_method = _internal_bound_method_helper("ρσ_is_bound_method")
+            if not runtime.reflect.apply(is_bound_method, runtime.undefined, [value]):
+                return value
             unbound = runtime.reflect.get(value, "__func__")
             if _internal_type_is(runtime.jstype(unbound), "function"):
                 value = runtime.reflect.apply(
@@ -452,6 +493,10 @@ def ρσ_sequence_proxy(instance: Any) -> Any:
                 )
                 runtime.reflect.set(value, "__func__", unbound)
                 runtime.reflect.set(value, "__self__", receiver)
+                brand_bound_method = _internal_bound_method_helper(
+                    "ρσ_brand_bound_method"
+                )
+                runtime.reflect.apply(brand_bound_method, runtime.undefined, [value])
         if (
             value is runtime.undefined
             and _internal_type_is(runtime.jstype(property_name), "string")
@@ -1060,8 +1105,29 @@ def ρσ_type_union(left: Any, right: Any) -> Any:
     def union_ror(other: Any) -> Any:
         return ρσ_type_union(other, union)
 
+    def union_repr() -> str:
+        names = []
+        for argument in union_values:
+            if argument is None:
+                names.push("None")  # type: ignore[attr-defined]
+                continue
+            name = _internal_get_member(argument, "__qualname__")
+            if name is runtime.undefined:
+                name = _internal_get_member(argument, "__name__")
+            if name is runtime.undefined:
+                name = runtime.string(argument)
+            elif name.startswith("ρσ_"):
+                # Optimized builtin factories may retain their internal host
+                # identifier as function metadata.  A Python union must never
+                # expose that compiler implementation name.
+                name = name[3:]
+            names.push(name)  # type: ignore[attr-defined]
+        return " | ".join(names)
+
     runtime.reflect.set(union, "__or__", union_or)
     runtime.reflect.set(union, "__ror__", union_ror)
+    runtime.reflect.set(union, "__repr__", union_repr)
+    runtime.reflect.set(union, "__str__", union_repr)
     return union
 
 
@@ -1222,6 +1288,35 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
             if key < 0 or key >= value.length:
                 raise IndexError("index out of range")
             return _internal_native_getitem(value, key)
+        if (
+            _internal_get_member_raw(key, "__sagejs_slice__") is True
+            and _internal_get_member(value, "__getitem__") is runtime.undefined
+        ):
+            # Lists and tuples use native Array storage.  Preserve an explicit
+            # Python subclass override, but keep ordinary sequence slicing out
+            # of generic descriptor dispatch.  This is the slice analogue of
+            # the integer-index fast path above.
+            indices = _internal_call_member(key, "indices", [value.length])
+            start = indices[0]
+            stop = indices[1]
+            step = indices[2]
+            if step == 1:
+                answer = runtime.reflect.apply(
+                    runtime.array.prototype.slice,
+                    value,
+                    [start, stop],
+                )
+            else:
+                answer = []
+                for index in range(start, stop, step):
+                    runtime.reflect.apply(
+                        runtime.array.prototype.push,
+                        answer,
+                        [value[index]],
+                    )
+            if runtime.object.isFrozen(value):
+                return runtime.math_tuple(answer)
+            return runtime.list_decorate(answer)
     # ``__class_getitem__`` is commonly a classmethod inherited from an ABC.
     # Use Python descriptor lookup so the defining class does not accidentally
     # become the receiver when a subclass is subscribed.  Keep this after the
@@ -1234,7 +1329,7 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
         bound_receiver = runtime.reflect.get(class_getitem, "__self__")
         receiver = value if bound_receiver is runtime.undefined else bound_receiver
         return runtime.reflect.apply(class_getitem, receiver, [key])
-    if _internal_member_is_function(value, "__getitem__"):
+    if _internal_get_member(value, "__getitem__") is not runtime.undefined:
         return _internal_call_member(value, "__getitem__", [key])
     if _internal_get_member(key, "__sagejs_slice__"):
         indices = runtime.reflect.apply(
@@ -1280,6 +1375,19 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
     if _internal_type_is(runtime.jstype(key), "number") and key < 0:
         key += value.length
     return _internal_native_getitem(value, key)
+
+
+def ρσ_getslice_all(value: Any) -> Any:
+    """Return `value[:]` without allocating a slice for native sequences."""
+    if (
+        runtime.array.isArray(value)
+        and _internal_get_member(value, "__getitem__") is runtime.undefined
+    ):
+        answer = runtime.reflect.apply(runtime.array.prototype.slice, value, [])
+        if runtime.object.isFrozen(value):
+            return runtime.math_tuple(answer)
+        return runtime.list_decorate(answer)
+    return ρσ_getitem(value, slice(None, None, None))
 
 
 def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
@@ -1460,8 +1568,11 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     ):
         return True
     if _internal_get_member(candidate, "__sagejs_method_type__") is True:
-        return _internal_type_is(value_type, "function") and (
-            _internal_get_member(value, "__self__") is not runtime.undefined
+        if not _internal_type_is(value_type, "function"):
+            return False
+        is_bound_method = _internal_bound_method_helper("ρσ_is_bound_method")
+        return _internal_type_is(runtime.jstype(is_bound_method), "function") and (
+            runtime.reflect.apply(is_bound_method, runtime.undefined, [value])
         )
     if (
         _internal_type_is(value_type, "object")
@@ -1492,14 +1603,17 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
             if ρσ_instanceof_one(value, nested_candidate):
                 return True
         return False
-    if _internal_get_member(candidate, "__sagejs_module_type__") is True:
-        module_namespaces = runtime.reflect.get(
-            runtime.global_object, "__sagejs_module_namespaces__"
-        )
-        if module_namespaces is not runtime.undefined:
-            has_module = runtime.reflect.get(module_namespaces, "has")
-            if runtime.reflect.apply(has_module, module_namespaces, [value]):
-                return True
+    module_namespaces = runtime.reflect.get(
+        runtime.global_object, "__sagejs_module_namespaces__"
+    )
+    if module_namespaces is not runtime.undefined:
+        has_module = runtime.reflect.get(module_namespaces, "has")
+        is_module = runtime.reflect.apply(has_module, module_namespaces, [value])
+        if is_module and (
+            _internal_get_member(candidate, "__sagejs_module_type__") is True
+            or candidate is runtime.reflect.get(runtime.global_object, "object")
+        ):
+            return True
     # Check the native representations of Python's fundamental types before
     # inspecting constructors and prototype chains.  In particular, numeric
     # libraries make ``isinstance(x, int_types)`` a very hot operation and
@@ -1563,6 +1677,16 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     # user-defined classes without another property lookup.
     if candidate is _internal_get_member(value, "__python_type__"):
         return True
+    # Several fundamental Python types use non-constructor host adapters, and
+    # the stage-zero compiler temporarily represents `str` by the same
+    # undefined marker as a primitive string's absent `__python_type__`.
+    # Validate only after those explicit identity paths have had a chance to
+    # match.  A source-level invalid candidate such as integer `1` still
+    # reaches this check and raises the CPython-required TypeError.
+    if not _internal_type_is(runtime.jstype(candidate), "function"):
+        raise TypeError(
+            "isinstance() arg 2 must be a type, a tuple of types, or a union"
+        )
     if (
         candidate is type
         and _internal_type_is(value_type, "function")
@@ -1619,6 +1743,96 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
                 break
             base = base_prototype.constructor
     return False
+
+
+def _internal_is_exception_class(candidate: Any) -> bool:
+    if not _internal_type_is(runtime.jstype(candidate), "function"):
+        return False
+    base_exception = runtime.undefined
+    baselib_modules = runtime.reflect.get(
+        runtime.global_object,
+        "__sagejs_baselib_modules__",
+    )
+    if baselib_modules is not runtime.undefined:
+        errors_module = runtime.reflect.get(
+            baselib_modules,
+            "sagejs._baselib.errors",
+        )
+        if errors_module is not runtime.undefined:
+            base_exception = runtime.reflect.get(errors_module, "BaseException")
+    if base_exception is runtime.undefined:
+        base_exception = _internal_builtin("BaseException")
+    # The stage-zero/self-hosting compiler deliberately runs without the
+    # finished baselib module registry.  Its exception adapters are still
+    # function-valued, but there is no Python BaseException hierarchy to
+    # validate until the production runtime is assembled.
+    if base_exception is runtime.undefined:
+        return True
+    if candidate is base_exception:
+        return True
+    # Native host exceptions such as JavaScript's ``TypeError`` deliberately
+    # retain their native constructors.  During errors-module initialization
+    # their prototypes are linked below Python ``Exception.prototype``, so
+    # validate that authoritative prototype chain before consulting compiled
+    # class MRO metadata (which native constructors do not carry).
+    candidate_prototype = _internal_get_member(candidate, "prototype")
+    base_prototype = _internal_get_member(base_exception, "prototype")
+    while (
+        candidate_prototype is not runtime.undefined and candidate_prototype is not None
+    ):
+        if candidate_prototype is base_prototype:
+            return True
+        candidate_prototype = runtime.object.getPrototypeOf(candidate_prototype)
+    mro = _internal_get_member(candidate, "__mro__")
+    if mro is runtime.undefined:
+        return False
+    for base in mro:
+        if base is base_exception:
+            return True
+    return False
+
+
+def ρσ_exception_matches(value: Any, candidate: Any) -> bool:
+    """Validate and match one Python exception-handler candidate."""
+    if (
+        runtime.array.isArray(candidate)
+        and runtime.object.isFrozen(candidate)
+        or runtime.instance_of(candidate, runtime.tuple_builtin)
+    ):
+        matched = False
+        for nested_candidate in candidate:
+            # Exception tuples are flat, unlike isinstance's recursively
+            # nested type tuples. Validate every item even after a match.
+            if not _internal_is_exception_class(nested_candidate):
+                raise TypeError(
+                    "catching classes that do not inherit from BaseException is not allowed"
+                )
+            if ρσ_exception_matches(value, nested_candidate):
+                matched = True
+        return matched
+    if not _internal_is_exception_class(candidate):
+        raise TypeError(
+            "catching classes that do not inherit from BaseException is not allowed"
+        )
+    baselib_modules = runtime.reflect.get(
+        runtime.global_object,
+        "__sagejs_baselib_modules__",
+    )
+    if baselib_modules is not runtime.undefined:
+        errors_module = runtime.reflect.get(
+            baselib_modules,
+            "sagejs._baselib.errors",
+        )
+        if (
+            errors_module is not runtime.undefined
+            and candidate is runtime.reflect.get(errors_module, "Exception")
+            and runtime.instance_of(value, runtime.error)
+        ):
+            # Host errors historically normalize through Python's broad
+            # builtin Exception handler. Keep that boundary behavior, but
+            # only for the actual builtin object rather than its spelling.
+            return True
+    return ρσ_instanceof_one(value, candidate)
 
 
 def ρσ_instanceof(value: Any, *candidates: Any) -> bool:

@@ -31,5 +31,5 @@ test("audit gap queue supports priority, dimension, area, and text filters", () 
   assert.ok(gaps("--dimension=performance").every((row) => row.dimension === "performance"));
   assert.ok(gaps("--dimension=performance").length >= 19);
   assert.ok(gaps("--area=elliptic").every((row) => row.area === "Elliptic curves"));
-  assert.deepEqual(gaps("--query=86 importable").map((row) => row.capability), ["stdlib"]);
+  assert.deepEqual(gaps("--query=API depth inside").map((row) => row.capability), ["stdlib"]);
 });

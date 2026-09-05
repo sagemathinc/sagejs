@@ -37,6 +37,8 @@ const circularAPath = join(sourceDirectory, "circular_a.py");
 const circularBPath = join(sourceDirectory, "circular_b.py");
 const circularMainPath = join(sourceDirectory, "circular_main.py");
 const localNumbersPath = join(sourceDirectory, "numbers.py");
+const classScopePath = join(sourceDirectory, "cached_class_scope.py");
+const classScopeMainPath = join(sourceDirectory, "class_scope_main.py");
 const shadowMainPath = join(sourceDirectory, "shadow_main.py");
 const shadowOutputPath = join(temporary, "shadow-main.cjs");
 const precompiledNumpyCache = join(
@@ -146,6 +148,30 @@ try {
   const expected = "123456789012345678901234567890";
   assert.equal(run(compileArgs), expected);
   assert.equal(run(compileArgs), expected);
+
+  writeFileSync(
+    classScopePath,
+    "from collections import namedtuple\n" +
+      "MODULE_DEFAULT = 17\n" +
+      "class CachedClassScope:\n" +
+      "    Element = MODULE_DEFAULT\n" +
+      "    Factory = namedtuple\n" +
+      "    def __init__(self, value=MODULE_DEFAULT):\n" +
+      "        self.value = value\n",
+  );
+  writeFileSync(
+    classScopeMainPath,
+    "from cached_class_scope import CachedClassScope\n" +
+      "print(CachedClassScope.Element, CachedClassScope().value, " +
+      "CachedClassScope.Factory.__name__)\n",
+  );
+  const classScopeArgs = [
+    "compile", "--cache-dir", compilerCache, "--execute", classScopeMainPath,
+  ];
+  assert.equal(run(classScopeArgs), "17 17 namedtuple");
+  // The second execution consumes the rendered module-cache variant. Class
+  // variables and method defaults must retain the imported module namespace.
+  assert.equal(run(classScopeArgs), "17 17 namedtuple");
 
   const compilerEntries = filesBelow(compilerCache);
   // Bootstrap modules may declare lazy source-transparent kernel dependencies.

@@ -38,7 +38,7 @@ def print_class(output):
         and not output.options.python_attributes
     )
     native_storage_parent = None
-    if is_node_type(self.parent, AST_SymbolRef) and self.parent.name in [
+    native_storage_names = [
         "dict",
         "int",
         "list",
@@ -48,8 +48,11 @@ def print_class(output):
         "ρσ_int",
         "ρσ_list_constructor",
         "ρσ_str",
-    ]:
-        native_storage_parent = self.parent.name
+    ]
+    for base in self.bases:
+        if is_node_type(base, AST_SymbolRef) and base.name in native_storage_names:
+            native_storage_parent = base.name
+            break
 
     def class_def(method, is_var):
         output.indent()
@@ -318,6 +321,8 @@ def print_class(output):
                         output.print(")")
                     elif native_storage_parent == "map":
                         output.print("map.apply(undefined, arguments)")
+                    elif native_storage_parent in ("list", "ρσ_list_constructor"):
+                        output.print(native_storage_parent + "()")
                     else:
                         self.parent.print(output)
                         output.print("()")
@@ -608,13 +613,14 @@ def print_class(output):
                             )
                             output.print(JSON.stringify(bname))
                             output.end_statement()
-                            (
-                                output.indent(),
-                                output.assign(
-                                    "this." + bname + ".__sagejs_eager_bound_cache__"
-                                ),
+                            output.indent()
+                            output.print("Object.defineProperty(this." + bname)
+                            output.print(
+                                ', "__sagejs_eager_bound_cache__", {value: true})'
                             )
-                            output.print("true")
+                            output.end_statement()
+                            output.indent()
+                            output.print("ρσ_brand_bound_method(this." + bname + ")")
                             output.end_statement()
 
                         output.indent()
@@ -1118,6 +1124,9 @@ def print_class(output):
                     output.indent()
                     output.assign("ρσ_bound_method.__self__")
                     output.print("ρσ_receiver")
+                    output.end_statement()
+                    output.indent()
+                    output.print("ρσ_brand_bound_method(ρσ_bound_method)")
                     output.end_statement()
                     output.indent()
                     output.assign("ρσ_bound_method.__name__")
