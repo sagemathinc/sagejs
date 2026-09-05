@@ -21,24 +21,61 @@ const {
 
 const repositoryRoot = resolve(__dirname, "..");
 const receiptRelativePath = "dist/build-receipt.json";
-const receiptSchema = "sagejs.build-receipt/v2";
+const receiptSchema = "sagejs.build-receipt/v3";
+
+// This is deliberately a small exclusion list, not a guessed compiler DAG.
+// Keep unknown paths, generators, source docstrings, and vendored parsers as
+// artifact inputs. Validation still fingerprints every one of these paths.
+const validationOnlyRoots = [
+  "agents/", "docs/", "test/",
+  "upstream-tests/micropython/", "upstream-tests/python-compat/",
+];
+const validationOnlyFiles = new Set([
+  "AGENTS.md", "ARCHITECTURE.md", "README.md", "RELEASE.md", "TODO.md",
+  "website/reference-data.json", "website/reference.html",
+]);
+
+function isArtifactInput(name, reviewedInputs = new Set()) {
+  return reviewedInputs.has(name) || (!validationOnlyFiles.has(name) &&
+    !validationOnlyRoots.some((prefix) => name.startsWith(prefix)));
+}
+
+function reviewedBuildInputs(root) {
+  // Numerical publication verifies these source hashes, including selected
+  // tests. They are build inputs despite living in validation-only folders.
+  const filename = join(root,
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json");
+  if (!existsSync(filename)) return new Set();
+  const manifest = JSON.parse(readFileSync(filename, "utf8"));
+  return new Set([
+    ...Object.keys(manifest.reviewed_sagejs_files ?? {}),
+    ...Object.keys(manifest.qualification_tooling_files ?? {}),
+  ]);
+}
 
 const fallbackSourceRoots = [
   ".agents",
+  "agents",
   "architecture",
+  "bench",
+  "bin",
   "bootstrap",
+  "docs",
   "ffi",
   "packages",
   "scripts",
   "src",
   "test",
   "tools",
+  "upstream-tests",
+  "website",
 ];
 const fallbackSourceFiles = [
   "package.json",
   "pnpm-lock.yaml",
   "pyrightconfig.json",
   "tsconfig.json",
+  "sagejs-version.json",
 ];
 const ignoredDirectoryNames = new Set([
   ".git",
@@ -79,18 +116,27 @@ function fallbackWorkspaceFiles(root) {
       visit(join(filename, name));
     }
   }
+  // Root metadata/configuration must remain visible even without a Git index.
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory() && entry.name !== ".git") visit(join(root, entry.name));
+  }
   for (const filename of fallbackSourceFiles) visit(join(root, filename));
   for (const filename of fallbackSourceRoots) visit(join(root, filename));
   return [...new Set(files)].sort();
 }
 
-function workspaceFingerprint(root = repositoryRoot) {
+function workspaceFingerprint(root = repositoryRoot, { artifactOnly = false } = {}) {
   const hash = createHash("sha256");
+  const reviewedInputs = artifactOnly ? reviewedBuildInputs(root) : new Set();
   const files = gitWorkspaceFiles(root) ?? fallbackWorkspaceFiles(root);
-  for (const name of files) {
+  function append(name) {
+    if (artifactOnly && !isArtifactInput(name, reviewedInputs)) return;
     const filename = join(root, name);
-    if (!existsSync(filename)) continue;
-    const status = lstatSync(filename);
+    let status;
+    try { status = lstatSync(filename); } catch (error) {
+      if (error.code === "ENOENT") return;
+      throw error;
+    }
     hash.update(name);
     hash.update("\0");
     if (status.isSymbolicLink()) {
@@ -99,10 +145,37 @@ function workspaceFingerprint(root = repositoryRoot) {
     } else if (status.isFile()) {
       hash.update("file\0");
       hash.update(readFileSync(filename));
+    } else if (status.isDirectory()) {
+      // Git lists submodules as directories, not their source files. Bind the
+      // checked-out revision AND tracked/untracked contents, including dirty
+      // grammar edits; a gitlink pathname alone is not an input identity.
+      hash.update("directory\0");
+      const nested = existsSync(join(filename, ".git"));
+      if (nested) {
+        hash.update(execFileSync("git", ["rev-parse", "HEAD"], {
+          cwd: filename, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
+        }).trim());
+        hash.update("\0");
+      }
+      const children = nested ? gitWorkspaceFiles(filename) : null;
+      for (const child of children ?? readdirSync(filename).sort()) {
+        if (ignoredDirectoryNames.has(child)) continue;
+        append(`${name}/${child}`);
+      }
     }
     hash.update("\0");
   }
+  for (const name of files) append(name);
   return hash.digest("hex");
+}
+
+function artifactInputsFingerprint(root = repositoryRoot) {
+  return workspaceFingerprint(root, { artifactOnly: true });
+}
+
+function artifactBuildIdentity(identity) {
+  const { workspaceSha256, ...inputs } = identity ?? {};
+  return inputs;
 }
 
 function nativeInputIdentity(root = repositoryRoot) {
@@ -176,6 +249,7 @@ function numericalRuntimeProviderIdentity(
 function currentBuildIdentity(root = repositoryRoot) {
   return {
     workspaceSha256: workspaceFingerprint(root),
+    artifactInputsSha256: artifactInputsFingerprint(root),
     nativeInputs: nativeInputIdentity(root),
     numericalRuntimeProvider: numericalRuntimeProviderIdentity(root),
     node: process.versions.node,
@@ -319,7 +393,8 @@ function validateBuildReceipt(receipt, identity, root = repositoryRoot) {
   if (receipt?.schema !== receiptSchema) {
     return { current: false, reason: "no valid successful-build receipt" };
   }
-  if (!sameIdentity(receipt.identity, identity)) {
+  if (!/^[0-9a-f]{64}$/.test(receipt.identity?.artifactInputsSha256 ?? "") ||
+      !sameIdentity(artifactBuildIdentity(receipt.identity), artifactBuildIdentity(identity))) {
     return { current: false, reason: "build inputs changed" };
   }
   const numericalFailure = validateNumericalOutputBindings(receipt, identity, root);
@@ -330,7 +405,9 @@ function validateBuildReceipt(receipt, identity, root = repositoryRoot) {
   if (outputFailure !== null) return { current: false, reason: outputFailure };
   return {
     current: true,
-    reason: "exact build inputs and required outputs match",
+    reason: "artifact inputs and required outputs match; validation is separate",
+    buildWorkspaceSha256: receipt.identity.workspaceSha256,
+    validationWorkspaceSha256: identity.workspaceSha256,
     completedAt: receipt.completedAt,
     durationMilliseconds: receipt.durationMilliseconds,
   };
@@ -355,7 +432,7 @@ function inspectSourceBuildReceipt(root = repositoryRoot) {
   }
   const current = currentBuildIdentity(root);
   const stableIdentityKeys = [
-    "workspaceSha256",
+    "artifactInputsSha256",
     "node",
     "v8",
     "platform",
@@ -363,6 +440,7 @@ function inspectSourceBuildReceipt(root = repositoryRoot) {
   ];
   if (
     receipt?.schema !== receiptSchema ||
+    !/^[0-9a-f]{64}$/.test(receipt.identity?.artifactInputsSha256 ?? "") ||
     stableIdentityKeys.some((key) => receipt.identity?.[key] !== current[key])
   ) {
     return { current: false, reason: "source or runtime inputs changed" };
@@ -393,6 +471,7 @@ function writeBuildReceipt({
   root = repositoryRoot,
   durationMilliseconds,
   identity = currentBuildIdentity(root),
+  refreshWorkspaceSha256,
 } = {}) {
   const outputs = outputWitnesses(root, identity);
   const receipt = {
@@ -400,6 +479,7 @@ function writeBuildReceipt({
     completedAt: new Date().toISOString(),
     durationMilliseconds,
     identity,
+    ...(refreshWorkspaceSha256 === undefined ? {} : { refreshWorkspaceSha256 }),
     outputs,
     outputBindings: outputBindings(root, outputs),
     numericalOutputs: numericalOutputBindings(root, identity),
@@ -419,14 +499,20 @@ function refreshBuildReceiptAfterNative(root = repositoryRoot) {
     );
   }
   const previous = sourceStatus.receipt;
+  const current = currentBuildIdentity(root);
   return writeBuildReceipt({
     root,
     durationMilliseconds: previous.durationMilliseconds,
-    identity: currentBuildIdentity(root),
+    // A native refresh does not rebuild the compiler. Keep its original full
+    // workspace lineage when only validation inputs have changed since then.
+    identity: { ...current, workspaceSha256: previous.identity.workspaceSha256 },
+    refreshWorkspaceSha256: current.workspaceSha256,
   });
 }
 
 module.exports = {
+  artifactInputsFingerprint,
+  isArtifactInput,
   currentBuildIdentity,
   inspectBuildReceipt,
   inspectSourceBuildReceipt,

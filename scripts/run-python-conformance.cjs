@@ -12,7 +12,7 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { join, relative } = require("node:path");
-const { inspectBuildReceipt } = require("./build-receipt.cjs");
+const { inspectBuildReceipt, workspaceFingerprint } = require("./build-receipt.cjs");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
 const {
   schema: evidenceSchema, sha256, canonical, normalizeOutput, snapshotSource,
@@ -148,6 +148,10 @@ function requireCurrentBuild(inspector = inspectBuildReceipt) {
     );
   }
   return status;
+}
+
+function requireUnchangedWorkspace(before, after = workspaceFingerprint(root)) {
+  if (before !== after) throw new Error("validation workspace changed during execution");
 }
 
 function execute(command, args, { cwd, env, timeout }) {
@@ -522,10 +526,10 @@ function sourceProvenance() {
   };
 }
 
-function makeReport({ reference, provenance, excluded, artifacts, build, results, gate }) {
+function makeReport({ reference, provenance, excluded, artifacts, build, results, gate, workspaceSha256 }) {
   return {
     schema: "sagejs.python-conformance-report/v1",
-    reference, provenance, excluded,
+    reference, provenance, excluded, workspaceSha256,
     subject: { route: "source", command: process.execPath, args: [sagejs, "--python"] },
     artifact: {
       files: artifacts, node: process.versions.node, v8: process.versions.v8,
@@ -631,6 +635,7 @@ function compareBaseline(results, reference, excluded, baselinePath, provenance)
 
 async function main() {
   const options = parseArguments(process.argv.slice(2));
+  const workspaceSha256 = workspaceFingerprint(root);
   const build = options.artifactReport ? inspectBuildReceipt(root) : requireCurrentBuild();
   if (options.artifactReport) {
     console.log(`Artifact-only diagnostic report; not a current-source gate (${build.reason ?? "build receipt is current"}).`);
@@ -672,6 +677,7 @@ async function main() {
 
   const gate = { status: options.check ? "not-completed" : "not-requested" };
   try {
+    requireUnchangedWorkspace(workspaceSha256);
     if (canonical(provenance) !== canonical(sourceProvenance())) {
       throw new Error("corpus source, fixtures, license, reviews, or source metadata changed during execution");
     }
@@ -722,7 +728,7 @@ async function main() {
   } finally {
     if (options.json) {
       writeFileSync(options.json, `${JSON.stringify(makeReport({
-        reference, provenance, excluded, artifacts, build, results, gate,
+        reference, provenance, excluded, artifacts, build, results, gate, workspaceSha256,
       }), null, 2)}\n`);
     }
   }
@@ -736,6 +742,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  requireUnchangedWorkspace,
   requireCurrentBuild, makeBaseline, compareBaseline, sourceProvenance,
   applyIntentionalIncompatibilities, runOne, execute, parseArguments,
   makeReport, discoverTests,

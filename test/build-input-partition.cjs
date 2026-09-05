@@ -1,0 +1,118 @@
+// sagejs-test-tier: unit
+"use strict";
+
+const assert = require("node:assert/strict");
+const test = require("node:test");
+const { execFileSync } = require("node:child_process");
+const { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { dirname, join } = require("node:path");
+const { artifactInputsFingerprint, workspaceFingerprint, currentBuildIdentity,
+  inspectBuildReceipt, refreshBuildReceiptAfterNative, writeBuildReceipt } = require("../scripts/build-receipt.cjs");
+const { requireUnchangedWorkspace } = require("../scripts/run-python-conformance.cjs");
+
+function fixture(context, git = false) {
+  const root = mkdtempSync(join(tmpdir(), "sagejs-build-inputs-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  if (git) execFileSync("git", ["init", "-q", root]);
+  const write = (name, value = "initial\n") => {
+    mkdirSync(dirname(join(root, name)), { recursive: true });
+    writeFileSync(join(root, name), value);
+  };
+  write("package.json", "{}\n");
+  return { root, write };
+}
+
+for (const git of [false, true]) {
+  test(`audited validation-only edits preserve artifacts (${git ? "Git" : "archive"})`, (context) => {
+    const { root, write } = fixture(context, git);
+    for (const name of ["README.md", "AGENTS.md", "agents/plan.md", "docs/reference/api.md",
+      "test/regression.cjs", "website/reference-data.json", "website/reference.html",
+      "upstream-tests/micropython/baselines/review.json",
+      "upstream-tests/python-compat/suites/example.py"]) {
+      const artifact = artifactInputsFingerprint(root);
+      const workspace = workspaceFingerprint(root);
+      write(name);
+      assert.equal(artifactInputsFingerprint(root), artifact, name);
+      assert.notEqual(workspaceFingerprint(root), workspace, name);
+      assert.throws(() => requireUnchangedWorkspace(workspace, workspaceFingerprint(root)), /workspace changed/);
+    }
+  });
+
+  test(`real build inputs remain conservative (${git ? "Git" : "archive"})`, (context) => {
+    const { root, write } = fixture(context, git);
+    for (const name of ["src/baselib/builtins.py", "bin/sagejs-source.cjs", "sagejs-version.json",
+      "pnpm-lock.yaml", "tsconfig.json", "scripts/build.cjs", "architecture/native-kernels.json",
+      "bench/numerical-p3-nlopt/corpus.json",
+      "tools/nested/test/example.ts", "tools/grammar/README.md", "packages/math/input.py",
+      "upstream-tests/tree-sitter-example/src/scanner.c", "website/unknown-input.json",
+      "unknown-config.json"]) {
+      const before = artifactInputsFingerprint(root);
+      write(name);
+      assert.notEqual(artifactInputsFingerprint(root), before, name);
+      const added = artifactInputsFingerprint(root);
+      write(name, "changed\n");
+      assert.notEqual(artifactInputsFingerprint(root), added, name);
+    }
+  });
+}
+
+test("artifact reuse preserves the original build provenance and output checks", (context) => {
+  const { root, write } = fixture(context);
+  for (const directory of ["compiler", "tools", "vendor", "module-cache", "runtime-cache"]) {
+    write(`dist/${directory}/payload`);
+  }
+  for (const name of ["compiler/compiler.js", "tools/kernel.js", "runtime-cache/manifest.json", "sagejs-version.json"]) write(`dist/${name}`);
+  const original = currentBuildIdentity(root);
+  writeBuildReceipt({ root, durationMilliseconds: 1, identity: original });
+  const receipt = readFileSync(join(root, "dist/build-receipt.json"));
+  write("test/new-case.cjs");
+  const status = inspectBuildReceipt(root);
+  assert.equal(status.current, true);
+  assert.equal(status.buildWorkspaceSha256, original.workspaceSha256);
+  assert.equal(status.validationWorkspaceSha256, workspaceFingerprint(root));
+  assert.notEqual(status.validationWorkspaceSha256, status.buildWorkspaceSha256);
+  assert.deepEqual(readFileSync(join(root, "dist/build-receipt.json")), receipt);
+  const refreshed = refreshBuildReceiptAfterNative(root);
+  assert.equal(refreshed.identity.workspaceSha256, original.workspaceSha256);
+  assert.equal(refreshed.refreshWorkspaceSha256, workspaceFingerprint(root));
+  assert.equal(inspectBuildReceipt(root).current, true);
+  assert.equal(inspectBuildReceipt(root).buildWorkspaceSha256, original.workspaceSha256);
+  write("dist/module-cache/payload", "tampered");
+  assert.match(inspectBuildReceipt(root).reason, /digest or inventory/);
+});
+
+test("source-reviewed tests remain build inputs even in validation-only roots", (context) => {
+  const { root, write } = fixture(context);
+  const path = "test/reviewed-numerical-contract.cjs";
+  write("src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json",
+    JSON.stringify({ reviewed_sagejs_files: { [path]: "reviewed" },
+      qualification_tooling_files: { "test/review-tool.cjs": "reviewed" } }));
+  for (const name of [path, "test/review-tool.cjs"]) {
+    write(name);
+    const before = artifactInputsFingerprint(root);
+    write(name, "changed contract");
+    assert.notEqual(artifactInputsFingerprint(root), before, name);
+  }
+});
+
+test("submodule revision, dirty source, and untracked source are fingerprinted", (context) => {
+  const { root, write } = fixture(context, true);
+  const nested = join(root, "upstream-tests/tree-sitter-example");
+  write("upstream-tests/tree-sitter-example/src/scanner.c");
+  execFileSync("git", ["init", "-q", nested]);
+  const git = (...args) => execFileSync("git", ["-C", nested, ...args], { stdio: "pipe" });
+  git("add", "src/scanner.c");
+  git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "fixture");
+  execFileSync("git", ["-C", root, "add", "upstream-tests/tree-sitter-example"], { stdio: "pipe" });
+  const original = artifactInputsFingerprint(root);
+  write("upstream-tests/tree-sitter-example/src/scanner.c", "dirty");
+  assert.notEqual(artifactInputsFingerprint(root), original);
+  write("upstream-tests/tree-sitter-example/src/scanner.c");
+  assert.equal(artifactInputsFingerprint(root), original);
+  write("upstream-tests/tree-sitter-example/new-source.c");
+  assert.notEqual(artifactInputsFingerprint(root), original);
+  rmSync(join(nested, "new-source.c"));
+  git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-qm", "new revision");
+  assert.notEqual(artifactInputsFingerprint(root), original);
+});

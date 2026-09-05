@@ -10,6 +10,7 @@ const { caseEvidence, sha256 } = require("../tools/python-compat/evidence.cjs");
 
 const {
   requireCurrentBuild,
+  requireUnchangedWorkspace,
   makeBaseline, compareBaseline, makeReport, parseArguments,
   applyIntentionalIncompatibilities,
   execute, classifySagejs,
@@ -18,6 +19,11 @@ const {
 const reference = { implementation: "CPython", version: "3.14.4", majorMinor: "3.14" };
 const excluded = { expected: [], unittest: [] };
 const provenance = { corpus: { sha256: sha256("fixture") } };
+
+test("validation identity may not change just because artifacts remain reusable", () => {
+  assert.doesNotThrow(() => requireUnchangedWorkspace("before", "before"));
+  assert.throws(() => requireUnchangedWorkspace("before", "after"), /validation workspace changed/);
+});
 
 function result(stdout = "correct\n") {
   const execution = (output) => ({
