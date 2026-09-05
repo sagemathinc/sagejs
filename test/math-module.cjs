@@ -9,6 +9,10 @@ async function main() {
   try {
     const result = await session.evaluate([
       "import math",
+      "for value, sign in [(0.0, 1.0), (-0.0, -1.0), (2.0, 1.0), (-2.0, -1.0), (math.inf, 1.0), (-math.inf, -1.0), (math.nan, 1.0), (-math.nan, -1.0)]:",
+      "    assert math.copysign(3.0, value) == 3.0 * sign",
+      "    assert math.copysign(-3.0, value) == 3.0 * sign",
+      "    assert math.copysign(1.0, math.copysign(0.0, value)) == sign",
       "large = 10**10000",
       "print(large.bit_length())",
       "print(abs(math.log(large, 10) - 10000) < 1e-10)",

@@ -106,3 +106,41 @@ These timings include one host boundary per root but exclude public preparation,
 planning, independent validation, diagnostics and structured results. They show
 the opportunity from keeping the evaluator resident inside the solver, not a
 passed public latency target. Persistent-host replication remains open.
+
+## Public scalar preparation checkpoint
+
+`perf/numerical-prepared-functions` adds an explicitly imported experimental
+`PreparedFunction` over the existing multilingual expression records:
+
+```python
+from sagejs.numerics.evaluators import PreparedFunction
+
+with PreparedFunction("sqrt(x*x) + a", inputs=("x", "a"), backend="native") as f:
+    assert f(-3, 2) == 5.0
+    print(f.to_dict())
+```
+
+Preparation owns its program, constants and workspace; parameters are supplied
+per call. It rejects copying, reentrant use and use after close. Exported
+metadata is detached. Its SHA256 identifies the canonical expression and
+semantics, **not** a compiler artifact or qualification receipt. The actual
+execution target and fallback reason are separate fields.
+
+The contract requires finite binary64 inputs, constants, intermediates and
+results. This deliberately rejects expressions such as `1/(1e308*1e308)` even
+though ordinary IEEE evaluation can produce zero after an infinite intermediate.
+The existing frontend interpreter retains its previous default semantics;
+prepared evaluation explicitly opts into the stronger policy. Unsupported
+compiled operations, including powers and transcendental functions other than
+square root, retain the canonical dynamic evaluator rather than hidden host
+calls. This is an extension, not a general closure compiler.
+
+The focused suite covers CPython, source-native, forced dynamic, missing and
+stale caches, all four expression syntaxes, ownership, finite-domain failures,
+parameter changes and recovery. Exact-library-load guards remain enabled.
+Signed-zero tests also exposed and corrected an existing `math.copysign` bug;
+the regression includes signed zero and signed NaN as sign donors.
+
+This checkpoint does not yet connect prepared functions to public solvers,
+register a public browser pack, establish four-platform qualification, provide
+derivatives/vector outputs or meet any end-to-end performance target.

@@ -49,11 +49,25 @@ def ceil(x):
 def copysign(x, y):
     x = float(x)
     y = float(y)
-    x = Math.abs(x)
+    x = float(Math.abs(x))
     if y < 0:
         return float(-x)
-    else:
+    if y > 0:
         return float(x)
+    # Ordered comparisons cannot distinguish signed zero or a NaN sign bit.
+    # Use the existing host representation boundary only for those cases;
+    # ordinary nonzero arguments retain the allocation-free path above.
+    storage = runtime.reflect.construct(
+        runtime.reflect.get(runtime.global_object, "ArrayBuffer"), [8]
+    )
+    view = runtime.reflect.construct(
+        runtime.reflect.get(runtime.global_object, "DataView"), [storage]
+    )
+    runtime.reflect.apply(
+        runtime.reflect.get(view, "setFloat64"), view, [0, runtime.number(y), False]
+    )
+    sign_byte = runtime.reflect.apply(runtime.reflect.get(view, "getUint8"), view, [0])
+    return float(-x) if sign_byte >= 128 else float(x)
 
 
 def fabs(x):

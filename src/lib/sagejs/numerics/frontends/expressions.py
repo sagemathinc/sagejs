@@ -486,7 +486,12 @@ def _expression_symbols(tree: Mapping[str, Any]) -> set[str]:
     return set()
 
 
-def evaluate_expression(record: Mapping[str, Any], values: Mapping[str, Any]) -> Any:
+def evaluate_expression(
+    record: Mapping[str, Any],
+    values: Mapping[str, Any],
+    *,
+    finite_intermediates: bool = False,
+) -> Any:
     """Evaluate validated scalar expression IR for live-binding consistency checks."""
 
     if record.get("kind") != "expression":
@@ -494,10 +499,22 @@ def evaluate_expression(record: Mapping[str, Any], values: Mapping[str, Any]) ->
     tree = record.get("tree")
     if not isinstance(tree, Mapping):
         raise TypeError("expression record tree must be a mapping")
-    return _evaluate(tree, values)
+    return _evaluate(tree, values, finite_intermediates)
 
 
-def _evaluate(tree: Mapping[str, Any], values: Mapping[str, Any]) -> Any:
+def _evaluate(
+    tree: Mapping[str, Any], values: Mapping[str, Any], finite: bool = False
+) -> Any:
+    value = _evaluate_node(tree, values, finite)
+    if finite:
+        if not isinstance(value, (int, float)) or not math.isfinite(value):
+            raise ValueError("numerical expression has a non-finite real intermediate")
+    return value
+
+
+def _evaluate_node(
+    tree: Mapping[str, Any], values: Mapping[str, Any], finite: bool
+) -> Any:
     kind = tree.get("kind")
     if kind == "number":
         value = float(str(tree.get("value")))
@@ -517,7 +534,7 @@ def _evaluate(tree: Mapping[str, Any], values: Mapping[str, Any]) -> Any:
         operand = tree.get("operand")
         if not isinstance(operand, Mapping):
             raise TypeError("unary expression operand must be a mapping")
-        value = _evaluate(operand, values)
+        value = _evaluate(operand, values, finite)
         return value if tree.get("operator") == "positive" else -value
     if kind == "call":
         function = str(tree.get("function"))
@@ -525,7 +542,7 @@ def _evaluate(tree: Mapping[str, Any], values: Mapping[str, Any]) -> Any:
         if not isinstance(arguments, Sequence) or isinstance(arguments, str):
             raise TypeError("call expression arguments must be a sequence")
         evaluated = [
-            _evaluate(argument, values)
+            _evaluate(argument, values, finite)
             for argument in arguments
             if isinstance(argument, Mapping)
         ]
@@ -537,8 +554,8 @@ def _evaluate(tree: Mapping[str, Any], values: Mapping[str, Any]) -> Any:
         right = tree.get("right")
         if not isinstance(left, Mapping) or not isinstance(right, Mapping):
             raise TypeError("binary expression operands must be mappings")
-        lhs = _evaluate(left, values)
-        rhs = _evaluate(right, values)
+        lhs = _evaluate(left, values, finite)
+        rhs = _evaluate(right, values, finite)
         operation = str(tree.get("operator"))
         if operation == "add":
             return lhs + rhs
