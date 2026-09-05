@@ -51,6 +51,22 @@ values = []
 list.append(values, 5)
 assert values == [5]
 
+# Receiver-style builtin methods still implement Python's unbound descriptor
+# form when retrieved from the class.  This is used by real packages, notably
+# for efficient queue extension in custom list iterators.
+values = [3, 1]
+list.extend(values, [2])
+list.insert(values, 0, 4)
+assert list.pop(values) == 2
+list.remove(values, 3)
+list.sort(values)
+list.reverse(values)
+assert list.copy(values) == [4, 1]
+assert list.count(values, 4) == 1
+assert list.index(values, 1) == 1
+list.clear(values)
+assert values == []
+
 
 for builtin_value, builtin_type, builtin_name in (
     (None, type(None), "NoneType"),
