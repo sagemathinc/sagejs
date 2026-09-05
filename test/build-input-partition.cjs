@@ -19,6 +19,12 @@ const packageAndBenchmarkValidationPaths = [
   "bench/python-compat/qualification.cjs",
 ];
 
+const derivedValidationArtifactPaths = [
+  "architecture/optimizer-opportunities.manifest.json",
+  "docs/optimizer-opportunities.md",
+  "bench/modular/qexp-correctness/source-freeze.json",
+];
+
 function fixture(context, git = false) {
   const root = mkdtempSync(join(tmpdir(), "sagejs-build-inputs-"));
   context.after(() => rmSync(root, { recursive: true, force: true }));
@@ -38,7 +44,7 @@ for (const git of [false, true]) {
       "test/regression.cjs", "website/reference-data.json", "website/reference.html",
       "upstream-tests/micropython/baselines/review.json",
       "upstream-tests/python-compat/suites/example.py",
-      ...packageAndBenchmarkValidationPaths]) {
+      ...packageAndBenchmarkValidationPaths, ...derivedValidationArtifactPaths]) {
       const artifact = artifactInputsFingerprint(root);
       const workspace = workspaceFingerprint(root);
       write(name);
@@ -48,12 +54,42 @@ for (const git of [false, true]) {
     }
   });
 
+  test(`derived validation edits and removal preserve artifacts (${git ? "Git" : "archive"})`, (context) => {
+    const { root, write } = fixture(context, git);
+    for (const name of derivedValidationArtifactPaths) {
+      write(name);
+      const artifact = artifactInputsFingerprint(root);
+      const workspace = workspaceFingerprint(root);
+      write(name, "regenerated validation evidence\n");
+      const regenerated = workspaceFingerprint(root);
+      assert.equal(artifactInputsFingerprint(root), artifact, name);
+      assert.notEqual(regenerated, workspace, name);
+      assert.throws(() => requireUnchangedWorkspace(workspace, regenerated), /workspace changed/);
+      rmSync(join(root, name));
+      assert.equal(artifactInputsFingerprint(root), artifact, name);
+      assert.notEqual(workspaceFingerprint(root), regenerated, name);
+    }
+  });
+
   test(`real build inputs remain conservative (${git ? "Git" : "archive"})`, (context) => {
     const { root, write } = fixture(context, git);
     for (const name of ["src/baselib/builtins.py", "bin/sagejs-source.cjs", "sagejs-version.json",
       "pnpm-lock.yaml", "tsconfig.json", "scripts/build.cjs", "architecture/native-kernels.json",
       "bench/numerical-p3-nlopt/corpus.json",
       "scripts/build-receipt.cjs", "scripts/precompiled-python-packages.json",
+      "src/compiler.py", "tools/python/lowerer.ts",
+      "scripts/optimizer-opportunity-dashboard.cjs",
+      "tools/optimizer-development/dashboard-artifacts.cjs",
+      "tools/optimizer-development/identity.cjs",
+      "architecture/optimizer-opportunities.manifest.json.in",
+      "architecture/optimizer-opportunities.schema.json",
+      "architecture/package-graph.json",
+      "bench/modular/qexp-correctness/source-freeze.cjs",
+      "bench/modular/qexp-correctness/pinned-corpus.json",
+      "bench/modular/qexp-correctness/sagejs-corpus.cjs",
+      "src/baselib/modular.py", "src/lib/sagejs/modular_forms/qexp.py",
+      "bench/modular/qexp-correctness/source-freeze.json.in",
+      "bench/modular/qexp-correctness/source-freeze.schema.json",
       "scripts/run-pure-python-packages-generator.cjs", "scripts/python-package-phases-extra.cjs",
       "bench/cowasm/run.cjs.in", "bench/python-compat/qualification-schema.json",
       "upstream-tests/python-packages-generator/generator.cjs",
@@ -71,12 +107,13 @@ for (const git of [false, true]) {
 }
 
 for (const field of ["reviewed_sagejs_files", "qualification_tooling_files"]) {
-  test(`reviewed production ${field} overrides package/benchmark exclusions`, (context) => {
+  test(`reviewed production ${field} overrides validation-only exclusions`, (context) => {
     const { root, write } = fixture(context);
+    const paths = [...packageAndBenchmarkValidationPaths, ...derivedValidationArtifactPaths];
     write("src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json",
       JSON.stringify({ [field]: Object.fromEntries(
-        packageAndBenchmarkValidationPaths.map((name) => [name, "reviewed"])) }));
-    for (const name of packageAndBenchmarkValidationPaths) {
+        paths.map((name) => [name, "reviewed"])) }));
+    for (const name of paths) {
       write(name);
       const artifact = artifactInputsFingerprint(root);
       write(name, "changed reviewed input");
@@ -95,6 +132,7 @@ test("artifact reuse preserves the original build provenance and output checks",
   writeBuildReceipt({ root, durationMilliseconds: 1, identity: original });
   const receipt = readFileSync(join(root, "dist/build-receipt.json"));
   write("test/new-case.cjs");
+  for (const name of derivedValidationArtifactPaths) write(name);
   const status = inspectBuildReceipt(root);
   assert.equal(status.current, true);
   assert.equal(status.buildWorkspaceSha256, original.workspaceSha256);
