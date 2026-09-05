@@ -99,6 +99,23 @@ function groupFor(stratum) {
   return ["4", ["2", "2"]];
 }
 
+function syntheticSurveyRecord(stratum, shard, rank, role) {
+  // Labels and class-group outcomes remain synthetic protocol-test data, not
+  // arithmetic evidence. Unlike the old arbitrary discriminants, these
+  // polynomial/discriminant pairs satisfy the exact equation-index contract.
+  // Each x^3-x+c has squarefree negative discriminant in the required band.
+  const constant = [21n, 61n, 195n, 609n][Math.floor(shard / frozen.CLASS_BANDS.length)];
+  const discriminant = 27n * constant * constant - 4n;
+  const [classNumber, classGroup] = groupFor(stratum);
+  const record = sourceRecord(`3.1.${discriminant}.${100 * shard + rank}`, {
+    role,
+    stratum,
+    selection_rank: rank,
+  }, classNumber, classGroup);
+  record.coefficients = [String(constant), "-1", "0", "1"];
+  return record;
+}
+
 function corpusFixture() {
   const survey = frozen.CONTROL_LABELS.map((label, index) => sourceRecord(label, {
     role: "smoke",
@@ -106,15 +123,8 @@ function corpusFixture() {
     selection_rank: index + 1,
   }, "1", []));
   frozen.expectedStrata().forEach((stratum, shard) => {
-    const band = frozen.DISCRIMINANT_BANDS[Math.floor(shard / frozen.CLASS_BANDS.length)];
-    const [classNumber, classGroup] = groupFor(stratum);
     for (let rank = 1; rank <= 50; rank += 1) {
-      const discriminant = band.lowerExclusive + BigInt(100 * rank + shard + 1);
-      survey.push(sourceRecord(`3.1.${discriminant}.${shard + 1}`, {
-        role: "tune",
-        stratum,
-        selection_rank: rank,
-      }, classNumber, classGroup));
+      survey.push(syntheticSurveyRecord(stratum, shard, rank, "tune"));
     }
   });
   survey.sort(frozen.compareRecords);
@@ -643,15 +653,8 @@ function completeFixture() {
 function holdoutRecords(manifest) {
   const records = [];
   manifest.strata.forEach((stratum, shard) => {
-    const band = frozen.DISCRIMINANT_BANDS[Math.floor(shard / frozen.CLASS_BANDS.length)];
-    const [classNumber, classGroup] = groupFor(stratum);
     for (let rank = 51; rank <= 70; rank += 1) {
-      const discriminant = band.lowerExclusive + BigInt(100 * rank + shard + 1);
-      records.push(sourceRecord(`3.1.${discriminant}.${100 + shard}`, {
-        role: "holdout",
-        stratum,
-        selection_rank: rank,
-      }, classNumber, classGroup));
+      records.push(syntheticSurveyRecord(stratum, shard, rank, "holdout"));
     }
   });
   return records;

@@ -372,6 +372,7 @@ export function runRuntimeBootstrap(
       ...facadeNames,
       "__sagejs_native_resolve__",
       "__sagejs_native_fallback_policy__",
+      "__sagejs_native_private_fallback__",
     ]);
     const pythonBuiltinNames = new Set<PropertyKey>();
     const baselibRegistry = Reflect.get(
