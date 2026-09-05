@@ -76,3 +76,33 @@ test("private integer dependencies execute in dynamic and emitted native backend
     }
   }
 });
+
+test("prime-source calls retain private checked integer adapters", async t => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-private-prime-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const mixed = `
+from sagejs.native import native, uint64, UInt64Buffer, PrimeFieldModulus
+
+def count(value: uint64) -> uint64:
+    return value + 1
+
+@native
+def entry(output: UInt64Buffer, value: uint64, modulus: PrimeFieldModulus) -> bool:
+    output[0] = count(value)
+    return True
+`;
+  const sourcePath = join(directory, "mixed.py");
+  writeFileSync(sourcePath, mixed);
+  const ir = await lowerSource(mixed, sourcePath, { functions: ["entry"] });
+  assert.equal(ir.functions.find(f => f.name === "count").hostCallable, false);
+  const core = generateHostCore(ir);
+  assert.match(core.source, /static int sagejs_kernel_count\(/);
+  assert.doesNotMatch(core.header, /sagejs_kernel_count\(/);
+  const result = await compileKernel({ sourcePath, functions: ["entry"],
+    cacheRoot: join(directory, "cache") });
+  const module = require(result.modulePath);
+  assert.equal(module.count, undefined);
+  const output = new BigUint64Array(1);
+  assert.equal(module.entry(output, 6n, 101n), true);
+  assert.equal(output[0], 7n);
+});
