@@ -15,10 +15,17 @@ The repeated local comparison shows large collection gains and roughly
 2–2.6× gains on the selected iteration-traced public solvers, but **does not
 meet the program's latency targets or complete N0/N1**.
 
+[Persistent-host evidence](../bench/numerics/performance/results/n1-platforms-2026-09-05/README.md)
+now includes an independent Linux ARM64 A/B/B/A block comparison with identical
+public observations, plus Windows/macOS candidate-only measurements. The extra
+disk on `bench-1` is available and both x64 comparison builds passed. Browser
+payload CI still fails its eager-size gate; a separate result-PR group test hit
+its child timeout. Those failures remain explicit, not relaxed into passes.
+
 The corpus, profiler, and generated optimizer dashboard are reused rather than
 replaced by a separate benchmark service. N0 still lacks full scaling/failure,
 automatic/library/#124 comparisons, phase/startup/payload/peak-memory evidence,
-and persistent-host/browser confirmation. The initial 256-event baseline batch
+and complete persistent-host/browser confirmation. The initial 256-event baseline batch
 is censored, never reported as a per-call median. Benchmark-host disk exhaustion
 is an infrastructure gap, not authorization to delete another lane's work.
 
