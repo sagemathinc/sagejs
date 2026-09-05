@@ -99,7 +99,7 @@ test("public prepared statistics use the optional pack in real browser sessions"
       try {
         const page = await browser.newPage();
         await page.goto(origin);
-        for (const [route, expected] of [["floating", "source-native"], ["stale", "ordinary-python"], ["missing", "ordinary-python"]]) {
+        for (const [route, expected] of [["disabled", "ordinary-python"], ["floating", "source-native"], ["stale", "ordinary-python"], ["missing", "ordinary-python"]]) {
           const start = requests.length;
           const observation = await page.evaluate(async ({ origin, route, expected, source, start }) => {
             const { createSage } = await import(origin + "/kernel.mjs");
@@ -107,7 +107,7 @@ test("public prepared statistics use the optional pack in real browser sessions"
               compiler: origin + "/__witness/compiler.js", baselib: origin + "/__witness/baselib.js",
               standardLibrary: origin + "/__witness/stdlib.json", lazyModules: origin + "/__witness/lazy-modules.json",
               compilerFrontend: origin + "/__witness/compiler-frontend.mjs",
-              floatingKernels: origin + `/__witness/${route}/index.json`,
+              floatingKernels: route === "disabled" ? undefined : origin + `/__witness/${route}/index.json`,
             });
             try {
               await sage.evaluate("assert 2 + 2 == 4", { timeout: 120000 });
@@ -127,7 +127,11 @@ test("public prepared statistics use the optional pack in real browser sessions"
           assert.equal(observation.stdout.trim(), "prepared statistics passed", engine + ":" + route);
           assert.equal(observation.recovery.trim(), "42");
           const selected = requests.slice(start).filter((url) => url.startsWith(`/__witness/${route}/`));
-          assert.equal(selected.filter((url) => url.endsWith("index.json")).length, 1);
+          assert.equal(selected.filter((url) => url.endsWith("index.json")).length, route === "disabled" ? 0 : 1);
+          if (route === "disabled") {
+            assert.equal(requests.slice(start).filter((url) => url === "/floating-kernels.mjs").length, 0,
+              "default sessions must not import the optional floating loader");
+          }
           assert.equal(selected.filter((url) => url.endsWith(".wasm")).length, route === "floating" ? 1 : 0);
           process.stdout.write(`${engine} ${route}: public ownership, exactness, budgets, fallback and recovery passed\n`);
         }

@@ -282,7 +282,10 @@ self.onmessage = async ({ data }) => {
           nextCompiler,
           "python",
         );
-      const initializationSource = (standardLibrary.preload ?? [])
+      // builtins is synthesized by code generation, not a lazy source file.
+      // Establish its namespace before lazy modules (including native.py)
+      // import it and before the evaluator installs its native resolver hook.
+      const initializationSource = ["builtins", ...(standardLibrary.preload ?? [])]
         .map((name) => `import ${name}`)
         .join("\n");
       const initializationFrontend = data.mode === "python"

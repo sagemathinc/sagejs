@@ -41,7 +41,7 @@ After the ordinary compiler/module and browser builds, create the optional pack:
 ```sh
 node tools/native-kernel/wasm-production-pack.cjs --isolate-float64 \
   --manifest packages/flint-wasm/numerical/floating-kernels.json \
-  --output packages/flint-wasm/dist/floating-kernels
+  --output build/numerical-performance/optional-floating-kernels
 ```
 
 Serve the resulting `index.json` and its `packs/float64/*.wasm` subtree alongside
@@ -60,6 +60,10 @@ is explicitly experimental. It is not part of the default exact production
 manifest, published npm/SEA assets, or automatically authenticated release
 capability matrix.
 
+Keep this optional output outside the production `dist` directory: its ABI
+allowlist intentionally rejects unreviewed extra Wasm artifacts. No default
+production ABI addition is needed for this explicit developer resource.
+
 ## Evidence and remaining work
 
 - Four source functions produce a 57,847-byte Wasm pack with nonexistent exact
@@ -67,15 +71,25 @@ capability matrix.
   Python source, worker/runtime startup and prepared data.
 - Focused lazy lifecycle/authentication tests pass, including oversized streaming
   responses, timeout, missing/corrupt resources and immutable source bindings.
-- The public browser source witness runs the existing prepared-data correctness,
-  ownership, cancellation, budget and fallback corpus through `createSage`.
-  Qualification is pending until its real browser executions finish.
+- The public browser source witness passes the existing prepared-data correctness,
+  ownership, cancellation, budget and fallback corpus through `createSage` in
+  Chromium, Firefox and WebKit. Each passes four independent sessions: disabled,
+  floating, stale and missing. The disabled session never imports the optional
+  loader; the floating session proves actual Wasm execution. This is source
+  integration evidence, not a release receipt or a performance measurement.
 - Its first execution stopped before statistics because a previously built
   local exact artifact lacked a numeric export required by the runtime. A fresh
-  isolated browser-package build is required; that is not a statistics pass or
-  a reason to weaken its public test.
+  isolated rebuild supplied matching exact assets. The final ABI gate initially
+  rejected the optional pack in production dist; moving it outside dist restored
+  the unchanged 15-module ABI check. The subsequent real browser run exposed
+  absent `builtins` initialization. Explicit compiler-generated bootstrap now
+  precedes lazy imports and native-hook installation. All twelve browser cases
+  pass after that fix (109 seconds total harness time on this host).
+- Current focused checks: 21 resource/lifecycle tests, 10 native/dynamic/CPython
+  regressions, 12 host/session tests, 25 qualification-contract tests, and
+  architecture pass. NLopt metadata remains pending, not promoted.
 
-Still open: public browser qualification, artifact-bound public provenance,
+Still open: release-artifact browser qualification, artifact-bound public provenance,
 independently lazy native packaging, clean npm/SEA and minimum-Node checks,
 four-platform candidate receipts, sustained memory/cancellation evidence and
 frozen paired full-query/startup timings. The 10 ms statistics target remains
