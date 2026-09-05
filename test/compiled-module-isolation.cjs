@@ -185,6 +185,16 @@ test("sagejs.runtime is a complete canonical module namespace", async (t) => {
   );
   assert.equal(
     (await session.evaluate(
+      "setattr(runtime, '_directory_probe', 42)\n" +
+        "listed = '_directory_probe' in dir(runtime)\n" +
+        "delattr(runtime, '_directory_probe')\n" +
+        "listed, '_directory_probe' not in dir(runtime)",
+    )).repr,
+    "(True, True)",
+    "the intrinsic directory must remain live, not a frozen list of names",
+  );
+  assert.equal(
+    (await session.evaluate(
       "missing = [name for name in runtime_names " +
         "if name not in ('last_exception', 'undefined') " +
         "and not hasattr(runtime, name)]\n" +
