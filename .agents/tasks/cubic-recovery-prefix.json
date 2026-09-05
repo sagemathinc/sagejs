@@ -124,18 +124,18 @@
     }
   ],
   "handoff": {
-    "summary": "Draft PR142: implementation fcfbd213 plus portable test discovery d0f8d983. Actual recovery HNF/LLL now use logical prefixes; statuses distinguish absent certified unit evidence, deficient rank, invalid exact computation, unavailable reconstruction and invalid regulator. The established-full-rank caller sends all fatal/inconsistent statuses to non-retryable phase44, while status0 retains phase43. Focused tests and existing regulator/cursor guards pass, as do strict checks on247 modules. Current-source lowering confirms86 fmpz functions and one arena. Actual alpha^3-alpha-1 arithmetic agrees under dynamic/GMP/fmpz across exact and poisoned oversized owners at2,4,2,4; direct sanitized cores use fixed3MiB checkpoints without retries/upstream allocation. High-water is206448 bytes fmpz and1995008 bytes GMP. No class-group timing claim or opt use.",
+    "summary": "Draft PR 142: implementation fcfbd213 plus portable test discovery d0f8d983. Actual recovery HNF/LLL now use logical prefixes; statuses distinguish absent certified unit evidence, deficient rank, invalid exact computation, unavailable reconstruction and invalid regulator. The established-full-rank caller sends all fatal/inconsistent statuses to non-retryable phase 44, while status 0 retains phase 43. Focused tests and existing regulator/cursor guards pass, as do strict checks on 247 modules. Current-source lowering confirms 86 fmpz functions and one arena. Actual alpha^3-alpha-1 arithmetic agrees under dynamic/GMP/fmpz across exact and poisoned oversized owners at counts 2, 4, 2, 4; direct sanitized cores use fixed 3 MiB checkpoints without retries/upstream allocation. High-water is 206448 bytes fmpz and 1995008 bytes GMP. No class-group timing claim or opt use.",
     "risks": [
       "The integration agent explicitly owns the combined full production rebuild, public cubic regression suite and broad pnpm test:native gate. These were not duplicated in this lane; only fresh prerequisite builds, focused compiled mathematical witnesses and actual full-closure lowering were executed.",
       "Architecture checking reaches stale optimizer provenance; integration owns the combined refresh. Non-Linux CI remains pending, and the direct ASan/UBSan harness is Unix-only.",
       "The four-prefix memory measurements qualify only this genuine small witness, not the complete repeated proof suffix or all input sizes.",
-      "Failure-path correction intentionally prevents host effort escalation on reconstruction/regulator failures and inconsistent rank. One-shot successful mathematical outputs are unchanged, but previously unsafe phase43 retries now decline.",
-      "pnpm test:changed --base813e77a1 --list was reviewed; full execution would start the production build deliberately deferred to the integration agent. The task remains active and the PR draft until combined gates pass."
+      "Failure-path correction intentionally prevents host effort escalation on reconstruction/regulator failures and inconsistent rank. One-shot successful mathematical outputs are unchanged, but previously unsafe phase 43 retries now decline.",
+      "pnpm test:changed -- --base 813e77a1 --list was reviewed; full execution would start the production build deliberately deferred to the integration agent. The task remains active and the PR draft until combined gates pass."
     ],
     "next_steps": [
       "Integrate the disjoint recovery helper/caller changes with presentation extraction and BF prefix work; resolve only the expected FFI import union.",
       "Run the combined production build and full public cubic receipt/replay regressions, then refresh optimizer provenance and validate non-Linux targets.",
-      "Keep negative recovery statuses fatal in the forthcoming staged orchestrator; interpret status2 as insufficiency only before full-rank support has been established."
+      "Keep negative recovery statuses fatal in the forthcoming staged orchestrator; interpret status 2 as insufficiency only before full-rank support has been established."
     ]
   }
 }
