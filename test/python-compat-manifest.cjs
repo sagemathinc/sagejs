@@ -19,10 +19,47 @@ function copyFixture(context) {
 
 test("pinned RustPython selection binds unchanged programs, fixture closure, and license", () => {
   const loaded = loadManifest(join(sourceRoot, "manifest.json"));
-  assert.equal(loaded.cases.length, 12);
+  assert.equal(loaded.cases.filter((entry) => entry.suite === "rustpython").length, 12);
   assert.equal(loaded.manifest.oracle.version, "3.14.4");
   assert.equal(loaded.provenance.suites.rustpython.revision, "59453b9b2505600dcfc5de06aafedeba260b600d");
-  assert.equal(loaded.cases.filter((entry) => entry.fixtures.length === 1).length, 4);
+  assert.equal(loaded.cases.filter((entry) => entry.suite === "rustpython" && entry.fixtures.length === 1).length, 4);
+});
+
+test("independent runtime tranches retain required public-behavior cases and pinned sources", () => {
+  const loaded = loadManifest(join(sourceRoot, "manifest.json"));
+  assert.equal(loaded.cases.length, 28);
+  for (const [suite, count, revision] of [
+    ["pypy", 4, "194f9f44b50552d75484d67cda6e2b36607dee0c"],
+    ["graalpy", 5, "992e0053563c2f73876c0e47d2cc7d14b0505699"],
+    ["ironpython", 4, "b32412cc16f2a917b854021360f1c4b1c8815c2a"],
+    ["cpython", 3, "823f0323ee6ec1402088b73bce1a38473cac36dc"],
+  ]) {
+    const entries = loaded.cases.filter((entry) => entry.suite === suite);
+    assert.equal(entries.length, count, suite);
+    assert.equal(loaded.provenance.suites[suite].revision, revision);
+    for (const entry of entries) {
+      assert.equal(entry.disposition, "required");
+      assert.equal(entry.priority, "P1");
+      assert.deepEqual(entry.fixtures, []);
+      assert.deepEqual(entry.targets, ["node"]);
+    }
+  }
+});
+
+test("every adopted suite rejects modified license and selected program bytes", (context) => {
+  const root = copyFixture(context);
+  const filename = join(root, "manifest.json");
+  const loaded = loadManifest(filename);
+  for (const suite of ["pypy", "graalpy", "ironpython", "cpython"]) {
+    const entry = loaded.cases.find((entry) => entry.suite === suite);
+    for (const name of ["LICENSE", entry.path]) {
+      const path = join(root, "suites", suite, name);
+      const original = readFileSync(path);
+      writeFileSync(path, Buffer.concat([original, Buffer.from("\n")]));
+      assert.throws(() => loadManifest(filename), /source bytes differ/);
+      writeFileSync(path, original);
+    }
+  }
 });
 
 test("source, helper, and license edits are rejected before execution", (context) => {
