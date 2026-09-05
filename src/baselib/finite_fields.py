@@ -821,10 +821,24 @@ class FiniteFieldExtensionElement(sage.Element):
                 for coefficient in self._machineCoordinates
             ]
         if not self._parent._generatedResourceBackend:
-            raise TypeError("power-basis export requires generated `fq` resources")
+            return [
+                runtime.normalize_integer(coefficient)
+                for coefficient in runtime.flint_backend().fqCoordinates(self._native)
+            ]
         region = _flint_ffi_module().fq_element_coordinate_bytes(self._native)
         return _decode_extension_element_coordinates(
             region.take_bytes(), self._parent._degree
+        )
+
+    def polynomial(self, variable: str = "x") -> Any:
+        """Return the canonical power-basis polynomial over the prime field.
+
+        Its degree is less than the extension degree. Evaluating it at the
+        defining generator recovers this element, regardless of the modulus
+        or whether that generator is multiplicatively primitive.
+        """
+        return _polynomial_from_coefficients(
+            self._parent.prime_subfield(), variable, self._power_basis_coordinates()
         )
 
     def __repr__(self) -> str:
@@ -1680,14 +1694,32 @@ class FiniteFieldExtensionParent(sage.Parent):
         return runtime.math_tuple([sage.AlgebraicExtensionFunctor, self._primeSubfield])
 
     def __iter__(self) -> Iterator[FiniteFieldExtensionElement]:
-        yield self.zero()
-        value = self.gen()
-        generator = value
-        index = runtime.bigint(1)
+        """Enumerate power-basis coordinates with the constant digit first.
+
+        A defining generator need not generate the multiplicative group.
+        Carrying in base `p` visits every element even for nonprimitive moduli.
+        The iterator retains only `degree()` digits and basis elements.
+        """
+        powers = [self.one()]
+        generator = self.gen()
+        for _index in range(1, self._degree):
+            powers.append(powers[-1]._mul_(generator))
+        digits = [runtime.bigint(0) for _index in range(self._degree)]
+        value = self.zero()
+        index = runtime.bigint(0)
         while index < self._order:
             yield value
-            value = value._mul_(generator)
             index += runtime.bigint(1)
+            if index == self._order:
+                break
+            for position in range(self._degree):
+                # Adding the basis element wraps this coordinate to zero
+                # exactly when its digit carries into the next position.
+                value = value._add_(powers[position])
+                digits[position] += runtime.bigint(1)
+                if digits[position] < self._prime:
+                    break
+                digits[position] = runtime.bigint(0)
 
 
 @runtime.callable_instance_class

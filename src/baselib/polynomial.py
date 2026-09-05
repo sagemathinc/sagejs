@@ -2694,6 +2694,12 @@ class PolynomialElement(sage.Element):
                 )
             )
         if base._kind == "GF_EXTENSION":
+            if not _flint_backend_has_function("fqPolyGcd"):
+                euclidean = __import__(
+                    "sagejs.polynomial_algorithms.univariate_field",
+                    fromlist=["monic_gcd"],
+                )
+                return euclidean.monic_gcd(operands.left, operands.right)
             native_value = runtime.flint_backend().fqPolyGcd(
                 operands.left._native, operands.right._native
             )
@@ -2853,7 +2859,13 @@ class PolynomialElement(sage.Element):
                     left._new(_canonical_uint64_output(right_output)),
                 ]
             )
-        raise TypeError("polynomial xgcd is implemented over ZZ, QQ, and GF(p)")
+        if parent.base_ring()._kind == "GF_EXTENSION":
+            euclidean = __import__(
+                "sagejs.polynomial_algorithms.univariate_field",
+                fromlist=["monic_xgcd"],
+            )
+            return runtime.math_tuple(euclidean.monic_xgcd(left, right))
+        raise TypeError("polynomial xgcd is implemented over ZZ, QQ, and finite fields")
 
     def is_irreducible(self) -> bool:
         if self._parent.base_ring()._kind == "GF_EXTENSION":
@@ -4010,19 +4022,19 @@ class MultivariatePolynomialElement(sage.Element):
         self,
         other: MultivariatePolynomialElement,
     ) -> MultivariatePolynomialElement:
-        return self._new(runtime.flint_backend().mpolyAdd(self._native, other._native))
+        return self._new(self._parent._backend.mpolyAdd(self._native, other._native))
 
     def _sub_(
         self,
         other: MultivariatePolynomialElement,
     ) -> MultivariatePolynomialElement:
-        return self._new(runtime.flint_backend().mpolySub(self._native, other._native))
+        return self._new(self._parent._backend.mpolySub(self._native, other._native))
 
     def _mul_(
         self,
         other: MultivariatePolynomialElement,
     ) -> MultivariatePolynomialElement:
-        return self._new(runtime.flint_backend().mpolyMul(self._native, other._native))
+        return self._new(self._parent._backend.mpolyMul(self._native, other._native))
 
     def __add__(self, other: object) -> Any:
         return runtime.coercion_model.binOp("add", self, other)
@@ -4034,14 +4046,14 @@ class MultivariatePolynomialElement(sage.Element):
         return runtime.coercion_model.binOp("mul", self, other)
 
     def __neg__(self) -> MultivariatePolynomialElement:
-        return self._new(runtime.flint_backend().mpolyNeg(self._native))
+        return self._new(self._parent._backend.mpolyNeg(self._native))
 
     def __pow__(self, exponent: int) -> MultivariatePolynomialElement:
         exponent = runtime.integer_bigint(exponent)
         if exponent < 0:
             raise ValueError("negative polynomial exponent")
         return self._new(
-            runtime.flint_backend().mpolyPow(self._native, runtime.number(exponent))
+            self._parent._backend.mpolyPow(self._native, runtime.number(exponent))
         )
 
     def __floordiv__(
@@ -4056,13 +4068,13 @@ class MultivariatePolynomialElement(sage.Element):
             raise TypeError("polynomial division requires polynomials")
         return MultivariatePolynomialElement(
             operands.parent,
-            runtime.flint_backend().mpolyDivExact(
+            operands.parent._backend.mpolyDivExact(
                 operands.left._native, operands.right._native
             ),
         )
 
     def _eq_(self, other: MultivariatePolynomialElement) -> bool:
-        return runtime.flint_backend().mpolyEqual(self._native, other._native)
+        return self._parent._backend.mpolyEqual(self._native, other._native)
 
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
@@ -4077,7 +4089,7 @@ class MultivariatePolynomialElement(sage.Element):
         if operands.parent.base_ring()._kind not in ["ZZ", "QQ"]:
             raise TypeError("polynomial ordering is defined only over ZZ and QQ")
         return (
-            runtime.flint_backend().mpolyCompare(
+            operands.parent._backend.mpolyCompare(
                 operands.left._native, operands.right._native
             )
             < 0
@@ -4092,7 +4104,7 @@ class MultivariatePolynomialElement(sage.Element):
             raise TypeError("polynomial gcd requires polynomials")
         return MultivariatePolynomialElement(
             operands.parent,
-            runtime.flint_backend().mpolyGcd(
+            operands.parent._backend.mpolyGcd(
                 operands.left._native, operands.right._native
             ),
         )
@@ -4108,7 +4120,7 @@ class MultivariatePolynomialElement(sage.Element):
         the constant unit are intentionally omitted; use this method when
         the geometric irreducible components are the desired result.
         """
-        native_factors = runtime.flint_backend().mpolyIrreducibleFactors(self._native)
+        native_factors = self._parent._backend.mpolyIrreducibleFactors(self._native)
         answer = []
         for pair in native_factors:
             answer.append(MultivariatePolynomialElement(self._parent, pair[0]))
@@ -4138,22 +4150,22 @@ class MultivariatePolynomialElement(sage.Element):
         index = operands.parent._generator_index(variable)
         return MultivariatePolynomialElement(
             operands.parent,
-            runtime.flint_backend().mpolyResultant(
+            operands.parent._backend.mpolyResultant(
                 operands.left._native, operands.right._native, index
             ),
         )
 
     def degree(self, variable: Any = None) -> int:
         if variable is None:
-            return runtime.flint_backend().mpolyTotalDegree(self._native)
+            return self._parent._backend.mpolyTotalDegree(self._native)
         index = self._parent._generator_index(variable)
-        return runtime.flint_backend().mpolyDegree(self._native, index)
+        return self._parent._backend.mpolyDegree(self._native, index)
 
     def total_degree(self) -> int:
-        return runtime.flint_backend().mpolyTotalDegree(self._native)
+        return self._parent._backend.mpolyTotalDegree(self._native)
 
     def number_of_terms(self) -> int:
-        return runtime.flint_backend().mpolyLength(self._native)
+        return self._parent._backend.mpolyLength(self._native)
 
     def terms(self) -> list[Any]:
         """Return canonical sparse `(coefficient, exponent_vector)` terms.
@@ -4162,7 +4174,12 @@ class MultivariatePolynomialElement(sage.Element):
         order. The exponent vector uses the ring's generator order.
         """
         base = self._parent.base_ring()
-        raw_terms = runtime.flint_backend().mpolyTerms(self._native)
+        raw_terms = self._parent._backend.mpolyTerms(self._native)
+        if base._kind == "GF_EXTENSION":
+            return [
+                runtime.math_tuple([coefficient, runtime.math_tuple(powers)])
+                for coefficient, powers in raw_terms
+            ]
         answer = []
         for raw_coefficient, raw_exponents in raw_terms:
             if base._kind == "QQ":
@@ -4419,8 +4436,26 @@ class MultivariatePolynomialElement(sage.Element):
         names = self._parent.variable_names()
         base = self._parent.base_ring()
         if base._kind not in ["ZZ", "QQ"]:
-            raise TypeError("univariate extraction currently requires ZZ or QQ")
-        raw = runtime.flint_backend().mpolyUnivariateCoefficients(self._native, index)
+            if base._kind not in ["GF", "GF_EXTENSION"]:
+                raise TypeError(
+                    "univariate extraction requires ZZ, QQ, or a finite field"
+                )
+            terms = self.terms()
+            if any(
+                any(power and i != index for i, power in enumerate(powers))
+                for _, powers in terms
+            ):
+                raise TypeError("multivariate polynomial involves other generators")
+            degree = max((powers[index] for _, powers in terms), default=-1)
+            if degree > 4096:
+                raise ValueError(
+                    "finite-field univariate extraction exceeds degree 4096"
+                )
+            coefficients = [base(0)] * (degree + 1)
+            for coefficient, powers in terms:
+                coefficients[powers[index]] = coefficient
+            return PolynomialRing(base, names[index])(coefficients)
+        raw = self._parent._backend.mpolyUnivariateCoefficients(self._native, index)
         ring = PolynomialRing(base, names[index])
         generator = ring.gen()
         result = ring(0)
@@ -4436,7 +4471,7 @@ class MultivariatePolynomialElement(sage.Element):
         return result
 
     def __repr__(self) -> str:
-        raw = runtime.flint_backend().mpolyToString(
+        raw = self._parent._backend.mpolyToString(
             self._native, self._parent.variable_names()
         )
         raw = raw.replace(runtime.regexp(r"\s+", "g"), "")
@@ -4489,14 +4524,26 @@ class MultivariatePolynomialRingParent(sage.Parent):
             kind = "nmod"
             modulus = base._modulus
         elif base._kind == "GF_EXTENSION":
-            kind = "fq_nmod"
-            modulus = _untyped(base)._nativeContext
+            if _untyped(base).variable_name() in variables:
+                raise ValueError(
+                    "polynomial variables must differ from the coefficient-field generator name"
+                )
+            module = __import__(
+                "sagejs.polynomial_algorithms.extension_mpoly_backend",
+                fromlist=["ExtensionMpolyBackend"],
+            )
+            self._backend: Any = module.ExtensionMpolyBackend(
+                base, len(variables), order
+            )
+            self._nativeContext = self._backend.context
+            return
         else:
             raise TypeError(
                 "multivariate FLINT polynomials currently support "
                 + "ZZ, QQ, finite fields, and Zmod(n)"
             )
-        self._nativeContext = runtime.flint_backend().mpolyContext(
+        self._backend = runtime.flint_backend()
+        self._nativeContext = self._backend.mpolyContext(
             kind, len(variables), order, modulus
         )
 
@@ -4517,7 +4564,7 @@ class MultivariatePolynomialRingParent(sage.Parent):
             raise IndexError("generator index out of range")
         return MultivariatePolynomialElement(
             self,
-            runtime.flint_backend().mpolyGen(self._nativeContext, index),
+            self._backend.mpolyGen(self._nativeContext, index),
         )
 
     def gens(self) -> Any:
@@ -4571,19 +4618,19 @@ class MultivariatePolynomialRingParent(sage.Parent):
             denominator = runtime.bigint(1)
         elif self._base._kind == "GF_EXTENSION":
             residue = self._base(value)
-            numerator = residue._native
+            numerator = residue
             denominator = runtime.bigint(1)
         else:
             raise TypeError("unsupported coefficient parent")
         return MultivariatePolynomialElement(
             self,
-            runtime.flint_backend().mpolyConstant(
-                self._nativeContext, numerator, denominator
-            ),
+            self._backend.mpolyConstant(self._nativeContext, numerator, denominator),
         )
 
     def _from_sparse_terms(self, terms: Any) -> MultivariatePolynomialElement:
         """Materialize storage-neutral sparse terms in this parent."""
+        if self._base._kind == "GF_EXTENSION":
+            return MultivariatePolynomialElement(self, self._backend.from_terms(terms))
         result = self(0)
         generators = self.gens()
         for coefficient, exponents in terms:
@@ -4638,9 +4685,7 @@ class MultivariatePolynomialRingParent(sage.Parent):
                 mapping.append(source_index)
         return MultivariatePolynomialElement(
             self,
-            runtime.flint_backend().mpolyComposeGen(
-                value._native, self._nativeContext, mapping
-            ),
+            self._backend.mpolyComposeGen(value._native, self._nativeContext, mapping),
         )
 
     def has_coerce_map_from(self, source: Any) -> bool:
@@ -5237,10 +5282,11 @@ class PolynomialIdeal:
         ring: MultivariatePolynomialRingParent,
         generators: Any,
     ) -> None:
-        if ring.base_ring()._kind not in ["QQ", "GF"]:
-            raise NotImplementedError(
-                "polynomial ideal arithmetic currently supports QQ and prime fields"
-            )
+        capabilities = __import__(
+            "sagejs.polynomial_algorithms.field_capabilities",
+            fromlist=["require_field_operation"],
+        )
+        capabilities.require_field_operation(ring.base_ring(), "ideal", ring._order)
         self._ring = ring
         self._kind = "PolynomialIdeal"
         self._generators = runtime.math_tuple(
@@ -5390,7 +5436,7 @@ class PolynomialIdeal:
         native_basis = [generator._native for generator in basis]
         return MultivariatePolynomialElement(
             self._ring,
-            runtime.flint_backend().mpolyReduce(polynomial._native, native_basis),
+            self._ring._backend.mpolyReduce(polynomial._native, native_basis),
         )
 
     reduce = normal_form
@@ -5407,7 +5453,7 @@ class PolynomialIdeal:
             leading.append(
                 MultivariatePolynomialElement(
                     self._ring,
-                    runtime.flint_backend().mpolyLeadingMonomial(polynomial._native),
+                    self._ring._backend.mpolyLeadingMonomial(polynomial._native),
                 )
             )
         return PolynomialIdeal(self._ring, leading)

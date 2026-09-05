@@ -616,6 +616,11 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:fqCoordinates",
+      "family": "extension-fields",
+      "decision": "retain-host-adapter"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:fqDiv",
       "family": "extension-fields",
       "decision": "migrate-to-declared-ffi"

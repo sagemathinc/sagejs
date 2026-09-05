@@ -13326,16 +13326,16 @@
         "name": "AffineSpace",
         "qualified": "AffineSpace",
         "path": "src/baselib/schemes.py",
-        "line": 466,
+        "line": 460,
         "excerpt": {
-          "start_line": 454,
+          "start_line": 448,
           "text": "        if len(equations) == 0:\n            lines.append(\"  0\")\n        else:\n            for index, equation in enumerate(equations):\n                suffix = \",\" if index + 1 < len(equations) else \"\"\n                lines.append(\"  \" + repr(equation) + suffix)\n        return \"\\n\".join(lines)\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef AffineSpace(\n    first: Any,\n    second: Any,\n    names: Any = \"x\",\n) -> AffineSpaceParent:\n    \"\"\"Construct affine space in either Sage-compatible argument order.\n\n    ```sage\n    sage: A = AffineSpace(QQ, 2, names=(\"x\", \"y\"))\n    sage: A.dimension()\n    2\n    ```\n    \"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/schemes.py#e010c74c332f5782-e3b0c44298fc1c14",
-          "line": 474,
+          "line": 468,
           "source": "A = AffineSpace(QQ, 2, names=(\"x\", \"y\"))",
           "want": "",
           "tags": [],
@@ -13351,7 +13351,7 @@
         },
         {
           "id": "src/baselib/schemes.py#f4ed007692290f8a-d4735e3a265e16ee",
-          "line": 475,
+          "line": 469,
           "source": "A.dimension()",
           "want": "2\n",
           "tags": [],
@@ -14702,16 +14702,16 @@
         "name": "Curve",
         "qualified": "Curve",
         "path": "src/baselib/schemes.py",
-        "line": 1131,
+        "line": 1125,
         "excerpt": {
-          "start_line": 1119,
+          "start_line": 1113,
           "text": "    def __repr__(self) -> str:\n        return (\n            \"Projective Plane Curve over \"\n            + str(self.base_ring())\n            + \" defined by\\n   \"\n            + repr(self._polynomial)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef Curve(polynomial: Any) -> Any:\n    \"\"\"Construct an affine or projective plane curve from one polynomial.\n\n    ```sage\n    sage: R = PolynomialRing(QQ, names=(\"x\", \"y\"))\n    sage: x, y = R.gens()\n    sage: C = Curve(y^2 - x^3)\n    sage: C.degree()\n    3\n    ```\n    \"\"\"\n    if not hasattr(polynomial, \"parent\"):\n        raise TypeError(\"Curve needs a multivariate polynomial\")"
         }
       },
       "examples": [
         {
           "id": "src/baselib/schemes.py#fd76c7c26e088c48-e3b0c44298fc1c14",
-          "line": 1135,
+          "line": 1129,
           "source": "R = PolynomialRing(QQ, names=(\"x\", \"y\"))",
           "want": "",
           "tags": [],
@@ -14727,7 +14727,7 @@
         },
         {
           "id": "src/baselib/schemes.py#03ec444959c798d3-e3b0c44298fc1c14",
-          "line": 1136,
+          "line": 1130,
           "source": "x, y = R.gens()",
           "want": "",
           "tags": [],
@@ -14743,7 +14743,7 @@
         },
         {
           "id": "src/baselib/schemes.py#427af1e83a416cd4-e3b0c44298fc1c14",
-          "line": 1137,
+          "line": 1131,
           "source": "C = Curve(y^2 - x^3)",
           "want": "",
           "tags": [],
@@ -14759,7 +14759,7 @@
         },
         {
           "id": "src/baselib/schemes.py#ec0c4059d7824af6-4e07408562bedb8b",
-          "line": 1138,
+          "line": 1132,
           "source": "C.degree()",
           "want": "3\n",
           "tags": [],
@@ -17244,16 +17244,16 @@
         "name": "GF",
         "qualified": "GF",
         "path": "src/baselib/finite_fields.py",
-        "line": 2041,
+        "line": 2073,
         "excerpt": {
-          "start_line": 2029,
+          "start_line": 2061,
           "text": "        modulus_coefficients,\n        prime_field,\n        element_type,\n        explicit_modulus,\n        generated_resource_backend,\n    )\n    _extension_fields.set(key, field)\n    conversion = _register_machine_integer_coercion(field)\n    runtime.coercion_model.register(prime_field, field, conversion)\n    return field\n\n\ndef GF(\n    order: Any,\n    name: Any = runtime.undefined,\n    modulus: Any = runtime.undefined,\n    names: Any = runtime.undefined,\n) -> Any:\n    r\"\"\"\n    Construct the finite field with `order` elements.\n\n    The order must be a prime power.  Prime fields and extension fields use\n    FLINT arithmetic and participate in Sage.js parent/coercion semantics.\n    `name` (or `names`) names an extension-field generator.\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/finite_fields.py#d5fed5b346a11651-bdf39be03f43bdb9",
-          "line": 2057,
+          "line": 2089,
           "source": "GF(7)",
           "want": "Finite Field of size 7\n",
           "tags": [],
@@ -17269,7 +17269,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#2680962aa3520480-e3b0c44298fc1c14",
-          "line": 2059,
+          "line": 2091,
           "source": "K.<a> = GF(9)",
           "want": "",
           "tags": [],
@@ -17285,7 +17285,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#b51192cce36ea46d-6b86b273ff34fce1",
-          "line": 2060,
+          "line": 2092,
           "source": "a^8",
           "want": "1\n",
           "tags": [],
@@ -17301,7 +17301,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#248946a81e60d7c2-5c17eac5f0f80928",
-          "line": 2062,
+          "line": 2094,
           "source": "K['x']",
           "want": "Univariate Polynomial Ring in x over Finite Field in a of size 3^2\n",
           "tags": [],
@@ -29878,9 +29878,9 @@
         "name": "Mod",
         "qualified": "Mod",
         "path": "src/baselib/finite_fields.py",
-        "line": 2155,
+        "line": 2187,
         "excerpt": {
-          "start_line": 2143,
+          "start_line": 2175,
           "text": "    ring = _residue_rings.get(key)\n    if ring is not runtime.undefined:\n        return ring\n    ring = IntegerModRing(order)\n    _residue_rings.set(key, ring)\n    _register_machine_integer_coercion(ring)\n    return ring\n\n\nIntegers = Zmod\n\n\ndef Mod(value: Any, modulus: Any) -> Any:\n    \"\"\"Construct `value` in the ring of integers modulo `modulus`.\"\"\"\n    modulus = runtime.integer_bigint(modulus)\n    if modulus == 0:\n        return sage.ZZ(value)\n    if modulus < 0:\n        modulus = -modulus\n    return Zmod(modulus)(value)\n\n\n# Sage publishes both spellings.\nmod = Mod\n"
         }
       },
@@ -35032,16 +35032,16 @@
         "name": "PolynomialRing",
         "qualified": "PolynomialRing",
         "path": "src/baselib/polynomial.py",
-        "line": 6061,
+        "line": 6107,
         "excerpt": {
-          "start_line": 6049,
+          "start_line": 6095,
           "text": "        ρσ_polynomial_ring_cache.set(base, by_variable)\n    cache_key = \",\".join(variables) + \"|multivariate|\" + order\n    parent = by_variable.get(cache_key)\n    if parent is runtime.undefined:\n        if approximate:\n            parent = ApproximatePolynomialRingParent(base, variables, order)\n        else:\n            parent = MultivariatePolynomialRingParent(base, variables, order)\n        by_variable.set(cache_key, parent)\n    return parent\n\n\ndef PolynomialRing(\n    base: sage.Parent,\n    variable: Any = None,\n    names: Any = None,\n    sparse: bool = False,\n    implementation: Any = None,\n    order: str = \"degrevlex\",\n) -> Any:\n    r\"\"\"\n    Construct a univariate or multivariate polynomial ring.\n\n    Coefficient rings currently include `ZZ`, `QQ`, prime and extension\n    finite fields, `Zmod(n)`, exact algebraic fields, and approximate real"
         }
       },
       "examples": [
         {
           "id": "src/baselib/polynomial.py#0589052cd70c5442-e3b0c44298fc1c14",
-          "line": 6081,
+          "line": 6127,
           "source": "R.<x> = QQ[]",
           "want": "",
           "tags": [],
@@ -35057,7 +35057,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#211d1a07c12a56d3-c3f7c1d6f3b011af",
-          "line": 6082,
+          "line": 6128,
           "source": "(x^4 - 1).factor()",
           "want": "(x + 1) * (x - 1) * (x^2 + 1)\n",
           "tags": [],
@@ -35073,7 +35073,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#879acf70128b6be0-e3b0c44298fc1c14",
-          "line": 6084,
+          "line": 6130,
           "source": "S.<x,y> = GF(4, 'a')[]",
           "want": "",
           "tags": [],
@@ -35089,7 +35089,7 @@
         },
         {
           "id": "src/baselib/polynomial.py#2935ab1a54b6ef2c-050305b3ec2996f0",
-          "line": 6085,
+          "line": 6131,
           "source": "(x + y)^3",
           "want": "x^3 + x^2*y + x*y^2 + y^3\n",
           "tags": [],
@@ -35311,16 +35311,16 @@
         "name": "ProjectiveSpace",
         "qualified": "ProjectiveSpace",
         "path": "src/baselib/schemes.py",
-        "line": 920,
+        "line": 914,
         "excerpt": {
-          "start_line": 908,
+          "start_line": 902,
           "text": "        if len(self._equations) == 0:\n            lines.append(\"  0\")\n        else:\n            for index, equation in enumerate(self._equations):\n                suffix = \",\" if index + 1 < len(self._equations) else \"\"\n                lines.append(\"  \" + repr(equation) + suffix)\n        return \"\\n\".join(lines)\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ProjectiveSpace(\n    first: Any,\n    second: Any,\n    names: Any = \"x\",\n) -> ProjectiveSpaceParent:\n    \"\"\"Construct projective space in either Sage-compatible argument order.\n\n    ```sage\n    sage: P = ProjectiveSpace(QQ, 2, names=(\"x\", \"y\", \"z\"))\n    sage: P(2, 4, 6) == P(1, 2, 3)\n    True\n    ```\n    \"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/schemes.py#c4138a7a365c9405-e3b0c44298fc1c14",
-          "line": 928,
+          "line": 922,
           "source": "P = ProjectiveSpace(QQ, 2, names=(\"x\", \"y\", \"z\"))",
           "want": "",
           "tags": [],
@@ -35336,7 +35336,7 @@
         },
         {
           "id": "src/baselib/schemes.py#dad19399d23b4f16-3cbc87c7681f34db",
-          "line": 929,
+          "line": 923,
           "source": "P(2, 4, 6) == P(1, 2, 3)",
           "want": "True\n",
           "tags": [],
@@ -37672,16 +37672,16 @@
         "name": "Zmod",
         "qualified": "Zmod",
         "path": "src/baselib/finite_fields.py",
-        "line": 2120,
+        "line": 2152,
         "excerpt": {
-          "start_line": 2108,
+          "start_line": 2140,
           "text": "    generator = runtime.bigint(1)\n    if primitive:\n        generator = backend.wordPrimitiveRootPrime(order)\n    field = FiniteField_prime_modn(order, generator)\n    _prime_fields.set(key, field)\n    _register_machine_integer_coercion(field)\n    return field\n\n\nFiniteField = GF\n\n\ndef Zmod(order: Any) -> IntegerModRing:\n    r\"\"\"\n    Construct the ring of integers modulo `order`.\n\n    Elements support exact arithmetic, inversion of units, iteration, and\n    matrices and polynomial rings over the resulting parent.\n\n    ### Examples\n\n    ```sage\n    sage: R = Zmod(15)\n    sage: R(17)\n    2"
         }
       },
       "examples": [
         {
           "id": "src/baselib/finite_fields.py#a4efb6c82ad07055-e3b0c44298fc1c14",
-          "line": 2130,
+          "line": 2162,
           "source": "R = Zmod(15)",
           "want": "",
           "tags": [],
@@ -37697,7 +37697,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#27cc52590769f211-d4735e3a265e16ee",
-          "line": 2131,
+          "line": 2163,
           "source": "R(17)",
           "want": "2\n",
           "tags": [],
@@ -37713,7 +37713,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#3fe317b5859522f8-6b86b273ff34fce1",
-          "line": 2133,
+          "line": 2165,
           "source": "R(2)^4",
           "want": "1\n",
           "tags": [],

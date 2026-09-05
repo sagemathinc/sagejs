@@ -417,6 +417,20 @@
       "rationale": "Host-neutral generated owned-resource ABI over word-characteristic FLINT extension contexts, elements, and univariate polynomials, with bulk canonical power-basis coordinates, exact context identity, thread-affine shared ownership, structural arithmetic, and deterministic lifecycle accounting."
     },
     {
+      "path": "packages/flint/include/sagejs/fq_mpoly_ffi.h",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Host-neutral representation boundary over FLINT fq_nmod_mpoly: canonical modulus ingress, retained contexts, checked sparse coordinates and exponent widths, copied SJFM/SJFF output, and direct calls to FLINT arithmetic, gcd, resultant and factorization. Input/output limits do not claim bounds on FLINT intermediate memory or elapsed time. Public dispatch and lazy production qualification remain separate gates."
+    },
+    {
+      "path": "packages/flint/test/fq_mpoly_resource_ffi.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Standalone finite-extension polynomial representation, exact foreign-algorithm, malformed-input, and retained-context witness for native and Wasm compilation; not linked into the Sage.js runtime."
+    },
+    {
       "path": "packages/flint/include/sagejs/hyperelliptic/genus3_jacobian.h",
       "category": "public-abi",
       "review_status": "accepted",

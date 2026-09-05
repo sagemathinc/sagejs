@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5399,
-      "bytes": 177970,
+      "lines": 5401,
+      "bytes": 178076,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [

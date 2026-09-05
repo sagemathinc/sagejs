@@ -428,10 +428,13 @@ print(
       "1 True\nTrue",
     );
     await runSource(
-      "AffineSpace(GF(4, 'a'), 2)",
-      "Error: algebraic geometry currently supports QQ and " +
-        "prime GF(p); finite extensions and number fields are planned in " +
-        "agents/no-singular-extension-fields-plan.md",
+      "try:\n    AffineSpace(GF(4, 'a'), 2)\n" +
+        "except NotImplementedError as error:\n" +
+        "    assert 'operation=geometry' in str(error)\n" +
+        "    assert 'target=wasm' in str(error)\n" +
+        "    print('extension geometry is explicitly gated')\n" +
+        "else:\n    raise AssertionError('extension geometry gate was bypassed')",
+      "extension geometry is explicitly gated\n",
     );
     await runSource(
       "R.<x> = QQ[]\nx^2 - 2*x + 1",

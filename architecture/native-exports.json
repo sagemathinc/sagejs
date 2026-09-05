@@ -6,7 +6,7 @@
     "migrate-to-declared-ffi": 238,
     "migrate-to-typed-python": 35,
     "retain-differential-oracle": 6,
-    "retain-host-adapter": 35,
+    "retain-host-adapter": 36,
     "retain-representation-primitive": 32
   },
   "exports": [
@@ -3029,7 +3029,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 801,
+        "line": 802,
         "lines": 4,
         "sha256": "22c50f7feaa33f1ee4710365101b555fcea101138cb9a44153ae22b0c19c8655",
         "calls": [
@@ -3063,7 +3063,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 433,
+        "line": 434,
         "lines": 75,
         "sha256": "5b0ff519446ca62eb2b789515d3c4a1300437e2767cee3f9d4e9cfcc15737775",
         "calls": [
@@ -3119,7 +3119,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 643,
+        "line": 644,
         "lines": 52,
         "sha256": "ffa507baff2d16802a314f50c271a8695615db75ea115e2ca465650380212aed",
         "calls": [
@@ -3166,7 +3166,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 509,
+        "line": 510,
         "lines": 133,
         "sha256": "45aa7d84781df8d8652dfbac35d8d8526772e1efd5b9a718265acb4d2fb90b19",
         "calls": [
@@ -3215,7 +3215,54 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint/test/extension-field-lifecycle.cjs",
         "packages/flint/test/test.cjs",
+        "src/baselib/finite_fields.py"
+      ],
+      "declared_ffi": null
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqCoordinates",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqCoordinates",
+      "callback": "sagejs_fq_coordinates",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/extension_field.c",
+        "line": 974,
+        "lines": 44,
+        "sha256": "c7a20c09bbc6bd9d57e838c3cf75c82c5596becc282f35d1333a87b2815fd1fa",
+        "calls": [
+          "check_napi",
+          "fmpz_clear",
+          "fmpz_init",
+          "fmpz_mod",
+          "fmpz_poly_clear",
+          "fmpz_poly_get_coeff_fmpz",
+          "fmpz_poly_init",
+          "fmpz_to_bigint",
+          "fq_default_get_fmpz_poly",
+          "napi_create_array_with_length",
+          "napi_set_element",
+          "napi_throw_range_error",
+          "require_arguments",
+          "unwrap_element"
+        ]
+      },
+      "family": "extension-fields",
+      "decision": "retain-host-adapter",
+      "note": null,
+      "rationale": "Finite extension-field values, polynomials, and matrices are adapters to mature FLINT fq algorithms and resources.",
+      "fallback": "Ordinary finite-field code retains correct behavior or an explicit native capability diagnostic.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint/test/extension-field-lifecycle.cjs",
         "src/baselib/finite_fields.py"
       ],
       "declared_ffi": null
@@ -3230,7 +3277,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 816,
+        "line": 817,
         "lines": 4,
         "sha256": "be46fd26f6919591f7b5f9ed0d18b9c86092bc58494a57a6706ffa72d87a66bd",
         "calls": [
@@ -3263,7 +3310,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 884,
+        "line": 885,
         "lines": 21,
         "sha256": "1619c93bca5f5153c47eb66dfe012b3b4f377487e05036ee923d93ab0ab164a8",
         "calls": [
@@ -3300,7 +3347,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 696,
+        "line": 697,
         "lines": 31,
         "sha256": "00915d93adf535a6834a61c0f4ec1de2e08fa187100d70783d9cf4ec0f52fb47",
         "calls": [
@@ -3341,7 +3388,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 728,
+        "line": 729,
         "lines": 21,
         "sha256": "d24ee6ecd48d08be7ccf62cc67325b5d051cf09cd633e9a477d22cf29125bd13",
         "calls": [
@@ -3379,7 +3426,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 934,
+        "line": 935,
         "lines": 4,
         "sha256": "d4947dae6f4fbb95ca3777b86805b03ade214ea399aed9609f2b8743e298f9cc",
         "calls": [
@@ -3412,7 +3459,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 929,
+        "line": 930,
         "lines": 4,
         "sha256": "ca56a82aaf27a4be74b31c2e0d4baaeba3017d5430cb148545945a15e985110c",
         "calls": [
@@ -3445,7 +3492,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1764,
+        "line": 1814,
         "lines": 69,
         "sha256": "b661c1f29b16f4d68f9205158ef7236eebcfb8b27eec1e11169862b8e1940e39",
         "calls": [
@@ -3491,7 +3538,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1896,
+        "line": 1946,
         "lines": 4,
         "sha256": "65dc6459064354fb79126c4334a0d0bc59e107e19e40da965def651124a9ac76",
         "calls": [
@@ -3523,7 +3570,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 2346,
+        "line": 2396,
         "lines": 30,
         "sha256": "7b89e95bb675f4175f80bed37c71d3e4ceaf699f6a1b804ba194bfc56cd38331",
         "calls": [
@@ -3563,7 +3610,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 2074,
+        "line": 2124,
         "lines": 80,
         "sha256": "dd27f76227e0ec93b40596d7afff0fd690e6f095d828a61f2263e251a50d918b",
         "calls": [
@@ -3615,7 +3662,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 2039,
+        "line": 2089,
         "lines": 34,
         "sha256": "c83ff17baa14088b7b838d1ba67ff68402e20bcab65b66117665805ef8d9d84a",
         "calls": [
@@ -3657,7 +3704,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 2013,
+        "line": 2063,
         "lines": 25,
         "sha256": "468d08a306ca8f175f0a71b09b76543748a0617cd13ba9c1816c442519ffb2e0",
         "calls": [
@@ -3695,7 +3742,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 2308,
+        "line": 2358,
         "lines": 37,
         "sha256": "a5fd633c971591fa5a03f23fabdb2ad3a162f5d474d35118a4e8fce1bdf38bbd",
         "calls": [
@@ -3734,7 +3781,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1906,
+        "line": 1956,
         "lines": 4,
         "sha256": "dce418e1cb3bb3c530f8db01fd81258bfb6ee1ccb9d3abb65ecd7cf6917565d4",
         "calls": [
@@ -3767,7 +3814,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1911,
+        "line": 1961,
         "lines": 24,
         "sha256": "1444662df705f592413dfa859189bf255f3744c407b7d914381949f43ddf93d1",
         "calls": [
@@ -3804,7 +3851,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 2155,
+        "line": 2205,
         "lines": 20,
         "sha256": "16c3f38f583bcf16f66900eb6f66c830a29cf9f47c68314c5d08dac0916216f4",
         "calls": [
@@ -3841,7 +3888,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 2203,
+        "line": 2253,
         "lines": 61,
         "sha256": "b307c19b3da3751a7ba1659aa25ccc1d658f29551685d70d47616d34893f2425",
         "calls": [
@@ -3886,7 +3933,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 2176,
+        "line": 2226,
         "lines": 26,
         "sha256": "e7532e8476d7a81f2b14d8a5bc7d6b6cf502fa7675710f2bbe864bc5d4ad292e",
         "calls": [
@@ -3924,7 +3971,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1936,
+        "line": 1986,
         "lines": 49,
         "sha256": "9bce68e1424e193900cd5d16c25be243d62145873f7518029c7921c940b4b14e",
         "calls": [
@@ -3967,7 +4014,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 2265,
+        "line": 2315,
         "lines": 42,
         "sha256": "6cb3a43909050d0f667e06a3babbe8417e34a7544763737f6565934df8c7110f",
         "calls": [
@@ -4007,7 +4054,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1901,
+        "line": 1951,
         "lines": 4,
         "sha256": "4b7deccea545a27eb5d738f2564720b289aa4d12ab0bc4e190204ff78b38305d",
         "calls": [
@@ -4039,7 +4086,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1986,
+        "line": 2036,
         "lines": 26,
         "sha256": "50d5fd61bccd7d21a8807fe42abb2bf2b9a731aa9c4b34b559317ed6c75e787a",
         "calls": [
@@ -4077,7 +4124,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 811,
+        "line": 812,
         "lines": 4,
         "sha256": "343b96550bc9fcfb173ce82adc5cbb4f5ccf0ffef8359566327d8176b1478e53",
         "calls": [
@@ -4111,7 +4158,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 821,
+        "line": 822,
         "lines": 21,
         "sha256": "bc2359f81b5f2dc6526d6160864f3c17649a924a806f4766de312d0bce1580b6",
         "calls": [
@@ -4147,7 +4194,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1191,
+        "line": 1241,
         "lines": 4,
         "sha256": "91ed4c5251e1ec75c7d861474b93a93c5766469f57fc837000387a3cd968e010",
         "calls": [
@@ -4181,7 +4228,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1394,
+        "line": 1444,
         "lines": 39,
         "sha256": "3dc92ef8c2e00fdb20fe32b1c8cced27071ea7f05fbf5c0ff2a2f1cc4e173748",
         "calls": [
@@ -4222,7 +4269,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1090,
+        "line": 1140,
         "lines": 32,
         "sha256": "f475c1d906195891abc8254cb640d823d6e4ddcbb2d68b6245b92bc5d02a1ac1",
         "calls": [
@@ -4262,7 +4309,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1275,
+        "line": 1325,
         "lines": 35,
         "sha256": "79ff109802c97e527a6671d2ca2b8c010e2eedabb40c6671c6bda7c79c2edf28",
         "calls": [
@@ -4301,7 +4348,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1254,
+        "line": 1304,
         "lines": 20,
         "sha256": "dbedda2f6bcdebf5dab17fa3a14ee9de8b2a299daad0860ed0ef6735c7fdbc32",
         "calls": [
@@ -4338,7 +4385,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1499,
+        "line": 1549,
         "lines": 33,
         "sha256": "9a9bb1207e7a84b79cd8e39457b4ca88331c8db326d43b10db2297f9247367aa",
         "calls": [
@@ -4379,7 +4426,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1311,
+        "line": 1361,
         "lines": 23,
         "sha256": "b2cfe4d65d0722a4497456207e4776d395147a2df791d7084d1c893ef88a55ed",
         "calls": [
@@ -4416,7 +4463,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1123,
+        "line": 1173,
         "lines": 23,
         "sha256": "7d479a8373cdc36f6d36a316306a0f12fe573396cc88b02c379c3403e64e0b0e",
         "calls": [
@@ -4454,7 +4501,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1335,
+        "line": 1385,
         "lines": 21,
         "sha256": "8f9eaa2e2ea8ac5fa118943fc86ebe2c8aafc4afb677b2b4da11fe598152d1aa",
         "calls": [
@@ -4490,7 +4537,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1201,
+        "line": 1251,
         "lines": 4,
         "sha256": "7068e5006f0bb89b0fe8c99d11536513d04e9bd0070dfab362adb3afd8ef6753",
         "calls": [
@@ -4523,7 +4570,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1206,
+        "line": 1256,
         "lines": 22,
         "sha256": "099fe02e28a00fb7b55868c8d679c55ad986860ca39dd70902482e4ef4e25855",
         "calls": [
@@ -4558,7 +4605,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1229,
+        "line": 1279,
         "lines": 24,
         "sha256": "b1eeb4cf73582421d02999fc7e67f2c6472f5fe90b6ef4aa80592ac3f0361a63",
         "calls": [
@@ -4595,7 +4642,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1533,
+        "line": 1583,
         "lines": 90,
         "sha256": "dea249540f01deda269fda0029a6dc9adb9f46d2cd3f1cf91a7f629b7f4538d2",
         "calls": [
@@ -4647,7 +4694,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1196,
+        "line": 1246,
         "lines": 4,
         "sha256": "3ec7dddd07fb8748057524101fef8091afb59f9e30c751764dbd04192c3ac206",
         "calls": [
@@ -4680,7 +4727,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 1357,
+        "line": 1407,
         "lines": 36,
         "sha256": "f2c7dd3b30c769055ed81776c22aed25531b174bddd22a5f18eb0fd81fd4287d",
         "calls": [
@@ -4722,7 +4769,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 843,
+        "line": 844,
         "lines": 40,
         "sha256": "40c63007ea549da36d2dbf90eea8cc8dcf03b224c78792a4aba949738627b3ec",
         "calls": [
@@ -4764,7 +4811,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 806,
+        "line": 807,
         "lines": 4,
         "sha256": "04762d6d8f9a952af7f5d1708bc1d4393408ae25ca86fc09756cdae078937b28",
         "calls": [
@@ -4797,7 +4844,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/extension_field.c",
-        "line": 939,
+        "line": 940,
         "lines": 29,
         "sha256": "96478b5ef12c78680873fb0bd52f08628f26e4b484fca13734731d9e399d6f17",
         "calls": [

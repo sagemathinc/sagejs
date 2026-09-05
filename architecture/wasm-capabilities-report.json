@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "9cd076ca0a124233aec56299db8b50e1a1095184fab4d97b007d86ee26cbaecf",
+  "source_sha256": "b4ebcecb663a475f19788e6b2abf82f1692615ef9339f65dbae43c5818b05098",
   "counts": {
-    "total": 1080,
+    "total": 1095,
     "by_kind": {
-      "declared-ffi-function": 463,
-      "declared-ffi-resource": 34,
-      "napi-export": 353,
+      "declared-ffi-function": 474,
+      "declared-ffi-resource": 37,
+      "napi-export": 354,
       "production-kernel": 55,
       "runtime-intrinsic": 147,
       "specialist-capability": 28
@@ -15,14 +15,15 @@
     "by_disposition": {
       "compiled-source": 55,
       "desktop-only": 47,
-      "generated-wasm": 363,
-      "portable-fallback": 565,
+      "generated-wasm": 377,
+      "portable-fallback": 566,
       "shared-core": 50
     },
     "by_status": {
       "available": 609,
       "desktop-only": 47,
-      "fallback": 424
+      "fallback": 425,
+      "planned": 14
     }
   },
   "workflow_aliases": {
@@ -663,6 +664,42 @@
         "sagejs.ffi.flint"
       ],
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly_bytes",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly_context",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
     },
     {
       "id": "ffi-resource:flint:fq_polynomial",
@@ -4594,6 +4631,138 @@
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
+      "id": "ffi:flint:fq_mpoly_binary",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_cache_bytes",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_context",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_copy",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_equal",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_factor_bytes",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_from_terms",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_gcd",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_neg",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_resultant",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_term_bytes",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "planned",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
       "id": "ffi:flint:fq_polynomial",
       "family": "flint",
       "disposition": "generated-wasm",
@@ -7829,6 +7998,18 @@
         "src/baselib/finite_fields.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqCoordinates",
+      "family": "extension-fields",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/finite_fields.py"
+      ],
+      "explanation": "Exact power-basis polynomial conversion uses generated FLINT resources in Wasm."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqDiv",

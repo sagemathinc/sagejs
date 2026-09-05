@@ -26,6 +26,23 @@
       "specialist-capability"
     ],
     "test_evidence": {
+      "finite-extension-multivariate-boundary": {
+        "differential": true,
+        "paths": [
+          "test/extension-mpoly-resource-ffi.cjs",
+          "packages/flint/test/fq_mpoly_resource_ffi.c",
+          "test/extension-multivariate.cjs"
+        ]
+      },
+      "finite-extension-coordinate-differential": {
+        "differential": true,
+        "paths": [
+          "packages/flint/test/extension-field-lifecycle.cjs",
+          "packages/flint-wasm/test/extension-field-coordinates.test.mjs",
+          "test/extension-field-coordinates.cjs",
+          "test/extension-field-coordinates.py"
+        ]
+      },
       "certified-interval-wasm-differential": {
         "differential": true,
         "paths": [
@@ -699,6 +716,342 @@
     ]
   },
   "capabilities": [
+    {
+      "id": "ffi-resource:flint:fq_mpoly",
+      "kind": "declared-ffi-resource",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly_bytes",
+      "kind": "declared-ffi-resource",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly_context",
+      "kind": "declared-ffi-resource",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_binary",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_cache_bytes",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_context",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_copy",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_equal",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_factor_bytes",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_from_terms",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_gcd",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_neg",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_resultant",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_term_bytes",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-until-production-qualification",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "planned",
+      "reviewed": true,
+      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "wasm_closure": {
+        "status": "planned",
+        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+      },
+      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+    },
     {
       "id": "specialist:capability-report-api",
       "kind": "specialist-capability",
@@ -13794,6 +14147,21 @@
       "reviewed": true,
       "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqCoordinates",
+      "kind": "napi-export",
+      "family": "extension-fields",
+      "source": "packages/flint/src/extension_field.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": ["src/baselib/finite_fields.py"],
+      "tests": ["finite-extension-coordinate-differential"],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "Native legacy handles export canonical coordinates with fq_default_get_fmpz_poly and reduction modulo p. Wasm public elements use the declared fq_element_coordinate_bytes generated-resource operation instead; the N-API callback is never loaded in a browser.",
+      "public_explanation": "Exact power-basis polynomial conversion uses generated FLINT resources in Wasm."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqContextWithModulus",
