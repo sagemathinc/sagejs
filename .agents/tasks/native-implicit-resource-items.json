@@ -57,17 +57,27 @@
       "commit": "a3a898b7186fcb3cae7aba59530140d4f416f308",
       "workspace_fingerprint": "24dec075f77ba2ad7542a5ccec738974fc0bece579ceecf7cd85d380ba210c34",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.368,
+      "started_at": "2026-09-05T05:15:45.809Z",
+      "commit": "401bd1b21a48bdf7eb188db5d721503817284289",
+      "workspace_fingerprint": "0521ee8bf3fc633ef2a7f466069e82b9684f80b7a80de68a7c772bd1be0f8577",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Constructor-inferred FFI resources now use the same declaration-qualified indexed operations as explicitly imported resource types. Annotation visibility and private native import rules are unchanged. Six focused lowering/core-emission tests pass; the full changed-file qualification is still running.",
+    "summary": "Constructor-inferred FFI resources now use the same declaration-qualified indexed operations as explicitly imported resource types. Annotation visibility and private native import rules are unchanged. Six focused lowering/core-emission tests, eight borrowed-resource/lifetime qualification tests, all 44 FFI tests, and all 15 active compiler fixtures pass (18 historical fixtures skipped). Strict Python checks pass for 247 modules. A fresh 15m35s build rebuilt all 39 production families. Changed-file and architecture gates stop only at the expected stale optimizer evidence fingerprint; that release refresh is integration-owned.",
     "risks": [
-      "The compiler changes invalidate content-addressed native artifacts and the optimizer evidence fingerprint; integration must regenerate and qualify current artifacts.",
+      "The compiler changes invalidate the optimizer evidence fingerprint: this lane expects input 5702e3174ac387c3e17a7cd27a0f076090435cbe61ed1dac012bc1100a3851fe while the inherited manifest records 517d89c5e2892276c74051d5392f3b0f75367dafe06f8bc70a5cb6a540f3d6c9. Integration must regenerate and publish combined evidence.",
       "Full native and cross-platform qualification is pending; this lane remains active and its PR is draft."
     ],
     "next_steps": [
-      "Finish the source-matched build and run broader compiler and architecture checks without racing generated runtime updates.",
-      "Integrate the scoped compiler fix with staged cubic work only after its build is idle, then regenerate source-matched evidence."
+      "Integrate the scoped compiler fix with staged cubic work only after its build is idle, then regenerate source-matched evidence.",
+      "Run the combined full-native and cross-platform gates before changing this task from active to review."
     ]
   }
 }
