@@ -1189,6 +1189,34 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
             if key < 0 or key >= value.length:
                 raise IndexError("index out of range")
             return _internal_native_getitem(value, key)
+        if _internal_get_member_raw(
+            key, "__sagejs_slice__"
+        ) is True and not _internal_member_is_function(value, "__getitem__"):
+            # Lists and tuples use native Array storage.  Preserve an explicit
+            # Python subclass override, but keep ordinary sequence slicing out
+            # of generic descriptor dispatch.  This is the slice analogue of
+            # the integer-index fast path above.
+            indices = _internal_call_member(key, "indices", [value.length])
+            start = indices[0]
+            stop = indices[1]
+            step = indices[2]
+            if step == 1:
+                answer = runtime.reflect.apply(
+                    runtime.array.prototype.slice,
+                    value,
+                    [start, stop],
+                )
+            else:
+                answer = []
+                for index in range(start, stop, step):
+                    runtime.reflect.apply(
+                        runtime.array.prototype.push,
+                        answer,
+                        [value[index]],
+                    )
+            if runtime.object.isFrozen(value):
+                return runtime.math_tuple(answer)
+            return runtime.list_decorate(answer)
     # ``__class_getitem__`` is commonly a classmethod inherited from an ABC.
     # Use Python descriptor lookup so the defining class does not accidentally
     # become the receiver when a subclass is subscribed.  Keep this after the
@@ -1247,6 +1275,18 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
     if _internal_type_is(runtime.jstype(key), "number") and key < 0:
         key += value.length
     return _internal_native_getitem(value, key)
+
+
+def ρσ_getslice_all(value: Any) -> Any:
+    """Return `value[:]` without allocating a slice for native sequences."""
+    if runtime.array.isArray(value) and not _internal_member_is_function(
+        value, "__getitem__"
+    ):
+        answer = runtime.reflect.apply(runtime.array.prototype.slice, value, [])
+        if runtime.object.isFrozen(value):
+            return runtime.math_tuple(answer)
+        return runtime.list_decorate(answer)
+    return ρσ_getitem(value, slice(None, None, None))
 
 
 def ρσ_setitem(value: Any, key: Any, member: Any) -> None:

@@ -20,7 +20,7 @@
     "packages/flint-wasm/numerical/nlopt-index.mjs": "21d752734022de158af44bc8f8cf9c164a5cd0ab95358c532632573447cbebb3",
     "packages/flint-wasm/numerical/scripts/build-all.cjs": "6aefdb71fa589b773be46926e24c5a8e0c84a1a953ac72a1a99138a419fe014f",
     "packages/flint-wasm/numerical/scripts/production-toolchain-identity.cjs": "b626c20d9bc4e1cd13cb301bbaa2d6d418b22fd796b8e7980bc140a7fa69fcb8",
-    "src/baselib/sagejs/runtime.py": "a295411360d66d1f5346a226588e5ed23d4f6cad92eb3a379af0585ee4a82175",
+    "src/baselib/sagejs/runtime.py": "19e8174a493dfde1a6653c22c2e19933066af98536fff094c087e2fadd7da7c6",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/index.mjs": "e5e4e697cb5b68dd8020a465073c760abcc6668b6f536fbd915b6b5bde0e4315",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/build.cjs": "c071aa3a421fd54bc159bb84ce5fc9549a78973241af1f0f8fca8c0e4d77cb05",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c": "0c876a9606177a26d0c8c8baf09a2f567516de201708397be508e9e46103ba03",
@@ -40,7 +40,7 @@
   },
   "public_semantics_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "78213bdfb270d8f76c07fdc83a2db5e1afa9709599aa5fd15dd2cb18e2fd6926"
+    "sha256": "0069024718b9b396c390d0966a6ed13a800e29b72977742902a2af41a00d5e62"
   },
   "qualification_tooling_files": {
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs": "f99aed93937473cd43c6ea7150b641c98230fbbe4c1a4bf8f5a99c90169563c5",
@@ -84,35 +84,12 @@
   },
   "selection": "explicit-only",
   "qualification": {
-    "status": "qualified",
-    "candidate_commit": "61dac27c7fb0d7ef0de15777e5a5fa0afb314179",
-    "summary_sha256": "3a02f5f890bfb36c686ff85054ff25d14e34b0616349344ea79a2420ca30765b",
-    "summary_bytes": 121711,
-    "public_semantics_bundle_sha256": "78213bdfb270d8f76c07fdc83a2db5e1afa9709599aa5fd15dd2cb18e2fd6926",
+    "status": "pending_source_current_requalification",
+    "reason": "The Python runtime gained a source-current list-slice intrinsic; portable numerical backend qualification must be refreshed before release.",
+    "public_semantics_bundle_sha256": "0069024718b9b396c390d0966a6ed13a800e29b72977742902a2af41a00d5e62",
     "qualification_tooling_bundle_sha256": "230de6626433dcdb84ace28ea3f96a9889cd59c794ef7e3873d7fb8fbc6da716",
     "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
-    "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
-    "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
-    "artifact_sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
-    "artifact_bytes": 72592,
-    "case_execution_sha256": "873d504d89acd686657e552bca0e39bb9591528ca54a9d6b1cbe23d138787f29",
-    "campaign_challenge": "9a998f96afa8b123e0373c09752ed2744b19976c5beab196440e88ee44cb7335",
-    "evidence_receipts_sha256": {
-      "sanitizer": "944323f16c6b7c5fae46e6a5e7dfba27c03c79d3d7a90de6fb7ef7fa101970b1",
-      "destructive-wasm": "9ea4a5a55c5879ab6938eba3afb53e5c8f9c37eed6a49ca97dccd3f4cb26d098",
-      "browser-lifecycle": "814a875c0a9e8c4399d098f40ba6a49ce6dc7189c40a12c10376a709ec109554",
-      "public-integration": "348cb8cd93a4212c70652689395eefac107ce49a05a05a83ca6c27c5ac90855e",
-      "resource-corruption": "07ed30b96b6e4660cb572c14588fbd4fc83495dd5934b881fc02ed4bf7b1da74",
-      "relocation": "8970de0eb5ee159763f129aa0d1aefa4f64ac517175c1f5c3d6d0ed2734a02f0",
-      "sea": "4fc0d59a0a7bfc4dd61e495051acf3bb3d2d5c321b223160e473ad985e963044"
-    },
-    "portable_receipts_sha256": {
-      "linux-x64": "873d504d89acd686657e552bca0e39bb9591528ca54a9d6b1cbe23d138787f29",
-      "linux-arm64": "9db5596609cd9e212e2d809c38f74d87e0a9da1f1502ecb77339a8af3a3ea6eb",
-      "macos-arm64": "d302c7efdb05467dfd01771ffc0a715bd1c216cd8ad6574d68f0411316437fd8",
-      "windows-x64": "6ae60e3919342652f11e4685769b758eebc641243211599608aa370696f1f9f7"
-    },
-    "historical_cobyla_status": "excluded-not-qualified"
+    "invalidated_summary": "qualification-v1.json"
   }
 }

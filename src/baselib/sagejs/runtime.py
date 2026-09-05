@@ -43,7 +43,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_ffi_view_create, ρσ_ffi_view_valid
 # globals: ρσ_iterator_symbol, ρσ_kwargs_symbol
 # globals: ρσ_non_exception_throw
-# globals: ρσ_float, ρσ_int, ρσ_list_constructor, ρσ_list_contains, ρσ_str
+# globals: ρσ_float, ρσ_int, ρσ_list_constructor, ρσ_list_contains, ρσ_list_decorate, ρσ_str
 # globals: ρσ_tuple
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
 # globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power, ρσ_modules
@@ -720,6 +720,7 @@ kwargs_symbol = ρσ_kwargs_symbol
 lightweight_math_class = ρσ_lightweight_math_class
 list_constructor = ρσ_list_constructor
 list_contains = ρσ_list_contains
+list_decorate = ρσ_list_decorate
 map_class = Map
 math = Math
 math_tuple = ρσ_math_tuple
