@@ -1,8 +1,48 @@
 # Numerical computing performance program
 
-Status: proposed implementation program, 2026-09-05. This document does not
-claim new measurements or completed acceleration. Source inspection starts at
+Status: implementation in progress, 2026-09-05. The initial inspection starts at
 `d520ed4df1b4afbea3199964ffd27fc57efdc1e0` on `origin/main`.
+
+## Execution checkpoint: N0–N1
+
+[Draft PR #132](https://github.com/sagemathinc/sagejs/pull/132) contains the
+first shared public-call corpus and incremental trace-accounting slice.
+[Local evidence and explicit limitations](../bench/numerics/performance/results/n1-local-2026-09-05/README.md)
+compare frozen baseline `cfbdb8a09` with source candidate `14fdd4117`.
+Retained-history serialization is eliminated on append and ODE projection;
+independent byte/retention/aliasing oracles pass under CPython and Sage.js.
+The repeated local comparison shows large collection gains and roughly
+2–2.6× gains on the selected iteration-traced public solvers, but **does not
+meet the program's latency targets or complete N0/N1**.
+
+[Persistent-host evidence](../bench/numerics/performance/results/n1-platforms-2026-09-05/README.md)
+now includes independent Linux x64 and ARM64 A/B/B/A block comparisons with
+identical public observations, plus Windows/macOS candidate-only measurements.
+The extra disk on `bench-1` enabled its builds and completed comparison. Browser
+payload CI still fails its eager-size gate; a separate result-PR group test hit
+its child timeout. Those failures remain explicit, not relaxed into passes.
+
+The corpus, profiler, and generated optimizer dashboard are reused rather than
+replaced by a separate benchmark service. N0 still lacks full scaling/failure,
+automatic/library/#124 comparisons, phase/startup/payload/peak-memory evidence,
+and complete persistent-host/browser confirmation. The initial 256-event baseline batch
+is censored, never reported as a per-call median. Benchmark-host disk exhaustion
+is an infrastructure gap, not authorization to delete another lane's work.
+
+[Draft PR #140](https://github.com/sagemathinc/sagejs/pull/140) is the separate,
+stacked result-binding fix: identical problem objects no longer need two hashes;
+distinct objects still undergo content checks. Its
+[local evidence and wider baseline](../bench/numerics/performance/results/n1-result-2026-09-05/README.md)
+bind the built candidate `bd26cfefb`, including ordinary-source CPython
+comparisons. The wider run still shows major statistics, dense and FFT gaps.
+An initial coarse statistics diagnostic identifies both input/budget work and
+stable reductions as large costs, so N2 must address the complete checked region,
+not just its last arithmetic expression.
+
+Next: source-transparent reduction/interpolation kernels in N2, alongside the
+remaining N0/N1 qualification. Keep each source candidate and its measurements
+distinct; the release owner and frozen product release remain untouched. N2–N6
+and all acceptance criteria below remain open.
 
 ## Objective and scope
 

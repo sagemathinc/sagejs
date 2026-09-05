@@ -9,7 +9,7 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `5ce8793156a13adcdc32bc697295f1a6ca8c823bb26caef6f36f2d58b97e4730` (706 files, 14398429 bytes).
+Input identity: `e60ad6e520bac5c7d254669a32766b9abca6dde58038503be3a15f92f5db381a` (706 files, 14398850 bytes).
 Analyzed source bundle: `sha256:d0cda5e8fbcd7dc2e615d88a842bf707178cbec6baca0154825d47a3b0b3f1f7`; compiler identity: `sha256:0cbeb975d42ea37c5de9117798d133324cc867f02050cd1f1b65dffc385ed41a`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
