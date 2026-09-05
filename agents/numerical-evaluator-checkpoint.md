@@ -188,3 +188,10 @@ CPython and fresh Sage.js native/dynamic/missing/stale routes pass the public
 fixture, including deliberately forged success and parameter changes. Strict
 Python passes with 375 modules and zero errors. These are focused checks, not
 whole-product qualification.
+
+The [four-host public API receipts](../bench/numerics/performance/results/n4-prepared-api-portability-2026-09-05/README.md)
+now pass on Linux x64, Linux ARM64, macOS ARM64 and Windows x64. Each compiles
+native source locally and checks actual public native/dynamic/missing/stale
+routes against CPython. All share the same unchanged source/runtime/dependency
+snapshot. This closes that focused portability question, not browser product,
+npm/SEA, performance targets or full numerical-program qualification.
