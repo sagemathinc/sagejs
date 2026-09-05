@@ -112,5 +112,49 @@ promoted GMP bundled helpers use 208,240 bytes / 3,003 calls in both forms.
 These are checkpoint statistics, not a claim that every external allocator
 throughout Sage.js is instrumented.
 
-Full cubic/public-receipt and cross-platform release qualification remains
-open; these microbenchmarks alone do not establish it.
+### Real staged cubic comparison
+
+`bench/native-source-compression-cubic.cjs` compares the pre-migration staged
+source with the slice/bundle migration. It explicitly selects relation effort
+5, which enters the bundled staged proof, rather than effort 1. Each sample
+contains ten fresh closed calls; four warmup pairs precede fifteen measured
+alternating-order pairs on opt CPU 1. All 64 output slots agree between the
+two implementations, and all fourteen fields are accepted with the expected
+class number. This output comparison is not an independent certificate proof.
+
+Candidate/baseline median ratios range from 0.9925 to 1.0041. Representative
+whole native call times, in milliseconds:
+
+| Field | Explicit | Slice/bundle |
+|---|---:|---:|
+| $x^3+9x-55$ | 2.991 | 2.993 |
+| $x^3-x^2+3x-4$ | 2.147 | 2.156 |
+| $x^3-32x-92$ | 4.992 | 5.003 |
+| $x^3+30x-48$ | 5.961 | 5.979 |
+
+Baseline artifact:
+`b2f3f30228cfeda824ebb860d7e414e98558c0fd5f0bb60df1c4ff894f0027bd`.
+Candidate artifact:
+`13492e47d036ea622eadce8189f0fbbbb6367aeb97f722ab807a68c77b6811d0`.
+The valid executable IR of all 101 functions also agrees after normalizing
+flattened parameter names/order and provenance; that structural check is
+stronger evidence of zero native bundle overhead than timing alone.
+
+Nine initialization blocks now use slices. The staged proof helper groups
+38 owners and drops from 73 source parameters to 36. This first migration is
+primarily a reduction in argument plumbing: Ruff's multiline tuple formatting
+means slices do not necessarily reduce line count. No source or arena budget
+was raised for these features.
+
+The staged Python module changes from 433,952 bytes / 11,672 lines to
+433,603 bytes / 11,700 lines. Raw generated C grows from 12,050,111 to
+17,429,302 bytes, predominantly because the candidate's much longer absolute
+source path is repeated in provenance diagnostics. Replacing just the two
+root source paths with the same marker gives 10,045,217 versus 10,134,294
+bytes (0.89% growth). The compiled Linux module sizes are 20,321,008 versus
+20,361,968 bytes (0.20% growth). Thus source-level bundle erasure does not
+mean byte-identical generated text: flattened names, checked slices and
+diagnostic provenance remain visible and are included in resource review.
+
+Full final-artifact public-receipt and cross-platform release qualification
+remains open; these comparisons alone do not establish it.
