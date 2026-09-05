@@ -338,9 +338,10 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
     // Python module introspection hides unbound lexical slots, so give the
     // intrinsic namespace its own directory without changing that behavior.
     ans.pretty +=
-      'ρσ_baselib_modules["sagejs.runtime"].__dir__ = function() {\n' +
+      'Object.defineProperty(ρσ_baselib_modules["sagejs.runtime"], "__dir__", {\n' +
+      'configurable: true, writable: true, value: function() {\n' +
       'return Object.keys(ρσ_baselib_modules["sagejs.runtime"]);\n' +
-      '};\n';
+      '}});\n';
     // Retain the exact Python/Sage facade for builtins lookup.
     ans.pretty +=
       "globalThis.__sagejs_baselib_facade_names__ = " +
