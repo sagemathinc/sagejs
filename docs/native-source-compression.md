@@ -164,5 +164,29 @@ bytes (0.89% growth). The compiled Linux module sizes are 20,321,008 versus
 mean byte-identical generated text: flattened names, checked slices and
 diagnostic provenance remain visible and are included in resource review.
 
-Full final-artifact public-receipt and cross-platform release qualification
-remains open; these comparisons alone do not establish it.
+### Public replay and release qualification
+
+Both final production rebuilds pass all seven cubic public/closure tests,
+including authenticated receipts, independent exact replay and the promoted
+large-regulator witness. The prerequisite production-pack suite passes all
+eight tests. The staged mathematical branch additionally passes eighteen
+public/arithmetic/scheduler tests. These checks are separate from the fourteen
+paired timing fields: timing agreement alone is not certification.
+
+The [qualification artifacts](https://github.com/sagemathinc/sagejs/releases/tag/native-source-compression-2026-09-05-f66f1ccc)
+preserve the before/after Python sources, raw paired timing records, resource
+probes, bundle-IR comparison and test transcripts outside Git. The optimizer
+snapshots have distinct logical digests: prerequisite
+`13ce6f39cf620c21a669d9fce6d48f2f3d96c73ca70256c6c13f9ef6cb370bee`
+and staged mathematics
+`3382c44514037290603db4edcca46ef772749ac2b3329ba2328739cb29d00e32`.
+Their manifests identify the corresponding published canonical exports and
+SQLite assets; refreshing an inventory is not itself resource qualification.
+
+Full cross-platform release qualification remains pending. The local full
+native suite passes the feature, compiler, ownership and matrix-migration
+checks but fails three existing rational-matrix performance budgets (roughly
+34–35 ms against a 15 ms limit). The clean pre-feature `cf82b0eb` baseline
+also fails those same budgets at roughly 35 ms. No thresholds are relaxed,
+and the full native suite must not be reported as passing. Draft PRs remain
+subject to these explicitly recorded release gates.

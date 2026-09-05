@@ -12,7 +12,10 @@ have been migrated; the staged proof helper has a 38-owner bundle, reducing
 seven cubic public/closure tests pass, including independent exact replay and
 large-regulator witnesses; the production-pack suite also passes. Strict Python,
 the broad native compiler suite and root architecture checks pass. Broader
-platform CI is queued; final evidence publication and staged handoff remain open.
+platform CI is queued. Raw qualification evidence and both optimizer snapshots
+are published. The full native gate encounters the same rational-matrix timing
+failures as the clean pre-feature baseline; no limits have been loosened.
+Final platform qualification and staged handoff remain open.
 See `docs/native-source-compression.md` for the contract and evidence.
 
 Goal: implement and qualify fixed-length slice assignment, then borrowed
@@ -86,7 +89,8 @@ Python, architecture and applicable compiler/platform gates. Record baseline
 and candidate identities, compiler/dependency versions, generated sizes,
 resource peaks and controlled timings. Passing a size manifest is not review.
 
-Keep the existing dirty staged mathematical work separate from compiler
-changes until qualified. Its public receipt tests currently have failures;
-record and resolve their causes before attributing a failure to either feature.
-Do not treat the older standalone arithmetic successes as full public replay.
+Keep staged mathematical work separate from compiler changes until qualified.
+The initial public receipt failures have been resolved and their causes are
+recorded in the commits and qualification notes. Both final public replay suites
+now pass; do not substitute older standalone arithmetic successes for them or
+conflate source-compression qualification with the larger PARI-frontier campaign.
