@@ -190,3 +190,28 @@ checks but fails three existing rational-matrix performance budgets (roughly
 also fails those same budgets at roughly 35 ms. No thresholds are relaxed,
 and the full native suite must not be reported as passing. Draft PRs remain
 subject to these explicitly recorded release gates.
+
+#### Production Wasm export review
+
+The first current-source Wasm builds failed the older export allowlist. Both
+the prerequisite and staged builds produce exactly the same new ABI inventory.
+Reviewing the complete import/export multiset (normalizing only generated
+`m_<16 hexadecimal digits>` source namespaces) finds:
+
+- No changed imports or new Wasm modules.
+- One added FLINT adapter export,
+  `sagejs_wasm_ffiIntegerLogSqrtBallsPrefixResource`, for the already declared
+  logical-prefix Arb operation.
+- Removal of the cubic public bridge and its eight per-core runtime exports.
+  This is required by the existing `b76b8605` target guard: the resident fmpz
+  integer buffer requires 64-bit FLINT limbs, while wasm32 has 32-bit limbs.
+  The inventory explicitly records that one unsupported function and its
+  same-source fallback. Do not restore the unsafe bridge or claim the full
+  native cubic program executes in browser Wasm.
+- No other semantic export changes; the GMP pack retains all 318 exports.
+  The FLINT adapter has 491 exports and its native pack has 351. Other changes
+  are authenticated source-namespace renaming.
+
+The allowlist refresh records that reviewed inventory; it neither enables an
+unsupported target nor changes a memory/resource budget. Generic slice and
+bundle WASI witnesses remain distinct from the full cubic target capability.
