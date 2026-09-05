@@ -70,6 +70,18 @@ function sourceBindings(manifest, moduleSources) {
       throw new TypeError("floating pack source differs from the Python module bundle");
     }
     const functions = new Map();
+    if (!Array.isArray(kernel.sourceDependencies)) {
+      throw new TypeError("floating pack lacks source-closure bindings");
+    }
+    const dependencies = new Set();
+    for (const dependency of kernel.sourceDependencies) {
+      if (dependencies.has(dependency.logicalSource) ||
+          !SHA256.test(dependency.sourceHash) ||
+          moduleSources.get(dependency.logicalSource) !== dependency.sourceHash) {
+        throw new TypeError("floating pack imported source differs from the Python module bundle");
+      }
+      dependencies.add(dependency.logicalSource);
+    }
     if (bindings.has(kernel.logicalSource)) {
       throw new TypeError("duplicate floating pack source module");
     }
@@ -91,7 +103,7 @@ function sourceBindings(manifest, moduleSources) {
 }
 
 /**
- * Optional, worker-owned acceleration for the statistics import family.
+ * Optional, worker-owned acceleration for statistics and prepared expressions.
  *
  * prepare() finishes before decorated Python modules are imported. resolve()
  * stays synchronous and returns null before preparation or after any failure.
@@ -165,7 +177,9 @@ export function createLazyFloatingKernels({
     async prepare(imports) {
       if (closed || state === "disabled" || !imports.some((name) =>
         name === "sagejs.numerics.statistics" ||
-        name.startsWith("sagejs.numerics.statistics.")
+        name.startsWith("sagejs.numerics.statistics.") ||
+        name === "sagejs.numerics.evaluators" ||
+        name === "sagejs.numerics.prepared_roots"
       )) return;
       await (pending ??= load());
     },

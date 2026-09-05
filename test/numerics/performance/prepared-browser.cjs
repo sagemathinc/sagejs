@@ -19,13 +19,14 @@ const packageRoot = path.join(root, "packages/flint-wasm");
 // This is a public browser SOURCE integration witness. It deliberately records
 // no release receipt: exact Wasm assets come from an existing local package,
 // while numerics modules, compiler frontend, and floating pack are current.
-test("public prepared statistics use the optional pack in real browser sessions", {
+test("public prepared numerical APIs use the optional pack in real browser sessions", {
   skip: process.env.SAGEJS_NUMERICAL_BROWSER_TESTS !== "1" ? "explicit browser source qualification" : false,
   timeout: 600000,
 }, async () => {
   const measurementPath = process.env.SAGEJS_NUMERICAL_BROWSER_MEASUREMENTS;
   if (measurementPath && fs.existsSync(measurementPath)) throw new Error("refusing to overwrite measurements");
   const measurements = [];
+  const evaluators = process.env.SAGEJS_NUMERICAL_BROWSER_WORKLOAD === "evaluators";
   const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-prepared-browser-"));
   let server;
@@ -97,9 +98,11 @@ test("public prepared statistics use the optional pack in real browser sessions"
     });
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const origin = `http://127.0.0.1:${server.address().port}`;
-    const source = fs.readFileSync(path.join(__dirname, "prepared-statistics.py"), "utf8");
+    const source = evaluators
+      ? ["prepared-functions.py", "prepared-root-api.py"].map(name => fs.readFileSync(path.join(__dirname,name),"utf8")).join("\n")
+      : fs.readFileSync(path.join(__dirname, "prepared-statistics.py"), "utf8");
     const benchmark = measurementPath ? fs.readFileSync(path.join(root,
-      "bench/numerics/performance/prepared-statistics.py"), "utf8") : null;
+      evaluators ? "bench/numerics/performance/prepared-root.py" : "bench/numerics/performance/prepared-statistics.py"), "utf8") : null;
     for (const engine of (process.env.SAGEJS_NUMERICAL_BROWSER_ENGINE
       ? [process.env.SAGEJS_NUMERICAL_BROWSER_ENGINE] : ["chromium", "firefox", "webkit"])) {
       const browser = await require("playwright-core")[engine].launch({ headless: true });
@@ -108,7 +111,7 @@ test("public prepared statistics use the optional pack in real browser sessions"
         await page.goto(origin);
         for (const [route, expected] of [["disabled", "ordinary-python"], ["floating", "source-native"], ["stale", "ordinary-python"], ["missing", "ordinary-python"]]) {
           const start = requests.length;
-          const observation = await page.evaluate(async ({ origin, route, expected, source, start, benchmark }) => {
+          const observation = await page.evaluate(async ({ origin, route, expected, source, start, benchmark, evaluators }) => {
             const { createSage } = await import(origin + "/kernel.mjs");
             const sage = await createSage({ mode: "python",
               compiler: origin + "/__witness/compiler.js", baselib: origin + "/__witness/baselib.js",
@@ -122,9 +125,11 @@ test("public prepared statistics use the optional pack in real browser sessions"
               if (fetched.some((url) => url.startsWith(`/__witness/${route}/`))) {
                 throw new Error("floating pack was fetched before a statistics import");
               }
-              const result = await sage.evaluate(`EXPECTED_BACKEND = ${JSON.stringify(expected)}\n` + source, { timeout: 180000 });
+              const result = await sage.evaluate(`EXPECTED_BACKEND = ${JSON.stringify(expected)}\nEXPECTED_TARGET = ${JSON.stringify(expected === "source-native" ? "wasm" : "dynamic")}\n` + source, { timeout: 180000 });
               if (route === "floating") await sage.evaluate(
-                'from sagejs.numerics.statistics._packed import finite_sum\nassert finite_sum.executionTarget == "wasm"',
+                evaluators
+                  ? 'from sagejs.numerics._evaluation_core import evaluate_program\nassert evaluate_program.executionTarget == "wasm"'
+                  : 'from sagejs.numerics.statistics._packed import finite_sum\nassert finite_sum.executionTarget == "wasm"',
                 { timeout: 120000 },
               );
               const recovery = await sage.evaluate("print(6 * 7)", { timeout: 120000 });
@@ -138,8 +143,8 @@ test("public prepared statistics use the optional pack in real browser sessions"
               }
               return { stdout: result.stdout, recovery: recovery.stdout, measured };
             } finally { sage.close(); }
-          }, { origin, route, expected, source, start, benchmark });
-          assert.equal(observation.stdout.trim(), "prepared statistics passed", engine + ":" + route);
+          }, { origin, route, expected, source, start, benchmark, evaluators });
+          assert.equal(observation.stdout.trim(), evaluators ? "prepared functions passed\nprepared root API passed" : "prepared statistics passed", engine + ":" + route);
           assert.equal(observation.recovery.trim(), "42");
           if (observation.measured) {
             measurements.push({ engine, version: browser.version(), ...observation.measured });
@@ -162,16 +167,20 @@ test("public prepared statistics use the optional pack in real browser sessions"
         "packages/flint-wasm/dist/flint-factor.wasm", "tools/native-kernel/wasm-pack-loader.mjs",
         "test/numerics/performance/prepared-browser.cjs"];
       const report = {
-        schema: "sagejs.prepared-statistics-browser-development/v1",
+        schema: evaluators ? "sagejs.prepared-root-browser-development/v1" : "sagejs.prepared-statistics-browser-development/v1",
         classification: "source-integration-development-not-release-qualification",
         host: { platform: process.platform, arch: process.arch, node: process.version,
           cpu: os.cpus()[0]?.model, load_average: os.loadavg() },
         sources: inputFiles.map((name) => ({ path: name, sha256: hash(fs.readFileSync(path.join(root, name))) })),
+        generated_resources: ["stdlib.json", "compiler-frontend.mjs", "floating/index.json"].map(name => ({
+          path: name, sha256: hash(fs.readFileSync(path.join(directory, name))),
+        })),
         workload_sha256: hash(benchmark),
         pack: manifest.packs[0],
-        policy: { warmups: 3, samples: 7, observations: 20000,
-          included: ["complete public query", "validation", "sorting", "result", "trace"],
-          separate: ["data preparation", "first query"],
+        policy: { warmups: 3, samples: 7, ...(evaluators ? { roots_per_batch: 20 } : { observations: 20000 }),
+          included: evaluators ? ["complete public solve", "parameter packing", "independent validation", "result"]
+            : ["complete public query", "validation", "sorting", "result", "trace"],
+          separate: evaluators ? ["expression preparation"] : ["data preparation", "first query"],
           unmeasured: ["cold browser startup", "peak memory", "frozen paired qualification", "npm/SEA"] },
         measurements,
       };
