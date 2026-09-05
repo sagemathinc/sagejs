@@ -72,3 +72,14 @@ alongside factorization before promoting a public dense acceleration path.
 The [four-host and browser witnesses](../bench/numerics/performance/results/n3-validation-access-platforms-2026-09-05/README.md)
 pass for this source. They do not qualify public native selection or N3's
 performance exit criteria.
+
+## External-library contender
+
+The [Eigen 5.0.0 closure probe](../bench/numerics/performance/results/n3-eigen-closure-2026-09-05/README.md)
+builds and runs on all four native hosts and in Chromium/Firefox/WebKit. It
+covers only tiny known solves and decomposition smoke cases. The Wasm build
+needs exceptions disabled with the current SDK; allocation failure and recovery
+remain unqualified. This makes Eigen a concrete contender, not a selected or
+integrated backend. Matched performance, independent broad correctness,
+generic floating FFI storage and production memory/failure contracts remain
+required. No new runtime dependency is introduced.
