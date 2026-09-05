@@ -59,15 +59,13 @@ def ρσ_unbound_method_adapter(target_function):
             "__positional_only__", "__python_type__", "__qualname__",
             "__varargs__", "__varkw__",
         ]) {
-            if (name !== "__argnames__") {
-                const descriptor = Object.getOwnPropertyDescriptor(
-                    target_function, name
-                );
-                if (descriptor && typeof descriptor.get === "function") {
-                    Object.defineProperty(method, name, descriptor);
-                } else {
-                    method[name] = target_function[name];
-                }
+            const descriptor = Object.getOwnPropertyDescriptor(
+                target_function, name
+            );
+            if (descriptor && typeof descriptor.get === "function") {
+                Object.defineProperty(method, name, descriptor);
+            } else {
+                method[name] = target_function[name];
             }
         }
         method.__func__ = target_function;
