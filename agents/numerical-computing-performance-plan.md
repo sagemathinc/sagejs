@@ -49,17 +49,28 @@ the private accurately rounded sum and prefix-free binary64 compiler boundary
 from N1. Its [four-host source receipts](../bench/numerics/performance/results/n2-source-2026-09-05/README.md)
 include the macOS path-alias and Windows cleanup corrections; two unavailable
 Windows WASI builds remain explicit skips. Subsequent
-[centered/scaled regions](numerical-statistics-regions-checkpoint.md) pass 198
+[centered/scaled regions](numerical-statistics-regions-checkpoint.md) pass 296
 exact-rational cases through native, JavaScript IR, Node-Wasm and real browser
-workers. No public statistics acceleration or full N2 acceptance is claimed.
+workers. [Draft PR #148](https://github.com/sagemathinc/sagejs/pull/148) adds the
+experimental public `StatisticsData` ownership/query path. Full prepared native
+summaries measure 32–34 ms locally, with 0.50–0.53 s setup reported separately;
+generic queries remain dynamic. Its 21 focused tests, strict Python and
+architecture pass, but these are fresh-source witnesses with the existing
+built compiler. Public four-platform, browser/native packaging, frozen paired
+performance qualification and the 10 ms target remain open. See the
+[development evidence](../bench/numerics/performance/results/n2-prepared-development-2026-09-05/README.md).
 
 The [isolated local #124 comparison](../bench/numerics/performance/results/n0-dictionary-local-2026-09-05/README.md)
 uses fresh candidate `45093cdea` against `bd26cfefb` in A/B/B/A order, with
 identical numerical source and all eight public observations matching. It finds
 modest root/minimum gains but no clear `describe(20_000)` improvement. That is
 evidence to continue complete arithmetic/representation-region acceleration,
-not to dismiss the runtime work or claim these local differences confirmed on
-the persistent hosts. None of the priority latency targets passes yet.
+not to dismiss the runtime work. The separate
+[quiet bench-1 A/B/B/A confirmation](../bench/numerics/performance/results/n0-dictionary-bench1-2026-09-05/README.md)
+now agrees: roughly 7–9% gains in root/minimum/no-trace ODE, a noisier ODE-summary
+gain, and essentially unchanged statistics. All 32 public observations match.
+This does not qualify the other platforms or the full #124 parent stack.
+None of the priority latency targets passes yet.
 
 ## Objective and scope
 
