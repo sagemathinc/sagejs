@@ -81,6 +81,26 @@
       "commit": "a72f4150111bae641827013b1f75de9d5aba0d76",
       "workspace_fingerprint": "54f6bc75d90bf7734bfe4c8a93c1230eac01d89e72a60f4df3e33773815d5c32",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-compact-dependency-prefix.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.936,
+      "started_at": "2026-09-05T14:10:17.434Z",
+      "commit": "5c5b6aca3d7b313ce19a8553a5f267d8935d2828",
+      "workspace_fingerprint": "87690119c633490b7b7e72879e52d9744d2142d00fb0af93fa99a1fe63b54d63",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-recovery-prefix.cjs test/number-field-cubic-reconstructed-regulator-guard.cjs test/number-field-cubic-adjacent-cursor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.042,
+      "started_at": "2026-09-05T14:10:57.380Z",
+      "commit": "5c5b6aca3d7b313ce19a8553a5f267d8935d2828",
+      "workspace_fingerprint": "87690119c633490b7b7e72879e52d9744d2142d00fb0af93fa99a1fe63b54d63",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
