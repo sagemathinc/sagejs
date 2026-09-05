@@ -1,0 +1,563 @@
+{
+  "schema": "sagejs.numerics.performance-profile-summary/v1",
+  "classification": "provisional-local-profiler-observation",
+  "limitations": [
+    "Raw engine labels are not authenticated Python source attribution.",
+    "Only about 2 percent of samples map to authenticated Python source spans.",
+    "Do not renormalize matched samples into a complete phase breakdown.",
+    "Profiled elapsed time is not interchangeable with uninstrumented timing.",
+    "Preparation includes profiler setup and is not StatisticsData construction timing."
+  ],
+  "profiles": [
+    {
+      "trace": "none",
+      "mathematical_source_commit": "3fc0831aab04f43ed48c0f5d6b81d998db9db341",
+      "raw_report": {
+        "asset": "prepared-none.json.gz",
+        "bytes": 4455356,
+        "sha256": "45bf036d7fe81cc7241cdeaf7daefb5176c2f3a4c0d5b924e428c6013b9c0ac6",
+        "gzip_bytes": 321374,
+        "gzip_sha256": "420492416224b613aecd29f08e97d02e3f555c3933cb68f4a9cb3d061fa7da84"
+      },
+      "sampling": {
+        "scope": "warm-prepared-sealed-generated-javascript-execution",
+        "requestedIntervalMicros": 500,
+        "startTimeMicros": 55646370670,
+        "endTimeMicros": 55650077425,
+        "sampledDurationMicros": 3706755,
+        "wallMicros": 3559536.982,
+        "preparationMicros": 34425050.047,
+        "warmupRuns": 3,
+        "repetitions": 100
+      },
+      "sample_accounting": {
+        "total": 6000,
+        "attributed": 148,
+        "ambiguous": 0,
+        "unmatched": 5852
+      },
+      "raw_engine_frames": [
+        {
+          "function_name": "sortedFloat64Buffer",
+          "url": "file:///home/user/sagejs-worktrees/perf-numerical-statistics-regions/build/numerical-performance/prepared-profile-cache/ff95ccc4dcee4a7e2c8855913061249298dbf3bae7e42b7c28c1727ad420f6fc/index.cjs",
+          "line": 939,
+          "samples": 1155,
+          "share_of_all_samples": 0.1925
+        },
+        {
+          "function_name": "ρσ_instanceof_one",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 33650,
+          "samples": 714,
+          "share_of_all_samples": 0.119
+        },
+        {
+          "function_name": "ρσ_getattr_internal",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 13181,
+          "samples": 364,
+          "share_of_all_samples": 0.06066666666666667
+        },
+        {
+          "function_name": "_internal_get_member",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 31243,
+          "samples": 342,
+          "share_of_all_samples": 0.057
+        },
+        {
+          "function_name": "ρσ_bool",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 8054,
+          "samples": 310,
+          "share_of_all_samples": 0.051666666666666666
+        },
+        {
+          "function_name": "(anonymous)",
+          "url": "file:///home/user/sagejs-worktrees/perf-numerical-statistics-regions/build/numerical-performance/prepared-profile-cache/ff95ccc4dcee4a7e2c8855913061249298dbf3bae7e42b7c28c1727ad420f6fc/index.cjs",
+          "line": 949,
+          "samples": 199,
+          "share_of_all_samples": 0.033166666666666664
+        },
+        {
+          "function_name": "ρσ_brand_bound_method",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 5294,
+          "samples": 194,
+          "share_of_all_samples": 0.03233333333333333
+        },
+        {
+          "function_name": "(anonymous)",
+          "url": "(no-url)",
+          "line": 1,
+          "samples": 170,
+          "share_of_all_samples": 0.028333333333333332
+        },
+        {
+          "function_name": "ρσ_native_jstype",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 751,
+          "samples": 155,
+          "share_of_all_samples": 0.025833333333333333
+        },
+        {
+          "function_name": "ρσ_getitem",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 33195,
+          "samples": 148,
+          "share_of_all_samples": 0.024666666666666667
+        },
+        {
+          "function_name": "_internal_get_member_raw",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 31270,
+          "samples": 146,
+          "share_of_all_samples": 0.024333333333333332
+        },
+        {
+          "function_name": "_builtins_get_member",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 5105,
+          "samples": 130,
+          "share_of_all_samples": 0.021666666666666667
+        },
+        {
+          "function_name": "$ρσ$py$materialize_json",
+          "url": "sagejs-profile:///lazy/sagejs.numerics._json?source=sha256%3A2d2e4bb05947718fc59524ed19a0c053ab886c02f0621bf436154438caefdfa2&run=a9e03396386fd658616a36c5297c9e26",
+          "line": 52,
+          "samples": 114,
+          "share_of_all_samples": 0.019
+        },
+        {
+          "function_name": "value",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 25431,
+          "samples": 93,
+          "share_of_all_samples": 0.0155
+        },
+        {
+          "function_name": "(garbage collector)",
+          "url": "(no-url)",
+          "line": 1,
+          "samples": 85,
+          "share_of_all_samples": 0.014166666666666666
+        },
+        {
+          "function_name": "ρσ_str",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 34409,
+          "samples": 78,
+          "share_of_all_samples": 0.013
+        },
+        {
+          "function_name": "ρσ_resolve_callable",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 9890,
+          "samples": 73,
+          "share_of_all_samples": 0.012166666666666666
+        },
+        {
+          "function_name": "_builtins_operator_add_exact_slow",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 6179,
+          "samples": 72,
+          "share_of_all_samples": 0.012
+        },
+        {
+          "function_name": "_builtins_has_member",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 5207,
+          "samples": 65,
+          "share_of_all_samples": 0.010833333333333334
+        },
+        {
+          "function_name": "ρσ_instanceof",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 33904,
+          "samples": 62,
+          "share_of_all_samples": 0.010333333333333333
+        },
+        {
+          "function_name": "(anonymous)",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 2470,
+          "samples": 52,
+          "share_of_all_samples": 0.008666666666666666
+        },
+        {
+          "function_name": "_builtins_class_attribute_resolution",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 5346,
+          "samples": 46,
+          "share_of_all_samples": 0.007666666666666666
+        },
+        {
+          "function_name": "method",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 703,
+          "samples": 46,
+          "share_of_all_samples": 0.007666666666666666
+        },
+        {
+          "function_name": "ρσ_resolve_module_name",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 13638,
+          "samples": 46,
+          "share_of_all_samples": 0.007666666666666666
+        },
+        {
+          "function_name": "_builtins_bind_python_function",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 5260,
+          "samples": 46,
+          "share_of_all_samples": 0.007666666666666666
+        },
+        {
+          "function_name": "equals",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 21919,
+          "samples": 45,
+          "share_of_all_samples": 0.0075
+        },
+        {
+          "function_name": "_list_append",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 22458,
+          "samples": 41,
+          "share_of_all_samples": 0.006833333333333334
+        },
+        {
+          "function_name": "ρσ_list_decorate",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 22960,
+          "samples": 38,
+          "share_of_all_samples": 0.006333333333333333
+        },
+        {
+          "function_name": "_builtins_is_python_class",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 10194,
+          "samples": 37,
+          "share_of_all_samples": 0.006166666666666667
+        },
+        {
+          "function_name": "_list_contains",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 22771,
+          "samples": 36,
+          "share_of_all_samples": 0.006
+        },
+        {
+          "function_name": "not_equals",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 22089,
+          "samples": 35,
+          "share_of_all_samples": 0.005833333333333334
+        },
+        {
+          "function_name": "ρσ_interpolate_kwargs_legacy",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 32725,
+          "samples": 29,
+          "share_of_all_samples": 0.004833333333333334
+        },
+        {
+          "function_name": "ρσ_float",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 8765,
+          "samples": 25,
+          "share_of_all_samples": 0.004166666666666667
+        },
+        {
+          "function_name": "ρσ_dict",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 27690,
+          "samples": 24,
+          "share_of_all_samples": 0.004
+        },
+        {
+          "function_name": "ρσ_len",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 14687,
+          "samples": 23,
+          "share_of_all_samples": 0.003833333333333333
+        }
+      ]
+    },
+    {
+      "trace": "summary",
+      "mathematical_source_commit": "3fc0831aab04f43ed48c0f5d6b81d998db9db341",
+      "raw_report": {
+        "asset": "prepared-summary.json.gz",
+        "bytes": 4530904,
+        "sha256": "5f247a1bbd2e230e81a1a048cdf08bc1fd5eb273e20632bf69d64a7a7e36b16b",
+        "gzip_bytes": 322516,
+        "gzip_sha256": "c25b4c399f812a99234b85a579314d09810a3a3e3fc15a1bea401bfc68aad0e7"
+      },
+      "sampling": {
+        "scope": "warm-prepared-sealed-generated-javascript-execution",
+        "requestedIntervalMicros": 500,
+        "startTimeMicros": 55885987308,
+        "endTimeMicros": 55889896097,
+        "sampledDurationMicros": 3908789,
+        "wallMicros": 3692643.444,
+        "preparationMicros": 35143952.256,
+        "warmupRuns": 3,
+        "repetitions": 100
+      },
+      "sample_accounting": {
+        "total": 6206,
+        "attributed": 136,
+        "ambiguous": 0,
+        "unmatched": 6070
+      },
+      "raw_engine_frames": [
+        {
+          "function_name": "sortedFloat64Buffer",
+          "url": "file:///home/user/sagejs-worktrees/perf-numerical-statistics-regions/build/numerical-performance/prepared-profile-cache/ff95ccc4dcee4a7e2c8855913061249298dbf3bae7e42b7c28c1727ad420f6fc/index.cjs",
+          "line": 939,
+          "samples": 1187,
+          "share_of_all_samples": 0.191266516274573
+        },
+        {
+          "function_name": "ρσ_instanceof_one",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 33650,
+          "samples": 734,
+          "share_of_all_samples": 0.11827263938124395
+        },
+        {
+          "function_name": "ρσ_getattr_internal",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 13181,
+          "samples": 405,
+          "share_of_all_samples": 0.06525942636158556
+        },
+        {
+          "function_name": "_internal_get_member",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 31243,
+          "samples": 339,
+          "share_of_all_samples": 0.05462455688043828
+        },
+        {
+          "function_name": "ρσ_bool",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 8054,
+          "samples": 283,
+          "share_of_all_samples": 0.0456010312600709
+        },
+        {
+          "function_name": "ρσ_brand_bound_method",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 5294,
+          "samples": 185,
+          "share_of_all_samples": 0.029809861424427972
+        },
+        {
+          "function_name": "(anonymous)",
+          "url": "(no-url)",
+          "line": 1,
+          "samples": 178,
+          "share_of_all_samples": 0.02868192072188205
+        },
+        {
+          "function_name": "ρσ_native_jstype",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 751,
+          "samples": 162,
+          "share_of_all_samples": 0.026103770544634225
+        },
+        {
+          "function_name": "(anonymous)",
+          "url": "file:///home/user/sagejs-worktrees/perf-numerical-statistics-regions/build/numerical-performance/prepared-profile-cache/ff95ccc4dcee4a7e2c8855913061249298dbf3bae7e42b7c28c1727ad420f6fc/index.cjs",
+          "line": 949,
+          "samples": 157,
+          "share_of_all_samples": 0.02529809861424428
+        },
+        {
+          "function_name": "_builtins_get_member",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 5105,
+          "samples": 156,
+          "share_of_all_samples": 0.02513696422816629
+        },
+        {
+          "function_name": "_internal_get_member_raw",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 31270,
+          "samples": 144,
+          "share_of_all_samples": 0.02320335159523042
+        },
+        {
+          "function_name": "ρσ_getitem",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 33195,
+          "samples": 140,
+          "share_of_all_samples": 0.022558814050918467
+        },
+        {
+          "function_name": "value",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 25431,
+          "samples": 96,
+          "share_of_all_samples": 0.015468901063486949
+        },
+        {
+          "function_name": "(garbage collector)",
+          "url": "(no-url)",
+          "line": 1,
+          "samples": 93,
+          "share_of_all_samples": 0.01498549790525298
+        },
+        {
+          "function_name": "ρσ_str",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 34409,
+          "samples": 91,
+          "share_of_all_samples": 0.014663229133097004
+        },
+        {
+          "function_name": "$ρσ$py$materialize_json",
+          "url": "sagejs-profile:///lazy/sagejs.numerics._json?source=sha256%3A2d2e4bb05947718fc59524ed19a0c053ab886c02f0621bf436154438caefdfa2&run=edbf1beb990d71a5dfde551063b088e0",
+          "line": 52,
+          "samples": 89,
+          "share_of_all_samples": 0.014340960360941025
+        },
+        {
+          "function_name": "_builtins_operator_add_exact_slow",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 6179,
+          "samples": 82,
+          "share_of_all_samples": 0.013213019658395102
+        },
+        {
+          "function_name": "_builtins_bind_python_function",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 5260,
+          "samples": 73,
+          "share_of_all_samples": 0.0117628101836932
+        },
+        {
+          "function_name": "_builtins_has_member",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 5207,
+          "samples": 67,
+          "share_of_all_samples": 0.010796003867225266
+        },
+        {
+          "function_name": "method",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 703,
+          "samples": 60,
+          "share_of_all_samples": 0.009668063164679342
+        },
+        {
+          "function_name": "_builtins_class_attribute_resolution",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 5346,
+          "samples": 60,
+          "share_of_all_samples": 0.009668063164679342
+        },
+        {
+          "function_name": "(anonymous)",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 2470,
+          "samples": 57,
+          "share_of_all_samples": 0.009184660006445376
+        },
+        {
+          "function_name": "ρσ_instanceof",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 33904,
+          "samples": 55,
+          "share_of_all_samples": 0.008862391234289398
+        },
+        {
+          "function_name": "_builtins_is_python_class",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 10194,
+          "samples": 43,
+          "share_of_all_samples": 0.006928778601353529
+        },
+        {
+          "function_name": "ρσ_resolve_callable",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 9890,
+          "samples": 43,
+          "share_of_all_samples": 0.006928778601353529
+        },
+        {
+          "function_name": "_list_contains",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 22771,
+          "samples": 41,
+          "share_of_all_samples": 0.006606509829197551
+        },
+        {
+          "function_name": "equals",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 21919,
+          "samples": 40,
+          "share_of_all_samples": 0.006445375443119562
+        },
+        {
+          "function_name": "_list_append",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 22458,
+          "samples": 39,
+          "share_of_all_samples": 0.006284241057041572
+        },
+        {
+          "function_name": "ρσ_resolve_module_name",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 13638,
+          "samples": 35,
+          "share_of_all_samples": 0.005639703512729617
+        },
+        {
+          "function_name": "value",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 23271,
+          "samples": 34,
+          "share_of_all_samples": 0.0054785691266516275
+        },
+        {
+          "function_name": "ρσ_len",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 14687,
+          "samples": 33,
+          "share_of_all_samples": 0.005317434740573638
+        },
+        {
+          "function_name": "not_equals",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 22089,
+          "samples": 32,
+          "share_of_all_samples": 0.00515630035449565
+        },
+        {
+          "function_name": "ρσ_list_decorate",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 22960,
+          "samples": 27,
+          "share_of_all_samples": 0.004350628424105704
+        },
+        {
+          "function_name": "ρσ_setattr",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 13547,
+          "samples": 26,
+          "share_of_all_samples": 0.004189494038027715
+        },
+        {
+          "function_name": "ρσ_float",
+          "url": "sagejs/runtime-bootstrap-python.js",
+          "line": 8765,
+          "samples": 24,
+          "share_of_all_samples": 0.003867225265871737
+        }
+      ]
+    }
+  ]
+}
