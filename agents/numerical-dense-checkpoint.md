@@ -31,3 +31,10 @@ Next gates remain public integration with unchanged independent validation,
 matched library alternatives, complete-call benchmarks, persistent four-host
 and package qualification, and explicit trace/cancellation boundaries. QR,
 Cholesky, eigen and SVD are not delivered by this LU candidate.
+
+The [four-host source receipts](../bench/numerics/performance/results/n3-packed-lu-platforms-2026-09-05/README.md)
+now pass for the private kernel with identical unchanged selected input hashes.
+Windows required moving the large oracle corpus from argv to stdin; no kernel
+change was needed. Strict Python passes with 376 modules, architecture passes,
+and Node 22.22.2 and three-engine Wasm source checks pass. Public integration
+and the broader qualification gates above remain open.

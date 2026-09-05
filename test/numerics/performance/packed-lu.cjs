@@ -54,7 +54,7 @@ from sagejs.numerics.linear_algebra._packed_lu import factor_partial_pivot
 from sagejs.numerics.linear_algebra.factorizations import lu_factorize
 from sagejs.numerics.linear_algebra.storage import DenseMatrix
 answers=[]
-for case in json.loads(sys.argv[1]):
+for case in json.load(sys.stdin):
     r,c,a=case['rows'],case['columns'],case['values']
     w,p,o=[0.0]*len(a),[0.0]*r,[0.0]
     assert factor_partial_pivot(a,w,p,o,r,c)==0.0
@@ -74,8 +74,9 @@ for case in json.loads(sys.argv[1]):
 print(json.dumps(answers))
 `;
   const python = process.env.PYTHON || (process.platform === "win32" ? "python" : "python3");
-  const oracle = spawnSync(python,["-I","-c",program,JSON.stringify(cases)],{encoding:"utf8",timeout:120000});
-  assert.equal(oracle.status,0,oracle.stderr);
+  const oracle = spawnSync(python,["-I","-c",program],{input:JSON.stringify(cases),encoding:"utf8",timeout:120000});
+  if(oracle.error) throw oracle.error;
+  assert.equal(oracle.status,0,oracle.stderr || oracle.stdout || "oracle failed");
   const expected = JSON.parse(oracle.stdout);
   const directory = fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-packed-lu-"));
   try {
