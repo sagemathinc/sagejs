@@ -101,6 +101,26 @@
       "commit": "5c5b6aca3d7b313ce19a8553a5f267d8935d2828",
       "workspace_fingerprint": "87690119c633490b7b7e72879e52d9744d2142d00fb0af93fa99a1fe63b54d63",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-compact-dependency-prefix.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.019,
+      "started_at": "2026-09-05T14:12:04.588Z",
+      "commit": "23ccbf6923765c87fd3a3902f93970785e692cef",
+      "workspace_fingerprint": "22410840a0b41d1ecad447f1d388ead4f89f96d533283d7d8e8e8a25c2f3dfbd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.333,
+      "started_at": "2026-09-05T14:12:31.471Z",
+      "commit": "23ccbf6923765c87fd3a3902f93970785e692cef",
+      "workspace_fingerprint": "22410840a0b41d1ecad447f1d388ead4f89f96d533283d7d8e8e8a25c2f3dfbd",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

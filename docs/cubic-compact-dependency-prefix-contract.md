@@ -115,7 +115,9 @@ coefficient and interval faults. It also evaluates the actual host retry gate.
 Those doubles test control flow, not mathematical arithmetic.
 
 The source closure at this lane's base plus extraction has 92 functions,
-including the six new helpers, and one exact arena. Integration owns combined
+including six private borrowed helpers, one exact arena, and the unchanged
+22 host-callable entries. The helpers do not need decorators or public ABI
+entries to participate in the closed native root. Integration owns combined
 closure pins/provenance, the full production rebuild, public cubic regressions,
 and non-Linux qualification. No production build, new corpus execution or
 dedicated-VM benchmark is claimed here.
