@@ -9,6 +9,11 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
+// macOS exposes /tmp as a symlink to /private/tmp. Promotion deliberately
+// rejects symlinked output ancestors, so tests which exercise the transaction
+// itself must create their fixture in the canonical temporary directory.
+const canonicalTemporaryRoot = fs.realpathSync(os.tmpdir());
+
 const {
   CASE_RECEIPT_SCHEMA,
   EVIDENCE_PROGRAMS,
@@ -757,7 +762,9 @@ test("only the exact pending and qualified manifest states are recognized", () =
 });
 
 test("atomic promotion validates before touching outputs and leaves no temporary files", () => {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-nlopt-promote-test-"));
+  const temporary = fs.mkdtempSync(path.join(
+    canonicalTemporaryRoot, "sagejs-nlopt-promote-test-",
+  ));
   try {
     const summaryPath = path.join(temporary, "qualification-v1.json");
     const manifestPath = path.join(temporary, "production-manifest.json");
@@ -784,7 +791,9 @@ test("atomic promotion validates before touching outputs and leaves no temporary
 });
 
 test("symbolic-link output rejection happens before either release file changes", () => {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-nlopt-symlink-test-"));
+  const temporary = fs.mkdtempSync(path.join(
+    canonicalTemporaryRoot, "sagejs-nlopt-symlink-test-",
+  ));
   try {
     const target = path.join(temporary, "target");
     const summaryPath = path.join(temporary, "qualification-v1.json");
