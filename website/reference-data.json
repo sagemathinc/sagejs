@@ -35160,16 +35160,16 @@
         "name": "prime_pi",
         "qualified": "prime_pi",
         "path": "src/baselib/builtins.py",
-        "line": 7472,
+        "line": 7479,
         "excerpt": {
-          "start_line": 7460,
+          "start_line": 7467,
           "text": "\ndef latex(value: Any) -> LatexExpr:\n    \"\"\"Return a compact LaTeX expression for `value`.\"\"\"\n    if _builtins_member_is_function(value, \"_latex_\"):\n        return LatexExpr(_builtins_call_member(value, \"_latex_\", []))\n    return LatexExpr(value)\n\n\n_prime_pi_primes = None\n_prime_pi_checked_through = 1\n\n\ndef prime_pi(value: Any) -> Any:\n    r\"\"\"\n    Return the number of primes less than or equal to `value`.\n\n    Results are exact.  Moderate bounds are served by an incremental prime\n    cache, while large isolated bounds use Lehmer's combinatorial algorithm.\n    As in Sage, inputs are limited to integers below `2^63`.\n\n    ### Examples\n\n    ```sage\n    sage: prime_pi(10)\n    4"
         }
       },
       "examples": [
         {
           "id": "src/baselib/builtins.py#4c7d8330c2c79857-4b227777d4dd1fc6",
-          "line": 7483,
+          "line": 7490,
           "source": "prime_pi(10)",
           "want": "4\n",
           "tags": [],
@@ -35185,7 +35185,7 @@
         },
         {
           "id": "src/baselib/builtins.py#ca981138a8a22b10-b7a56873cd771f2c",
-          "line": 7485,
+          "line": 7492,
           "source": "prime_pi(100)",
           "want": "25\n",
           "tags": [],
@@ -35201,7 +35201,7 @@
         },
         {
           "id": "src/baselib/builtins.py#c0bc81d3429aebdb-0f03cde178fa9f37",
-          "line": 7487,
+          "line": 7494,
           "source": "prime_pi(10^12)",
           "want": "37607912018\n",
           "tags": [],
@@ -35544,9 +35544,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 9240,
+        "line": 9247,
         "excerpt": {
-          "start_line": 9228,
+          "start_line": 9235,
           "text": "            if use_default_types\n            else isinstance(value, ltypes)\n        )\n        if level < max_level and flatten_value:\n            nested = list(value)\n            for index in range(len(nested) - 1, -1, -1):\n                pending.append((nested[index], level + 1))\n        else:\n            answer.append(value)\n    return answer\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },

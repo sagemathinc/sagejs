@@ -1407,6 +1407,14 @@ def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
             key += value.length
         runtime.reflect.set(value, key, member)
         return
+    dict_constructor = runtime.reflect.get(runtime.global_object, "ρσ_dict")
+    if dict_constructor is not runtime.undefined and runtime.object.getPrototypeOf(
+        value
+    ) is runtime.reflect.get(dict_constructor, "prototype"):
+        ρσ_dict_storage_setitem(  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+            value, key, member
+        )
+        return
     if _internal_member_is_function(value, "__setitem__"):
         _internal_call_member(value, "__setitem__", [key, member])
         return

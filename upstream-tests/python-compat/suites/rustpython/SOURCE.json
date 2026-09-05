@@ -1,0 +1,93 @@
+{
+  "schema": "sagejs.python-suite-source/v1",
+  "repository": "https://github.com/RustPython/RustPython",
+  "revision": "59453b9b2505600dcfc5de06aafedeba260b600d",
+  "license": "MIT",
+  "selection": "Whole unchanged manually reviewed assertion programs; no external processes, network, or native modules.",
+  "files": [
+    {
+      "upstreamPath": "extra_tests/snippets/syntax_call_nested.py",
+      "path": "selected/syntax_call_nested.py",
+      "bytes": 138,
+      "sha256": "3c8d3db5b48e5c48788384b500adffc165049ead62e1c6723f0d49433b32c34c"
+    },
+    {
+      "upstreamPath": "extra_tests/snippets/protocol_callable.py",
+      "path": "selected/protocol_callable.py",
+      "bytes": 260,
+      "sha256": "b5c6b3952d99df02cc23a968025ffd64883499bbb3bf893c0cac56ff5cc97fad"
+    },
+    {
+      "upstreamPath": "extra_tests/snippets/builtin_callable.py",
+      "path": "selected/builtin_callable.py",
+      "bytes": 576,
+      "sha256": "6a256f1597fb8234ca551ef6644e6b6551c071b72ab47901b56f3ad677c72963"
+    },
+    {
+      "upstreamPath": "extra_tests/snippets/builtin_object.py",
+      "path": "selected/builtin_object.py",
+      "bytes": 1056,
+      "sha256": "61a4171616bf219cae3b0fdaea5dfc4870a13cf695799b736428fea1b74348c5"
+    },
+    {
+      "upstreamPath": "extra_tests/snippets/syntax_metaclass.py",
+      "path": "selected/syntax_metaclass.py",
+      "bytes": 1136,
+      "sha256": "87244d99f94c1fbd7ed386b820d0c61bfeda3e4873ad185d7802488573e35ac0"
+    },
+    {
+      "upstreamPath": "extra_tests/snippets/builtin_type_mro.py",
+      "path": "selected/builtin_type_mro.py",
+      "bytes": 281,
+      "sha256": "d16417ff747d25a4bf31155836e4d5275732664d4fab32415a1d293019ee9546"
+    },
+    {
+      "upstreamPath": "extra_tests/snippets/builtin_issubclass.py",
+      "path": "selected/builtin_issubclass.py",
+      "bytes": 1404,
+      "sha256": "2b2beb1d37b2181f8ba83510d1d90e924233af82e54ac69c8a1eac8128579299"
+    },
+    {
+      "upstreamPath": "extra_tests/snippets/builtin_isinstance.py",
+      "path": "selected/builtin_isinstance.py",
+      "bytes": 1419,
+      "sha256": "aa1ca4690b27af7904289a399df006f1a49cfb342d591d88dd428e025538e9b3"
+    },
+    {
+      "upstreamPath": "extra_tests/snippets/syntax_function_args.py",
+      "path": "selected/syntax_function_args.py",
+      "bytes": 2230,
+      "sha256": "9d920e2facc2972e11b25aaa4078d76e678e7e1f0f129c8c00a00f6180ec12b0"
+    },
+    {
+      "upstreamPath": "extra_tests/snippets/builtin_mappingproxy.py",
+      "path": "selected/builtin_mappingproxy.py",
+      "bytes": 478,
+      "sha256": "e12d21064c72451dd381b4177a9fac0f76e5393f50823a57faedb5eb3752e54f"
+    },
+    {
+      "upstreamPath": "extra_tests/snippets/builtin_dict_union.py",
+      "path": "selected/builtin_dict_union.py",
+      "bytes": 3012,
+      "sha256": "b11f1e85cbab06968a110b0e11bd201aefca6bb5df611120dcabba31e4cc3093"
+    },
+    {
+      "upstreamPath": "extra_tests/snippets/builtin_property.py",
+      "path": "selected/builtin_property.py",
+      "bytes": 1809,
+      "sha256": "89f464dbdfd9a3ac07aed903a4aa9373051a4dc5a18927749b879027af402096"
+    },
+    {
+      "upstreamPath": "extra_tests/snippets/testutils.py",
+      "path": "support/testutils.py",
+      "bytes": 2632,
+      "sha256": "f817d0abfb892a8693ed66a7b23a6d707094af5bceae37117ccac3e346c3d736"
+    },
+    {
+      "upstreamPath": "LICENSE",
+      "path": "LICENSE",
+      "bytes": 1072,
+      "sha256": "385e274c083706f04b7079c878385785b772cdf5fc90ed85b1d13f190b5880c9"
+    }
+  ]
+}

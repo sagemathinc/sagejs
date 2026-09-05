@@ -774,3 +774,12 @@ tuple_builtin = ρσ_tuple
 undefined = r"%js undefined"
 weak_ref_class = WeakRef
 zero_division_error = ZeroDivisionError
+
+
+def __dir__():
+    """Include host bindings even when their value is `undefined`."""
+    return [
+        name
+        for name in Object.getOwnPropertyNames(ρσ_modules["sagejs.runtime"])
+        if not name.startswith("ρσ")
+    ]

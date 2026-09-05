@@ -185,6 +185,13 @@ test("sagejs.runtime is a complete canonical module namespace", async (t) => {
   );
   assert.equal(
     (await session.evaluate(
+      "names = dir(runtime)\n" +
+        "names == sorted(names), any(name.startswith('ρσ') for name in names)",
+    )).repr,
+    "(True, False)",
+  );
+  assert.equal(
+    (await session.evaluate(
       "setattr(runtime, '_directory_probe', 42)\n" +
         "listed = '_directory_probe' in dir(runtime)\n" +
         "delattr(runtime, '_directory_probe')\n" +
@@ -192,6 +199,20 @@ test("sagejs.runtime is a complete canonical module namespace", async (t) => {
     )).repr,
     "(True, True)",
     "the intrinsic directory must remain live, not a frozen list of names",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "runtime.reflect.set(runtime, 'test_dir_binding', runtime.undefined)\n" +
+        "'test_dir_binding' in dir(runtime)",
+    )).repr,
+    "True",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "runtime.reflect.deleteProperty(runtime, 'test_dir_binding')\n" +
+        "'test_dir_binding' in dir(runtime)",
+    )).repr,
+    "False",
   );
   assert.equal(
     (await session.evaluate(
