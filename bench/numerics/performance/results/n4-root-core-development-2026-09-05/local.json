@@ -1,0 +1,58 @@
+{
+  "schema": "sagejs.evaluator-core-benchmark/v1",
+  "scope": "private-kernel-with-host-crossing-not-public-solver",
+  "batch": 1000,
+  "operation": "bounded-bisection-and-expression",
+  "warmups": 3,
+  "samples_ms": {
+    "native": [
+      2.9086389999997664,
+      2.9164300000002186,
+      2.879630000000361,
+      2.873500000000149,
+      2.8856399999999667,
+      2.8508600000000115,
+      2.8946289999998953
+    ],
+    "javascript": [
+      236.7747800000002,
+      236.45950999999968,
+      238.11263899999994,
+      237.75977999999986,
+      236.86023899999964,
+      236.45337999999992,
+      236.96556999999984
+    ],
+    "cpython": [
+      36.58537700539455,
+      36.89729700272437,
+      37.01087700028438,
+      36.979276992497034,
+      37.14927699184045,
+      37.60095700272359,
+      37.8838760079816
+    ]
+  },
+  "fresh_compile_ms": 1010.9345830000001,
+  "source_sha256": "fb61941b8a998718c0ce065efc38256d8c93c45c45d9f03fcb6671c86f93a0b1",
+  "source_dependencies": [
+    {
+      "module": "sagejs.numerics._evaluation_core",
+      "path": "/home/user/sagejs-worktrees/perf-numerical-prepared-evaluators/src/lib/sagejs/numerics/_evaluation_core.py",
+      "sha256": "94cce18b09a7b6e7ad37ed84eb66a2d41e39e1e75001fbb6a76f6bb7684f2c06"
+    }
+  ],
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.8.1",
+    "cpu": "AMD EPYC 7B13"
+  },
+  "gaps": [
+    "public solver",
+    "Wasm timings",
+    "peak memory",
+    "preparation crossover",
+    "persistent-host replication"
+  ]
+}

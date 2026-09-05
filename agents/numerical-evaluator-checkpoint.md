@@ -74,3 +74,35 @@ compiler boundary, not yet the root-solver integration or a speedup claim.
 Transcendentals beyond square root, power, gradients, vector residuals, public
 cache/aliasing contracts and solver integration remain open. The private core
 does not justify claiming any of those capabilities.
+
+## Bounded root core follow-up
+
+`perf/numerical-prepared-roots` adds private `_evaluation_root.py`: bisection
+and the explicitly imported evaluator lower into the same source-bound native
+or Wasm graph. The program mutates only owned work/input buffers and publishes
+a complete candidate transactionally. A separate work slot records attempted
+evaluations even on failure. It caps iterations at 1024 and total instruction
+visits at one million; it does not pretend to poll browser timers while inside
+a synchronous compiled call.
+
+This is a residual-and-width checked bisection variant, not a silent replacement
+of the existing public root routine. Its finite candidate is not a rigorous
+root certificate. Public integration must retain independent final checks and
+document the stopping policy and real cancellation boundaries.
+
+Eight cases match CPython/native/generated JavaScript/Node-Wasm, including
+endpoint roots, a pole, invalid brackets and resource refusal. The same pack
+and authenticated loader pass those cases in real Chromium, Firefox and WebKit
+workers with any attempted imported host callback configured to throw. This is
+an isolated worker witness, not the public browser product or four-host receipt.
+Strict Python passes with 373 modules and zero errors.
+The five helper/root tests also pass on the supported Node 22.22.2 floor.
+
+The [local raw microbenchmark](../bench/numerics/performance/results/n4-root-core-development-2026-09-05/local.json)
+records 1000 repeated roots, three warmups and seven samples. Medians are about
+2.9 ms native, 237 ms generated JavaScript and 37 ms CPython; fresh compilation
+is about 1.0 second. Run `node bench/numerics/performance/evaluator-core.cjs --root`.
+These timings include one host boundary per root but exclude public preparation,
+planning, independent validation, diagnostics and structured results. They show
+the opportunity from keeping the evaluator resident inside the solver, not a
+passed public latency target. Persistent-host replication remains open.

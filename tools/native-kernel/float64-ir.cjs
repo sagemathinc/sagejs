@@ -180,10 +180,10 @@ function lowerCall(node, context, operations, expectedType) {
   );
   const name = node.expression.name;
   const args = array(node.args);
+  expect(context, node, !context.variables.has(name), "shadowed binary64 callable " + name);
   const signature = context.signatures.get(name);
   if (signature !== undefined) {
     expect(context, node, isFloat64Signature(signature), "binary64 helper must have a binary64 signature");
-    expect(context, node, !context.variables.has(name), "shadowed binary64 helper " + name);
     expect(context, node, args.length === signature.params.length, "binary64 helper argument count mismatch");
     const arguments_ = args.map((arg, index) => {
       const type = signature.params[index].type;

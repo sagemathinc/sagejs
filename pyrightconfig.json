@@ -242,6 +242,7 @@
     "src/lib/sagejs/numerics/__init__.py",
     "src/lib/sagejs/numerics/_json.py",
     "src/lib/sagejs/numerics/_evaluation_core.py",
+    "src/lib/sagejs/numerics/_evaluation_root.py",
     "src/lib/sagejs/numerics/capabilities.py",
     "src/lib/sagejs/numerics/diagnostics.py",
     "src/lib/sagejs/numerics/model.py",
