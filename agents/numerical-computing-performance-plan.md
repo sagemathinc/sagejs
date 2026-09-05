@@ -386,6 +386,68 @@ browser target results; correct singular/ill-conditioned/fallback behavior.
 
 ### N4 — Callback-heavy optimization, roots, fitting, ODE, quadrature
 
+#### Prepared numerical evaluators: a first-class deliverable
+
+Product refinement (2026-09-05): compile the function being evaluated, not
+merely the optimizer around it. This is required N4 work, not a claim that
+general closure compilation already exists. Sage's
+[`fast_callable`](https://doc.sagemath.org/html/en/reference/misc/sage/ext/fast_callable.html)
+is a useful precedent: a specialized expression evaluator with inspectable
+Python-call escapes. Our objective is equally inspectable execution without
+requiring a symbolic system just to evaluate an elementary numerical formula.
+
+Build one shared prepared-function contract, initially for bounded binary64
+scalar and vector expressions. Record ordered inputs, shapes, explicit
+parameters, ownership/lifetime, numeric semantics, source provenance, supported
+operations, derivative availability, execution target, and host-call escapes.
+Symbolic and multilingual expression frontends lower to a typed expression
+graph; supported Python bodies use the existing source-transparent compiler.
+Do not infer purity from syntax or silently freeze mutable closure state.
+Opaque callbacks keep their ordinary semantics and explicit dynamic route.
+
+Provide a correct dynamic evaluator first, then a compact source-transparent
+`@native` instruction evaluator running in the solver's compiled environment.
+This permits prepared expression programs without compiling a new module per
+expression. Validate opcodes, operand indices, shapes, bounded storage and
+instruction budgets before executing untrusted programs. Keep rendering,
+symbolic manipulation, FLINT, and other unrelated resources out of this path.
+Specialized code generation is a subsequent measured alternative, not a
+prerequisite for the first complete slice. Cache identity includes source,
+types, operation semantics and compiler/ABI versions, not merely a function
+name. Parameters remain separate from code where safe for reuse.
+
+For the first integration, run a prepared expression and a complete owned
+scalar-root method together without host callbacks. Then integrate one
+qualified external solver using an explicit expression-handle adapter in its
+compiled environment. Do not assume a separately instantiated Wasm module
+shares memory or eliminates host crossings: qualify the actual linking and
+calling convention. Preserve algorithm identity and independent final checks.
+Never insert hidden interpreter calls into an isolated native evaluator.
+
+Prepare vector residuals and, where supported, value/gradient or
+residual/Jacobian pairs together. Share intermediates only under declared pure
+semantics. Establish derivative contracts and a small tested differentiation
+subset; classify branches, nonsmooth points and unsupported operations
+explicitly. Finite differences remain a separately identified option, never
+silently described as analytic or automatic derivatives. Preserve floating
+point operation semantics: algebraic reassociation and fast-math require
+separate evidence and policy, not routine expression simplification.
+
+Acceptance requires dynamic-versus-compiled differential tests, analytic or
+high-precision oracles, domain/nonfinite/overflow/signed-zero cases, malformed
+program rejection, parameter mutation/aliasing tests, derivative checks, and
+observable zero host-call counts for the isolated path. Qualify browsers and
+all four hosts with correct unsupported-operation fallback. Enforce program,
+memory, evaluation and trace budgets; document actual cancellation boundaries.
+
+Measure preparation plus one complete solve, amortized repeated solves, and
+the crossover against ordinary callbacks. Include cheap scalar objectives,
+expensive objectives, vector residuals, dynamic parameters, and tracing modes.
+Report packing, evaluation, derivative and validation costs separately alongside
+whole-query time, startup, payload, memory and cache costs. A fast evaluator
+alone does not establish a faster solver. Deliver this as a focused PR after
+the current N2 slice, with later specialization in a separate measured PR.
+
 Benchmark the existing cminpack `lmdif`/`lmder` and qualified NLopt Nelder-Mead
 through public problem/plan/result APIs with cheap, moderate, and expensive
 callbacks. Audit residual/Jacobian packing and repeated validation costs. Use
