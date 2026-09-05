@@ -1,6 +1,6 @@
 from bench import register, all
 
-from nt import gcd, xgcd, inverse_mod, pi
+from cowasm_nt import gcd, xgcd, inverse_mod, pi
 
 
 def test_pi(n=100000):
