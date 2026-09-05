@@ -333,6 +333,7 @@
     "src/lib/sagejs/polynomial_algorithms/hilbert.py",
     "src/lib/sagejs/polynomial_algorithms/ideal.py",
     "src/lib/sagejs/polynomial_algorithms/exact_field.py",
+    "src/lib/sagejs/polynomial_algorithms/generic_groebner.py",
     "src/lib/sagejs/polynomial_algorithms/ideal_operations.py",
     "src/lib/sagejs/polynomial_algorithms/zero_dimensional.py",
     "src/lib/sagejs/schemes/__init__.py",

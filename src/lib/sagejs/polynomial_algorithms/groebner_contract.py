@@ -53,6 +53,10 @@ class GroebnerRing:
         self.variables = variables
         self.order = order
         self.characteristic = characteristic
+        # Packed v1 remains specialized. Generic v2 supplies an actual field
+        # adapter and a budget, while sharing only the monomial algorithms.
+        self.coefficient_field: Any = None
+        self.budget: Any = None
 
     @property
     def domain(self) -> str:
@@ -164,6 +168,9 @@ def _modular_inverse(value: int, modulus: int) -> int:
 
 
 def _coefficient(value: Coefficient, ring: GroebnerRing) -> Coefficient:
+    if ring.coefficient_field is not None:
+        ring.budget.charge()
+        return ring.coefficient_field.coerce(value)
     if ring.characteristic:
         if isinstance(value, tuple):
             numerator, denominator = value
@@ -189,10 +196,14 @@ def _coefficient(value: Coefficient, ring: GroebnerRing) -> Coefficient:
 
 
 def _zero(ring: GroebnerRing) -> Coefficient:
+    if ring.coefficient_field is not None:
+        return ring.coefficient_field.zero()
     return 0 if ring.characteristic else (0, 1)
 
 
 def _one(ring: GroebnerRing) -> Coefficient:
+    if ring.coefficient_field is not None:
+        return ring.coefficient_field.one()
     return 1 if ring.characteristic else (1, 1)
 
 
@@ -205,6 +216,9 @@ def _prime_coefficient(value: Coefficient) -> int:
 def _coefficient_add(
     left: Coefficient, right: Coefficient, ring: GroebnerRing
 ) -> Coefficient:
+    if ring.coefficient_field is not None:
+        ring.budget.charge()
+        return ring.coefficient_field.add(left, right)
     if ring.characteristic:
         return (
             _prime_coefficient(left) + _prime_coefficient(right)
@@ -219,6 +233,9 @@ def _coefficient_add(
 
 
 def _coefficient_negate(value: Coefficient, ring: GroebnerRing) -> Coefficient:
+    if ring.coefficient_field is not None:
+        ring.budget.charge()
+        return ring.coefficient_field.negate(value)
     if ring.characteristic:
         return (-_prime_coefficient(value)) % ring.characteristic
     rational = _coefficient(value, ring)
@@ -229,6 +246,9 @@ def _coefficient_negate(value: Coefficient, ring: GroebnerRing) -> Coefficient:
 def _coefficient_multiply(
     left: Coefficient, right: Coefficient, ring: GroebnerRing
 ) -> Coefficient:
+    if ring.coefficient_field is not None:
+        ring.budget.charge()
+        return ring.coefficient_field.multiply(left, right)
     if ring.characteristic:
         return (
             _prime_coefficient(left) * _prime_coefficient(right)
@@ -240,6 +260,9 @@ def _coefficient_multiply(
 
 
 def _coefficient_inverse(value: Coefficient, ring: GroebnerRing) -> Coefficient:
+    if ring.coefficient_field is not None:
+        ring.budget.charge()
+        return ring.coefficient_field.inverse(value)
     value = _coefficient(value, ring)
     if value == _zero(ring):
         raise ZeroDivisionError("division by zero coefficient")
@@ -256,6 +279,8 @@ def _coefficient_divide(
 
 
 def _compare_monomials(left: Exponent, right: Exponent, ring: GroebnerRing) -> int:
+    if ring.budget is not None:
+        ring.budget.charge()
     if ring.order != "lex":
         degree_difference = sum(left) - sum(right)
         if degree_difference:
@@ -290,6 +315,8 @@ def canonical_polynomial(terms: Iterable[Term], ring: GroebnerRing) -> Polynomia
     """Combine like terms and return canonical descending sparse storage."""
     combined: dict[Exponent, Coefficient] = {}
     for raw_coefficient, raw_exponents in terms:
+        if ring.budget is not None:
+            ring.budget.check_exponents(raw_exponents, ring.variables)
         exponents = tuple(int(value) for value in raw_exponents)
         if len(exponents) != ring.variables or any(value < 0 for value in exponents):
             raise ValueError("invalid multivariate exponent vector")
@@ -299,6 +326,8 @@ def canonical_polynomial(terms: Iterable[Term], ring: GroebnerRing) -> Polynomia
         combined[exponents] = _coefficient_add(
             combined.get(exponents, _zero(ring)), coefficient, ring
         )
+        if ring.budget is not None:
+            ring.budget.check_terms(len(combined))
     return tuple(
         _sort_terms(
             [
@@ -360,6 +389,8 @@ def polynomial_multiply(
 ) -> Polynomial:
     terms: list[Term] = []
     for coefficient, exponents in right:
+        if ring.budget is not None:
+            ring.budget.check_terms(len(terms) + len(left))
         terms.extend(monomial_multiply(left, coefficient, exponents, ring))
     return canonical_polynomial(terms, ring)
 
@@ -483,7 +514,12 @@ def groebner_basis_reference(
     This is deterministic Buchberger with the first applicable reducer.  It is
     intended for small fallbacks, certification, and differential oracles.
     """
-    inputs = tuple(canonical_polynomial(value, ring) for value in generators)
+    input_list = []
+    for value in generators:
+        if ring.budget is not None:
+            ring.budget.check_generators(len(input_list) + 1)
+        input_list.append(canonical_polynomial(value, ring))
+    inputs = tuple(input_list)
     basis: list[Polynomial] = []
     rows: list[list[Polynomial]] = []
     zero_exponents = tuple(0 for _index in range(ring.variables))
@@ -497,6 +533,8 @@ def groebner_basis_reference(
         basis.append(value)
         rows.append(row)
 
+    if ring.budget is not None:
+        ring.budget.check_pairs(len(basis) * (len(basis) - 1) // 2)
     pairs = [(left, right) for right in range(len(basis)) for left in range(right)]
     cursor = 0
     while cursor < len(pairs):
@@ -543,6 +581,8 @@ def groebner_basis_reference(
             continue
         remainder, source_row = _make_monic_with_row(remainder, source_row, ring)
         new_index = len(basis)
+        if ring.budget is not None:
+            ring.budget.check_pairs(len(pairs) + new_index)
         for old_index in range(new_index):
             pairs.append((old_index, new_index))
         basis.append(remainder)
@@ -647,6 +687,8 @@ def verify_groebner_certificate(
     inputs = tuple(canonical_polynomial(value, ring) for value in generators)
     candidate = tuple(canonical_polynomial(value, ring) for value in basis)
     rows = tuple(tuple(value for value in row) for row in transformation)
+    if any(not value for value in candidate):
+        return GroebnerVerification(False, False, False, False)
     ideal_containment = len(rows) == len(candidate) and all(
         len(row) == len(inputs)
         and _linear_combination(row, inputs, ring) == candidate[index]
@@ -665,6 +707,12 @@ def verify_groebner_certificate(
     reduced = all(value and value[0][0] == _one(ring) for value in candidate)
     if reduced:
         for index, value in enumerate(candidate):
+            if any(
+                other != index and _divides(divisor[0][1], value[0][1])
+                for other, divisor in enumerate(candidate)
+            ):
+                reduced = False
+                break
             for _coefficient_value, exponents in value[1:]:
                 if any(
                     other != index and _divides(divisor[0][1], exponents)

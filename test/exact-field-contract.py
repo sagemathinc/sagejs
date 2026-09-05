@@ -15,6 +15,11 @@ def rejects(operation, exception=ValueError):
 
 for K in [QQ, GF(3), GF(101), GF(9, "a"), GF(32, "b")]:
     field = ExactField(K)
+    changed_descriptor = field.descriptor()
+    changed_descriptor["modulus"].append("not a coefficient")
+    assert changed_descriptor != field.descriptor()
+    assert field.zero() is field.zero()
+    assert field.one() is field.one()
     values = [K(0), K(1), K(-1), K(2)]
     if field.family == "rational":
         values += [QQ(1) / 3, QQ(-5) / 7]

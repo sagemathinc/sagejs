@@ -71,18 +71,25 @@ class ExactField:
                 "exact-field adapter supports degree at most 1024"
             )
         self.parent = parent
+        # Field elements are immutable. Avoid allocating foreign resources for
+        # every zero comparison or rebuilding the defining polynomial for
+        # every coefficient in a transformation certificate.
+        self._zero_value = parent(0)
+        self._one_value = parent(1)
+        self._modulus_descriptor = (
+            tuple(str(int(c)) for c in parent.modulus().coefficients())
+            if self.family == "finite-extension"
+            else tuple()
+        )
 
     def descriptor(self) -> dict[str, Any]:
         """Mathematical identity, without cosmetic generator names or handles."""
-        modulus = []
-        if self.family == "finite-extension":
-            modulus = [str(int(c)) for c in self.parent.modulus().coefficients()]
         return {
             "abi": FIELD_ABI,
             "family": self.family,
             "characteristic": str(self.characteristic),
             "degree": self.degree,
-            "modulus": modulus,
+            "modulus": list(self._modulus_descriptor),
             "basis": "power",
         }
 
@@ -96,10 +103,10 @@ class ExactField:
         }
 
     def zero(self) -> Any:
-        return self.parent(0)
+        return self._zero_value
 
     def one(self) -> Any:
-        return self.parent(1)
+        return self._one_value
 
     def coerce(self, value: Any) -> Any:
         return self.parent(value)

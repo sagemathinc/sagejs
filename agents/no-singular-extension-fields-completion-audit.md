@@ -59,6 +59,74 @@ been published by this work. Distribution of that snapshot remains pending.
 
 ## Representation and resource decisions
 
+### Generic exact-field Gröbner checkpoint
+
+The internal `sagejs.groebner.sparse/v2` implementation now shares monomial
+algorithms with v1 but delegates every coefficient operation to the explicit
+exact-field adapter. It returns transformation provenance and verifies both
+ideal containments, S-pairs, monicity, and reducedness before returning a
+basis. Detached certificates carry the field descriptor and canonical
+coefficient codec. Decoding is not itself a claim of ideal equality.
+
+Independent SageMath 10.9 fixtures cover 108 cases: six explicit finite
+fields, three orders, and six zero/unit, positive-dimensional, order-sensitive,
+homogeneous, and nonradical inputs. A separate CPython implementation of field
+arithmetic checks the engine against those frozen answers. Actual Sage.js
+field objects additionally exercise certificate reparenting after generator
+renaming. Reproduction and exact upstream/package provenance are in
+[`test/fixtures/extension-fields-sage-oracles.md`](../test/fixtures/extension-fields-sage-oracles.md).
+
+The shared verifier also now rejects zero candidate polynomials and redundant
+leading monomials. The latter previously allowed a non-reduced basis such as
+`[x, x^2]` to pass the reducedness check, despite its correct ideal. Regression
+fixtures retain the v1 coefficient interpretation and test this separately.
+
+Default v2 limits are 64 variables, 64 input generators, 4096 intermediate
+terms, 4096 accumulated pairs, exponents at most 1048576, one million counted
+coefficient/monomial operations, 30 seconds per ring computation, and 16 MiB
+of serialized certificate output. Exhaustion raises without returning a
+partial answer. These are explicit reference-engine limits, not promises of
+fast F4 performance or a total-process RSS ceiling.
+
+Strict Python passes for 378 modules; architecture checks pass. All 108 native
+Sage.js cases pass in approximately 29 seconds after caching immutable field
+zero/one values and modulus descriptors. The independent CPython checks pass
+in under one second. Existing Gröbner, Buchberger, elimination, quotient,
+FGLM/solving, and ideal-operation regression checks also pass.
+
+Initial single-evaluation production-Wasm corpus tests exceeded their
+120/150-second limits. Individual cases passed. A measured descriptor/constant
+cache reduced representative repeated-check workloads from approximately
+7.5 to 4.5 seconds in a Wasm prototype; direct private coordinate access gave
+no material improvement and was not adopted. Routine Wasm checks now use six
+representative cases; explicit full qualification runs all 108 in bounded
+field-sized batches with progress and fail-fast behavior. These repeated
+certificate/reparenting checks are not basis-only performance benchmarks.
+
+Production qualification of this checkpoint passes against artifact
+`sha256:05f4fd09b2379efdb34346cf81ef372b9a3be2da4d9600fbe0cc1589b9a7cbeb`:
+all 108 cases in Node-Wasm (227 seconds) and all 108 in Chromium (207 seconds),
+including the Chromium coefficient groundwork and authenticated coordinate
+route assertion. The six-case smoke run also passes on both targets. All
+115 portable test files pass. These are local Linux x64 observations, not
+four-platform or mobile qualification of the new engine.
+
+The production packaging resume regenerated lazy Python modules and reused
+linked Wasm only after independently checking all 269 C/header inputs against
+the completed full-build receipt; the same comparison passed after source
+generation. The resulting build verifies 287 kernels, zero explicitly
+unsupported kernels, and 15 reviewed ABI modules. The source-dependent
+optimizer evidence snapshot is
+`sha256:17d65de7cb58e74c39a35a83f31235f0eb7a889a60ef9653472d91cefd98ea4f`,
+still local and unpublished.
+
+The modular q-expansion source manifest required regeneration because it
+hashes the entire package graph. Only the unrelated polynomial-algorithms
+source budget changed; no modular mathematical source or oracle changed.
+Regenerating this source identity does not renew historical platform receipts.
+
+### Coefficient and foreign-representation bounds
+
 The locked Wasm GMP headers use 32-bit limbs. The generated finite-field
 resource binding checks `characteristic <= UWORD_MAX` before casting to a
 FLINT word. The intended common `fq_nmod_mpoly` bound is therefore
@@ -83,8 +151,9 @@ host integers. It serves existing native finite-field values; Wasm retains
 its already-declared `fq_element_coordinate_bytes` resource operation.
 Neither path parses printed expressions or transfers pointer identities.
 
-The lazy polynomial-algorithms source budget increases from 260000 to 262000
-bytes for the exact-field contract. No eager-loading or browser payload
+The lazy polynomial-algorithms source budget increases from 260000 to 275000
+bytes for the exact-field contract and generic engine (274375 bytes used).
+No eager-loading or browser payload
 ratchet is implied; production compressed-size evidence is still pending.
 
 ## Still required
