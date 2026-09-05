@@ -32,21 +32,31 @@ def extract_suffix(path):
         and any(
             isinstance(child, ast.Call)
             and isinstance(child.func, ast.Name)
-            and child.func.id == "_cubic_reconstruct_archimedean_unit"
+            and child.func.id == "_cubic_materialize_dependency_unit"
             for child in ast.walk(node)
         )
     ]
     assert len(starts) == 1, "the reconstruction suffix must be unique"
     suffix = arena.body[starts[0] :]
+    materialize = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "_cubic_materialize_dependency_unit"
+    )
+    materialize.decorator_list = []
+    materialize.returns = None
+    for argument in materialize.args.args:
+        argument.annotation = None
     assert isinstance(suffix[-1], ast.Return)
     assert isinstance(suffix[-1].value, ast.Constant)
     assert suffix[-1].value.value is True
     names = sorted(
         {
             node.id
-            for statement in suffix
+            for statement in [*suffix, *materialize.body]
             for node in ast.walk(statement)
-            if isinstance(node, ast.Name)
+            if isinstance(node, ast.Name) and node.id != materialize.name
         }
     )
     function = ast.FunctionDef(
@@ -64,7 +74,9 @@ def extract_suffix(path):
     namespace = {}
     exec(
         compile(
-            ast.fix_missing_locations(ast.Module(body=[function], type_ignores=[])),
+            ast.fix_missing_locations(
+                ast.Module(body=[materialize, function], type_ignores=[])
+            ),
             str(path),
             "exec",
         ),
@@ -147,6 +159,9 @@ def run_case(function, names, bounds, accepted, analytic_ready=True):
             _cubic_publish_relation_factor_rows=result("publish_factors", True),
             _cubic_publish_relation_rows=result("publish_rows", True),
         )
+    # The extracted caller and borrowed helper execute their actual bodies.
+    # Only the external mathematical operations are the explicit test doubles.
+    function.__globals__.update({name: state[name] for name in names})
     actual = function(**{name: state[name] for name in names})
     assert actual is accepted, (bounds, actual, output[25:28], calls)
     if not analytic_ready:

@@ -308,6 +308,27 @@ attempts, checkpoint capacity exactly 3 MiB, `retry_shift=0`, zero soft-limit
 exhaustions and upstream allocations, and high-water no larger than capacity.
 A successful public call alone does not establish any of these properties.
 
+The first driver will replace only the existing bounded effort-five route
+when $1\leq n\leq11$, no cheap unit is retained, and the online presentation is
+current. Other efforts retain the shared-helper one-shot route. Discovery uses
+the same effort-five ideal plan but starts with the smaller $n+6$ row target;
+the plan and ideal permutation are not rebuilt when the target rises.
+
+Preserve the trivial-quotient allocation shortcut even in this bounded route:
+allocate the reusable raw presentation owners first, establish full rank and
+compute its Smith quotient, and return immediately if it is trivial. Only a
+nontrivial quotient allocates compact, dependency, recovery and analytic
+scratch. A first rank-deficient prefix may request the second collection
+before those expensive owners exist. Once allocated, they stay outside the
+proof/retry loop. The repeated nontrivial attempt calls the same mathematical
+helpers as the one-shot route; only allocation and scheduling are duplicated.
+
+This is a proposed driver contract, not an enabled route. Its final first-pass
+target, eligibility and total-cost effect must be frozen before executing the
+registered neighbors. The completed pre-staging `f7f00552` timing evidence
+retains the registered target but still shows a substantial PARI gap; staging
+has not yet been measured as sufficient to remove it.
+
 Implementation order:
 
 1. Apply the qualified fixed-root scratch mechanism to the suffix. The

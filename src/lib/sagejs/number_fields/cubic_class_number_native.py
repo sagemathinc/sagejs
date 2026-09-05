@@ -6842,6 +6842,221 @@ def _cubic_prepare_proof_relation_support(
     return support_count, True
 
 
+def _cubic_materialize_dependency_unit(
+    workspace: NativeIntegerVector,
+    coefficients: IntegerBuffer,
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    dependency_relation_elements: FmpzMatrix,
+    unit_combinations: FmpzMatrix,
+    proof_relation_count: uint64,
+    proof_regulator_lower: int,
+    proof_regulator_upper: int,
+    analytic_scale: int,
+    dependency_log_scale: int,
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
+    dependency_coordinates: FmpzMatrix,
+    identity_zero: int,
+    identity_one: int,
+    identity_two: int,
+    proof_unit_zero: int,
+    proof_unit_one: int,
+    proof_unit_two: int,
+    output: IntegerBuffer,
+) -> tuple[bool, int, int, int, int, int]:
+    """Authenticate or exactly materialize a dependency unit in borrowed scratch.
+
+    Every failure is fatal for this attempt, not evidence requesting relations.
+    The existing bounded product fallback and regulator-overlap test are kept.
+    No owner is allocated and no discovery or relation state is modified.
+    """
+    if (
+        analytic_scale <= 0
+        or dependency_log_scale < analytic_scale
+        or dependency_log_scale % analytic_scale != 0
+    ):
+        return (False, 0, 0, 0, 0, 0)
+    relation_index: uint64 = 0
+    dependency_scale_quotient = dependency_log_scale // analytic_scale
+    regulator_at_dependency_scale = True
+    (
+        reconstruction_status,
+        reconstructed_zero,
+        reconstructed_one,
+        reconstructed_two,
+    ) = _cubic_reconstruct_archimedean_unit(
+        workspace,
+        coefficients,
+        denominator,
+        basis_zero_zero,
+        basis_zero_one,
+        basis_zero_two,
+        basis_one_one,
+        basis_one_two,
+        basis_two_two,
+        dependency_relation_elements,
+        unit_combinations,
+        proof_relation_count,
+        proof_regulator_lower,
+        proof_regulator_upper,
+        analytic_scale,
+        dependency_log_scale,
+    )
+    output[59] = 435
+    output[62] = reconstruction_status
+    if reconstruction_status == 2:
+        output[56] = reconstructed_zero
+        output[57] = reconstructed_one
+        output[58] = reconstructed_two
+    dependency_materialization_active = reconstruction_status != 1
+    if reconstruction_status == 1:
+        (
+            reconstructed_regulator_lower,
+            reconstructed_regulator_upper,
+        ) = _cubic_regulator_bounds(
+            log_numerators,
+            log_denominators,
+            log_endpoints,
+            coefficients,
+            denominator,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            reconstructed_zero,
+            reconstructed_one,
+            reconstructed_two,
+            analytic_scale,
+            _CUBIC_ANALYTIC_PRECISION,
+        )
+        if (
+            reconstructed_regulator_lower > 0
+            and reconstructed_regulator_upper >= reconstructed_regulator_lower
+            and reconstructed_regulator_lower * dependency_scale_quotient
+            <= proof_regulator_upper
+            and proof_regulator_lower
+            <= reconstructed_regulator_upper * dependency_scale_quotient
+        ):
+            proof_unit_zero = reconstructed_zero
+            proof_unit_one = reconstructed_one
+            proof_unit_two = reconstructed_two
+            proof_regulator_lower = reconstructed_regulator_lower
+            proof_regulator_upper = reconstructed_regulator_upper
+            regulator_at_dependency_scale = False
+            dependency_materialization_active = False
+        else:
+            # Exact reconstruction alone does not authenticate the
+            # retained logarithmic unit evidence. Never publish stale
+            # coordinates after a failed regulator comparison.
+            output[59] = 44
+            return (False, 0, 0, 0, 0, 0)
+
+    if dependency_materialization_active:
+        output[59] = 436
+        # Bound the small exact-product fallback before exponentiation.
+        dependency_exponent_total = 0
+        relation_index = 0
+        while relation_index < proof_relation_count:
+            dependency_exponent = unit_combinations[0, relation_index]
+            if dependency_exponent < 0:
+                dependency_exponent = -dependency_exponent
+            if dependency_exponent > 4096:
+                output[59] = 437
+                output[60] = dependency_exponent
+                output[63] = 44
+                return (False, 0, 0, 0, 0, 0)
+            dependency_exponent_total += dependency_exponent
+            if dependency_exponent_total > 16384:
+                output[59] = 438
+                output[60] = dependency_exponent_total
+                output[63] = 44
+                return (False, 0, 0, 0, 0, 0)
+            relation_index += 1
+        coordinate_index: uint64 = 0
+        while coordinate_index < 3:
+            identity_coordinate = identity_zero
+            if coordinate_index == 1:
+                identity_coordinate = identity_one
+            elif coordinate_index == 2:
+                identity_coordinate = identity_two
+            dependency_coordinates[0, coordinate_index] = identity_coordinate
+            dependency_coordinates[1, coordinate_index] = identity_coordinate
+            coordinate_index += 1
+        relation_index = 0
+        while relation_index < proof_relation_count:
+            dependency_exponent = unit_combinations[0, relation_index]
+            absolute_exponent = dependency_exponent
+            if absolute_exponent < 0:
+                absolute_exponent = -absolute_exponent
+            if absolute_exponent > 0:
+                if not _cubic_matrix_power_coordinates(
+                    workspace,
+                    dependency_relation_elements,
+                    relation_index,
+                    absolute_exponent,
+                    dependency_coordinates,
+                    2,
+                    3,
+                ):
+                    return (False, 0, 0, 0, 0, 0)
+                product_row: uint64 = 0
+                if dependency_exponent < 0:
+                    product_row = 1
+                if not _cubic_matrix_multiply_coordinates(
+                    workspace,
+                    dependency_coordinates,
+                    product_row,
+                    dependency_coordinates,
+                    2,
+                    dependency_coordinates,
+                    product_row,
+                ):
+                    return (False, 0, 0, 0, 0, 0)
+            relation_index += 1
+        if not _cubic_matrix_exact_quotient_coordinates(
+            workspace,
+            dependency_coordinates,
+            0,
+            1,
+            4,
+            5,
+        ):
+            return (False, 0, 0, 0, 0, 0)
+        proof_unit_zero = dependency_coordinates[4, 0]
+        proof_unit_one = dependency_coordinates[4, 1]
+        proof_unit_two = dependency_coordinates[4, 2]
+        dependency_norm = _cubic_norm_form_value(
+            workspace,
+            proof_unit_zero,
+            proof_unit_one,
+            proof_unit_two,
+        )
+        if dependency_norm != 1 and dependency_norm != -1:
+            return (False, 0, 0, 0, 0, 0)
+    if regulator_at_dependency_scale:
+        proof_regulator_lower //= dependency_scale_quotient
+        proof_regulator_upper = (
+            proof_regulator_upper + dependency_scale_quotient - 1
+        ) // dependency_scale_quotient
+    return (
+        True,
+        proof_unit_zero,
+        proof_unit_one,
+        proof_unit_two,
+        proof_regulator_lower,
+        proof_regulator_upper,
+    )
+
+
 @native
 def certified_complex_cubic_class_group_v1(
     output: IntegerBuffer,
@@ -9498,14 +9713,15 @@ def certified_complex_cubic_class_group_v1(
             output[63] = 43
             return False
         if dependency_scan_active:
-            dependency_scale_quotient = dependency_log_scale // analytic_scale
-            regulator_at_dependency_scale = True
+            output[63] = 44
             (
-                reconstruction_status,
-                reconstructed_zero,
-                reconstructed_one,
-                reconstructed_two,
-            ) = _cubic_reconstruct_archimedean_unit(
+                dependency_unit_ready,
+                proof_unit_zero,
+                proof_unit_one,
+                proof_unit_two,
+                proof_regulator_lower,
+                proof_regulator_upper,
+            ) = _cubic_materialize_dependency_unit(
                 workspace,
                 coefficients,
                 denominator,
@@ -9522,145 +9738,20 @@ def certified_complex_cubic_class_group_v1(
                 proof_regulator_upper,
                 analytic_scale,
                 dependency_log_scale,
+                log_numerators,
+                log_denominators,
+                log_endpoints,
+                dependency_coordinates,
+                identity_zero,
+                identity_one,
+                identity_two,
+                proof_unit_zero,
+                proof_unit_one,
+                proof_unit_two,
+                output,
             )
-            output[59] = 435
-            output[62] = reconstruction_status
-            if reconstruction_status == 2:
-                output[56] = reconstructed_zero
-                output[57] = reconstructed_one
-                output[58] = reconstructed_two
-            dependency_materialization_active = reconstruction_status != 1
-            if reconstruction_status == 1:
-                (
-                    reconstructed_regulator_lower,
-                    reconstructed_regulator_upper,
-                ) = _cubic_regulator_bounds(
-                    log_numerators,
-                    log_denominators,
-                    log_endpoints,
-                    coefficients,
-                    denominator,
-                    basis_zero_zero,
-                    basis_zero_one,
-                    basis_zero_two,
-                    basis_one_one,
-                    basis_one_two,
-                    basis_two_two,
-                    reconstructed_zero,
-                    reconstructed_one,
-                    reconstructed_two,
-                    analytic_scale,
-                    _CUBIC_ANALYTIC_PRECISION,
-                )
-                if (
-                    reconstructed_regulator_lower > 0
-                    and reconstructed_regulator_upper >= reconstructed_regulator_lower
-                    and reconstructed_regulator_lower * dependency_scale_quotient
-                    <= proof_regulator_upper
-                    and proof_regulator_lower
-                    <= reconstructed_regulator_upper * dependency_scale_quotient
-                ):
-                    proof_unit_zero = reconstructed_zero
-                    proof_unit_one = reconstructed_one
-                    proof_unit_two = reconstructed_two
-                    proof_regulator_lower = reconstructed_regulator_lower
-                    proof_regulator_upper = reconstructed_regulator_upper
-                    regulator_at_dependency_scale = False
-                    dependency_materialization_active = False
-                else:
-                    # Exact reconstruction alone does not authenticate the
-                    # retained logarithmic unit evidence. Never publish stale
-                    # coordinates after a failed regulator comparison.
-                    output[59] = 44
-                    return False
-
-            if dependency_materialization_active:
-                output[59] = 436
-                # Bound the small exact-product fallback before exponentiation.
-                dependency_exponent_total = 0
-                relation_index = 0
-                while relation_index < proof_relation_count:
-                    dependency_exponent = unit_combinations[0, relation_index]
-                    if dependency_exponent < 0:
-                        dependency_exponent = -dependency_exponent
-                    if dependency_exponent > 4096:
-                        output[59] = 437
-                        output[60] = dependency_exponent
-                        output[63] = 43
-                        return False
-                    dependency_exponent_total += dependency_exponent
-                    if dependency_exponent_total > 16384:
-                        output[59] = 438
-                        output[60] = dependency_exponent_total
-                        output[63] = 43
-                        return False
-                    relation_index += 1
-                coordinate_index: uint64 = 0
-                while coordinate_index < 3:
-                    identity_coordinate = identity_zero
-                    if coordinate_index == 1:
-                        identity_coordinate = identity_one
-                    elif coordinate_index == 2:
-                        identity_coordinate = identity_two
-                    dependency_coordinates[0, coordinate_index] = identity_coordinate
-                    dependency_coordinates[1, coordinate_index] = identity_coordinate
-                    coordinate_index += 1
-                relation_index = 0
-                while relation_index < proof_relation_count:
-                    dependency_exponent = unit_combinations[0, relation_index]
-                    absolute_exponent = dependency_exponent
-                    if absolute_exponent < 0:
-                        absolute_exponent = -absolute_exponent
-                    if absolute_exponent > 0:
-                        if not _cubic_matrix_power_coordinates(
-                            workspace,
-                            dependency_relation_elements,
-                            relation_index,
-                            absolute_exponent,
-                            dependency_coordinates,
-                            2,
-                            3,
-                        ):
-                            return False
-                        product_row: uint64 = 0
-                        if dependency_exponent < 0:
-                            product_row = 1
-                        if not _cubic_matrix_multiply_coordinates(
-                            workspace,
-                            dependency_coordinates,
-                            product_row,
-                            dependency_coordinates,
-                            2,
-                            dependency_coordinates,
-                            product_row,
-                        ):
-                            return False
-                    relation_index += 1
-                if not _cubic_matrix_exact_quotient_coordinates(
-                    workspace,
-                    dependency_coordinates,
-                    0,
-                    1,
-                    4,
-                    5,
-                ):
-                    return False
-                proof_unit_zero = dependency_coordinates[4, 0]
-                proof_unit_one = dependency_coordinates[4, 1]
-                proof_unit_two = dependency_coordinates[4, 2]
-                dependency_norm = _cubic_norm_form_value(
-                    workspace,
-                    proof_unit_zero,
-                    proof_unit_one,
-                    proof_unit_two,
-                )
-                if dependency_norm != 1 and dependency_norm != -1:
-                    return False
-            if regulator_at_dependency_scale:
-                proof_regulator_lower //= dependency_scale_quotient
-                proof_regulator_upper = (
-                    proof_regulator_upper + dependency_scale_quotient - 1
-                ) // dependency_scale_quotient
+            if not dependency_unit_ready:
+                return False
         output[56] = proof_unit_zero
         output[57] = proof_unit_one
         output[58] = proof_unit_two
