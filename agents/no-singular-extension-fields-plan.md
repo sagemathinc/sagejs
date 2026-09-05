@@ -1,9 +1,12 @@
 # Extension coefficient fields for algebraic geometry without Singular
 
 - Status: follow-up implementation plan
-- Date: 2026-09-04
+- Date: 2026-09-05
 - Depends on:
   [core no-Singular algebraic geometry plan](no-singular-algebraic-geometry-plan.md)
+- Audited against: the qualified core candidate in
+  [PR #114](https://github.com/sagemathinc/sagejs/pull/114), commit
+  `57671d900d77fd46c0b75a9d64776c756d7e6fed`
 - Required sequence: finite extensions `GF(p^d)` first, number fields second
 - Runtime policy: no Singular, Macaulay2, CoCoA, Oscar, or Julia dependency
 - Performance policy: exact portable baseline before any msolve acceleration
@@ -20,19 +23,26 @@ interfaces over `QQ` and prime fields first. Its extension-ready boundaries
 are prerequisites for this plan, not a reason to combine the two delivery
 milestones.
 
+Do not start an implementation branch from the historical audited commit.
+Start from PR #114's eventual merge commit, or a later green `origin/main` that
+contains it, and rerun the Phase E0 audit against that exact source. The commit
+above records what was inspected; it is not a permanent fork point.
+
 The implementation order is intentional:
 
 1. define one exact-field coefficient boundary shared by future domains;
-2. add a correct exact Gröbner and geometry path over finite extensions
-   `GF(p^d)`;
-3. qualify that support on native and Wasm platforms;
-4. investigate and enable an msolve fast path for finite extensions only if
+2. make `GF(p^d)` multivariate polynomial storage, sparse term exchange, and
+   elementary arithmetic work on both native and production Wasm targets;
+3. add a correct exact Gröbner and geometry path over finite extensions;
+4. qualify the complete `GF(p^d)` stack on native and Wasm platforms;
+5. investigate and enable an msolve fast path for finite extensions only if
    its block-order encoding wins and can be verified;
-5. add exact multivariate polynomial and Gröbner support over simple absolute
+6. add exact univariate and multivariate polynomial support, followed by
+   Gröbner support, over simple absolute
    number fields;
-6. add exact univariate factorization over number fields and propagate the
+7. add exact univariate factorization over number fields and propagate the
    zero-dimensional algorithms; and
-7. investigate number-field msolve acceleration separately, without making it
+8. investigate number-field msolve acceleration separately, without making it
    a correctness prerequisite.
 
 The auxiliary-variable construction is an important backend technique, but it
@@ -66,8 +76,9 @@ Completion of this document has two independently reviewable milestones:
   such as exhaustive enumeration of an infinite field.
 
 Milestone N does not begin until Milestone F is merged and its four-platform
-receipts are green. Experimental number-field research can happen in a
-throwaway worktree, but it must not widen the active integration branch.
+and portable-Wasm receipts are green. Experimental number-field research can
+happen in a throwaway worktree, but it must not widen the active integration
+branch.
 
 ## Supported domains
 
@@ -224,8 +235,8 @@ All extension-domain methods retain the core API's `proof=None` convention.
   because all input generators reduce by it. Reverse containment requires
   transformation provenance or an independent exact derivation.
 - Cache keys include the normalized defining polynomial, coefficient basis,
-  field presentation/embedding, order, backend, resolved proof flag, and
-  resource policy.
+  mathematical field presentation/embedding, order, backend, resolved proof
+  flag, and resource policy. They exclude a generator's display label.
 
 Candidate verification checks both ideal containments, every required S-pair,
 monicity, reducedness, parent identity, and canonical leading ideals. Encoded
@@ -242,15 +253,28 @@ polynomial algorithms. It must provide:
 - exact zero, one, coercion, equality, and zero testing;
 - addition, subtraction, multiplication, negation, inversion, and division;
 - characteristic, cardinality when finite, and extension degree;
+- explicit field-family and capability queries, rather than inference from
+  `_kind`, the presence of `is_prime_field`, or a catch-all characteristic-zero
+  branch;
 - a canonical coordinate vector over the prime/base field;
 - reconstruction from canonical coordinates;
-- a stable mathematical construction descriptor; and
+- bounded canonical enumeration of finite fields by base-`p` coordinate
+  vectors, independent of whether the displayed defining generator is
+  multiplicatively primitive;
+- exact univariate-polynomial construction and the Euclidean operations needed
+  by zero-dimensional algorithms, with factorization exposed as a separate
+  capability;
+- a stable mathematical construction descriptor containing the normalized
+  defining polynomial, base field, and power-basis presentation; and
 - a bounded versioned coefficient codec for tests, workers, native code, and
   Wasm.
 
 The interface describes field operations, not private object layouts. Direct
 access to `_nativeContext`, `_modulus`, or a number-field coefficient array is
-restricted to reviewed adapters.
+restricted to reviewed adapters. A generator's display name is presentation
+metadata: renaming it must not change mathematical identity or a cache key.
+Conversely, two fields of the same cardinality with different defining
+polynomials are not silently conflated.
 
 ### Algorithm ownership
 
@@ -259,6 +283,7 @@ The expected module split is:
 ```text
 src/lib/sagejs/polynomial_algorithms/
   exact_field.py                     field-neutral coefficient contract
+  generic_sparse_mpoly.py            storage-neutral exact sparse polynomials
   generic_groebner.py                exact Buchberger, normal form, certificate
   simple_extension_encoding.py       private lift/block-order/decode boundary
   extension_field_groebner.py        GF(p^d) dispatch and verification
@@ -271,9 +296,12 @@ parallel ideal or quotient classes. Small public parent/element changes remain
 in the appropriate `src/baselib` modules; substantial algorithms load lazily
 from `src/lib/sagejs`.
 
-Do not mutate the existing packed Gröbner ABI to reinterpret integers as
-extension coefficients. Add a versioned coefficient/domain descriptor and a
-new capability ID. Old `QQ` and prime-field receipts must remain meaningful.
+Do not mutate the existing `sagejs.groebner.sparse/v1` packed Gröbner ABI to
+reinterpret integers or rational pairs as extension coefficients. Freeze it as
+the specialized `QQ`/prime-field contract. Add a generic exact-field v2
+contract whose coefficients remain real field elements at the ordinary-Python
+boundary and cross workers/native/Wasm only through the versioned coefficient
+codec. Give it a new capability ID. Old v1 receipts must remain meaningful.
 
 ### Capability routing
 
@@ -290,27 +318,96 @@ resource envelope
 candidate/certificate availability
 ```
 
-No `else` branch may classify every non-prime field as `QQ`. An unsupported
-tuple fails before entering native code and reports the rejected field,
-operation, order, proof mode, and available fallback.
+No `else` branch may classify every non-prime field as `QQ`, and no
+method-presence test may classify every object having `is_prime_field` as a
+finite field. An unsupported tuple fails before entering native code and
+reports the rejected field, operation, order, proof mode, execution target,
+and available fallback.
 
-## Current Sage.js baseline
+## Post-core readiness audit
 
-At Sage.js commit `c9f039ed0269aa45140eb7f59a6f4e9c1cca7713`:
+The qualified core candidate at
+`57671d900d77fd46c0b75a9d64776c756d7e6fed` completed the no-Singular public
+ideal, quotient, zero-dimensional, scheme, morphism, Jacobian, plane-curve,
+proof-policy, and capability layers over `QQ` and prime fields. Its portable
+Wasm evidence is real rather than inferred from native CI:
 
-- multivariate `GF(p^d)` polynomials already select FLINT `fq_nmod_mpoly`
-  storage;
-- univariate extension-field factorization and root splitting exist;
-- extension-field scalar and matrix arithmetic have native/Wasm resources;
-- `PolynomialIdeal` nevertheless rejects every base except `QQ` and prime
-  `GF(p)`;
-- the Gröbner dispatch similarly distinguishes only prime `GF(p)` from a
-  rational branch;
-- native FLINT/msolve Gröbner and reduction adapters do not accept
-  `fq_nmod_mpoly` values;
-- simple `NumberField` scalar arithmetic exists; and
-- multivariate polynomial construction currently rejects `NumberField` as a
-  coefficient domain.
+- the production build published 287 kernels with zero unsupported kernels
+  and verified all 15 reviewed ABI modules;
+- Node-Wasm passed 201 tests, with only two expected skips for unavailable
+  browser engines; and
+- a real Chromium Web Worker passed the algebraic-geometry tour, msolve,
+  plotting, partitions, `prime_pi`, numerics, and live examples.
+
+That evidence qualifies the **core domains**, not extension coefficients.
+Firefox and WebKit were not available on the Linux qualification host, and
+extension-field multivariate support is presently absent from the production
+Wasm backend.
+
+The source audit found these concrete extension-field gaps:
+
+- native multivariate `GF(p^d)` polynomials select FLINT `fq_nmod_mpoly`
+  storage and basic native arithmetic works, but `terms()` cannot decode its
+  coefficients and raises `TypeError`;
+- `PolynomialIdeal` rejects every base except `QQ` and prime `GF(p)`;
+- the packed v1 Gröbner ring and coefficient representation implement only
+  `QQ` and prime-field arithmetic;
+- ideal dispatch reads `_modulus` for prime fields and otherwise falls into a
+  characteristic-zero/rational branch, which must not receive extension
+  fields when the public gate is removed;
+- the production Wasm multivariate backend accepts only `zz`, `qq`, and
+  word-size `nmod` contexts, so even constructing `GF(4)[x,y]` fails in the
+  browser;
+- current browser algebraic-geometry tests deliberately assert that
+  `AffineSpace(GF(4, 'a'), 2)` is rejected; those tests must become positive
+  capability tests in Phase F0/F2;
+- zero-dimensional candidate selection and finite point enumeration currently
+  contain prime-field/method-presence splits that must be replaced by the
+  exact-field capabilities;
+- the public scheme layer currently has a deliberate supported-field gate;
+  replace it with a capability query rather than adding more concrete kinds;
+- extension-field univariate factorization and root splitting exist;
+- finite-extension scalar and matrix arithmetic have native/Wasm resources;
+- simple `NumberField` scalar arithmetic exists, but polynomial-ring dispatch
+  rejects `NumberField` and the parent does not yet expose the complete formal
+  field-capability surface required by generic algorithms; and
+- number fields therefore need an exact univariate `K[x]` substrate as well as
+  multivariate sparse storage before factorization can be implemented.
+
+There is also a correctness defect below algebraic geometry:
+`FiniteFieldExtensionParent.__iter__` currently emits zero followed by powers
+of the defining generator. A defining generator need not generate the
+multiplicative group. For example, in `GF(3)[a]/(a^2+1)`, `a` has order four,
+so the current nine yielded positions contain only five distinct values. This
+must be fixed by enumerating all canonical base-`p` power-basis coordinate
+vectors before rational-point enumeration is generalized.
+
+Useful existing pieces include power-basis coordinate conversion on
+finite-extension elements/parents and corresponding coefficient-list
+construction on number fields. They are currently partly private and the
+finite-field `construction()` result omits the defining modulus, so Phase E0
+must promote a stable public descriptor/codec instead of depending on those
+layouts.
+
+The qualified core's complete `eager-core` production group measured
+17,432,669 gzip bytes and 9,616,687 Brotli bytes after its reviewed budget
+ratchet. This is the baseline against which any `fq_nmod_mpoly` addition must
+be measured; it is a reason to investigate a lazy specialist group, not
+permission to grow the eager bundle without evidence.
+
+Initial audit entry points are:
+
+- `src/baselib/finite_fields.py` for coordinate conversion and enumeration;
+- `src/baselib/polynomial.py` for ring-domain gates, native storage, sparse
+  terms, and `PolynomialIdeal` construction;
+- `src/lib/sagejs/polynomial_algorithms/groebner_contract.py` for the frozen
+  packed v1 ABI;
+- `src/lib/sagejs/polynomial_algorithms/ideal.py` and
+  `zero_dimensional.py` for domain routing and coefficient assumptions;
+- `src/baselib/schemes.py` for geometry capabilities and point enumeration;
+  and
+- `packages/flint-wasm/multivariate-backend.mjs` plus its browser tests for
+  the current `zz`/`qq`/`nmod` Wasm boundary.
 
 The msolve source vendored by Sage.js contains one-block elimination-order
 machinery, but the adapter hardcodes an elimination-block length of zero.
@@ -321,27 +418,41 @@ constraint in
 [msolve issue #339](https://github.com/algebraic-solving/msolve/issues/339).
 
 These facts make finite-extension exact support a smaller project than
-number-field support, and make msolve acceleration an experiment rather than
-the initial architecture.
+number-field support, but not a one-line ideal-gate change. Polynomial storage
+and Wasm parity are their own prerequisite phase. They also make msolve
+acceleration an experiment rather than the initial architecture.
 
 ## Phase E0: readiness audit and shared coefficient contract
 
-Begin only after the core no-Singular plan has a stable integration candidate.
+Begin only after PR #114 is merged. Repeat this audit against its merge commit
+and any later `origin/main` changes before editing dispatch.
 
 1. Audit the completed core implementation for concrete `_kind`, numerator,
-   prime-residue, and characteristic-only assumptions.
+   prime-residue, characteristic-only, and method-presence assumptions. The
+   initial list includes ideal packing/routing, sparse term export,
+   zero-dimensional candidate selection, finite point enumeration, and the
+   scheme field gate.
 2. Move legitimate domain routing behind its capability registry without
    changing `QQ` or prime-field behavior.
-3. Implement the exact-field interface and versioned coefficient descriptor.
+3. Implement the exact-field interface, a complete construction descriptor,
+   and a versioned coefficient codec. Expose stable coordinate conversion;
+   never serialize private native handles.
 4. Generalize the ordinary-Python monomial algorithms to call that interface.
-   Preserve specialized packed paths as optimizations.
+   Preserve the specialized packed v1 paths as optimizations and introduce a
+   distinct generic exact-field v2 engine.
 5. Extend certificate structures so coefficients can be arbitrary exact-field
    values through a codec rather than the current integer/rational union.
-6. Add construction-descriptor and cache-key tests for two isomorphic but
+6. Replace `FiniteFieldExtensionParent.__iter__` with deterministic enumeration
+   of all base-`p` coordinate vectors. Make bounded finite-element enumeration
+   an explicit field capability used by schemes and solving.
+7. Formalize the univariate-polynomial capabilities required by root finding,
+   factorization, and zero-dimensional decomposition without pretending every
+   exact field already implements factorization.
+8. Add construction-descriptor and cache-key tests for two isomorphic but
    differently presented fields.
-7. Create independent Sage fixtures for all examples used by Milestones F and
+9. Create independent Sage fixtures for all examples used by Milestones F and
    N, pinned to an exact Sage revision and including reproduction commands.
-8. Record upstream algorithms and any translated code in
+10. Record upstream algorithms and any translated code in
    `architecture/upstream-algebra-provenance.json`.
 
 Acceptance:
@@ -349,16 +460,65 @@ Acceptance:
 - all existing `QQ` and prime-field tests remain green;
 - public geometry contains no field-family dispatch;
 - packed v1 Gröbner receipts retain their old meaning;
-- exact-field codec round trips are bounded and deterministic; and
+- exact-field codec round trips are bounded and deterministic;
+- `list(GF(9, 'a', modulus=x^2 + 1))` has exactly nine distinct elements even
+  though `a` is not multiplicatively primitive;
+- finite-extension inputs can never enter the rational packed backend; and
 - neither extension family is advertised as supported yet.
 
 ## Milestone F: finite extensions `GF(p^d)`
 
+### Phase F0: multivariate substrate and production-Wasm parity
+
+The existing native `fq_nmod_mpoly` selection is not public support until
+coefficients can cross the sparse-term boundary and the same operations work
+in the production Wasm artifact.
+
+1. Implement exact storage-neutral import/export of sparse
+   `(coefficient, exponent_vector)` terms for native `fq_nmod_mpoly` values.
+   Coefficients returned to Python are ordinary elements of the original
+   finite-extension parent.
+2. Extend the production Wasm multivariate backend with a versioned
+   finite-extension context carrying `p`, the normalized irreducible modulus,
+   extension degree, coefficient basis, variable count, and monomial order.
+   Do not overload the current single-integer `nmod` context.
+3. Bind or build the required FLINT `fq_nmod_mpoly` operations in Wasm:
+   context lifecycle, constants/generators, sparse import/export, equality,
+   addition, subtraction, negation, multiplication, powering, degree/length,
+   evaluation/substitution, derivatives, and the exact division/resultant
+   primitives required by later phases.
+4. Keep all public polynomial values behind
+   `MultivariatePolynomialElement`; backend kind is capability metadata, not a
+   user-visible class split. Maintain a generic exact sparse representation as
+   the correctness fallback where a native primitive is unavailable.
+5. Add explicit capability failures for every unimplemented backend operation.
+   Never let the browser silently select rational arithmetic or a prime field
+   with the same characteristic.
+6. Put finite-extension Wasm code/resources in a lazy specialist delivery
+   group if eager inclusion would materially grow startup payload. Authenticate
+   the group and ratchet its gzip/Brotli budgets independently.
+7. Add positive browser ring/arithmetic tests for `GF(4)` here. Keep the
+   scheme-level rejection explicit until Phase F2, then replace the current
+   `AffineSpace(GF(4, 'a'), 2)` rejection tests with positive geometry tests.
+
+Acceptance:
+
+- `GF(4)[x, y]` and `GF(9)[x, y]` construct and perform sparse arithmetic on
+  native, Node-Wasm, and real Chromium using the production bundle;
+- `terms()` round trips non-prime coefficients and their exact parent;
+- a field generator name collision with a polynomial variable is either
+  represented unambiguously or rejected before backend allocation;
+- no extension-field context is accepted by the `nmod`, `QQ`, or packed v1
+  paths;
+- delivery-group identity, compressed size, and load timing are recorded; and
+- existing `ZZ`, `QQ`, and `GF(p)` multivariate behavior and payload budgets do
+  not regress outside an explicitly reviewed ratchet.
+
 ### Phase F1: exact polynomial ideals and Gröbner bases
 
 1. Enable `PolynomialIdeal` over validated `GF_EXTENSION` parents.
-2. Expose storage-neutral sparse terms whose coefficients are ordinary
-   extension-field elements, regardless of native `fq_nmod_mpoly` storage.
+2. Route extension fields exclusively through the generic exact-field v2
+   contract; keep `sagejs.groebner.sparse/v1` unchanged for `QQ`/prime fields.
 3. Implement exact field-neutral leading term, S-polynomial, reduction,
    Buchberger, autoreduction, and transformation matrices.
 4. Support `lex`, `deglex`, and `degrevlex` through the direct exact path.
@@ -368,7 +528,10 @@ Acceptance:
    operations, elapsed time, and output size. Never return a partial basis.
 7. Return inspectable metadata such as
    `python:groebner-exact-gf-extension-v1`.
-8. Keep native `fq_nmod_mpoly` arithmetic for basic polynomial operations;
+8. Encode transformation/certificate coefficients through the exact-field
+   codec and verify them with actual field operations, not integer/rational
+   reinterpretation.
+9. Keep native `fq_nmod_mpoly` arithmetic for basic polynomial operations;
    conversion to storage-neutral terms is a lazy algorithm boundary, not a
    new public representation.
 
@@ -404,9 +567,12 @@ Acceptance:
    and plane curves.
 4. Normalize projective points using exact inversion in the extension field.
 5. Use the actual cardinality `q = p^d` for bounded rational-point
-   enumeration and resource estimates.
+   enumeration and resource estimates. Enumerate canonical coordinate tuples,
+   never powers of a possibly nonprimitive defining generator.
 6. Reuse existing extension-field univariate factorization to enable the
-   certified zero-dimensional radical and primary-decomposition algorithms.
+   certified zero-dimensional radical and primary-decomposition algorithms,
+   but route this through an explicit factorization capability rather than an
+   `is_prime_field` or `_kind` branch.
 7. Preserve non-split residue factors rather than confusing them with
    `GF(p^d)`-rational points.
 8. Add characteristic-`p` Jacobian cases where formal derivatives vanish.
@@ -472,11 +638,17 @@ Acceptance for a production fast path:
    suites.
 2. Qualify Linux x64, Linux ARM64, macOS ARM64, and native Windows x64 on the
    same commit.
-3. Audit npm, SEA, and browser artifacts for field-construction resources and
-   accidental native-only paths.
-4. Add documentation examples for ideals, a projective curve, a tangent
+3. Independently qualify the one canonical portable Wasm artifact in Node-Wasm
+   and a real Chromium Web Worker; native four-platform receipts are not a
+   substitute for this receipt.
+4. Run the exact-runtime iPhone and iPad simulator checks against the same
+   portable artifact without treating them as desktop Firefox/WebKit coverage.
+5. Audit npm, SEA, and browser artifacts for field-construction resources,
+   specialist-group identity, compressed-size budgets, and accidental
+   native-only paths.
+6. Add documentation examples for ideals, a projective curve, a tangent
    space, and a zero-dimensional decomposition over `GF(p^d)`.
-5. Publish the exact capability and performance matrix, including any order
+7. Publish the exact capability and performance matrix, including any order
    or cardinality limits.
 
 Milestone F is complete only after Phase F4. Only then may number-field code
@@ -484,22 +656,29 @@ enter the integration branch.
 
 ## Milestone N: simple absolute number fields
 
-### Phase N1: exact multivariate polynomial representation
+### Phase N1: exact univariate and multivariate polynomial representation
 
-1. Enable multivariate polynomial rings over `NumberFieldParent`.
-2. Generalize and rename the existing sparse generic polynomial layer rather
+1. Formalize the number-field implementation of the Phase E0 exact-field
+   descriptor/codec, including normalized defining polynomial and power-basis
+   coordinates.
+2. Enable exact univariate `K[x]` construction and arithmetic over
+   `NumberFieldParent`: sparse/dense term access, addition, multiplication,
+   powering, derivative, exact division with remainder, gcd, squarefree
+   decomposition, and resultant. Factorization remains a Phase N3 capability.
+3. Enable multivariate polynomial rings over `NumberFieldParent`.
+4. Generalize and rename the existing sparse generic polynomial layer rather
    than creating an “approximate” class for exact number-field values.
-3. Implement all public term orders, canonical term combination, arithmetic,
+5. Implement all public term orders, canonical term combination, arithmetic,
    evaluation, substitution, derivatives, homogenization, coercion, and
    display.
-4. Ensure leading-term order depends only on variable exponents, never on the
+6. Ensure leading-term order depends only on variable exponents, never on the
    printed representation of a coefficient.
-5. Normalize defining polynomials and coefficient coordinates; preserve the
+7. Normalize defining polynomials and coefficient coordinates; preserve the
    exact field presentation in serialization.
-6. Keep the primitive element private to coefficients. A user polynomial
+8. Keep the primitive element private to coefficients. A user polynomial
    variable with the same printed name must either be disambiguated safely or
    rejected at construction.
-7. Add coefficient-height, term-count, and allocation limits with useful
+9. Add coefficient-height, term-count, and allocation limits with useful
    diagnostics.
 
 Test fields include real and imaginary quadratic fields, at least two cubic
@@ -509,6 +688,8 @@ not coerce implicitly.
 
 Acceptance:
 
+- exact univariate Euclidean arithmetic agrees with Sage and supplies the
+  operations Phase N3 will consume;
 - sparse multivariate arithmetic agrees with Sage under all three orders;
 - CPython-parseable source contains no JavaScript coefficient shortcuts;
 - serialization round trips preserve the exact parent; and
@@ -547,6 +728,9 @@ Acceptance:
   not a generic backend exception.
 
 ### Phase N3: univariate factorization and zero-dimensional decomposition
+
+This phase builds on the exact `K[x]` Euclidean substrate established in Phase
+N1; it must not introduce a second private univariate representation.
 
 Implement an exact baseline for factoring `K[x]`, where `K` is a simple
 absolute number field. A suitable first algorithm is Trager-style norm
@@ -657,8 +841,15 @@ Fixture records include:
 In addition to the core plan's properties, test:
 
 - coefficient coordinate encode/decode is an exact field isomorphism;
+- finite-field enumeration visits every coordinate vector exactly once, even
+  when the defining generator has proper multiplicative order (the mandatory
+  regression is `GF(3)[a]/(a^2+1)`);
 - changing only a field generator's display name does not change mathematics;
 - distinct field presentations do not coerce without an explicit embedding;
+- no extension field is ever routed through a `QQ`, prime-`nmod`, or packed v1
+  Gröbner path, including malformed and resource-limit inputs;
+- sparse term import/export preserves exact coefficient parents across native,
+  Node-Wasm, worker serialization, and real Chromium;
 - direct and auxiliary-variable backends agree after decoding;
 - the auxiliary relation never appears as a public scheme equation;
 - quotient dimension over the prime/base field scales by extension degree in
@@ -679,11 +870,16 @@ Every milestone runs on:
 - macOS ARM64;
 - native Windows x64;
 - Node with the Wasm backend; and
-- a real browser using the production bundle.
+- a real Chromium browser using the production bundle; and
+- exact-runtime iPhone and iPad simulator paths.
 
 Test both direct exact paths and every enabled optimized path. A native-only
 optimization always retains the direct Wasm fallback and publishes an honest
-capability descriptor.
+capability descriptor. The four native hosts validate platform-specific
+packages; Node-Wasm and the real browser validate one reproducible portable
+artifact. Record these as distinct receipts. Chromium is the minimum release
+browser; simulator success is recorded separately, and desktop Firefox/WebKit
+absence or skips must be reported rather than folded into “browser passed.”
 
 ## Performance and resource policy
 
@@ -698,6 +894,7 @@ degree profile and exponent width
 quotient dimension when finite
 proof mode and backend
 encode/decode time
+native/Wasm sparse-term boundary time
 F4/Buchberger time and peak memory
 certificate verification time
 execution target and exact source revision
@@ -712,21 +909,28 @@ Automatic optimized dispatch requires checked-in receipts for exact workload
 envelopes and a tested fail-closed fallback. Being faster on one cyclic
 benchmark is not enough to become the default for a field family.
 
+For Wasm, also record specialist-group raw/gzip/Brotli size, eager versus lazy
+loading, compilation/instantiation time, and the cost of coefficient/context
+serialization. Adding `fq_nmod_mpoly` to the core eager bundle is not free; a
+lazy authenticated group is preferred unless measurements justify eager
+delivery.
+
 ## Recommended PR sequence
 
 Keep these as reviewable commits/PRs rather than one long-lived branch:
 
 ```text
 E0  exact-field boundary and readiness audit
-  -> F1  GF(p^d) exact ideals and Groebner bases
-      -> F2  GF(p^d) geometry and zero-dimensional parity
-          -> F3  optional encoded msolve acceleration
-              -> F4  four-platform finite-field qualification
-                  -> N1  number-field multivariate polynomials
-                      -> N2  exact ideals and geometry
-                          -> N3  factorization and decomposition
-                              -> N4  optional msolve acceleration
-                                  -> N5  four-platform qualification
+  -> F0  GF(p^d) multivariate substrate and production-Wasm parity
+      -> F1  GF(p^d) exact ideals and Groebner bases
+          -> F2  GF(p^d) geometry and zero-dimensional parity
+              -> F3  optional encoded msolve acceleration
+                  -> F4  native plus portable-Wasm finite-field qualification
+                      -> N1  number-field univariate/multivariate polynomials
+                          -> N2  exact ideals and geometry
+                              -> N3  factorization and decomposition
+                                  -> N4  optional msolve acceleration
+                                      -> N5  native/Wasm qualification
 ```
 
 F3 and N4 may be omitted from automatic routing if their evidence is weak,
@@ -740,6 +944,8 @@ tests until handoff.
 
 ## Definition of done: Milestone F
 
+- [ ] `GF(p^d)` multivariate construction, arithmetic, and storage-neutral
+      sparse terms work on native, Node-Wasm, and production Chromium.
 - [ ] Multivariate polynomial ideals over validated `GF(p^d)` parents work in
       `lex`, `deglex`, and `degrevlex`.
 - [ ] Exact Gröbner certificates and normal forms are field-representation
@@ -748,17 +954,24 @@ tests until handoff.
       and capability record.
 - [ ] Bounded rational-point enumeration uses `q = p^d` and fails before
       infeasible allocation.
+- [ ] Canonical finite-field enumeration returns each of the `q` elements
+      exactly once without assuming the defining generator is primitive.
 - [ ] Zero-dimensional radical and primary decomposition exactly recompose.
 - [ ] Direct exact behavior is identical across native and Wasm targets.
 - [ ] Any msolve fast path is block-order correct, independently verified,
       receipt-bounded, and optional.
 - [ ] Four native platforms plus production browser qualification pass on one
       commit.
+- [ ] Exact-runtime iPhone and iPad simulator checks pass on that commit.
+- [ ] The canonical Wasm artifact and every lazy specialist group have
+      authenticated identities and reviewed compressed-size budgets.
 - [ ] Documentation clearly distinguishes field presentation, rational
       points, geometric points, and residue extensions.
 
 ## Definition of done: Milestone N
 
+- [ ] Exact univariate polynomial Euclidean arithmetic over simple absolute
+      number fields supports the later factorization implementation.
 - [ ] Multivariate polynomials over simple absolute number fields have exact
       sparse arithmetic and all three public global orders.
 - [ ] Exact Gröbner, normal form, ideal operations, quotient operations,
