@@ -18,6 +18,13 @@
   },
   "files": [
     {
+      "path": "bench/numerics/performance/eigen-lu-comparison.cpp",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Matched standalone benchmark calls the generated typed-source LU core and upstream Eigen with retained workspaces; contains no production algorithm or adapter."
+    },
+    {
       "path": "bench/numerics/performance/eigen-probe.cpp",
       "category": "benchmark-reference",
       "review_status": "accepted",

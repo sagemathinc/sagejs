@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 245,
+    "classified-native-file": 246,
     "declared-ffi": 463,
     "declared-ffi-resource": 34,
     "napi-export": 353,
@@ -9265,6 +9265,14 @@
       "id": "native-file:bench/numerical-optimization/callback-probe.c",
       "kind": "classified-native-file",
       "path": "bench/numerical-optimization/callback-probe.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/numerics/performance/eigen-lu-comparison.cpp",
+      "kind": "classified-native-file",
+      "path": "bench/numerics/performance/eigen-lu-comparison.cpp",
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "integration"
