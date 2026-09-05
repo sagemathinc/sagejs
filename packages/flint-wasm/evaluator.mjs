@@ -582,6 +582,7 @@ export async function instantiateSageEvaluator({
   flint,
   algebraic = undefined,
   nativeKernels = undefined,
+  floatingKernels = undefined,
   m4ri,
   numerical = new URL("./dist/cminpack.wasm", import.meta.url),
   numericalNlopt = new URL("./dist/nlopt-methods.wasm", import.meta.url),
@@ -652,6 +653,7 @@ export async function instantiateSageEvaluator({
       capabilityDispatchTrace.record(id, route, options),
   });
   const abort = (error) => {
+    floatingKernelResource?.close();
     try {
       conwayDataResource?.close();
     } catch (cleanupError) {
@@ -686,6 +688,7 @@ export async function instantiateSageEvaluator({
   let m4riBackend;
   let symbolicBackendModule;
   let wasmNativeResolver;
+  let floatingKernelResource;
   let capabilityApi;
   let capabilityReportResponse;
   let autoReceiptPolicyResponse;
@@ -824,6 +827,34 @@ export async function instantiateSageEvaluator({
   } catch (error) {
     abort(error);
   }
+  if (floatingKernels !== undefined) {
+    try {
+      const { createLazyFloatingKernels } = await import("./floating-kernels.mjs");
+      floatingKernelResource = createLazyFloatingKernels({
+        manifestUrl: floatingKernels,
+        moduleBundle: lazyModuleBundle,
+        fetchResource: fetchNumerical,
+        host() {
+          const wasi = createWasiHost();
+          return {
+            imports: { wasi_snapshot_preview1: wasi.imports },
+            initialize: (instance) => wasi.initialize(instance),
+          };
+        },
+        instrument: (resolver) => instrumentWasmNativeResolver(
+          resolver, capabilityDispatchTrace,
+        ),
+      });
+    } catch (error) {
+      abort(error);
+    }
+  }
+  const combinedWasmResolver = Object.freeze({
+    resolve(logicalSource, name, expected) {
+      return floatingKernelResource?.resolve(logicalSource, name, expected) ??
+        wasmNativeResolver?.resolve(logicalSource, name, expected) ?? null;
+    },
+  });
   if (typeof initialization !== "string") {
     abort(new TypeError("browser compiler returned invalid initialization code"));
   }
@@ -1027,8 +1058,8 @@ export async function instantiateSageEvaluator({
     },
   });
   installGlobal("__sagejs_capability_api__", runtimeCapabilityApi);
-  if (wasmNativeResolver !== undefined) {
-    installGlobal("__sagejs_wasm_native_resolver__", wasmNativeResolver);
+  if (wasmNativeResolver !== undefined || floatingKernels !== undefined) {
+    installGlobal("__sagejs_wasm_native_resolver__", combinedWasmResolver);
   }
   installGlobal("__sagejs_output_write__", (text) => {
     outputHandler(String(text));
@@ -1036,7 +1067,7 @@ export async function instantiateSageEvaluator({
   installGlobal("__sagejs_sage_mode__", mode === "sage");
   try {
     globalEvaluate(initialization);
-    if (wasmNativeResolver !== undefined) {
+    if (wasmNativeResolver !== undefined || floatingKernels !== undefined) {
       const modules = Reflect.get(globalThis, "ρσ_modules");
       const builtins = modules?.builtins ?? globalThis;
       const nativeResolve = (filename, name) => {
@@ -1050,7 +1081,7 @@ export async function instantiateSageEvaluator({
           : sourceIndex >= 0
             ? normalized.slice(sourceIndex + sourceMarker.length)
             : normalized.replace(/^\/+/, "");
-        return wasmNativeResolver.resolve(logicalSource, String(name));
+        return combinedWasmResolver.resolve(logicalSource, String(name));
       };
       if (!Reflect.set(builtins, "__sagejs_native_resolve__", nativeResolve)) {
         throw new TypeError("browser builtins rejected the authenticated Wasm resolver");
@@ -1174,6 +1205,7 @@ export async function instantiateSageEvaluator({
       return graphic;
     };
     try {
+      await floatingKernelResource?.prepare(compiled.moduleImports);
       const runtimeCapabilityIds = await runtimeModules.prepare(
         compiled.moduleImports,
       );
@@ -1212,6 +1244,7 @@ export async function instantiateSageEvaluator({
   }
 
   function terminate() {
+    floatingKernelResource?.close();
     conwayDataResource.close();
     language.terminate();
     globals.restoreAll();

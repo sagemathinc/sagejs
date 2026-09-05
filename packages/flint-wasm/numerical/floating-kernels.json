@@ -1,0 +1,23 @@
+{
+  "status": "experimental-explicit-only",
+  "kernels": [
+    {
+      "id": "numerical-finite-sum-production",
+      "source": "src/lib/sagejs/numerics/statistics/_packed.py",
+      "functions": ["finite_sum"],
+      "fallback": "same-source ordinary Python",
+      "oracles": ["CPython math.fsum", "exact rational rounding"],
+      "tests": ["test/numerics/performance/packed-reductions.cjs"],
+      "benchmark": "bench/numerics/performance/prepared-statistics.py"
+    },
+    {
+      "id": "numerical-centered-statistics-production",
+      "source": "src/lib/sagejs/numerics/statistics/_packed_centered.py",
+      "functions": ["prepare_centered", "prepare_products", "prepare_summary_checks"],
+      "fallback": "same-source ordinary Python",
+      "oracles": ["CPython", "exact rational rounding"],
+      "tests": ["test/numerics/performance/packed-centered.cjs"],
+      "benchmark": "bench/numerics/performance/prepared-statistics.py"
+    }
+  ]
+}

@@ -408,6 +408,7 @@ async function initialize(message) {
     flint: message.flint,
     algebraic: message.algebraic,
     nativeKernels: message.nativeKernels,
+    floatingKernels: message.floatingKernels,
     m4ri: message.m4ri,
     numerical: message.numerical,
     numericalNlopt: message.numericalNlopt,
