@@ -1,0 +1,1178 @@
+{
+  "schema": "sagejs.numerics.n2-source-qualification/v1",
+  "scope": "explicit-public-prepared-source-and-rebuilt-host-tools-not-full-product-qualification",
+  "source": {
+    "commit": "3fc0831aab04f43ed48c0f5d6b81d998db9db341",
+    "tree": "657fef8b5c93a73bb5c980faaaef38eb4a2a15ac",
+    "clean": true,
+    "status_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "collector_sha256": "700f02586f776540d90a2bda5065836d4465bf72a82dbd344092359622c6f728",
+  "observed_at": "2026-09-05T10:31:24.206Z",
+  "runtime_basis": {
+    "compiler_and_baselib_commit": "14fdd4117f4ffcad7e0ef6f865a832b37faecb34",
+    "host_typescript_commit": "3fc0831aab04f43ed48c0f5d6b81d998db9db341",
+    "host_build_command": "node node_modules/typescript/bin/tsc -p tsconfig.json",
+    "source_imports": "SAGEJSPATH=src/lib",
+    "exact_arithmetic_prefix": "intentionally absent"
+  },
+  "host": {
+    "platform": "darwin",
+    "architecture": "arm64",
+    "node": "v26.5.0",
+    "os_release": "25.4.0",
+    "cpu": "Apple M1 Max",
+    "python": "Python 3.14.6"
+  },
+  "files": [
+    {
+      "path": "src/lib/sagejs/numerics",
+      "sha256": "88a9d68248c06da4d89d9cd46659a42fe801686edbe8e3cfd2bd8cd737d2656d",
+      "files": 98,
+      "bytes": 1965531,
+      "selection": "git-tracked-source-only",
+      "inputs": [
+        {
+          "path": "src/lib/sagejs/numerics/__init__.py",
+          "sha256": "b3c305c663f3cdaf1d4efe80e61ce332dca17937304ec911dae4d9db52008288",
+          "bytes": 1065,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/_json.py",
+          "sha256": "3b0cfac160a7beab9d00dd6cbaac5630cf2e31a9956faba99736ded2e3faa7da",
+          "bytes": 2447,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/approximation/__init__.py",
+          "sha256": "e95a6c1f667595945f53c9d48e5f0d9a118f804d7e3148f2853adf6d6975caa0",
+          "bytes": 1898,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/approximation/_common.py",
+          "sha256": "728404c71001951cc1ee7401ceb542cc36970f541eebb69ea0ed455a979d0d08",
+          "bytes": 20730,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/approximation/capabilities.py",
+          "sha256": "ef0760e35359304066a6d815be7af53d86905b50c79c12113a908022d0460bd9",
+          "bytes": 10138,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/approximation/chebyshev.py",
+          "sha256": "6e3243604940a2c42c08cf044d1b6627cb3265301c86627bc4c45ef5d7dc8589",
+          "bytes": 16530,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/approximation/finite_difference.py",
+          "sha256": "97865233b812822e403a24266226feb9bb4fc2dd0cbb279c7bdcc0a0db4b3ff2",
+          "bytes": 23960,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/approximation/interpolation.py",
+          "sha256": "abfa5bf04e27937042aa24490762e17fc1f25f84e8a39f147bcd30741cfbc934",
+          "bytes": 22287,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/approximation/polynomial_roots.py",
+          "sha256": "796a78411d6c06c37623e525e983018453db959be6a627b2c9364832dc62b18d",
+          "bytes": 64051,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/approximation/presentation.py",
+          "sha256": "f4cb5f7adb57ea09753e024f1b0b74da276d43f2fc0c4ff1a052be3b0b3bf675",
+          "bytes": 24544,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/approximation/splines.py",
+          "sha256": "efd45511e35cd5fa4950ff5a6ae99750deb001e241bab4aeeadbb8215e050797",
+          "bytes": 29816,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/capabilities.py",
+          "sha256": "f2cee1b90eaae0d43e0d2bf52490684729fa5130a0ee599d61fb932686ecfa20",
+          "bytes": 36034,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/diagnostics.py",
+          "sha256": "731c704d4224a97bc84127ba7b107580db6b7c5f0cf52c148173e7aad62ce79a",
+          "bytes": 7554,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/frontends/__init__.py",
+          "sha256": "4a8eb52be60cc3700586c0bc9b0125346e27883dd444b590c32e6fc8f6ac6c63",
+          "bytes": 1866,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/frontends/expressions.py",
+          "sha256": "ade2bd0e478e1ae023bf992294598470b174b9f9edccac8078c1ef51b222a641",
+          "bytes": 19577,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/frontends/model.py",
+          "sha256": "02880ae40282b318f6113eaed1bfd3b201015399bb080acd2c1165c68db98864",
+          "bytes": 12269,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/frontends/operations.py",
+          "sha256": "f2e56ecb3757f90aad32d1ec4ef4a409027e7e2c8c22c9ea2ef3b2b5ef4534b6",
+          "bytes": 48393,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/frontends/portable.py",
+          "sha256": "89e6909d99a8715ee2f1e0c29d726b56f6edb1fd7e128e087df1dd3b935f8bc7",
+          "bytes": 21907,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/frontends/registry.py",
+          "sha256": "1273099a10c702facab5c58fa9b620b2b545f777b83d5d62912524e66e372465",
+          "bytes": 8945,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/frontends/roundtrip.py",
+          "sha256": "09ec73dbffa108873070552654ff0f46fc2a82cfafa9f09cfae8744c0878bdff",
+          "bytes": 16930,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/frontends/scalar_root.py",
+          "sha256": "38147d43d38b6772e6918d9670d0ada3f944c4650cb36f836143c73fd0f4dfbb",
+          "bytes": 28952,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/integration/__init__.py",
+          "sha256": "c2cb1d9653e251e83e9dbc9907deb3d1b7465ed52346bb86222a2a83b29c9f4f",
+          "bytes": 936,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/integration/adaptive.py",
+          "sha256": "abe4f97f712c2a0840f65c9df7c65cf13ea8f3507579f4055d3c557bc7c8acb4",
+          "bytes": 58864,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/integration/result.py",
+          "sha256": "ff2b7a5c935bcefb6efa84a0ba51ad2ab890fd165ad303d3f8edcfc994ae3003",
+          "bytes": 11981,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/integration/visualization.py",
+          "sha256": "f4277053591479dd025a033195886678e131d3ca97cb2ec062313a212b87c9f2",
+          "bytes": 31886,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/linear_algebra/__init__.py",
+          "sha256": "7de80a9a522973df4a3d4be1cefcf7e4cd3810ec298798b1b2fd7bcdc47aeca7",
+          "bytes": 1586,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/linear_algebra/capabilities.py",
+          "sha256": "170eb2fd84abcc916eab3841a41272e6d98ba338b916989b05e9328c3234d57d",
+          "bytes": 16430,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/linear_algebra/diagnostics.py",
+          "sha256": "ea67012340ec0db812d6d29b851ba32935a09e0dc4460526eca656205866165f",
+          "bytes": 6575,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/linear_algebra/factorizations.py",
+          "sha256": "8f68422065dafc9226915dd983408e83b73a3eabc510673fde88e0b6bfeaf8dc",
+          "bytes": 33211,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/linear_algebra/operations.py",
+          "sha256": "745a819ca38f2d04b4aba82c0887210a92ce26f4beadde454cc4c15f84e48c2a",
+          "bytes": 52145,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/linear_algebra/storage.py",
+          "sha256": "450604aaee3cd554dc787d579a85e2b4682b7967adef6e86e7747fc18b91beea",
+          "bytes": 11752,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/linear_algebra/validation.py",
+          "sha256": "66e76905c25aade382de7c6d320ec9852dedcc4a032aa184995ab56b99fab536",
+          "bytes": 16010,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/linear_algebra/visualization.py",
+          "sha256": "e953fb3b58b09f7d738efc5c33061d4eb05dfc5ee4f58f25e575f127f2b8bdbc",
+          "bytes": 26684,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/model.py",
+          "sha256": "e54a3d03c34c1dfcf9ebd469239229dc88e35ed90c844e945e578f378d8cb2af",
+          "bytes": 38855,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/ode/__init__.py",
+          "sha256": "ff293cf80a90e8a89e9d17b1f0408e3c3a1c554c8c7d87900311eebb9fbc2640",
+          "bytes": 1156,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/ode/capabilities.py",
+          "sha256": "2d1426a836fc1f961c7fbdb00d5b657dc0f56d69af07401be3f3d57f127acb9d",
+          "bytes": 8595,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/ode/model.py",
+          "sha256": "4dfc2599ae7ae38e9b1373bf95e7500b9192f06e5ecf6da892509fe02dc94877",
+          "bytes": 25326,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/ode/rosenbrock.py",
+          "sha256": "bd8faa7e58065ca2e9bf853ead1f410e70b0a7965ed931e423a43429484d39b8",
+          "bytes": 9397,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/ode/solvers.py",
+          "sha256": "bdf031e9882e60f0e1a7a88457915ffd078b9f77066ea508cbb10bf09b505d8e",
+          "bytes": 68219,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/ode/sweeps.py",
+          "sha256": "2f0e72832ebf1742eca6a3487636cbf8a942c0a364598b89f2ce6a1a836c483c",
+          "bytes": 9774,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/ode/visualization.py",
+          "sha256": "6440e5026a5402483420afeda114e515a7f40599389b395f97fdc0eac2097d15",
+          "bytes": 13477,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/__init__.py",
+          "sha256": "9a70c0ae09e7abed095d7ef9d58d7bb23ee1d0c25ef5fc21d22343cb0dfd32f9",
+          "bytes": 1534,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/_constraints.py",
+          "sha256": "61a55c45880f7006cf9e48e1d3895dea9c3c06b118dc4da94543addbd9374b2c",
+          "bytes": 2455,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/_core.py",
+          "sha256": "4b5f2ac368900c4dfec5de728c4924cda1593b01213d4426eed0a3f771a7dab0",
+          "bytes": 30339,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/.gitignore",
+          "sha256": "4cd6a6c1185852a5e4d1b65b3660bf4b98623b7860e928617320a5aaaa981e59",
+          "bytes": 7,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/README.md",
+          "sha256": "2ab0d6337e1df178b020b1badb671001943731cbda9b40f34301890d90d9713e",
+          "bytes": 2862,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/index.mjs",
+          "sha256": "3a0b0ea709b934d799652c483e92d57b27bda0de09033ebe4518bbbef1801aef",
+          "bytes": 24517,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/licenses/COPYING",
+          "sha256": "471acc8c3f26be65dce41894c99d34322252bc8707e6facdc2af458585774877",
+          "bytes": 2081,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs",
+          "sha256": "bbf1d4bb6f970d3ef5d7b167befc78eef8b30241704b0ec9ae7ae9bc6880c9be",
+          "bytes": 11767,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs",
+          "sha256": "2db4e319d2c7b2562bcc1083e0ed21bc5dbcbe5c742b83c7d6eb188bcabbef9b",
+          "bytes": 64827,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle-summary.json",
+          "sha256": "44b8563b031cf01373779abb2be8f48ecf706eab12fb0715c05ccea90d785bf3",
+          "bytes": 2602,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle.py",
+          "sha256": "5d826ec59bde078857d775c2a90fa98bcb112c1502c29ce082ce4c2076711012",
+          "bytes": 4573,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs",
+          "sha256": "e20bae917792cddb96807282edc4455a75d62ceff43ec534042c0338174e1d33",
+          "bytes": 7991,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/selection-v1.json",
+          "sha256": "e77c8334c924588b4029398e495696b3cbfe9e2c12373927ea61c57c6cf423c1",
+          "bytes": 5064,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/verify-platform-enrollment.cjs",
+          "sha256": "5e91bbd0af0c052bbb32f3574d9d62f5ffa2940a2c9ee8c47b7fa8f0c57f96bf",
+          "bytes": 7634,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json",
+          "sha256": "82a59c6028c85accb77961782572ce15524deabc8517b111345b69a72eab068d",
+          "bytes": 6715,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/release/qualification-v1.json",
+          "sha256": "00b0f4f2739907a1e45021684e639f668acaeb9bb7ec9a06d2259bd8c4b1c5d9",
+          "bytes": 121831,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/build.cjs",
+          "sha256": "6374cd80be61c139db79615de823b66cd024f8f9be3105029f301bdc6a431f7f",
+          "bytes": 10708,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/promote-qualification.cjs",
+          "sha256": "390414888212c7171c5dbe0a6882e74052f9e61864ffd787a01f4c94701125ab",
+          "bytes": 5405,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+          "sha256": "144b7249a826e9f8801e239212381515588740a4b387e8e8156b5abbeec60a36",
+          "bytes": 3671,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/source-lock.json",
+          "sha256": "2662ef91a65017fe3a4259e1c52f48904f5dcc88fd05a212d4b995684ace05dc",
+          "bytes": 868,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+          "sha256": "d95dcb501391b6668ba72d4bc39db7304e25156df378405bc46c1383d419ab14",
+          "bytes": 17196,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs",
+          "sha256": "bcc1ceb96a23164dd2a14e5346e303728fb50a8dfccaee784168b6c863a21ce9",
+          "bytes": 32021,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/explanations.py",
+          "sha256": "0c1b3a23e827c4585deb53a3419db05ffbd024c123cc3201da562309e8e72d28",
+          "bytes": 10450,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/least_squares.py",
+          "sha256": "c92d87cd68f2db72ab531e3e500087cea25a9b0ef7b5a20e4ba855b65b7d6ef0",
+          "bytes": 40141,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/multivariate.py",
+          "sha256": "eac808cf4ceca82edd081357eea3289e479031147ea8faf5ed0f5232f5a509bc",
+          "bytes": 37137,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/planning.py",
+          "sha256": "58909acaf2a9a2fdaff3dfd9983ec897190c2c9cb1944c1dc198f81e7105b168",
+          "bytes": 17915,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/scalar.py",
+          "sha256": "d8ec4d1e3b5f218d0ff2b5ae7e9294ed14632a31fc73a31c2f3ee33c37d9e754",
+          "bytes": 9993,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/systems.py",
+          "sha256": "b19d9260a542750da8cd61933243e24eab4d63a2a838c022e7b31675f0bed2c1",
+          "bytes": 10635,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/validation.py",
+          "sha256": "6fa0058c5dd22a285cb09b6f2c72b635104513722ae9c4b2b529cf7ae3cef415",
+          "bytes": 57442,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/optimization/visualization.py",
+          "sha256": "96d82027cf29e9e102a4167395639bc6f2541ba755fa7050bf812ec43fbd82e6",
+          "bytes": 37759,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/roots.py",
+          "sha256": "82e88f5e0df8181d36487f44c69b5a89b52b3c3236f4e2fa9e51456a3fd06fdd",
+          "bytes": 25625,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/spectral/__init__.py",
+          "sha256": "1dcb6f74a5fbec376868aec5debb0c3506802ad363d9cb95a706912c2096593c",
+          "bytes": 9434,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/spectral/_common.py",
+          "sha256": "72ede9f3ea6da7bf2a70f7f0b8580dd8fa90ae5973fd705b15163fdbec26f66f",
+          "bytes": 19417,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/spectral/dense.py",
+          "sha256": "b82821af7ebbec095718644fa214a3271b7bdea5ec0ec04c4c487a20b0168b65",
+          "bytes": 43601,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/spectral/planning.py",
+          "sha256": "f76c819bb59a031b24b18c73cb9481f7628e2bb2cbf2836f2d999e1f9eb7ed03",
+          "bytes": 8991,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/spectral/result.py",
+          "sha256": "42edc6e85f129f2320c98a601a36899fd749e3ebee4d666b900120ee1add1c39",
+          "bytes": 11498,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/spectral/sparse.py",
+          "sha256": "45e973c6fa7924a09aec90672cb72149f364a2890c41f1e2cb99dfe86d6ff370",
+          "bytes": 44744,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/spectral/transforms.py",
+          "sha256": "042272e0921be107aad12cb3c8275fdb3172c6112badf4366abb674fef1b0c3e",
+          "bytes": 22604,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/spectral/visualization.py",
+          "sha256": "f899cc9d33e1c1a5a2ec211c5ba0531786c9bbfe91929cd58680094b38f73246",
+          "bytes": 35613,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/__init__.py",
+          "sha256": "764b6e1a0ceb6f9d404910195ff7de81bee238d754f832155353167d17dc648b",
+          "bytes": 1485,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/_core.py",
+          "sha256": "f1fe85f025b14f219a84320ba9b967cdc8149023feab2cbd273798e4ee288cbc",
+          "bytes": 11265,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/_packed.py",
+          "sha256": "e5554bf3770750441cb4e5f7e2ad19a1346b98efe49b75d837a32c6333f3b5da",
+          "bytes": 3687,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/_packed_centered.py",
+          "sha256": "af739fabecd30a9ac19c118a85b8462e34f01f2eccca671fef1c180fbd304103",
+          "bytes": 4992,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/_prepared_native.py",
+          "sha256": "bbd25566031a714ef85ff5254cea0ae7724b4ffd3081a0e90cdca475eb6c0395",
+          "bytes": 3681,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/_special.py",
+          "sha256": "edc038d6669cc08776a01ac06f2d14d8810c476bcd79f074a592944317f3579b",
+          "bytes": 9263,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/capabilities.py",
+          "sha256": "00ad8434aac3221e79081f320d96dcdbad658f7824885c6475708ea8772187cb",
+          "bytes": 9913,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/descriptive.py",
+          "sha256": "a468721e68f55ea380c6d581276fe2ef2629bd0a2c9cdf74bcd90072841543df",
+          "bytes": 11084,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/distributions.py",
+          "sha256": "1b0ba6d78a47651fa91aa1a3cb2612c65e75fbeeba48ce9cc36a93266c1eb645",
+          "bytes": 28982,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/inference.py",
+          "sha256": "88acdac16469cb55f270bb0734f84dabc4a97d285ac291a3a0dd41ba5e2ef514",
+          "bytes": 23445,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/prepared.py",
+          "sha256": "4df62347711b0f42ec6930147a37868fd14a91bb12502089e9a2760081e61fa2",
+          "bytes": 5894,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/regression.py",
+          "sha256": "7646b64f9e02ae5452e9946a2c8668a31b38d3a1add789b9efb6269e4cf83679",
+          "bytes": 34153,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/result.py",
+          "sha256": "8ad3a57f497378399b086f4c960c472c6e176ee0f0e39441fecdc895ca14a47d",
+          "bytes": 14050,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/rng.py",
+          "sha256": "cb0fd9baff36b3a62b62ece8c1ff65f86aa315683e62c863e51e4e91b98fa0e7",
+          "bytes": 23927,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/statistics/visualization.py",
+          "sha256": "c604984f7efd28036945d503abb991fb46d8e692869fa9cd01a9e9e8a27420cf",
+          "bytes": 22953,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/sweeps.py",
+          "sha256": "c1fc93462d66e741db906d6d35ffb4d0f807c9fa995b9e13f845f8c233e8b6b8",
+          "bytes": 64315,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/trace.py",
+          "sha256": "d188d413f223075c152fda1ee36e46367b5e0daa3f9678c2b9586f38cd51aa41",
+          "bytes": 10785,
+          "files": 1
+        },
+        {
+          "path": "src/lib/sagejs/numerics/visualization.py",
+          "sha256": "fb71d5dd6f6f3ed645e3881ba1e064cd728fd8d228fb169133219491ea0f3e5c",
+          "bytes": 9238,
+          "files": 1
+        }
+      ]
+    },
+    {
+      "path": "src/lib/sagejs/native.py",
+      "sha256": "2e26ed49d87141db1ba4e15e721318153f7120b66448ce12a0b2d57f44237dff",
+      "files": 1,
+      "bytes": 61683,
+      "selection": "git-tracked-source-only",
+      "inputs": [
+        {
+          "path": "src/lib/sagejs/native.py",
+          "sha256": "7b7d941daf570ba636e557435c2e8acf60fa14210ecce2aaa8d3f9e7a29f17a5",
+          "bytes": 61683,
+          "files": 1
+        }
+      ]
+    },
+    {
+      "path": "tools/native-kernel",
+      "sha256": "eb1fdff68fc69c4d3c5a3674bb009b7b0d081a5054f894ee19743304c6fadf60",
+      "files": 50,
+      "bytes": 1034084,
+      "selection": "git-tracked-source-only",
+      "inputs": [
+        {
+          "path": "tools/native-kernel/WASM-PACK-CONTRACT.md",
+          "sha256": "0da91a2628c264e393d7c88005a597db964ef376a2298b19d9b9b1ccb9e3ffef",
+          "bytes": 4774,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/automatic-selection.cjs",
+          "sha256": "23a4efb8acd016a1e7fa9bd1eb3791cf1b11841052237fc950f3e42047d6d32c",
+          "bytes": 4805,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/c-backend.cjs",
+          "sha256": "8b1accf0b7ec1ebd4299cca5906a8281c7d15ac73f65e8b961f5e8f85f887f06",
+          "bytes": 154017,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/compiler.cjs",
+          "sha256": "a8a868a62357febe3da652f03390a2ecd1df579722f48f6cf67a64a9711e6f15",
+          "bytes": 35136,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/core-abi.cjs",
+          "sha256": "05817b265934cf7a291931187c0c75f00a70312dacbc516aa3cf9f741719d16a",
+          "bytes": 2454,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/exact-analysis.cjs",
+          "sha256": "81af317e2020ae3274ecc5ef7caf87928e5803da32cd1d3353d18ad5664d0509",
+          "bytes": 50962,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/exact-runtime.cjs",
+          "sha256": "5656e2a043fcbd35a0cadf8e93770bb9ec307b1a0cd0198265eef5d9160bb0ca",
+          "bytes": 46439,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/ffi-codegen.cjs",
+          "sha256": "8042c596b509252d5c83d4d2516db6a35c70f660dc5f2933cb757f7a272920e6",
+          "bytes": 52429,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/float64-ir.cjs",
+          "sha256": "df9c1bc037e40e64b3cf3a6f1040283f0f0e7f5aedc4c993ce45d7a82a874f41",
+          "bytes": 26118,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/gmp-checkpoint-allocator.cjs",
+          "sha256": "28743a8eaef2b7c11cc5a2a76c5fdc007120859c3e39796f3f4a413f2e6e7ed9",
+          "bytes": 18638,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/integer-ir.cjs",
+          "sha256": "4ad73a8e96beb91ca13089e063ba99e366c50d3a3903b4a89f96c0a97f3333ba",
+          "bytes": 107940,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/introspection.cjs",
+          "sha256": "a4a9a8ee9f9dc5b8086acf3c1a6fb772958dc7030dfcbe83be17947e18b51c56",
+          "bytes": 8696,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/ir.cjs",
+          "sha256": "1531b519d47e951e4faf8e13d8f7028770b0c46ae7c2c48f389ff104aeecebc7",
+          "bytes": 37479,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/js-backend.cjs",
+          "sha256": "fbdfe78b76249fc3fdde463df45b4a5032a53f029b6737a7164a371052cd58f6",
+          "bytes": 109984,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/native-imports.cjs",
+          "sha256": "3e85239681dad4211db60857e741867a85f08d378c4025db2dc86e002b241bb6",
+          "bytes": 2302,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/portable-identity.cjs",
+          "sha256": "551984ce6f81246cf12bd04edf64e7c7418450f771efbad6a3552138bb523ac3",
+          "bytes": 2864,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/prime-field-backend.cjs",
+          "sha256": "022e784c6ce71478a0c4405d8538d4a6979ed7b29063799ebf2b84e3ade9e319",
+          "bytes": 39445,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/prime-field-ir.cjs",
+          "sha256": "be4d4eed0792f2a2d05dc00cb5ec463478286458ec66254536b83a3e83dc186a",
+          "bytes": 5502,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/prime-source-backend.cjs",
+          "sha256": "783f932ab5f00f101f5d7879ff337e746af90b378ac21a2589d978f4e4837c1a",
+          "bytes": 41013,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/prime-source-ir.cjs",
+          "sha256": "6ca0e506940cf83c1eeaa952d69363c5bc05ddd0862e14587c94dc628c944d57",
+          "bytes": 27521,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/prime-source-optimize.cjs",
+          "sha256": "978dd48b80a9805260e365057451b14fd12a72e9874b5638804adf657bed8023",
+          "bytes": 7409,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/production-pack.cjs",
+          "sha256": "3b5ee35dad0d1daaf11710de70cc61b14c1ff0df25330520d3e9b2c6faf6ef9b",
+          "bytes": 12314,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/provenance.cjs",
+          "sha256": "24270bd5b9343e08c9d88888a8b9a155d9c4c863c52ab2176a45d1362786b50f",
+          "bytes": 5223,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/tagged-backend.cjs",
+          "sha256": "d6da33f98c539ca4674fb2a445d08f10991b73d342bf00084a3806c867e4be4c",
+          "bytes": 35506,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/borrowed-resident-vector.cjs",
+          "sha256": "fe4aaf0d28065b441ec4d5f04d6ac3eab0ecc38d638635ccdf6304def7277f62",
+          "bytes": 2418,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/contextual-uint64.cjs",
+          "sha256": "8d47b8717b464cb6f51acb1efe064cde5797bc31d973d610663be4f201835124",
+          "bytes": 9017,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/exact-integer-buffer-specialization.cjs",
+          "sha256": "22684dd401718921e4ba551a989fd595610d26053ed10a2430bd8a80b60a2245",
+          "bytes": 10224,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/exact_integer_buffer_witness.py",
+          "sha256": "24d5daa20f28563a9096401420a2c43dcfaa04c3cda288a5dc39c338a59592b5",
+          "bytes": 2473,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/fixed_span_uint64_witness.py",
+          "sha256": "a1f62f7b13b801f07b4c969b7cd1acb169f7623d12c30afb9021ad6c757f302d",
+          "bytes": 2277,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/float64-conditional.cjs",
+          "sha256": "08debfb14410233931eda8f011d390f21ee59846df7cba20785aaa727b93c673",
+          "bytes": 16424,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/float64_branch_witness.py",
+          "sha256": "72f8827a13a62756e309a46d044777648ef09ef91f0c4eda9e23cb78d7a23b44",
+          "bytes": 2073,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/identifier-hygiene.cjs",
+          "sha256": "5de48970a3d0519850e8959ccb1b0bee46cd3cae45f936ba32660b990fbb688b",
+          "bytes": 6271,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/identifier_hygiene_witness.py",
+          "sha256": "2ee10d21e06207f4dabea1900ea4fdfd10fc89379e022d0efa14f3565447ee0a",
+          "bytes": 1487,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/immutable-capsule-effects.cjs",
+          "sha256": "9d8a99a369f28afc413d5e2cf4a4afd17dc953deccc89c8ed461c8c7484cad86",
+          "bytes": 7223,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/immutable_capsule_effects_witness.py",
+          "sha256": "0b013dff54f2079dc816f1380659a0bfd476f3f854d910b647021d86dca809e9",
+          "bytes": 1439,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/immutable_uint64_capsule_witness.py",
+          "sha256": "e1978a1e83fdb0a942fc8237b48e6f27676e3cddd3fa084bd7c121273e8f529a",
+          "bytes": 853,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/local-prime-modulus.cjs",
+          "sha256": "014fa95845f82489fce0d9632950e9eed19a77ab073db21310b9c16569131105",
+          "bytes": 5679,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/local_prime_modulus_witness.py",
+          "sha256": "c9a876fa72415ed714ef1466891b714196048328ce12fe54755ddab11f6cbc4c",
+          "bytes": 1142,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/mpz-machine-literals.cjs",
+          "sha256": "b64f4a30c8bc54511696483826ef62c2fec835398d517fe8b8a913ff98debb39",
+          "bytes": 926,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/positive-rational-log-resource-witness.py",
+          "sha256": "2d550da3c8ddf2ada86fc61610f42f0814b9d20c2edd1eff29abb94e21bb3d6a",
+          "bytes": 624,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/prime-bool-helper-abi.cjs",
+          "sha256": "400dc4b2fb80f393ad418877609a56dc8d9ead043cc9cfaa5321288ad2252172",
+          "bytes": 5762,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/prime_bool_helper_abi_witness.py",
+          "sha256": "ffbb8d98d76931fe5b119b055262b147e21d15eff51903603002efa1068d2a97",
+          "bytes": 950,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/wasm-pack-loader.cjs",
+          "sha256": "860f117c3ac1cf549e7d5c908b628ac0de21fb467adfa978a416fe4da4400d6a",
+          "bytes": 13540,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/word-helper-chain.cjs",
+          "sha256": "db5efa35e4f54089db3c61f093497aed88e355e2af077c7f0909fd19d9ada53a",
+          "bytes": 5642,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/test/word_helper_chain_witness.py",
+          "sha256": "865385cde1df8b1cb1ca24bb6f0137d0ad893ce0a23b560f26f3166de8f42ae5",
+          "bytes": 1187,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/uint64-operations.cjs",
+          "sha256": "c7beccefb66e73d029c400e18433909a75c8bcdcb0f74a6b813f3def8aa8fea7",
+          "bytes": 2204,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/wasm-bridge.cjs",
+          "sha256": "3aadeef2027310400ea37ac7604dca5413cc2fc914f34f67c6dc6997add5509f",
+          "bytes": 20582,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/wasm-pack-loader.mjs",
+          "sha256": "b6b07ed6b4940878cf3e3f08a692f0c936939a60e8231389a561a7fe7c219c4d",
+          "bytes": 27797,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/wasm-production-pack.cjs",
+          "sha256": "fffa099de70fbeb27218be49843f906191cfbc5b658a647b9d74adbfa3d038de",
+          "bytes": 21045,
+          "files": 1
+        },
+        {
+          "path": "tools/native-kernel/word-backend.cjs",
+          "sha256": "a8210ac320c5bb0b810dbc4da736460301fdb4be8cc6292b70991f1a843f0318",
+          "bytes": 25855,
+          "files": 1
+        }
+      ]
+    },
+    {
+      "path": "tools/runtime-bootstrap.ts",
+      "sha256": "1ea3ad45953d25368f06bacc12ccd483be278111abea165d8742e6059aaf7125",
+      "files": 1,
+      "bytes": 49196,
+      "selection": "git-tracked-source-only",
+      "inputs": [
+        {
+          "path": "tools/runtime-bootstrap.ts",
+          "sha256": "5e2340686ac00b2790db6a444b6ce06daf9027f5619644d8ee4876969a71705a",
+          "bytes": 49196,
+          "files": 1
+        }
+      ]
+    },
+    {
+      "path": "test/numerics/performance",
+      "sha256": "2b9dcbba7b37ec46aca068b5d904ba1d23c6c1f34f45c8232c97ba4e45e1a610",
+      "files": 12,
+      "bytes": 63249,
+      "selection": "git-tracked-source-only",
+      "inputs": [
+        {
+          "path": "test/numerics/performance/collector.cjs",
+          "sha256": "50e668a006e0b7435f5d985d6ca86b28be4dbfa52d044a298842869d152e889d",
+          "bytes": 2686,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/performance/packed-centered.cjs",
+          "sha256": "f6b4a32a337408e571e9361d2a6121e10486059ed4f9ea05f48fb0c1299deca6",
+          "bytes": 5580,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/performance/packed-centered.py",
+          "sha256": "8eb765dabe2362fb7c6edb4dd65c6fe5e79acd05a3bed6cf11d88e956c8c1241",
+          "bytes": 8471,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/performance/packed-reductions.cjs",
+          "sha256": "2fc87ee4a723630d976894439734a3ce31572d2c579adaaf0e826c348afda8b6",
+          "bytes": 14051,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/performance/packed-reductions.py",
+          "sha256": "cdff234640292ecd5b740e838314f13d9eba056dac0c5ac7e2c75db4b417997c",
+          "bytes": 4060,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/performance/prepared-statistics.cjs",
+          "sha256": "70b0e264d52c966b5ff20f15ef56a81cc063d1cec0236ffa243b6f0aafc0aa3b",
+          "bytes": 3174,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/performance/prepared-statistics.py",
+          "sha256": "20011438274d661e72405a511010ab23c711e3bc478f952ef444e3c6837d3361",
+          "bytes": 6733,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/performance/result-bookkeeping.cjs",
+          "sha256": "e4af9d7159b47493bd09341ef7daa96a8fda4072b3fe0bb89041da6cf45fd93a",
+          "bytes": 1820,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/performance/result-bookkeeping.py",
+          "sha256": "3e8994ff2be3e8ce72da00f03d0c0e47578dc3e7086bcd705943b85b42c363f4",
+          "bytes": 3587,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/performance/trace-accounting.cjs",
+          "sha256": "4f335e83a7a2b3afba7b434dc550806570b78b2bb9afb4c0ee835c5dd8db733e",
+          "bytes": 1817,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/performance/trace-accounting.py",
+          "sha256": "b56add87bcec1838ee3b2ee7c36117ef344e2539395dbff5d5ee27d016dd0835",
+          "bytes": 9865,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/performance/workloads.cjs",
+          "sha256": "b81f97c14fb173fba8aeb154234c9ef7246f37411979f96c0038fa201f448f5d",
+          "bytes": 1405,
+          "files": 1
+        }
+      ]
+    },
+    {
+      "path": "test/numerics/statistics",
+      "sha256": "194d2d6b4598d0b303379e0742bb16bf7b0b52463e91d5a19bfda7b291a1bef0",
+      "files": 5,
+      "bytes": 34418,
+      "selection": "git-tracked-source-only",
+      "inputs": [
+        {
+          "path": "test/numerics/statistics/failure-corpus.json",
+          "sha256": "6cab43104a25b6555b3984181c20f0ba2945751fef07a7282349050938039499",
+          "bytes": 1386,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/statistics/oracle-fixtures.json",
+          "sha256": "ee64a6f80f2df938fbb42d46ac8bf38149c6f18391afcb2635c57e444acd80ef",
+          "bytes": 4748,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/statistics/oracle.R",
+          "sha256": "61173de2481041c1f3e9ac96467ce4f458ba4c226d3af6f54a782816973ec147",
+          "bytes": 1529,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/statistics/oracle_scipy.py",
+          "sha256": "f4a8cd5baf8e051dd938ea789ece8cc8cc745641de7bcbe034b273dbadb2d940",
+          "bytes": 976,
+          "files": 1
+        },
+        {
+          "path": "test/numerics/statistics/test.cjs",
+          "sha256": "ee8f25b40883cae0cd30289392ff0516702a9fefaab3b0d49121d96fd84e82c8",
+          "bytes": 25779,
+          "files": 1
+        }
+      ]
+    },
+    {
+      "path": "test/helpers/float64-wasm.cjs",
+      "sha256": "a3d5c4226a6018c437aa72e2247c534ace970a8047bfbaf20bd342532946f3e2",
+      "files": 1,
+      "bytes": 5491,
+      "selection": "git-tracked-source-only",
+      "inputs": [
+        {
+          "path": "test/helpers/float64-wasm.cjs",
+          "sha256": "73df29e0a25a421e2bfcda241a6aa3ce5ffaa012ebdf116736706d75a8c53194",
+          "bytes": 5491,
+          "files": 1
+        }
+      ]
+    },
+    {
+      "path": "test/helpers/native-cache-cleanup.cjs",
+      "sha256": "112b1a120c5058fab4e7f5269fa129ce9a6c360932a5f378ca96218fb289d7d7",
+      "files": 1,
+      "bytes": 2443,
+      "selection": "git-tracked-source-only",
+      "inputs": [
+        {
+          "path": "test/helpers/native-cache-cleanup.cjs",
+          "sha256": "11036072d654b4fe39f415e72f9eec204602bdd0efb25192669c16e9aa1c0dd6",
+          "bytes": 2443,
+          "files": 1
+        }
+      ]
+    },
+    {
+      "path": "test/helpers/assert-no-exact-numerical-load.cjs",
+      "sha256": "01f2d072c82dbcf160f1dc246c13434e82e06359e6dff797c8ef5c94d99e8569",
+      "files": 1,
+      "bytes": 670,
+      "selection": "git-tracked-source-only",
+      "inputs": [
+        {
+          "path": "test/helpers/assert-no-exact-numerical-load.cjs",
+          "sha256": "579cda92976d6605fe3c7cbf48a8bfdd3e8b16cd35a785269545dd14d17b93d2",
+          "bytes": 670,
+          "files": 1
+        }
+      ]
+    },
+    {
+      "path": "dist/compiler/compiler.js",
+      "sha256": "2c2fb22d0b50e727b8d0cd75f1da5f9a05d65cdaebfe9f4c5ea27476704dbb9d",
+      "bytes": 4178882,
+      "files": 1
+    },
+    {
+      "path": "dist/tools/runtime-bootstrap.js",
+      "sha256": "7b41dea54464123f77832b48cbcd982649860f94f0cbfbd2222e407dd3ae744c",
+      "bytes": 52203,
+      "files": 1
+    },
+    {
+      "path": "dist/tools/kernel.js",
+      "sha256": "448cd728710b7477a5b2508a5be59fa8afebe969d64f2220adbf48a0db8e5505",
+      "bytes": 17867,
+      "files": 1
+    }
+  ],
+  "test_command": [
+    "/opt/homebrew/Cellar/node/26.5.0/bin/node",
+    "--test",
+    "--test-reporter=tap",
+    "test/numerics/performance/prepared-statistics.cjs",
+    "test/numerics/performance/packed-centered.cjs",
+    "test/numerics/performance/packed-reductions.cjs",
+    "test/numerics/statistics/test.cjs",
+    "test/numerics/performance/result-bookkeeping.cjs",
+    "tools/native-kernel/test/float64-conditional.cjs"
+  ],
+  "limitations": [
+    "not full application or npm/SEA qualification",
+    "no public browser/Wasm route",
+    "no end-to-end performance claim",
+    "native opt-in remains experimental",
+    "WASI-toolchain absence is an explicit test skip, not a qualified target"
+  ],
+  "result": {
+    "exit_code": 0,
+    "signal": null,
+    "error": null,
+    "tests": 21,
+    "pass": 21,
+    "fail": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "duration_ms": 34197.619541,
+    "transcript": "TAP version 13\n# Subtest: ordinary Sage.js centered reductions retain the dynamic same-source fallback\nok 1 - ordinary Sage.js centered reductions retain the dynamic same-source fallback\n  ---\n  duration_ms: 1481.703708\n  type: 'test'\n  ...\n# Subtest: centered regions agree with exact rational rounding in native and JavaScript IR\nok 2 - centered regions agree with exact rational rounding in native and JavaScript IR\n  ---\n  duration_ms: 2838.411666\n  type: 'test'\n  ...\n# Subtest: centered regions execute identically in isolated Node-Wasm and browser workers\nok 3 - centered regions execute identically in isolated Node-Wasm and browser workers\n  ---\n  duration_ms: 1355.1265\n  type: 'test'\n  ...\n# Subtest: finite sums have isolated, source-transparent binary64 lowering\nok 4 - finite sums have isolated, source-transparent binary64 lowering\n  ---\n  duration_ms: 464.464042\n  type: 'test'\n  ...\n# Subtest: binary64 compilation and execution need no exact-arithmetic prefix\nok 5 - binary64 compilation and execution need no exact-arithmetic prefix\n  ---\n  duration_ms: 2796.714417\n  type: 'test'\n  ...\n# Subtest: ordinary Sage.js source preserves cancellation and final half-even rounding\nok 6 - ordinary Sage.js source preserves cancellation and final half-even rounding\n  ---\n  duration_ms: 903.071208\n  type: 'test'\n  ...\n# Subtest: packed summation agrees bit-for-bit with exact rationals and CPython\nok 7 - packed summation agrees bit-for-bit with exact rationals and CPython\n  ---\n  duration_ms: 3066.440375\n  type: 'test'\n  ...\n# Subtest: packed sums execute in emitted Wasm without host callbacks\nok 8 - packed sums execute in emitted Wasm without host callbacks\n  ---\n  duration_ms: 1445.522333\n  type: 'test'\n  ...\n# Subtest: prepared statistics preserves CPython ownership, budgets, and fallback\nok 9 - prepared statistics preserves CPython ownership, budgets, and fallback\n  ---\n  duration_ms: 185.222209\n  type: 'test'\n  ...\n# Subtest: public prepared queries agree in dynamic and source-compiled Sage.js\nok 10 - public prepared queries agree in dynamic and source-compiled Sage.js\n  ---\n  duration_ms: 33802.044375\n  type: 'test'\n  ...\n# Subtest: result binding avoids redundant snapshots while preserving CPython guards\nok 11 - result binding avoids redundant snapshots while preserving CPython guards\n  ---\n  duration_ms: 91.084625\n  type: 'test'\n  ...\n# Subtest: the same result binding witnesses hold in dynamic Sage.js\nok 12 - the same result binding witnesses hold in dynamic Sage.js\n  ---\n  duration_ms: 1757.754\n  type: 'test'\n  ...\n# Subtest: statistics vertical slice agrees in CPython\nok 13 - statistics vertical slice agrees in CPython\n  ---\n  duration_ms: 321.044875\n  type: 'test'\n  ...\n# Subtest: statistics vertical slice runs in Sage.js\nok 14 - statistics vertical slice runs in Sage.js\n  ---\n  duration_ms: 12436.795083\n  type: 'test'\n  ...\n# Subtest: SciPy oracle corpus executes in CPython and Sage.js\nok 15 - SciPy oracle corpus executes in CPython and Sage.js\n  ---\n  duration_ms: 2120.426041\n  type: 'test'\n  ...\n# Subtest: failure corpus executes in CPython and Sage.js\nok 16 - failure corpus executes in CPython and Sage.js\n  ---\n  duration_ms: 1621.904834\n  type: 'test'\n  ...\n# Subtest: RNG replay JSON survives a browser-number boundary\nok 17 - RNG replay JSON survives a browser-number boundary\n  ---\n  duration_ms: 1191.717583\n  type: 'test'\n  ...\n# Subtest: offline SciPy/R and failure corpora remain versioned\nok 18 - offline SciPy/R and failure corpora remain versioned\n  ---\n  duration_ms: 0.906209\n  type: 'test'\n  ...\n# Subtest: binary64 comparisons and conditionals preserve inspectable source\nok 19 - binary64 comparisons and conditionals preserve inspectable source\n  ---\n  duration_ms: 467.582292\n  type: 'test'\n  ...\n# Subtest: binary64 branches agree in JavaScript, native, and CPython execution\nok 20 - binary64 branches agree in JavaScript, native, and CPython execution\n  ---\n  duration_ms: 6687.24\n  type: 'test'\n  ...\n# (node:83456) ExperimentalWarning: WASI is an experimental feature and might change at any time\n# (Use `node --trace-warnings ...` to show where the warning was created)\n# Subtest: Float64 buffers execute in standalone and browser-shaped Wasm loaders\nok 21 - Float64 buffers execute in standalone and browser-shaped Wasm loaders\n  ---\n  duration_ms: 716.597916\n  type: 'test'\n  ...\n1..21\n# tests 21\n# suites 0\n# pass 21\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 34197.619541\n"
+  }
+}

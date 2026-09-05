@@ -1,10 +1,11 @@
 # N2 centered arithmetic region
 
-This follow-up starts at the isolated-sum foundation in draft PR #146. It now
+This follow-up (draft PR #148) starts at the isolated-sum foundation in #146. It now
 has an **experimental public prepared-data opt-in**, not a new default or a
 completed N2 milestone. Ordinary `describe()` and prepared-data defaults stay
-dynamic. Browser/native production packaging and public four-platform
-qualification remain open.
+dynamic. Browser/native production packaging and full product four-platform
+qualification remain open; the fresh-source public API witnesses now pass on
+all four hosts.
 
 `_packed_centered.py` lowers the existing centered/scaled preparation into
 ordinary typed Python: deviations, normalization, normalized squares and
@@ -35,9 +36,17 @@ and budget contract. Qualified production artifact binding remains open.
   numerical-surface exhaustiveness, Python formatting and strict Python
   (371 modules, zero errors). The source-current optimizer inventory is
   `6c80de578555637d062cd6d2f20e3298db1adacb7cac1e55867b8fcd6b03d967`.
-- Tests use the unchanged, previously built compiler and explicit new source,
-  not a newly qualified full application. These centered functions do not yet
-  have their own four-platform public/package receipts.
+- Frozen `3fc0831aa` public/source reruns pass 21/21 on Linux x64, Linux ARM64
+  and macOS; Windows passes 18 with three unavailable WASI builds explicitly
+  skipped. Tracked source/compiler/test hashes agree on all four hosts. The
+  [receipts](../bench/numerics/performance/results/n2-prepared-source-2026-09-05/README.md)
+  distinguish fresh imports with rebuilt host tools from full product packaging.
+- A separate owned local eight-stage build passes (11m52s), including current
+  compiler/module/runtime caches. Dynamic, native-opt-in and missing-cache
+  public witnesses pass without `SAGEJSPATH`, and all 21 focused tests pass again
+  against the new compiler. Five optional native adapters and the FLINT-based
+  production pack are absent: this proves the independent binary64 path, not
+  full exact-library/npm/SEA packaging.
 
 The kernel opportunity runner is:
 
