@@ -290,8 +290,9 @@ alpha release policy explicitly allows it. Never force-push a tag.
 
 The tag starts the clean native/SEA workflow, mandatory numerical qualification
 DAG, and reproducible Wasm release workflow. The native release publisher
-cannot run until the exact 16-row numerical gate and all six supplemental
-requirements pass. Monitor individual jobs and stop or cancel dependent work
+cannot publish until the exact 16-row numerical gate, all six supplemental
+requirements, and a successful reproducible Wasm run for the exact tag and
+source SHA pass. Monitor individual jobs and stop or cancel dependent work
 promptly after a failure. Pull the complete failed-job log and identify the
 first causal error rather than reacting to the final aggregate failure.
 
@@ -309,6 +310,15 @@ After every required native job passes, the protected release workflow should:
 
 npm Trusted Publishing authorizes the calling workflow filename. Consequently
 `.github/workflows/ci.yml` is the only workflow that executes `npm publish`.
+Immediately before restoring publication artifacts, its publisher queries the
+WebAssembly workflow through the authenticated GitHub API and requires a
+successful push run for the exact immutable tag and full source SHA. The two
+workflows may build concurrently, but a failed or still-running Wasm gate can
+therefore never race npm publication. If native qualification finishes first,
+the publisher fails closed; after the Wasm workflow succeeds, use the same
+validated-publication recovery below rather than rebuilding successful native
+producers.
+
 If its publication job fails after every producer and the numerical gate pass,
 dispatch **Request validated release publication recovery** with the original
 tagged CI run ID and immutable tag. That small bridge dispatches `ci.yml` at

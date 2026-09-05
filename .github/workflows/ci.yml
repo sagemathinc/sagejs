@@ -1496,6 +1496,17 @@ jobs:
           node-version: 26.5.1
           registry-url: https://registry.npmjs.org
 
+      - name: Require successful same-tag WebAssembly release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          runs_file="$(mktemp)"
+          gh api --paginate \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/wasm-release.yml/runs?event=push&head_sha=${GITHUB_SHA}&per_page=100" \
+            | jq -s '.' > "$runs_file"
+          node scripts/release/require-wasm-release.cjs \
+            --sha "$GITHUB_SHA" --tag "$GITHUB_REF_NAME" < "$runs_file"
+
       - name: Restore the mandatory numerical release gate
         uses: actions/download-artifact@v8
         with:

@@ -43,7 +43,7 @@
         },
         "cubic-number-field-zeta-1000": {
           "warm_ms": {
-            "median": 49.91970099997707
+            "median": 76.70473300000003
           }
         },
         "modular-symbols-level-1000": {
@@ -63,7 +63,7 @@
         },
         "numeric-mpfr-symbolic": {
           "warm_ms": {
-            "median": 50.32469700003276
+            "median": 110.40295399999013
           }
         },
         "moebius-range-100000": {
@@ -178,7 +178,7 @@
         },
         "numeric-mpfr-symbolic": {
           "warm_ms": {
-            "median": 38.92500000074506
+            "median": 201.625
           }
         },
         "moebius-range-100000": {
@@ -293,7 +293,7 @@
         },
         "numeric-mpfr-symbolic": {
           "warm_ms": {
-            "median": 90.48000000000002
+            "median": 306.48
           }
         },
         "moebius-range-100000": {
@@ -408,7 +408,7 @@
         },
         "numeric-mpfr-symbolic": {
           "warm_ms": {
-            "median": 53.01999999999998
+            "median": 334
           }
         },
         "moebius-range-100000": {
@@ -506,7 +506,7 @@
           "warm_median_ratio": 0.936506732889436
         },
         "numeric-mpfr-symbolic": {
-          "warm_median_ratio": 0.927703641058527
+          "warm_median_ratio": 1.3191688134033337
         },
         "moebius-range-100000": {
           "warm_median_ratio": 0.559521717457226
@@ -640,7 +640,7 @@
           "warm_median_ratio": 1.2594974402969688
         },
         "numeric-mpfr-symbolic": {
-          "warm_median_ratio": 1.2625552511390459
+          "warm_median_ratio": 2.1852567076340406
         },
         "moebius-range-100000": {
           "warm_median_ratio": 0.5288924955720026

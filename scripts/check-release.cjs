@@ -122,6 +122,11 @@ assert.match(
 );
 assert.match(
   releaseWorkflow,
+  /publish-release:[\s\S]*?Require successful same-tag WebAssembly release[\s\S]*?actions\/workflows\/wasm-release\.yml\/runs\?event=push&head_sha=\$\{GITHUB_SHA\}[\s\S]*?require-wasm-release\.cjs[\s\S]*?--sha "\$GITHUB_SHA" --tag "\$GITHUB_REF_NAME"/,
+  "automatic publication must require a successful WebAssembly run for the exact tag and SHA",
+);
+assert.match(
+  releaseWorkflow,
   /name: numerical-release-evidence[\s\S]+path: build\/numerical-qualification[\s\S]+release:qualify:numerics:gate[\s\S]+--input build\/numerical-qualification[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+release:qualify:numerics:authenticate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
   "automatic publication must rebuild the gate from raw evidence before authenticating the selected public npm root",
 );
