@@ -26,6 +26,34 @@ The integration branch now combines these separately tested changes:
   that authentication failed. It now declines with bad-regulator phase 44.
   This is a tested control-flow correction, not a discovered ordinary-field
   failure or a change to the mathematical acceptance theorem.
+- `_cubic_prepare_proof_relation_support` now borrows attempt-local support
+  and membership scratch. It copies the retained online bits for the reuse
+  path and explicitly resets support and the incremental basis before a
+  recomputed attempt. The collector's support history remains unchanged.
+- The one-shot suffix uses separate `proof_relation_count`, `proof_unit_*`
+  and `proof_regulator_*` scalars. Compaction, unit reconstruction and
+  saturation no longer overwrite the raw count or cheap-unit state.
+- Nontrivial factor-transcript publication now follows analytic index-one
+  acceptance, alongside relation publication. A source-extracted fault test
+  checks that failed analytic planning reaches neither transcript publisher.
+
+The support witness invokes the actual helper repeatedly at logical row counts
+$5,8,5,8$, covering reused online support, recomputed HNF support, and the
+small-unit path. Its exact rows include zero, contained and index-reducing
+relations. Dynamic/GMP/fmpz runs compare against an independent integer-lattice
+argument, preserve input rows and online support, and poison unused scratch to
+check reset and prefix behavior. This is a real exact-arithmetic test, not a
+complete class-group schedule or a throughput claim.
+
+The generated-core Linux sanitizer run exercises both fmpz and GMP entries,
+positive/negative small and 255-bit-scaled rows, deliberate inconsistent-HNF
+failures, forced checkpoint exhaustion, and successful reuse afterward. Its
+maximum checkpoint high-water is 200,576 bytes for fmpz and 217,632 for GMP,
+with no upstream checkpoint allocations. All-small fmpz arithmetic can report
+zero GMP-limb high-water; the promoted cases explicitly require nonzero use.
+These are support-stage checkpoint measurements, not total resident memory or
+bounds for the complete repeated proof suffix. The source-matched production
+build and all ten focused cubic ledger/receipt/replay regressions also pass.
 
 None of these changes establishes that the full proof suffix fits the current
 memory budget across repeated attempts. In particular, foreign temporary
@@ -54,16 +82,17 @@ general stage schedule. Timing includes unsuccessful closure attempts.
 
 ## Why the current suffix cannot simply be called twice
 
-The post-collection part of `certified_complex_cubic_class_group_v1` currently
+The post-collection part of `certified_complex_cubic_class_group_v1` initially
 performs compaction, dependency recovery, regulator certification, saturation,
 BF certification and publication in one lexical scope. In particular:
 
 - It replaces `relation_count` with the compact count. Continuation needs the
-  original admitted count and original row/element matrices.
+  original admitted count and original row/element matrices. The scalar-count
+  separation is now implemented; retaining the outer enumeration cursor is not.
 - `unit_found` first records the cheap search result and later becomes true
   after dependency recovery. The collector and compactor use its initial
   meaning to choose their algorithms. A failed proof attempt must not change
-  that scheduling fact.
+  that scheduling fact. Separate proof-unit scalars now preserve it.
 - Numerous dimension-dependent HNF, LLL, logarithm and unit resources are
   created as root-arena children. Repeating the suffix would retain resources
   from unsuccessful attempts until the outer return.

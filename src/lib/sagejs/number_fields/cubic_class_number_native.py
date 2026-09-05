@@ -6073,6 +6073,165 @@ def _cubic_publish_relation_rows(
     return True
 
 
+def _cubic_prepare_proof_relation_support(
+    relation_matrix: FmpzMatrix,
+    relation_hnf: FmpzMatrix,
+    online_support: FmpzMatrix,
+    relation_support: FmpzMatrix,
+    online_membership_coordinates: FmpzMatrix,
+    incremental_basis: FmpzMatrix,
+    incremental_source: FmpzMatrix,
+    incremental_hnf: FmpzMatrix,
+    output: IntegerBuffer,
+    relation_count: uint64,
+    factor_count: uint64,
+    relation_rank: uint64,
+    unit_found: bool,
+    reuse_online_relation_support: bool,
+) -> tuple[uint64, bool]:
+    """Prepare attempt-local support without modifying retained discovery state.
+
+    The caller has established full rank for this exact relation prefix.
+    Only the support and reduction scratch are mutable; the online support
+    bits and original principal rows remain unchanged for resumed collection.
+    All scratch owners remain in the root arena, and each invocation resets
+    the logical prefix it uses. A failure is an internal inconsistency or
+    resource failure, never permission to collect additional relations.
+    """
+    reset_row: uint64 = 0
+    while reset_row < relation_count:
+        relation_support[reset_row, 0] = 0
+        if reuse_online_relation_support:
+            relation_support[reset_row, 0] = online_support[reset_row, 0]
+        reset_row += 1
+    if not reuse_online_relation_support:
+        reset_row = 0
+        while reset_row < factor_count:
+            reset_column: uint64 = 0
+            while reset_column < factor_count:
+                incremental_basis[reset_row, reset_column] = 0
+                reset_column += 1
+            reset_row += 1
+    support_count: uint64 = 0
+    incremental_rank: uint64 = 0
+    compact_source_row: uint64 = 0
+    if unit_found:
+        # The small-unit probe has already supplied the rank-one unit
+        # witness.  Keep every exact principal row for later transcript
+        # replay, but do not repeatedly canonicalize prefixes merely to
+        # shrink an audit payload that is not materialized on this call.
+        # The full relation HNF and Smith form above remain the class-group
+        # authority.
+        support_count = relation_count
+        incremental_rank = factor_count
+        while compact_source_row < relation_count:
+            relation_support[compact_source_row, 0] = 1
+            compact_source_row += 1
+        fast_row: uint64 = 0
+        while fast_row < factor_count:
+            fast_column: uint64 = 0
+            while fast_column < factor_count:
+                incremental_basis[fast_row, fast_column] = relation_hnf[
+                    fast_row, fast_column
+                ]
+                fast_column += 1
+            fast_row += 1
+    elif reuse_online_relation_support:
+        incremental_rank = relation_rank
+        while compact_source_row < relation_count:
+            if relation_support[compact_source_row, 0] != 0:
+                if support_count >= factor_count + 64:
+                    output[59] = 421
+                    output[60] = support_count
+                    return support_count, False
+                support_count += 1
+            compact_source_row += 1
+    while not reuse_online_relation_support and compact_source_row < relation_count:
+        support_used = True
+        if incremental_rank == factor_count:
+            support_used = not _cubic_relation_row_in_hnf(
+                online_membership_coordinates,
+                incremental_basis,
+                relation_matrix,
+                compact_source_row,
+                factor_count,
+            )
+        if support_used:
+            incremental_row: uint64 = 0
+            while incremental_row < factor_count:
+                incremental_column: uint64 = 0
+                while incremental_column < factor_count:
+                    incremental_source[incremental_row, incremental_column] = (
+                        incremental_basis[incremental_row, incremental_column]
+                    )
+                    incremental_column += 1
+                incremental_row += 1
+            incremental_column = 0
+            while incremental_column < factor_count:
+                incremental_source[factor_count, incremental_column] = relation_matrix[
+                    compact_source_row, incremental_column
+                ]
+                incremental_column += 1
+            if not fmpz_matrix_hnf_into(incremental_hnf, incremental_source):
+                return support_count, False
+            support_used = False
+            incremental_row = 0
+            while incremental_row < factor_count:
+                incremental_column = 0
+                while incremental_column < factor_count:
+                    if (
+                        incremental_hnf[incremental_row, incremental_column]
+                        != incremental_basis[incremental_row, incremental_column]
+                    ):
+                        support_used = True
+                    incremental_column += 1
+                incremental_row += 1
+        if support_used:
+            if support_count >= factor_count + 64:
+                output[59] = 421
+                output[60] = support_count
+                return support_count, False
+            relation_support[compact_source_row, 0] = 1
+            support_count += 1
+            incremental_rank = 0
+            incremental_row = 0
+            while incremental_row < factor_count:
+                incremental_nonzero = False
+                incremental_column = 0
+                while incremental_column < factor_count:
+                    incremental_value = incremental_hnf[
+                        incremental_row, incremental_column
+                    ]
+                    incremental_basis[incremental_row, incremental_column] = (
+                        incremental_value
+                    )
+                    if incremental_value != 0:
+                        incremental_nonzero = True
+                    incremental_column += 1
+                if incremental_nonzero:
+                    incremental_rank += 1
+                incremental_row += 1
+        compact_source_row += 1
+    if support_count < factor_count:
+        return support_count, False
+    if not reuse_online_relation_support:
+        incremental_row = 0
+        while incremental_row < factor_count:
+            incremental_column = 0
+            while incremental_column < factor_count:
+                if (
+                    incremental_basis[incremental_row, incremental_column]
+                    != relation_hnf[incremental_row, incremental_column]
+                ):
+                    output[59] = 422
+                    output[60] = support_count
+                    return support_count, False
+                incremental_column += 1
+            incremental_row += 1
+
+    return support_count, True
+
+
 @native
 def certified_complex_cubic_class_group_v1(
     output: IntegerBuffer,
@@ -8206,6 +8365,15 @@ def certified_complex_cubic_class_group_v1(
         if compound_search_active and compound_plan_index != compound_pair_count:
             return False
 
+        # A proof attempt owns its candidate unit and regulator. Discovery
+        # retains the cheap-unit witness unchanged if certification declines.
+        proof_unit_found = unit_found
+        proof_unit_zero = unit_zero
+        proof_unit_one = unit_one
+        proof_unit_two = unit_two
+        proof_regulator_lower = regulator_lower
+        proof_regulator_upper = regulator_upper
+
         uncompacted_relation_count: uint64 = relation_count
         output[50] = factor_count
         output[51] = group_count
@@ -8217,7 +8385,7 @@ def certified_complex_cubic_class_group_v1(
         # no-small-unit regime where the canonical support transcript also
         # replaces that later tall-prefix pass.
         reuse_online_relation_hnf = (
-            not unit_found
+            not proof_unit_found
             and online_relation_quotient_enabled
             and online_relation_count == relation_count
         )
@@ -8383,122 +8551,34 @@ def certified_complex_cubic_class_group_v1(
             incremental_source_rows,
             incremental_columns,
         )
-        support_count: uint64 = 0
-        incremental_rank: uint64 = 0
-        compact_source_row: uint64 = 0
-        if unit_found:
-            # The small-unit probe has already supplied the rank-one unit
-            # witness.  Keep every exact principal row for later transcript
-            # replay, but do not repeatedly canonicalize prefixes merely to
-            # shrink an audit payload that is not materialized on this call.
-            # The full relation HNF and Smith form above remain the class-group
-            # authority.
-            support_count = relation_count
-            incremental_rank = factor_count
-            while compact_source_row < relation_count:
-                relation_support[compact_source_row, 0] = 1
-                compact_source_row += 1
-            fast_row: uint64 = 0
-            while fast_row < factor_count:
-                fast_column: uint64 = 0
-                while fast_column < factor_count:
-                    incremental_basis[fast_row, fast_column] = relation_hnf[
-                        fast_row, fast_column
-                    ]
-                    fast_column += 1
-                fast_row += 1
-        elif reuse_online_relation_support:
-            incremental_rank = relation_rank
-            while compact_source_row < relation_count:
-                if relation_support[compact_source_row, 0] != 0:
-                    if support_count >= factor_count + 64:
-                        output[59] = 421
-                        output[60] = support_count
-                        return False
-                    support_count += 1
-                compact_source_row += 1
-        while not reuse_online_relation_support and compact_source_row < relation_count:
-            support_used = True
-            if incremental_rank == factor_count:
-                support_used = not _cubic_relation_row_in_hnf(
-                    online_membership_coordinates,
-                    incremental_basis,
-                    relation_matrix,
-                    compact_source_row,
-                    factor_count,
-                )
-            if support_used:
-                incremental_row: uint64 = 0
-                while incremental_row < factor_count:
-                    incremental_column: uint64 = 0
-                    while incremental_column < factor_count:
-                        incremental_source[incremental_row, incremental_column] = (
-                            incremental_basis[incremental_row, incremental_column]
-                        )
-                        incremental_column += 1
-                    incremental_row += 1
-                incremental_column = 0
-                while incremental_column < factor_count:
-                    incremental_source[factor_count, incremental_column] = (
-                        relation_matrix[compact_source_row, incremental_column]
-                    )
-                    incremental_column += 1
-                if not fmpz_matrix_hnf_into(incremental_hnf, incremental_source):
-                    return False
-                support_used = False
-                incremental_row = 0
-                while incremental_row < factor_count:
-                    incremental_column = 0
-                    while incremental_column < factor_count:
-                        if (
-                            incremental_hnf[incremental_row, incremental_column]
-                            != incremental_basis[incremental_row, incremental_column]
-                        ):
-                            support_used = True
-                        incremental_column += 1
-                    incremental_row += 1
-            if support_used:
-                if support_count >= factor_count + 64:
-                    output[59] = 421
-                    output[60] = support_count
-                    return False
-                relation_support[compact_source_row, 0] = 1
-                support_count += 1
-                incremental_rank = 0
-                incremental_row = 0
-                while incremental_row < factor_count:
-                    incremental_nonzero = False
-                    incremental_column = 0
-                    while incremental_column < factor_count:
-                        incremental_value = incremental_hnf[
-                            incremental_row, incremental_column
-                        ]
-                        incremental_basis[incremental_row, incremental_column] = (
-                            incremental_value
-                        )
-                        if incremental_value != 0:
-                            incremental_nonzero = True
-                        incremental_column += 1
-                    if incremental_nonzero:
-                        incremental_rank += 1
-                    incremental_row += 1
-            compact_source_row += 1
-        if support_count < factor_count:
+        proof_relation_support = arena.foreign_resource(
+            fmpz_matrix,
+            relation_count,
+            one_column,
+        )
+        proof_membership_coordinates = arena.foreign_resource(
+            fmpz_matrix,
+            one_column,
+            factor_count,
+        )
+        support_count, support_ready = _cubic_prepare_proof_relation_support(
+            relation_matrix,
+            relation_hnf,
+            relation_support,
+            proof_relation_support,
+            proof_membership_coordinates,
+            incremental_basis,
+            incremental_source,
+            incremental_hnf,
+            output,
+            relation_count,
+            factor_count,
+            relation_rank,
+            proof_unit_found,
+            reuse_online_relation_support,
+        )
+        if not support_ready:
             return False
-        if not reuse_online_relation_support:
-            incremental_row = 0
-            while incremental_row < factor_count:
-                incremental_column = 0
-                while incremental_column < factor_count:
-                    if (
-                        incremental_basis[incremental_row, incremental_column]
-                        != relation_hnf[incremental_row, incremental_column]
-                    ):
-                        output[59] = 422
-                        output[60] = support_count
-                        return False
-                    incremental_column += 1
-                incremental_row += 1
 
         # Preserve a bounded tail of final reduced-ideal witnesses not already in
         # the HNF support.  These redundant principal relations are useful for
@@ -8509,7 +8589,7 @@ def certified_complex_cubic_class_group_v1(
         compact_tail_count: uint64 = 0
         compact_source_row = compact_tail_start
         while compact_source_row < relation_count:
-            if relation_support[compact_source_row, 0] == 0:
+            if proof_relation_support[compact_source_row, 0] == 0:
                 compact_tail_count += 1
             compact_source_row += 1
         compact_relation_count: uint64 = support_count + compact_tail_count
@@ -8531,7 +8611,7 @@ def certified_complex_cubic_class_group_v1(
         compact_row: uint64 = _cubic_copy_relation_support_tail(
             relation_matrix,
             relation_elements,
-            relation_support,
+            proof_relation_support,
             relation_count,
             factor_count,
             compact_tail_start,
@@ -8540,7 +8620,7 @@ def certified_complex_cubic_class_group_v1(
         )
         if compact_row != compact_relation_count:
             return False
-        if unit_found:
+        if proof_unit_found:
             compact_row = 0
             while compact_row < compact_relation_count:
                 compact_column: uint64 = 0
@@ -8584,7 +8664,7 @@ def certified_complex_cubic_class_group_v1(
                     compact_column += 1
                 compact_row += 1
         compact_index = class_number_upper
-        if not unit_found:
+        if not proof_unit_found:
             compact_smith = arena.foreign_resource(
                 fmpz_matrix,
                 compact_relation_count,
@@ -8605,12 +8685,12 @@ def certified_complex_cubic_class_group_v1(
         if compact_index != class_number_upper:
             return False
         dependency_relation_elements = compact_relation_elements
-        relation_count = compact_relation_count
-        output[52] = relation_count
+        proof_relation_count = compact_relation_count
+        output[52] = proof_relation_count
         # Reconstruct missing units from exact HNF dependencies.
-        dependency_scan_active = not unit_found
-        dependency_relation_storage: uint64 = relation_count
-        dependency_row_storage: uint64 = relation_count - relation_rank
+        dependency_scan_active = not proof_unit_found
+        dependency_relation_storage: uint64 = proof_relation_count
+        dependency_row_storage: uint64 = proof_relation_count - relation_rank
         if not dependency_scan_active:
             dependency_relation_storage = 1
             dependency_row_storage = 1
@@ -8626,7 +8706,7 @@ def certified_complex_cubic_class_group_v1(
         ):
             return False
         output[59] = 431
-        dependency_count: uint64 = relation_count - relation_rank
+        dependency_count: uint64 = proof_relation_count - relation_rank
         dependency_relations = arena.foreign_resource(
             fmpz_matrix,
             dependency_row_storage,
@@ -8649,7 +8729,7 @@ def certified_complex_cubic_class_group_v1(
             dependency_row: uint64 = 0
             while dependency_row < dependency_count:
                 relation_index: uint64 = 0
-                while relation_index < relation_count:
+                while relation_index < proof_relation_count:
                     dependency_relations[dependency_row, relation_index] = (
                         compact_relation_transform[
                             relation_rank + dependency_row, relation_index
@@ -8669,7 +8749,7 @@ def certified_complex_cubic_class_group_v1(
             dependency_probe_row: uint64 = 0
             while dependency_probe_row < dependency_count:
                 relation_index: uint64 = 0
-                while relation_index < relation_count:
+                while relation_index < proof_relation_count:
                     coefficient_bits = _cubic_bounded_bit_length(
                         dependency_reduced[dependency_probe_row, relation_index],
                         512,
@@ -8704,7 +8784,7 @@ def certified_complex_cubic_class_group_v1(
             if dependency_root_upper < dependency_root_lower:
                 return False
             relation_index: uint64 = 0
-            while relation_index < relation_count:
+            while relation_index < proof_relation_count:
                 (
                     witness_log_lower,
                     witness_log_upper,
@@ -8744,7 +8824,7 @@ def certified_complex_cubic_class_group_v1(
             dependency_log_lower = 0
             dependency_log_upper = 0
             relation_index: uint64 = 0
-            while relation_index < relation_count:
+            while relation_index < proof_relation_count:
                 dependency_exponent = dependency_reduced[dependency_row, relation_index]
                 if dependency_exponent != 0:
                     dependency_nonzero = True
@@ -8768,7 +8848,7 @@ def certified_complex_cubic_class_group_v1(
                 dependency_regulator_upper = -dependency_log_lower
             if dependency_nonzero and dependency_orientation != 0:
                 relation_index = 0
-                while relation_index < relation_count:
+                while relation_index < proof_relation_count:
                     dependency_exponent = dependency_reduced[
                         dependency_row, relation_index
                     ]
@@ -8776,34 +8856,34 @@ def certified_complex_cubic_class_group_v1(
                         dependency_orientation * dependency_exponent
                     )
                     relation_index += 1
-                if not unit_found:
+                if not proof_unit_found:
                     relation_index = 0
-                    while relation_index < relation_count:
+                    while relation_index < proof_relation_count:
                         unit_combinations[0, relation_index] = unit_combinations[
                             1, relation_index
                         ]
                         relation_index += 1
-                    unit_found = True
-                    regulator_lower = dependency_regulator_lower
-                    regulator_upper = dependency_regulator_upper
+                    proof_unit_found = True
+                    proof_regulator_lower = dependency_regulator_lower
+                    proof_regulator_upper = dependency_regulator_upper
                 else:
                     candidate_middle = (
                         dependency_regulator_lower + dependency_regulator_upper
                     )
-                    best_middle = regulator_lower + regulator_upper
+                    best_middle = proof_regulator_lower + proof_regulator_upper
                     if candidate_middle < best_middle:
                         relation_index = 0
-                        while relation_index < relation_count:
+                        while relation_index < proof_relation_count:
                             saved_exponent = unit_combinations[0, relation_index]
                             unit_combinations[0, relation_index] = unit_combinations[
                                 1, relation_index
                             ]
                             unit_combinations[1, relation_index] = saved_exponent
                             relation_index += 1
-                        saved_lower = regulator_lower
-                        saved_upper = regulator_upper
-                        regulator_lower = dependency_regulator_lower
-                        regulator_upper = dependency_regulator_upper
+                        saved_lower = proof_regulator_lower
+                        saved_upper = proof_regulator_upper
+                        proof_regulator_lower = dependency_regulator_lower
+                        proof_regulator_upper = dependency_regulator_upper
                         dependency_regulator_lower = saved_lower
                         dependency_regulator_upper = saved_upper
                     reduction_step: uint64 = 0
@@ -8812,7 +8892,7 @@ def certified_complex_cubic_class_group_v1(
                         candidate_middle = (
                             dependency_regulator_lower + dependency_regulator_upper
                         )
-                        best_middle = regulator_lower + regulator_upper
+                        best_middle = proof_regulator_lower + proof_regulator_upper
                         reduction_quotient = (
                             candidate_middle + best_middle // 2
                         ) // best_middle
@@ -8820,11 +8900,11 @@ def certified_complex_cubic_class_group_v1(
                             reduction_quotient = 1
                         remainder_lower = (
                             dependency_regulator_lower
-                            - reduction_quotient * regulator_upper
+                            - reduction_quotient * proof_regulator_upper
                         )
                         remainder_upper = (
                             dependency_regulator_upper
-                            - reduction_quotient * regulator_lower
+                            - reduction_quotient * proof_regulator_lower
                         )
                         remainder_orientation = 0
                         if remainder_lower > 0:
@@ -8836,12 +8916,12 @@ def certified_complex_cubic_class_group_v1(
                             remainder_upper = -saved_lower
                         if (
                             remainder_orientation == 0
-                            or remainder_upper >= regulator_lower
+                            or remainder_upper >= proof_regulator_lower
                         ):
                             reduction_active = False
                         else:
                             relation_index = 0
-                            while relation_index < relation_count:
+                            while relation_index < proof_relation_count:
                                 best_exponent = unit_combinations[0, relation_index]
                                 candidate_exponent = unit_combinations[
                                     1, relation_index
@@ -8855,15 +8935,15 @@ def certified_complex_cubic_class_group_v1(
                                 )
                                 unit_combinations[1, relation_index] = best_exponent
                                 relation_index += 1
-                            dependency_regulator_lower = regulator_lower
-                            dependency_regulator_upper = regulator_upper
-                            regulator_lower = remainder_lower
-                            regulator_upper = remainder_upper
+                            dependency_regulator_lower = proof_regulator_lower
+                            dependency_regulator_upper = proof_regulator_upper
+                            proof_regulator_lower = remainder_lower
+                            proof_regulator_upper = remainder_upper
                         reduction_step += 1
             dependency_row += 1
         output[59] = 434
         # If class-lattice compaction loses the unit, add a bounded witness tail.
-        if not unit_found:
+        if not proof_unit_found:
             recovery_tail_start: uint64 = 0
             if uncompacted_relation_count > _CUBIC_RELATION_RECOVERY_TAIL:
                 recovery_tail_start = (
@@ -8872,7 +8952,7 @@ def certified_complex_cubic_class_group_v1(
             recovery_tail_count: uint64 = 0
             recovery_source_row: uint64 = recovery_tail_start
             while recovery_source_row < uncompacted_relation_count:
-                if relation_support[recovery_source_row, 0] == 0:
+                if proof_relation_support[recovery_source_row, 0] == 0:
                     recovery_tail_count += 1
                 recovery_source_row += 1
             recovery_relation_count: uint64 = support_count + recovery_tail_count
@@ -8889,7 +8969,7 @@ def certified_complex_cubic_class_group_v1(
             recovery_row: uint64 = _cubic_copy_relation_support_tail(
                 relation_matrix,
                 relation_elements,
-                relation_support,
+                proof_relation_support,
                 uncompacted_relation_count,
                 factor_count,
                 recovery_tail_start,
@@ -8978,16 +9058,16 @@ def certified_complex_cubic_class_group_v1(
             if prefix_unit_status < 0:
                 return False
             if prefix_unit_status == 1:
-                unit_zero = prefix_unit_result[0, 0]
-                unit_one = prefix_unit_result[0, 1]
-                unit_two = prefix_unit_result[0, 2]
-                regulator_lower = prefix_unit_result[0, 3]
-                regulator_upper = prefix_unit_result[0, 4]
-                unit_found = True
+                proof_unit_zero = prefix_unit_result[0, 0]
+                proof_unit_one = prefix_unit_result[0, 1]
+                proof_unit_two = prefix_unit_result[0, 2]
+                proof_regulator_lower = prefix_unit_result[0, 3]
+                proof_regulator_upper = prefix_unit_result[0, 4]
+                proof_unit_found = True
                 dependency_scan_active = False
-        if unit_found:
+        if proof_unit_found:
             output[61] = 1
-        if not unit_found:
+        if not proof_unit_found:
             # A bounded or compact relation prefix may have full class rank
             # without exposing the rank-one unit lattice.  Classify this as
             # relation exhaustion so the host may authorize the next exact
@@ -9014,9 +9094,9 @@ def certified_complex_cubic_class_group_v1(
                 basis_two_two,
                 dependency_relation_elements,
                 unit_combinations,
-                relation_count,
-                regulator_lower,
-                regulator_upper,
+                proof_relation_count,
+                proof_regulator_lower,
+                proof_regulator_upper,
                 analytic_scale,
                 dependency_log_scale,
             )
@@ -9053,15 +9133,15 @@ def certified_complex_cubic_class_group_v1(
                     reconstructed_regulator_lower > 0
                     and reconstructed_regulator_upper >= reconstructed_regulator_lower
                     and reconstructed_regulator_lower * dependency_scale_quotient
-                    <= regulator_upper
-                    and regulator_lower
+                    <= proof_regulator_upper
+                    and proof_regulator_lower
                     <= reconstructed_regulator_upper * dependency_scale_quotient
                 ):
-                    unit_zero = reconstructed_zero
-                    unit_one = reconstructed_one
-                    unit_two = reconstructed_two
-                    regulator_lower = reconstructed_regulator_lower
-                    regulator_upper = reconstructed_regulator_upper
+                    proof_unit_zero = reconstructed_zero
+                    proof_unit_one = reconstructed_one
+                    proof_unit_two = reconstructed_two
+                    proof_regulator_lower = reconstructed_regulator_lower
+                    proof_regulator_upper = reconstructed_regulator_upper
                     regulator_at_dependency_scale = False
                     dependency_materialization_active = False
                 else:
@@ -9076,7 +9156,7 @@ def certified_complex_cubic_class_group_v1(
                 # Bound the small exact-product fallback before exponentiation.
                 dependency_exponent_total = 0
                 relation_index = 0
-                while relation_index < relation_count:
+                while relation_index < proof_relation_count:
                     dependency_exponent = unit_combinations[0, relation_index]
                     if dependency_exponent < 0:
                         dependency_exponent = -dependency_exponent
@@ -9103,7 +9183,7 @@ def certified_complex_cubic_class_group_v1(
                     dependency_coordinates[1, coordinate_index] = identity_coordinate
                     coordinate_index += 1
                 relation_index = 0
-                while relation_index < relation_count:
+                while relation_index < proof_relation_count:
                     dependency_exponent = unit_combinations[0, relation_index]
                     absolute_exponent = dependency_exponent
                     if absolute_exponent < 0:
@@ -9142,40 +9222,30 @@ def certified_complex_cubic_class_group_v1(
                     5,
                 ):
                     return False
-                unit_zero = dependency_coordinates[4, 0]
-                unit_one = dependency_coordinates[4, 1]
-                unit_two = dependency_coordinates[4, 2]
+                proof_unit_zero = dependency_coordinates[4, 0]
+                proof_unit_one = dependency_coordinates[4, 1]
+                proof_unit_two = dependency_coordinates[4, 2]
                 dependency_norm = _cubic_norm_form_value(
                     workspace,
-                    unit_zero,
-                    unit_one,
-                    unit_two,
+                    proof_unit_zero,
+                    proof_unit_one,
+                    proof_unit_two,
                 )
                 if dependency_norm != 1 and dependency_norm != -1:
                     return False
             if regulator_at_dependency_scale:
-                regulator_lower //= dependency_scale_quotient
-                regulator_upper = (
-                    regulator_upper + dependency_scale_quotient - 1
+                proof_regulator_lower //= dependency_scale_quotient
+                proof_regulator_upper = (
+                    proof_regulator_upper + dependency_scale_quotient - 1
                 ) // dependency_scale_quotient
-        output[56] = unit_zero
-        output[57] = unit_one
-        output[58] = unit_two
+        output[56] = proof_unit_zero
+        output[57] = proof_unit_one
+        output[58] = proof_unit_two
         output[63] = 44
 
-        if regulator_lower <= 0 or regulator_upper < regulator_lower:
+        if proof_regulator_lower <= 0 or proof_regulator_upper < proof_regulator_lower:
             return False
         output[63] = 5
-
-        # Publish the factor lattices before entering analytic certification.
-        # The BF plan has its own arena vector, so the exact field and
-        # prime-power state remains available for a bounded in-call retry.
-        if transcript_mode == 1 and not _cubic_publish_relation_factor_rows(
-            workspace,
-            factor_count,
-            transcript_factor_rows,
-        ):
-            return False
 
         # Build and evaluate the first exact Belabas--Friedman plan through
         # the same closed native helpers used by the bounded refinement.
@@ -9236,8 +9306,8 @@ def certified_complex_cubic_class_group_v1(
             log_numerators,
             log_denominators,
             log_endpoints,
-            regulator_lower,
-            regulator_upper,
+            proof_regulator_lower,
+            proof_regulator_upper,
             analytic_scale,
             analytic_precision,
         )
@@ -9312,9 +9382,9 @@ def certified_complex_cubic_class_group_v1(
                 identity_zero,
                 identity_one,
                 identity_two,
-                unit_zero,
-                unit_one,
-                unit_two,
+                proof_unit_zero,
+                proof_unit_one,
+                proof_unit_two,
                 analytic_scale,
                 dependency_coordinates,
             )
@@ -9338,9 +9408,9 @@ def certified_complex_cubic_class_group_v1(
                     identity_zero,
                     identity_one,
                     identity_two,
-                    unit_zero,
-                    unit_one,
-                    unit_two,
+                    proof_unit_zero,
+                    proof_unit_one,
+                    proof_unit_two,
                     analytic_scale,
                 )
                 saturation_prime = 3
@@ -9363,9 +9433,9 @@ def certified_complex_cubic_class_group_v1(
                     identity_zero,
                     identity_one,
                     identity_two,
-                    unit_zero,
-                    unit_one,
-                    unit_two,
+                    proof_unit_zero,
+                    proof_unit_one,
+                    proof_unit_two,
                     analytic_scale,
                 )
                 saturation_prime = 5
@@ -9396,21 +9466,23 @@ def certified_complex_cubic_class_group_v1(
                 if (
                     saturation_regulator_lower <= 0
                     or saturation_regulator_upper < saturation_regulator_lower
-                    or saturation_regulator_lower * saturation_prime > regulator_upper
-                    or regulator_lower > saturation_regulator_upper * saturation_prime
+                    or saturation_regulator_lower * saturation_prime
+                    > proof_regulator_upper
+                    or proof_regulator_lower
+                    > saturation_regulator_upper * saturation_prime
                 ):
                     return False
-                unit_zero = saturation_root_zero
-                unit_one = saturation_root_one
-                unit_two = saturation_root_two
-                regulator_lower = saturation_regulator_lower
-                regulator_upper = saturation_regulator_upper
+                proof_unit_zero = saturation_root_zero
+                proof_unit_one = saturation_root_one
+                proof_unit_two = saturation_root_two
+                proof_regulator_lower = saturation_regulator_lower
+                proof_regulator_upper = saturation_regulator_upper
                 log_regulator_lower, log_regulator_upper = _cubic_log_interval_bounds(
                     log_numerators,
                     log_denominators,
                     log_endpoints,
-                    regulator_lower,
-                    regulator_upper,
+                    proof_regulator_lower,
+                    proof_regulator_upper,
                     analytic_scale,
                     analytic_precision,
                 )
@@ -9524,8 +9596,8 @@ def certified_complex_cubic_class_group_v1(
             )
             index_log_lower = algebraic_lower - zeta_upper
             index_log_upper = algebraic_upper - zeta_lower
-        output[40] = regulator_lower
-        output[41] = regulator_upper
+        output[40] = proof_regulator_lower
+        output[41] = proof_regulator_upper
         output[42] = zeta_lower
         output[43] = zeta_upper
         output[44] = index_log_lower
@@ -9548,10 +9620,18 @@ def certified_complex_cubic_class_group_v1(
         ):
             return False
 
+        # Publish detached proof data only after exact index-one acceptance.
+        if transcript_mode == 1 and not _cubic_publish_relation_factor_rows(
+            workspace,
+            factor_count,
+            transcript_factor_rows,
+        ):
+            return False
+
         if transcript_mode == 1 and not _cubic_publish_relation_rows(
             compact_relation_matrix,
             compact_relation_elements,
-            relation_count,
+            proof_relation_count,
             factor_count,
             transcript_relation_rows,
             transcript_relation_elements,
@@ -9573,11 +9653,11 @@ def certified_complex_cubic_class_group_v1(
         output[20] = generator_bound
         output[21] = factor_count
         output[22] = group_count
-        output[23] = relation_count
+        output[23] = proof_relation_count
         output[24] = 1
-        output[25] = unit_zero
-        output[26] = unit_one
-        output[27] = unit_two
+        output[25] = proof_unit_zero
+        output[26] = proof_unit_one
+        output[27] = proof_unit_two
         output[28] = order_discriminant
         output[29] = equation_order_index
         output[30] = denominator
@@ -9590,8 +9670,8 @@ def certified_complex_cubic_class_group_v1(
         output[37] = analytic_term_count
         output[38] = analytic_value_count
         output[39] = analytic_precision
-        output[40] = regulator_lower
-        output[41] = regulator_upper
+        output[40] = proof_regulator_lower
+        output[41] = proof_regulator_upper
         output[42] = zeta_lower
         output[43] = zeta_upper
         output[44] = index_log_lower

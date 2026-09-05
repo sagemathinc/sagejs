@@ -25,7 +25,7 @@ const rootFunction = "certified_complex_cubic_class_group_v1";
 const publicArenaMemoryLimit = 1_048_576;
 const publicArenaCheckpointLimit = 3_145_728;
 const expectedNameDigest =
-  "b3442051662cc70970c1f5c62c5da591cc02a4d51919144991df0acdccfef5c4";
+  "14432ff7eea5340ff9229d9ec895d60dc82fb3c09fbab7c3611c71073497b256";
 const expectedHostFunctions = Object.freeze([
   "_cubic_arctan_reciprocal_bounds",
   "_cubic_atanh_log_bounds",
@@ -117,8 +117,8 @@ test("the complete cubic closure is one direct fmpz program", {
   );
 
   assert.equal(ir.version, 38);
-  assert.equal(functions.size, 84);
-  assert.equal(edges.length, 195);
+  assert.equal(functions.size, 85);
+  assert.equal(edges.length, 196);
   assert.equal(
     createHash("sha256").update(names.join("\n")).digest("hex"),
     expectedNameDigest,
@@ -154,7 +154,7 @@ test("the complete cubic closure is one direct fmpz program", {
   );
   assert.deepEqual(hostFunctions, expectedHostFunctions);
   assert.equal(hostFunctions.length, 22);
-  assert.equal(privateFunctions.length, 62);
+  assert.equal(privateFunctions.length, 63);
   assert.equal(functions.get(rootFunction).hostCallable, true);
   assert.equal((header.match(/\bint sagejs_kernel_/g) || []).length, 22);
   assert.equal((core.match(/\nint sagejs_kernel_/g) || []).length, 22);
@@ -242,7 +242,7 @@ test("one unsupported operation atomically removes fmpz from the closure", {
   assert.notEqual(unsupported, withImport);
 
   const ir = await lowerClosure(unsupported);
-  assert.equal(ir.functions.length, 84);
+  assert.equal(ir.functions.length, 85);
   assert.deepEqual(
     ir.functions.filter((fn) => fn.analysis.backend.kind === "fmpz"),
     [],
