@@ -169,6 +169,16 @@ milestones, not a claim that every PR is merged or the program is complete.
   cover tampering, missing/added outputs, links, and refresh refusal. This is
   an integrity prerequisite, not completion of generation locking, mid-build
   source-change detection, dependency identity, or narrower invalidation.
+- Build-receipt v3 separates a conservative artifact-input fingerprint from
+  the full validation-workspace fingerprint. Audited test, documentation, and
+  baseline edits can reuse byte-verified compiler outputs; validation still
+  records and checks its own complete before/after workspace. Numerical
+  publication's manifest-reviewed test files remain build inputs, as do
+  unknown paths, source docstrings, generators, and parser submodule contents.
+  Native refresh preserves the original compiler-build workspace lineage.
+  Old receipts still require a genuine build. This is narrower invalidation,
+  not a claim to bind every installed dependency or source-symlink referent,
+  detect mid-build edits, or safely publish concurrent build generations.
 
 Use this checkpoint to guide sequencing, not as a permanent status dashboard.
 Current claims must link the exact revisions and receipts; consult

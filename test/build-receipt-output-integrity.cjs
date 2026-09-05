@@ -52,6 +52,8 @@ test("old, missing, and malformed output bindings cannot qualify a build", (cont
   const { root, identity, receipt } = fixture(context);
   for (const changed of [
     { schema: "sagejs.build-receipt/v1" },
+    { schema: "sagejs.build-receipt/v2" },
+    { identity: { ...identity, artifactInputsSha256: undefined } },
     { outputBindings: undefined },
     { outputBindings: [] },
     { outputBindings: {} },

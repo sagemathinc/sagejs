@@ -23,6 +23,7 @@ const {
   inspectSourceBuildReceipt,
   validateBuildReceipt,
   workspaceFingerprint,
+  artifactInputsFingerprint,
   outputBindings,
   outputWitnesses,
 } = require("../scripts/build-receipt.cjs");
@@ -232,9 +233,9 @@ test("build receipts require identical inputs and every output witness", (contex
   for (const name of ["compiler/compiler.js", "tools/kernel.js", "runtime-cache/manifest.json", "sagejs-version.json"]) {
     writeFileSync(join(root, "dist", name), "built\n");
   }
-  const identity = { source: "same", node: "same" };
+  const identity = { source: "same", node: "same", artifactInputsSha256: "a".repeat(64) };
   const receipt = {
-    schema: "sagejs.build-receipt/v2",
+    schema: "sagejs.build-receipt/v3",
     completedAt: "2026-08-20T00:00:00.000Z",
     durationMilliseconds: 12,
     identity,
@@ -306,6 +307,7 @@ test("native bootstrap refreshes a proven source-build receipt", (context) => {
   }
   const identity = {
     workspaceSha256: workspaceFingerprint(root),
+    artifactInputsSha256: artifactInputsFingerprint(root),
     nativeInputs: [{ package: "flint", status: "absent" }],
     node: process.versions.node,
     v8: process.versions.v8,
@@ -315,7 +317,7 @@ test("native bootstrap refreshes a proven source-build receipt", (context) => {
   writeFileSync(
     join(root, "dist", "build-receipt.json"),
     `${JSON.stringify({
-      schema: "sagejs.build-receipt/v2",
+      schema: "sagejs.build-receipt/v3",
       completedAt: "2026-08-20T00:00:00.000Z",
       durationMilliseconds: 12,
       identity,

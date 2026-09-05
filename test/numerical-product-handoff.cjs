@@ -137,7 +137,7 @@ test("the numerical product handoff is exact, source-bound, and installable", (c
   assert.equal(readFileSync(join(root, "dist/numerical/cminpack.wasm"), "utf8"),
     "cminpack-production-wasm");
 
-  const identity = { numericalRuntimeProvider: { available: true } };
+  const identity = { numericalRuntimeProvider: { available: true }, artifactInputsSha256: "a".repeat(64) };
   for (const name of ["compiler", "tools", "vendor", "module-cache", "runtime-cache"]) {
     mkdirSync(join(root, "dist", name), { recursive: true });
   }
@@ -145,7 +145,7 @@ test("the numerical product handoff is exact, source-bound, and installable", (c
     write(join(root, "dist", name), "built\n");
   }
   const receipt = {
-    schema: "sagejs.build-receipt/v2",
+    schema: "sagejs.build-receipt/v3",
     identity,
     outputs: outputWitnesses(root, identity),
     outputBindings: outputBindings(root, outputWitnesses(root, identity)),
