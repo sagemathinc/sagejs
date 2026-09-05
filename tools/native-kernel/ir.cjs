@@ -849,6 +849,64 @@ function ffiImports(topLevel, filename) {
   return { functions, resources };
 }
 
+function rejectNestedArenaCalls(functions, filename) {
+  function walk(statements, insideArena, visit) {
+    for (const statement of statements || []) {
+      visit(statement, insideArena);
+      walk(statement.setup, insideArena, visit);
+      walk(statement.condition?.operations, insideArena, visit);
+      walk(
+        statement.body,
+        insideArena || statement.kind === "integer.arena.scope",
+        visit,
+      );
+      walk(statement.alternative, insideArena, visit);
+      walk(statement.right?.operations, insideArena, visit);
+    }
+  }
+
+  // A callee may hide its arena behind any number of ordinary native helpers
+  // (including imported helpers). Track that effect to a fixed point, rather
+  // than relying on the per-function lexical nesting check or fmpz eligibility.
+  const entersArena = new Map();
+  for (const fn of functions) {
+    walk(fn.body, false, (statement) => {
+      if (statement.kind === "integer.arena.scope") {
+        entersArena.set(fn.name, [fn.name]);
+      }
+    });
+  }
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const fn of functions) {
+      if (entersArena.has(fn.name)) continue;
+      const dependency = (fn.dependencies || []).find(
+        (name) => entersArena.has(name),
+      );
+      if (dependency !== undefined) {
+        entersArena.set(fn.name, [fn.name, ...entersArena.get(dependency)]);
+        changed = true;
+      }
+    }
+  }
+  for (const fn of functions) {
+    walk(fn.body, false, (statement, insideArena) => {
+      if (
+        insideArena && statement.kind === "native.call" &&
+        entersArena.has(statement.function)
+      ) {
+        const path = [fn.name, ...entersArena.get(statement.function)];
+        fail(
+          `${filename}: ${fn.name}: nested NativeExactArena scopes through ` +
+          `native calls are not supported (${path.join(" -> ")}); ` +
+          "an independent checkpoint may invalidate borrowed exact storage",
+        );
+      }
+    });
+  }
+}
+
 async function lowerSource(source, filename, options = {}) {
   const compiler = createCompiler();
   const { createPythonCompilerFrontend } = require(
@@ -1119,7 +1177,9 @@ async function lowerSource(source, filename, options = {}) {
       ...(imported.ir.nativeSourceDependencies || []),
     );
   }
-  const selected = analyzeExactModule([...lowered, ...importedLowered]).map(
+  const combined = [...lowered, ...importedLowered];
+  rejectNestedArenaCalls(combined, filename);
+  const selected = analyzeExactModule(combined).map(
     (fn, index) => index < lowered.length
       ? finalizeFunctionProvenance(
           fn,
