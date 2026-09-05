@@ -41,7 +41,7 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
   const functions = topLevel.filter(node => kind(node) === "AST_Function");
   const checkShadow = target => {
     if (!target || typeof target !== "object") return;
-    if (kind(target) === "AST_SymbolRef") {
+    if (["AST_SymbolRef", "AST_SymbolAlias"].includes(kind(target))) {
       requireThat(!schemas.has(target.name) && target.name !== "NativeWorkspace", filename,
         "workspace schema names cannot be shadowed by value bindings");
     }
@@ -78,6 +78,11 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
       if (!node || typeof node !== "object") return;
       if (kind(node) === "AST_Assign") checkShadow(node.left);
       if (kind(node) === "AST_AnnotatedAssignment") checkShadow(node.target);
+      // Python loop indices and context-manager aliases are local bindings,
+      // just like assignment targets. They must not turn a runtime value into
+      // a compile-time schema merely because the spelling matches its name.
+      if (kind(node) === "AST_ForIn") checkShadow(node.init);
+      if (kind(node) === "AST_With") list(node.clauses).forEach(clause => checkShadow(clause.alias));
       if (typeof node.name === "string") requireThat(!node.name.startsWith("sagejs_workspace_"),
         filename, "sagejs_workspace_ is reserved for flattened workspace bindings");
       for (const [key, value] of Object.entries(node)) {
