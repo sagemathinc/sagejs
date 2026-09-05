@@ -98,3 +98,26 @@ requires a current build and unchanged identities before qualification.
 Execution has time/output bounds and a subject V8 heap limit; these are not a
 security sandbox or a total-RSS/download/decompression memory quota. Temporary
 programs, installed targets and writable caches are removed in `finally`.
+
+## Initial source-bound observations
+
+The Linux x64 run at `dc958903cac1da45a101691aede0f07bbbc70b69`
+(Node 26.8.1, CPython 3.14.4) completed with unchanged source, build outputs,
+oracle executable and installed wheel tree. Seven of eleven workflows passed:
+packaging, attrs, tomli, decorator, sortedcontainers, pytz and python-dateutil.
+The complete package matrix **did not qualify**. Remaining observations were:
+
+| Package | Required failure |
+| --- | --- |
+| six | Correct smoke output, but module `__file__` became `<string>` instead of the installed source path. |
+| pyparsing | Nested-class base lookup raised `ReferenceError: Chinese is not defined`. |
+| idna | Correct smoke output, but Node's deprecated built-in punycode warning leaked to stderr. |
+| mpmath | Subject exceeded the 30-second execution deadline; no completed result. |
+
+With one sample, three warmups and 1000 calls per batch, packaging and tomli
+showed approximately 5.6/6.8 seconds of import time and 2.8/2.0 seconds per warm
+batch. The paired CPython observations were about 24/15 ms and 12/9 ms. These
+are provisional investigation leads, not independently confirmed cliffs, and
+do not waive the remaining behavioral failures. Reproduce with `--timings
+--samples 1 --warmups 3 --iterations 1000`; retain `--json` evidence locally.
+No raw evidence or installed wheel caches are included in shipped artifacts.
