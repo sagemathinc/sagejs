@@ -1680,14 +1680,32 @@ class FiniteFieldExtensionParent(sage.Parent):
         return runtime.math_tuple([sage.AlgebraicExtensionFunctor, self._primeSubfield])
 
     def __iter__(self) -> Iterator[FiniteFieldExtensionElement]:
-        yield self.zero()
-        value = self.gen()
-        generator = value
-        index = runtime.bigint(1)
+        """Enumerate power-basis coordinates with the constant digit first.
+
+        A defining generator need not generate the multiplicative group.
+        Carrying in base `p` visits every element even for nonprimitive moduli.
+        The iterator retains only `degree()` digits and basis elements.
+        """
+        powers = [self.one()]
+        generator = self.gen()
+        for _index in range(1, self._degree):
+            powers.append(powers[-1]._mul_(generator))
+        digits = [runtime.bigint(0) for _index in range(self._degree)]
+        value = self.zero()
+        index = runtime.bigint(0)
         while index < self._order:
             yield value
-            value = value._mul_(generator)
             index += runtime.bigint(1)
+            if index == self._order:
+                break
+            for position in range(self._degree):
+                # Adding the basis element wraps this coordinate to zero
+                # exactly when its digit carries into the next position.
+                value = value._add_(powers[position])
+                digits[position] += runtime.bigint(1)
+                if digits[position] < self._prime:
+                    break
+                digits[position] = runtime.bigint(0)
 
 
 @runtime.callable_instance_class
