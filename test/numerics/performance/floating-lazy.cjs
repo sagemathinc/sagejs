@@ -13,6 +13,53 @@ const { inspectToolchain, wasmKernelToolchain } = require("../../../packages/was
 const root = path.resolve(__dirname, "../../..");
 const logical = "sagejs/numerics/statistics/_packed.py";
 
+test("prepared root loading authenticates imported evaluator source", {
+  skip: inspectToolchain({ root }).ready ? false : "prepared WASI toolchain required",
+  timeout: 180000,
+}, async () => {
+  const directory=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-floating-closure-"));
+  try {
+    const rootSource="sagejs/numerics/_evaluation_root.py";
+    const helperSource="sagejs/numerics/_evaluation_core.py";
+    const manifestPath=path.join(directory,"sources.json");
+    fs.writeFileSync(manifestPath,JSON.stringify({kernels:[{
+      id:"prepared-closure-test-production",source:"src/lib/"+rootSource,
+      functions:["bisect_program"],fallback:"same-source",oracles:["CPython"],
+    }]}));
+    const toolchain=wasmKernelToolchain({root});
+    for(const key of ["gmpPrefix","flintPrefix","mpfrPrefix","mpcPrefix"]) toolchain[key]=path.join(directory,"absent",key);
+    const manifest=await buildWasmProductionPacks({root,manifestPath,outputRoot:directory,toolchain,isolateFloat64:true});
+    const helperHash=createHash("sha256").update(fs.readFileSync(path.join(root,"src/lib",helperSource))).digest("hex");
+    assert.deepEqual(manifest.kernels[0].sourceDependencies,[{logicalSource:helperSource,sourceHash:helperHash}]);
+    fs.mkdirSync(path.join(directory,"dist"));
+    fs.copyFileSync(path.join(root,"tools/native-kernel/wasm-pack-loader.mjs"),path.join(directory,"dist/wasm-pack-loader.mjs"));
+    fs.copyFileSync(path.join(root,"packages/flint-wasm/floating-kernels.mjs"),path.join(directory,"floating-kernels.mjs"));
+    const {createLazyFloatingKernels}=await import(pathToFileURL(path.join(directory,"floating-kernels.mjs")));
+    const wasm=fs.readFileSync(path.join(directory,manifest.packs[0].asset));
+    for(const mode of ["valid","missing","changed","manifest-tampered"]) {
+      const modules={root:{source:rootSource,sourceSha256:manifest.kernels[0].sourceHash}};
+      if(mode!=="missing") modules.helper={source:helperSource,sourceSha256:mode==="changed"?"0".repeat(64):helperHash};
+      const selected=structuredClone(manifest);
+      if(mode==="manifest-tampered") selected.kernels[0].sourceDependencies=[];
+      let fetched=0;
+      const lazy=createLazyFloatingKernels({moduleBundle:{modules},manifestUrl:"https://example.invalid/index.json",
+        async fetchResource(url) {fetched++;return new Response(String(url).endsWith("index.json")?JSON.stringify(selected):wasm);},
+        host(_pack,module) {
+          const imports={};for(const item of WebAssembly.Module.imports(module)) {
+            assert.equal(item.module,"wasi_snapshot_preview1"); imports[item.module]??={};
+            imports[item.module][item.name]=()=>{throw Error("host callback");};
+          } return imports;
+        },
+      });
+      await lazy.prepare(["sagejs.numerics.prepared_roots"]);
+      assert.equal(lazy.status().state,mode==="valid"?"ready":"unavailable",mode);
+      if(mode==="missing"||mode==="changed") assert.equal(fetched,1);
+      if(mode!=="valid") assert.equal(lazy.resolve(rootSource,"bisect_program"),null);
+      lazy.close();
+    }
+  } finally {fs.rmSync(directory,{recursive:true,force:true});}
+});
+
 test("optional floating preparation binds Python sources before importing native decorators", {
   skip: inspectToolchain({ root }).ready ? false : "prepared WASI toolchain required",
   timeout: 180000,

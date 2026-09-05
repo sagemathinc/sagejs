@@ -57,6 +57,7 @@ function authenticatedCapabilityIndex(manifest, authenticatedDomains) {
     if (identityModule === undefined ||
         identityModule.logicalSource !== kernel.logicalSource ||
         identityModule.sourceHash !== kernel.sourceHash ||
+        !equalJson(identityModule.sourceDependencies, kernel.sourceDependencies) ||
         identityModule.abiHash !== kernel.abiHash ||
         identityModule.coreHash !== kernel.coreHash ||
         identityModule.oracleIdentity !== kernel.oracleIdentity ||
@@ -235,6 +236,11 @@ function float64Value(argument) {
 function createFloat64Buffer(source) {
   if (Number.isSafeInteger(source) && source >= 0) return new Float64Array(source);
   return Float64Array.from(source, (value) => Number(value));
+}
+
+function createUInt64Buffer(source) {
+  if (Number.isSafeInteger(source) && source >= 0) return new BigUint64Array(source);
+  return BigUint64Array.from(source, (value) => BigInt(value));
 }
 
 function sortedFloat64Buffer(source) {
@@ -664,6 +670,7 @@ function callable(instance, kernel, fn, resourceBridge) {
   };
   if (fn.kernelKind === "float64") {
     properties.createFloat64Buffer = { value: createFloat64Buffer };
+    properties.createUInt64Buffer = { value: createUInt64Buffer };
     properties.sortedFloat64Buffer = { value: sortedFloat64Buffer };
   }
   let result = invoke;

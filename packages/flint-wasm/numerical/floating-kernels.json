@@ -2,6 +2,24 @@
   "status": "experimental-explicit-only",
   "kernels": [
     {
+      "id": "numerical-prepared-expression-production",
+      "source": "src/lib/sagejs/numerics/_evaluation_core.py",
+      "functions": ["evaluate_program"],
+      "fallback": "canonical finite-binary64 expression interpreter",
+      "oracles": ["CPython", "independent expression evaluation"],
+      "tests": ["test/numerics/performance/prepared-functions.cjs"],
+      "benchmark": "bench/numerics/performance/prepared-function.cjs"
+    },
+    {
+      "id": "numerical-prepared-root-production",
+      "source": "src/lib/sagejs/numerics/_evaluation_root.py",
+      "functions": ["bisect_program"],
+      "fallback": "canonical-expression residual-and-width bisection",
+      "oracles": ["CPython", "independent candidate and bracket checks"],
+      "tests": ["test/numerics/performance/prepared-root-api.cjs"],
+      "benchmark": "bench/numerics/performance/prepared-function.cjs"
+    },
+    {
       "id": "numerical-finite-sum-production",
       "source": "src/lib/sagejs/numerics/statistics/_packed.py",
       "functions": ["finite_sum"],

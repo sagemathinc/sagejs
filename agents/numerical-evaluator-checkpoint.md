@@ -195,3 +195,28 @@ native source locally and checks actual public native/dynamic/missing/stale
 routes against CPython. All share the same unchanged source/runtime/dependency
 snapshot. This closes that focused portability question, not browser product,
 npm/SEA, performance targets or full numerical-program qualification.
+
+## Browser integration follow-up
+
+`perf/numerical-prepared-browser` adds the evaluator/root entry points to the
+explicit-only floating pack and to the lazy Python bundle. The combined pack
+builds six entry points with no unsupported functions, no exact-library archives
+and a 64,122-byte Wasm payload in the initial local build. This is a payload
+observation, not a complete session startup or memory measurement.
+
+Compiled imports require more than matching the root module hash. Production
+pack identities now retain imported-source hashes; the optional loader checks
+each against the independently validated Python module bundle and the loader
+checks consistency with the authenticated pack identity. Missing, changed or
+tampered imported-source metadata cannot expose an accelerated function.
+Older optional manifests without closure bindings fall back dynamically.
+
+The public source browser witness has an `evaluators` workload selected with
+`SAGEJS_NUMERICAL_BROWSER_WORKLOAD=evaluators`, in addition to the existing
+statistics workload. It uses the same public function/root fixtures; optional
+development measurements include complete roots and independent checks, not
+just isolated Wasm calls. Both public workloads now pass all 12 combinations
+of Chromium/Firefox/WebKit and disabled/enabled/stale/missing optional packs.
+The [prepared-root development report](../bench/numerics/performance/results/n4-prepared-browser-development-2026-09-05/README.md)
+retains source and generated-resource hashes, actual Wasm selection and all
+samples. This is source integration, not full release-artifact qualification.

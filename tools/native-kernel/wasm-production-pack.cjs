@@ -89,6 +89,7 @@ function packIdentity(domain, modules, ownershipAdapter = null) {
     modules: modules.map((module) => ({
       logicalSource: module.logicalSource,
       sourceHash: module.identity.sourceHash,
+      sourceDependencies: module.sourceDependencies,
       abiHash: module.identity.abiHash,
       coreHash: module.identity.coreHash,
       oracleIdentity: module.identity.oracleIdentity,
@@ -172,6 +173,10 @@ async function inventoryProductionKernels({ root, manifestPath, isolateFloat64 =
       source: kernel.source,
       logicalSource,
       sourceHash,
+      sourceDependencies: (ir.nativeSourceDependencies ?? []).map((dependency) => ({
+        logicalSource: sourceKey(relative(root, dependency.path).replaceAll("\\", "/")),
+        sourceHash: dependency.sha256,
+      })).sort((left, right) => left.logicalSource.localeCompare(right.logicalSource)),
       abiHash: identity.abiHash,
       coreHash: identity.coreHash,
       oracleIdentity: identity.oracleIdentity,
