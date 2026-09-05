@@ -103,6 +103,8 @@ jobs:
         run: pnpm exec playwright-core install --with-deps chromium
       - name: Run mandatory public worker parity
         run: |
+          SAGEJS_REQUIRE_PREFIX_BROWSER=1 node --test \
+            packages/flint-wasm/test/integer-log-sqrt-prefix.test.mjs
           node packages/flint-wasm/test/browser-wasm-parity.mjs \
             --tier routine --engines chromium --require-engines chromium \
             --receipt build/wasm-routine-parity.json

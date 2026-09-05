@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "6a5ea978287ac643e00309c1c6d9f772d141b9758a4dae3044067ed8057f7101",
+  "source_sha256": "3b9109a088d33603e130f2c111a7edd8b6d4202ff1914b1891654389a68bf840",
   "counts": {
     "total": 1052,
     "by_kind": {
@@ -20,10 +20,9 @@
       "shared-core": 45
     },
     "by_status": {
-      "available": 579,
+      "available": 580,
       "desktop-only": 47,
-      "fallback": 425,
-      "planned": 1
+      "fallback": 425
     }
   },
   "workflow_aliases": {
@@ -4778,13 +4777,13 @@
       "id": "ffi:flint:integer_log_sqrt_balls_prefix_resource",
       "family": "flint",
       "disposition": "generated-wasm",
-      "status": "planned",
+      "status": "available",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "The resident logical-prefix logarithm and square-root operation is implemented for native execution. Browser publication and validation remain pending; the existing exact-shape operation remains available."
+      "explanation": "The resident logical-prefix logarithm and square-root operation is included in the receipt-authenticated production WebAssembly artifact, with exact endpoint and inactive-tail tests plus a public Chromium FFI witness."
     },
     {
       "id": "ffi:flint:integer_log_sqrt_balls_resource",
