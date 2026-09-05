@@ -65,6 +65,7 @@ const {
   validateRuntimeWarmupAttestation,
   validateWarmupResponse,
   validateCensusProcessTopology,
+  validateCheckpointObservation,
   validateRuntimeIdentity,
   warmCandidateDirectEnvironment,
 } = require("../bench/class-unit-groups/run-complex-cubic-frontier.cjs");
@@ -391,7 +392,15 @@ test("bounded census workers dynamically refill CPUs and preserve shard order", 
 test("verified Sage singleton checkpoints publish atomically and resume exactly", async (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-frontier-parts-"));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  const corpus = corpusFixture();
+  const corpus = structuredClone(corpusFixture());
+  // This test exercises mathematical receipt admission as well as checkpoint
+  // authentication. Use a real index-three equation for the singleton.
+  Object.assign(corpus.records[0], {
+    coefficients: ["-63", "-11", "-1", "1"],
+    discriminant: "-12716",
+    discriminant_absolute: "12716",
+  });
+  corpus.digests.records_sha256 = canonicalDigest(corpus.records);
   const tool = {
     system: "sagejs",
     status: "available",
@@ -503,6 +512,16 @@ test("verified Sage singleton checkpoints publish atomically and resume exactly"
   );
   assert.equal(second.checkpoint, "reused");
   assert.deepEqual(second.invocation.response, response);
+
+  // A self-consistent digest cannot authorize the wrong equation index, even
+  // when that wrong value equals the frozen LMFDB field-index metadata.
+  const wrongIndex = structuredClone(response.payload.records[0]);
+  wrongIndex.receipt.equation_order_index = "1";
+  wrongIndex.receipt_digest = sha256(
+    JSON.stringify(JSON.parse(canonicalJson(wrongIndex.receipt))),
+  );
+  assert.throws(() => validateCheckpointObservation(wrongIndex, record),
+    /invalid native proof branch/);
 
   const structurallyInvalid = JSON.parse(originalPart);
   delete structurallyInvalid.process.execution_epoch;
@@ -1304,7 +1323,17 @@ test("metrics retain absolute round totals and paired shard/field summaries", ()
 });
 
 test("frontier selection prioritizes the smallest-discriminant native decline", () => {
-  const corpus = corpusFixture();
+  const corpus = { records: [
+    { label: "3.1.23.1", coefficients: ["1", "0", "-1", "1"],
+      discriminant: "-23", discriminant_absolute: "23", equation_order_index: "1",
+      class_number: "1" },
+    { label: "3.1.12716.2", coefficients: ["-63", "-11", "-1", "1"],
+      discriminant: "-12716", discriminant_absolute: "12716", equation_order_index: "1",
+      class_number: "3" },
+    { label: "3.1.84591.1", coefficients: ["-55", "9", "0", "1"],
+      discriminant: "-84591", discriminant_absolute: "84591", equation_order_index: "1",
+      class_number: "5" },
+  ] };
   const sorted = [...corpus.records].sort((left, right) =>
     Number(BigInt(left.discriminant_absolute) - BigInt(right.discriminant_absolute)));
   const chosen = sorted[2];

@@ -25,6 +25,10 @@ const {
 const {
   loadFrozenSurveyCorpus,
 } = require("./load-complex-cubic-frontier-survey.cjs");
+const {
+  cubicEquationIndex,
+  cubicIndexDiagnostics,
+} = require("./cubic-equation-index.cjs");
 
 const ROOT = path.resolve(__dirname, "../..");
 const READY_MARKER = "SAGEJS_COMPLEX_CUBIC_FRONTIER_READY";
@@ -1650,10 +1654,7 @@ function validateCheckpointObservation(observed, expected) {
         JSON.stringify(receipt.polynomial_coefficients) !==
           JSON.stringify(expected.coefficients) ||
         receipt.field_discriminant !== expected.discriminant ||
-        // This is the literal input-polynomial order index. The LMFDB corpus
-        // selection dimension is not an equality oracle for that basis-dependent value.
-        typeof receipt.equation_order_index !== "string" ||
-        !/^[1-9][0-9]*$/.test(receipt.equation_order_index) ||
+        receipt.equation_order_index !== cubicEquationIndex(expected) ||
         receipt.class_number !== expected.class_number ||
         JSON.stringify(receipt.invariants) !== JSON.stringify(expected.class_group_invariants) ||
         receipt.proof_status !== observed.proof_status ||
@@ -2574,10 +2575,13 @@ function timingMetrics(events, corpus, census) {
 }
 
 function selectFrontierCandidate(corpus, census, events) {
+  const indexDiagnostics = new Map(corpus.records.map((record) =>
+    [record.label, cubicIndexDiagnostics(record)]));
   const compare = (left, right) => {
     const discriminant = BigInt(left.discriminant_absolute) - BigInt(right.discriminant_absolute);
     if (discriminant !== 0n) return discriminant < 0n ? -1 : 1;
-    const index = BigInt(left.equation_order_index) - BigInt(right.equation_order_index);
+    const index = BigInt(indexDiagnostics.get(left.label).equation_order_index) -
+      BigInt(indexDiagnostics.get(right.label).equation_order_index);
     if (index !== 0n) return index < 0n ? -1 : 1;
     const classNumber = BigInt(left.class_number) - BigInt(right.class_number);
     if (classNumber !== 0n) return classNumber < 0n ? -1 : 1;
@@ -2594,7 +2598,7 @@ function selectFrontierCandidate(corpus, census, events) {
       reason: "smallest-discriminant-native-decline",
       discriminant_absolute: decline.discriminant_absolute,
       class_number: decline.class_number,
-      equation_order_index: decline.equation_order_index,
+      ...indexDiagnostics.get(decline.label),
     };
   }
   const shards = shardRecords(corpus);
@@ -2626,7 +2630,7 @@ function selectFrontierCandidate(corpus, census, events) {
     reason: "smallest-discriminant-stable-threefold-slowdown",
     discriminant_absolute: slower.discriminant_absolute,
     class_number: slower.class_number,
-    equation_order_index: slower.equation_order_index,
+    ...indexDiagnostics.get(slower.label),
     scalar_prepared_ratio_median: quantile(ratios, 0.5),
     slower_rounds: ratios.filter((ratio) => ratio > 1).length,
   };
