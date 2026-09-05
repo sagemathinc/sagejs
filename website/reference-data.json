@@ -17244,16 +17244,16 @@
         "name": "GF",
         "qualified": "GF",
         "path": "src/baselib/finite_fields.py",
-        "line": 2041,
+        "line": 2073,
         "excerpt": {
-          "start_line": 2029,
+          "start_line": 2061,
           "text": "        modulus_coefficients,\n        prime_field,\n        element_type,\n        explicit_modulus,\n        generated_resource_backend,\n    )\n    _extension_fields.set(key, field)\n    conversion = _register_machine_integer_coercion(field)\n    runtime.coercion_model.register(prime_field, field, conversion)\n    return field\n\n\ndef GF(\n    order: Any,\n    name: Any = runtime.undefined,\n    modulus: Any = runtime.undefined,\n    names: Any = runtime.undefined,\n) -> Any:\n    r\"\"\"\n    Construct the finite field with `order` elements.\n\n    The order must be a prime power.  Prime fields and extension fields use\n    FLINT arithmetic and participate in Sage.js parent/coercion semantics.\n    `name` (or `names`) names an extension-field generator.\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/finite_fields.py#d5fed5b346a11651-bdf39be03f43bdb9",
-          "line": 2057,
+          "line": 2089,
           "source": "GF(7)",
           "want": "Finite Field of size 7\n",
           "tags": [],
@@ -17269,7 +17269,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#2680962aa3520480-e3b0c44298fc1c14",
-          "line": 2059,
+          "line": 2091,
           "source": "K.<a> = GF(9)",
           "want": "",
           "tags": [],
@@ -17285,7 +17285,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#b51192cce36ea46d-6b86b273ff34fce1",
-          "line": 2060,
+          "line": 2092,
           "source": "a^8",
           "want": "1\n",
           "tags": [],
@@ -17301,7 +17301,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#248946a81e60d7c2-5c17eac5f0f80928",
-          "line": 2062,
+          "line": 2094,
           "source": "K['x']",
           "want": "Univariate Polynomial Ring in x over Finite Field in a of size 3^2\n",
           "tags": [],
@@ -29878,9 +29878,9 @@
         "name": "Mod",
         "qualified": "Mod",
         "path": "src/baselib/finite_fields.py",
-        "line": 2155,
+        "line": 2187,
         "excerpt": {
-          "start_line": 2143,
+          "start_line": 2175,
           "text": "    ring = _residue_rings.get(key)\n    if ring is not runtime.undefined:\n        return ring\n    ring = IntegerModRing(order)\n    _residue_rings.set(key, ring)\n    _register_machine_integer_coercion(ring)\n    return ring\n\n\nIntegers = Zmod\n\n\ndef Mod(value: Any, modulus: Any) -> Any:\n    \"\"\"Construct `value` in the ring of integers modulo `modulus`.\"\"\"\n    modulus = runtime.integer_bigint(modulus)\n    if modulus == 0:\n        return sage.ZZ(value)\n    if modulus < 0:\n        modulus = -modulus\n    return Zmod(modulus)(value)\n\n\n# Sage publishes both spellings.\nmod = Mod\n"
         }
       },
@@ -37672,16 +37672,16 @@
         "name": "Zmod",
         "qualified": "Zmod",
         "path": "src/baselib/finite_fields.py",
-        "line": 2120,
+        "line": 2152,
         "excerpt": {
-          "start_line": 2108,
+          "start_line": 2140,
           "text": "    generator = runtime.bigint(1)\n    if primitive:\n        generator = backend.wordPrimitiveRootPrime(order)\n    field = FiniteField_prime_modn(order, generator)\n    _prime_fields.set(key, field)\n    _register_machine_integer_coercion(field)\n    return field\n\n\nFiniteField = GF\n\n\ndef Zmod(order: Any) -> IntegerModRing:\n    r\"\"\"\n    Construct the ring of integers modulo `order`.\n\n    Elements support exact arithmetic, inversion of units, iteration, and\n    matrices and polynomial rings over the resulting parent.\n\n    ### Examples\n\n    ```sage\n    sage: R = Zmod(15)\n    sage: R(17)\n    2"
         }
       },
       "examples": [
         {
           "id": "src/baselib/finite_fields.py#a4efb6c82ad07055-e3b0c44298fc1c14",
-          "line": 2130,
+          "line": 2162,
           "source": "R = Zmod(15)",
           "want": "",
           "tags": [],
@@ -37697,7 +37697,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#27cc52590769f211-d4735e3a265e16ee",
-          "line": 2131,
+          "line": 2163,
           "source": "R(17)",
           "want": "2\n",
           "tags": [],
@@ -37713,7 +37713,7 @@
         },
         {
           "id": "src/baselib/finite_fields.py#3fe317b5859522f8-6b86b273ff34fce1",
-          "line": 2133,
+          "line": 2165,
           "source": "R(2)^4",
           "want": "1\n",
           "tags": [],

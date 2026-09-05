@@ -64,6 +64,9 @@ const matrix = matrixWithoutVisibleContext();
 const multivariate = multivariateWithoutVisibleContexts();
 for (let index = 0; index < 5; index += 1) global.gc();
 
+assert.deepEqual(flint.fqCoordinates(generator), [0n, 1n]);
+assert.deepEqual(flint.fqCoordinates(one), [1n, 0n]);
+
 assert.equal(
   flint.fqToString(flint.fqAdd(flint.fqMul(generator, generator), one)),
   "a+2",

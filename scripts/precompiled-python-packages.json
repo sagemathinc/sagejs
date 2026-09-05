@@ -104,6 +104,7 @@
     "sagejs.number_fields.units",
     "sagejs.number_fields.zeta_coefficient_kernel",
     "sagejs.number_fields.zeta_coefficients",
+    "sagejs.polynomial_algorithms.exact_field",
     "sagejs.polynomial_algorithms.extension_field_factor",
     "sagejs.polynomial_algorithms.extension_field_roots",
     "sagejs.polynomial_algorithms.hilbert",
