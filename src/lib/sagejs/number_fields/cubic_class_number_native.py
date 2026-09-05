@@ -937,45 +937,83 @@ def _cubic_online_relation_lattice_update(
     basis: FmpzMatrix,
     source: FmpzMatrix,
     reduced: FmpzMatrix,
+    support: FmpzMatrix,
+    membership_coordinates: FmpzMatrix,
     relations: FmpzMatrix,
     relation_row: uint64,
     dimension: uint64,
 ) -> int:
-    """Adjoin one exact row and recognize the full integer lattice.
+    """Adjoin one exact row, record support, and recognize `ZZ^dimension`.
 
     The resident `basis` is the canonical row HNF of every previously admitted
-    relation.  Returning `2` proves that the enlarged lattice is exactly
-    `ZZ^dimension`, `1` records a valid proper sublattice, and `-1` reports a
-    failed exact reduction.  This is an online stopping certificate, not a
-    heuristic rank test.
+    relation, padded to `dimension` rows.  `support[relation_row, 0]` is one
+    exactly when adjoining the row changes that canonical basis.  Thus the
+    online history is also the canonical support transcript needed by the
+    later compact relation ledger.  Returning `2` proves that the enlarged
+    lattice is exactly `ZZ^dimension`, `1` records a valid proper sublattice,
+    and `-1` reports a failed exact reduction.  This is an exact online
+    certificate, not a heuristic rank test.
     """
-    if relation_row + 1 < dimension:
-        return 1
+    support[relation_row, 0] = 0
+
+    # Once the prefix has full rank, exact triangular membership proves that a
+    # contained row cannot change the canonical HNF.  Before full rank we still
+    # reduce the padded basis: rank-deficient pivots need not lie on the main
+    # diagonal, so no diagonal shortcut is sound there.
+    previous_rank: uint64 = 0
     row: uint64 = 0
-    if relation_row + 1 == dimension:
+    while row < dimension:
+        row_nonzero = False
+        column: uint64 = 0
+        while column < dimension:
+            if basis[row, column] != 0:
+                row_nonzero = True
+            column += 1
+        if row_nonzero:
+            previous_rank += 1
+        row += 1
+    if previous_rank == dimension and _cubic_relation_row_in_hnf(
+        membership_coordinates,
+        basis,
+        relations,
+        relation_row,
+        dimension,
+    ):
+        index_one = True
+        row = 0
         while row < dimension:
-            column: uint64 = 0
-            while column < dimension:
-                source[row, column] = relations[row, column]
-                column += 1
+            if basis[row, row] != 1:
+                index_one = False
             row += 1
+        if index_one:
+            return 2
+        return 1
+
+    row = 0
+    while row < dimension:
         column = 0
         while column < dimension:
-            source[dimension, column] = 0
+            source[row, column] = basis[row, column]
             column += 1
-    else:
-        while row < dimension:
-            column = 0
-            while column < dimension:
-                source[row, column] = basis[row, column]
-                column += 1
-            row += 1
-        column = 0
-        while column < dimension:
-            source[dimension, column] = relations[relation_row, column]
-            column += 1
+        row += 1
+    column = 0
+    while column < dimension:
+        source[dimension, column] = relations[relation_row, column]
+        column += 1
     if not fmpz_matrix_hnf_into(reduced, source):
         return -1
+
+    support_used = False
+    row = 0
+    while row < dimension:
+        column = 0
+        while column < dimension:
+            if reduced[row, column] != basis[row, column]:
+                support_used = True
+            column += 1
+        row += 1
+    if support_used:
+        support[relation_row, 0] = 1
 
     rank: uint64 = 0
     index_one = True
@@ -2984,6 +3022,8 @@ def _cubic_append_reduced_ideal_ellipsoid(
     online_relation_basis: FmpzMatrix,
     online_relation_source: FmpzMatrix,
     online_relation_hnf: FmpzMatrix,
+    online_relation_support: FmpzMatrix,
+    online_membership_coordinates: FmpzMatrix,
     online_relation_count: uint64,
     online_relation_status: int,
 ) -> tuple[uint64, uint64, uint64, int]:
@@ -3091,6 +3131,8 @@ def _cubic_append_reduced_ideal_ellipsoid(
                             online_relation_basis,
                             online_relation_source,
                             online_relation_hnf,
+                            online_relation_support,
+                            online_membership_coordinates,
                             relation_matrix,
                             online_relation_count,
                             factor_count,
@@ -7439,6 +7481,19 @@ def certified_complex_cubic_class_group_v1(
             online_relation_source_rows,
             online_relation_columns,
         )
+        # The exact support bit for every admitted row is recorded alongside
+        # the online HNF.  The full capacity is already bounded and lets every
+        # relation producer share one transcript without repacking it later.
+        relation_support = arena.foreign_resource(
+            fmpz_matrix,
+            relation_capacity,
+            1,
+        )
+        online_membership_coordinates = arena.foreign_resource(
+            fmpz_matrix,
+            1,
+            factor_count,
+        )
         online_relation_count: uint64 = 0
         online_relation_status = 1
         dependency_coordinates = arena.foreign_resource(
@@ -7522,6 +7577,8 @@ def certified_complex_cubic_class_group_v1(
                 online_relation_basis,
                 online_relation_source,
                 online_relation_hnf,
+                relation_support,
+                online_membership_coordinates,
                 relation_candidates,
                 online_relation_count,
                 factor_count,
@@ -7604,6 +7661,8 @@ def certified_complex_cubic_class_group_v1(
                                     online_relation_basis,
                                     online_relation_source,
                                     online_relation_hnf,
+                                    relation_support,
+                                    online_membership_coordinates,
                                     relation_candidates,
                                     online_relation_count,
                                     factor_count,
@@ -7718,6 +7777,8 @@ def certified_complex_cubic_class_group_v1(
                         online_relation_basis,
                         online_relation_source,
                         online_relation_hnf,
+                        relation_support,
+                        online_membership_coordinates,
                         online_relation_count,
                         online_relation_status,
                     )
@@ -7829,6 +7890,8 @@ def certified_complex_cubic_class_group_v1(
                                     online_relation_basis,
                                     online_relation_source,
                                     online_relation_hnf,
+                                    relation_support,
+                                    online_membership_coordinates,
                                     relation_candidates,
                                     online_relation_count,
                                     factor_count,
@@ -8135,6 +8198,17 @@ def certified_complex_cubic_class_group_v1(
         output[51] = group_count
         output[52] = relation_count
         output[63] = 41
+        # The small-unit path deliberately retains every principal row for its
+        # later dependency transcript, so its downstream workspaces still rely
+        # on the tall HNF shape.  Reuse the square online HNF only in the
+        # no-small-unit regime where the canonical support transcript also
+        # replaces that later tall-prefix pass.
+        reuse_online_relation_hnf = (
+            not unit_found
+            and online_relation_quotient_enabled
+            and online_relation_count == relation_count
+        )
+        reuse_online_relation_support = reuse_online_relation_hnf
         relation_matrix = arena.foreign_resource(
             fmpz_matrix,
             relation_count,
@@ -8149,19 +8223,31 @@ def certified_complex_cubic_class_group_v1(
                 ]
                 factor_index += 1
             relation_row += 1
+        relation_hnf_rows: uint64 = relation_count
+        if reuse_online_relation_hnf:
+            relation_hnf_rows = factor_count
         relation_hnf = arena.foreign_resource(
             fmpz_matrix,
-            relation_count,
+            relation_hnf_rows,
             factor_count,
         )
-        if relation_count < factor_count or not fmpz_matrix_hnf_into(
-            relation_hnf,
-            relation_matrix,
-        ):
+        if relation_count < factor_count:
+            return False
+        if reuse_online_relation_hnf:
+            relation_row = 0
+            while relation_row < factor_count:
+                factor_index = 0
+                while factor_index < factor_count:
+                    relation_hnf[relation_row, factor_index] = online_relation_basis[
+                        relation_row, factor_index
+                    ]
+                    factor_index += 1
+                relation_row += 1
+        elif not fmpz_matrix_hnf_into(relation_hnf, relation_matrix):
             return False
         relation_rank: uint64 = 0
         relation_row: uint64 = 0
-        while relation_row < relation_count:
+        while relation_row < relation_hnf_rows:
             row_nonzero = False
             factor_index = 0
             while factor_index < factor_count:
@@ -8262,30 +8348,27 @@ def certified_complex_cubic_class_group_v1(
         # Once the prefix has full rank, an exact triangular membership test
         # rejects contained rows without invoking FLINT.  Thus HNF is recomputed
         # only when the integral lattice genuinely grows.
-        relation_support = arena.foreign_resource(
-            fmpz_matrix,
-            relation_count,
-            1,
-        )
+        incremental_rows: uint64 = factor_count
+        incremental_source_rows: uint64 = factor_count + 1
+        incremental_columns: uint64 = factor_count
+        if reuse_online_relation_support:
+            incremental_rows = 1
+            incremental_source_rows = 1
+            incremental_columns = 1
         incremental_basis = arena.foreign_resource(
             fmpz_matrix,
-            factor_count,
-            factor_count,
+            incremental_rows,
+            incremental_columns,
         )
         incremental_source = arena.foreign_resource(
             fmpz_matrix,
-            factor_count + 1,
-            factor_count,
+            incremental_source_rows,
+            incremental_columns,
         )
         incremental_hnf = arena.foreign_resource(
             fmpz_matrix,
-            factor_count + 1,
-            factor_count,
-        )
-        membership_coordinates = arena.foreign_resource(
-            fmpz_matrix,
-            1,
-            factor_count,
+            incremental_source_rows,
+            incremental_columns,
         )
         support_count: uint64 = 0
         incremental_rank: uint64 = 0
@@ -8311,11 +8394,21 @@ def certified_complex_cubic_class_group_v1(
                     ]
                     fast_column += 1
                 fast_row += 1
-        while compact_source_row < relation_count:
+        elif reuse_online_relation_support:
+            incremental_rank = relation_rank
+            while compact_source_row < relation_count:
+                if relation_support[compact_source_row, 0] != 0:
+                    if support_count >= factor_count + 64:
+                        output[59] = 421
+                        output[60] = support_count
+                        return False
+                    support_count += 1
+                compact_source_row += 1
+        while not reuse_online_relation_support and compact_source_row < relation_count:
             support_used = True
             if incremental_rank == factor_count:
                 support_used = not _cubic_relation_row_in_hnf(
-                    membership_coordinates,
+                    online_membership_coordinates,
                     incremental_basis,
                     relation_matrix,
                     compact_source_row,
@@ -8379,19 +8472,20 @@ def certified_complex_cubic_class_group_v1(
             compact_source_row += 1
         if support_count < factor_count:
             return False
-        incremental_row = 0
-        while incremental_row < factor_count:
-            incremental_column = 0
-            while incremental_column < factor_count:
-                if (
-                    incremental_basis[incremental_row, incremental_column]
-                    != relation_hnf[incremental_row, incremental_column]
-                ):
-                    output[59] = 422
-                    output[60] = support_count
-                    return False
-                incremental_column += 1
-            incremental_row += 1
+        if not reuse_online_relation_support:
+            incremental_row = 0
+            while incremental_row < factor_count:
+                incremental_column = 0
+                while incremental_column < factor_count:
+                    if (
+                        incremental_basis[incremental_row, incremental_column]
+                        != relation_hnf[incremental_row, incremental_column]
+                    ):
+                        output[59] = 422
+                        output[60] = support_count
+                        return False
+                    incremental_column += 1
+                incremental_row += 1
 
         # Preserve a bounded tail of final reduced-ideal witnesses not already in
         # the HNF support.  These redundant principal relations are useful for
@@ -8462,6 +8556,20 @@ def certified_complex_cubic_class_group_v1(
             compact_row += 1
         if compact_rank != factor_count:
             return False
+        if reuse_online_relation_support:
+            compact_row = 0
+            while compact_row < factor_count:
+                compact_column = 0
+                while compact_column < factor_count:
+                    if (
+                        compact_relation_hnf[compact_row, compact_column]
+                        != relation_hnf[compact_row, compact_column]
+                    ):
+                        output[59] = 422
+                        output[60] = support_count
+                        return False
+                    compact_column += 1
+                compact_row += 1
         compact_index = class_number_upper
         if not unit_found:
             compact_smith = arena.foreign_resource(
