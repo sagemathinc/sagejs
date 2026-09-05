@@ -6,6 +6,10 @@ Starting main: `675b1d3f494d1e9dedab86e5a348524b0493b1fb`.
 Integration branch: `agent/integrate-prs101-120`.
 Coordination: GitHub Discussion #104.
 
+The user additionally approved reviewing and including #123 (nested-arena
+qualification) and #125 (Gamma1 memory repair). Other new feature PRs are not
+automatically part of this wave.
+
 ## Inventory and order
 
 Seven PRs in the requested range were open at inventory time:
@@ -95,6 +99,12 @@ comments before final publication; branch authors may still be working.
 - Before publication, main advanced to `25571014c` with the release owner's
   narrow symbolic-root Wasm fast-path restoration. Preserve that correction
   when advancing the integration branch; the receipts above precede that merge.
+- The combined symbolic-root source builds successfully in 12m31s, reusing all
+  native adapters and kernel families. Its focused compiler/runtime checks
+  pass (70 tests); architecture, strict Python, and merge inventories pass.
+  Portable passes 116/116 files in 1m40s. Eight symbolic/numerical-root checks
+  pass, including the public Wasm route (zero skips). Startup medians are
+  395.5 ms full and 182.2 ms empty against unchanged 400/225 ms budgets.
 - Initial build was deliberately stopped after defect reproduction. Cache
   tests attempted during module-cache construction saw missing artifacts and
   must be rerun after the final build; they are not passing receipts.
@@ -125,8 +135,19 @@ comments before final publication; branch authors may still be working.
   that still have live points or schemes.
 - #106's global strong maps retain every Gamma1 parent and its large descent
   matrices. Prefer lazy parent-owned caches. Follow-up #125 separately repairs
-  a demonstrated large-level row-space/publication memory cliff; its inclusion
-  has been offered to the user while original-scope validation continues.
+  a demonstrated large-level row-space/publication memory cliff; inclusion is
+  approved. Isolated prepared corrections use parent-owned caches and exact
+  elimination when its 32-prime full-rank certificate search is inconclusive.
+  A standalone native ASan/UBSan diagnostic passes for an ordinary certificate
+  and full-rank matrices whose numerator or denominator contains every trial
+  prime. Public Python and integrated native validation remain pending.
+- The cubic author's #127 contains a required narrow rejection after failed
+  reconstructed-regulator authentication. Review confirms the status-1 path
+  previously disabled materialization before authenticating the replacement,
+  allowing stale coordinates under synthetic helper-contract violations.
+  Include the rejection and its regression as a #101 correctness fix, without
+  importing the separate staged-certification feature work. No ordinary-field
+  trigger or wrong census result has been established.
 - Measure combined bootstrap source and emitted runtime growth. Preserve all
   startup and compressed-size guardrails; explain any narrow reviewed source
   budget change with actual measurements.
