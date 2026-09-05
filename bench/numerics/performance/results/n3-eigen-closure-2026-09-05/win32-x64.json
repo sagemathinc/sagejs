@@ -1,0 +1,44 @@
+{
+  "schema": "sagejs.eigen-dependency-probe/v1",
+  "passed": true,
+  "qualification": false,
+  "eigen_version": "5.0.0",
+  "source_sha256": "0dc3046e9ded859180fce8ae0ac1888036779975f2a0c07f5e3e5480f0b1ad34",
+  "collector_sha256": "f99f6e7346f30fc98ae3a2e63d908d8bd61df764f14ed9bca3484c2c7351068f",
+  "headers_before": {
+    "sha256": "7483cda9cd8dd601b66409775d1548969e8ce8f136ed1f9df41871cb60f9a21c",
+    "files": 408
+  },
+  "headers_after": {
+    "sha256": "7483cda9cd8dd601b66409775d1548969e8ce8f136ed1f9df41871cb60f9a21c",
+    "files": 408
+  },
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v26.5.1",
+    "cpu": "AMD EPYC 7B13"
+  },
+  "compiler": "C:\\Windows\\system32\\cmd.exe",
+  "flags": [
+    "/std:c++14",
+    "/EHsc",
+    "/O2",
+    "/fp:strict",
+    "/bigobj"
+  ],
+  "compile_ms": 30624.1654,
+  "build_status": 0,
+  "run_status": 0,
+  "artifact": {
+    "bytes": 407040,
+    "sha256": "7a91cc15bd42194bc63de9f700ee0989dabf983485d179133ad12e89a9421b22"
+  },
+  "limitations": [
+    "tiny well-conditioned smoke only",
+    "not independent broad correctness corpus",
+    "not performance qualification",
+    "not production binding",
+    "no allocation-failure or cancellation qualification"
+  ]
+}

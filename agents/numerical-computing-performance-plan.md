@@ -374,6 +374,16 @@ The [dense checkpoint](numerical-dense-checkpoint.md) records the initial
 bounded source-LU candidate and the existing prefix audit. It is not yet a
 public backend, library selection or N3 acceptance pass.
 
+The [first Eigen/typed-source LU comparison](../bench/numerics/performance/results/n3-eigen-lu-2026-09-05/README.md)
+and [four-platform/browser Eigen closure probe](../bench/numerics/performance/results/n3-eigen-closure-2026-09-05/README.md)
+now support prioritizing a guarded Eigen prototype. This is a refinement of the
+evaluation order, not a final library selection. Do not add a separate tuned
+LAPACK dependency before a materially useful crossover is demonstrated. The
+current tiny/medium LU measurements exclude public marshalling and independent
+validation; those remain dominant and must be accelerated without weakening
+their contracts. A generic floating-buffer foreign boundary and recoverable
+allocation/failure design precede production adoption.
+
 Audit already linked numerical dependencies and reuse a suitable validated
 prefix. Compare typed-source small-matrix kernels with a narrow mature-library
 adapter for LU/Cholesky/QR, then eigen/SVD. Use independent backward-error,

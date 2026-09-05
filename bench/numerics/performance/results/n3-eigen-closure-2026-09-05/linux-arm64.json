@@ -1,0 +1,43 @@
+{
+  "schema": "sagejs.eigen-dependency-probe/v1",
+  "passed": true,
+  "qualification": false,
+  "eigen_version": "5.0.0",
+  "source_sha256": "0dc3046e9ded859180fce8ae0ac1888036779975f2a0c07f5e3e5480f0b1ad34",
+  "collector_sha256": "f99f6e7346f30fc98ae3a2e63d908d8bd61df764f14ed9bca3484c2c7351068f",
+  "headers_before": {
+    "sha256": "7483cda9cd8dd601b66409775d1548969e8ce8f136ed1f9df41871cb60f9a21c",
+    "files": 408
+  },
+  "headers_after": {
+    "sha256": "7483cda9cd8dd601b66409775d1548969e8ce8f136ed1f9df41871cb60f9a21c",
+    "files": 408
+  },
+  "host": {
+    "platform": "linux",
+    "arch": "arm64",
+    "node": "v26.5.1",
+    "cpu": "Neoverse-N1"
+  },
+  "compiler": "c++",
+  "flags": [
+    "-std=c++14",
+    "-O2",
+    "-fno-fast-math",
+    "-ffp-contract=off"
+  ],
+  "compile_ms": 18303.825452,
+  "build_status": 0,
+  "run_status": 0,
+  "artifact": {
+    "bytes": 375304,
+    "sha256": "dab1247fcce8a030579b8a229c31d8306243141ec6809ab80a79a113c37a792f"
+  },
+  "limitations": [
+    "tiny well-conditioned smoke only",
+    "not independent broad correctness corpus",
+    "not performance qualification",
+    "not production binding",
+    "no allocation-failure or cancellation qualification"
+  ]
+}

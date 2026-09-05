@@ -1,0 +1,91 @@
+{
+  "schema": "sagejs.eigen-wasm-probe/v1",
+  "passed": true,
+  "qualification": false,
+  "eigen_version": "5.0.0",
+  "source_sha256": "0dc3046e9ded859180fce8ae0ac1888036779975f2a0c07f5e3e5480f0b1ad34",
+  "collector_sha256": "5772c409aa593116da18117f0ba6afaa73bda76751788aa2e9ff55df1264f52f",
+  "headers": {
+    "sha256": "7483cda9cd8dd601b66409775d1548969e8ce8f136ed1f9df41871cb60f9a21c",
+    "files": 408
+  },
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.8.1",
+    "cpu": "AMD EPYC 7B13"
+  },
+  "compiler_sha256": "6985ec66b1065976616156773f95ed318b1793f7761fe9e9f38f8e771571021c",
+  "target": "wasm32-wasip1",
+  "flags": [
+    "--target=wasm32-wasip1",
+    "--sysroot=/home/user/sagejs/.git/sagejs-wasm-toolchains/v2/241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973/sdk/share/wasi-sysroot",
+    "-std=c++14",
+    "-O2",
+    "-fno-exceptions",
+    "-fno-fast-math",
+    "-ffp-contract=off",
+    "-Wl,--no-entry",
+    "-Wl,--export=eigen_smoke",
+    "-mexec-model=reactor"
+  ],
+  "compile_ms": 19920.389049999998,
+  "artifact": {
+    "sha256": "a2d9f49f6076f7ea7e450de32087e14409dec44219c6a1b26324e2ba5771bb1e",
+    "bytes": 413412,
+    "gzip_bytes": 118932,
+    "imports": [
+      {
+        "module": "wasi_snapshot_preview1",
+        "name": "fd_close",
+        "kind": "function"
+      },
+      {
+        "module": "wasi_snapshot_preview1",
+        "name": "fd_seek",
+        "kind": "function"
+      },
+      {
+        "module": "wasi_snapshot_preview1",
+        "name": "fd_write",
+        "kind": "function"
+      }
+    ]
+  },
+  "observations": [
+    {
+      "engine": "chromium",
+      "version": "151.0.7922.34",
+      "results": [
+        0,
+        0
+      ],
+      "passed": true
+    },
+    {
+      "engine": "firefox",
+      "version": "153.0",
+      "results": [
+        0,
+        0
+      ],
+      "passed": true
+    },
+    {
+      "engine": "webkit",
+      "version": "26.5",
+      "results": [
+        0,
+        0
+      ],
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "tiny well-conditioned smoke only",
+    "no independent broad corpus",
+    "not production binding",
+    "not performance qualification",
+    "no-exceptions configuration does not qualify allocation failure or recovery"
+  ]
+}
