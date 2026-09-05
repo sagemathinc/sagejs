@@ -20,33 +20,36 @@ function snapshot() {
     } else if (stat.isFile()) files.push([relative, hash(fs.readFileSync(absolute))]);
     else throw new Error("unsupported qualification file " + relative);
   }
-  for (const relative of ["src", "tools", "scripts", "architecture", "ffi", "dist", "bin", "index.cjs", "package.json", "packages/flint/include", "packages/flint/node_modules", "packages/flint/package.json", "packages/flint/pnpm-lock.yaml", "node_modules/web-tree-sitter", "test/helpers", "test/numerics/performance", "bench/numerics/performance"]) visit(relative);
+  for (const relative of ["src", "tools", "scripts", "architecture", "ffi", "dist", "bin", "index.cjs", "package.json", "packages/flint/include", "packages/flint/node_modules", "packages/flint/package.json", "packages/flint/pnpm-lock.yaml", "node_modules/web-tree-sitter", "test/helpers", "test/numerics/performance", "bench/numerics/performance", ...(lu ? ["packages/wasm-toolchain", "packages/flint/scripts", "packages/flint/patches"] : [])]) visit(relative);
   files.sort((a,b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
   return { sha256: hash(JSON.stringify(files)), files: files.length };
 }
 const output = process.argv[2];
-if (!output || process.argv.length !== 3) throw new Error("usage: prepared-api-portable.cjs RECEIPT.json");
+const lu = process.argv[3] === "--lu";
+if (!output || (lu ? process.argv.length !== 4 : process.argv.length !== 3)) throw new Error("usage: prepared-api-portable.cjs RECEIPT.json [--lu]");
 if (fs.existsSync(output)) throw new Error("receipt already exists");
 const before = snapshot();
-const result = spawnSync(process.execPath, ["--test", "test/numerics/performance/prepared-functions.cjs", "test/numerics/performance/prepared-root-api.cjs"], {
+const tests = lu ? ["test/numerics/performance/packed-lu.cjs"] : ["test/numerics/performance/prepared-functions.cjs", "test/numerics/performance/prepared-root-api.cjs"];
+const result = spawnSync(process.execPath, ["--test", ...tests], {
   cwd: root, encoding: "utf8", timeout: 240000, maxBuffer: 4*1024*1024,
+  env: lu ? {...process.env, SAGEJS_WASM_TOOLCHAIN_ROOT:path.join(root,"absent-qualification-wasm"), SAGEJS_NUMERICAL_BROWSER_TESTS:"0"} : process.env,
 });
 const after = snapshot();
 const same = before.sha256 === after.sha256;
-const passed = result.status === 0 && same && /(?:ℹ|#) pass 3\b/.test(result.stdout);
+const passed = result.status === 0 && same && new RegExp("(?:ℹ|#) pass " + (lu ? "1" : "3") + "\\b").test(result.stdout);
 const python = process.env.PYTHON || (process.platform === "win32" ? "python" : "python3");
 const version = spawnSync(python,["--version"],{encoding:"utf8",timeout:10000});
 const receipt = {
-  schema: "sagejs.prepared-api-qualification/v1", passed,
-  scope: "isolated-source-api-not-product-release",
-  declared_source_commit: "9c5066f72",
+  schema: lu ? "sagejs.packed-lu-qualification/v1" : "sagejs.prepared-api-qualification/v1", passed,
+  scope: lu ? "isolated-kernel-not-public-api" : "isolated-source-api-not-product-release",
+  declared_source_commit: lu ? "3311fd402" : "9c5066f72",
   host: { platform: process.platform, arch: process.arch, node: process.version, python: (version.stdout || version.stderr || "").trim(), cpu: os.cpus()[0]?.model },
   before, after, unchanged: same,
   collector_sha256: hash(fs.readFileSync(__filename)),
   test_exit_code: result.status, test_signal: result.signal,
   tests: result.stdout.split(/\r?\n/).filter(line => /^(?:✔|✖|ℹ|# (?:tests|pass|fail|cancelled|skipped))/.test(line)),
   diagnostics: passed ? [] : [result.stderr, result.stdout, String(result.error || "")],
-  limitations: ["not-browser-product", "not-npm-or-SEA", "not-performance-qualification", "not-full-suite"],
+  limitations: ["not-browser-product", "not-npm-or-SEA", "not-performance-qualification", "not-full-suite", ...(lu ? ["native-and-javascript-only; Wasm qualified separately"] : [])],
 };
 fs.writeFileSync(output, JSON.stringify(receipt,null,2)+"\n", {flag:"wx"});
 console.log(JSON.stringify({passed, receipt:output, snapshot:before.sha256}));

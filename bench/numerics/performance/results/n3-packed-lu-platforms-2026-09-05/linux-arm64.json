@@ -1,0 +1,44 @@
+{
+  "schema": "sagejs.packed-lu-qualification/v1",
+  "passed": true,
+  "scope": "isolated-kernel-not-public-api",
+  "declared_source_commit": "3311fd402",
+  "host": {
+    "platform": "linux",
+    "arch": "arm64",
+    "node": "v26.5.1",
+    "python": "Python 3.12.3",
+    "cpu": "Neoverse-N1"
+  },
+  "before": {
+    "sha256": "285612be4dcf98b4d27bf70ef4212ad2b58d0c558d52d11387c9a6de1f5f0dbe",
+    "files": 3146
+  },
+  "after": {
+    "sha256": "285612be4dcf98b4d27bf70ef4212ad2b58d0c558d52d11387c9a6de1f5f0dbe",
+    "files": 3146
+  },
+  "unchanged": true,
+  "collector_sha256": "e7ec883f50eb55ce38aa5bdde2a609a99d83036ae8e09928a679fa78c8df1cd2",
+  "test_exit_code": 0,
+  "test_signal": null,
+  "tests": [
+    "✔ bounded packed LU matches ordinary factorization and independent reconstruction (2825.960396ms)",
+    "ℹ tests 1",
+    "ℹ suites 0",
+    "ℹ pass 1",
+    "ℹ fail 0",
+    "ℹ cancelled 0",
+    "ℹ skipped 0",
+    "ℹ todo 0",
+    "ℹ duration_ms 2950.07367"
+  ],
+  "diagnostics": [],
+  "limitations": [
+    "not-browser-product",
+    "not-npm-or-SEA",
+    "not-performance-qualification",
+    "not-full-suite",
+    "native-and-javascript-only; Wasm qualified separately"
+  ]
+}

@@ -71,7 +71,7 @@
       "layer": 5,
       "startup": "lazy",
       "max_source_bytes": 360000,
-      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec", "native-integration"],
       "modules": ["sagejs.numerics.linear_algebra"],
       "files": [],
       "prefixes": ["src/lib/sagejs/numerics/linear_algebra/"]
