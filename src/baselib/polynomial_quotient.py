@@ -86,7 +86,9 @@ class PolynomialQuotientElement(sage.Element):
     def __eq__(self, other: object) -> bool:
         try:
             other_value = self._parent(other)
-        except Exception:
+        except TypeError:
+            return False
+        except ValueError:
             return False
         return self._representative == other_value._representative
 

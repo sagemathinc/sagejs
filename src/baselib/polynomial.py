@@ -4299,6 +4299,8 @@ class MultivariatePolynomialElement(sage.Element):
                     )
                 )
             answer = self._parent._from_sparse_terms(terms)
+            if not terms:
+                break
         return answer
 
     diff = derivative

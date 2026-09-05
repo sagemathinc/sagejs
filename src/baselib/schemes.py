@@ -10,9 +10,37 @@ from typing import Any, Iterator
 import sagejs as sage
 import sagejs.runtime as runtime
 
-_affine_space_cache = []
-_projective_space_cache = []
-_MAX_SPACE_CACHE_SIZE = 128
+_affine_space_cache = runtime.map()
+_projective_space_cache = runtime.map()
+
+
+def _forget_space_cache_entry(record: Any) -> None:
+    cache, key, reference = record
+    # A collected old parent must not remove a subsequently recreated parent.
+    if cache.get(key) is reference:
+        runtime.reflect.get(cache, "delete").call(cache, key)
+
+
+_space_cache_registry = runtime.reflect.construct(
+    runtime.finalization_registry_class, [_forget_space_cache_entry]
+)
+
+
+def _space_cache_key(base: Any, dimension: int, names: Any) -> str:
+    return str(id(base)) + ":" + str(dimension) + ":" + repr(names)
+
+
+def _cached_space(cache: Any, key: str) -> Any:
+    reference = cache.get(key)
+    return runtime.undefined if reference is runtime.undefined else reference.deref()
+
+
+def _cache_space(cache: Any, key: str, value: Any) -> None:
+    # Parent identity is mathematical state: never evict a parent while a point
+    # or scheme still owns it. Weak values avoid retaining unused ambient rings.
+    reference = runtime.reflect.construct(runtime.weak_ref_class, [value])
+    cache.set(key, reference)
+    _space_cache_registry.register(value, [cache, key, reference])
 
 
 def _is_boolean(value: Any) -> bool:
@@ -484,17 +512,12 @@ def AffineSpace(
         )
     ring = sage.PolynomialRing(base, dimension, names=names, order="degrevlex")
     coordinate_names = ring.variable_names()
-    for cached in _affine_space_cache:
-        if (
-            cached.base_ring() is base
-            and cached.dimension() == dimension
-            and cached.coordinate_ring().variable_names() == coordinate_names
-        ):
-            return cached
+    key = _space_cache_key(base, dimension, coordinate_names)
+    cached = _cached_space(_affine_space_cache, key)
+    if cached is not runtime.undefined:
+        return cached
     answer = AffineSpaceParent(dimension, base, coordinate_names)
-    _affine_space_cache.append(answer)
-    if len(_affine_space_cache) > _MAX_SPACE_CACHE_SIZE:
-        del _affine_space_cache[0]
+    _cache_space(_affine_space_cache, key, answer)
     return answer
 
 
@@ -933,17 +956,12 @@ def ProjectiveSpace(
     base, dimension = _construction_arguments(first, second, "projective-space")
     ring = sage.PolynomialRing(base, dimension + 1, names=names, order="degrevlex")
     coordinate_names = ring.variable_names()
-    for cached in _projective_space_cache:
-        if (
-            cached.base_ring() is base
-            and cached.dimension() == dimension
-            and cached.coordinate_ring().variable_names() == coordinate_names
-        ):
-            return cached
+    key = _space_cache_key(base, dimension, coordinate_names)
+    cached = _cached_space(_projective_space_cache, key)
+    if cached is not runtime.undefined:
+        return cached
     answer = ProjectiveSpaceParent(dimension, base, coordinate_names)
-    _projective_space_cache.append(answer)
-    if len(_projective_space_cache) > _MAX_SPACE_CACHE_SIZE:
-        del _projective_space_cache[0]
+    _cache_space(_projective_space_cache, key, answer)
     return answer
 
 
@@ -964,6 +982,8 @@ class AffinePlaneCurve(AffineSubscheme):
             raise ValueError(
                 "an affine plane curve needs a polynomial in two variables"
             )
+        if polynomial.total_degree() <= 0:
+            raise ValueError("a plane curve needs a nonconstant defining polynomial")
         ambient = AffineSpace(ring.base_ring(), 2, names=ring.variable_names())
         self._polynomial = ambient.coordinate_ring()(polynomial)
         AffineSubscheme.__init__(self, ambient, [self._polynomial])
@@ -1066,6 +1086,8 @@ class ProjectivePlaneCurve(ProjectiveSubscheme):
             )
         if not polynomial.is_homogeneous():
             raise ValueError("a projective plane curve polynomial must be homogeneous")
+        if polynomial.total_degree() <= 0:
+            raise ValueError("a plane curve needs a nonconstant defining polynomial")
         ambient = ProjectiveSpace(ring.base_ring(), 2, names=ring.variable_names())
         self._polynomial = ambient.coordinate_ring()(polynomial)
         ProjectiveSubscheme.__init__(self, ambient, [self._polynomial])
@@ -1085,8 +1107,10 @@ class ProjectivePlaneCurve(ProjectiveSubscheme):
     ) -> ProjectivePlaneCurve:
         return self
 
-    def affine_patch(self, index: int = 0, proof: Any = None) -> AffinePlaneCurve:
+    def affine_patch(self, index: int = 0, proof: Any = None) -> AffineSubscheme:
         affine = ProjectiveSubscheme.affine_patch(self, index, proof)
+        if affine.is_empty(proof=proof):
+            return affine
         basis = list(affine.defining_ideal().groebner_basis(proof=proof))
         if len(basis) != 1:
             raise ArithmeticError("plane-curve patch did not remain a hypersurface")

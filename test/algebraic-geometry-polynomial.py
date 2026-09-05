@@ -61,3 +61,24 @@ try:
     raise AssertionError("positive-dimensional quotient acquired a finite basis")
 except ValueError as error:
     assert "zero-dimensional" in str(error)
+
+assert (x**2 + y).derivative(x, 10**12) == 0
+assert R(0).derivative(x, 10**12) == 0
+
+# Equality may reject coercion, but cannot conceal a failed exact reduction.
+saved_reduce = Q._reduce
+
+
+def broken_reduce(representative):
+    raise ArithmeticError("deliberate exact reduction failure")
+
+
+try:
+    Q._reduce = broken_reduce
+    try:
+        qx == x
+        raise AssertionError("equality concealed an arithmetic failure")
+    except ArithmeticError as error:
+        assert "deliberate exact reduction failure" in str(error)
+finally:
+    Q._reduce = saved_reduce

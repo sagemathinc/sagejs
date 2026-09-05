@@ -220,6 +220,15 @@ saturation iterations, Jacobian minors, graph size, quotient dimension, and
 deterministic separator search. Exceeding one raises `OverflowError` naming
 the operation and limit; it never returns an empty or partial scheme.
 
+Hilbert numerators admit at most 200000 collapsed LCM states and 200000
+dense coefficients; the coefficient limit is checked before allocating the
+dense list, even for a sparse input with enormous exponents. Jacobian minors
+through order eight reuse subset minors in `O(n * 2**n)` ring operations,
+without division or factorial-size recursive expansion. Separator candidates
+are generated lazily, stopping as soon as an exact certificate is found.
+Ambient-space caches retain weak values: constructing unrelated spaces does
+not change the identity of a parent still owned by a point or scheme.
+
 ## Browser and npm use
 
 All examples above are ordinary Sage.js source and can be pasted into

@@ -50,6 +50,35 @@ try:
 except NotImplementedError as error:
     assert "zero-dimensional" in str(error)
 
+# Separator families are lazy. The first finite candidate at the full 65536
+# element envelope must not first construct/deduplicate all remaining elements.
+from sagejs.polynomial_algorithms import zero_dimensional as zd
+
+binary_ring = PolynomialRing(GF(2), names=("binary_x", "binary_y"))
+binary_x, binary_y = binary_ring.gens()
+finite_candidates = zd._finite_candidates(
+    binary_ring.ideal(binary_x**16, binary_y), "auto", True
+)
+assert iter(finite_candidates) is finite_candidates
+assert next(finite_candidates) == binary_ring(1)
+
+saved_rational = zd._rational_candidates
+saved_finite = zd._finite_candidates
+
+
+def unnecessary_search(*args):
+    raise AssertionError("a certified first candidate must stop the search")
+    yield None
+
+
+try:
+    zd._rational_candidates = unnecessary_search
+    zd._finite_candidates = unnecessary_search
+    assert zd._separator_status(R.ideal(x, y), "auto", True)[0] == "field"
+finally:
+    zd._rational_candidates = saved_rational
+    zd._finite_candidates = saved_finite
+
 unit = R.ideal(1)
 assert unit.radical().is_one()
 assert unit.primary_decomposition() == []

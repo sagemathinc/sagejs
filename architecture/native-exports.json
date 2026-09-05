@@ -8123,8 +8123,8 @@
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
         "line": 2241,
-        "lines": 164,
-        "sha256": "348131aad20b62e6a874191d5a4e9e54d28dbeba8980ee69f0737cc125a8e5dc",
+        "lines": 192,
+        "sha256": "5e587d2230cd84684caf1215c8f872e5c385f660590c4e4e296b024b97e7ba10",
         "calls": [
           "array_to_fmpz_mpoly_vec",
           "check_napi",
