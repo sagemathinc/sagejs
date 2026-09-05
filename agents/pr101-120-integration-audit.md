@@ -1,6 +1,7 @@
 # PR 101–120 integration audit
 
-Status: in progress. This is development integration, not a release.
+Status: reviewed and validated for main promotion. This is development
+integration, not a release.
 
 ## Browser scope decision and final handoff
 
@@ -20,6 +21,36 @@ errors do not terminate Node-Wasm sessions. Both public corpora and the
 merge-owned capability inventories pass after this correction.
 
 No new release or deployment is part of this integration.
+
+### Final promotion evidence
+
+Candidate `a829ea2ca` includes upstream main `015105362` and the exact reviewed
+heads of #101, #106, #114, #123, #125 and #127. All six PRs were rechecked:
+their heads were unchanged and none had a review thread. Earlier requested
+PRs were already merged or closed as integrated, as recorded below.
+
+- Canonical Wasm build passes: 286 compiled functions, one deliberate wasm32
+  fallback, and all 15 reviewed ABI modules verified. Artifact:
+  `sha256:16f0b1d7311f52c65b12b5528cee32ce18049979c03ee6f263b4e0f13103c905`.
+- Final Node-Wasm regression set: 9/9, including geometry, Gamma1, dynamic
+  import identity, shared algebraic boundaries, session behavior and the
+  public capability-limit corpus. The same public corpus passes in Chromium.
+- All payload topology budgets pass. Eager core: 15,386,607 gzip / 9,160,440
+  Brotli bytes; algebraic specialist: 2,053,610 / 1,652,779 bytes. No additional
+  budget increase was needed for this integration; the upstream release's
+  reviewed budget change is preserved.
+- Reconciled upstream slice, process-output, cache and group regressions:
+  29/29, including actual Chromium group execution.
+- Architecture, strict Python (377 modules, zero errors), formatting
+  (760 files), and all merge-owned inventories pass after reconciliation.
+- Earlier broad native qualification remains scoped to its checkpoint below:
+  138/138 unit files, all 123 portable files included, and 21 compiler fixture
+  passes with 28 existing skips. Do not describe this as a fresh complete
+  four-platform release qualification.
+
+The upstream NLopt qualification evidence remains in the tree as historical
+evidence. The combined-runtime manifest correctly remains pending source-current
+requalification; a later release must not reuse the older runtime's claim.
 
 ## Combined candidate checkpoint (2026-09-05)
 
@@ -96,8 +127,8 @@ Starting main: `675b1d3f494d1e9dedab86e5a348524b0493b1fb`.
   freeze `dbfb1dad9`; its ancestry is included while retaining the combined
   source freeze. Integration branch is pushed and clean.
 
-Promotion remains paused for the explicit browser Hecke implementation/scope
-decision above. No PR has been rejected and no release has been made.
+The browser-scope pause recorded at this checkpoint is resolved by the user's
+approval documented at the top of this audit. No release has been made.
 
 Integration branch: `agent/integrate-prs101-120`.
 Coordination: GitHub Discussion #104.
