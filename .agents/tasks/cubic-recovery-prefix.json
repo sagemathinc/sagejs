@@ -41,10 +41,101 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/number-field-cubic-recovery-prefix.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.47,
+      "started_at": "2026-09-05T06:44:00.552Z",
+      "commit": "fcfbd2130f42445c6b645b0e6b1b07d20f5d8ff5",
+      "workspace_fingerprint": "b0e773de3f537be37d88ad66e2387ddac0e1a49fd01918ac0a06d53147e818f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-reconstructed-regulator-guard.cjs test/number-field-cubic-adjacent-cursor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.147,
+      "started_at": "2026-09-05T06:44:22.649Z",
+      "commit": "fcfbd2130f42445c6b645b0e6b1b07d20f5d8ff5",
+      "workspace_fingerprint": "b0e773de3f537be37d88ad66e2387ddac0e1a49fd01918ac0a06d53147e818f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.179,
+      "started_at": "2026-09-05T06:44:27.413Z",
+      "commit": "fcfbd2130f42445c6b645b0e6b1b07d20f5d8ff5",
+      "workspace_fingerprint": "b0e773de3f537be37d88ad66e2387ddac0e1a49fd01918ac0a06d53147e818f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 41.071,
+      "started_at": "2026-09-05T06:44:37.236Z",
+      "commit": "fcfbd2130f42445c6b645b0e6b1b07d20f5d8ff5",
+      "workspace_fingerprint": "b0e773de3f537be37d88ad66e2387ddac0e1a49fd01918ac0a06d53147e818f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-recovery-prefix.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.147,
+      "started_at": "2026-09-05T06:46:13.587Z",
+      "commit": "d0f8d983dd2b888a3a29b55d57615144a020f91a",
+      "workspace_fingerprint": "54348f91262c56295ba05222df50242b8ecde369a9c0bb398736bcd0796fdb01",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-reconstructed-regulator-guard.cjs test/number-field-cubic-adjacent-cursor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.089,
+      "started_at": "2026-09-05T06:46:35.343Z",
+      "commit": "d0f8d983dd2b888a3a29b55d57615144a020f91a",
+      "workspace_fingerprint": "54348f91262c56295ba05222df50242b8ecde369a9c0bb398736bcd0796fdb01",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.222,
+      "started_at": "2026-09-05T06:46:40.051Z",
+      "commit": "d0f8d983dd2b888a3a29b55d57615144a020f91a",
+      "workspace_fingerprint": "54348f91262c56295ba05222df50242b8ecde369a9c0bb398736bcd0796fdb01",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.717,
+      "started_at": "2026-09-05T06:46:49.921Z",
+      "commit": "d0f8d983dd2b888a3a29b55d57615144a020f91a",
+      "workspace_fingerprint": "54348f91262c56295ba05222df50242b8ecde369a9c0bb398736bcd0796fdb01",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Draft PR142: implementation fcfbd213 plus portable test discovery d0f8d983. Actual recovery HNF/LLL now use logical prefixes; statuses distinguish absent certified unit evidence, deficient rank, invalid exact computation, unavailable reconstruction and invalid regulator. The established-full-rank caller sends all fatal/inconsistent statuses to non-retryable phase44, while status0 retains phase43. Focused tests and existing regulator/cursor guards pass, as do strict checks on247 modules. Current-source lowering confirms86 fmpz functions and one arena. Actual alpha^3-alpha-1 arithmetic agrees under dynamic/GMP/fmpz across exact and poisoned oversized owners at2,4,2,4; direct sanitized cores use fixed3MiB checkpoints without retries/upstream allocation. High-water is206448 bytes fmpz and1995008 bytes GMP. No class-group timing claim or opt use.",
+    "risks": [
+      "The integration agent explicitly owns the combined full production rebuild, public cubic regression suite and broad pnpm test:native gate. These were not duplicated in this lane; only fresh prerequisite builds, focused compiled mathematical witnesses and actual full-closure lowering were executed.",
+      "Architecture checking reaches stale optimizer provenance; integration owns the combined refresh. Non-Linux CI remains pending, and the direct ASan/UBSan harness is Unix-only.",
+      "The four-prefix memory measurements qualify only this genuine small witness, not the complete repeated proof suffix or all input sizes.",
+      "Failure-path correction intentionally prevents host effort escalation on reconstruction/regulator failures and inconsistent rank. One-shot successful mathematical outputs are unchanged, but previously unsafe phase43 retries now decline.",
+      "pnpm test:changed --base813e77a1 --list was reviewed; full execution would start the production build deliberately deferred to the integration agent. The task remains active and the PR draft until combined gates pass."
+    ],
+    "next_steps": [
+      "Integrate the disjoint recovery helper/caller changes with presentation extraction and BF prefix work; resolve only the expected FFI import union.",
+      "Run the combined production build and full public cubic receipt/replay regressions, then refresh optimizer provenance and validate non-Linux targets.",
+      "Keep negative recovery statuses fatal in the forthcoming staged orchestrator; interpret status2 as insufficiency only before full-rank support has been established."
+    ]
   }
 }
