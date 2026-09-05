@@ -104,6 +104,7 @@ def finite_values(
     nan_policy: str = "raise",
     guard: BudgetGuard | None = None,
     minimum: int = 1,
+    maximum: int | None = None,
 ) -> list[float]:
     """Materialize finite binary64 observations under an explicit NaN policy."""
     if nan_policy not in ("raise", "omit"):
@@ -117,6 +118,8 @@ def finite_values(
             if nan_policy == "omit" and math.isnan(value):
                 continue
             raise ValueError("observations must be finite")
+        if maximum is not None and len(values) >= maximum:
+            raise MemoryError("statistics data exceeds its buffer budget")
         values.append(value)
     if len(values) < minimum:
         raise ValueError(

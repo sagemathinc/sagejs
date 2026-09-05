@@ -34,14 +34,18 @@ def main() -> None:
 
     def record(name: str, function_index: int, args: list, expected_status: float):
         before = [list(value) if isinstance(value, list) else value for value in args]
-        function = (module.prepare_centered, module.prepare_products)[function_index]
+        function = (
+            module.prepare_centered,
+            module.prepare_products,
+            module.prepare_summary_checks,
+        )[function_index]
         status = function(*args)
         assert status == expected_status, name
-        input_count = 1 if function_index == 0 else 2
+        input_count = 2 if function_index == 1 else 1
         for index in range(input_count):
             assert list(map(bits, args[index])) == list(map(bits, before[index])), name
         output_index = 4 if function_index == 0 else 3
-        if status != 0:
+        if status != 0 and function_index != 2:
             assert args[output_index] == before[output_index], name
         rows.append(
             {
@@ -162,6 +166,57 @@ def main() -> None:
         args = [[1.0], [131.0], [137.0], [139.0], [27.0], 0.0, 1]
         args[index] = []
         record("centered-capacity-" + str(index), 0, args, 2.0)
+    for name, values, center in cases:
+        median = center * 0.5
+        status = 0.0
+        expected_absolute = []
+        expected_residual = []
+        if not math.isfinite(center) or not all(map(math.isfinite, values)):
+            status = 1.0
+        else:
+            try:
+                expected_absolute = [
+                    abs(rounded(Fraction(value) - Fraction(median), value - median))
+                    for value in values
+                ]
+                expected_residual = [
+                    rounded(Fraction(value) - Fraction(center), value - center)
+                    for value in values
+                ]
+            except OverflowError:
+                status = 1.0
+        buffers = record(
+            name + "-independent-check",
+            2,
+            [
+                values + [917.0],
+                [131.0] * (len(values) + 1),
+                [137.0] * (len(values) + 1),
+                median,
+                center,
+                len(values),
+            ],
+            status,
+        )
+        if status == 0:
+            assert list(map(bits, buffers[1][:-1])) == list(
+                map(bits, expected_absolute)
+            ), name
+            assert list(map(bits, buffers[2][:-1])) == list(
+                map(bits, expected_residual)
+            ), name
+            assert buffers[1][-1] == 131.0 and buffers[2][-1] == 137.0
+    for index in range(3):
+        args = [[1.0], [131.0], [137.0], 1.0, 1.0, 1]
+        args[index] = []
+        record("summary-check-capacity-" + str(index), 2, args, 2.0)
+    for median in (math.nan, math.inf, -math.inf):
+        record(
+            "summary-median-" + bits(median),
+            2,
+            [[1.0], [131.0], [137.0], median, 1.0, 1],
+            1.0,
+        )
     for index in range(4):
         args = [[1.0], [1.0], [131.0], [27.0], 1]
         args[index] = []

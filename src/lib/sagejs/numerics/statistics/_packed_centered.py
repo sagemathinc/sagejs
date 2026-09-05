@@ -115,3 +115,52 @@ def prepare_products(
         products[index] = x * y
     output[0] = float(count)
     return 0.0
+
+
+@native
+def prepare_summary_checks(
+    values: Float64Buffer,
+    absolute_deviations: Float64Buffer,
+    residuals: Float64Buffer,
+    median: float,
+    mean: float,
+    count: uint64,
+) -> float:
+    """Re-read original observations for MAD and the independent center check.
+
+    Neither calculation consumes the centered kernel's normalized workspace.
+    These two separate outputs may be overwritten on failure, but input is
+    never modified. The caller must discard both outputs after any rejection.
+    """
+    if count < 0:
+        return 2.0
+    if count > len(values):
+        return 2.0
+    if count > len(absolute_deviations):
+        return 2.0
+    if count > len(residuals):
+        return 2.0
+    maximum = 1.7976931348623157e308
+    if median != median:
+        return 1.0
+    if mean != mean:
+        return 1.0
+    if abs(median) > maximum:
+        return 1.0
+    if abs(mean) > maximum:
+        return 1.0
+    for index in range(count):
+        value = values[index]
+        if value != value:
+            return 1.0
+        if abs(value) > maximum:
+            return 1.0
+        deviation = abs(value - median)
+        residual = value - mean
+        if deviation > maximum:
+            return 1.0
+        if abs(residual) > maximum:
+            return 1.0
+        absolute_deviations[index] = deviation
+        residuals[index] = residual
+    return 0.0

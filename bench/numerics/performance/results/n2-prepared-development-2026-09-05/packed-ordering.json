@@ -1,0 +1,927 @@
+{
+  "schema": "sagejs.prepared-statistics-development/v1",
+  "classification": "source-hashed-development-not-frozen-public-qualification",
+  "source": {
+    "commit": "cfeeac15f98161ac8f8bfae5506a3c23c2a9de9e",
+    "tree": "325fbc5ee3e0c52963deeb7e8bf4c5a1b12da956",
+    "clean": false,
+    "status_sha256": "b6f377ffc9564c6255a438a9a2310b7792a99e1112f8ccb3f9f47bd7891fc2a1"
+  },
+  "sources": [
+    {
+      "path": "src/lib/sagejs/numerics/statistics/__init__.py",
+      "sha256": "66cf6e3eb261e86f19626b916beb0f7f71eccf98f28a79980edba1a265367150"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/_core.py",
+      "sha256": "d54d18ef66b7048ce5115d3bc03c99971f5e2f4760a4eb80a843092a9f7b85a6"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/_packed.py",
+      "sha256": "ab4e7d798dec5a66ba1d90c394734b8cb83b281ea00b5865dc5d292fc7b24c9d"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/_packed_centered.py",
+      "sha256": "c7f9fb23ca0dc5839a3da27b5afc3b5f25d5e87006e6b13569f7bedd46a68f32"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/_prepared_native.py",
+      "sha256": "6ac2266a86197b2c880231ba89baacd822bf85c84b0a3940103ef6d89ec99ebb"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/_special.py",
+      "sha256": "cbfdf0f08a8981f4abe4118a6446ddaad4c8bb36fc9b5acc5b4a2eee5fc25686"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/capabilities.py",
+      "sha256": "065d3e6c934f1c2570583e6f701be3af9ec71b6878658e5401e70d07b15a235c"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/descriptive.py",
+      "sha256": "7965c6538076cf51410a228874520aeb42f5c5d8192f9140a7aebbcebfe9998e"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/distributions.py",
+      "sha256": "7225f2a4b20ff0b4fcfe8f1a3349ef65b8cd56cae1b03fa35d559df302a46eb3"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/inference.py",
+      "sha256": "081fb6680d28ac3fa90f1475e9a3885754d269a33cef96188dba0bfe4460f62c"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/prepared.py",
+      "sha256": "ceb43d45526e54dae47dfacf770f8154d32c1978bec8ffd40c4e94db1a98bf71"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/regression.py",
+      "sha256": "2faba46284ca1e8cfbcc477252e50691d7771004d2d289e81cc7bfd4369e7656"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/result.py",
+      "sha256": "2228d517ba21424adfa7b061aad4ecb268a67aca48cdeb1d0bca638af2bea39a"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/rng.py",
+      "sha256": "bfd916bd470f58e81d9e6f2d221dcf81b981642c0ac5ae2c83c392fd048a87d4"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/visualization.py",
+      "sha256": "c0dde87f7de00b9a3709da2612dfba786f6f29aa4ddb3617b55857422cc200c2"
+    }
+  ],
+  "collector_sha256": "6012b06ea9ac3153910c5ad28fe2e14b245ddb8eb5f82da973d389f5e74bb421",
+  "workload_sha256": "435a3ab57d8bbab45f13ccb0b9beacb0b2ac72e9418e3dc796367d9a4aaf929e",
+  "compiler_sha256": "189156ba7877439029b1b0ef1f4e0bcfcd64ec110dad1a18652957fa4eb5f678",
+  "artifacts": [
+    {
+      "cache_key": "ba03f5d6d7b52adfbfee0fdf2b8f25886c0bb98b1c4b262c58c6eb3781ec6a20",
+      "core_sha256": "92609cf574e6b6502ad8a8e75d80376374245d5af3b5d1185d545bcb1fe5b83f",
+      "addon_sha256": "8d90ace648e2efcb60aea8e5beb2cbb0d3d575afeebb6b19c4ecf3ff5de2d7c9",
+      "addon_bytes": 14504
+    },
+    {
+      "cache_key": "47db60441cf4493b164ecc67c7eabf42cd72b0cbc7f12182f4160153e70b686a",
+      "core_sha256": "482729330a5c3e54467539cd9553dc111b1e3c24bcb66a83b30e99a9f060bd6a",
+      "addon_sha256": "fe1e3fcc692bd60d3f8c2a644954d770e7b2902d6c6421611ff1a39a20eba9c9",
+      "addon_bytes": 18624
+    }
+  ],
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.8.1",
+    "cpu": "AMD EPYC 7B13",
+    "load_average": [
+      1.43,
+      1.16,
+      0.87
+    ]
+  },
+  "policy": {
+    "warmups": 3,
+    "samples": 7,
+    "observations": 20000,
+    "included": [
+      "public query",
+      "sorting/MAD",
+      "independent validation",
+      "structured result",
+      "trace"
+    ],
+    "separate": [
+      "copied input validation",
+      "owned workspace preparation"
+    ],
+    "unmeasured": [
+      "paired frozen-source comparison",
+      "peak RSS",
+      "browser/public-Wasm",
+      "four-platform qualification",
+      "npm/SEA"
+    ]
+  },
+  "records": [
+    {
+      "runtime": "cpython",
+      "process_wall_ms": 866.4751879999999,
+      "schema": "sagejs.prepared-statistics-development/v1",
+      "records": [
+        {
+          "trace": "none",
+          "route": "generic",
+          "query": {
+            "first_call_ms": 17.732088999764528,
+            "samples_ms": [
+              17.539628999656998,
+              17.587248999916483,
+              17.49918900168268,
+              17.392139001458418,
+              17.451120002078824,
+              17.521859997941647,
+              17.513849001261406
+            ],
+            "median_ms": 17.513849001261406,
+            "backend": "ordinary-python",
+            "value": {
+              "count": 20000,
+              "ddof": 1,
+              "interquartile_range": 49.949999928474426,
+              "maximum": 1000000099.9,
+              "mean": 1000000049.95,
+              "median": 1000000049.95,
+              "median_absolute_deviation": 25,
+              "minimum": 1000000000,
+              "q1": 1000000024.975,
+              "q3": 1000000074.925,
+              "quantile_method": "linear-r-type-7",
+              "range": 99.89999997615814,
+              "standard_deviation": 28.86822074017841,
+              "standard_error": 0.20412914646170285,
+              "sum": 20000000999000,
+              "variance": 833.3741687036668
+            },
+            "validation": {
+              "truth_level": "validated_approximate",
+              "passed": true,
+              "checks": [
+                {
+                  "identity": "sum(x - mean) approximately zero",
+                  "passed": true,
+                  "residual": 0.00095367431640625,
+                  "tolerance": 0.0625
+                },
+                {
+                  "identity": "minimum <= q1 <= median <= q3 <= maximum",
+                  "passed": true
+                },
+                {
+                  "identity": "variance is nonnegative",
+                  "passed": true
+                }
+              ],
+              "residual": null,
+              "error_estimate": null,
+              "condition_estimate": null
+            }
+          }
+        },
+        {
+          "trace": "none",
+          "route": "prepared-dynamic",
+          "setup_wall_ms": 10.627468996972311,
+          "preparation": {
+            "count": 20000,
+            "evaluations": 20000,
+            "elapsed_ms": 10.58928899874445,
+            "logical_buffer_bytes": 1600016,
+            "requested_backend": "dynamic",
+            "selected_backend": "ordinary-python",
+            "summary_precomputed": false
+          },
+          "query": {
+            "first_call_ms": 7.695730004343204,
+            "samples_ms": [
+              7.774978999805171,
+              7.799849998264108,
+              7.720729998254683,
+              7.860348996473476,
+              7.690550002735108,
+              7.860478996008169,
+              7.715890002145898
+            ],
+            "median_ms": 7.774978999805171,
+            "backend": "ordinary-python",
+            "value": {
+              "count": 20000,
+              "ddof": 1,
+              "interquartile_range": 49.949999928474426,
+              "maximum": 1000000099.9,
+              "mean": 1000000049.95,
+              "median": 1000000049.95,
+              "median_absolute_deviation": 25,
+              "minimum": 1000000000,
+              "q1": 1000000024.975,
+              "q3": 1000000074.925,
+              "quantile_method": "linear-r-type-7",
+              "range": 99.89999997615814,
+              "standard_deviation": 28.86822074017841,
+              "standard_error": 0.20412914646170285,
+              "sum": 20000000999000,
+              "variance": 833.3741687036668
+            },
+            "validation": {
+              "truth_level": "validated_approximate",
+              "passed": true,
+              "checks": [
+                {
+                  "identity": "sum(x - mean) approximately zero",
+                  "passed": true,
+                  "residual": 0.00095367431640625,
+                  "tolerance": 0.0625
+                },
+                {
+                  "identity": "minimum <= q1 <= median <= q3 <= maximum",
+                  "passed": true
+                },
+                {
+                  "identity": "variance is nonnegative",
+                  "passed": true
+                }
+              ],
+              "residual": null,
+              "error_estimate": null,
+              "condition_estimate": null
+            }
+          }
+        },
+        {
+          "trace": "none",
+          "route": "prepared-native",
+          "setup_wall_ms": 11.79157000296982,
+          "preparation": {
+            "count": 20000,
+            "evaluations": 20000,
+            "elapsed_ms": 11.756808999052737,
+            "logical_buffer_bytes": 1600016,
+            "requested_backend": "native",
+            "selected_backend": "ordinary-python",
+            "summary_precomputed": false
+          },
+          "query": {
+            "first_call_ms": 7.763340006931685,
+            "samples_ms": [
+              7.6808599987998605,
+              7.554370000434574,
+              7.6179700045031495,
+              7.7560499994433485,
+              7.669218997762073,
+              8.387959998799488,
+              7.7282989950617775
+            ],
+            "median_ms": 7.6808599987998605,
+            "backend": "ordinary-python",
+            "value": {
+              "count": 20000,
+              "ddof": 1,
+              "interquartile_range": 49.949999928474426,
+              "maximum": 1000000099.9,
+              "mean": 1000000049.95,
+              "median": 1000000049.95,
+              "median_absolute_deviation": 25,
+              "minimum": 1000000000,
+              "q1": 1000000024.975,
+              "q3": 1000000074.925,
+              "quantile_method": "linear-r-type-7",
+              "range": 99.89999997615814,
+              "standard_deviation": 28.86822074017841,
+              "standard_error": 0.20412914646170285,
+              "sum": 20000000999000,
+              "variance": 833.3741687036668
+            },
+            "validation": {
+              "truth_level": "validated_approximate",
+              "passed": true,
+              "checks": [
+                {
+                  "identity": "sum(x - mean) approximately zero",
+                  "passed": true,
+                  "residual": 0.00095367431640625,
+                  "tolerance": 0.0625
+                },
+                {
+                  "identity": "minimum <= q1 <= median <= q3 <= maximum",
+                  "passed": true
+                },
+                {
+                  "identity": "variance is nonnegative",
+                  "passed": true
+                }
+              ],
+              "residual": null,
+              "error_estimate": null,
+              "condition_estimate": null
+            }
+          }
+        },
+        {
+          "trace": "summary",
+          "route": "generic",
+          "query": {
+            "first_call_ms": 17.645600004470907,
+            "samples_ms": [
+              17.6339790050406,
+              17.478579000453465,
+              17.546369999763556,
+              17.538808002427686,
+              17.579849998583086,
+              17.538678999699187,
+              17.551399003423285
+            ],
+            "median_ms": 17.546369999763556,
+            "backend": "ordinary-python",
+            "value": {
+              "count": 20000,
+              "ddof": 1,
+              "interquartile_range": 49.949999928474426,
+              "maximum": 1000000099.9,
+              "mean": 1000000049.95,
+              "median": 1000000049.95,
+              "median_absolute_deviation": 25,
+              "minimum": 1000000000,
+              "q1": 1000000024.975,
+              "q3": 1000000074.925,
+              "quantile_method": "linear-r-type-7",
+              "range": 99.89999997615814,
+              "standard_deviation": 28.86822074017841,
+              "standard_error": 0.20412914646170285,
+              "sum": 20000000999000,
+              "variance": 833.3741687036668
+            },
+            "validation": {
+              "truth_level": "validated_approximate",
+              "passed": true,
+              "checks": [
+                {
+                  "identity": "sum(x - mean) approximately zero",
+                  "passed": true,
+                  "residual": 0.00095367431640625,
+                  "tolerance": 0.0625
+                },
+                {
+                  "identity": "minimum <= q1 <= median <= q3 <= maximum",
+                  "passed": true
+                },
+                {
+                  "identity": "variance is nonnegative",
+                  "passed": true
+                }
+              ],
+              "residual": null,
+              "error_estimate": null,
+              "condition_estimate": null
+            }
+          }
+        },
+        {
+          "trace": "summary",
+          "route": "prepared-dynamic",
+          "setup_wall_ms": 10.695500001020264,
+          "preparation": {
+            "count": 20000,
+            "evaluations": 20000,
+            "elapsed_ms": 10.661519998393487,
+            "logical_buffer_bytes": 1600016,
+            "requested_backend": "dynamic",
+            "selected_backend": "ordinary-python",
+            "summary_precomputed": false
+          },
+          "query": {
+            "first_call_ms": 7.793928998580668,
+            "samples_ms": [
+              7.853969000279903,
+              7.739400003629271,
+              7.744639995507896,
+              7.8164899969124235,
+              7.7763399967807345,
+              7.87634000153048,
+              7.729529002972413
+            ],
+            "median_ms": 7.7763399967807345,
+            "backend": "ordinary-python",
+            "value": {
+              "count": 20000,
+              "ddof": 1,
+              "interquartile_range": 49.949999928474426,
+              "maximum": 1000000099.9,
+              "mean": 1000000049.95,
+              "median": 1000000049.95,
+              "median_absolute_deviation": 25,
+              "minimum": 1000000000,
+              "q1": 1000000024.975,
+              "q3": 1000000074.925,
+              "quantile_method": "linear-r-type-7",
+              "range": 99.89999997615814,
+              "standard_deviation": 28.86822074017841,
+              "standard_error": 0.20412914646170285,
+              "sum": 20000000999000,
+              "variance": 833.3741687036668
+            },
+            "validation": {
+              "truth_level": "validated_approximate",
+              "passed": true,
+              "checks": [
+                {
+                  "identity": "sum(x - mean) approximately zero",
+                  "passed": true,
+                  "residual": 0.00095367431640625,
+                  "tolerance": 0.0625
+                },
+                {
+                  "identity": "minimum <= q1 <= median <= q3 <= maximum",
+                  "passed": true
+                },
+                {
+                  "identity": "variance is nonnegative",
+                  "passed": true
+                }
+              ],
+              "residual": null,
+              "error_estimate": null,
+              "condition_estimate": null
+            }
+          }
+        },
+        {
+          "trace": "summary",
+          "route": "prepared-native",
+          "setup_wall_ms": 10.6466199940769,
+          "preparation": {
+            "count": 20000,
+            "evaluations": 20000,
+            "elapsed_ms": 10.616640000080224,
+            "logical_buffer_bytes": 1600016,
+            "requested_backend": "native",
+            "selected_backend": "ordinary-python",
+            "summary_precomputed": false
+          },
+          "query": {
+            "first_call_ms": 7.790039999235887,
+            "samples_ms": [
+              7.888380001531914,
+              7.770869000523817,
+              7.7810590009903535,
+              7.906449995061848,
+              7.86851899465546,
+              7.95395000022836,
+              7.859549994464032
+            ],
+            "median_ms": 7.86851899465546,
+            "backend": "ordinary-python",
+            "value": {
+              "count": 20000,
+              "ddof": 1,
+              "interquartile_range": 49.949999928474426,
+              "maximum": 1000000099.9,
+              "mean": 1000000049.95,
+              "median": 1000000049.95,
+              "median_absolute_deviation": 25,
+              "minimum": 1000000000,
+              "q1": 1000000024.975,
+              "q3": 1000000074.925,
+              "quantile_method": "linear-r-type-7",
+              "range": 99.89999997615814,
+              "standard_deviation": 28.86822074017841,
+              "standard_error": 0.20412914646170285,
+              "sum": 20000000999000,
+              "variance": 833.3741687036668
+            },
+            "validation": {
+              "truth_level": "validated_approximate",
+              "passed": true,
+              "checks": [
+                {
+                  "identity": "sum(x - mean) approximately zero",
+                  "passed": true,
+                  "residual": 0.00095367431640625,
+                  "tolerance": 0.0625
+                },
+                {
+                  "identity": "minimum <= q1 <= median <= q3 <= maximum",
+                  "passed": true
+                },
+                {
+                  "identity": "variance is nonnegative",
+                  "passed": true
+                }
+              ],
+              "residual": null,
+              "error_estimate": null,
+              "condition_estimate": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "runtime": "sagejs",
+      "process_wall_ms": 64902.94485199999,
+      "schema": "sagejs.prepared-statistics-development/v1",
+      "records": [
+        {
+          "trace": "none",
+          "route": "generic",
+          "query": {
+            "first_call_ms": 1567.5413608551025,
+            "samples_ms": [
+              1552.6001453399658,
+              1563.1780624389648,
+              1543.6344146728516,
+              1541.3215160369873,
+              1601.8927097320557,
+              1555.856466293335,
+              1561.697006225586
+            ],
+            "median_ms": 1555.856466293335,
+            "backend": "ordinary-python",
+            "value": {
+              "count": 20000,
+              "ddof": 1,
+              "interquartile_range": 49.949999928474426,
+              "maximum": 1000000099.9,
+              "mean": 1000000049.95,
+              "median": 1000000049.95,
+              "median_absolute_deviation": 25,
+              "minimum": 1000000000,
+              "q1": 1000000024.975,
+              "q3": 1000000074.925,
+              "quantile_method": "linear-r-type-7",
+              "range": 99.89999997615814,
+              "standard_deviation": 28.86822074017841,
+              "standard_error": 0.20412914646170285,
+              "sum": 20000000999000,
+              "variance": 833.3741687036668
+            },
+            "validation": {
+              "truth_level": "validated_approximate",
+              "passed": true,
+              "checks": [
+                {
+                  "identity": "sum(x - mean) approximately zero",
+                  "passed": true,
+                  "residual": 0.00095367431640625,
+                  "tolerance": 0.0625
+                },
+                {
+                  "identity": "minimum <= q1 <= median <= q3 <= maximum",
+                  "passed": true
+                },
+                {
+                  "identity": "variance is nonnegative",
+                  "passed": true
+                }
+              ],
+              "residual": null,
+              "error_estimate": null,
+              "condition_estimate": null
+            }
+          }
+        },
+        {
+          "trace": "none",
+          "route": "prepared-dynamic",
+          "setup_wall_ms": 500.4596710205078,
+          "preparation": {
+            "count": 20000,
+            "evaluations": 20000,
+            "elapsed_ms": 499.5155334472656,
+            "logical_buffer_bytes": 1600016,
+            "requested_backend": "dynamic",
+            "selected_backend": "ordinary-python",
+            "summary_precomputed": false
+          },
+          "query": {
+            "first_call_ms": 1070.2054500579834,
+            "samples_ms": [
+              1081.1173915863037,
+              1067.8644180297852,
+              1217.0178890228271,
+              1067.2540664672852,
+              1074.0399360656738,
+              1064.760446548462,
+              1071.4712142944336
+            ],
+            "median_ms": 1071.4712142944336,
+            "backend": "ordinary-python",
+            "value": {
+              "count": 20000,
+              "ddof": 1,
+              "interquartile_range": 49.949999928474426,
+              "maximum": 1000000099.9,
+              "mean": 1000000049.95,
+              "median": 1000000049.95,
+              "median_absolute_deviation": 25,
+              "minimum": 1000000000,
+              "q1": 1000000024.975,
+              "q3": 1000000074.925,
+              "quantile_method": "linear-r-type-7",
+              "range": 99.89999997615814,
+              "standard_deviation": 28.86822074017841,
+              "standard_error": 0.20412914646170285,
+              "sum": 20000000999000,
+              "variance": 833.3741687036668
+            },
+            "validation": {
+              "truth_level": "validated_approximate",
+              "passed": true,
+              "checks": [
+                {
+                  "identity": "sum(x - mean) approximately zero",
+                  "passed": true,
+                  "residual": 0.00095367431640625,
+                  "tolerance": 0.0625
+                },
+                {
+                  "identity": "minimum <= q1 <= median <= q3 <= maximum",
+                  "passed": true
+                },
+                {
+                  "identity": "variance is nonnegative",
+                  "passed": true
+                }
+              ],
+              "residual": null,
+              "error_estimate": null,
+              "condition_estimate": null
+            }
+          }
+        },
+        {
+          "trace": "none",
+          "route": "prepared-native",
+          "setup_wall_ms": 530.9455394744873,
+          "preparation": {
+            "count": 20000,
+            "evaluations": 20000,
+            "elapsed_ms": 530.5721759796143,
+            "logical_buffer_bytes": 1600016,
+            "requested_backend": "native",
+            "selected_backend": "source-native",
+            "summary_precomputed": false
+          },
+          "query": {
+            "first_call_ms": 38.849830627441406,
+            "samples_ms": [
+              32.43541717529297,
+              32.2108268737793,
+              32.45425224304199,
+              35.79878807067871,
+              32.4859619140625,
+              33.1110954284668,
+              33.59222412109375
+            ],
+            "median_ms": 32.4859619140625,
+            "backend": "source-native",
+            "value": {
+              "count": 20000,
+              "ddof": 1,
+              "interquartile_range": 49.949999928474426,
+              "maximum": 1000000099.9,
+              "mean": 1000000049.95,
+              "median": 1000000049.95,
+              "median_absolute_deviation": 25,
+              "minimum": 1000000000,
+              "q1": 1000000024.975,
+              "q3": 1000000074.925,
+              "quantile_method": "linear-r-type-7",
+              "range": 99.89999997615814,
+              "standard_deviation": 28.86822074017841,
+              "standard_error": 0.20412914646170285,
+              "sum": 20000000999000,
+              "variance": 833.3741687036668
+            },
+            "validation": {
+              "truth_level": "validated_approximate",
+              "passed": true,
+              "checks": [
+                {
+                  "identity": "sum(x - mean) approximately zero",
+                  "passed": true,
+                  "residual": 0.00095367431640625,
+                  "tolerance": 0.0625
+                },
+                {
+                  "identity": "minimum <= q1 <= median <= q3 <= maximum",
+                  "passed": true
+                },
+                {
+                  "identity": "variance is nonnegative",
+                  "passed": true
+                }
+              ],
+              "residual": null,
+              "error_estimate": null,
+              "condition_estimate": null
+            }
+          }
+        },
+        {
+          "trace": "summary",
+          "route": "generic",
+          "query": {
+            "first_call_ms": 1573.0013847351074,
+            "samples_ms": [
+              1554.563045501709,
+              1556.708812713623,
+              1538.9080047607422,
+              1556.2121868133545,
+              1563.7133121490479,
+              1555.8381080627441,
+              1573.2660293579102
+            ],
+            "median_ms": 1556.2121868133545,
+            "backend": "ordinary-python",
+            "value": {
+              "count": 20000,
+              "ddof": 1,
+              "interquartile_range": 49.949999928474426,
+              "maximum": 1000000099.9,
+              "mean": 1000000049.95,
+              "median": 1000000049.95,
+              "median_absolute_deviation": 25,
+              "minimum": 1000000000,
+              "q1": 1000000024.975,
+              "q3": 1000000074.925,
+              "quantile_method": "linear-r-type-7",
+              "range": 99.89999997615814,
+              "standard_deviation": 28.86822074017841,
+              "standard_error": 0.20412914646170285,
+              "sum": 20000000999000,
+              "variance": 833.3741687036668
+            },
+            "validation": {
+              "truth_level": "validated_approximate",
+              "passed": true,
+              "checks": [
+                {
+                  "identity": "sum(x - mean) approximately zero",
+                  "passed": true,
+                  "residual": 0.00095367431640625,
+                  "tolerance": 0.0625
+                },
+                {
+                  "identity": "minimum <= q1 <= median <= q3 <= maximum",
+                  "passed": true
+                },
+                {
+                  "identity": "variance is nonnegative",
+                  "passed": true
+                }
+              ],
+              "residual": null,
+              "error_estimate": null,
+              "condition_estimate": null
+            }
+          }
+        },
+        {
+          "trace": "summary",
+          "route": "prepared-dynamic",
+          "setup_wall_ms": 508.12578201293945,
+          "preparation": {
+            "count": 20000,
+            "evaluations": 20000,
+            "elapsed_ms": 507.7345371246338,
+            "logical_buffer_bytes": 1600016,
+            "requested_backend": "dynamic",
+            "selected_backend": "ordinary-python",
+            "summary_precomputed": false
+          },
+          "query": {
+            "first_call_ms": 1061.8271827697754,
+            "samples_ms": [
+              1058.1798553466797,
+              1051.6316890716553,
+              1053.2734394073486,
+              1059.5221519470215,
+              1070.1394081115723,
+              1061.2168312072754,
+              1050.0097274780273
+            ],
+            "median_ms": 1058.1798553466797,
+            "backend": "ordinary-python",
+            "value": {
+              "count": 20000,
+              "ddof": 1,
+              "interquartile_range": 49.949999928474426,
+              "maximum": 1000000099.9,
+              "mean": 1000000049.95,
+              "median": 1000000049.95,
+              "median_absolute_deviation": 25,
+              "minimum": 1000000000,
+              "q1": 1000000024.975,
+              "q3": 1000000074.925,
+              "quantile_method": "linear-r-type-7",
+              "range": 99.89999997615814,
+              "standard_deviation": 28.86822074017841,
+              "standard_error": 0.20412914646170285,
+              "sum": 20000000999000,
+              "variance": 833.3741687036668
+            },
+            "validation": {
+              "truth_level": "validated_approximate",
+              "passed": true,
+              "checks": [
+                {
+                  "identity": "sum(x - mean) approximately zero",
+                  "passed": true,
+                  "residual": 0.00095367431640625,
+                  "tolerance": 0.0625
+                },
+                {
+                  "identity": "minimum <= q1 <= median <= q3 <= maximum",
+                  "passed": true
+                },
+                {
+                  "identity": "variance is nonnegative",
+                  "passed": true
+                }
+              ],
+              "residual": null,
+              "error_estimate": null,
+              "condition_estimate": null
+            }
+          }
+        },
+        {
+          "trace": "summary",
+          "route": "prepared-native",
+          "setup_wall_ms": 504.29630279541016,
+          "preparation": {
+            "count": 20000,
+            "evaluations": 20000,
+            "elapsed_ms": 503.88407707214355,
+            "logical_buffer_bytes": 1600016,
+            "requested_backend": "native",
+            "selected_backend": "source-native",
+            "summary_precomputed": false
+          },
+          "query": {
+            "first_call_ms": 40.78245162963867,
+            "samples_ms": [
+              39.75224494934082,
+              33.702850341796875,
+              34.064292907714844,
+              34.48987007141113,
+              38.96141052246094,
+              33.81824493408203,
+              34.06262397766113
+            ],
+            "median_ms": 34.064292907714844,
+            "backend": "source-native",
+            "value": {
+              "count": 20000,
+              "ddof": 1,
+              "interquartile_range": 49.949999928474426,
+              "maximum": 1000000099.9,
+              "mean": 1000000049.95,
+              "median": 1000000049.95,
+              "median_absolute_deviation": 25,
+              "minimum": 1000000000,
+              "q1": 1000000024.975,
+              "q3": 1000000074.925,
+              "quantile_method": "linear-r-type-7",
+              "range": 99.89999997615814,
+              "standard_deviation": 28.86822074017841,
+              "standard_error": 0.20412914646170285,
+              "sum": 20000000999000,
+              "variance": 833.3741687036668
+            },
+            "validation": {
+              "truth_level": "validated_approximate",
+              "passed": true,
+              "checks": [
+                {
+                  "identity": "sum(x - mean) approximately zero",
+                  "passed": true,
+                  "residual": 0.00095367431640625,
+                  "tolerance": 0.0625
+                },
+                {
+                  "identity": "minimum <= q1 <= median <= q3 <= maximum",
+                  "passed": true
+                },
+                {
+                  "identity": "variance is nonnegative",
+                  "passed": true
+                }
+              ],
+              "residual": null,
+              "error_estimate": null,
+              "condition_estimate": null
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

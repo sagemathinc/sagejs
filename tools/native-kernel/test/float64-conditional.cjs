@@ -205,6 +205,16 @@ print("FLOAT64_BRANCH_OK")
     assert.match(stale.stderr, /has no matching compiled artifact/);
 
     const compiledModule = require(compiled.modulePath);
+    const sort = compiledModule.comparison_score.sortedFloat64Buffer;
+    const original = new Float64Array([3, +0, -0, +0, -2, -0, 1]);
+    const ordered = sort(original);
+    assert.deepEqual(Array.from(ordered), [-2, +0, -0, +0, -0, 1, 3]);
+    assert.deepEqual(Array.from(original), [3, +0, -0, +0, -2, -0, 1]);
+    ordered[0] = 99;
+    assert.equal(original[0], 3);
+    for (const invalid of [NaN, Infinity, -Infinity]) {
+      assert.throws(() => sort(new Float64Array([1, invalid])), /requires finite values/);
+    }
     for (const implementation of [
       compiledModule.comparison_score,
       compiledModule.comparison_score.javascript,

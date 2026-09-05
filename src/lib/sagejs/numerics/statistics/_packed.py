@@ -1,7 +1,8 @@
 """Private source-transparent binary64 reduction candidates.
 
-These kernels are not selected by the public statistics API until ingress,
-accuracy, resource, portability and end-to-end performance are qualified.
+These kernels are not selected automatically by the public statistics API.
+The experimental prepared-data AOT opt-in may select source-verified artifacts;
+public portability, packaging and end-to-end promotion remain unqualified.
 Buffers must be caller-owned and pairwise non-aliasing; public dispatch owns
 that validation. Status 0 means success, 1 means nonfinite/intermediate
 overflow, and 2 means insufficient storage. Failure leaves `output` unchanged.

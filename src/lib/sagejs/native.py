@@ -1425,6 +1425,25 @@ def kernel_float64_zeros(kernel: Any, length: int) -> Any:
     return float64_zeros(length)
 
 
+def kernel_float64_sorted(kernel: Any, source: Float64Buffer) -> Any:
+    """Return an owned stable numeric ordering of finite binary64 storage.
+
+    This host-side storage operation is not a native mathematical kernel or
+    a callback from an isolated core. Compiled buffer owners may use the host
+    engine's stable numeric sort; ordinary execution uses Python `sorted`.
+    Equal values, including opposite signed zeros, retain their input order.
+    Input storage is never modified and no writable alias is returned.
+    """
+    sorter = getattr(kernel, "sortedFloat64Buffer", None)
+    if is_compiled(kernel) and callable(sorter):
+        return sorter(source)
+    values = float64_buffer(source)
+    for value in values:
+        if value != value or abs(value) > 1.7976931348623157e308:
+            raise ValueError("sorted Float64Buffer requires finite values")
+    return sorted(values)
+
+
 def prime_rows(source: Any) -> int:
     """Return the row count used by a source-transparent native kernel."""
     return source.nrows()
@@ -1642,6 +1661,7 @@ __all__ = [
     "kernel_integer_zeros",
     "kernel_float64_buffer",
     "kernel_float64_zeros",
+    "kernel_float64_sorted",
     "kernel_uint64_buffer",
     "kernel_uint64_zeros",
     "native",

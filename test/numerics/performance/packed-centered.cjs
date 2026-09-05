@@ -15,7 +15,7 @@ const { compileFloat64Wasm, runFloat64Cases, runBrowserCases } = require("../../
 
 const root = path.resolve(__dirname, "../../..");
 const sourcePath = path.join(root, "src/lib/sagejs/numerics/statistics/_packed_centered.py");
-const names = ["prepare_centered", "prepare_products"];
+const names = ["prepare_centered", "prepare_products", "prepare_summary_checks"];
 const toBits = (value) => { const bytes = Buffer.alloc(8); bytes.writeDoubleBE(value); return bytes.toString("hex"); };
 const fromBits = (hex) => Buffer.from(hex, "hex").readDoubleBE();
 
@@ -29,7 +29,7 @@ function corpus() {
   assert.equal(run.status, 0, run.stderr);
   const result = JSON.parse(run.stdout);
   assert.equal(result.schema, "sagejs.packed-centered-oracle/v1");
-  assert.equal(result.cases.length, 198);
+  assert.equal(result.cases.length, 296);
   return result.cases;
 }
 
