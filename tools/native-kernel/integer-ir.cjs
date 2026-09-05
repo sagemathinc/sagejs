@@ -3577,6 +3577,7 @@ function lowerIntegerFunction(
 module.exports = {
   canonicalType,
   isIntegerSignature,
+  isLiveExactOwnerType,
   isTupleType,
   lowerIntegerFunction,
   signatureFromFunction,

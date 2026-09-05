@@ -1140,6 +1140,14 @@ async function lowerSource(source, filename, options = {}) {
     // discovery uses this per-definition provenance to distinguish intentional
     // private native entry points from ordinary undecorated helpers.
     result.lexicallyNative = nativeDecorator(definition);
+    // Dependency closure is not an implicit request for additional host APIs.
+    // Explicit roots and lexical native entries keep their existing safety
+    // restrictions; an ordinary source helper stays private regardless of
+    // whether its parameters happen to be scalars or resident aggregates.
+    if (result.kernelKind === "integer" &&
+        !initiallySelected.has(result.name) && !result.lexicallyNative) {
+      result.hostCallable = false;
+    }
     lowered.push(result);
     for (const dependency of result.dependencies || []) {
       if (included.has(dependency)) continue;
@@ -1170,7 +1178,10 @@ async function lowerSource(source, filename, options = {}) {
         `${filename}: imported native function conflicts with ${fn.name}`,
       );
       combinedNames.add(fn.name);
-      importedLowered.push(fn);
+      importedLowered.push(fn.kernelKind !== "integer" || fn.lexicallyNative ? fn : {
+        ...fn,
+        hostCallable: false,
+      });
     }
     importedRecords.push(...(imported.ir.records || []));
     importedLibraries.push(...(imported.ir.foreignLibraries || []));
