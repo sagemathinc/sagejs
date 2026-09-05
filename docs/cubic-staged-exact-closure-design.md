@@ -69,9 +69,13 @@ fresh 39-family production build and the same ten regressions, including
 authenticated fmpz receipts, independent replay and large-unit witnesses.
 The complete closure has 86 functions and 201 edges, all in fmpz, with the
 same 22 public entries and one root arena. The expanded source family is
-422,246 bytes: architecture checking currently requires a reviewed update to
-its 420,000-byte source-size allowance, as well as optimizer provenance refresh.
-This is separate from the unchanged arena/checkpoint and timing budgets.
+422,246 bytes. The integration-owned source-size allowance is now 425,000
+bytes, and package-graph validation passes for this family. Optimizer
+provenance refresh and combined-dependency qualification remain pending after
+the prefix-Arb and inferred-resource-indexing prerequisites were merged.
+The production results above qualify the outer-cursor revision `a31e5b9b`,
+not the later dependency merge. The source-size allowance is separate from
+the unchanged arena/checkpoint and timing budgets.
 
 The outer-cursor witness compares every pause boundary against an independent
 proposal sequence over skipped, shell-only, ellipsoid-only and combined ideals.
@@ -125,10 +129,11 @@ BF certification and publication in one lexical scope. In particular:
 - Numerous dimension-dependent HNF, LLL, logarithm and unit resources are
   created as root-arena children. Repeating the suffix would retain resources
   from unsuccessful attempts until the outer return.
-- Collection stops inside an ellipsoid or four-vector shell. Its local loop
-  variables currently disappear when control leaves the collector. Merely
-  advancing the ideal index skips unvisited candidates; restarting it repeats
-  candidates and may change admission or duplicate-unit behavior.
+- Collection can stop inside an ellipsoid or four-vector shell. The new outer
+  cursor now preserves those local variables. The proof scheduler must reuse
+  that cursor: merely advancing the ideal index skips unvisited candidates;
+  restarting it repeats candidates and may change admission or duplicate-unit
+  behavior.
 - A `False` return can mean insufficient rank or unit evidence, but also bad
   exact arithmetic, malformed intervals, capacity exhaustion, or failed
   publication. Current private phase numbers do not distinguish these causes

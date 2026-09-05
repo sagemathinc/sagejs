@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Certify bounded complex-cubic relation prefixes and resume only on explicit mathematical insufficiency within the same resident native computation",
-  "base_commit": "5eff8b3d27b85d41b96a15b6f995a671f6780489",
+  "base_commit": "fab12fdff948ca3dfbc555ce29df6fa322b10108",
   "claims": [
     "src/lib/sagejs/number_fields/cubic_class_number_native.py",
     "test/number-field-cubic-staged-certification.cjs",
@@ -66,18 +66,18 @@
     }
   ],
   "handoff": {
-    "summary": "Pre-registered twenty benchmark-unseen C3/index-three neighbors. Separated proof state from retained discovery; added complete resumable outer ideal/ellipsoid/shell cursor and terminal online-failure propagation. Current source passes a fresh 39-family IR39 production build, ten cubic ledger/receipt/replay regressions, eight cursor/support/publication tests (including actual compiled cursor and exact support sanitizer witnesses), and strict247. Independent review found no valid-state one-shot proposal or root live-output regression. Production still makes one complete collector call; the full staged proof driver remains pending.",
+    "summary": "Pre-registered twenty benchmark-unseen C3/index-three neighbors. Separated proof state from retained discovery; added complete resumable outer ideal/ellipsoid/shell cursor and terminal online-failure propagation. Revision a31e5b9b passed a fresh 39-family IR39 production build, ten cubic ledger/receipt/replay regressions, eight cursor/support/publication tests (including actual compiled cursor and exact support sanitizer witnesses), and strict 247. Recorded runs qualify that pre-merge workspace, not the later 813e77a1 dependency merge. Independent review found no valid-state one-shot proposal or root live-output regression. Production still makes one complete collector call; the full staged proof driver remains pending.",
     "risks": [
       "The complete reusable proof suffix, explicit mathematical insufficiency statuses and attempt/resume schedule are not implemented; no new PARI speed claim.",
       "The measured support-only checkpoint envelope is not a bound for complete repeated certification. Public wrapper retry must not count as one resident attempt.",
-      "Architecture currently stops at the source family's measured 422246 bytes exceeding the reviewed420000 allowance. Integration-owned bounded allowance update and optimizer provenance refresh remain pending.",
+      "The source family measures 422246 bytes and passes the integration-owned 425000 allowance. Optimizer provenance refresh and combined-dependency qualification remain pending after merging prefix-Arb and inferred-resource-indexing prerequisites.",
       "Full current-source native/platform qualification remains pending; prerequisite baseline separately reproduces rational cache-pressure and synthetic portable discriminant-ratio gate failures.",
       "The twenty neighbors are conditional on retaining the provisional target after frozen timings; none has executed. The opt baseline remains f7f00552."
     ],
     "next_steps": [
       "Use two thin root allocation paths with shared borrowed proof helpers: fixed bounded scratch for staged execution, existing lazy exact-sized allocations for other regimes.",
       "Split ambiguous recovery statuses; implement at most two same-state attempts (n+6 then n+22) with rigorous fatal/recoverable distinctions and no repeated proof when no rows were added.",
-      "Qualify complete scratch at <=3MiB with one core invocation, zero retry shift/exhaustion/upstream allocation; integrate generic prefix-Arb binding.",
+      "Qualify complete scratch at <=3 MiB with one core invocation and zero retry shift, exhaustion or upstream allocation; use the integrated generic prefix-Arb binding.",
       "Finish opt baseline; freeze and time the staged candidate and registered neighbors, then recheck the thousand-field frontier.",
       "Complete integration-owned source-size/provenance and current-source platform gates before promotion."
     ]
