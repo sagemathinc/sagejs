@@ -6,18 +6,22 @@
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Extract borrowed cubic relation presentation and trivial publication while preserving lazy exact-sized one-shot allocation and fail-closed staged insufficiency",
+  "objective": "Extract borrowed cubic relation and analytic certification helpers while preserving lazy exact-sized one-shot allocation and distinguishing mathematical insufficiency from invalid evidence",
   "base_commit": "813e77a1d108a7da5f37a05726f3b8a514f6e3a6",
   "claims": [
     "src/lib/sagejs/number_fields/cubic_class_number_native.py",
     "test/number-field-cubic-presentation.cjs",
     "test/fixtures/cubic-presentation.py",
-    "docs/cubic-presentation-extraction-audit.md"
+    "docs/cubic-presentation-extraction-audit.md",
+    "test/number-field-cubic-analytic-suffix.cjs",
+    "test/fixtures/cubic-analytic-suffix.py",
+    "docs/cubic-analytic-suffix-extraction-audit.md"
   ],
   "dependencies": [],
   "references": [
     "docs/cubic-presentation-extraction-audit.md",
-    "docs/cubic-staged-exact-closure-design.md"
+    "docs/cubic-staged-exact-closure-design.md",
+    "docs/cubic-analytic-suffix-extraction-audit.md"
   ],
   "architecture": {
     "strategy": "source-transparent-native",
@@ -37,6 +41,8 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node --test test/number-field-cubic-analytic-suffix.cjs",
+    "pnpm architecture:check",
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
@@ -80,21 +86,32 @@
       "commit": "813e77a1d108a7da5f37a05726f3b8a514f6e3a6",
       "workspace_fingerprint": "935dd02e0e78a020e42280cc4f01b1d86e0a26157bd4021188b153e095791073",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.841,
+      "started_at": "2026-09-05T14:54:04.203Z",
+      "commit": "2554512323aa6f107e91f82567a9f408685ef9fd",
+      "workspace_fingerprint": "9c83696eaa93c7d1780000ee83d01f3b3cd9afdb88d521c67449bf6f6507b5a2",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Extracted three private source-transparent borrowed helpers for full relation prefix/HNF/rank, Smith quotient, and trivial-result publication. Root-owned Smith allocation remains after full-rank preparation; support, recovery, unit, and analytic allocation and mathematics are untouched. Prefix HNF/SNF operate on explicit logical dimensions, so oversized staged scratch is valid without padding the mathematical matrix. Genuine rank insufficiency is distinct from contradictions with independently established modular/exact rank, invalid Smith results, unsupported invariant capacity, and publication failures; the root still declines on every non-ready result and never resumes. Eleven focused tests pass, including actual-source JavaScript/GMP/fmpz arithmetic, CPython failure classification, full current closure lowering, and existing prefix/support sanitizer suites. Strict Python checks pass for all 247 modules. The source-matched compiler and generated FFI artifacts were reused from the coordinator worktree; no standalone full production rebuild or opt work was performed.",
+    "summary": "Analytic follow-up to presentation commit 25545123: four undecorated source-transparent helpers extract rigorous index intervals, index classification, existing bounded 2/3/5 unit saturation and final publication. Initial/refined BF owner allocation barriers remain unchanged. Final contradictory intervals and publication failures are fatal phase 44; valid insufficiency retains phase 8. Accepted marker is written after all detached scalar fields, with actual late packed-buffer overflow regressions. CPython 48 rational interval cases, 11 classifier cases, 10 root-orchestration cases and 3 late-output faults pass. Real Arb saturation and exact power/divisor comparisons, transcript layouts/capacities and integer intervals agree in JavaScript/GMP/fmpz. Strict checks on 247 modules pass. Source closure has 93 functions; compiler currently exports the pure scalar classifier automatically (23 host entries), which integration will correct to 21 using generic dependency-only export policy.",
     "risks": [
-      "Architecture and merge checks reach the unchanged integration-owned package source budget: complex-cubic-native-program now owns 428629 bytes against 425000. Integration must deliberately update architecture/package-graph.json for the combined presentation/recovery extraction; this lane does not widen its claims or silently bypass the budget.",
-      "Optimizer-opportunity artifact verification also requires source-manifest regeneration after this mathematical-source edit. Native classification, Wasm audits, and all 34 optimization-engine contract tests pass independently; the aggregate architecture check is not claimed green.",
-      "The existing full-closure pinned-count/digest test is intentionally left for coordinator integration. Presentation alone has IR39, 89 functions, 206 edges, 22 host-callable and 67 private functions; sorted-name SHA256 is defdd1a28476bccf424a84131458f4859a4d7984b792cf72ff61efc94bdface1.",
-      "Full native/build/platform qualification, public field replay, and performance measurements remain integration work. The contract stays active because the broad pnpm test:native requirement has not been claimed complete.",
-      "CPython defensive tests inject malformed HNF/SNF outcomes to exercise otherwise unreachable guards; they are not an arithmetic oracle for FLINT. Independent lattice expectations are checked against real FLINT arithmetic through the JavaScript, GMP, and fmpz backends."
+      "The current compiler automatically exports undecorated scalar dependencies. No fake owner argument or lexical decorator was added. Integration owns generic export-policy correction, combined closure pins and expected 21 host entries.",
+      "Production rebuild, opt/holdouts, full public field replay, broad native suite and non-Linux qualification remain integration-owned and were not run here.",
+      "The focused arithmetic build uses the existing shared FLINT prefix via SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix; this worktree lacks its own prefix.",
+      "Saturation fixture supplies a modeled residue for alpha^3-alpha-1 rather than evaluating BF. It verifies real exact unit-root/Arb/classifier arithmetic, not a new class-number proof or performance result.",
+      "Shared package source-budget and optimizer provenance need coordinated refresh; no shared budget or compiler files are changed in this lane.",
+      "Historical presentation receipts remain in the manifest; follow-up analytic receipts identify current workspace separately. Task stays active/PR draft pending combined integration gates."
     ],
     "next_steps": [
-      "Integrate only this presentation slice with the separately owned recovery helper and union the prefix imports.",
-      "Regenerate the combined source-budget, closure count/digest, and production evidence, then run one full coordinator build and existing exact public replay.",
-      "Use the borrowed helpers in a future bounded staged root only with explicit mathematical retry classifications; no current change authorizes resume on a resource, consistency, or publication failure."
+      "Integrate analytic source/tests/docs as the next commit after the already integrated presentation slice.",
+      "Apply dependency-only export policy and adjust closure tests from current 93 functions / 23 host entries to the combined private-helper closure; retain the existing public mathematical root.",
+      "Run one combined production build with presentation/recovery/compact/BF/materialization/staged changes, refresh budgets/provenance, and qualify public receipts/replay."
     ]
   }
 }

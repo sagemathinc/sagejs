@@ -5719,6 +5719,473 @@ def _cubic_evaluate_bf_plan(
     )
 
 
+def _cubic_analytic_index_bounds(
+    analytic_endpoints: FmpzMatrix,
+    log_regulator_lower: int,
+    log_regulator_upper: int,
+    log_two_pi_lower: int,
+    log_two_pi_upper: int,
+    zeta_lower: int,
+    zeta_upper: int,
+) -> tuple[bool, int, int]:
+    """Enclose the logarithm of the joint relation/unit index.
+
+    The caller has authenticated the BF plan, exact presentation and unit.
+    Endpoint rows 12/13 and 16/17 belong to the live BF prefix even when its
+    owner has spare capacity. Integer half-discriminant endpoints round
+    outward. Invalid intervals are fatal, not an insufficient certificate.
+    The identical formula serves initial evaluation, saturation and refinement.
+    """
+    log_discriminant_lower = analytic_endpoints[12, 0]
+    log_discriminant_upper = analytic_endpoints[13, 0]
+    log_class_lower = analytic_endpoints[16, 0]
+    log_class_upper = analytic_endpoints[17, 0]
+    if (
+        log_regulator_upper < log_regulator_lower
+        or log_two_pi_upper < log_two_pi_lower
+        or zeta_upper < zeta_lower
+        or log_discriminant_lower <= 0
+        or log_discriminant_upper < log_discriminant_lower
+        or log_class_lower < 0
+        or log_class_upper < log_class_lower
+    ):
+        return False, 0, 0
+    half_discriminant_lower = log_discriminant_lower // 2
+    half_discriminant_upper = _cubic_dyadic_ceiling_quotient(log_discriminant_upper, 2)
+    algebraic_lower = (
+        log_class_lower
+        + log_regulator_lower
+        + log_two_pi_lower
+        - half_discriminant_upper
+    )
+    algebraic_upper = (
+        log_class_upper
+        + log_regulator_upper
+        + log_two_pi_upper
+        - half_discriminant_lower
+    )
+    return True, algebraic_lower - zeta_upper, algebraic_upper - zeta_lower
+
+
+def _cubic_classify_analytic_index(
+    index_log_lower: int,
+    index_log_upper: int,
+    log_two_lower: int,
+    log_two_upper: int,
+) -> int:
+    """Return one for index one, zero for insufficiency, minus one for error.
+
+    The exact relation and unit subgroups make their joint index a positive
+    integer. A well-formed logarithmic enclosure with upper bound below the
+    lower bound for log(2) therefore certifies index one only if it contains
+    log(1)=0. A valid wider enclosure is merely insufficient. Reversed,
+    negative-index, nonpositive-log(2), or contradictory index-one intervals
+    are errors, never authorization to resume collection.
+    """
+    if (
+        index_log_upper < index_log_lower
+        or index_log_upper < 0
+        or log_two_lower <= 0
+        or log_two_upper < log_two_lower
+    ):
+        return -1
+    if index_log_upper >= log_two_lower:
+        return 0
+    # This interval excludes log(1) as well as every log(integer >= 2).
+    # Treat that contradiction as invalid evidence, not as index-one success.
+    if index_log_lower > 0:
+        return -1
+    return 1
+
+
+def _cubic_saturate_analytic_unit(
+    workspace: NativeIntegerVector,
+    coefficients: IntegerBuffer,
+    dependency_coordinates: FmpzMatrix,
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
+    analytic_endpoints: FmpzMatrix,
+    output: IntegerBuffer,
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    identity_zero: int,
+    identity_one: int,
+    identity_two: int,
+    proof_unit_zero: int,
+    proof_unit_one: int,
+    proof_unit_two: int,
+    proof_regulator_lower: int,
+    proof_regulator_upper: int,
+    analytic_scale: int,
+    analytic_precision: uint64,
+    zeta_lower: int,
+    zeta_upper: int,
+) -> tuple[bool, int, int, int, int, int, int, int, int, int, int, int, int, int]:
+    """Attempt the existing bounded 2/3/5 unit saturation in borrowed scratch.
+
+    Root probes are opportunistic: zero means no authenticated candidate, not
+    an assertion of primitivity or permission to collect more relations.
+    Status one has already passed each probe's exact power replay. Unknown
+    probe statuses, invalid intervals, and failed regulator overlap are fatal.
+    At most eight authenticated replacements are made, in the original order.
+    The caller still must refine or classify the final joint-index enclosure.
+    """
+    if (
+        analytic_scale <= 0
+        or proof_regulator_lower <= 0
+        or proof_regulator_upper < proof_regulator_lower
+        or zeta_upper < zeta_lower
+    ):
+        return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    log_regulator_lower, log_regulator_upper = _cubic_log_interval_bounds(
+        log_numerators,
+        log_denominators,
+        log_endpoints,
+        proof_regulator_lower,
+        proof_regulator_upper,
+        analytic_scale,
+        analytic_precision,
+    )
+    log_two_pi_lower, log_two_pi_upper = _cubic_log_two_pi_bounds(
+        log_numerators,
+        log_denominators,
+        log_endpoints,
+        analytic_scale,
+        analytic_precision,
+    )
+    index_ready, index_log_lower, index_log_upper = _cubic_analytic_index_bounds(
+        analytic_endpoints,
+        log_regulator_lower,
+        log_regulator_upper,
+        log_two_pi_lower,
+        log_two_pi_upper,
+        zeta_lower,
+        zeta_upper,
+    )
+    if not index_ready:
+        return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    log_two_lower, log_two_upper = _cubic_arb_log_positive_rational_bounds(
+        log_numerators,
+        log_denominators,
+        log_endpoints,
+        2,
+        1,
+        analytic_precision,
+    )
+    if (
+        _cubic_classify_analytic_index(
+            index_log_lower, index_log_upper, log_two_lower, log_two_upper
+        )
+        < 0
+    ):
+        return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    output[63] = 45
+    saturation_attempts: uint64 = 0
+    saturation_search_active = (
+        index_log_upper >= log_two_lower and log_two_upper >= log_two_lower
+    )
+    while saturation_search_active and saturation_attempts < 8:
+        (
+            saturation_root_status,
+            saturation_root_zero,
+            saturation_root_one,
+            saturation_root_two,
+        ) = _cubic_exact_unit_square_root(
+            workspace,
+            coefficients,
+            denominator,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            identity_zero,
+            identity_one,
+            identity_two,
+            proof_unit_zero,
+            proof_unit_one,
+            proof_unit_two,
+            analytic_scale,
+            dependency_coordinates,
+        )
+        saturation_prime = 2
+        if saturation_root_status != 0 and saturation_root_status != 1:
+            return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        if saturation_root_status != 1:
+            (
+                saturation_root_status,
+                saturation_root_zero,
+                saturation_root_one,
+                saturation_root_two,
+            ) = _cubic_exact_unit_cube_root(
+                workspace,
+                coefficients,
+                denominator,
+                basis_zero_zero,
+                basis_zero_one,
+                basis_zero_two,
+                basis_one_one,
+                basis_one_two,
+                basis_two_two,
+                identity_zero,
+                identity_one,
+                identity_two,
+                proof_unit_zero,
+                proof_unit_one,
+                proof_unit_two,
+                analytic_scale,
+            )
+            saturation_prime = 3
+            if saturation_root_status != 0 and saturation_root_status != 1:
+                return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        if saturation_root_status != 1:
+            (
+                saturation_root_status,
+                saturation_root_zero,
+                saturation_root_one,
+                saturation_root_two,
+            ) = _cubic_exact_unit_fifth_root(
+                workspace,
+                coefficients,
+                denominator,
+                basis_zero_zero,
+                basis_zero_one,
+                basis_zero_two,
+                basis_one_one,
+                basis_one_two,
+                basis_two_two,
+                identity_zero,
+                identity_one,
+                identity_two,
+                proof_unit_zero,
+                proof_unit_one,
+                proof_unit_two,
+                analytic_scale,
+            )
+            saturation_prime = 5
+            if saturation_root_status != 0 and saturation_root_status != 1:
+                return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        if saturation_root_status != 1:
+            saturation_search_active = False
+        else:
+            (
+                saturation_regulator_lower,
+                saturation_regulator_upper,
+            ) = _cubic_regulator_bounds(
+                log_numerators,
+                log_denominators,
+                log_endpoints,
+                coefficients,
+                denominator,
+                basis_zero_zero,
+                basis_zero_one,
+                basis_zero_two,
+                basis_one_one,
+                basis_one_two,
+                basis_two_two,
+                saturation_root_zero,
+                saturation_root_one,
+                saturation_root_two,
+                analytic_scale,
+                analytic_precision,
+            )
+            if (
+                saturation_regulator_lower <= 0
+                or saturation_regulator_upper < saturation_regulator_lower
+                or saturation_regulator_lower * saturation_prime > proof_regulator_upper
+                or proof_regulator_lower > saturation_regulator_upper * saturation_prime
+            ):
+                return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            proof_unit_zero = saturation_root_zero
+            proof_unit_one = saturation_root_one
+            proof_unit_two = saturation_root_two
+            proof_regulator_lower = saturation_regulator_lower
+            proof_regulator_upper = saturation_regulator_upper
+            log_regulator_lower, log_regulator_upper = _cubic_log_interval_bounds(
+                log_numerators,
+                log_denominators,
+                log_endpoints,
+                proof_regulator_lower,
+                proof_regulator_upper,
+                analytic_scale,
+                analytic_precision,
+            )
+            if log_regulator_upper < log_regulator_lower:
+                return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            index_ready, index_log_lower, index_log_upper = (
+                _cubic_analytic_index_bounds(
+                    analytic_endpoints,
+                    log_regulator_lower,
+                    log_regulator_upper,
+                    log_two_pi_lower,
+                    log_two_pi_upper,
+                    zeta_lower,
+                    zeta_upper,
+                )
+            )
+            if not index_ready:
+                return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            saturation_attempts += 1
+            saturation_search_active = index_log_upper >= log_two_lower
+
+    if (
+        _cubic_classify_analytic_index(
+            index_log_lower, index_log_upper, log_two_lower, log_two_upper
+        )
+        < 0
+    ):
+        return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    return (
+        True,
+        proof_unit_zero,
+        proof_unit_one,
+        proof_unit_two,
+        proof_regulator_lower,
+        proof_regulator_upper,
+        log_regulator_lower,
+        log_regulator_upper,
+        log_two_pi_lower,
+        log_two_pi_upper,
+        index_log_lower,
+        index_log_upper,
+        log_two_lower,
+        log_two_upper,
+    )
+
+
+def _cubic_publish_analytic_relation_presentation(
+    workspace: NativeIntegerVector,
+    compact_relation_matrix: FmpzMatrix,
+    compact_relation_elements: FmpzMatrix,
+    output: IntegerBuffer,
+    transcript_factor_rows: IntegerBuffer,
+    transcript_relation_rows: IntegerBuffer,
+    transcript_relation_elements: IntegerBuffer,
+    transcript_mode: uint64,
+    class_number_upper: int,
+    invariant_count: uint64,
+    used_compound_multiplier_limit: uint64,
+    generator_bound: int,
+    factor_count: uint64,
+    group_count: uint64,
+    proof_relation_count: uint64,
+    proof_unit_zero: int,
+    proof_unit_one: int,
+    proof_unit_two: int,
+    order_discriminant: int,
+    equation_order_index: int,
+    denominator: int,
+    relation_box: int,
+    unit_box: int,
+    relation_rank: uint64,
+    equation_discriminant: int,
+    analytic_threshold: uint64,
+    analytic_term_count: uint64,
+    analytic_value_count: uint64,
+    analytic_precision: uint64,
+    proof_regulator_lower: int,
+    proof_regulator_upper: int,
+    zeta_lower: int,
+    zeta_upper: int,
+    index_log_lower: int,
+    index_log_upper: int,
+    tail_upper: int,
+    analytic_scale: int,
+    log_two_lower: int,
+    log_two_upper: int,
+) -> bool:
+    """Publish an authenticated index-one certificate with the existing layout.
+
+    The caller has checked exact presentation, unit and analytic evidence.
+    Recheck the pure index decision at this publication boundary. Malformed
+    intervals, publication capacity and transcript shapes fail closed; no
+    accepted marker is written on failure and no failure permits resumption.
+    """
+    if (
+        len(output) != 64
+        or transcript_mode > 1
+        or invariant_count > 8
+        or class_number_upper < 1
+        or proof_regulator_lower <= 0
+        or proof_regulator_upper < proof_regulator_lower
+        or zeta_upper < zeta_lower
+        or tail_upper < 0
+        or analytic_scale <= 0
+        or _cubic_classify_analytic_index(
+            index_log_lower, index_log_upper, log_two_lower, log_two_upper
+        )
+        != 1
+    ):
+        return False
+    # Publish detached proof data only after exact index-one acceptance.
+    if transcript_mode == 1 and not _cubic_publish_relation_factor_rows(
+        workspace,
+        factor_count,
+        transcript_factor_rows,
+    ):
+        return False
+
+    if transcript_mode == 1 and not _cubic_publish_relation_rows(
+        compact_relation_matrix,
+        compact_relation_elements,
+        proof_relation_count,
+        factor_count,
+        transcript_relation_rows,
+        transcript_relation_elements,
+    ):
+        return False
+
+    output_index: uint64 = 0
+    while output_index < len(output):
+        output[output_index] = 0
+        output_index += 1
+    output[1] = class_number_upper
+    output[2] = invariant_count
+    output_index = 0
+    while output_index < invariant_count:
+        output[3 + output_index] = workspace[_ROW_SCRATCH_OFFSET + output_index]
+        output_index += 1
+    output[19] = used_compound_multiplier_limit
+    output[20] = generator_bound
+    output[21] = factor_count
+    output[22] = group_count
+    output[23] = proof_relation_count
+    output[24] = 1
+    output[25] = proof_unit_zero
+    output[26] = proof_unit_one
+    output[27] = proof_unit_two
+    output[28] = order_discriminant
+    output[29] = equation_order_index
+    output[30] = denominator
+    output[31] = relation_box
+    output[32] = unit_box
+    output[33] = relation_rank
+    output[34] = equation_discriminant
+    output[35] = _CUBIC_PROOF_ANALYTIC_GRH
+    output[36] = analytic_threshold
+    output[37] = analytic_term_count
+    output[38] = analytic_value_count
+    output[39] = analytic_precision
+    output[40] = proof_regulator_lower
+    output[41] = proof_regulator_upper
+    output[42] = zeta_lower
+    output[43] = zeta_upper
+    output[44] = index_log_lower
+    output[45] = index_log_upper
+    output[46] = tail_upper
+    output[47] = analytic_scale
+    # Acceptance is committed only after every detached scalar is published.
+    output[0] = 2
+    return True
+
+
 def _cubic_map_is_multiplicative(
     workspace: NativeIntegerVector,
     map_zero: int,
@@ -9694,208 +10161,52 @@ def certified_complex_cubic_class_group_v1(
         if not analytic_ready:
             return False
         analytic_precision: uint64 = _CUBIC_ANALYTIC_PRECISION
-        log_regulator_lower, log_regulator_upper = _cubic_log_interval_bounds(
+        (
+            saturation_ready,
+            proof_unit_zero,
+            proof_unit_one,
+            proof_unit_two,
+            proof_regulator_lower,
+            proof_regulator_upper,
+            log_regulator_lower,
+            log_regulator_upper,
+            log_two_pi_lower,
+            log_two_pi_upper,
+            index_log_lower,
+            index_log_upper,
+            log_two_lower,
+            log_two_upper,
+        ) = _cubic_saturate_analytic_unit(
+            workspace,
+            coefficients,
+            dependency_coordinates,
             log_numerators,
             log_denominators,
             log_endpoints,
+            analytic_endpoints,
+            output,
+            denominator,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            identity_zero,
+            identity_one,
+            identity_two,
+            proof_unit_zero,
+            proof_unit_one,
+            proof_unit_two,
             proof_regulator_lower,
             proof_regulator_upper,
             analytic_scale,
             analytic_precision,
+            zeta_lower,
+            zeta_upper,
         )
-        log_two_pi_lower, log_two_pi_upper = _cubic_log_two_pi_bounds(
-            log_numerators,
-            log_denominators,
-            log_endpoints,
-            analytic_scale,
-            analytic_precision,
-        )
-        log_discriminant_lower = analytic_endpoints[12, 0]
-        log_discriminant_upper = analytic_endpoints[13, 0]
-        log_class_lower = analytic_endpoints[16, 0]
-        log_class_upper = analytic_endpoints[17, 0]
-        if (
-            log_regulator_upper < log_regulator_lower
-            or log_two_pi_upper < log_two_pi_lower
-            or log_discriminant_lower <= 0
-            or log_discriminant_upper < log_discriminant_lower
-            or log_class_lower < 0
-            or log_class_upper < log_class_lower
-        ):
+        if not saturation_ready:
             return False
-        half_discriminant_lower = log_discriminant_lower // 2
-        half_discriminant_upper = _cubic_dyadic_ceiling_quotient(
-            log_discriminant_upper,
-            2,
-        )
-        algebraic_lower = (
-            log_class_lower
-            + log_regulator_lower
-            + log_two_pi_lower
-            - half_discriminant_upper
-        )
-        algebraic_upper = (
-            log_class_upper
-            + log_regulator_upper
-            + log_two_pi_upper
-            - half_discriminant_lower
-        )
-        index_log_lower = algebraic_lower - zeta_upper
-        index_log_upper = algebraic_upper - zeta_lower
-        log_two_lower, log_two_upper = _cubic_arb_log_positive_rational_bounds(
-            log_numerators,
-            log_denominators,
-            log_endpoints,
-            2,
-            1,
-            analytic_precision,
-        )
-        output[63] = 45
-        saturation_attempts: uint64 = 0
-        saturation_search_active = (
-            index_log_upper >= log_two_lower and log_two_upper >= log_two_lower
-        )
-        while saturation_search_active and saturation_attempts < 8:
-            (
-                saturation_root_status,
-                saturation_root_zero,
-                saturation_root_one,
-                saturation_root_two,
-            ) = _cubic_exact_unit_square_root(
-                workspace,
-                coefficients,
-                denominator,
-                basis_zero_zero,
-                basis_zero_one,
-                basis_zero_two,
-                basis_one_one,
-                basis_one_two,
-                basis_two_two,
-                identity_zero,
-                identity_one,
-                identity_two,
-                proof_unit_zero,
-                proof_unit_one,
-                proof_unit_two,
-                analytic_scale,
-                dependency_coordinates,
-            )
-            saturation_prime = 2
-            if saturation_root_status != 1:
-                (
-                    saturation_root_status,
-                    saturation_root_zero,
-                    saturation_root_one,
-                    saturation_root_two,
-                ) = _cubic_exact_unit_cube_root(
-                    workspace,
-                    coefficients,
-                    denominator,
-                    basis_zero_zero,
-                    basis_zero_one,
-                    basis_zero_two,
-                    basis_one_one,
-                    basis_one_two,
-                    basis_two_two,
-                    identity_zero,
-                    identity_one,
-                    identity_two,
-                    proof_unit_zero,
-                    proof_unit_one,
-                    proof_unit_two,
-                    analytic_scale,
-                )
-                saturation_prime = 3
-            if saturation_root_status != 1:
-                (
-                    saturation_root_status,
-                    saturation_root_zero,
-                    saturation_root_one,
-                    saturation_root_two,
-                ) = _cubic_exact_unit_fifth_root(
-                    workspace,
-                    coefficients,
-                    denominator,
-                    basis_zero_zero,
-                    basis_zero_one,
-                    basis_zero_two,
-                    basis_one_one,
-                    basis_one_two,
-                    basis_two_two,
-                    identity_zero,
-                    identity_one,
-                    identity_two,
-                    proof_unit_zero,
-                    proof_unit_one,
-                    proof_unit_two,
-                    analytic_scale,
-                )
-                saturation_prime = 5
-            if saturation_root_status != 1:
-                saturation_search_active = False
-            else:
-                (
-                    saturation_regulator_lower,
-                    saturation_regulator_upper,
-                ) = _cubic_regulator_bounds(
-                    log_numerators,
-                    log_denominators,
-                    log_endpoints,
-                    coefficients,
-                    denominator,
-                    basis_zero_zero,
-                    basis_zero_one,
-                    basis_zero_two,
-                    basis_one_one,
-                    basis_one_two,
-                    basis_two_two,
-                    saturation_root_zero,
-                    saturation_root_one,
-                    saturation_root_two,
-                    analytic_scale,
-                    analytic_precision,
-                )
-                if (
-                    saturation_regulator_lower <= 0
-                    or saturation_regulator_upper < saturation_regulator_lower
-                    or saturation_regulator_lower * saturation_prime
-                    > proof_regulator_upper
-                    or proof_regulator_lower
-                    > saturation_regulator_upper * saturation_prime
-                ):
-                    return False
-                proof_unit_zero = saturation_root_zero
-                proof_unit_one = saturation_root_one
-                proof_unit_two = saturation_root_two
-                proof_regulator_lower = saturation_regulator_lower
-                proof_regulator_upper = saturation_regulator_upper
-                log_regulator_lower, log_regulator_upper = _cubic_log_interval_bounds(
-                    log_numerators,
-                    log_denominators,
-                    log_endpoints,
-                    proof_regulator_lower,
-                    proof_regulator_upper,
-                    analytic_scale,
-                    analytic_precision,
-                )
-                if log_regulator_upper < log_regulator_lower:
-                    return False
-                algebraic_lower = (
-                    log_class_lower
-                    + log_regulator_lower
-                    + log_two_pi_lower
-                    - half_discriminant_upper
-                )
-                algebraic_upper = (
-                    log_class_upper
-                    + log_regulator_upper
-                    + log_two_pi_upper
-                    - half_discriminant_lower
-                )
-                index_log_lower = algebraic_lower - zeta_upper
-                index_log_upper = algebraic_upper - zeta_lower
-                saturation_attempts += 1
-                saturation_search_active = index_log_upper >= log_two_lower
 
         # Most fields close at the established X=997 boundary.  If all exact
         # algebraic and interval checks succeeded but the resulting upper
@@ -9958,36 +10269,19 @@ def certified_complex_cubic_class_group_v1(
             if not refined_analytic_ready:
                 return False
             output[63] = 7
-            log_discriminant_lower = refined_analytic_endpoints[12, 0]
-            log_discriminant_upper = refined_analytic_endpoints[13, 0]
-            log_class_lower = refined_analytic_endpoints[16, 0]
-            log_class_upper = refined_analytic_endpoints[17, 0]
-            if (
-                log_discriminant_lower <= 0
-                or log_discriminant_upper < log_discriminant_lower
-                or log_class_lower < 0
-                or log_class_upper < log_class_lower
-            ):
+            index_ready, index_log_lower, index_log_upper = (
+                _cubic_analytic_index_bounds(
+                    refined_analytic_endpoints,
+                    log_regulator_lower,
+                    log_regulator_upper,
+                    log_two_pi_lower,
+                    log_two_pi_upper,
+                    zeta_lower,
+                    zeta_upper,
+                )
+            )
+            if not index_ready:
                 return False
-            half_discriminant_lower = log_discriminant_lower // 2
-            half_discriminant_upper = _cubic_dyadic_ceiling_quotient(
-                log_discriminant_upper,
-                2,
-            )
-            algebraic_lower = (
-                log_class_lower
-                + log_regulator_lower
-                + log_two_pi_lower
-                - half_discriminant_upper
-            )
-            algebraic_upper = (
-                log_class_upper
-                + log_regulator_upper
-                + log_two_pi_upper
-                - half_discriminant_lower
-            )
-            index_log_lower = algebraic_lower - zeta_upper
-            index_log_upper = algebraic_upper - zeta_lower
         output[40] = proof_regulator_lower
         output[41] = proof_regulator_upper
         output[42] = zeta_lower
@@ -10005,72 +10299,59 @@ def certified_complex_cubic_class_group_v1(
         # the retained unit subgroup has integral index in the full unit
         # lattice.  Their product is a positive integer.  An upper logarithm
         # strictly below log(2) therefore proves both indices are one.
-        if (
-            index_log_upper < 0
-            or index_log_upper >= log_two_lower
-            or log_two_upper < log_two_lower
-        ):
+        analytic_index_status = _cubic_classify_analytic_index(
+            index_log_lower, index_log_upper, log_two_lower, log_two_upper
+        )
+        # Zero is valid but insufficient evidence. Root retries are not enabled
+        # by this extraction, and negative statuses are always fatal.
+        if analytic_index_status != 1:
+            if analytic_index_status < 0:
+                output[63] = 44
             return False
 
-        # Publish detached proof data only after exact index-one acceptance.
-        if transcript_mode == 1 and not _cubic_publish_relation_factor_rows(
+        # A failed publication is not missing relation evidence.
+        output[63] = 44
+        return _cubic_publish_analytic_relation_presentation(
             workspace,
-            factor_count,
-            transcript_factor_rows,
-        ):
-            return False
-
-        if transcript_mode == 1 and not _cubic_publish_relation_rows(
             compact_relation_matrix,
             compact_relation_elements,
-            proof_relation_count,
-            factor_count,
+            output,
+            transcript_factor_rows,
             transcript_relation_rows,
             transcript_relation_elements,
-        ):
-            return False
-
-        output_index: uint64 = 0
-        while output_index < len(output):
-            output[output_index] = 0
-            output_index += 1
-        output[0] = 2
-        output[1] = class_number_upper
-        output[2] = invariant_count
-        output_index = 0
-        while output_index < invariant_count:
-            output[3 + output_index] = workspace[_ROW_SCRATCH_OFFSET + output_index]
-            output_index += 1
-        output[19] = used_compound_multiplier_limit
-        output[20] = generator_bound
-        output[21] = factor_count
-        output[22] = group_count
-        output[23] = proof_relation_count
-        output[24] = 1
-        output[25] = proof_unit_zero
-        output[26] = proof_unit_one
-        output[27] = proof_unit_two
-        output[28] = order_discriminant
-        output[29] = equation_order_index
-        output[30] = denominator
-        output[31] = relation_box
-        output[32] = unit_box
-        output[33] = relation_rank
-        output[34] = equation_discriminant
-        output[35] = _CUBIC_PROOF_ANALYTIC_GRH
-        output[36] = analytic_threshold
-        output[37] = analytic_term_count
-        output[38] = analytic_value_count
-        output[39] = analytic_precision
-        output[40] = proof_regulator_lower
-        output[41] = proof_regulator_upper
-        output[42] = zeta_lower
-        output[43] = zeta_upper
-        output[44] = index_log_lower
-        output[45] = index_log_upper
-        output[46] = tail_upper
-        output[47] = analytic_scale
-        return True
+            transcript_mode,
+            class_number_upper,
+            invariant_count,
+            used_compound_multiplier_limit,
+            generator_bound,
+            factor_count,
+            group_count,
+            proof_relation_count,
+            proof_unit_zero,
+            proof_unit_one,
+            proof_unit_two,
+            order_discriminant,
+            equation_order_index,
+            denominator,
+            relation_box,
+            unit_box,
+            relation_rank,
+            equation_discriminant,
+            analytic_threshold,
+            analytic_term_count,
+            analytic_value_count,
+            analytic_precision,
+            proof_regulator_lower,
+            proof_regulator_upper,
+            zeta_lower,
+            zeta_upper,
+            index_log_lower,
+            index_log_upper,
+            tail_upper,
+            analytic_scale,
+            log_two_lower,
+            log_two_upper,
+        )
 
 
 __all__ = [
