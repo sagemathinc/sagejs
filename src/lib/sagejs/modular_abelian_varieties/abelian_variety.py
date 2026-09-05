@@ -48,16 +48,7 @@ def _lcm(left: int, right: int) -> int:
 
 def _denominator(value: Any) -> int:
     method = getattr(value, "denominator", None)
-    return 1 if method is None else runtime.number(method())
-
-
-def _matrix_from_entries(
-    base_ring: Any,
-    rows: int,
-    columns: int,
-    entries: list[Any],
-) -> Any:
-    return _global("matrix")(base_ring, rows, columns, entries)
+    return 1 if method is None else int(method())
 
 
 def _zero_matrix(base_ring: Any, rows: int, columns: int) -> Any:
@@ -73,31 +64,18 @@ def _clear_denominators(source: Any) -> tuple[Any, int]:
     denominator = 1
     for value in source.list():
         denominator = _lcm(denominator, _denominator(value))
-    entries = [sage.ZZ(denominator * value) for value in source.list()]
-    return (
-        _matrix_from_entries(
-            sage.ZZ,
-            source.nrows(),
-            source.ncols(),
-            entries,
-        ),
-        denominator,
-    )
+    integral = source if denominator == 1 else source * denominator
+    return integral.change_ring(sage.ZZ), denominator
 
 
 def _integral_matrix(source: Any, label: str) -> Any:
     r"""Coerce a rational matrix to $\mathbf Z$, rejecting denominators."""
-    entries = []
-    for value in source.list():
-        if _denominator(value) != 1:
-            raise ArithmeticError(label + " is not integral")
-        entries.append(sage.ZZ(value))
-    return _matrix_from_entries(
-        sage.ZZ,
-        source.nrows(),
-        source.ncols(),
-        entries,
-    )
+    # The public conversion already checks every denominator, with a bulk
+    # resource-to-resource path and a correct portable scalar fallback.
+    try:
+        return source.change_ring(sage.ZZ)
+    except (TypeError, ValueError):
+        raise ArithmeticError(label + " is not integral") from None
 
 
 def _saturated_integer_intersection(rational_basis: Any) -> Any:
@@ -121,6 +99,18 @@ def _integer_row_lattice_basis(source: Any) -> Any:
         return _zero_matrix(sage.ZZ, 0, source.ncols())
     integer_source = _integral_matrix(source, "row-lattice generator matrix")
     return integer_source.hermite_form(include_zero_rows=False)
+
+
+def _is_integrally_surjective(source: Any) -> bool:
+    r"""Certify $\mathbf Z^m\to\mathbf Z^n$ surjectivity by its row lattice.
+
+    The integral image is the whole target exactly when its nonzero-row
+    Hermite basis is the identity. No Smith transformation matrices are
+    needed; those can suffer severe intermediate coefficient growth.
+    """
+    return _integer_row_lattice_basis(source) == _identity_matrix(
+        sage.ZZ, source.ncols()
+    )
 
 
 def _rational_row_lattice_basis(source: Any) -> Any:
@@ -169,6 +159,128 @@ def _validate_modular_symbols(space: Any) -> None:
             raise ArithmeticError(
                 "the defining modular-symbol space is not Hecke stable"
             )
+
+
+def _polynomial_at_matrix(polynomial: Any, operator: Any) -> Any:
+    r"""Evaluate exactly with $O(\sqrt{\deg f})$ dense matrix products.
+
+    Write $f(x)=\sum_i b_i(x)(x^s)^i$ with $\deg b_i<s$. Build the small
+    powers once, form the blocks by scalar arithmetic, and apply Horner only
+    to the blocks. All matrix operations retain their ordinary public exact
+    implementation and portable fallback.
+    """
+    degree = polynomial.degree()
+    if degree <= 4:
+        return polynomial(operator)
+    step = 1
+    while step * step < degree + 1:
+        step += 1
+    size = operator.nrows()
+    powers = [_identity_matrix(sage.QQ, size), operator]
+    for _index in range(2, step + 1):
+        powers.append(powers[-1] * operator)
+    result = None
+    for block_index in range(degree // step, -1, -1):
+        block = _zero_matrix(sage.QQ, size, size)
+        for index in range(step):
+            coefficient = polynomial[block_index * step + index]
+            if coefficient != 0:
+                block += coefficient * powers[index]
+        result = block if result is None else result * powers[step] + block
+    return result
+
+
+def _split_good_hecke_operator(component: Any, operator: Any) -> list[Any]:
+    """Split a semisimple good Hecke operator, reusing complementary images."""
+    factors = sorted(operator.charpoly().factor(), key=lambda pair: pair[0].degree())
+    answer = []
+    for polynomial, multiplicity in factors[:-1]:
+        evaluated = _polynomial_at_matrix(polynomial, operator)
+        kernel = evaluated.left_kernel_matrix()
+        if kernel.nrows() != polynomial.degree() * multiplicity:
+            raise ArithmeticError("good Hecke operator has an unexpected primary rank")
+        answer.append(
+            (
+                polynomial,
+                multiplicity,
+                component._subspace_from_local_basis(kernel, "Hecke"),
+            )
+        )
+        # Coprimality makes f(T) invertible on all remaining primary spaces.
+        # Continue on that row image, so subsequent polynomials act on smaller
+        # matrices. The final (largest-degree) polynomial is never evaluated.
+        image = evaluated.row_space().basis_matrix()
+        if image.nrows() + kernel.nrows() != component.dimension():
+            raise ArithmeticError("complementary Hecke image has the wrong rank")
+        operator = image._sparse_left_multiply(
+            operator.matrix_from_columns(list(image.pivots()))
+        )
+        component = component._subspace_from_local_basis(image, "Hecke")
+    # Semisimplicity identifies the last primary component without forming
+    # its identically zero annihilator matrix.
+    polynomial, multiplicity = factors[-1]
+    answer.append((polynomial, multiplicity, component))
+    return answer
+
+
+def _homology_decomposition(space: Any, bound: Any = None) -> list[Any]:
+    r"""Split weight-$2$ homology using its two sign copies of each newform.
+
+    On a simple abelian factor the good Hecke characteristic polynomial is
+    $f^2$, not $f$: each of the two star eigenspaces has one copy of the
+    coefficient field. An irreducible $f$ and exact sign dimensions
+    $\dim V^+=\dim V^-=\deg f$ therefore certify a finished factor. Merely
+    seeing a square is not enough: oldform multiplicities and coincident
+    eigenvalues must remain active and be separated by further operators.
+
+    Keep the generic full-Hecke oldspace convention, including bad-prime
+    refinement. The generic modular-symbol method cannot use this stopping
+    rule for arbitrary weights, signs, characters, or noncuspidal spaces.
+    """
+    if space.dimension() == 0:
+        return []
+    limit = (
+        space._default_decomposition_bound()
+        if bound is None
+        else _positive_integer(bound, "decomposition bound")
+    )
+    active = [space]
+    finished = []
+    for prime in space._good_hecke_primes(limit):
+        remaining = []
+        for component in active:
+            operator = component.hecke_matrix(prime)
+            for polynomial, multiplicity, constituent in _split_good_hecke_operator(
+                component, operator
+            ):
+                degree = polynomial.degree()
+                if (
+                    multiplicity == 2
+                    and constituent.dimension() == 2 * degree
+                    # Good Hecke kernels are star-stable. In characteristic
+                    # zero an involution of dimension 2d has d-dimensional
+                    # signs exactly when its trace is zero. This certifies
+                    # the sign dimensions without constructing two kernels.
+                    and constituent.star_involution_matrix().trace() == 0
+                ):
+                    finished.append(constituent)
+                else:
+                    remaining.append(constituent)
+        active = remaining
+        if len(active) == 0:
+            break
+    # A finished factor has one simple copy in each sign. Commuting bad-prime
+    # operators cannot split that abelian factor further. In particular, do
+    # not construct the expensive U_N at a large prime level just to rediscover
+    # a scalar. Only repeated old/anemic components still require refinement.
+    for prime in space._bad_hecke_primes():
+        if len(active) == 0:
+            break
+        active = space._refine_decomposition_with_operator(active, prime)
+    answer = finished + active
+    if sum(component.dimension() for component in answer) != space.dimension():
+        raise ArithmeticError("homology decomposition has the wrong dimension")
+    return sorted(answer, key=lambda component: component.dimension())
 
 
 class IntegralHomologyLattice(sage.Parent):
@@ -377,10 +489,7 @@ class ModularAbelianVarietyMap:
         return self._matrix.rank() == self._matrix.nrows()
 
     def is_surjective(self) -> bool:
-        if self._matrix.rank() != self._matrix.ncols():
-            return False
-        smith = self._matrix.smith_form()[0]
-        return all(abs(runtime.number(value)) == 1 for value in smith.diagonal())
+        return _is_integrally_surjective(self._matrix)
 
     def verify(self, hecke_bound: Any = 3) -> bool:
         bound = _positive_integer(hecke_bound, "Hecke verification bound")
@@ -558,8 +667,7 @@ class ModularAbelianVariety(sage.Parent):
             raise ArithmeticError("connected quotient lattice reconstruction failed")
         if quotient_matrix.rank() != target_basis.nrows():
             raise ArithmeticError("connected quotient map is not rationally surjective")
-        smith = quotient_matrix.smith_form()[0]
-        if any(abs(runtime.number(value)) != 1 for value in smith.diagonal()):
+        if not _is_integrally_surjective(quotient_matrix):
             raise ArithmeticError("connected quotient map is not integrally surjective")
         self._quotient_data_cache = runtime.math_tuple(
             [embedded_basis, quotient_matrix]
@@ -712,10 +820,7 @@ class ModularAbelianVariety(sage.Parent):
             return [self]
         if bound is None and self._decomposition_cache is not None:
             return self._decomposition_cache
-        factors = self.modular_symbols().decomposition(
-            bound=bound,
-            anemic=False,
-        )
+        factors = _homology_decomposition(self.modular_symbols(), bound)
         answer = [
             ModularAbelianVariety(
                 self._level,
@@ -845,7 +950,7 @@ def _validated_newform(value: Any) -> Any:
 def _matching_sign_zero_factor(newform: Any) -> tuple[Any, Any]:
     level = runtime.number(newform.level())
     cusp = J0(level).modular_symbols()
-    factors = cusp.decomposition(anemic=False)
+    factors = [factor.modular_symbols() for factor in J0(level).decomposition()]
     target = newform.hecke_constituent()
     candidates = [
         factor for factor in factors if factor.dimension() == 2 * target.dimension()

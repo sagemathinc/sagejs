@@ -11,7 +11,7 @@
   "files": [
     {
       "path": "architecture/package-graph.json",
-      "sha256": "b9d326bbcb0edd7e8b48a16b9d4b22cb0a3e70ac89bc5db753df62bee1507c3a"
+      "sha256": "390aadaa7b68d86ee74fb44cc9251cad94276f06435b81b15a8e17359057a1df"
     },
     {
       "path": "bench/modular/qexp-correctness/README.md",
@@ -47,7 +47,7 @@
     },
     {
       "path": "docs/index.md",
-      "sha256": "78783b70a11019e0296c00e56c502795b77546e09926c040702f3361807cc8b6"
+      "sha256": "ba25fede54fbec503c54588b3c04af3971bd228d5423f42d7fae94fd8bca9683"
     },
     {
       "path": "docs/classical-modular-form-elements.md",
@@ -63,7 +63,7 @@
     },
     {
       "path": "src/baselib/modular.py",
-      "sha256": "541a37ff75e2081ed6177895b36aaee4f7c0cf6158f5ad3576ee48309822ee08"
+      "sha256": "a932facf3e9d9915f77d97f5ac90cb64caa1e432e541023d126369ebc90c804d"
     },
     {
       "path": "src/lib/sagejs/modular_forms/__init__.py",
@@ -79,7 +79,7 @@
     },
     {
       "path": "src/lib/sagejs/modular_forms/newforms.py",
-      "sha256": "18d80b379c837ec94330423d0b85871d017ebf6acdb410145c1475efbd20f575"
+      "sha256": "8e949e3c06a1b3ca9e6a4cce972b746116d267c3379bb6b6a45384a9b34d1933"
     },
     {
       "path": "src/lib/sagejs/modular_forms/object_layer.py",
@@ -131,8 +131,8 @@
     },
     {
       "path": "tools/serialization-codecs/modular-forms.ts",
-      "sha256": "0e1053e97df87edb5f76c17bea12edd78cb97f8f8d12d3041a662146ebd4ccd9"
+      "sha256": "0b9d6d8e13ee0245be2fc15bb1c6d071526d642c9c2dcb755aa877a4474af6d4"
     }
   ],
-  "bundle_sha256": "eb0269f63615b93db3c1ac5aed12bef8ed1228d1ac99c135cde53b67f21a6949"
+  "bundle_sha256": "a5cc39f727beee2afbac21808ac9d55426ccf3d3b5f1db7a70dbd1facd6f10f2"
 }

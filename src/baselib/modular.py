@@ -5245,6 +5245,10 @@ class ModularSymbolsSpace(sage.Parent):
             )
         elif self._is_cuspidal:
             basis = ambient._star_submodule(sign).cuspidal_submodule().basis_matrix()
+            # Proper cuspidal constituents need their own sign space, not
+            # the entire ambient cuspidal eigenspace.
+            if self.dimension() < ambient.cuspidal_submodule().dimension():
+                basis = self._intersect_basis(basis)
         else:
             relation = (
                 ambient._full_star_matrix()

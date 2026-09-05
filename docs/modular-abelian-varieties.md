@@ -8,6 +8,11 @@ Sage.js represents the first modular-abelian-variety slice using exact
 weight-$2$ modular symbols and saturated integral homology.  The initial scope
 is $J_0(N)$ and its rational Hecke constituents over $\mathbf Q$.
 
+The [benchmark notes](../bench/modular/abelian-varieties/README.md#larger-level-performance)
+explain the sign-aware decomposition algorithm and give reproducible
+larger-level comparisons with Sage. These force the factor lattices and
+connected quotient maps, not just their lazy constructors.
+
 ## Start with $J_0(N)$
 
 ```sage
