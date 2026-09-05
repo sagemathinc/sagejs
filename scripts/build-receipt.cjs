@@ -36,7 +36,10 @@ const validationOnlyFiles = new Set([
 ]);
 
 function isArtifactInput(name, reviewedInputs = new Set()) {
-  return reviewedInputs.has(name) || (!validationOnlyFiles.has(name) &&
+  // These are Node test entry points, not browser build inputs. Keep shared
+  // support modules and fixtures conservative; they do not match this suffix.
+  const wasmTestEntry = /^packages\/flint-wasm\/test\/[^/]+\.test\.(?:mjs|cjs)$/.test(name);
+  return reviewedInputs.has(name) || (!wasmTestEntry && !validationOnlyFiles.has(name) &&
     !validationOnlyRoots.some((prefix) => name.startsWith(prefix)));
 }
 

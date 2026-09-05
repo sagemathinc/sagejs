@@ -28,6 +28,8 @@ for (const git of [false, true]) {
     const { root, write } = fixture(context, git);
     for (const name of ["README.md", "AGENTS.md", "agents/plan.md", "docs/reference/api.md",
       "test/regression.cjs", "website/reference-data.json", "website/reference.html",
+      "packages/flint-wasm/test/example.test.mjs",
+      "packages/flint-wasm/test/example.test.cjs",
       "upstream-tests/micropython/baselines/review.json",
       "upstream-tests/python-compat/suites/example.py"]) {
       const artifact = artifactInputsFingerprint(root);
@@ -45,6 +47,8 @@ for (const git of [false, true]) {
       "pnpm-lock.yaml", "tsconfig.json", "scripts/build.cjs", "architecture/native-kernels.json",
       "bench/numerical-p3-nlopt/corpus.json",
       "tools/nested/test/example.ts", "tools/grammar/README.md", "packages/math/input.py",
+      "packages/flint-wasm/test/example-support.mjs",
+      "packages/flint-wasm/test/fixtures/example.py",
       "upstream-tests/tree-sitter-example/src/scanner.c", "website/unknown-input.json",
       "unknown-config.json"]) {
       const before = artifactInputsFingerprint(root);
@@ -85,10 +89,13 @@ test("artifact reuse preserves the original build provenance and output checks",
 test("source-reviewed tests remain build inputs even in validation-only roots", (context) => {
   const { root, write } = fixture(context);
   const path = "test/reviewed-numerical-contract.cjs";
+  const wasmTest = "packages/flint-wasm/test/reviewed.test.mjs";
   write("src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json",
     JSON.stringify({ reviewed_sagejs_files: { [path]: "reviewed" },
-      qualification_tooling_files: { "test/review-tool.cjs": "reviewed" } }));
-  for (const name of [path, "test/review-tool.cjs"]) {
+      qualification_tooling_files: {
+        "test/review-tool.cjs": "reviewed", [wasmTest]: "reviewed",
+      } }));
+  for (const name of [path, "test/review-tool.cjs", wasmTest]) {
     write(name);
     const before = artifactInputsFingerprint(root);
     write(name, "changed contract");

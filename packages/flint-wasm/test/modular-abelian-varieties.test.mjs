@@ -8,10 +8,13 @@ test("packaged Wasm loads abelian varieties and preserves canonical maps", async
   t.after(() => sage.close());
   const result = await sage.evaluate(modularAbelianVarietyCase.source);
   assert.equal(result.repr, modularAbelianVarietyCase.expected);
-  await sage.evaluate([
+  // Keep the invalid-map program self-contained: this regression checks the
+  // codec contract, independently of cross-evaluation namespace handling.
+  await assert.rejects(sage.evaluate([
+    modularAbelianVarietyCase.source,
     "from sagejs.modular_abelian_varieties import ModularAbelianVarietyMap",
     "bad=ModularAbelianVarietyMap(J,A,2*q.matrix(),'doubled quotient')",
-  ].join("\n"));
-  await assert.rejects(sage.evaluate("dumps(bad)"),
+    "dumps(bad)",
+  ].join("\n")),
     /only canonical homology maps.*matrix differs/);
 });
