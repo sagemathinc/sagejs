@@ -1312,6 +1312,9 @@ function generateJavaScript(ir, options = {}) {
         `${uint64BigInt ? `Number(${operation.start})` : operation.start}, ` +
         `${uint64BigInt ? `Number(${operation.length})` : operation.length});`;
     }
+    if (operation.kind === "uint64.buffer.get") {
+      return `${indent}${operation.target} = uint64BufferGet(${operation.buffer}, Number(${operation.index}));`;
+    }
     if (operation.kind === "float64.buffer.get") {
       return `${indent}${operation.target} = float64BufferGet(` +
         `${operation.buffer}, ` +
@@ -1369,13 +1372,13 @@ function generateJavaScript(ir, options = {}) {
   }
 
   function emitFloat64PublicFunction(fn) {
-    const uint64BigInt = hasUint64Bitwise(fn.body);
+    const uint64BigInt = hasUint64Bitwise(fn.body) || fn.params.some(param => param.type === "UInt64Buffer");
     const params = fn.params.map((param) => param.name).join(", ");
     const locals = fn.locals.map((local) => local.name);
     const declaration = locals.length === 0 ? "" : `  let ${locals.join(", ")};\n`;
     const bufferNormalization = fn.params
-      .filter((param) => param.type === "Float64Buffer")
-      .map((param) => `  ${param.name} = float64BufferView(${param.name}, ` +
+      .filter((param) => ["Float64Buffer", "UInt64Buffer"].includes(param.type))
+      .map((param) => `  ${param.name} = ${param.type === "UInt64Buffer" ? "uint64BufferView" : "float64BufferView"}(${param.name}, ` +
         `${jsString(param.name)});`)
       .join("\n");
     const fallback = `function javascript_${fn.name}(${params}) {\n` +
@@ -1385,6 +1388,8 @@ function generateJavaScript(ir, options = {}) {
       ).join("\n") + "\n}";
     const validation = fn.params.map((param) => param.type === "uint64"
       ? uint64Validation(param.name)
+      : param.type === "UInt64Buffer"
+      ? `  ${param.name} = asUInt64Buffer(uint64BufferView(${param.name}, ${jsString(param.name)}));`
       : param.type === "Float64"
       ? `  ${param.name} = float64Scalar(${param.name}, ${jsString(param.name)});`
       : `  const sagejs_native_buffer_${param.name} = ` +

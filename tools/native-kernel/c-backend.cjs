@@ -2614,7 +2614,7 @@ function emitFloat64Operation(operation, indent) {
       `${indent}${target}.length = (size_t) ${length};`,
     ].join("\n");
   }
-  if (operation.kind === "float64.buffer.get") {
+  if (operation.kind === "float64.buffer.get" || operation.kind === "uint64.buffer.get") {
     const buffer = cName(operation.buffer);
     const index = cName(operation.index);
     return [
@@ -2713,6 +2713,7 @@ function emitFloat64Statements(statements, indent) {
 }
 
 function float64Parameter(param) {
+  if (param.type === "UInt64Buffer") return `sagejs_uint64_buffer ${cName(param.name)}`;
   if (param.type === "uint64") return `uint64_t ${cName(param.name)}`;
   if (param.type === "Float64") return `double ${cName(param.name)}`;
   if (param.type === "Float64Buffer") {
@@ -2734,7 +2735,9 @@ function emitFloat64CoreFunction(fn) {
   const params = new Set(fn.params.map((param) => param.name));
   for (const local of fn.locals) {
     if (params.has(local.name)) continue;
-    const type = local.type === "uint64"
+    const type = local.type === "UInt64Buffer"
+      ? "sagejs_uint64_buffer"
+      : local.type === "uint64"
       ? "uint64_t"
       : local.type === "bool"
         ? "int"
@@ -2780,6 +2783,9 @@ function emitFloat64NodeAdapter(fn) {
       parsing.push(
         `    if (!get_uint64(env, args[${index}], &${name})) return NULL;`,
       );
+    } else if (param.type === "UInt64Buffer") {
+      declarations.push(`    sagejs_uint64_buffer ${name};`);
+      parsing.push(`    if (!sagejs_native_get_uint64_buffer(env, args[${index}], &${name}, ${cString(param.name + " must be a BigUint64Array")})) return NULL;`);
     } else if (param.type === "Float64") {
       declarations.push(`    double ${name};`);
       parsing.push(
@@ -3717,7 +3723,7 @@ function coreHeader(ir, options = {}) {
     fn.params.some((param) => isInt64BufferType(param.type)) ||
     fn.locals.some((local) => isInt64BufferType(local.type))
   );
-  const usesUInt64Buffers = exact.some((fn) =>
+  const usesUInt64Buffers = [...exact, ...floats].some((fn) =>
     fn.params.some((param) => isUInt64BufferType(param.type)) ||
     fn.locals.some((local) => isUInt64BufferType(local.type))
   );
@@ -3898,7 +3904,7 @@ function generateHostCore(ir, options = {}) {
     fn.params.some((param) => isInt64BufferType(param.type)) ||
     fn.locals.some((local) => isInt64BufferType(local.type))
   );
-  const usesUInt64Buffers = exact.some((fn) =>
+  const usesUInt64Buffers = [...exact, ...floats].some((fn) =>
     fn.params.some((param) => isUInt64BufferType(param.type)) ||
     fn.locals.some((local) => isUInt64BufferType(local.type))
   );
@@ -4073,7 +4079,7 @@ static int get_precision(
     fn.params.some((param) => isInt64BufferType(param.type)) ||
     fn.locals.some((local) => isInt64BufferType(local.type))
   );
-  const usesUInt64Buffers = exact.some((fn) =>
+  const usesUInt64Buffers = [...exact, ...floats].some((fn) =>
     fn.params.some((param) => isUInt64BufferType(param.type)) ||
     fn.locals.some((local) => isUInt64BufferType(local.type))
   );

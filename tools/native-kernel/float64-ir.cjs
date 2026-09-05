@@ -11,7 +11,7 @@ const {
 } = require("./uint64-operations.cjs");
 
 const UINT64_MAX = 18446744073709551615n;
-const BUFFER_TYPES = new Set(["Float64Buffer", "Float64Record"]);
+const BUFFER_TYPES = new Set(["Float64Buffer", "Float64Record", "UInt64Buffer"]);
 const COMPARISONS = new Map([
   ["==", "eq"],
   ["!=", "ne"],
@@ -146,7 +146,9 @@ function staticType(node, context) {
   if (nodeType(node) === "AST_SymbolRef") return context.variables.get(node.name);
   const literal = numericLiteral(node);
   if (literal !== undefined && !/^\d+$/.test(literal)) return "Float64";
-  if (nodeType(node) === "AST_ItemAccess") return "Float64";
+  if (nodeType(node) === "AST_ItemAccess") {
+    return staticType(node.expression, context) === "UInt64Buffer" ? "uint64" : "Float64";
+  }
   if (nodeType(node) === "AST_Call" &&
       nodeType(node.expression) === "AST_SymbolRef") {
     const name = node.expression.name;
@@ -398,15 +400,16 @@ function lowerExpression(node, context, operations, expectedType) {
       "binary64 indexing requires a Float64Buffer or Float64Record",
     );
     const index = lowerExpression(node.property, context, operations, "uint64");
-    const target = temporary(context, node, "Float64");
+    const valueType = buffer.type === "UInt64Buffer" ? "uint64" : "Float64";
+    const target = temporary(context, node, valueType);
     operations.push({
-      kind: "float64.buffer.get",
+      kind: buffer.type === "UInt64Buffer" ? "uint64.buffer.get" : "float64.buffer.get",
       target,
       buffer: buffer.name,
       bufferType: buffer.type,
       index: index.name,
     });
-    return { name: target, type: "Float64" };
+    return { name: target, type: valueType };
   }
   expect(
     context,
@@ -443,7 +446,7 @@ function bufferSet(assign, context, operator = "=") {
   expect(
     context,
     assign.expression,
-    BUFFER_TYPES.has(buffer.type),
+    buffer.type === "Float64Buffer" || buffer.type === "Float64Record",
     "binary64 buffer assignment requires a Float64Buffer or Float64Record",
   );
   const index = lowerExpression(assign.property, context, operations, "uint64");
@@ -840,7 +843,7 @@ function lowerFloat64Function(fn, signature, filename, decorated) {
 function isFloat64Signature(signature) {
   return signature.returnType === "Float64" &&
     signature.params.every((param) =>
-      ["Float64", "uint64", "Float64Buffer"].includes(param.type)
+      ["Float64", "uint64", "Float64Buffer", "UInt64Buffer"].includes(param.type)
     );
 }
 
