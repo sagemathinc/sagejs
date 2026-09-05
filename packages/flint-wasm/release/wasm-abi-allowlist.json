@@ -2713,35 +2713,35 @@
           "kind": "memory"
         },
         {
-          "name": "sagejs_wasm_allocate_m_02d9b7cbb7ca7966",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_allocate_m_0a224650f9373116",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_2213756e12fb0713",
+          "name": "sagejs_wasm_allocate_m_1d1d0902eb200de3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_3f2b13e5493182bd",
+          "name": "sagejs_wasm_allocate_m_36bf8a25b1c4c670",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_57a05587cced9792",
+          "name": "sagejs_wasm_allocate_m_485f771afa4954f0",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_6c1cdb4c5035a6d5",
+          "name": "sagejs_wasm_allocate_m_4914a7635869b840",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_6e5ca0eb2ac37f7a",
+          "name": "sagejs_wasm_allocate_m_597383a575d7d527",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_6edf5d88cdca5250",
+          "name": "sagejs_wasm_allocate_m_69afe0d2dbc2c7ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_6e933b175db504e4",
           "kind": "function"
         },
         {
@@ -2749,19 +2749,19 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_726200c8a8c74abf",
+          "name": "sagejs_wasm_allocate_m_85403d347245610c",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_7e6321b085a3b585",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_allocate_m_96503dda9f9efbf2",
+          "name": "sagejs_wasm_allocate_m_87b6962c58d70776",
           "kind": "function"
         },
         {
           "name": "sagejs_wasm_allocate_m_9ccb732c3f18f5b7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_a6d03ec282951a3c",
           "kind": "function"
         },
         {
@@ -2773,99 +2773,27 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_c5422022789a5418",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_allocate_m_cd3b89bff95e92b6",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_cf1fea103e1b3c1f",
+          "name": "sagejs_wasm_allocate_m_dbd0cd6f08f66390",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_dcfceaaddb6d7b46",
+          "name": "sagejs_wasm_allocate_m_dbf32d8642dbc27a",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_f8c9f229ef7c35c6",
+          "name": "sagejs_wasm_allocate_m_e5dd6a0a707a14e8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_f6347f1fe38bdc1f",
           "kind": "function"
         },
         {
           "name": "sagejs_wasm_allocate_m_fd0465574b2632f0",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_matrix_charpoly",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_matrix_determinant",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_matrix_gram_lll_transform",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_matrix_hnf_modular_eldiv",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_matrix_hnf_transform",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_matrix_hnf",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_matrix_lll_transform",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_matrix_mul",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_matrix_rank",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_matrix_right_kernel",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_matrix_snf_transform",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_matrix_space_random_fill",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_resource_import",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_resource_nonzero_count",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_resource_random_fill_default",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_resource_random_fill",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_dense_integer_resource_set_diagonal",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_02d9b7cbb7ca7966_flint_relation_presentation_replay",
           "kind": "function"
         },
         {
@@ -2901,179 +2829,151 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_2213756e12fb0713_rank_four_lattice_workspace",
+          "name": "sagejs_wasm_call_m_1d1d0902eb200de3_certified_complex_cubic_class_group_v1",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_heilbronn_coset_transport_fill",
+          "name": "sagejs_wasm_call_m_36bf8a25b1c4c670_sparse_random_binary",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_heilbronn_cremona_count",
+          "name": "sagejs_wasm_call_m_36bf8a25b1c4c670_sparse_random_fmpq",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_heilbronn_cremona_digest",
+          "name": "sagejs_wasm_call_m_36bf8a25b1c4c670_sparse_random_fmpz",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_heilbronn_cremona_entry",
+          "name": "sagejs_wasm_call_m_36bf8a25b1c4c670_sparse_random_prime",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_heilbronn_cremona_fill",
+          "name": "sagejs_wasm_call_m_485f771afa4954f0_flint_dense_prime_field_matrix_charpoly",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_heilbronn_higher_weight_action_fill",
+          "name": "sagejs_wasm_call_m_485f771afa4954f0_flint_dense_prime_field_matrix_determinant",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_heilbronn_higher_weight_hecke_matrix",
+          "name": "sagejs_wasm_call_m_485f771afa4954f0_flint_dense_prime_field_matrix_inverse",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_heilbronn_merel_digest",
+          "name": "sagejs_wasm_call_m_485f771afa4954f0_flint_dense_prime_field_matrix_minpoly",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_heilbronn_merel_entry",
+          "name": "sagejs_wasm_call_m_485f771afa4954f0_flint_dense_prime_field_matrix_mul",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_heilbronn_merel_fill",
+          "name": "sagejs_wasm_call_m_485f771afa4954f0_flint_dense_prime_field_matrix_rank",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_heilbronn_reduce_transported_action",
+          "name": "sagejs_wasm_call_m_485f771afa4954f0_flint_dense_prime_field_matrix_right_kernel",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_heilbronn_transported_action_fill",
+          "name": "sagejs_wasm_call_m_485f771afa4954f0_flint_dense_prime_field_matrix_rref",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_p1_apply_packed",
+          "name": "sagejs_wasm_call_m_485f771afa4954f0_flint_dense_prime_field_matrix_solve",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_p1_gcd",
+          "name": "sagejs_wasm_call_m_4914a7635869b840_assemble_bf_dyadic_finite_term",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_p1_index_normalized_packed",
+          "name": "sagejs_wasm_call_m_4914a7635869b840_assemble_bf_dyadic_layout",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_p1_monomial_matrix_coefficient",
+          "name": "sagejs_wasm_call_m_4914a7635869b840_assemble_bf_integer_transcendental_endpoints_flint",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_p1_normalize_with_scalar",
+          "name": "sagejs_wasm_call_m_4914a7635869b840_assemble_bf_integer_transcendental_endpoints",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_p1_rational_add_scaled_at",
+          "name": "sagejs_wasm_call_m_4914a7635869b840_assemble_bf_prime_power_plan_in_place",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_p1_round_quotient",
+          "name": "sagejs_wasm_call_m_4914a7635869b840_assemble_zeta_coefficients_from_factors",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_3f2b13e5493182bd_p1_xgcd_left",
+          "name": "sagejs_wasm_call_m_597383a575d7d527_cubic_reduced_shell_relation_hnf_v1",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_57a05587cced9792_cubic_reduced_shell_relation_hnf_v1",
+          "name": "sagejs_wasm_call_m_597383a575d7d527_resident_exact_relation_hnf_select_v2",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_57a05587cced9792_resident_exact_relation_hnf_select_v2",
+          "name": "sagejs_wasm_call_m_597383a575d7d527_resident_exact_relation_hnf_select",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_57a05587cced9792_resident_exact_relation_hnf_select",
+          "name": "sagejs_wasm_call_m_597383a575d7d527_stable_exact_relation_hnf_select_v1",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_57a05587cced9792_stable_exact_relation_hnf_select_v1",
+          "name": "sagejs_wasm_call_m_69afe0d2dbc2c7ab_flint_arbitrary_prime_polynomial_coefficient_sum",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_6c1cdb4c5035a6d5_sparse_random_binary",
+          "name": "sagejs_wasm_call_m_6e933b175db504e4_flint_byte_region_copy",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_6c1cdb4c5035a6d5_sparse_random_fmpq",
+          "name": "sagejs_wasm_call_m_6e933b175db504e4_flint_dense_rational_matrix_charpoly",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_6c1cdb4c5035a6d5_sparse_random_fmpz",
+          "name": "sagejs_wasm_call_m_6e933b175db504e4_flint_dense_rational_matrix_determinant",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_6c1cdb4c5035a6d5_sparse_random_prime",
+          "name": "sagejs_wasm_call_m_6e933b175db504e4_flint_dense_rational_matrix_entry",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_6e5ca0eb2ac37f7a_flint_dense_prime_field_matrix_charpoly",
+          "name": "sagejs_wasm_call_m_6e933b175db504e4_flint_dense_rational_matrix_import",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_6e5ca0eb2ac37f7a_flint_dense_prime_field_matrix_determinant",
+          "name": "sagejs_wasm_call_m_6e933b175db504e4_flint_dense_rational_matrix_inverse",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_6e5ca0eb2ac37f7a_flint_dense_prime_field_matrix_inverse",
+          "name": "sagejs_wasm_call_m_6e933b175db504e4_flint_dense_rational_matrix_mul",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_6e5ca0eb2ac37f7a_flint_dense_prime_field_matrix_minpoly",
+          "name": "sagejs_wasm_call_m_6e933b175db504e4_flint_dense_rational_matrix_nonzero_count",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_6e5ca0eb2ac37f7a_flint_dense_prime_field_matrix_mul",
+          "name": "sagejs_wasm_call_m_6e933b175db504e4_flint_dense_rational_matrix_rank",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_6e5ca0eb2ac37f7a_flint_dense_prime_field_matrix_rank",
+          "name": "sagejs_wasm_call_m_6e933b175db504e4_flint_dense_rational_matrix_rref",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_6e5ca0eb2ac37f7a_flint_dense_prime_field_matrix_right_kernel",
+          "name": "sagejs_wasm_call_m_6e933b175db504e4_flint_dense_rational_matrix_set_diagonal",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_6e5ca0eb2ac37f7a_flint_dense_prime_field_matrix_rref",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_6e5ca0eb2ac37f7a_flint_dense_prime_field_matrix_solve",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_6edf5d88cdca5250_assemble_bf_dyadic_finite_term",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_6edf5d88cdca5250_assemble_bf_dyadic_layout",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_6edf5d88cdca5250_assemble_bf_integer_transcendental_endpoints_flint",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_6edf5d88cdca5250_assemble_bf_integer_transcendental_endpoints",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_6edf5d88cdca5250_assemble_bf_prime_power_plan_in_place",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_6edf5d88cdca5250_assemble_zeta_coefficients_from_factors",
+          "name": "sagejs_wasm_call_m_6e933b175db504e4_flint_dense_rational_matrix_solve",
           "kind": "function"
         },
         {
@@ -3085,119 +2985,103 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_byte_region_copy",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_matrix_charpoly",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_integer_polynomial_divexact",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_matrix_determinant",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_integer_polynomial_factor",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_matrix_gram_lll_transform",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_integer_polynomial_multiply",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_matrix_hnf_modular_eldiv",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_add",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_matrix_hnf_transform",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_derivative",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_matrix_hnf",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_divexact",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_matrix_lll_transform",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_divrem",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_matrix_mul",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_equal",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_matrix_rank",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_evaluate",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_matrix_right_kernel",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_factor",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_matrix_snf_transform",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_gcd",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_matrix_space_random_fill",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_is_irreducible",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_resource_import",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_multiply",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_resource_nonzero_count",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_negate",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_resource_random_fill_default",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_roots",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_resource_random_fill",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_subtract",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_dense_integer_resource_set_diagonal",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_prime_field_polynomial_xgcd",
+          "name": "sagejs_wasm_call_m_85403d347245610c_flint_relation_presentation_replay",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_rational_polynomial_divexact",
+          "name": "sagejs_wasm_call_m_87b6962c58d70776_flint_extension_element_coordinate_sum",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_rational_polynomial_factor",
+          "name": "sagejs_wasm_call_m_87b6962c58d70776_flint_extension_element_coordinate",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_726200c8a8c74abf_flint_packed_rational_polynomial_multiply",
+          "name": "sagejs_wasm_call_m_87b6962c58d70776_flint_extension_polynomial_add",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_7e6321b085a3b585_certified_complex_cubic_class_group_v1",
+          "name": "sagejs_wasm_call_m_87b6962c58d70776_flint_extension_polynomial_coordinate_sum",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_96503dda9f9efbf2_flint_extension_element_coordinate_sum",
+          "name": "sagejs_wasm_call_m_87b6962c58d70776_flint_extension_polynomial_coordinate",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_96503dda9f9efbf2_flint_extension_element_coordinate",
+          "name": "sagejs_wasm_call_m_87b6962c58d70776_flint_extension_polynomial_from_coordinates",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_96503dda9f9efbf2_flint_extension_polynomial_add",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_96503dda9f9efbf2_flint_extension_polynomial_coordinate_sum",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_96503dda9f9efbf2_flint_extension_polynomial_coordinate",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_96503dda9f9efbf2_flint_extension_polynomial_from_coordinates",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_96503dda9f9efbf2_flint_extension_polynomial_multiply",
+          "name": "sagejs_wasm_call_m_87b6962c58d70776_flint_extension_polynomial_multiply",
           "kind": "function"
         },
         {
@@ -3210,6 +3094,18 @@
         },
         {
           "name": "sagejs_wasm_call_m_9ccb732c3f18f5b7_genus2_kummer_project_batch",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_a6d03ec282951a3c_packed_round4_exact_characteristic",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_a6d03ec282951a3c_packed_round4_padic_characteristic",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_a6d03ec282951a3c_packed_round4_power_basis_covolume",
           "kind": "function"
         },
         {
@@ -3377,54 +3273,6 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_c5422022789a5418_flint_byte_region_copy",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_c5422022789a5418_flint_dense_rational_matrix_charpoly",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_c5422022789a5418_flint_dense_rational_matrix_determinant",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_c5422022789a5418_flint_dense_rational_matrix_entry",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_c5422022789a5418_flint_dense_rational_matrix_import",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_c5422022789a5418_flint_dense_rational_matrix_inverse",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_c5422022789a5418_flint_dense_rational_matrix_mul",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_c5422022789a5418_flint_dense_rational_matrix_nonzero_count",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_c5422022789a5418_flint_dense_rational_matrix_rank",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_c5422022789a5418_flint_dense_rational_matrix_rref",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_c5422022789a5418_flint_dense_rational_matrix_set_diagonal",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_c5422022789a5418_flint_dense_rational_matrix_solve",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_call_m_cd3b89bff95e92b6_word_prime_csr_polynomial_apply",
           "kind": "function"
         },
@@ -3437,27 +3285,179 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_cf1fea103e1b3c1f_packed_round4_exact_characteristic",
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_heilbronn_coset_transport_fill",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_cf1fea103e1b3c1f_packed_round4_padic_characteristic",
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_heilbronn_cremona_count",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_cf1fea103e1b3c1f_packed_round4_power_basis_covolume",
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_heilbronn_cremona_digest",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_dcfceaaddb6d7b46_flint_word_prime_matrix_nonzero_count",
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_heilbronn_cremona_entry",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_dcfceaaddb6d7b46_flint_word_prime_matrix_pivots",
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_heilbronn_cremona_fill",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_f8c9f229ef7c35c6_flint_arbitrary_prime_polynomial_coefficient_sum",
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_heilbronn_higher_weight_action_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_heilbronn_higher_weight_hecke_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_heilbronn_merel_digest",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_heilbronn_merel_entry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_heilbronn_merel_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_heilbronn_reduce_transported_action",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_heilbronn_transported_action_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_p1_apply_packed",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_p1_gcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_p1_index_normalized_packed",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_p1_monomial_matrix_coefficient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_p1_normalize_with_scalar",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_p1_rational_add_scaled_at",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_p1_round_quotient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbd0cd6f08f66390_p1_xgcd_left",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_dbf32d8642dbc27a_rank_four_lattice_workspace",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_e5dd6a0a707a14e8_flint_word_prime_matrix_nonzero_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_e5dd6a0a707a14e8_flint_word_prime_matrix_pivots",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_byte_region_copy",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_integer_polynomial_divexact",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_integer_polynomial_factor",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_integer_polynomial_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_add",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_derivative",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_divexact",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_divrem",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_equal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_evaluate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_factor",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_gcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_is_irreducible",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_negate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_roots",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_subtract",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_prime_field_polynomial_xgcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_rational_polynomial_divexact",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_rational_polynomial_factor",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f6347f1fe38bdc1f_flint_packed_rational_polynomial_multiply",
           "kind": "function"
         },
         {
@@ -3473,35 +3473,35 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_02d9b7cbb7ca7966",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_deallocate_m_0a224650f9373116",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_2213756e12fb0713",
+          "name": "sagejs_wasm_deallocate_m_1d1d0902eb200de3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_3f2b13e5493182bd",
+          "name": "sagejs_wasm_deallocate_m_36bf8a25b1c4c670",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_57a05587cced9792",
+          "name": "sagejs_wasm_deallocate_m_485f771afa4954f0",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_6c1cdb4c5035a6d5",
+          "name": "sagejs_wasm_deallocate_m_4914a7635869b840",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_6e5ca0eb2ac37f7a",
+          "name": "sagejs_wasm_deallocate_m_597383a575d7d527",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_6edf5d88cdca5250",
+          "name": "sagejs_wasm_deallocate_m_69afe0d2dbc2c7ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_6e933b175db504e4",
           "kind": "function"
         },
         {
@@ -3509,19 +3509,19 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_726200c8a8c74abf",
+          "name": "sagejs_wasm_deallocate_m_85403d347245610c",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_7e6321b085a3b585",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_deallocate_m_96503dda9f9efbf2",
+          "name": "sagejs_wasm_deallocate_m_87b6962c58d70776",
           "kind": "function"
         },
         {
           "name": "sagejs_wasm_deallocate_m_9ccb732c3f18f5b7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_a6d03ec282951a3c",
           "kind": "function"
         },
         {
@@ -3533,23 +3533,23 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_c5422022789a5418",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_deallocate_m_cd3b89bff95e92b6",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_cf1fea103e1b3c1f",
+          "name": "sagejs_wasm_deallocate_m_dbd0cd6f08f66390",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_dcfceaaddb6d7b46",
+          "name": "sagejs_wasm_deallocate_m_dbf32d8642dbc27a",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_f8c9f229ef7c35c6",
+          "name": "sagejs_wasm_deallocate_m_e5dd6a0a707a14e8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_f6347f1fe38bdc1f",
           "kind": "function"
         },
         {
@@ -3605,35 +3605,35 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_02d9b7cbb7ca7966",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_last_message_m_0a224650f9373116",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_2213756e12fb0713",
+          "name": "sagejs_wasm_last_message_m_1d1d0902eb200de3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_3f2b13e5493182bd",
+          "name": "sagejs_wasm_last_message_m_36bf8a25b1c4c670",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_57a05587cced9792",
+          "name": "sagejs_wasm_last_message_m_485f771afa4954f0",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_6c1cdb4c5035a6d5",
+          "name": "sagejs_wasm_last_message_m_4914a7635869b840",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_6e5ca0eb2ac37f7a",
+          "name": "sagejs_wasm_last_message_m_597383a575d7d527",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_6edf5d88cdca5250",
+          "name": "sagejs_wasm_last_message_m_69afe0d2dbc2c7ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_6e933b175db504e4",
           "kind": "function"
         },
         {
@@ -3641,19 +3641,19 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_726200c8a8c74abf",
+          "name": "sagejs_wasm_last_message_m_85403d347245610c",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_7e6321b085a3b585",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_last_message_m_96503dda9f9efbf2",
+          "name": "sagejs_wasm_last_message_m_87b6962c58d70776",
           "kind": "function"
         },
         {
           "name": "sagejs_wasm_last_message_m_9ccb732c3f18f5b7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_a6d03ec282951a3c",
           "kind": "function"
         },
         {
@@ -3665,23 +3665,23 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_c5422022789a5418",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_last_message_m_cd3b89bff95e92b6",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_cf1fea103e1b3c1f",
+          "name": "sagejs_wasm_last_message_m_dbd0cd6f08f66390",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_dcfceaaddb6d7b46",
+          "name": "sagejs_wasm_last_message_m_dbf32d8642dbc27a",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_f8c9f229ef7c35c6",
+          "name": "sagejs_wasm_last_message_m_e5dd6a0a707a14e8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_f6347f1fe38bdc1f",
           "kind": "function"
         },
         {
@@ -3765,35 +3765,35 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_02d9b7cbb7ca7966",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_f64_at_m_0a224650f9373116",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_2213756e12fb0713",
+          "name": "sagejs_wasm_result_f64_at_m_1d1d0902eb200de3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_3f2b13e5493182bd",
+          "name": "sagejs_wasm_result_f64_at_m_36bf8a25b1c4c670",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_57a05587cced9792",
+          "name": "sagejs_wasm_result_f64_at_m_485f771afa4954f0",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_6c1cdb4c5035a6d5",
+          "name": "sagejs_wasm_result_f64_at_m_4914a7635869b840",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_6e5ca0eb2ac37f7a",
+          "name": "sagejs_wasm_result_f64_at_m_597383a575d7d527",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_6edf5d88cdca5250",
+          "name": "sagejs_wasm_result_f64_at_m_69afe0d2dbc2c7ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_f64_at_m_6e933b175db504e4",
           "kind": "function"
         },
         {
@@ -3801,19 +3801,19 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_726200c8a8c74abf",
+          "name": "sagejs_wasm_result_f64_at_m_85403d347245610c",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_7e6321b085a3b585",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_f64_at_m_96503dda9f9efbf2",
+          "name": "sagejs_wasm_result_f64_at_m_87b6962c58d70776",
           "kind": "function"
         },
         {
           "name": "sagejs_wasm_result_f64_at_m_9ccb732c3f18f5b7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_f64_at_m_a6d03ec282951a3c",
           "kind": "function"
         },
         {
@@ -3825,23 +3825,23 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_c5422022789a5418",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_f64_at_m_cd3b89bff95e92b6",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_cf1fea103e1b3c1f",
+          "name": "sagejs_wasm_result_f64_at_m_dbd0cd6f08f66390",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_dcfceaaddb6d7b46",
+          "name": "sagejs_wasm_result_f64_at_m_dbf32d8642dbc27a",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_f8c9f229ef7c35c6",
+          "name": "sagejs_wasm_result_f64_at_m_e5dd6a0a707a14e8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_f64_at_m_f6347f1fe38bdc1f",
           "kind": "function"
         },
         {
@@ -3849,35 +3849,35 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_02d9b7cbb7ca7966",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_length_m_0a224650f9373116",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_2213756e12fb0713",
+          "name": "sagejs_wasm_result_length_m_1d1d0902eb200de3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_3f2b13e5493182bd",
+          "name": "sagejs_wasm_result_length_m_36bf8a25b1c4c670",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_57a05587cced9792",
+          "name": "sagejs_wasm_result_length_m_485f771afa4954f0",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_6c1cdb4c5035a6d5",
+          "name": "sagejs_wasm_result_length_m_4914a7635869b840",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_6e5ca0eb2ac37f7a",
+          "name": "sagejs_wasm_result_length_m_597383a575d7d527",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_6edf5d88cdca5250",
+          "name": "sagejs_wasm_result_length_m_69afe0d2dbc2c7ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_6e933b175db504e4",
           "kind": "function"
         },
         {
@@ -3885,19 +3885,19 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_726200c8a8c74abf",
+          "name": "sagejs_wasm_result_length_m_85403d347245610c",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_7e6321b085a3b585",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_length_m_96503dda9f9efbf2",
+          "name": "sagejs_wasm_result_length_m_87b6962c58d70776",
           "kind": "function"
         },
         {
           "name": "sagejs_wasm_result_length_m_9ccb732c3f18f5b7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_a6d03ec282951a3c",
           "kind": "function"
         },
         {
@@ -3909,23 +3909,23 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_c5422022789a5418",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_length_m_cd3b89bff95e92b6",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_cf1fea103e1b3c1f",
+          "name": "sagejs_wasm_result_length_m_dbd0cd6f08f66390",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_dcfceaaddb6d7b46",
+          "name": "sagejs_wasm_result_length_m_dbf32d8642dbc27a",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_f8c9f229ef7c35c6",
+          "name": "sagejs_wasm_result_length_m_e5dd6a0a707a14e8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_f6347f1fe38bdc1f",
           "kind": "function"
         },
         {
@@ -3933,35 +3933,35 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_02d9b7cbb7ca7966",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_limbs_m_0a224650f9373116",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_2213756e12fb0713",
+          "name": "sagejs_wasm_result_limbs_m_1d1d0902eb200de3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_3f2b13e5493182bd",
+          "name": "sagejs_wasm_result_limbs_m_36bf8a25b1c4c670",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_57a05587cced9792",
+          "name": "sagejs_wasm_result_limbs_m_485f771afa4954f0",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_6c1cdb4c5035a6d5",
+          "name": "sagejs_wasm_result_limbs_m_4914a7635869b840",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_6e5ca0eb2ac37f7a",
+          "name": "sagejs_wasm_result_limbs_m_597383a575d7d527",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_6edf5d88cdca5250",
+          "name": "sagejs_wasm_result_limbs_m_69afe0d2dbc2c7ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_6e933b175db504e4",
           "kind": "function"
         },
         {
@@ -3969,19 +3969,19 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_726200c8a8c74abf",
+          "name": "sagejs_wasm_result_limbs_m_85403d347245610c",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_7e6321b085a3b585",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_limbs_m_96503dda9f9efbf2",
+          "name": "sagejs_wasm_result_limbs_m_87b6962c58d70776",
           "kind": "function"
         },
         {
           "name": "sagejs_wasm_result_limbs_m_9ccb732c3f18f5b7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_a6d03ec282951a3c",
           "kind": "function"
         },
         {
@@ -3993,23 +3993,23 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_c5422022789a5418",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_limbs_m_cd3b89bff95e92b6",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_cf1fea103e1b3c1f",
+          "name": "sagejs_wasm_result_limbs_m_dbd0cd6f08f66390",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_dcfceaaddb6d7b46",
+          "name": "sagejs_wasm_result_limbs_m_dbf32d8642dbc27a",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_f8c9f229ef7c35c6",
+          "name": "sagejs_wasm_result_limbs_m_e5dd6a0a707a14e8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_f6347f1fe38bdc1f",
           "kind": "function"
         },
         {
@@ -4017,35 +4017,35 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_02d9b7cbb7ca7966",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_sign_m_0a224650f9373116",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_2213756e12fb0713",
+          "name": "sagejs_wasm_result_sign_m_1d1d0902eb200de3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_3f2b13e5493182bd",
+          "name": "sagejs_wasm_result_sign_m_36bf8a25b1c4c670",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_57a05587cced9792",
+          "name": "sagejs_wasm_result_sign_m_485f771afa4954f0",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_6c1cdb4c5035a6d5",
+          "name": "sagejs_wasm_result_sign_m_4914a7635869b840",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_6e5ca0eb2ac37f7a",
+          "name": "sagejs_wasm_result_sign_m_597383a575d7d527",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_6edf5d88cdca5250",
+          "name": "sagejs_wasm_result_sign_m_69afe0d2dbc2c7ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_6e933b175db504e4",
           "kind": "function"
         },
         {
@@ -4053,19 +4053,19 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_726200c8a8c74abf",
+          "name": "sagejs_wasm_result_sign_m_85403d347245610c",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_7e6321b085a3b585",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_sign_m_96503dda9f9efbf2",
+          "name": "sagejs_wasm_result_sign_m_87b6962c58d70776",
           "kind": "function"
         },
         {
           "name": "sagejs_wasm_result_sign_m_9ccb732c3f18f5b7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_a6d03ec282951a3c",
           "kind": "function"
         },
         {
@@ -4077,23 +4077,23 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_c5422022789a5418",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_sign_m_cd3b89bff95e92b6",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_cf1fea103e1b3c1f",
+          "name": "sagejs_wasm_result_sign_m_dbd0cd6f08f66390",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_dcfceaaddb6d7b46",
+          "name": "sagejs_wasm_result_sign_m_dbf32d8642dbc27a",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_f8c9f229ef7c35c6",
+          "name": "sagejs_wasm_result_sign_m_e5dd6a0a707a14e8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_f6347f1fe38bdc1f",
           "kind": "function"
         },
         {
@@ -4101,35 +4101,35 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_02d9b7cbb7ca7966",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_u64_at_m_0a224650f9373116",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_2213756e12fb0713",
+          "name": "sagejs_wasm_result_u64_at_m_1d1d0902eb200de3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_3f2b13e5493182bd",
+          "name": "sagejs_wasm_result_u64_at_m_36bf8a25b1c4c670",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_57a05587cced9792",
+          "name": "sagejs_wasm_result_u64_at_m_485f771afa4954f0",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_6c1cdb4c5035a6d5",
+          "name": "sagejs_wasm_result_u64_at_m_4914a7635869b840",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_6e5ca0eb2ac37f7a",
+          "name": "sagejs_wasm_result_u64_at_m_597383a575d7d527",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_6edf5d88cdca5250",
+          "name": "sagejs_wasm_result_u64_at_m_69afe0d2dbc2c7ab",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_6e933b175db504e4",
           "kind": "function"
         },
         {
@@ -4137,19 +4137,19 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_726200c8a8c74abf",
+          "name": "sagejs_wasm_result_u64_at_m_85403d347245610c",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_7e6321b085a3b585",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_u64_at_m_96503dda9f9efbf2",
+          "name": "sagejs_wasm_result_u64_at_m_87b6962c58d70776",
           "kind": "function"
         },
         {
           "name": "sagejs_wasm_result_u64_at_m_9ccb732c3f18f5b7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_a6d03ec282951a3c",
           "kind": "function"
         },
         {
@@ -4161,23 +4161,23 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_c5422022789a5418",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_u64_at_m_cd3b89bff95e92b6",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_cf1fea103e1b3c1f",
+          "name": "sagejs_wasm_result_u64_at_m_dbd0cd6f08f66390",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_dcfceaaddb6d7b46",
+          "name": "sagejs_wasm_result_u64_at_m_dbf32d8642dbc27a",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_f8c9f229ef7c35c6",
+          "name": "sagejs_wasm_result_u64_at_m_e5dd6a0a707a14e8",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_f6347f1fe38bdc1f",
           "kind": "function"
         },
         {

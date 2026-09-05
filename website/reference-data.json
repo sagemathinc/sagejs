@@ -14868,16 +14868,16 @@
         "name": "CuspForms",
         "qualified": "CuspForms",
         "path": "src/baselib/modular.py",
-        "line": 2228,
+        "line": 2221,
         "excerpt": {
-          "start_line": 2216,
+          "start_line": 2209,
           "text": "\n    ```sage\n    sage: E = EisensteinForms(389, 2)\n    sage: b = E.basis(prec=20)[0]\n    sage: b.q_expansion(100).precision_absolute()\n    100\n    ```\n    \"\"\"\n    ambient = ModularForms(group, weight, base_ring, use_cache, prec)\n    return ambient.eisenstein_subspace()\n\n\ndef CuspForms(\n    group: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    prec: Any = 6,\n) -> ModularFormsSubspace:\n    r\"\"\"Construct the cuspidal subspace of `ModularForms(group, weight)`.\n\n    ### Examples\n\n    ```sage\n    sage: S = CuspForms(11, 2)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#c49ea7b9bb92c689-e3b0c44298fc1c14",
-          "line": 2240,
+          "line": 2233,
           "source": "S = CuspForms(11, 2)",
           "want": "",
           "tags": [],
@@ -14893,7 +14893,7 @@
         },
         {
           "id": "src/baselib/modular.py#5670fbe72b120815-2fdf166df5e7a97d",
-          "line": 2241,
+          "line": 2234,
           "source": "(S.dimension(), S.q_expansion_basis(6))",
           "want": "(1, [q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)])\n",
           "tags": [],
@@ -16220,16 +16220,16 @@
         "name": "EisensteinForms",
         "qualified": "EisensteinForms",
         "path": "src/baselib/modular.py",
-        "line": 2202,
+        "line": 2195,
         "excerpt": {
-          "start_line": 2190,
+          "start_line": 2183,
           "text": "        )\n    if character is not None:\n        if character.order() > 2 and base_ring is sage.QQ:\n            raise ValueError(\"the character values do not lie in Rational Field\")\n        if base_ring is not sage.QQ and base_kind != \"CyclotomicField\":\n            raise NotImplementedError(\n                \"character modular forms currently require QQ or an exact \"\n                \"cyclotomic field\"\n            )\n    return ModularFormsSpace(group, weight, base_ring, precision, character)\n\n\ndef EisensteinForms(\n    group: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    prec: Any = 6,\n) -> EisensteinSubspace:\n    r\"\"\"\n    Construct the Eisenstein subspace of `ModularForms(group, weight)`.\n\n    Basis elements retain their parent and can be expanded later to a\n    different precision with `q_expansion(prec)`.\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#fcae88bf1b380c12-e3b0c44298fc1c14",
-          "line": 2218,
+          "line": 2211,
           "source": "E = EisensteinForms(389, 2)",
           "want": "",
           "tags": [],
@@ -16245,7 +16245,7 @@
         },
         {
           "id": "src/baselib/modular.py#1b21701f388cda2d-e3b0c44298fc1c14",
-          "line": 2219,
+          "line": 2212,
           "source": "b = E.basis(prec=20)[0]",
           "want": "",
           "tags": [],
@@ -16261,7 +16261,7 @@
         },
         {
           "id": "src/baselib/modular.py#a58cba3a14881509-ad57366865126e55",
-          "line": 2220,
+          "line": 2213,
           "source": "b.q_expansion(100).precision_absolute()",
           "want": "100\n",
           "tags": [],
@@ -16321,9 +16321,9 @@
         "name": "basis",
         "qualified": "ModularFormsSubspace.basis",
         "path": "src/baselib/modular.py",
-        "line": 1475,
+        "line": 1468,
         "excerpt": {
-          "start_line": 1463,
+          "start_line": 1456,
           "text": "\n    old_submodule = old_subspace\n\n    def newforms(self, names: str = \"a\") -> list[Any]:\n        r\"\"\"Return normalized newform Galois packets with exact coefficients.\"\"\"\n        return _qexp_module().modular_forms_newforms(self, names)\n\n    def basis_certificate(self, prec: Any = None) -> Any:\n        \"\"\"Return the verified Victor Miller certificate for this cusp space.\"\"\"\n        self._require_level_one_cuspidal_basis()\n        return self._ambient.basis_certificate(prec, cusp_only=True)\n\n    def basis(self, prec: Any = None) -> list[Any]:\n        \"\"\"Return the canonical exact parented basis of this subspace.\"\"\"\n        return _object_layer_module().basis(self, prec)\n\n    gens = basis\n\n    def __call__(self, value: Any = 0) -> Any:\n        \"\"\"Construct an exact element of this modular-form subspace.\"\"\"\n        return _object_layer_module().construct_element(self, value)\n\n    def coordinates(self, value: Any) -> Any:\n        \"\"\"Return exact coordinates of `value` in the canonical basis.\"\"\"\n        return _object_layer_module().coordinates(self, value)"
         }
       },
@@ -16855,9 +16855,9 @@
         "name": "factor",
         "qualified": "FormattedCharacteristicPolynomial.factor",
         "path": "src/baselib/modular.py",
-        "line": 2277,
+        "line": 2270,
         "excerpt": {
-          "start_line": 2265,
+          "start_line": 2258,
           "text": "    def __repr__(self) -> str:\n        return self._text\n\n    __str__ = __repr__\n    toString = __repr__\n\n\nclass FormattedCharacteristicPolynomial:\n    def __init__(self, text: str, factorization: str) -> None:\n        self._text = text\n        self._factorization = factorization\n\n    def factor(self) -> FormattedFactorization:\n        return FormattedFactorization(self._factorization)\n\n    def __repr__(self) -> str:\n        return self._text\n\n    __str__ = __repr__\n    toString = __repr__\n\n\nclass FormattedQExpansion:\n    def __init__(self, text: str) -> None:\n        self._text = text"
         }
       },
@@ -29458,16 +29458,16 @@
         "name": "matrix",
         "qualified": "matrix",
         "path": "src/baselib/matrix.py",
-        "line": 9484,
+        "line": 9566,
         "excerpt": {
-          "start_line": 9472,
+          "start_line": 9554,
           "text": "        return 1, len(rows), rows\n    first = list(rows[0])\n    cols = len(first)\n    values = []\n    for row in rows:\n        entries = list(row)\n        if len(entries) != cols:\n            raise ValueError(\"matrix rows must all have the same length\")\n        values.extend(entries)\n    return len(rows), cols, values\n\n\ndef matrix(*args: Any, **options: Any) -> Matrix:\n    r\"\"\"\n    Construct a dense or sparse matrix, optionally over an explicit base ring.\n\n    Sage's common row-list, flat-list, dimension, and entry-function forms are\n    supported. Pass `sparse=True` to construct a sparse matrix parent. Exact\n    matrices use FLINT on native hosts; `RDF`/`CDF` and arbitrary-precision\n    real/complex matrices use FLINT, Arb, and ACB.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 2, [1, 2, 3, 4])"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#3777d1a944e35692-e3b0c44298fc1c14",
-          "line": 9496,
+          "line": 9578,
           "source": "A = matrix(ZZ, 2, [1, 2, 3, 4])",
           "want": "",
           "tags": [],
@@ -29483,7 +29483,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9593f09a484811c7-cf3bae39dd692048",
-          "line": 9497,
+          "line": 9579,
           "source": "A.det()",
           "want": "-2\n",
           "tags": [],
@@ -29499,7 +29499,7 @@
         },
         {
           "id": "src/baselib/matrix.py#405777987b283881-149964165c0e1bbf",
-          "line": 9499,
+          "line": 9581,
           "source": "A.rref()",
           "want": "[1 0]\n[0 1]\n",
           "tags": [],
@@ -29916,16 +29916,16 @@
         "name": "ModularForms",
         "qualified": "ModularForms",
         "path": "src/baselib/modular.py",
-        "line": 2129,
+        "line": 2122,
         "excerpt": {
-          "start_line": 2117,
+          "start_line": 2110,
           "text": "            + \" for \"\n            + str(self._group)\n            + \" of weight \"\n            + str(self._weight)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ModularForms(\n    group: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    prec: Any = 6,\n) -> ModularFormsSpace:\n    r\"\"\"\n    Construct the implemented ambient space of modular forms.\n\n    `group` is a level, congruence subgroup, or Dirichlet character; `weight`\n    is nonnegative, and `prec` controls the default displayed q-expansion\n    precision. Trivial and quadratic characters are exact over `QQ`, while"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#90f6ac1f31cf147f-e3b0c44298fc1c14",
-          "line": 2147,
+          "line": 2140,
           "source": "M = ModularForms(Gamma0(11), 2)",
           "want": "",
           "tags": [],
@@ -29941,7 +29941,7 @@
         },
         {
           "id": "src/baselib/modular.py#2bfe9bbec3425b17-d4735e3a265e16ee",
-          "line": 2148,
+          "line": 2141,
           "source": "M.dimension()",
           "want": "2\n",
           "tags": [],
@@ -29957,7 +29957,7 @@
         },
         {
           "id": "src/baselib/modular.py#3cfe7569fb8876d8-6b86b273ff34fce1",
-          "line": 2150,
+          "line": 2143,
           "source": "M.cuspidal_subspace().dimension()",
           "want": "1\n",
           "tags": [],
@@ -30033,9 +30033,9 @@
         "name": "ModularSymbols",
         "qualified": "ModularSymbols",
         "path": "src/baselib/modular.py",
-        "line": 5884,
+        "line": 5891,
         "excerpt": {
-          "start_line": 5872,
+          "start_line": 5879,
           "text": "            + \") of weight \"\n            + str(self._weight)\n            + \" with sign \"\n            + str(self._sign)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ModularSymbols(\n    group: Any = 1,\n    weight: Any = 2,\n    sign: Any = 0,\n    base_ring: Any = None,\n) -> ModularSymbolsSpace:\n    r\"\"\"\n    Construct a modular-symbol Hecke module.\n\n    Weight-2 full `Gamma_0(N)` spaces with sign zero provide exact matrices\n    for every Hecke operator `T_n`. Prime operators are assembled natively\n    from a minimal Manin presentation; general indices use multiplicativity\n    and the weight-2 prime-power recurrence. Higher even weights over `QQ`"
         }
       },
@@ -30114,16 +30114,16 @@
         "name": "boundary_map",
         "qualified": "ModularSymbolsSpace.boundary_map",
         "path": "src/baselib/modular.py",
-        "line": 4932,
+        "line": 4939,
         "excerpt": {
-          "start_line": 4920,
+          "start_line": 4927,
           "text": "        boundary_space = BoundarySymbolsSpace(ambient, cusps)\n        ambient._boundary_data_cache = runtime.math_tuple(\n            [defining_matrix, boundary_space]\n        )\n        return ambient._boundary_data_cache\n\n    def _boundary_matrix(self) -> Any:\n        return self._boundary_data()[0]\n\n    def boundary_space(self) -> BoundarySymbolsSpace:\n        return self._boundary_data()[1]\n\n    def boundary_map(self) -> ModularSymbolsBoundaryMap:\n        r\"\"\"\n        Return the exact map from modular symbols to cusp divisors.\n\n        Rows of the matrix are boundaries of the domain basis vectors. Its\n        kernel is the cuspidal submodule.\n\n        ```sage\n        sage: M = ModularSymbols(11)\n        sage: M.boundary_map().matrix()\n        [ 1 -1]\n        [ 0  0]\n        [ 0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#be246b1bd85db602-e3b0c44298fc1c14",
-          "line": 4940,
+          "line": 4947,
           "source": "M = ModularSymbols(11)",
           "want": "",
           "tags": [],
@@ -30139,7 +30139,7 @@
         },
         {
           "id": "src/baselib/modular.py#88facfb84ea232c1-90ae519c16c23134",
-          "line": 4941,
+          "line": 4948,
           "source": "M.boundary_map().matrix()",
           "want": "[ 1 -1]\n[ 0  0]\n[ 0  0]\n",
           "tags": [],
@@ -30228,9 +30228,9 @@
         "name": "cuspidal_submodule",
         "qualified": "ModularSymbolsSpace.cuspidal_submodule",
         "path": "src/baselib/modular.py",
-        "line": 5641,
+        "line": 5648,
         "excerpt": {
-          "start_line": 5629,
+          "start_line": 5636,
           "text": "        sage: M = ModularSymbols(1000, 2)\n        sage: M.hecke_matrix(6).trace()\n        60\n        ```\n        \"\"\"\n        return self.T(index).matrix()\n\n    def T(self, index: Any) -> HeckeOperator:\n        return HeckeOperator(self, _positive_integer(index, \"Hecke index\"))\n\n    hecke_operator = T\n\n    def cuspidal_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the exact kernel of the boundary map.\"\"\"\n        if self._is_cuspidal:\n            return self\n        if self._supports_native_weight2():\n            if self._cuspidal_cache is None:\n                ambient = self.ambient_module()\n                change = ambient._ambient_change_of_basis()\n                if self.is_ambient():\n                    if change is None:\n                        basis = (\n                            ambient.p1list()\n                            .cuspidal_basis_matrix()"
         }
       },
@@ -30311,16 +30311,16 @@
         "name": "decomposition",
         "qualified": "ModularSymbolsSpace.decomposition",
         "path": "src/baselib/modular.py",
-        "line": 5215,
+        "line": 5222,
         "excerpt": {
-          "start_line": 5203,
+          "start_line": 5210,
           "text": "                    continue\n                constituent = space._subspace_from_local_basis(local_basis, \"Hecke\")\n                if exponent == 1:\n                    finished.append(constituent)\n                else:\n                    remaining.append(constituent)\n        return finished + remaining\n\n    def _bad_hecke_primes(self) -> list[int]:\n        \"\"\"Return the prime divisors whose operators are `U_p`.\"\"\"\n        return [runtime.number(pair[0]) for pair in sage.factor(self.level())]\n\n    def decomposition(\n        self,\n        bound: Any = None,\n        anemic: bool = True,\n        **_kwds: Any,\n    ) -> list[ModularSymbolsSpace]:\n        r\"\"\"Decompose this space into simple modules for Hecke operators.\n\n        The implementation follows the standard modular-symbol algorithm:\n        factor characteristic polynomials of successive `T_p`, and split by\n        the left kernels of their irreducible factors.  A constituent whose\n        restricted characteristic polynomial is irreducible is certified\n        simple as a module for the commutative Hecke algebra."
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#e773e65ae60c2b9f-e3b0c44298fc1c14",
-          "line": 5235,
+          "line": 5242,
           "source": "M = ModularSymbols(389, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -30336,7 +30336,7 @@
         },
         {
           "id": "src/baselib/modular.py#611b234d59ea3095-8559994e24c5cb01",
-          "line": 5236,
+          "line": 5243,
           "source": "[A.dimension() for A in M.decomposition()]",
           "want": "[1, 1, 2, 3, 6, 20]\n",
           "tags": [],
@@ -30352,7 +30352,7 @@
         },
         {
           "id": "src/baselib/modular.py#405518e5fdedddca-e3b0c44298fc1c14",
-          "line": 5243,
+          "line": 5250,
           "source": "G = DirichletGroup(37)",
           "want": "",
           "tags": [],
@@ -30368,7 +30368,7 @@
         },
         {
           "id": "src/baselib/modular.py#858b266f0968cf76-e3b0c44298fc1c14",
-          "line": 5244,
+          "line": 5251,
           "source": "M = ModularSymbols(G.0, 5)",
           "want": "",
           "tags": [],
@@ -30384,7 +30384,7 @@
         },
         {
           "id": "src/baselib/modular.py#8258fe03019e163d-7638ad4d4f4c164d",
-          "line": 5245,
+          "line": 5252,
           "source": "[A.dimension() for A in M.decomposition(bound=2)]",
           "want": "[1, 1, 24]\n",
           "tags": [],
@@ -30474,16 +30474,16 @@
         "name": "degeneracy_map",
         "qualified": "ModularSymbolsSpace.degeneracy_map",
         "path": "src/baselib/modular.py",
-        "line": 4957,
+        "line": 4964,
         "excerpt": {
-          "start_line": 4945,
+          "start_line": 4952,
           "text": "        ```\n        \"\"\"\n        if self._boundary_map_cache is None:\n            if self.is_ambient():\n                defining_matrix = self._boundary_matrix()\n            else:\n                defining_matrix = self.basis_matrix() * self._boundary_matrix()\n            self._boundary_map_cache = ModularSymbolsBoundaryMap(\n                self, self.boundary_space(), defining_matrix\n            )\n        return self._boundary_map_cache\n\n    def degeneracy_map(\n        self,\n        codomain: Any,\n        index: Any = 1,\n    ) -> ModularSymbolsDegeneracyMap:\n        r\"\"\"Return an exact level-lowering degeneracy map.\n\n        `codomain` may be a modular-symbol space or its level. The target\n        must divide this space's level; level-raising maps are not yet\n        implemented. The returned morphism exposes `matrix()`, `rank()`,\n        `kernel()`, `image()`, and evaluation on modular symbols.\n\n        ```sage"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#44bcc9a53bb1591b-e3b0c44298fc1c14",
-          "line": 4970,
+          "line": 4977,
           "source": "M = ModularSymbols(22, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -30499,7 +30499,7 @@
         },
         {
           "id": "src/baselib/modular.py#9fe9ef85d9e7d7c3-e3b0c44298fc1c14",
-          "line": 4971,
+          "line": 4978,
           "source": "d = M.degeneracy_map(11, 1)",
           "want": "",
           "tags": [],
@@ -30515,7 +30515,7 @@
         },
         {
           "id": "src/baselib/modular.py#2e1a3f149e87befa-05d9e5123438e21c",
-          "line": 4972,
+          "line": 4979,
           "source": "(d.matrix().dimensions(), d.rank())",
           "want": "((5, 2), 2)\n",
           "tags": [],
@@ -30579,16 +30579,16 @@
         "name": "hecke_matrix",
         "qualified": "ModularFormsSubspace.hecke_matrix",
         "path": "src/baselib/modular.py",
-        "line": 1523,
+        "line": 1516,
         "excerpt": {
-          "start_line": 1511,
+          "start_line": 1504,
           "text": "    def _from_serialized_newform(\n        self,\n        constituent: Any,\n        name: Any,\n    ) -> Any:\n        \"\"\"Trusted deterministic constructor used by the SagePack codec.\"\"\"\n        return _qexp_module().normalized_newform_from_data(\n            self,\n            constituent,\n            name,\n        )\n\n    def hecke_matrix(self, index: Any) -> Any:\n        \"\"\"Return the exact matrix of `T_index` on the canonical basis.\"\"\"\n        return _object_layer_module().hecke_matrix(self, index)\n\n    def diamond_bracket_matrix(self, value: Any) -> Any:\n        \"\"\"Return the exact matrix of the diamond operator `<value>`.\"\"\"\n        return _object_layer_module().diamond_bracket_matrix(self, value)\n\n    def diamond_bracket_operator(self, value: Any) -> Any:\n        \"\"\"Return the exact parented diamond operator `<value>`.\"\"\"\n        return _object_layer_module().diamond_bracket_operator(self, value)\n\n    def T(self, index: Any) -> Any:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#1e0fada8cc8c7990-e3b0c44298fc1c14",
-          "line": 5629,
+          "line": 5636,
           "source": "M = ModularSymbols(1000, 2)",
           "want": "",
           "tags": [],
@@ -30604,7 +30604,7 @@
         },
         {
           "id": "src/baselib/modular.py#92b5ba6413319e6f-39fa9ec190eee7b6",
-          "line": 5630,
+          "line": 5637,
           "source": "M.hecke_matrix(6).trace()",
           "want": "60\n",
           "tags": [],
@@ -30693,9 +30693,9 @@
         "name": "minus_submodule",
         "qualified": "ModularSymbolsSpace.minus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 5468,
+        "line": 5475,
         "excerpt": {
-          "start_line": 5456,
+          "start_line": 5463,
           "text": "            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:\n        ambient = self.ambient_module()\n        projective_line = ambient.p1list()\n        dimension = ambient.dimension()\n        result = None\n        for prime, exponent in sage.factor(index):\n            p = runtime.number(prime)"
         }
       },
@@ -30774,9 +30774,9 @@
         "name": "modular_symbol",
         "qualified": "ModularSymbolsSpace.modular_symbol",
         "path": "src/baselib/modular.py",
-        "line": 5035,
+        "line": 5042,
         "excerpt": {
-          "start_line": 5023,
+          "start_line": 5030,
           "text": "            raise NotImplementedError(\n                \"degeneracy maps require a native Gamma0 Manin presentation over QQ\"\n            )\n        images = self.basis_matrix()._sparse_left_multiply(ambient_matrix)\n        defining_matrix = target.basis_matrix().solve_left(images)\n        return ModularSymbolsDegeneracyMap(\n            self, target, defining_matrix, ambient_matrix, index\n        )\n\n    def cusps(self) -> list[ModularCusp]:\n        return self.boundary_space().cusps()\n\n    def modular_symbol(\n        self,\n        start: Any,\n        stop: Any,\n    ) -> ModularSymbolElement:\n        r\"\"\"\n        Construct the rational path `{start, stop}` as an exact element.\n\n        Endpoints are numerator/denominator pairs; `(1, 0)` denotes infinity.\n        Continued-fraction reduction happens in one native call.\n        \"\"\"\n        ambient = self.ambient_module()\n        if ambient.weight() != 2:"
         }
       },
@@ -30862,16 +30862,16 @@
         "name": "new_submodule",
         "qualified": "ModularSymbolsSpace.new_submodule",
         "path": "src/baselib/modular.py",
-        "line": 5298,
+        "line": 5305,
         "excerpt": {
-          "start_line": 5286,
+          "start_line": 5293,
           "text": "            for prime in self._bad_hecke_primes():\n                answer = self._refine_decomposition_with_operator(answer, prime)\n        for index in range(1, len(answer)):\n            item = answer[index]\n            position = index\n            while position > 0 and answer[position - 1].dimension() > item.dimension():\n                answer[position] = answer[position - 1]\n                position -= 1\n            answer[position] = item\n        self._decomposition_cache.set(key, answer)\n        return answer\n\n    def new_submodule(self, prime: Any = None) -> ModularSymbolsSpace:\n        r\"\"\"Return the new, or `p`-new, submodule of this space.\n\n        For trivial-character Gamma0 spaces over `QQ`, this computes the\n        intersection of the kernels of the two level-lowering degeneracy\n        maps to level `N/p`, for every prime `p` dividing `N`.  All maps are\n        assembled natively and horizontally joined before taking one exact\n        kernel, following the optimized Magma modular-symbols algorithm.\n\n        ```sage\n        sage: M = ModularSymbols(1000, 2, sign=1)\n        sage: N = M.new_submodule()\n        sage: N.dimension()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#d668c2300b6a68dd-e3b0c44298fc1c14",
-          "line": 5308,
+          "line": 5315,
           "source": "M = ModularSymbols(1000, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -30887,7 +30887,7 @@
         },
         {
           "id": "src/baselib/modular.py#b30e6bf0f0f5ee51-e3b0c44298fc1c14",
-          "line": 5309,
+          "line": 5316,
           "source": "N = M.new_submodule()",
           "want": "",
           "tags": [],
@@ -30903,7 +30903,7 @@
         },
         {
           "id": "src/baselib/modular.py#93c9f0c2cd6d7087-c2356069e9d1e79c",
-          "line": 5310,
+          "line": 5317,
           "source": "N.dimension()",
           "want": "24\n",
           "tags": [],
@@ -30919,7 +30919,7 @@
         },
         {
           "id": "src/baselib/modular.py#e38abd35fcdc37b2-3b01616cb89b0520",
-          "line": 5312,
+          "line": 5319,
           "source": "[A.dimension() for A in N.decomposition()]",
           "want": "[2, 2, 2, 2, 4, 4, 4, 4]\n",
           "tags": [],
@@ -31008,9 +31008,9 @@
         "name": "plus_submodule",
         "qualified": "ModularSymbolsSpace.plus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 5462,
+        "line": 5469,
         "excerpt": {
-          "start_line": 5450,
+          "start_line": 5457,
           "text": "            basis = (\n                eigenspace if self.is_ambient() else self._intersect_basis(eigenspace)\n            )\n        prefix = \"Cuspidal \" if self._is_cuspidal else \"\"\n        result = self._new_coordinate_subspace(\n            basis,\n            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:"
         }
       },
@@ -31090,16 +31090,16 @@
         "name": "q_expansion_basis",
         "qualified": "ModularFormsSubspace.q_expansion_basis",
         "path": "src/baselib/modular.py",
-        "line": 1575,
+        "line": 1568,
         "excerpt": {
-          "start_line": 1563,
+          "start_line": 1556,
           "text": "        span to an ambient basis.\n        \"\"\"\n        if self._subspace_kind != \"Cuspidal\":\n            raise NotImplementedError(\n                \"formula-generated subspaces currently require a cusp space\"\n            )\n        return _qexp_algebra_module().formula_generated_subspace(\n            self,\n            candidates,\n            prec,\n        )\n\n    def q_expansion_basis(\n        self,\n        prec: Any = None,\n        algorithm: str = \"default\",\n        variable: str = \"q\",\n        **opts: Any,\n    ) -> list[Any]:\n        r\"\"\"Return an exact echelon basis of cusp-form $q$-expansions.\"\"\"\n        if \"var\" in opts:\n            variable = opts[\"var\"]\n        if \"ρσ_py_var\" in opts:\n            variable = opts[\"ρσ_py_var\"]\n        if self.group()._family == \"Gamma1\":"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14",
-          "line": 5745,
+          "line": 5752,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -31115,7 +31115,7 @@
         },
         {
           "id": "src/baselib/modular.py#af2fb6f84988516a-b5e9ab680a923c0f",
-          "line": 5746,
+          "line": 5753,
           "source": "S.q_expansion_basis(6)",
           "want": "[q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)]\n",
           "tags": [],
@@ -31205,16 +31205,16 @@
         "name": "q_expansion_basis_certificate",
         "qualified": "ModularFormsSubspace.q_expansion_basis_certificate",
         "path": "src/baselib/modular.py",
-        "line": 1668,
+        "line": 1661,
         "excerpt": {
-          "start_line": 1656,
+          "start_line": 1649,
           "text": "            if not formula_span.is_full_ambient():\n                raise ArithmeticError(\n                    \"formula candidates certify only a proper subspace; \"\n                    \"use formula_subspace() to inspect it\"\n                )\n            return formula_span.q_expansion_module(R)\n        return self._modular_symbols_cusp_space().q_expansion_module(\n            effective_precision,\n            R,\n            \"modular_symbols\",\n        )\n\n    def q_expansion_basis_certificate(\n        self,\n        prec: Any = None,\n        algorithm: str = \"default\",\n    ) -> Any:\n        r\"\"\"Return a replayable formula or Hecke-dual basis certificate.\"\"\"\n        if self.group()._family == \"Gamma1\":\n            del prec, algorithm\n            return _gamma1_module().descent_certificate(self)\n        effective_precision = self.precision() if prec is None else prec\n        receipt = self.q_expansion_algorithm_receipt(algorithm, effective_precision)\n        algorithm = receipt.selected_algorithm()\n        if algorithm == \"formulas\":"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14~3",
-          "line": 5816,
+          "line": 5823,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -31230,7 +31230,7 @@
         },
         {
           "id": "src/baselib/modular.py#f4aeb5aa7208c1f6-e3b0c44298fc1c14",
-          "line": 5817,
+          "line": 5824,
           "source": "C = S.q_expansion_basis_certificate()",
           "want": "",
           "tags": [],
@@ -31246,7 +31246,7 @@
         },
         {
           "id": "src/baselib/modular.py#449784d892aed5b0-db814fb8aef595e4",
-          "line": 5818,
+          "line": 5825,
           "source": "(C.dimension(), C.is_sturm_certified(), C.verify())",
           "want": "(1, True, True)\n",
           "tags": [],
@@ -31336,16 +31336,16 @@
         "name": "q_expansion_module",
         "qualified": "ModularFormsSubspace.q_expansion_module",
         "path": "src/baselib/modular.py",
-        "line": 1635,
+        "line": 1628,
         "excerpt": {
-          "start_line": 1623,
+          "start_line": 1616,
           "text": "                    + \" in ambient dimension \"\n                    + str(formula_span.ambient_dimension())\n                    + \"; use formula_subspace() to inspect it\"\n                )\n            return formula_span.q_expansion_basis(effective_precision, variable)\n        return self._modular_symbols_cusp_space().q_expansion_basis(\n            effective_precision,\n            \"modular_symbols\",\n            variable,\n            **opts,\n        )\n\n    def q_expansion_module(\n        self,\n        prec: Any = None,\n        R: Any = None,\n        algorithm: str = \"default\",\n    ) -> Any:\n        r\"\"\"Return the $QQ$-space or saturated $ZZ$-module of expansions.\"\"\"\n        effective_precision = self.precision() if prec is None else prec\n        receipt = self.q_expansion_algorithm_receipt(algorithm, effective_precision)\n        algorithm = receipt.selected_algorithm()\n        if algorithm == \"formulas\":\n            if self.level() == 1:\n                self._require_level_one_cuspidal_basis()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14~2",
-          "line": 5792,
+          "line": 5799,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -31361,7 +31361,7 @@
         },
         {
           "id": "src/baselib/modular.py#34c87c2bfa3e38a6-ed61d37e25515866",
-          "line": 5793,
+          "line": 5800,
           "source": "S.q_expansion_module(5, ZZ).basis_matrix()",
           "want": "[ 0  1 -2 -1  2]\n",
           "tags": [],
@@ -31450,9 +31450,9 @@
         "name": "star_involution",
         "qualified": "ModularSymbolsSpace.star_involution",
         "path": "src/baselib/modular.py",
-        "line": 5082,
+        "line": 5089,
         "excerpt": {
-          "start_line": 5070,
+          "start_line": 5077,
           "text": "                ).transpose()\n        return ambient._star_matrix_cache\n\n    def _restrict_ambient_matrix(self, defining_matrix: Any) -> Any:\n        if self.is_ambient():\n            return defining_matrix\n        basis = self.basis_matrix()\n        pivot_columns = list(basis.pivots())\n        return basis._sparse_left_multiply(\n            defining_matrix.matrix_from_columns(pivot_columns)\n        )\n\n    def star_involution(self) -> ModularSymbolsLinearOperator:\n        \"\"\"Return complex conjugation on this modular-symbol space.\"\"\"\n        if (\n            self._supports_native_higher_weight() or self._supports_native_character()\n        ) and self.sign() != 0:\n            defining_matrix = (\n                identity_matrix(  # type: ignore[name-defined]  # noqa: F821\n                    self.base_ring(), self.dimension()\n                )\n                * self.sign()\n            )\n            return ModularSymbolsLinearOperator(\n                self, defining_matrix, \"Star involution\""
         }
       },
@@ -31970,16 +31970,16 @@
         "name": "p1list",
         "qualified": "ModularSymbolsSpace.p1list",
         "path": "src/baselib/modular.py",
-        "line": 4794,
+        "line": 4801,
         "excerpt": {
-          "start_line": 4782,
+          "start_line": 4789,
           "text": "        operator = self.T(index)\n        operator._matrix_cache = matrix_value\n        return operator\n\n    def _from_serialized_linear_operator(\n        self,\n        matrix_value: Any,\n        name: str,\n        ambient_matrix: Any = None,\n    ) -> ModularSymbolsLinearOperator:\n        return ModularSymbolsLinearOperator(self, matrix_value, name, ambient_matrix)\n\n    def p1list(self) -> P1List:\n        if self._group._family != \"Gamma0\":\n            raise NotImplementedError(\"native P1 lists currently model Gamma0 spaces\")\n        if self._p1list_cache is None:\n            self._p1list_cache = P1List(self.level())\n        return self._p1list_cache\n\n    def manin_relations(self, modulus: Any = 65521) -> ManinRelations:\n        if self._character is not None:\n            raise NotImplementedError(\n                \"the machine-word ManinRelations relation matrix models \"\n                \"trivial character only; use M.manin_presentation() for \"\n                \"the exact character presentation\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#27665c6e15d3a040-e3b0c44298fc1c14",
-          "line": 3230,
+          "line": 3223,
           "source": "P = P1List(12)",
           "want": "",
           "tags": [],
@@ -31995,7 +31995,7 @@
         },
         {
           "id": "src/baselib/modular.py#d52a02d377a80ad4-c2356069e9d1e79c",
-          "line": 3231,
+          "line": 3224,
           "source": "len(P)",
           "want": "24\n",
           "tags": [],
@@ -32011,7 +32011,7 @@
         },
         {
           "id": "src/baselib/modular.py#5c880c0c53650549-619e895320f7e770",
-          "line": 3233,
+          "line": 3226,
           "source": "P.normalize(7, 15)",
           "want": "(1, 9)\n",
           "tags": [],
@@ -32027,7 +32027,7 @@
         },
         {
           "id": "src/baselib/modular.py#c2e1ed5fead602dc-4a44dc15364204a8",
-          "line": 3235,
+          "line": 3228,
           "source": "P.apply_S(P.apply_S(10))",
           "want": "10\n",
           "tags": [],
@@ -32091,16 +32091,16 @@
         "name": "hecke_matrix",
         "qualified": "ModularFormsSubspace.hecke_matrix",
         "path": "src/baselib/modular.py",
-        "line": 1523,
+        "line": 1516,
         "excerpt": {
-          "start_line": 1511,
+          "start_line": 1504,
           "text": "    def _from_serialized_newform(\n        self,\n        constituent: Any,\n        name: Any,\n    ) -> Any:\n        \"\"\"Trusted deterministic constructor used by the SagePack codec.\"\"\"\n        return _qexp_module().normalized_newform_from_data(\n            self,\n            constituent,\n            name,\n        )\n\n    def hecke_matrix(self, index: Any) -> Any:\n        \"\"\"Return the exact matrix of `T_index` on the canonical basis.\"\"\"\n        return _object_layer_module().hecke_matrix(self, index)\n\n    def diamond_bracket_matrix(self, value: Any) -> Any:\n        \"\"\"Return the exact matrix of the diamond operator `<value>`.\"\"\"\n        return _object_layer_module().diamond_bracket_matrix(self, value)\n\n    def diamond_bracket_operator(self, value: Any) -> Any:\n        \"\"\"Return the exact parented diamond operator `<value>`.\"\"\"\n        return _object_layer_module().diamond_bracket_operator(self, value)\n\n    def T(self, index: Any) -> Any:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#d678e5ffb4d20ee6-87fce8343ac4cd78",
-          "line": 3720,
+          "line": 3713,
           "source": "P1List(11).hecke_matrix(2)",
           "want": "[ 3  0  0]\n[ 1 -2  0]\n[ 1  0 -2]\n",
           "tags": [],
@@ -32164,9 +32164,9 @@
         "name": "higher_weight_presentation",
         "qualified": "P1List.higher_weight_presentation",
         "path": "src/baselib/modular.py",
-        "line": 3386,
+        "line": 3379,
         "excerpt": {
-          "start_line": 3374,
+          "start_line": 3367,
           "text": "                self._native, self._action_index(index)\n            )\n        )\n\n    def manin_relations(self, modulus: Any = 65521) -> ManinRelations:\n        return ManinRelations(self, modulus)\n\n    def manin_presentation(self) -> ManinPresentation:\n        if self._manin_presentation_cache is None:\n            self._manin_presentation_cache = ManinPresentation(self)\n        return self._manin_presentation_cache\n\n    def higher_weight_presentation(\n        self,\n        weight: Any,\n        sign: Any = 0,\n    ) -> Any:\n        \"\"\"Return the exact triple-Manin-symbol presentation over `QQ`.\"\"\"\n        weight = _positive_integer(weight, \"modular-symbol weight\")\n        if weight < 2:\n            raise ValueError(\"modular-symbol weight must be at least 2\")\n        sign = _exact_integer(sign, \"sign\")\n        if sign not in [-1, 0, 1]:\n            raise ValueError(\"sign must be -1, 0, or 1\")\n        key = str(weight) + \":\" + str(sign)"
         }
       },
@@ -35557,16 +35557,16 @@
         "name": "random_matrix",
         "qualified": "random_matrix",
         "path": "src/baselib/matrix.py",
-        "line": 10520,
+        "line": 10602,
         "excerpt": {
-          "start_line": 10508,
+          "start_line": 10590,
           "text": "            return MatrixSpace(sage.QQ, rows, columns)._from_fmpq_matrix_resource(\n                resource\n            )\n        except Exception:\n            private_resource.close()\n            if resource is not runtime.undefined:\n                resource.close()\n            raise\n\n    return runtime.undefined\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = \"randomize\",\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b17ff7be6a528fc2-e3b0c44298fc1c14",
-          "line": 10544,
+          "line": 10626,
           "source": "A = random_matrix(ZZ, 3, 5, x=-10, y=11)",
           "want": "",
           "tags": [],
@@ -35582,7 +35582,7 @@
         },
         {
           "id": "src/baselib/matrix.py#97db44fc39945d18-41f2eaaeeeb24074",
-          "line": 10545,
+          "line": 10627,
           "source": "A.nrows(), A.ncols(), A.base_ring()",
           "want": "(3, 5, Integer Ring)\n",
           "tags": [],
@@ -35598,7 +35598,7 @@
         },
         {
           "id": "src/baselib/matrix.py#fa1961c5906b90ea-3cbc87c7681f34db",
-          "line": 10547,
+          "line": 10629,
           "source": "random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')",
           "want": "True\n",
           "tags": [],
@@ -36566,16 +36566,16 @@
         "name": "sudoku",
         "qualified": "sudoku",
         "path": "src/baselib/matrix.py",
-        "line": 9750,
+        "line": 9832,
         "excerpt": {
-          "start_line": 9738,
+          "start_line": 9820,
           "text": "    elif len(values) == 1:\n        entries = list(values[0])\n    else:\n        raise TypeError(\"unsupported vector() constructor signature\")\n    if isinstance(values[0], Vector):\n        source = values[0]\n        return source if base is None else source.change_ring(base)\n    if base is None:\n        base = _base_for_values(entries)\n    return VectorSpace(base, len(entries))(entries)\n\n\ndef sudoku(puzzle: Matrix) -> Matrix:\n    r\"\"\"\n    Solve a 9-by-9 Sudoku puzzle represented by a matrix.\n\n    Entries from 1 through 9 are fixed clues and zero denotes an empty cell.\n    The input matrix is not modified.  A `ValueError` is raised if the clues\n    are inconsistent or the puzzle has no solution.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 9, [\n    ....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b58bb4a279a18edf-e3b0c44298fc1c14",
-          "line": 9761,
+          "line": 9843,
           "source": "A = matrix(ZZ, 9, [\n    5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,\n    0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,\n    0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,\n    7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,\n    4,9,0,0,5,0,0,0,3])",
           "want": "",
           "tags": [],
@@ -36591,7 +36591,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9971501a52f38d1a-b7945d60e67a36b5",
-          "line": 9767,
+          "line": 9849,
           "source": "sudoku(A)[0]",
           "want": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n",
           "tags": [],
