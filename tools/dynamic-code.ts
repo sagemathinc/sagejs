@@ -256,9 +256,7 @@ export function compileDynamic(
 function canSeedName(name: string): boolean {
   return (
     /^[_\p{ID_Start}][\p{ID_Continue}]*$/u.test(name) &&
-    !pythonKeywords.has(name) &&
-    name !== "__name__" &&
-    name !== "__file__"
+    !pythonKeywords.has(name)
   );
 }
 
@@ -320,6 +318,7 @@ export function runDynamic(
       omit_baselib: true,
       private_scope: false,
       write_name: true,
+      execution_namespace_module_id: code.moduleId,
       beautify: true,
       exact_integers: true,
       python_tuples: true,

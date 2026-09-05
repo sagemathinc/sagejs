@@ -29,7 +29,7 @@ class AST:
                         self[i] = initializer[i]
 
     def clone(self):
-        return js_new(self.constructor(self))
+        return js_new(self.constructor, self)
 
 
 class AST_Token(AST):

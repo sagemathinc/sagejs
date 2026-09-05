@@ -81,7 +81,7 @@ assert.deepEqual(
   "ordinary bootstrap aliases must lower to the matching runtime globals",
 );
 
-function compile(source, outputOptions = {}) {
+function compile(source, outputOptions = {}, checkedReads = []) {
   const ast = frontend.parse(source, {
     filename: "runtime-intrinsics.py",
   });
@@ -91,7 +91,19 @@ function compile(source, outputOptions = {}) {
     ...outputOptions,
   });
   ast.print(output);
-  return output.get();
+  let javascript = output.get();
+  // Intrinsic operations still lower directly, but their ordinary Python
+  // operands use module/builtin lookup. Check the complete wrapper before
+  // normalizing only explicitly listed names for the intrinsic shape checks.
+  for (const name of checkedReads) {
+    const quoted = JSON.stringify(name);
+    const checked = `ρσ_check_unbound(ρσ_resolve_module_name(void 0, ${quoted}, ` +
+      'ρσ_modules["__main__"], (typeof __builtins__ !== "undefined" ? ' +
+      `__builtins__ : (ρσ_modules.builtins || globalThis))), ${quoted})`;
+    assert.ok(javascript.includes(checked), `missing checked module read: ${name}`);
+    javascript = javascript.split(checked).join(name);
+  }
+  return javascript;
 }
 
 const source = [
@@ -124,6 +136,7 @@ const firstClassRuntime = compile(
   "import sagejs.runtime as runtime\n" +
     "call = getattr(runtime, 'ffi_call')\n" +
     "names = dir(runtime)\n",
+  {}, ["getattr", "dir"],
 );
 assert.match(
   firstClassRuntime,
@@ -143,6 +156,7 @@ const nativeArgumentVectors = compile(
     "applied = runtime.reflect.apply(target_function, receiver, [1, 2])\n" +
     "constructed = runtime.reflect.construct(constructor, [3, 4])\n" +
     "ordinary = [5, 6]\n",
+  {}, ["target_function", "receiver", "constructor"],
 );
 assert.match(
   nativeArgumentVectors,
@@ -162,9 +176,16 @@ const nativePropertyRead = compile(
   "import sagejs.runtime as runtime\n" +
     "value = runtime.native_get(target, property_name)\n" +
     "frozen = runtime.native_freeze_tuple(values, prototype)\n",
+  {}, ["target", "property_name", "values", "prototype"],
 );
 assert.match(nativePropertyRead, /value = target\[property_name\]/);
-assert.doesNotMatch(nativePropertyRead, /ρσ_getitem|Reflect\.get/);
+// The standalone namespace prologue legitimately uses Reflect.get. Only the
+// two intrinsic result assignments must stay free of dynamic attribute hooks.
+const nativePropertyAssignments = nativePropertyRead.split("\n").filter(
+  (line) => /^\s*\$ρσ\$py\$(?:value|frozen) = /.test(line),
+).join("\n");
+assert.equal(nativePropertyAssignments.split("\n").length, 2);
+assert.doesNotMatch(nativePropertyAssignments, /ρσ_getitem|Reflect\.get/);
 assert.match(
   nativePropertyRead,
   /frozen = ρσ_native_freeze_tuple\(values, prototype\)/,
@@ -186,6 +207,7 @@ const exactValueCodec = compile(
   "import sagejs.runtime as runtime\n" +
     "packed = runtime.exact_integer_values_to_packed_bytes(values)\n" +
     "restored = runtime.exact_integer_values_from_packed_bytes(packed, count)\n",
+  {}, ["values", "count"],
 );
 assert.match(
   exactValueCodec,
@@ -202,6 +224,11 @@ const immutableUInt64Capsules = compile(
     "lease = runtime.immutable_uint64_capsule_lease(capsule, owner, model, format, count)\n" +
     "copy = runtime.immutable_uint64_capsule_copy(capsule, owner, model, format, count)\n" +
     "gathered = runtime.immutable_uint64_capsule_gather(destination_owner, source_owners, source_model, source_format, source_count, item_words, destination_model, destination_format, destination_count)\n",
+  {}, [
+    "words", "owner", "model", "format", "count", "destination_owner",
+    "source_owners", "source_model", "source_format", "source_count",
+    "item_words", "destination_model", "destination_format", "destination_count",
+  ],
 );
 assert.match(
   immutableUInt64Capsules,
@@ -225,6 +252,7 @@ const exactRangeMaterialization = compile(
   "import sagejs.runtime as runtime\n" +
     "values = runtime.exact_integer_range_values(start, step, length)\n" +
     "iterator = runtime.exact_integer_range_iterator(start, step, length)\n",
+  {}, ["start", "step", "length"],
 );
 assert.match(
   exactRangeMaterialization,
@@ -238,6 +266,7 @@ assert.match(
 const instanceChecks = compile(
   "one = isinstance(value, candidate)\n" +
     "many = isinstance(value, (first_type, second_type))\n",
+  {}, ["value", "candidate", "first_type", "second_type"],
 );
 assert.match(instanceChecks, /one = ρσ_instanceof_one\(value, candidate\)/);
 assert.match(instanceChecks, /many = ρσ_instanceof\.apply/);
@@ -251,6 +280,7 @@ const privateRuntimeVectors = compile(
     "_internal_call_member(value, '__iter__', [])\n" +
     "tuple_value = ρσ_math_tuple([1, 2])\n",
   { python_tuples: true },
+  ["value", "other"],
 );
 assert.doesNotMatch(privateRuntimeVectors, /ρσ_list_decorate/);
 assert.match(privateRuntimeVectors, /_builtins_call_member[^;]*\[other\]\)/);
