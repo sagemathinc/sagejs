@@ -17,9 +17,14 @@ AbelianVariety(X: Any) -> Any
 
 Construct a weight-$2$ $\Gamma_0(N)$ modular abelian variety.
 
-A level or `Gamma0` group constructs $J_0(N)`. A sign-zero cuspidal
+A level or `Gamma0` group constructs $J_0(N)$. A sign-zero cuspidal
 modular-symbol subspace constructs its saturated embedded subvariety, and
 a normalized newform constructs the connected quotient $A_f$.
+
+```sage
+sage: AbelianVariety(11).dimension()
+1
+```
 
 ### Metadata
 
