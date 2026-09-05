@@ -303,6 +303,7 @@
     "src/lib/sagejs/numerics/spectral/visualization.py",
     "src/lib/sagejs/numerics/statistics/__init__.py",
     "src/lib/sagejs/numerics/statistics/_core.py",
+    "src/lib/sagejs/numerics/statistics/_packed.py",
     "src/lib/sagejs/numerics/statistics/_special.py",
     "src/lib/sagejs/numerics/statistics/capabilities.py",
     "src/lib/sagejs/numerics/statistics/descriptive.py",
