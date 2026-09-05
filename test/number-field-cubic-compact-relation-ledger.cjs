@@ -109,11 +109,23 @@ assert len(collector._keys) == len(result.relation_records)
 assert len(collector._admission_receipts) == len(result.relation_records)
 assert not hasattr(certificate, "_detached_encoding")
 
-# The detached body and hash are the unchanged 411344bb canonical payload for
-# this fixed field instance, and detached replay still checks the exact proof.
+# Stable lattice deletion (148b1d08) changed the selected principal witnesses,
+# and factor-base-plan-v2 (2770f2a3) added the exact enumeration bound. These
+# explain the change from the original ce189... payload; the exact C3 lattice
+# and norm obstruction remain unchanged. Pin the current canonical payload,
+# while detached replay below independently checks its mathematical content.
 payload = certificate.to_dict()
+assert payload["plan"]["schema"] == "sagejs.number-fields/factor-base-plan-v2"
+assert payload["plan"]["enumeration_bound"] == payload["plan"]["bound"]["bound"] == 9
+assert [entry["row"] for entry in payload["relations"]] == [
+    [1, 0, 0, 1, 0],
+    [0, 1, 2, 0, 0],
+    [0, 0, 1, 1, 0],
+    [2, 0, 0, 0, 1],
+    [0, 0, 0, 1, 1],
+]
 assert certificate.stable_hash() == (
-    "ce189cbccbe4078ba95286d62b4d501b2e7a5b842f376234da572406881a564e"
+    "85f1619dd0afe5d6e05cfa50fc8fb1264fe6e10fcb428887c54e527d7beff4f5"
 )
 # A self-consistent caller encoding with forged provenance would pass the old
 # cache-trusting verify; live encoding now ignores both obsolete cache state
