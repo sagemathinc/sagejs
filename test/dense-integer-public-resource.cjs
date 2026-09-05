@@ -144,11 +144,13 @@ def elapsed(function):
 
 A, random_ms = elapsed(lambda: random_matrix(ZZ, 300, x=-1000, y=1001))
 B, second_ms = elapsed(lambda: random_matrix(ZZ, 300, x=-1000, y=1001))
+warm = A + B
 C, add_ms = elapsed(lambda: A + B)
 M = A.matrix_from_rows(range(80)).matrix_from_columns(range(80))
 P, multiply_ms = elapsed(lambda: M*M)
 text, format_ms = elapsed(lambda: A.str())
 assert C._has_fmpz_matrix_resource()
+assert warm._has_fmpz_matrix_resource()
 assert P._has_fmpz_matrix_resource()
 assert len(text) > 100000
 print('TIMES', random_ms, second_ms, add_ms, multiply_ms, format_ms)
@@ -184,7 +186,9 @@ print('TIMES', random_ms, second_ms, add_ms, multiply_ms, format_ms)
     // dense-integer resource in an otherwise idle fresh process, and up to
     // about 600 ms while the integration runner executes a second file. Keep
     // that process-cold allowance platform-specific while retaining the
-    // original ceiling elsewhere and all arithmetic-specific ceilings below.
+    // original ceiling elsewhere. Warm the generated addition path explicitly
+    // before applying the arithmetic-only ceiling below: loading that path is
+    // another process-cold cost, not dense-matrix addition throughput.
     const randomLimit =
       process.platform === "darwin" && process.arch === "arm64" ? 700 : 250;
     assert.ok(Math.max(randomMs, secondMs) < randomLimit, timing);

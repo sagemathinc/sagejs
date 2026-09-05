@@ -19,7 +19,7 @@ const releaseArtifactSkip = releaseArtifactAvailable
 
 test("repeated 64 by 64 elliptic complex plots do not retain numeric resources", {
   skip: releaseArtifactSkip,
-}, async () => {
+}, async (context) => {
   const { chromium } = await import("playwright-core");
   const {
     createBrowserWasmServer,
@@ -27,7 +27,10 @@ test("repeated 64 by 64 elliptic complex plots do not retain numeric resources",
   } = await import("../packages/flint-wasm/test/browser-wasm-support.mjs");
 
   const executablePath = executablePathFor("chromium", chromium);
-  assert.ok(executablePath, "a compatible Chromium executable is required");
+  if (!executablePath) {
+    context.skip("a compatible Chromium executable is unavailable");
+    return;
+  }
   const server = await createBrowserWasmServer();
   const browser = await chromium.launch({
     executablePath,
