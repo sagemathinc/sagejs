@@ -35,7 +35,7 @@ function selectedIds() {
 
 async function main() {
   const numberTheory = await compile({
-    sourcePath: join(root, "bench", "cowasm", "src", "nt.py"),
+    sourcePath: join(root, "bench", "cowasm", "src", "cowasm_nt.py"),
     cacheRoot: join(cacheRoot, "nt"),
   });
   const benchmarkKernels = await compile({

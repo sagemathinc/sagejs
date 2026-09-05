@@ -51,7 +51,7 @@ const completeNumberTheoryPath = join(
   "bench",
   "cowasm",
   "src",
-  "nt.py",
+  "cowasm_nt.py",
 );
 const scalarExactPath = join(
   root,
