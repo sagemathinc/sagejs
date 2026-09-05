@@ -2371,6 +2371,20 @@ function createFloat64Buffer(source) {
   return Float64Array.from(source, (value) => Number(value));
 }
 
+function sortedFloat64Buffer(source) {
+  const result = Float64Array.from(source, (entry) => {
+    const value = float64Scalar(entry, "buffer value");
+    if (!Number.isFinite(value)) {
+      nativeRaise("ValueError", "sorted Float64Buffer requires finite values");
+    }
+    return value;
+  });
+  // The default typed-array comparator distinguishes -0 from +0; Python's
+  // stable numeric ordering does not. Use equality-preserving comparison.
+  result.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+  return result;
+}
+
 function createUInt64Buffer(source) {
   if (Number.isSafeInteger(source) && source >= 0) {
     return new BigUint64Array(source);
@@ -2959,6 +2973,7 @@ for (const fn of Object.values(nativeFunctions)) {
   fn.__sagejs_native_execution_mode__ = compiledExecutionMode;
   fn.__sagejs_native_boundary__ = compiledHostBoundary;
   fn.createFloat64Buffer = createFloat64Buffer;
+  fn.sortedFloat64Buffer = sortedFloat64Buffer;
   fn.createUInt64Buffer = createUInt64Buffer;
   fn.asUInt64Buffer = asUInt64Buffer;
 }

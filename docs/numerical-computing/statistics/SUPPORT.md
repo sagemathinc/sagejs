@@ -14,6 +14,14 @@
 | Budgets | cancellation, elapsed, evaluations, iterations, trace events/bytes | failure corpus and forced-stop tests | synchronous cancellation callback |
 | Platforms | ordinary Python, no native dependency | CPython and Sage.js on Linux x64; platform-neutral source | four-host qualification belongs to integration/release |
 
+`StatisticsData` is an explicit Sage.js extension for copied input/workspace
+reuse, not an API translation from Sage or SciPy. Its default is ordinary
+Python. Experimental AOT `describe()` queries retain dynamic fallback; native
+public, browser, npm/SEA, artifact-bound provenance and four-platform acceptance
+are not yet qualified. See [API.md](API.md#explicit-prepared-data-sagejs-extension).
+Kernel exactness witnesses alone do not promote that backend or establish an
+end-to-end latency claim. Regression/inference acceleration remains unsupported.
+
 The checked-in Linux benchmark receipt records the exact source payload for its
 revision, with no native dependency. Timings exclude import and lazy
 transpilation. They are development-host regression observations, not release

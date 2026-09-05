@@ -1,0 +1,233 @@
+{
+  "schema": "sagejs.numerics.packed-centered-opportunity/v1",
+  "classification": "experimental-arithmetic-region-not-public-performance",
+  "source": {
+    "commit": "40a4e400742976d8c24c894f545772051f2638fb",
+    "tree": "ef641bf691999e6ffa1a15067ea845990dab7e80",
+    "clean": false,
+    "status_sha256": "a7b0ec6afc35ca554eabe7242b83473b07f43c8348eae18838e05fd3d603ed00"
+  },
+  "collector_sha256": "29e094a2dbc356bfffd72c85e6684817f1eb29718417d6a67a30f63450bc789d",
+  "sources": [
+    {
+      "path": "src/lib/sagejs/numerics/statistics/_packed.py",
+      "sha256": "ab4e7d798dec5a66ba1d90c394734b8cb83b281ea00b5865dc5d292fc7b24c9d"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/statistics/_packed_centered.py",
+      "sha256": "2937132ed740a02d7f19544cc7145beae13549b8a7086d6b544392c19ac81cda"
+    }
+  ],
+  "artifacts": [
+    {
+      "cache_key": "a6ce2a9ebd2b6754e78441204445cbc9e4f2e5fb2c7476baf6d77da9b1c1f0f5",
+      "core_sha256": "92609cf574e6b6502ad8a8e75d80376374245d5af3b5d1185d545bcb1fe5b83f",
+      "addon_sha256": "8e04a7bac6287ce199cd8f1ecf3451f48524c37edb1a2dfd9da966e33ced45b8",
+      "addon_bytes": 14504
+    },
+    {
+      "cache_key": "3f5142144380ce60c071a8f3264f5403bb807e666d4864b670cbf0cdf32ac4d3",
+      "core_sha256": "59384a2cd0efdb95737496859aabd012d5373d78e5ec7d9c9255e10dd5a3179e",
+      "addon_sha256": "b6ddae82abba71bc2b1bb720aaa4b4e1ac9de90eea34bf60640e4153efa06346",
+      "addon_bytes": 18616
+    }
+  ],
+  "compilation_ms": 1423.211226,
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.8.1",
+    "cpu": "AMD EPYC 7B13",
+    "load_average": [
+      0.55,
+      0.93,
+      1.71
+    ]
+  },
+  "policy": {
+    "warmups": 3,
+    "samples": 7,
+    "timed_scope": "mean and corrected centered sum of squares with core status checks",
+    "excluded": [
+      "public ingress/conversion/budgets",
+      "sort/quantile/MAD",
+      "independent public validation",
+      "result/trace/plots",
+      "cold import",
+      "peak RSS",
+      "paired crossover and sustained reuse qualification"
+    ]
+  },
+  "cpython_same_source": {
+    "python": "3.14.4",
+    "rows": [
+      {
+        "count": 1000,
+        "expected": 833332.4999952316,
+        "samples_ms": [
+          0.15206999523798004,
+          0.15391000488307327,
+          0.15485999756492674,
+          0.1671900026849471,
+          0.15017999976407737,
+          0.1492300070822239,
+          0.1496600016253069
+        ]
+      },
+      {
+        "count": 20000,
+        "expected": 16666649.999904633,
+        "samples_ms": [
+          3.240239995648153,
+          3.190639996319078,
+          3.2517089930479415,
+          3.311840002425015,
+          3.2197499967878684,
+          3.215040000213776,
+          3.226439999707509
+        ]
+      },
+      {
+        "count": 100000,
+        "expected": 83333249.99952315,
+        "samples_ms": [
+          17.39988900226308,
+          16.57549900119193,
+          17.01862899790285,
+          15.713239001343027,
+          15.586489003908355,
+          14.701027997944038,
+          15.530540003965143
+        ]
+      }
+    ]
+  },
+  "rows": [
+    {
+      "count": 1000,
+      "expected": 833332.4999952316,
+      "core_calls": 4,
+      "reused_workspace_bytes": 40016,
+      "native_reused": {
+        "samples_ms": [
+          0.0753500000000713,
+          0.0554899999999634,
+          0.08387000000016087,
+          0.05353999999988446,
+          0.04966000000013082,
+          0.05618000000004031,
+          0.060549999999921056
+        ],
+        "median_ms": 0.05618000000004031
+      },
+      "javascript_ir_reused": {
+        "samples_ms": [
+          3.409299999999803,
+          4.090599999999995,
+          3.4125400000000354,
+          3.3410200000000714,
+          3.3203699999999117,
+          3.409898999999996,
+          3.3005299999999806
+        ],
+        "median_ms": 3.409299999999803
+      },
+      "native_pack_allocate": {
+        "samples_ms": [
+          0.07294000000001688,
+          0.08609000000001288,
+          0.06961999999998625,
+          0.06963000000018837,
+          0.08116999999992913,
+          0.07896000000005188,
+          0.06759000000010928
+        ],
+        "median_ms": 0.07294000000001688
+      }
+    },
+    {
+      "count": 20000,
+      "expected": 16666649.999904633,
+      "core_calls": 4,
+      "reused_workspace_bytes": 800016,
+      "native_reused": {
+        "samples_ms": [
+          0.8134999999999764,
+          0.8034300000001622,
+          0.8202300000000378,
+          0.82224999999994,
+          0.806880000000092,
+          0.8063990000000558,
+          0.8051000000000386
+        ],
+        "median_ms": 0.806880000000092
+      },
+      "javascript_ir_reused": {
+        "samples_ms": [
+          72.7807759999996,
+          71.85048599999982,
+          72.95755599999984,
+          72.01696600000014,
+          72.41419600000017,
+          70.680926,
+          71.61441599999989
+        ],
+        "median_ms": 72.01696600000014
+      },
+      "native_pack_allocate": {
+        "samples_ms": [
+          1.0909700000001976,
+          1.0943200000001525,
+          1.0837400000000343,
+          1.137499999999818,
+          1.1959499999998116,
+          1.2285799999999654,
+          1.227139999999963
+        ],
+        "median_ms": 1.137499999999818
+      }
+    },
+    {
+      "count": 100000,
+      "expected": 83333249.99952315,
+      "core_calls": 4,
+      "reused_workspace_bytes": 4000016,
+      "native_reused": {
+        "samples_ms": [
+          3.9947790000001078,
+          4.017579000000296,
+          4.014509999999973,
+          4.011259999999766,
+          4.001079000000118,
+          4.007150999999794,
+          4.006668999999874
+        ],
+        "median_ms": 4.007150999999794
+      },
+      "javascript_ir_reused": {
+        "samples_ms": [
+          353.5292910000003,
+          352.7136919999998,
+          352.63121200000023,
+          354.45314099999996,
+          353.1625119999999,
+          353.78045199999997,
+          355.4750409999997
+        ],
+        "median_ms": 353.5292910000003
+      },
+      "native_pack_allocate": {
+        "samples_ms": [
+          5.831759999999122,
+          5.866250000000036,
+          5.905078999999205,
+          5.9616189999997005,
+          5.688780000000406,
+          6.051120000000083,
+          5.712880000000041
+        ],
+        "median_ms": 5.866250000000036
+      }
+    }
+  ]
+}

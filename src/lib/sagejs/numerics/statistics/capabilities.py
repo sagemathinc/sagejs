@@ -135,7 +135,7 @@ def _operation_record(name: str) -> dict[str, JSONValue]:
                 "runtimes": list(_IMPLEMENTATION_RUNTIMES),
             },
         }
-    return {
+    record: dict[str, JSONValue] = {
         "classification": "extension",
         "default_method": str(source["default_method"]),
         "methods": methods,
@@ -143,6 +143,20 @@ def _operation_record(name: str) -> dict[str, JSONValue]:
         "validation": list(source["validation"]),
         "planning": "detached-metadata-only",
     }
+    if name == "descriptive_statistics":
+        record["prepared_data"] = {
+            "classification": "extension",
+            "constructor": "sagejs.numerics.statistics.StatisticsData",
+            "default_backend": "dynamic",
+            "native_backend": "experimental-explicit-aot-opt-in",
+            "missing_native_artifact": "ordinary-python-fallback",
+            "public_native_qualification": "pending",
+            "browser_native_acceleration": "unsupported",
+            "ownership": "copied-input-and-private-workspace",
+            "summary_precomputed": False,
+            "concurrent_queries": "unsupported-same-instance",
+        }
+    return record
 
 
 def capabilities(operation: str | None = None) -> dict[str, JSONValue]:

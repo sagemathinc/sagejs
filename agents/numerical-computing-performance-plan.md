@@ -24,7 +24,7 @@ its child timeout. Those failures remain explicit, not relaxed into passes.
 
 The corpus, profiler, and generated optimizer dashboard are reused rather than
 replaced by a separate benchmark service. N0 still lacks full scaling/failure,
-automatic/library/#124 comparisons, phase/startup/payload/peak-memory evidence,
+automatic/library/full-main-runtime comparisons, phase/startup/payload/peak-memory evidence,
 and complete persistent-host/browser confirmation. The initial 256-event baseline batch
 is censored, never reported as a per-call median. Benchmark-host disk exhaustion
 is an infrastructure gap, not authorization to delete another lane's work.
@@ -43,6 +43,47 @@ Next: source-transparent reduction/interpolation kernels in N2, alongside the
 remaining N0/N1 qualification. Keep each source candidate and its measurements
 distinct; the release owner and frozen product release remain untouched. N2–N6
 and all acceptance criteria below remain open.
+
+[Draft PR #146](https://github.com/sagemathinc/sagejs/pull/146) now separates
+the private accurately rounded sum and prefix-free binary64 compiler boundary
+from N1. Its [four-host source receipts](../bench/numerics/performance/results/n2-source-2026-09-05/README.md)
+include the macOS path-alias and Windows cleanup corrections; two unavailable
+Windows WASI builds remain explicit skips. Subsequent
+[centered/scaled regions](numerical-statistics-regions-checkpoint.md) pass 296
+exact-rational cases through native, JavaScript IR, Node-Wasm and real browser
+workers. [Draft PR #148](https://github.com/sagemathinc/sagejs/pull/148) adds the
+experimental public `StatisticsData` ownership/query path. Full prepared native
+summaries measure 32–34 ms locally, with 0.50–0.53 s setup reported separately;
+generic queries remain dynamic. Its 21 focused tests, strict Python and
+architecture pass. Frozen-source public API witnesses now pass on all four
+hosts (21 each on Linux x64/ARM64 and macOS; 18 plus three explicit WASI skips
+on Windows), and a separate owned local full build passes precompiled-module
+native/dynamic/missing-cache checks. These are not full-product four-platform
+or public browser receipts. Browser/native packaging, frozen paired performance
+qualification and the 10 ms target remain open. See the
+[development evidence](../bench/numerics/performance/results/n2-prepared-development-2026-09-05/README.md).
+
+[Draft PR #149](https://github.com/sagemathinc/sagejs/pull/149) isolates the next
+Wasm packaging boundary: opt-in pure binary64 packs need no exact-library
+prefix, and the authenticated loader plus owned-buffer helpers pass in Node and
+three real browser workers. Existing production domains/defaults stay unchanged;
+lazy frontend/native packaging and public dispatch are still to be connected.
+The [complete-query profiles](../bench/numerics/performance/results/n2-prepared-profiles-2026-09-05/README.md)
+point to sorting and object/validation overhead after arithmetic acceleration;
+they retain unmatched runtime samples rather than claiming a complete Python
+phase attribution.
+
+The [isolated local #124 comparison](../bench/numerics/performance/results/n0-dictionary-local-2026-09-05/README.md)
+uses fresh candidate `45093cdea` against `bd26cfefb` in A/B/B/A order, with
+identical numerical source and all eight public observations matching. It finds
+modest root/minimum gains but no clear `describe(20_000)` improvement. That is
+evidence to continue complete arithmetic/representation-region acceleration,
+not to dismiss the runtime work. The separate
+[quiet bench-1 A/B/B/A confirmation](../bench/numerics/performance/results/n0-dictionary-bench1-2026-09-05/README.md)
+now agrees: roughly 7–9% gains in root/minimum/no-trace ODE, a noisier ODE-summary
+gain, and essentially unchanged statistics. All 32 public observations match.
+This does not qualify the other platforms or the full #124 parent stack.
+None of the priority latency targets passes yet.
 
 ## Objective and scope
 

@@ -12,6 +12,52 @@ The mean uses `math.fsum`; variance uses a corrected two-pass centered sum.
 and `correlation(x, y)` use centered two-pass formulas. Non-finite data are
 rejected unless `nan_policy="omit"`; paired omission removes the entire pair.
 
+### Explicit prepared data (Sage.js extension)
+
+```python
+from sagejs.numerics.statistics import StatisticsData
+
+with StatisticsData([1.0, 2.0, 4.0, 7.0]) as data:
+    sample = data.describe(ddof=1)
+    population = data.describe(ddof=0)
+    print(data.preparation())  # copying/conversion cost, separate from each query
+```
+
+`StatisticsData(data, nan_policy="raise", budget=None, cancel=None,
+max_buffer_bytes=67108864, backend="dynamic")` copies and validates input once.
+Every `describe(data)` or `data.describe()` query recomputes the summary,
+independent checks and result. No summary or sorted order is precomputed during
+preparation. `to_list()` returns a detached copy; changing either the original
+input or an export cannot change the retained sample. `close()` is idempotent
+and releases the sample and workspace. Closed instances cannot be queried.
+Private underscore attributes are implementation details, not mutation APIs.
+
+The logical buffer ceiling charges 80 bytes per observation plus 16 bytes for
+input, scratch, transient copies and ordering capacity. It does not bound
+Python object overhead, physical RSS or detached result/plot memory. It is
+checked during materialization, before allocating native workspace. Preparation
+preserves per-observation iterator/conversion/cancellation order. Each prepared
+query charges its sample count atomically before arithmetic, then checks elapsed
+time and cancellation at coarse phase boundaries. Recursive queries, exporting,
+or closing the same instance from a query's callback are rejected. Use separate
+instances for concurrent jobs; the workspace is not shared.
+
+`backend="native"` is an **experimental AOT opt-in**, not the default. It uses
+source-transparent accurately rounded reductions and centered arithmetic, and
+the host engine's stable finite-binary64 buffer sorting. It requires matching
+precompiled artifacts; absence, source mismatch or an unavailable native addon
+selects the ordinary implementation. `data.backend` and each successful result
+report the actual selection. This path does not load FLINT/MPC or compile code
+at query time. It has no claimed four-platform public/package qualification or
+qualified execution receipt yet. The small production Wasm/native pack and its
+browser/npm/SEA integration remain under development: do not infer that the
+browser is accelerated from the separate generated-Wasm kernel witnesses.
+
+Ordinary `describe()` on a list or user iterable keeps the existing generic
+path; this extension does not bypass Python conversion hooks or change its
+budget accounting. Other statistics functions may iterate `StatisticsData` as
+a detached ordinary sequence but do not yet reuse its native workspace.
+
 ## Probability laws
 
 The constructors are `Normal(mean=0, standard_deviation=1)`,
