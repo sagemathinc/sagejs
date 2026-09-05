@@ -214,3 +214,5 @@ Reviewing the complete import/export multiset (normalizing only generated
 The allowlist refresh records that reviewed inventory; it neither enables an
 unsupported target nor changes a memory/resource budget. Generic slice and
 bundle WASI witnesses remain distinct from the full cubic target capability.
+The corresponding production capability ledger also includes the one added
+prefix-Arb adapter; both ledgers must agree before a build can issue its receipt.
