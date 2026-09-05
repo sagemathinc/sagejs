@@ -74,3 +74,27 @@ repeatable product measurements still have to include the surrounding costs.
 The public `describe(20_000)` baseline still costs about 1.57 seconds. Its
 rough diagnostic spends about 496 ms in input/budget work and 479 ms in centered
 sums of squares. Fast summation alone cannot meet the 10 ms program target.
+
+## Four-host compiler-boundary check
+
+The first frozen source `6c5f595f5` was exercised in dedicated worktrees on all
+four persistent hosts, borrowing the read-only compiler/runtime and installed
+JavaScript dependencies from the previous `14fdd4117` qualification checkout.
+This is explicit new-source native compilation, **not** a fresh full-product
+build, npm/SEA install, production pack or public-statistics receipt.
+
+The prefix-free summation compiled and ran on all four hosts. Linux x64 and
+ARM64 passed all eight focused tests, including their prepared Node-Wasm
+witnesses. The macOS summation cases passed, but the existing conditional
+kernel's ordinary-source import exposed lexical `/tmp` versus physical
+`/private/tmp` cache lookup. Windows also revealed a host-specific test
+archive-name assertion and test cleanup trying to unlink a loaded addon;
+its two Wasm builds were explicitly skipped without the prepared toolchain.
+
+The follow-up canonicalizes real filesystem identities in native lookup and
+registration while preserving lexical virtual/SEA resource names. A real
+directory-alias test reproduced the failure on Linux before the change and
+passes afterward, still rejecting changed source bytes and honoring an
+explicit empty cache. Native tests now use the repository's existing
+deferred Windows DLL cleanup helper. Target reruns must validate this newer
+source before claiming the complete focused suite green on all four hosts.

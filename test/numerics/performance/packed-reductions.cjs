@@ -13,6 +13,7 @@ const { lowerSource } = require("../../../tools/native-kernel/ir.cjs");
 const { classifyWasmFunction, generateWasmBridge } = require("../../../tools/native-kernel/wasm-bridge.cjs");
 const { inspectToolchain, wasmKernelToolchain } = require("../../../packages/wasm-toolchain/scripts/toolchain.cjs");
 const { closeSession } = require("../../../bench/numerics/performance/run.cjs");
+const { removeLoadedNativeCache } = require("../../helpers/native-cache-cleanup.cjs");
 
 const root = path.resolve(__dirname, "../../..");
 const sourcePath = path.join(root, "src/lib/sagejs/numerics/statistics/_packed.py");
@@ -82,8 +83,8 @@ test("finite sums have isolated, source-transparent binary64 lowering", async ()
   }
   // Narrow exemption only: mixed/field kernels retain their existing links.
   const mixed = { ...ir, functions: [...ir.functions, { kernelKind: "real-field" }] };
-  assert.ok(bindingGyp(mixed, null, false, "linux").targets[0].libraries
-    .some((name) => name.endsWith("libmpc.a")));
+  assert.ok(bindingGyp(mixed, null, false, process.platform).targets[0].libraries
+    .some((name) => name.endsWith(process.platform === "win32" ? "mpc.lib" : "libmpc.a")));
 });
 
 test("binary64 compilation and execution need no exact-arithmetic prefix", {
@@ -169,7 +170,7 @@ test("packed summation agrees bit-for-bit with exact rationals and CPython", {
     checkCases(module.finite_sum, cases);
     checkCases(module.finite_sum.javascript, cases);
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
 });
 

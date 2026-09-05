@@ -6,7 +6,7 @@
  * architecture, then compiles the unchanged source normally.
  */
 
-import { mkdirSync, statSync } from "fs";
+import { mkdirSync, realpathSync, statSync } from "fs";
 import { homedir } from "os";
 import { dirname, join, resolve } from "path";
 import { createRequire } from "module";
@@ -587,7 +587,15 @@ export function runRuntimeBootstrap(
         Object.hasOwn(taskSources, filename)
       ? Reflect.get(taskSources, filename)
       : undefined;
-    return resolve(typeof mapped === "string" && mapped ? mapped : filename);
+    const absolute = resolve(typeof mapped === "string" && mapped ? mapped : filename);
+    // The standalone compiler indexes physical source identities. Match that
+    // identity for symlinked imports (notably /tmp versus /private/tmp on
+    // macOS) without turning embedded/virtual resource names into disk paths.
+    try {
+      return realpathSync(absolute);
+    } catch {
+      return absolute;
+    }
   };
   const usableNativeCandidate = (candidate: unknown): boolean => {
     if (typeof candidate !== "function") return false;
@@ -726,7 +734,7 @@ export function runRuntimeBootstrap(
       throw new TypeError("invalid Sage.js native-module registration");
     }
     validatedNativeCompatibility(filename, compatibility, sourceHash);
-    nativeModules.set(resolve(filename), { sourceHash, functions });
+    nativeModules.set(nativeSourcePath(filename), { sourceHash, functions });
   };
   const resolveNativeFunction = (
     filename: string,

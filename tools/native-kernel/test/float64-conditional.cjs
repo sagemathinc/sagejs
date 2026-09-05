@@ -4,9 +4,11 @@ const assert = require("node:assert/strict");
 const { createHash } = require("node:crypto");
 const {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -17,6 +19,7 @@ const test = require("node:test");
 const { generateHostCore } = require("../c-backend.cjs");
 const { compileKernel } = require("../compiler.cjs");
 const { lowerSource } = require("../ir.cjs");
+const { removeLoadedNativeCache } = require("../../../test/helpers/native-cache-cleanup.cjs");
 const {
   classifyWasmFunction,
   generateWasmBridge,
@@ -136,7 +139,9 @@ test("binary64 comparisons and conditionals preserve inspectable source", async 
 test("binary64 branches agree in JavaScript, native, and CPython execution", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-float64-branch-"));
   const cacheRoot = join(temporary, "cache");
-  const executableSource = join(temporary, "float64_branch_witness.py");
+  const sourceDirectory = join(temporary, "source");
+  mkdirSync(sourceDirectory);
+  const executableSource = join(sourceDirectory, "float64_branch_witness.py");
   const checks = String.raw`
 from sagejs.native import is_compiled, kernel_float64_buffer
 
@@ -173,6 +178,31 @@ print("FLOAT64_BRANCH_OK")
     });
     assert.match(native, /compiled=True/);
     assert.match(native, /FLOAT64_BRANCH_OK/);
+
+    // Compilation records physical source paths; importing the same bytes
+    // through an alias must find that artifact, including macOS /tmp aliases.
+    const sourceAlias = join(temporary, "source-alias");
+    symlinkSync(sourceDirectory, sourceAlias, process.platform === "win32" ? "junction" : "dir");
+    const throughAlias = run(process.execPath, [sagejs, join(sourceAlias, "float64_branch_witness.py")], {
+      env: { SAGEJS_NATIVE_CACHE_DIR: cacheRoot, SAGEJS_NATIVE_REQUIRED: "1" },
+    });
+    assert.match(throughAlias, /compiled=True/);
+    assert.match(throughAlias, /FLOAT64_BRANCH_OK/);
+
+    // Canonicalization must not turn matching path identity into authority
+    // for changed source bytes, nor bypass an explicit isolated cache.
+    const isolated = run(process.execPath, [sagejs, join(sourceAlias, "float64_branch_witness.py")], {
+      env: { SAGEJS_NATIVE_CACHE_DIR: join(temporary, "empty-cache"), SAGEJS_NATIVE_REQUIRED: "0" },
+    });
+    assert.match(isolated, /compiled=False/);
+    writeFileSync(executableSource, `${witnessSource}\n${checks}\n# changed source identity\n`);
+    const stale = spawnSync(process.execPath, [sagejs, join(sourceAlias, "float64_branch_witness.py")], {
+      cwd: root, encoding: "utf8", timeout: 120000,
+      env: { ...process.env, SAGEJS_NATIVE_CACHE_DIR: cacheRoot, SAGEJS_NATIVE_REQUIRED: "1" },
+    });
+    if (stale.error) throw stale.error;
+    assert.notEqual(stale.status, 0);
+    assert.match(stale.stderr, /has no matching compiled artifact/);
 
     const compiledModule = require(compiled.modulePath);
     for (const implementation of [
@@ -215,7 +245,7 @@ print("FLOAT64_BRANCH_OK")
     ].join("\n");
     assert.equal(run(python, ["-I", "-c", cpythonProgram]), "cpython-ok");
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
 });
 
