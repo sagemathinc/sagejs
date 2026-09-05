@@ -3,13 +3,18 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 225,
+    "pass": 226,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
     "xpass": 0
   },
   "results": [
+    {
+      "id": "src/baselib/modular.py#1a780ee3bd4934d5-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
     {
       "id": "src/baselib/schemes.py#e010c74c332f5782-e3b0c44298fc1c14",
       "status": "pass",

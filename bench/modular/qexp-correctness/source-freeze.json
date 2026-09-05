@@ -67,7 +67,7 @@
     },
     {
       "path": "src/baselib/modular.py",
-      "sha256": "b1f58306aff590eb08efc164df6a1f8a70aff3d3a175564592399ecce37ad9ff"
+      "sha256": "95f5ffa7ab118e40dd8f65c3342f61bdcdc886bfef377f3216a62940a3737d9a"
     },
     {
       "path": "src/lib/sagejs/modular_forms/__init__.py",
@@ -150,5 +150,5 @@
       "sha256": "34beffa4e59c778fc2315377c4e1617e89aeb2f735026a0f5852a716e34c288b"
     }
   ],
-  "bundle_sha256": "331c336e806708e5cec4d00b20e1c6c38dc227e4849cff47724c60c8ff6fc64a"
+  "bundle_sha256": "fb462ce629bc63ec355b985f1e348caafe5e191e95161adec3e98aa1a7e6a186"
 }
