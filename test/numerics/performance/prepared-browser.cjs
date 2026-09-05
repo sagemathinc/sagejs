@@ -7,6 +7,7 @@ const path = require("node:path");
 const os = require("node:os");
 const http = require("node:http");
 const { spawnSync } = require("node:child_process");
+const { createHash } = require("node:crypto");
 const test = require("node:test");
 const { buildBrowserStandardLibrary } = require("../../../packages/flint-wasm/scripts/browser-python-resources.cjs");
 const { buildWasmProductionPacks } = require("../../../tools/native-kernel/wasm-production-pack.cjs");
@@ -22,6 +23,10 @@ test("public prepared statistics use the optional pack in real browser sessions"
   skip: process.env.SAGEJS_NUMERICAL_BROWSER_TESTS !== "1" ? "explicit browser source qualification" : false,
   timeout: 600000,
 }, async () => {
+  const measurementPath = process.env.SAGEJS_NUMERICAL_BROWSER_MEASUREMENTS;
+  if (measurementPath && fs.existsSync(measurementPath)) throw new Error("refusing to overwrite measurements");
+  const measurements = [];
+  const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-prepared-browser-"));
   let server;
   try {
@@ -93,6 +98,8 @@ test("public prepared statistics use the optional pack in real browser sessions"
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const origin = `http://127.0.0.1:${server.address().port}`;
     const source = fs.readFileSync(path.join(__dirname, "prepared-statistics.py"), "utf8");
+    const benchmark = measurementPath ? fs.readFileSync(path.join(root,
+      "bench/numerics/performance/prepared-statistics.py"), "utf8") : null;
     for (const engine of (process.env.SAGEJS_NUMERICAL_BROWSER_ENGINE
       ? [process.env.SAGEJS_NUMERICAL_BROWSER_ENGINE] : ["chromium", "firefox", "webkit"])) {
       const browser = await require("playwright-core")[engine].launch({ headless: true });
@@ -101,7 +108,7 @@ test("public prepared statistics use the optional pack in real browser sessions"
         await page.goto(origin);
         for (const [route, expected] of [["disabled", "ordinary-python"], ["floating", "source-native"], ["stale", "ordinary-python"], ["missing", "ordinary-python"]]) {
           const start = requests.length;
-          const observation = await page.evaluate(async ({ origin, route, expected, source, start }) => {
+          const observation = await page.evaluate(async ({ origin, route, expected, source, start, benchmark }) => {
             const { createSage } = await import(origin + "/kernel.mjs");
             const sage = await createSage({ mode: "python",
               compiler: origin + "/__witness/compiler.js", baselib: origin + "/__witness/baselib.js",
@@ -121,11 +128,22 @@ test("public prepared statistics use the optional pack in real browser sessions"
                 { timeout: 120000 },
               );
               const recovery = await sage.evaluate("print(6 * 7)", { timeout: 120000 });
-              return { stdout: result.stdout, recovery: recovery.stdout };
+              let measured = null;
+              if (benchmark && route === "floating") {
+                const start = performance.now();
+                const result = await sage.evaluate('EXPECTED_NATIVE_BACKEND = "source-native"\n' + benchmark,
+                  { timeout: 300000 });
+                measured = { evaluate_wall_ms: performance.now() - start,
+                  ...JSON.parse(result.stdout.trim()) };
+              }
+              return { stdout: result.stdout, recovery: recovery.stdout, measured };
             } finally { sage.close(); }
-          }, { origin, route, expected, source, start });
+          }, { origin, route, expected, source, start, benchmark });
           assert.equal(observation.stdout.trim(), "prepared statistics passed", engine + ":" + route);
           assert.equal(observation.recovery.trim(), "42");
+          if (observation.measured) {
+            measurements.push({ engine, version: browser.version(), ...observation.measured });
+          }
           const selected = requests.slice(start).filter((url) => url.startsWith(`/__witness/${route}/`));
           assert.equal(selected.filter((url) => url.endsWith("index.json")).length, route === "disabled" ? 0 : 1);
           if (route === "disabled") {
@@ -136,6 +154,29 @@ test("public prepared statistics use the optional pack in real browser sessions"
           process.stdout.write(`${engine} ${route}: public ownership, exactness, budgets, fallback and recovery passed\n`);
         }
       } finally { await browser.close(); }
+    }
+    if (measurementPath) {
+      const inputFiles = ["dist/compiler/compiler.js", "dist/compiler/baselib-plain-pretty.js",
+        "dist/lazy-modules.json", "packages/flint-wasm/evaluator.mjs",
+        "packages/flint-wasm/compiler-worker.mjs", "packages/flint-wasm/floating-kernels.mjs",
+        "packages/flint-wasm/dist/flint-factor.wasm", "tools/native-kernel/wasm-pack-loader.mjs",
+        "test/numerics/performance/prepared-browser.cjs"];
+      const report = {
+        schema: "sagejs.prepared-statistics-browser-development/v1",
+        classification: "source-integration-development-not-release-qualification",
+        host: { platform: process.platform, arch: process.arch, node: process.version,
+          cpu: os.cpus()[0]?.model, load_average: os.loadavg() },
+        sources: inputFiles.map((name) => ({ path: name, sha256: hash(fs.readFileSync(path.join(root, name))) })),
+        workload_sha256: hash(benchmark),
+        pack: manifest.packs[0],
+        policy: { warmups: 3, samples: 7, observations: 20000,
+          included: ["complete public query", "validation", "sorting", "result", "trace"],
+          separate: ["data preparation", "first query"],
+          unmeasured: ["cold browser startup", "peak memory", "frozen paired qualification", "npm/SEA"] },
+        measurements,
+      };
+      fs.mkdirSync(path.dirname(path.resolve(measurementPath)), { recursive: true });
+      fs.writeFileSync(measurementPath, JSON.stringify(report, null, 2) + "\n", { flag: "wx" });
     }
   } finally {
     if (server) await new Promise((resolve) => server.close(resolve));
