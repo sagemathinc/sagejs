@@ -241,6 +241,46 @@ Its production artifact `bc302298…9324dc` also passed the full local Chromium
 mathematics/plotting smoke in 134 seconds. Those receipts do not qualify this
 new sparse substrate or the forthcoming public multivariate implementation.
 
+## F0 host-neutral FLINT boundary witness (not public dispatch)
+
+`packages/flint/include/sagejs/fq_mpoly_ffi.h` provides a host-neutral foreign
+representation boundary for FLINT `fq_nmod_mpoly`. The context is reconstructed
+from canonical modulus data, not a scalar resource pointer, so it can live in
+an independent Wasm reactor. Child polynomials retain the context after its
+public wrapper closes. Term ingress, native exponent widths, copied SJFM
+output, and copied SJFF factorization output are explicitly checked.
+
+The boundary preserves mature FLINT addition/subtraction/multiplication, gcd,
+resultant, and complete factorization including the scalar unit. It implements
+no new mathematical algorithm in C. Ingress/output limits are 4096 terms,
+exponents at most 1048576, degree 2..1024, 1..64 variables, characteristic at
+most 4294967295, and 16 MiB per copied result. These are **representation
+limits**, not bounds on FLINT's intermediate allocations or run time. A Python
+deadline cannot interrupt a synchronous foreign call; worker termination is
+needed for cancellation during such a call.
+
+The reproducible standalone witness is:
+
+```sh
+SAGEJS_FFI_SANITIZE=1 node test/extension-mpoly-resource-ffi.cjs
+node test/extension-mpoly-resource-ffi.cjs --wasm
+```
+
+Both pass locally. The first uses the validated native dependency prefix and
+ASAN/UBSAN/LSAN on Linux x64; the second uses the locked Wasm toolchain and a
+512 MiB linear-memory maximum. Tests cover all three orders over GF(4), GF(9),
+and the degree-two extension at p=4294967291, including repeated factors in
+small characteristic, exact resultants, zero gcds, units, invalid transfers,
+and closing the context before using its children. The runner supports native
+Windows ClangCL and Unix hosts, but those targets are not yet qualified for
+this change. Release builds explicitly retain assertions in the C witness.
+
+This boundary is not yet declared in the production FFI surface or wired into
+public polynomials. Its production adapter, bounded resident-value ownership,
+lazy specialist delivery, and complete cross-platform qualification remain F0
+work. A separate generated-ABI experiment also passed Wasm ownership and
+memory-growth tests; it is not a production artifact receipt.
+
 ## Still required
 
 - Finish E0 fixtures, capability routing, generic v2 contracts/certificates,

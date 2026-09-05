@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 244,
+    "classified-native-file": 246,
     "declared-ffi": 463,
     "declared-ffi-resource": 34,
     "napi-export": 354,
@@ -9488,6 +9488,14 @@
       "lane": "integration"
     },
     {
+      "id": "native-file:packages/flint/include/sagejs/fq_mpoly_ffi.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/include/sagejs/fq_mpoly_ffi.h",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
       "id": "native-file:packages/flint/include/sagejs/fq_polynomial_ffi.h",
       "kind": "classified-native-file",
       "path": "packages/flint/include/sagejs/fq_polynomial_ffi.h",
@@ -10070,6 +10078,14 @@
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/test/fq_mpoly_resource_ffi.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/test/fq_mpoly_resource_ffi.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
     },
     {
       "id": "native-file:packages/flint/test/hyperelliptic/genus3-jacobian-kernel.c",
