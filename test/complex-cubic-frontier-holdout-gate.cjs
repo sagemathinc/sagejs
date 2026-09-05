@@ -63,13 +63,38 @@ const {
   writeFreezeExclusive,
 } = require("../bench/class-unit-groups/complex-cubic-frontier-holdout.cjs");
 
-function sourceRecord(label, selection, classNumber, classGroup) {
+const controlPolynomials = new Map(require("./fixtures/number-field-lmfdb-cubic-class-numbers.json")
+  .records.map(record => [record.label, record.coefficients]));
+controlPolynomials.set("3.1.331.1", ["-6", "-7", "-1", "1"]);
+controlPolynomials.set("3.1.9399.1", ["-55", "9", "0", "1"]);
+
+// Group metadata remains synthetic: these are protocol fixtures, not a
+// class-group oracle. Polynomial/discriminant pairs must nevertheless obey
+// the real equation-index gate rather than bypassing its arithmetic checks.
+function syntheticPolynomial(band, rank) {
+  const linear = BigInt(rank % 10 + 1);
+  let constant = BigInt(Math.ceil(Math.sqrt(Number(band.lowerExclusive) / 27))) +
+    2n * BigInt(Math.floor(rank / 10));
+  for (let root = 1n; root ** 3n <= constant; root += 1n) {
+    if (root ** 3n + linear * root === constant) {
+      constant += 1n;
+      break;
+    }
+  }
+  const discriminant = 4n * linear ** 3n + 27n * constant ** 2n;
+  assert.ok(discriminant > band.lowerExclusive && discriminant <= band.upperInclusive);
+  return { discriminant, coefficients: [String(constant), String(linear), "0", "1"] };
+}
+
+function sourceRecord(label, selection, classNumber, classGroup,
+  coefficients = controlPolynomials.get(label)) {
+  assert.ok(coefficients, `missing polynomial fixture for ${label}`);
   const discriminant = label.split(".")[2];
   return {
     selection,
     label,
     degree: 3,
-    coefficients: ["1", "0", "-1", "1"],
+    coefficients,
     disc_sign: -1,
     discriminant_absolute: discriminant,
     r2: 1,
@@ -109,12 +134,12 @@ function corpusFixture() {
     const band = frozen.DISCRIMINANT_BANDS[Math.floor(shard / frozen.CLASS_BANDS.length)];
     const [classNumber, classGroup] = groupFor(stratum);
     for (let rank = 1; rank <= 50; rank += 1) {
-      const discriminant = band.lowerExclusive + BigInt(100 * rank + shard + 1);
+      const { discriminant, coefficients } = syntheticPolynomial(band, rank);
       survey.push(sourceRecord(`3.1.${discriminant}.${shard + 1}`, {
         role: "tune",
         stratum,
         selection_rank: rank,
-      }, classNumber, classGroup));
+      }, classNumber, classGroup, coefficients));
     }
   });
   survey.sort(frozen.compareRecords);
@@ -646,12 +671,12 @@ function holdoutRecords(manifest) {
     const band = frozen.DISCRIMINANT_BANDS[Math.floor(shard / frozen.CLASS_BANDS.length)];
     const [classNumber, classGroup] = groupFor(stratum);
     for (let rank = 51; rank <= 70; rank += 1) {
-      const discriminant = band.lowerExclusive + BigInt(100 * rank + shard + 1);
+      const { discriminant, coefficients } = syntheticPolynomial(band, rank);
       records.push(sourceRecord(`3.1.${discriminant}.${100 + shard}`, {
         role: "holdout",
         stratum,
         selection_rank: rank,
-      }, classNumber, classGroup));
+      }, classNumber, classGroup, coefficients));
     }
   });
   return records;
