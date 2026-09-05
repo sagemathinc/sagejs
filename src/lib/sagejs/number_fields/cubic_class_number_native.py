@@ -9064,6 +9064,12 @@ def certified_complex_cubic_class_group_v1(
                     regulator_upper = reconstructed_regulator_upper
                     regulator_at_dependency_scale = False
                     dependency_materialization_active = False
+                else:
+                    # Exact reconstruction alone does not authenticate the
+                    # retained logarithmic unit evidence. Never publish stale
+                    # coordinates after a failed regulator comparison.
+                    output[59] = 44
+                    return False
 
             if dependency_materialization_active:
                 output[59] = 436
