@@ -250,7 +250,7 @@ async function main() {
     const status = inspectBuildReceipt(root);
     if (status.current) {
       process.stdout.write(
-        `[build] REUSE: successful build from ${status.completedAt}; exact inputs ` +
+        `[build] REUSE: successful build from ${status.completedAt}; artifact inputs ` +
           `and required outputs still match.\n`,
       );
       return 0;

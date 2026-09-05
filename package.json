@@ -247,7 +247,7 @@
     "matrix:report": "pnpm run build && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_integer_dense_core.doctests.json --allow-failures --verbose && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_modn_dense_core.doctests.json --allow-failures --verbose",
     "test:cowasm": "pnpm run build && pnpm run test:cowasm:run",
     "test:cowasm:run": "node bench/cowasm/run.cjs --check",
-    "test:python:conformance": "pnpm run build && pnpm run test:python:conformance:run",
+    "test:python:conformance": "pnpm run build:check && pnpm run test:python:conformance:run",
     "test:python:conformance:run": "node scripts/run-python-conformance.cjs --check",
     "test:python:grammar": "pnpm run build && node node_modules/tree-sitter-cli/cli.js test -p tools/tree-sitter-python && node node_modules/tree-sitter-cli/cli.js test -p tools/tree-sitter-sage && node --test test/python-syntax-frontend.cjs && node scripts/audit-python-grammar.cjs --check",
     "test:python:packages": "pnpm run build && node --test test/python-packages.cjs && node scripts/run-pure-python-packages.cjs",
