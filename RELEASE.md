@@ -246,15 +246,17 @@ optional cminpack and NLopt reactor assets. A partial or invalid local reactor
 set still fails closed. Release SEAs never take the omission path because the
 required-provider settings above are mandatory on all four platform jobs.
 
-The cminpack and NLopt qualification summaries bind the canonical Linux-x64
-build report, which intentionally records the builder platform. A macOS or
-Linux-ARM64 reproducibility builder must therefore consume the canonical
-source-bound numerical product while assembling Sage.js, then invoke the two
-low-level reactor builders separately and compare their bytes with that product.
-Do not run the canonical qualification-summary verifier against a noncanonical
-host report, and do not weaken or rewrite the qualified summary to make such a
-comparison pass. Preserve both directly built reactors so the aggregation job
-can repeat the byte comparisons independently.
+The canonical numerical product is produced on Linux x64 and remains exactly
+source-bound. NLopt's portable build-report identity binds every report field
+except the validated host-builder provenance object; signed platform receipts
+retain the runtime platform identity, while source closure, canonical toolchain,
+artifact, corpus, oracle, selection, semantics, and qualification tooling remain
+exact bindings. A macOS or Linux-ARM64 reproducibility builder consumes the
+canonical product while assembling Sage.js, then invokes the cminpack and NLopt
+low-level reactor builders separately and compares their bytes with that product.
+Preserve both directly built reactors so the aggregation job can repeat the byte
+comparisons independently. Never discard or normalize any build-report field
+other than the exact host-builder object allowed by the qualification contract.
 
 Run the Wasm release workflow's build, Node-Wasm parity, browser parity,
 security, and performance commands before tagging as well. Persistent browser
