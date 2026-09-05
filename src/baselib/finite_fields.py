@@ -821,10 +821,24 @@ class FiniteFieldExtensionElement(sage.Element):
                 for coefficient in self._machineCoordinates
             ]
         if not self._parent._generatedResourceBackend:
-            raise TypeError("power-basis export requires generated `fq` resources")
+            return [
+                runtime.normalize_integer(coefficient)
+                for coefficient in runtime.flint_backend().fqCoordinates(self._native)
+            ]
         region = _flint_ffi_module().fq_element_coordinate_bytes(self._native)
         return _decode_extension_element_coordinates(
             region.take_bytes(), self._parent._degree
+        )
+
+    def polynomial(self, variable: str = "x") -> Any:
+        """Return the canonical power-basis polynomial over the prime field.
+
+        Its degree is less than the extension degree. Evaluating it at the
+        defining generator recovers this element, regardless of the modulus
+        or whether that generator is multiplicatively primitive.
+        """
+        return _polynomial_from_coefficients(
+            self._parent.prime_subfield(), variable, self._power_basis_coordinates()
         )
 
     def __repr__(self) -> str:

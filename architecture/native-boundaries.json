@@ -16,7 +16,7 @@
     "classified-native-file": 244,
     "declared-ffi": 463,
     "declared-ffi-resource": 34,
-    "napi-export": 353,
+    "napi-export": 354,
     "runtime-intrinsic": 147,
     "wasm-export": 74
   },
@@ -6258,6 +6258,16 @@
       "export": "fqContextWithModulus",
       "symbol": "sagejs_fq_context_with_modulus",
       "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqCoordinates",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqCoordinates",
+      "symbol": "sagejs_fq_coordinates",
+      "disposition": "retain-host-adapter",
       "family": "extension-fields"
     },
     {

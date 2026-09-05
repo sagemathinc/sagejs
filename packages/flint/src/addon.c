@@ -5074,6 +5074,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"fqToString", NULL, sagejs_fq_to_string, NULL, NULL, NULL,
             napi_default, NULL},
+        {"fqCoordinates", NULL, sagejs_fq_coordinates, NULL, NULL, NULL,
+            napi_default, NULL},
         {"fqPolyConstant", NULL, sagejs_fq_poly_constant,
             NULL, NULL, NULL, napi_default, NULL},
         {"fqPolyGen", NULL, sagejs_fq_poly_gen,

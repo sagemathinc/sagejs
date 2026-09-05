@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "9cd076ca0a124233aec56299db8b50e1a1095184fab4d97b007d86ee26cbaecf",
+  "source_sha256": "3e766f6ef7446aff33f1e3fa978eaeaca6faff49543f79d21e7e8cccc37fd76c",
   "counts": {
-    "total": 1080,
+    "total": 1081,
     "by_kind": {
       "declared-ffi-function": 463,
       "declared-ffi-resource": 34,
-      "napi-export": 353,
+      "napi-export": 354,
       "production-kernel": 55,
       "runtime-intrinsic": 147,
       "specialist-capability": 28
@@ -16,13 +16,13 @@
       "compiled-source": 55,
       "desktop-only": 47,
       "generated-wasm": 363,
-      "portable-fallback": 565,
+      "portable-fallback": 566,
       "shared-core": 50
     },
     "by_status": {
       "available": 609,
       "desktop-only": 47,
-      "fallback": 424
+      "fallback": 425
     }
   },
   "workflow_aliases": {
@@ -7829,6 +7829,18 @@
         "src/baselib/finite_fields.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqCoordinates",
+      "family": "extension-fields",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/finite_fields.py"
+      ],
+      "explanation": "Exact power-basis polynomial conversion uses generated FLINT resources in Wasm."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqDiv",

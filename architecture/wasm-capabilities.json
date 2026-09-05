@@ -26,6 +26,15 @@
       "specialist-capability"
     ],
     "test_evidence": {
+      "finite-extension-coordinate-differential": {
+        "differential": true,
+        "paths": [
+          "packages/flint/test/extension-field-lifecycle.cjs",
+          "packages/flint-wasm/test/extension-field-coordinates.test.mjs",
+          "test/extension-field-coordinates.cjs",
+          "test/extension-field-coordinates.py"
+        ]
+      },
       "certified-interval-wasm-differential": {
         "differential": true,
         "paths": [
@@ -13794,6 +13803,21 @@
       "reviewed": true,
       "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqCoordinates",
+      "kind": "napi-export",
+      "family": "extension-fields",
+      "source": "packages/flint/src/extension_field.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": ["src/baselib/finite_fields.py"],
+      "tests": ["finite-extension-coordinate-differential"],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "Native legacy handles export canonical coordinates with fq_default_get_fmpz_poly and reduction modulo p. Wasm public elements use the declared fq_element_coordinate_bytes generated-resource operation instead; the N-API callback is never loaded in a browser.",
+      "public_explanation": "Exact power-basis polynomial conversion uses generated FLINT resources in Wasm."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqContextWithModulus",
