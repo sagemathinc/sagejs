@@ -497,6 +497,14 @@ function foreignLinkedLibraries(library, platform = process.platform) {
   }));
 }
 
+function residentFmpzLinkedLibraries(platform = process.platform) {
+  // An implicit fmpz backend still links FLINT's complete platform closure.
+  // In particular, Windows FLINT's allocator requires pthreadVC3 even when
+  // the source has no explicit foreign call to introduce that dependency.
+  const { library } = JSON.parse(readFileSync(join(root, "ffi", "flint.ffi.json"), "utf8"));
+  return foreignLinkedLibraries(library, platform);
+}
+
 function resolveDeclaredHeader(
   library,
   name,
@@ -648,16 +656,12 @@ function resolveForeignCompilationInputs(ir, digestStore) {
         ),
       }),
     ]);
-    const libraries = Object.freeze([
-      Object.freeze({
-        name: process.platform === "win32" ? "flint.lib" : "libflint.a",
-        ...contentAddressedFile(
-          nativeFlintLibrary,
-          "resident fmpz backend FLINT library",
-          digestStore,
-        ),
+    const libraries = Object.freeze(residentFmpzLinkedLibraries().map(
+      ({ name, path }) => Object.freeze({
+        name,
+        ...contentAddressedFile(path, `resident fmpz backend library ${name}`, digestStore),
       }),
-    ]);
+    ));
     const value = {
       id: "sagejs-resident-fmpz",
       prefix: portablePath(nativePrefix),
@@ -720,7 +724,7 @@ function bindingGyp(
   ));
   const linkedForeignLibraries = Array.from(new Set([
     ...foreignLibraries,
-    ...(usesResidentFmpz ? [nativeFlintLibrary] : []),
+    ...(usesResidentFmpz ? residentFmpzLinkedLibraries(platform).map(({ path }) => path) : []),
   ]));
   const usesForeignLibraries = linkedForeignLibraries.length > 0;
   const cxxLanguage = generatedCxxLanguageSettings(platform);

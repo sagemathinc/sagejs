@@ -15,7 +15,7 @@ const test = require("node:test");
 
 const { generateHostCore } = require("../c-backend.cjs");
 const { generateFmpzFunctions } = require("../fmpz-backend.cjs");
-const { compileKernel, foreignCompilationInputs } = require("../compiler.cjs");
+const { bindingGyp, compileKernel, foreignCompilationInputs } = require("../compiler.cjs");
 const { lowerSource } = require("../ir.cjs");
 const {
   sanitizerEnvironment,
@@ -122,6 +122,11 @@ function coreWithUnsignedFmpzIndices(ir) {
 
 test("closed fmpz roots admit borrowed packed integer ingress and publication", async () => {
   const ir = await lowerSource(source, "fmpz-buffer-ingress.py");
+  const libraries = bindingGyp(ir, false, false).targets[0].libraries;
+  assert.ok(libraries.some((name) => /openblas/.test(name)));
+  if (process.platform === "win32") {
+    assert.ok(libraries.some((name) => /pthreadVC3\.lib$/.test(name)));
+  }
   const functions = new Map(ir.functions.map((fn) => [fn.name, fn]));
   const rootFunction = functions.get("resident_fmpz_integer_buffers");
   assert.equal(rootFunction.analysis.backend.kind, "fmpz");
@@ -255,6 +260,10 @@ test("direct packed fmpz views agree for small, negative, and promoted integers"
     assert.ok(backendInput);
     assert.equal(backendInput.headers[0].name, "flint/fmpz.h");
     assert.match(backendInput.libraries[0].name, /flint/);
+    assert.ok(backendInput.libraries.some(({ name }) => /openblas/.test(name)));
+    if (process.platform === "win32") {
+      assert.ok(backendInput.libraries.some(({ name }) => name === "pthreadVC3.lib"));
+    }
     const runner = String.raw`
 "use strict";
 const assert = require("node:assert/strict");
