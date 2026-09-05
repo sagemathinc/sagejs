@@ -1,0 +1,45 @@
+{
+  "schema": "sagejs.prepared-api-qualification/v1",
+  "passed": true,
+  "scope": "isolated-source-api-not-product-release",
+  "declared_source_commit": "9c5066f72",
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v26.8.1",
+    "python": "Python 3.14.6",
+    "cpu": "Apple M1 Max"
+  },
+  "before": {
+    "sha256": "dc99597914886d7faf9980984cee2f5ab60b79b89a2fae5e30dd5f2bdf786218",
+    "files": 3087
+  },
+  "after": {
+    "sha256": "dc99597914886d7faf9980984cee2f5ab60b79b89a2fae5e30dd5f2bdf786218",
+    "files": 3087
+  },
+  "unchanged": true,
+  "collector_sha256": "c7a468e9e08ced266b29c1fe7d25bbee7bdc30918dc1d7f263a39adf511bbef8",
+  "test_exit_code": 0,
+  "test_signal": null,
+  "tests": [
+    "✔ prepared function contracts and finite-intermediate policy under CPython (109.174375ms)",
+    "✔ prepared functions use real source-native, dynamic and missing/stale fallback routes (10694.466875ms)",
+    "✔ prepared root API independently validates candidates in CPython and native/dynamic source routes (11045.353833ms)",
+    "ℹ tests 3",
+    "ℹ suites 0",
+    "ℹ pass 3",
+    "ℹ fail 0",
+    "ℹ cancelled 0",
+    "ℹ skipped 0",
+    "ℹ todo 0",
+    "ℹ duration_ms 11219.478958"
+  ],
+  "diagnostics": [],
+  "limitations": [
+    "not-browser-product",
+    "not-npm-or-SEA",
+    "not-performance-qualification",
+    "not-full-suite"
+  ]
+}

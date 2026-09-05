@@ -991,6 +991,7 @@
         "src/lib/sagejs/numerics/_evaluation_core.py",
         "src/lib/sagejs/numerics/_evaluation_root.py",
         "src/lib/sagejs/numerics/evaluators.py",
+        "src/lib/sagejs/numerics/prepared_roots.py",
         "src/lib/sagejs/numerics/capabilities.py",
         "src/lib/sagejs/numerics/diagnostics.py",
         "src/lib/sagejs/numerics/model.py",
