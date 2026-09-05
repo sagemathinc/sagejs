@@ -1286,6 +1286,7 @@ const FMPZ_FFI_DECLARATIONS = new Set([
   "flint:number_field_analysis_resource_project",
   "flint:number_field_analysis_resource_project_proof",
   "flint:integer_log_sqrt_balls_resource",
+  "flint:integer_log_sqrt_balls_prefix_resource",
   "flint:positive_rational_log_balls_resource",
   "flint:fmpz_matrix_hnf_into",
   "flint:fmpz_matrix_hnf_prefix_into",
