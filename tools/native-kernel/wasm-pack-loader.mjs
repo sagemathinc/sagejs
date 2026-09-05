@@ -321,6 +321,23 @@ function setTarget(target, index, value) {
   target[index] = value;
 }
 
+const typedArrayPrototype = Object.getPrototypeOf(Float64Array.prototype);
+const typedArrayIterator = Object.getOwnPropertyDescriptor(typedArrayPrototype, Symbol.iterator).value;
+const typedArraySet = typedArrayPrototype.set;
+const typedArrayBuffer = Object.getOwnPropertyDescriptor(typedArrayPrototype, "buffer").get;
+
+// Fast transfers are limited to ordinary local binary64 storage. Custom
+// iterators, subclasses, proxies and packed-integer facades keep their existing
+// conversion/copyback path. Never borrow a view into this Wasm memory across an
+// allocation: memory growth could detach it before the copy.
+function plainFloat64Transfer(value, memory) {
+  return ArrayBuffer.isView(value) && Object.getPrototypeOf(value) === Float64Array.prototype &&
+    !Object.hasOwn(value, "length") && !Object.hasOwn(value, Symbol.iterator) &&
+    !Object.hasOwn(Float64Array.prototype, Symbol.iterator) &&
+    Object.getOwnPropertyDescriptor(typedArrayPrototype, Symbol.iterator)?.value === typedArrayIterator &&
+    !("sizes" in value) && Reflect.apply(typedArrayBuffer, value, []) !== memory.buffer;
+}
+
 function cString(memory, address) {
   if (address === 0) return "source-transparent Wasm kernel failed";
   const bytes = new Uint8Array(memory.buffer);
@@ -431,7 +448,8 @@ function makeMarshaller(instance, runtime, resourceBridge) {
     if (type === "Float64Buffer") {
       const length = argument.length;
       const bytes = bytesFor(length, 8, type);
-      const values = Float64Array.from(argument, (value) => Number(value));
+      const direct = plainFloat64Transfer(argument, instance.exports.memory);
+      const values = direct ? argument : Float64Array.from(argument, (value) => Number(value));
       const address = alloc(bytes, type);
       new Float64Array(instance.exports.memory.buffer, address, length).set(values);
       if (parameter.mutable === true) {
@@ -441,8 +459,12 @@ function makeMarshaller(instance, runtime, resourceBridge) {
             address,
             length,
           );
-          for (let index = 0; index < length; index += 1) {
-            setTarget(argument, index, current[index]);
+          if (direct && plainFloat64Transfer(argument, instance.exports.memory)) {
+            Reflect.apply(typedArraySet, argument, [current]);
+          } else {
+            for (let index = 0; index < length; index += 1) {
+              setTarget(argument, index, current[index]);
+            }
           }
         });
       }
