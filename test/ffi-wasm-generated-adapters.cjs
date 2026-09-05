@@ -58,12 +58,77 @@ function mockStageExports(overrides = {}) {
   };
 }
 
+test("split ownership modules preserve complete coverage and reject cross-reactor resources", () => {
+  const declarations = registry();
+  const flint = declarations.byId.get("flint");
+  const extension = flint.functions.filter((fn) => fn.id.startsWith("fq_mpoly_"))
+    .map((fn) => fn.id);
+  assert.equal(extension.length, 11);
+  const core = flint.functions.filter((fn) => fn.targets.wasm && !extension.includes(fn.id))
+    .map((fn) => fn.id);
+  const selections = [
+    { library: "flint", functionIds: core },
+    { library: "flint", module: "flint-extension-multivariate",
+      ownershipDomain: "flint-extension-multivariate", functionIds: extension },
+  ];
+  const closure = generatedWasmClosure(declarations, {
+    selections, strict: true, requireComplete: true,
+  });
+  assert.deepEqual([...closure.artifacts.keys()], ["flint", "flint-extension-multivariate"]);
+  assert.deepEqual(closure.manifest.libraries[1].functions, extension);
+  assert.deepEqual(new Set(closure.manifest.libraries[1].resources),
+    new Set(["fq_mpoly", "fq_mpoly_bytes", "fq_mpoly_context"]));
+  assert.ok(!closure.manifest.libraries[0].resources.includes("fq_mpoly"));
+  const adapterInputs = {
+    schema: "sagejs.wasm-adapter-inputs/v3", policy: "all-declared-wasm",
+    modules: {
+      flint: {declaration: "flint", ownershipDomain: "flint"},
+      "flint-extension-multivariate": {declaration: "flint",
+        ownershipDomain: "flint-extension-multivariate", functions: extension},
+    },
+  };
+  const parsed = generatedWasmClosure(declarations, {adapterInputs, strict: true});
+  assert.equal(parsed.manifest.hash, closure.manifest.hash);
+  assert.throws(() => generatedWasmClosure(declarations, {adapterInputs: {
+    ...adapterInputs, modules: {"flint-extension-multivariate": adapterInputs.modules["flint-extension-multivariate"]},
+  }}), /complete closure omits/);
+  assert.throws(() => generatedWasmClosure(declarations, {adapterInputs: {
+    ...adapterInputs, modules: { ...adapterInputs.modules,
+      extra: {declaration: "flint", ownershipDomain: "extra"}},
+  }}), /multiple remainder groups/);
+  assert.throws(() => generatedWasmClosure(declarations, {
+    selections: [selections[1]], requireComplete: true,
+  }), /complete closure omits/);
+  assert.throws(() => generatedWasmClosure(declarations, {
+    selections: [selections[1], {...selections[1], module: "duplicate-functions"}],
+  }), /belongs to multiple modules/);
+  assert.throws(() => generatedWasmClosure(declarations, {
+    selections: [
+      {library: "flint", module: "first", functionIds: ["fq_mpoly_copy"]},
+      {library: "flint", module: "second", functionIds: ["fq_mpoly_neg"]},
+    ],
+  }), /crosses ownership modules/);
+  assert.throws(() => generatedWasmClosure(declarations, {
+    selections: [selections[0], {...selections[1], module: "flint"}],
+  }), /duplicate ownership module/);
+});
+
 test("production closure includes every currently declared Wasm FFI function", () => {
   const first = generatedWasmClosure(registry(), { strict: true });
   const second = generatedWasmClosure(registry(), { strict: true });
   assert.equal(first.manifest.hash, second.manifest.hash);
   assert.match(first.manifest.hash, /^[a-f0-9]{64}$/);
   const declarations = registry();
+  const productionInputs = JSON.parse(readFileSync(join(root,
+    "packages/flint-wasm/release/adapter-inputs.json"), "utf8"));
+  const fromV2 = generatedWasmClosure(declarations, {
+    adapterInputs: productionInputs, strict: true,
+  });
+  const legacy = generatedWasmClosure(declarations, {
+    selections: Object.entries(productionInputs.modules).map(([library, entry]) =>
+      ({library, ownershipDomain: entry.ownershipDomain})), strict: true,
+  });
+  assert.equal(fromV2.manifest.hash, legacy.manifest.hash);
   assert.deepEqual(
     first.manifest.libraries.map((library) => [
       library.library,
