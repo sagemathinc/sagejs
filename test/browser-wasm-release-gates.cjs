@@ -124,8 +124,8 @@ test("release CI shards performance and reuses only authenticated native cache e
   assert.doesNotMatch(workflow, /pnpm bootstrap/);
   assert.match(
     workflow,
-    /--runtime node-native --samples 7/,
-    "the blocking native release baseline must use enough samples to resist runner jitter",
+    /--runtime node-native --samples 7[\s\S]{0,240}--report-regressions/,
+    "the heterogeneous shared-runner native baseline must retain reviewed evidence without blocking browser correctness",
   );
   assert.match(workflow, /browser-parity:/);
   assert.match(workflow, /browser-performance:/);
