@@ -1,0 +1,102 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-compact-dependency-prefix",
+  "title": "Borrowed compact cubic dependency prefixes",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Extract compact presentation and dependency discovery at existing lazy allocation barriers into same-source borrowed logical-prefix helpers",
+  "base_commit": "a72f4150111bae641827013b1f75de9d5aba0d76",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+    "test/number-field-cubic-compact-dependency-prefix.cjs",
+    "test/fixtures/cubic-compact-dependency-prefix.py",
+    "test/fixtures/cubic-compact-dependency-status.py",
+    "docs/cubic-compact-dependency-prefix-contract.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Frozen a72f4150 one-shot body compiled beside the actual borrowed helpers",
+      "Exact alpha unit dependency arithmetic on poisoned growing and shrinking prefixes"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-cubic-compact-dependency-prefix.cjs",
+    "node --test test/number-field-cubic-recovery-prefix.cjs test/number-field-cubic-reconstructed-regulator-guard.cjs test/number-field-cubic-adjacent-cursor.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-cubic-compact-dependency-prefix.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.13,
+      "started_at": "2026-09-05T07:10:43.830Z",
+      "commit": "a72f4150111bae641827013b1f75de9d5aba0d76",
+      "workspace_fingerprint": "ee9908c95272e539779aff5a0685c6eb998c06fe00730f5c62d67852113ce5a7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-recovery-prefix.cjs test/number-field-cubic-reconstructed-regulator-guard.cjs test/number-field-cubic-adjacent-cursor.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.655,
+      "started_at": "2026-09-05T07:11:45.302Z",
+      "commit": "a72f4150111bae641827013b1f75de9d5aba0d76",
+      "workspace_fingerprint": "ee9908c95272e539779aff5a0685c6eb998c06fe00730f5c62d67852113ce5a7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.588,
+      "started_at": "2026-09-05T07:12:31.454Z",
+      "commit": "a72f4150111bae641827013b1f75de9d5aba0d76",
+      "workspace_fingerprint": "54f6bc75d90bf7734bfe4c8a93c1230eac01d89e72a60f4df3e33773815d5c32",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.326,
+      "started_at": "2026-09-05T14:08:46.929Z",
+      "commit": "a72f4150111bae641827013b1f75de9d5aba0d76",
+      "workspace_fingerprint": "54f6bc75d90bf7734bfe4c8a93c1230eac01d89e72a60f4df3e33773815d5c32",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Extracted six borrowed same-source helpers for compact support/tail planning, HNF validation, Smith index equality, dependency LLL/precision planning, rigorous witness logs, and unit-combination discovery. Actual HNF/SNF/HNF-transform/LLL calls use logical prefixes, with unchanged root lazy allocation barriers and cheap-unit behavior. Full actual source lowers to 92 functions and one arena. Frozen a72f4150 one-shot versus borrowed arithmetic agrees in JavaScript/GMP/fmpz for exact and poisoned oversized owners under repeated counts 2,4,2,4. Direct ASan/UBSan cores stay within a fixed 3 MiB checkpoint without retry/upstream allocation: high-water 200336 bytes fmpz and 530304 bytes GMP. CPython actual-AST checks preserve allocation traces and make exact/resource/interval failures fatal phase 44; only genuine absent dependency evidence remains phase 43. Recovery, materialization, BF and collection are unchanged.",
+    "risks": [
+      "Integration explicitly owns the combined full production rebuild, public cubic regression suite, broad pnpm test:native gate, closure pins and optimizer evidence; these were not duplicated in this lane.",
+      "Architecture checking passes declarations then stops at the shared complex-cubic source-size budget: 429124 bytes versus 425000. Root will update the combined size budget and provenance; no shared package files were changed here.",
+      "Native and sanitizer validation was Linux x64 only. The direct ASan/UBSan harness is Unix-only; non-Linux CI remains pending.",
+      "Measured checkpoint high-water qualifies only this small genuine witness, not all shapes or repeated full certification. No timing improvement, new corpus field or opt execution is claimed.",
+      "Intentional failure-path correction prevents host effort escalation on contradictory compact rank/index and invalid reduction/log arithmetic. Missing log candidates still proceed to the existing optional recovery stage.",
+      "The pnpm test:changed -- --base a72f4150 --list selection was reviewed; executing it would start the production build deferred to integration. Task remains active and PR draft until combined gates pass."
+    ],
+    "next_steps": [
+      "Integrate this extraction with the disjoint presentation, recovery, BF-prefix and materialization work; expect only an FFI import union and combined closure/source-budget pin updates.",
+      "Run combined production and public cubic proof/receipt/replay regressions and refresh architecture/optimizer evidence before release qualification.",
+      "Keep active-prefix combination ownership explicit when adding staged attempts: start active discovery with no prior candidate, or prove a same-column retained combination contract."
+    ]
+  }
+}
