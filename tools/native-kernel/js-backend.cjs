@@ -1386,9 +1386,7 @@ function generateJavaScript(ir, options = {}) {
     const validation = fn.params.map((param) => param.type === "uint64"
       ? uint64Validation(param.name)
       : param.type === "Float64"
-      ? `  if (typeof ${param.name} !== "number") {\n` +
-        `    throw new TypeError("${param.name} must be a binary64 float");\n` +
-        "  }"
+      ? `  ${param.name} = float64Scalar(${param.name}, ${jsString(param.name)});`
       : `  const sagejs_native_buffer_${param.name} = ` +
         `float64NativeBuffer(${param.name}, ${jsString(param.name)});`
     ).join("\n");
@@ -2624,6 +2622,17 @@ function int64NativeBuffer(value, argument) {
       }
     },
   };
+}
+
+function float64Scalar(value, argument) {
+  if (typeof value === "number") return value;
+  // Python-mode integral floats retain their type in boxed Number storage.
+  // Use the intrinsic brand check, never user valueOf/toString/float hooks.
+  try {
+    return Number.prototype.valueOf.call(value);
+  } catch (_error) {
+    throw new TypeError(argument + " must be a binary64 float");
+  }
 }
 
 function float64BufferView(value, argument = "buffer") {

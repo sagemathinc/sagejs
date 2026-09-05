@@ -212,6 +212,16 @@ print("FLOAT64_BRANCH_OK")
       assert.equal(implementation(1, 2), -1.25);
       assert.equal(implementation(2, 1), 2.25);
       assert.equal(implementation(2, 2), 0);
+      assert.equal(implementation(new Number(1), new Number(2)), -1.25);
+      const boxed = new Number(2);
+      boxed.valueOf = () => { throw new Error("must not coerce a user hook"); };
+      assert.equal(implementation(boxed, 1), 2.25);
+      for (const invalid of [null, undefined, true, "2", 2n, {},
+        { valueOf() { throw new Error("must not invoke user valueOf"); } },
+        new Proxy(new Number(2), {}),
+      ]) {
+        assert.throws(() => implementation(invalid, 1), /must be a binary64 float/);
+      }
     }
     for (const implementation of [
       compiledModule.scaled_buffer_batch,
