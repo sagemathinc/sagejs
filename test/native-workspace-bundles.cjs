@@ -77,6 +77,25 @@ def witness(value: int) -> int:
 `, "workspace.py", { functions: ["witness"] }), /workspace/i);
 });
 
+test("workspace schema names cannot be shadowed by local values", async () => {
+  for (const shadow of ["Scratch = 7", "Scratch, other = (7, 8)"]) {
+    await assert.rejects(() => lowerSource(prefix + `
+@native
+def witness(value: int) -> int:
+    ${shadow}
+    with NativeExactArena(8192, 1048576) as arena:
+        vector = arena.integer_vector(2, 0)
+        scratch = Scratch(vector, vector)
+        return update(scratch, value)
+`, "workspace.py", { functions: ["witness"] }), /workspace.*shadow/i);
+  }
+});
+
+test("workspace helper parameters cannot be selected as a public ABI", async () => {
+  await assert.rejects(() => lowerSource(prefix, "workspace.py", { functions: ["update"] }),
+    /workspace bundle parameters have no public host ABI/);
+});
+
 test("bundle erasure preserves explicit-argument executable IR", async () => {
   const entry = `
 @native
