@@ -22,7 +22,7 @@ const allowed = [
   // This laboratory reuses only the licensed Python benchmark corpus, not
   // the retired compiler/runtime dependency.
   /^bench\/python-compat\/README\.md$/,
-  /^test\/python-performance-classification\.cjs$/,
+  /^test\/python-performance-runner\.cjs$/,
   /^bench\/(?:compare-native-cowasm\.cjs|native_cowasm_workload\.py|JULIA-NATIVE-COMPARISON\.md|NATIVE-COMPILER\.md)$/,
   /^bench\/julia-math-comparison\.jl$/,
   /^(?:HACKING|IMPLEMENTATION|README|TESTING)\.md$/,
