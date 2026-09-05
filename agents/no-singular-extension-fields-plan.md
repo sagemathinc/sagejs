@@ -93,9 +93,21 @@ K = GF(p^d) = GF(p)[a]/(m(a))
 where:
 
 - `p` is prime and supported by Sage.js's exact finite-field implementation;
+- `p` lies in the explicitly qualified common characteristic range of the
+  native and production Wasm polynomial implementations;
 - `d > 1`;
 - `m` is a validated irreducible polynomial of degree `d` over `GF(p)`; and
 - the field has an exact stable construction descriptor.
+
+Phase E0 must record this range as an explicit integer bound before support
+is enabled. FLINT `fq_nmod_mpoly` requires word-sized characteristic; scalar
+field support alone does not establish a polynomial backend's range. Audit
+FLINT limb widths, adapter integer conversions, and Wasm representation
+independently. Test primes near the bound on every target. Larger
+characteristics require a qualified generic exact fallback or an explicit
+capability rejection, never truncation or a platform-dependent interpretation.
+The characteristic bound is distinct from extension degree, field cardinality,
+and msolve's narrower characteristic envelope.
 
 The existing `GF(p)` implementation remains on its current specialized path.
 A user-supplied irreducible modulus and a Sage.js-selected Conway/default
@@ -236,7 +248,16 @@ All extension-domain methods retain the core API's `proof=None` convention.
   transformation provenance or an independent exact derivation.
 - Cache keys include the normalized defining polynomial, coefficient basis,
   mathematical field presentation/embedding, order, backend, resolved proof
-  flag, and resource policy. They exclude a generator's display label.
+  flag, and resource policy. Mathematical cache keys exclude a generator's
+  display label; caches of public parent-bound objects also preserve the
+  requesting parent identity.
+
+Sharing mathematical cache entries across a pure generator renaming is allowed
+only for encoded data with a checked coordinate identification. Reconstruct
+coefficients and polynomials in the requesting parent before returning them.
+Never return another parent's cached polynomial, element, or native handle just
+because its mathematical descriptor matches. Do not infer an embedding between
+distinct defining polynomials from equal cardinality or field degree.
 
 Candidate verification checks both ideal containments, every required S-pair,
 monicity, reducedness, parent identity, and canonical leading ideals. Encoded
@@ -272,7 +293,8 @@ polynomial algorithms. It must provide:
 The interface describes field operations, not private object layouts. Direct
 access to `_nativeContext`, `_modulus`, or a number-field coefficient array is
 restricted to reviewed adapters. A generator's display name is presentation
-metadata: renaming it must not change mathematical identity or a cache key.
+metadata: renaming it must not change the mathematics. Mathematical cache
+identity and public parent identity are separate contracts, as specified above.
 Conversely, two fields of the same cardinality with different defining
 polynomials are not silently conflated.
 
@@ -432,6 +454,9 @@ and any later `origin/main` changes before editing dispatch.
    initial list includes ideal packing/routing, sparse term export,
    zero-dimensional candidate selection, finite point enumeration, and the
    scheme field gate.
+   Record the numerical characteristic bounds for scalar, native multivariate,
+   Wasm multivariate, and optional msolve operations and select the common
+   supported range with boundary tests.
 2. Move legitimate domain routing behind its capability registry without
    changing `QQ` or prime-field behavior.
 3. Implement the exact-field interface, a complete construction descriptor,
@@ -449,7 +474,8 @@ and any later `origin/main` changes before editing dispatch.
    factorization, and zero-dimensional decomposition without pretending every
    exact field already implements factorization.
 8. Add construction-descriptor and cache-key tests for two isomorphic but
-   differently presented fields.
+   differently presented fields, and cache reuse tests after a pure generator
+   renaming that assert the returned result belongs to the requesting parent.
 9. Create independent Sage fixtures for all examples used by Milestones F and
    N, pinned to an exact Sage revision and including reproduction commands.
 10. Record upstream algorithms and any translated code in
@@ -576,6 +602,15 @@ Acceptance:
 7. Preserve non-split residue factors rather than confusing them with
    `GF(p^d)`-rational points.
 8. Add characteristic-`p` Jacobian cases where formal derivatives vanish.
+9. Qualify squarefree decomposition with non-prime coefficients. In
+   `K = GF(p^d)`, taking a polynomial's `p`-th root requires applying inverse
+   Frobenius to its coefficients as well as dividing its exponents by `p`.
+   For `a` in `K`, test `x^p - a = (x - a^(p^(d-1)))^p`, including zero,
+   non-prime coefficients, mixed multiplicities, and repeated root extraction.
+   The squarefree part and radical must use the actual root, not `a` itself.
+10. Preserve proof requirements through univariate factorization calls used by
+    solving and decomposition. Product equality is necessary, but each factor
+    treated as irreducible also needs a justified irreducibility result.
 
 Acceptance:
 
@@ -589,8 +624,13 @@ Acceptance:
 
 ### Phase F3: auxiliary-variable msolve fast-path experiment
 
-This phase may conclude that the encoding should not become a production
-backend.
+This optional investigation follows initial Phase F4 qualification of the
+direct exact implementation. Its phase identifier is retained for references;
+it is not a prerequisite for F4 or Milestone F's merge. Cap the investigation
+at one focused prototype and representative benchmark tranche, with at most
+two working days of effort. Record a deferral if the full-basis contract,
+certification, or performance remains unresolved. Any shipped optimization
+must rerun the affected production qualification checks.
 
 1. Add a private encoder from `GF(p^d)[x]` into
    `GF(p)[a, x]/(m(a))` with canonical coefficient coordinates.
@@ -747,6 +787,14 @@ factorization:
 7. retry within an explicit bound or report a resource limitation without a
    partial factorization.
 
+Prove completeness and irreducibility in addition to exact recomposition.
+Record the hypotheses of the norm-factorization theorem used: squarefree norm
+after shifting, complete exact factorization over `QQ`, and the exact
+correspondence between those factors and the nonconstant gcds recovered over
+`K`. Retain enough evidence to justify each irreducibility claim, or perform an
+independent exact irreducibility check. Returning the original polynomial as
+one factor passes a product check and is not sufficient for this API.
+
 Record the algorithm/paper and any CoCoA, Sage, or other source inspiration in
 the provenance registry. Do not copy an implementation without its file-level
 license and copyright record.
@@ -765,10 +813,17 @@ Acceptance:
 - squarefree, repeated, split, and nonsplit examples agree with Sage;
 - deterministic retry sequences are reproducible and report their seed/shift;
 - returned factors multiply exactly to the input including unit/content;
+- every returned irreducible factor has an exact justification, and repeated
+  multiplicities and completeness are independently checked;
 - zero-dimensional decompositions re-intersect to the original ideal; and
 - no result is mislabeled as a complete algebraic-closure solution set.
 
 ### Phase N4: auxiliary-variable msolve fast-path experiment
+
+Run this optional investigation after initial Phase N5 qualification, with the
+same prototype/benchmark and two-working-day limit as F3. It may finish with a
+documented deferral. A production optimization requires renewed qualification
+of the affected paths; it cannot retroactively inherit N5's earlier receipts.
 
 Encode
 
@@ -924,18 +979,21 @@ E0  exact-field boundary and readiness audit
   -> F0  GF(p^d) multivariate substrate and production-Wasm parity
       -> F1  GF(p^d) exact ideals and Groebner bases
           -> F2  GF(p^d) geometry and zero-dimensional parity
-              -> F3  optional encoded msolve acceleration
-                  -> F4  native plus portable-Wasm finite-field qualification
+              -> F4  native plus portable-Wasm finite-field qualification
+                  -> merge Milestone F
                       -> N1  number-field univariate/multivariate polynomials
                           -> N2  exact ideals and geometry
                               -> N3  factorization and decomposition
-                                  -> N4  optional msolve acceleration
-                                      -> N5  native/Wasm qualification
+                                  -> N5  native/Wasm qualification
+
+After F4: F3 optional finite-extension msolve investigation
+After N5: N4 optional number-field msolve investigation
 ```
 
-F3 and N4 may be omitted from automatic routing if their evidence is weak,
-but each should still conclude with a short audit explaining the result. Do
-not let a fast-path investigation block the exact milestone indefinitely.
+F3 and N4 conclude with either a separately qualified optimization or a short
+deferral audit. Their bounded investigations are required; shipping their
+optimizations is optional. Neither is a dependency of the exact milestone's
+qualification or merge.
 
 Shared public exports, capability registries, package metadata, and CI files
 belong to an integration lane if implementation is parallelized. Field-
@@ -946,6 +1004,10 @@ tests until handoff.
 
 - [ ] `GF(p^d)` multivariate construction, arithmetic, and storage-neutral
       sparse terms work on native, Node-Wasm, and production Chromium.
+- [ ] The common characteristic bound is explicit and tested at its boundary;
+      unsupported inputs never truncate or change interpretation across hosts.
+- [ ] Reused mathematical cache entries reconstruct values in the requesting
+      parent; generator renaming never leaks another parent's objects.
 - [ ] Multivariate polynomial ideals over validated `GF(p^d)` parents work in
       `lex`, `deglex`, and `degrevlex`.
 - [ ] Exact Gröbner certificates and normal forms are field-representation
@@ -957,6 +1019,8 @@ tests until handoff.
 - [ ] Canonical finite-field enumeration returns each of the `q` elements
       exactly once without assuming the defining generator is primitive.
 - [ ] Zero-dimensional radical and primary decomposition exactly recompose.
+- [ ] Squarefree decomposition correctly applies inverse Frobenius to
+      extension coefficients, including derivative-zero polynomials.
 - [ ] Direct exact behavior is identical across native and Wasm targets.
 - [ ] Any msolve fast path is block-order correct, independently verified,
       receipt-bounded, and optional.
@@ -978,6 +1042,8 @@ tests until handoff.
       Hilbert data, and applicable geometry work with `proof=True`.
 - [ ] Univariate factorization over the number field is exact, resource
       bounded, and independently tested.
+- [ ] Factor completeness and irreducibility are justified beyond a product
+      check before zero-dimensional decomposition consumes them.
 - [ ] Zero-dimensional radical and primary decomposition exactly recompose.
 - [ ] `K`-rational solutions are not confused with solutions over an algebraic
       closure or conjugate field presentation.
