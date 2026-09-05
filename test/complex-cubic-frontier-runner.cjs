@@ -342,7 +342,7 @@ test("candidate runtime identity authenticates the requested exact backend", () 
   const forcedGmp = candidateDirectEnvironmentIdentity(root, "gmp");
   const forcedFmpz = candidateDirectEnvironmentIdentity(root, "fmpz");
   assert.equal(automatic.schema,
-    "sagejs.benchmark/complex-cubic-direct-environment-v4");
+    "sagejs.benchmark/complex-cubic-direct-environment-v5");
   assert.deepEqual(automatic.exact_integer_backend, {
     requested: "auto",
     selected: "per-function-qualified-policy",
