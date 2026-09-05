@@ -5,6 +5,7 @@
 
 # The vendored parser corpus includes intentional CR-only and CRLF files.
 upstream-tests/micropython/basics/* -text
+upstream-tests/python-compat/suites/** -text
 
 # Derived review artifacts.  These paths are regenerated from authoritative
 # CPython FFI declarations or repository architecture policy.  GitHub's
