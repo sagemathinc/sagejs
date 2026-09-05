@@ -97,6 +97,31 @@ test("optional floating preparation binds Python sources before importing native
       assert.equal(lazy.status().state, "closed");
       assert.equal(calls.length, 2);
     });
+    await t.test("buffer transfers preserve custom iteration and copyback hooks", async () => {
+      const lazy = make();
+      await lazy.prepare(["sagejs.numerics.statistics"]);
+      const sum = lazy.resolve(logical, "finite_sum");
+      const output = sum.createFloat64Buffer(1);
+      const scratch = sum.createFloat64Buffer(3);
+      const ordinary = sum.createFloat64Buffer([1e16, 1, -1e16]);
+      assert.equal(sum(ordinary, scratch, output, 3n), 0);
+      assert.equal(output[0], 1);
+      const customized = new Float64Array([9, 9, 9]);
+      customized[Symbol.iterator] = function* () { yield 1; yield 2; yield 3; };
+      assert.equal(sum(customized, scratch, output, 3n), 0);
+      assert.equal(output[0], 6);
+      class CustomBuffer extends Float64Array {
+        *[Symbol.iterator]() { yield 2; yield 3; yield 4; }
+      }
+      assert.equal(sum(new CustomBuffer([9, 9, 9]), scratch, output, 3n), 0);
+      assert.equal(output[0], 9);
+      let probes = 0;
+      Object.defineProperty(output, "sizes", { get() { probes++; return undefined; } });
+      assert.equal(sum(ordinary, scratch, output, 3n), 0);
+      assert.equal(output[0], 1);
+      assert.equal(probes, 1, "custom copyback probes must not be optimized away");
+      lazy.close();
+    });
     for (const [name, mutate] of [
       ["source mismatch", (m) => { m.kernels[0].sourceHash = "0".repeat(64); }],
       ["exact domain", (m) => { m.packs[0].domain = "gmp"; }],
