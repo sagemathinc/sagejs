@@ -69,3 +69,6 @@ measures 32-square calls at roughly 1.76 s before and 0.96 s after this one
 change. This is a development observation, not a target pass or a compiled
 backend speedup. It identifies validation overhead that must be addressed
 alongside factorization before promoting a public dense acceleration path.
+The [four-host and browser witnesses](../bench/numerics/performance/results/n3-validation-access-platforms-2026-09-05/README.md)
+pass for this source. They do not qualify public native selection or N3's
+performance exit criteria.
