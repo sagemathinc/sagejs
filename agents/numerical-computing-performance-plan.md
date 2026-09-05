@@ -29,10 +29,20 @@ and complete persistent-host/browser confirmation. The initial 256-event baselin
 is censored, never reported as a per-call median. Benchmark-host disk exhaustion
 is an infrastructure gap, not authorization to delete another lane's work.
 
-Deliver the next shared result-construction/bookkeeping fix as a separate PR,
-then source-transparent reduction/interpolation kernels in N2. Keep each source
-candidate and its measurements distinct; the release owner and frozen product
-release remain untouched. N2–N6 and all acceptance criteria below remain open.
+[Draft PR #140](https://github.com/sagemathinc/sagejs/pull/140) is the separate,
+stacked result-binding fix: identical problem objects no longer need two hashes;
+distinct objects still undergo content checks. Its
+[local evidence and wider baseline](../bench/numerics/performance/results/n1-result-2026-09-05/README.md)
+bind the built candidate `bd26cfefb`, including ordinary-source CPython
+comparisons. The wider run still shows major statistics, dense and FFT gaps.
+An initial coarse statistics diagnostic identifies both input/budget work and
+stable reductions as large costs, so N2 must address the complete checked region,
+not just its last arithmetic expression.
+
+Next: source-transparent reduction/interpolation kernels in N2, alongside the
+remaining N0/N1 qualification. Keep each source candidate and its measurements
+distinct; the release owner and frozen product release remain untouched. N2–N6
+and all acceptance criteria below remain open.
 
 ## Objective and scope
 
