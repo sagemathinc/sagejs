@@ -3050,6 +3050,7 @@ def _cubic_append_reduced_ideal_ellipsoid(
     while (
         coefficient_two <= limit_two
         and proposal_count < proposal_budget
+        and online_relation_status >= 0
         and online_relation_status != 2
         and not (
             streaming_relation_collection
@@ -3139,6 +3140,16 @@ def _cubic_append_reduced_ideal_ellipsoid(
                     online_relation_count,
                     factor_count,
                 )
+                if online_relation_status < 0:
+                    return (
+                        relation_count,
+                        candidate_count,
+                        online_relation_count,
+                        online_relation_status,
+                        coefficient_zero,
+                        coefficient_one,
+                        coefficient_two,
+                    )
                 online_relation_count += 1
     return (
         relation_count,
@@ -6073,6 +6084,355 @@ def _cubic_publish_relation_rows(
     return True
 
 
+def _cubic_collect_adjacent_relation_prefix(
+    workspace: NativeIntegerVector,
+    modular_workspace: UInt64Buffer,
+    adjacent_order: FmpzMatrix,
+    adjacent_embedding_source: FmpzMatrix,
+    adjacent_embedding_reduced: FmpzMatrix,
+    adjacent_embedding_transform: FmpzMatrix,
+    adjacent_transforms: FmpzMatrix,
+    adjacent_ellipsoid_parameters: FmpzMatrix,
+    relation_candidates: FmpzMatrix,
+    relation_elements: FmpzMatrix,
+    hnf_source: FmpzMatrix,
+    hnf_result: FmpzMatrix,
+    online_relation_basis: FmpzMatrix,
+    online_relation_source: FmpzMatrix,
+    online_relation_hnf: FmpzMatrix,
+    relation_support: FmpzMatrix,
+    online_membership_coordinates: FmpzMatrix,
+    output: IntegerBuffer,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    adjacent_real_root: int,
+    adjacent_complex_real_root: int,
+    adjacent_complex_imaginary_root: int,
+    analytic_scale: int,
+    factor_count: uint64,
+    group_count: uint64,
+    relation_effort: uint64,
+    bounded_relation_collection: bool,
+    use_pari_permutation: bool,
+    streaming_relation_collection: bool,
+    online_relation_quotient_enabled: bool,
+    relation_collection_target: uint64,
+    relation_capacity: uint64,
+    relation_count: uint64,
+    online_relation_count: uint64,
+    online_relation_status: int,
+    adjacent_planned_count: uint64,
+    adjacent_enumerated_count: uint64,
+    adjacent_factor_cursor: uint64,
+    adjacent_phase: uint64,
+    adjacent_direction: uint64,
+    ellipsoid_zero: int,
+    ellipsoid_one: int,
+    ellipsoid_two: int,
+    ellipsoid_count: uint64,
+    proposal_budget: uint64,
+) -> tuple[
+    uint64, uint64, int, uint64, uint64, uint64, uint64, uint64, int, int, int, uint64
+]:
+    """Continue the fixed adjacent-ideal traversal without rebuilding its state.
+
+    Phase zero enters the next ideal and prepares it once; phase one resumes
+    its ellipsoid; phase two resumes its four-vector shell. The cursor always
+    denotes the next unexamined proposal, including after rejection or a
+    duplicate. The budget counts proposals, not successful relations, and a
+    zero budget changes nothing. Only the target and budget may change between
+    successful calls. All borrowed field, plan, relation and online-lattice
+    resources must stay resident. Negative online status is fatal, not a
+    recoverable lack of relations. Exhaustion is cursor >= factor_count.
+    """
+    while (
+        adjacent_factor_cursor < factor_count
+        and proposal_budget > 0
+        and online_relation_status >= 0
+        and online_relation_status != 2
+        and not (
+            streaming_relation_collection
+            and _cubic_modular_relation_collection_complete(
+                modular_workspace,
+                relation_count,
+                relation_collection_target,
+                factor_count,
+            )
+        )
+    ):
+        adjacent_factor_index: uint64 = adjacent_factor_cursor
+        if bounded_relation_collection and use_pari_permutation:
+            adjacent_order_position: uint64 = factor_count - adjacent_factor_cursor - 1
+            adjacent_order_value = adjacent_order[adjacent_order_position, 0]
+            if adjacent_order_value < 1 or adjacent_order_value > factor_count:
+                online_relation_status = -1
+                break
+            adjacent_factor_index = checked_uint64(adjacent_order_value - 1)
+        factor_base: uint64 = _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
+        adjacent_pair_code = workspace[factor_base + 9]
+        if adjacent_phase == 0:
+            if bounded_relation_collection and adjacent_pair_code > 0:
+                adjacent_planned_count += 1
+                output[62] = adjacent_factor_index
+                output[63] = 34
+                adjacent_pair_code = _cubic_plan_adjacent_ideal(
+                    workspace,
+                    adjacent_embedding_source,
+                    adjacent_embedding_reduced,
+                    adjacent_embedding_transform,
+                    adjacent_transforms,
+                    adjacent_ellipsoid_parameters,
+                    adjacent_factor_index,
+                    basis_zero_zero,
+                    basis_zero_one,
+                    basis_zero_two,
+                    basis_one_one,
+                    basis_one_two,
+                    basis_two_two,
+                    adjacent_real_root,
+                    adjacent_complex_real_root,
+                    adjacent_complex_imaginary_root,
+                    analytic_scale,
+                    group_count,
+                    relation_effort,
+                    bounded_relation_collection,
+                )
+                if adjacent_pair_code < 1:
+                    if adjacent_pair_code == -2:
+                        output[63] = 36
+                    elif adjacent_pair_code == -3:
+                        output[63] = 38
+                    output[58] = adjacent_ellipsoid_parameters[adjacent_factor_index, 7]
+                    output[59] = adjacent_ellipsoid_parameters[adjacent_factor_index, 8]
+                    output[60] = adjacent_ellipsoid_parameters[adjacent_factor_index, 9]
+                    output[61] = adjacent_ellipsoid_parameters[
+                        adjacent_factor_index, 10
+                    ]
+                    online_relation_status = -1
+                    break
+                workspace[factor_base + 9] = adjacent_pair_code
+            if adjacent_pair_code <= 0:
+                adjacent_factor_cursor += 1
+                continue
+            adjacent_direction = 0
+            ellipsoid_count = 0
+            ellipsoid_zero = -adjacent_ellipsoid_parameters[adjacent_factor_index, 7]
+            ellipsoid_one = -adjacent_ellipsoid_parameters[adjacent_factor_index, 8]
+            ellipsoid_two = -adjacent_ellipsoid_parameters[adjacent_factor_index, 9]
+            adjacent_phase = 2
+            if workspace[factor_base + 8] == 1 or adjacent_pair_code >= 5:
+                adjacent_phase = 1
+
+        adjacent_basis: uint64 = (
+            _POWER_OFFSET + adjacent_factor_index * _CUBIC_MAX_POWERS * 9
+        )
+        adjacent_transform_row: uint64 = 3 * adjacent_factor_index
+        if adjacent_phase == 1:
+            limit_zero = adjacent_ellipsoid_parameters[adjacent_factor_index, 7]
+            limit_one = adjacent_ellipsoid_parameters[adjacent_factor_index, 8]
+            limit_two = adjacent_ellipsoid_parameters[adjacent_factor_index, 9]
+            width_zero = 2 * limit_zero + 1
+            width_one = 2 * limit_one + 1
+            old_proposal_position = (
+                ((ellipsoid_two + limit_two) * width_one + ellipsoid_one + limit_one)
+                * width_zero
+                + ellipsoid_zero
+                + limit_zero
+            )
+            active_relation_target: uint64 = relation_capacity
+            if streaming_relation_collection:
+                active_relation_target = relation_collection_target
+            previous_ellipsoid_count = ellipsoid_count
+            (
+                relation_count,
+                ellipsoid_count,
+                online_relation_count,
+                online_relation_status,
+                ellipsoid_zero,
+                ellipsoid_one,
+                ellipsoid_two,
+            ) = _cubic_append_reduced_ideal_ellipsoid(
+                workspace,
+                modular_workspace,
+                adjacent_basis,
+                adjacent_transforms,
+                adjacent_transform_row,
+                adjacent_ellipsoid_parameters,
+                adjacent_factor_index,
+                relation_candidates,
+                relation_elements,
+                relation_count,
+                relation_capacity,
+                factor_count,
+                group_count,
+                active_relation_target,
+                hnf_source,
+                hnf_result,
+                streaming_relation_collection,
+                online_relation_quotient_enabled,
+                online_relation_basis,
+                online_relation_source,
+                online_relation_hnf,
+                relation_support,
+                online_membership_coordinates,
+                online_relation_count,
+                online_relation_status,
+                ellipsoid_zero,
+                ellipsoid_one,
+                ellipsoid_two,
+                ellipsoid_count,
+                proposal_budget,
+            )
+            adjacent_enumerated_count += ellipsoid_count - previous_ellipsoid_count
+            if online_relation_status < 0 or relation_count > relation_capacity:
+                online_relation_status = -1
+                break
+            new_proposal_position = (
+                ((ellipsoid_two + limit_two) * width_one + ellipsoid_one + limit_one)
+                * width_zero
+                + ellipsoid_zero
+                + limit_zero
+            )
+            used_proposals = new_proposal_position - old_proposal_position
+            if used_proposals < 0 or used_proposals > proposal_budget:
+                online_relation_status = -1
+                break
+            proposal_budget -= checked_uint64(used_proposals)
+            ellipsoid_exhausted = ellipsoid_two > limit_two
+            # Match the one-shot exhaustive route's count check at completion,
+            # never at a temporary proposal-budget pause.
+            if (
+                not streaming_relation_collection
+                and (ellipsoid_exhausted or online_relation_status == 2)
+                and ellipsoid_count
+                != adjacent_ellipsoid_parameters[adjacent_factor_index, 10]
+            ):
+                online_relation_status = -1
+                break
+            if ellipsoid_exhausted:
+                adjacent_phase = 2
+                if workspace[factor_base + 8] == 1:
+                    adjacent_phase = 0
+                    adjacent_factor_cursor += 1
+            continue
+
+        if adjacent_phase != 2 or adjacent_direction >= 4:
+            online_relation_status = -1
+            break
+        admission_pair = adjacent_pair_code - 1
+        if adjacent_pair_code >= 5:
+            admission_pair = adjacent_pair_code - 5
+        if admission_pair < 0 or admission_pair > 2:
+            online_relation_status = -1
+            break
+        adjacent_first = 0
+        adjacent_second = 1
+        if admission_pair == 1:
+            adjacent_second = 2
+        elif admission_pair == 2:
+            adjacent_first = 1
+            adjacent_second = 2
+        adjacent_left = 1
+        adjacent_right = 0
+        if adjacent_direction == 1:
+            adjacent_left = 0
+            adjacent_right = 1
+        elif adjacent_direction == 2:
+            adjacent_right = 1
+        elif adjacent_direction == 3:
+            adjacent_left = -1
+            adjacent_right = 1
+        adjacent_zero = 0
+        adjacent_one = 0
+        adjacent_two = 0
+        if adjacent_first == 0:
+            adjacent_zero = adjacent_left
+        elif adjacent_first == 1:
+            adjacent_one = adjacent_left
+        else:
+            adjacent_two = adjacent_left
+        if adjacent_second == 0:
+            adjacent_zero = adjacent_right
+        elif adjacent_second == 1:
+            adjacent_one = adjacent_right
+        else:
+            adjacent_two = adjacent_right
+        coordinate_zero, coordinate_one, coordinate_two = (
+            _cubic_transformed_ideal_coordinates(
+                workspace,
+                adjacent_basis,
+                adjacent_transforms,
+                adjacent_transform_row,
+                adjacent_zero,
+                adjacent_one,
+                adjacent_two,
+            )
+        )
+        adjacent_direction += 1
+        adjacent_enumerated_count += 1
+        proposal_budget -= 1
+        relation_count = _cubic_append_smooth_principal_relation(
+            workspace,
+            modular_workspace,
+            relation_candidates,
+            relation_elements,
+            relation_count,
+            relation_capacity,
+            factor_count,
+            group_count,
+            coordinate_zero,
+            coordinate_one,
+            coordinate_two,
+            hnf_source,
+            hnf_result,
+            streaming_relation_collection,
+            relation_collection_target,
+        )
+        if relation_count > relation_capacity:
+            online_relation_status = -1
+            break
+        while (
+            online_relation_quotient_enabled
+            and online_relation_count < relation_count
+            and online_relation_status != 2
+        ):
+            online_relation_status = _cubic_online_relation_lattice_update(
+                online_relation_basis,
+                online_relation_source,
+                online_relation_hnf,
+                relation_support,
+                online_membership_coordinates,
+                relation_candidates,
+                online_relation_count,
+                factor_count,
+            )
+            if online_relation_status < 0:
+                break
+            online_relation_count += 1
+        if adjacent_direction == 4:
+            adjacent_phase = 0
+            adjacent_factor_cursor += 1
+
+    return (
+        relation_count,
+        online_relation_count,
+        online_relation_status,
+        adjacent_planned_count,
+        adjacent_enumerated_count,
+        adjacent_factor_cursor,
+        adjacent_phase,
+        adjacent_direction,
+        ellipsoid_zero,
+        ellipsoid_one,
+        ellipsoid_two,
+        ellipsoid_count,
+    )
+
+
 def _cubic_prepare_proof_relation_support(
     relation_matrix: FmpzMatrix,
     relation_hnf: FmpzMatrix,
@@ -7850,243 +8210,94 @@ def certified_complex_cubic_class_group_v1(
             coordinate_zero += 1
 
         adjacent_factor_cursor = 0
-        while (
-            adjacent_factor_cursor < factor_count and not relation_collection_complete
-        ):
-            adjacent_factor_index = adjacent_factor_cursor
-            if bounded_relation_collection and use_pari_permutation:
-                adjacent_order_position = factor_count - adjacent_factor_cursor - 1
-                adjacent_order_value = adjacent_order[adjacent_order_position, 0]
-                if adjacent_order_value < 1 or adjacent_order_value > factor_count:
-                    return False
-                adjacent_factor_index = checked_uint64(adjacent_order_value - 1)
-            factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
-            adjacent_pair_code = workspace[factor_base + 9]
-            if bounded_relation_collection and adjacent_pair_code > 0:
-                adjacent_planned_count += 1
-                output[62] = adjacent_factor_index
-                output[63] = 34
-                adjacent_pair_code = _cubic_plan_adjacent_ideal(
-                    workspace,
-                    adjacent_embedding_source,
-                    adjacent_embedding_reduced,
-                    adjacent_embedding_transform,
-                    adjacent_transforms,
-                    adjacent_ellipsoid_parameters,
-                    adjacent_factor_index,
-                    basis_zero_zero,
-                    basis_zero_one,
-                    basis_zero_two,
-                    basis_one_one,
-                    basis_one_two,
-                    basis_two_two,
-                    adjacent_real_root,
-                    adjacent_complex_real_root,
-                    adjacent_complex_imaginary_root,
-                    analytic_scale,
-                    group_count,
-                    relation_effort,
-                    bounded_relation_collection,
-                )
-                if adjacent_pair_code < 1:
-                    if adjacent_pair_code == -2:
-                        output[63] = 36
-                    elif adjacent_pair_code == -3:
-                        output[63] = 38
-                    output[58] = adjacent_ellipsoid_parameters[adjacent_factor_index, 7]
-                    output[59] = adjacent_ellipsoid_parameters[adjacent_factor_index, 8]
-                    output[60] = adjacent_ellipsoid_parameters[adjacent_factor_index, 9]
-                    output[61] = adjacent_ellipsoid_parameters[
-                        adjacent_factor_index, 10
-                    ]
-                    return False
-                workspace[factor_base + 9] = adjacent_pair_code
-            if adjacent_pair_code > 0:
-                power_base = (
-                    _POWER_OFFSET + adjacent_factor_index * _CUBIC_MAX_POWERS * 9
-                )
-                adjacent_basis = power_base
-                adjacent_transform_row = 3 * adjacent_factor_index
-                if workspace[factor_base + 8] == 1 or adjacent_pair_code >= 5:
-                    active_relation_target: uint64 = relation_capacity
-                    if streaming_relation_collection:
-                        active_relation_target = relation_collection_target
-                    initial_ellipsoid_count: uint64 = 0
-                    # Preparation bounds each coordinate by 64: (2 * 64 + 1)^3.
-                    complete_ellipsoid_budget: uint64 = 2146689
-                    (
-                        next_relation_count,
-                        admitted_ellipsoid_count,
-                        online_relation_count,
-                        online_relation_status,
-                        next_ellipsoid_zero,
-                        next_ellipsoid_one,
-                        next_ellipsoid_two,
-                    ) = _cubic_append_reduced_ideal_ellipsoid(
-                        workspace,
-                        modular_workspace,
-                        adjacent_basis,
-                        adjacent_transforms,
-                        adjacent_transform_row,
-                        adjacent_ellipsoid_parameters,
-                        adjacent_factor_index,
-                        relation_candidates,
-                        relation_elements,
-                        relation_count,
-                        relation_capacity,
-                        factor_count,
-                        group_count,
-                        active_relation_target,
-                        hnf_source,
-                        hnf_result,
-                        streaming_relation_collection,
-                        online_relation_quotient_enabled,
-                        online_relation_basis,
-                        online_relation_source,
-                        online_relation_hnf,
-                        relation_support,
-                        online_membership_coordinates,
-                        online_relation_count,
-                        online_relation_status,
-                        -adjacent_ellipsoid_parameters[adjacent_factor_index, 7],
-                        -adjacent_ellipsoid_parameters[adjacent_factor_index, 8],
-                        -adjacent_ellipsoid_parameters[adjacent_factor_index, 9],
-                        initial_ellipsoid_count,
-                        complete_ellipsoid_budget,
-                    )
-                    if (
-                        online_relation_status < 0
-                        or next_relation_count > relation_capacity
-                        or (
-                            not streaming_relation_collection
-                            and admitted_ellipsoid_count
-                            != adjacent_ellipsoid_parameters[adjacent_factor_index, 10]
-                        )
-                    ):
-                        return False
-                    relation_count = next_relation_count
-                    adjacent_enumerated_count += admitted_ellipsoid_count
-                    trivial_relation_prefix = (
-                        online_relation_quotient_enabled and online_relation_status == 2
-                    )
-                    relation_collection_complete = trivial_relation_prefix or (
-                        streaming_relation_collection
-                        and _cubic_modular_relation_collection_complete(
-                            modular_workspace,
-                            relation_count,
-                            relation_collection_target,
-                            factor_count,
-                        )
-                    )
-                if workspace[factor_base + 8] == 0:
-                    admission_pair = adjacent_pair_code - 1
-                    if adjacent_pair_code >= 5:
-                        admission_pair = adjacent_pair_code - 5
-                    if admission_pair < 0 or admission_pair > 2:
-                        return False
-                    adjacent_first = 0
-                    adjacent_second = 1
-                    if admission_pair == 1:
-                        adjacent_second = 2
-                    elif admission_pair == 2:
-                        adjacent_first = 1
-                        adjacent_second = 2
-                    adjacent_direction: uint64 = 0
-                    while adjacent_direction < 4 and not relation_collection_complete:
-                        adjacent_enumerated_count += 1
-                        adjacent_left = 1
-                        adjacent_right = 0
-                        if adjacent_direction == 1:
-                            adjacent_left = 0
-                            adjacent_right = 1
-                        elif adjacent_direction == 2:
-                            adjacent_right = 1
-                        elif adjacent_direction == 3:
-                            adjacent_left = -1
-                            adjacent_right = 1
-                        adjacent_zero = 0
-                        adjacent_one = 0
-                        adjacent_two = 0
-                        if adjacent_first == 0:
-                            adjacent_zero = adjacent_left
-                        elif adjacent_first == 1:
-                            adjacent_one = adjacent_left
-                        else:
-                            adjacent_two = adjacent_left
-                        if adjacent_second == 0:
-                            adjacent_zero = adjacent_right
-                        elif adjacent_second == 1:
-                            adjacent_one = adjacent_right
-                        else:
-                            adjacent_two = adjacent_right
-                        (
-                            coordinate_zero,
-                            coordinate_one,
-                            coordinate_two,
-                        ) = _cubic_transformed_ideal_coordinates(
-                            workspace,
-                            adjacent_basis,
-                            adjacent_transforms,
-                            adjacent_transform_row,
-                            adjacent_zero,
-                            adjacent_one,
-                            adjacent_two,
-                        )
-                        next_relation_count = _cubic_append_smooth_principal_relation(
-                            workspace,
-                            modular_workspace,
-                            relation_candidates,
-                            relation_elements,
-                            relation_count,
-                            relation_capacity,
-                            factor_count,
-                            group_count,
-                            coordinate_zero,
-                            coordinate_one,
-                            coordinate_two,
-                            hnf_source,
-                            hnf_result,
-                            streaming_relation_collection,
-                            relation_collection_target,
-                        )
-                        if next_relation_count > relation_capacity:
-                            return False
-                        relation_count = next_relation_count
-                        while (
-                            online_relation_quotient_enabled
-                            and online_relation_count < relation_count
-                            and online_relation_status != 2
-                        ):
-                            online_relation_status = (
-                                _cubic_online_relation_lattice_update(
-                                    online_relation_basis,
-                                    online_relation_source,
-                                    online_relation_hnf,
-                                    relation_support,
-                                    online_membership_coordinates,
-                                    relation_candidates,
-                                    online_relation_count,
-                                    factor_count,
-                                )
-                            )
-                            if online_relation_status < 0:
-                                return False
-                            online_relation_count += 1
-                        trivial_relation_prefix = (
-                            online_relation_quotient_enabled
-                            and online_relation_status == 2
-                        )
-                        relation_collection_complete = trivial_relation_prefix or (
-                            streaming_relation_collection
-                            and _cubic_modular_relation_collection_complete(
-                                modular_workspace,
-                                relation_count,
-                                relation_collection_target,
-                                factor_count,
-                            )
-                        )
-                        adjacent_direction += 1
-            adjacent_factor_cursor += 1
+        adjacent_phase: uint64 = 0
+        adjacent_direction: uint64 = 0
+        ellipsoid_zero: int = 0
+        ellipsoid_one: int = 0
+        ellipsoid_two: int = 0
+        ellipsoid_count: uint64 = 0
+        # At most (2 * 64 + 1)^3 ellipsoid proposals and four shell vectors
+        # per ideal. The retained cursor also supports smaller budgets.
+        adjacent_proposal_budget: uint64 = 2146693 * factor_count
+        (
+            relation_count,
+            online_relation_count,
+            online_relation_status,
+            adjacent_planned_count,
+            adjacent_enumerated_count,
+            adjacent_factor_cursor,
+            adjacent_phase,
+            adjacent_direction,
+            ellipsoid_zero,
+            ellipsoid_one,
+            ellipsoid_two,
+            ellipsoid_count,
+        ) = _cubic_collect_adjacent_relation_prefix(
+            workspace,
+            modular_workspace,
+            adjacent_order,
+            adjacent_embedding_source,
+            adjacent_embedding_reduced,
+            adjacent_embedding_transform,
+            adjacent_transforms,
+            adjacent_ellipsoid_parameters,
+            relation_candidates,
+            relation_elements,
+            hnf_source,
+            hnf_result,
+            online_relation_basis,
+            online_relation_source,
+            online_relation_hnf,
+            relation_support,
+            online_membership_coordinates,
+            output,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            adjacent_real_root,
+            adjacent_complex_real_root,
+            adjacent_complex_imaginary_root,
+            analytic_scale,
+            factor_count,
+            group_count,
+            relation_effort,
+            bounded_relation_collection,
+            use_pari_permutation,
+            streaming_relation_collection,
+            online_relation_quotient_enabled,
+            relation_collection_target,
+            relation_capacity,
+            relation_count,
+            online_relation_count,
+            online_relation_status,
+            adjacent_planned_count,
+            adjacent_enumerated_count,
+            adjacent_factor_cursor,
+            adjacent_phase,
+            adjacent_direction,
+            ellipsoid_zero,
+            ellipsoid_one,
+            ellipsoid_two,
+            ellipsoid_count,
+            adjacent_proposal_budget,
+        )
+        if online_relation_status < 0 or relation_count > relation_capacity:
+            return False
+        trivial_relation_prefix = (
+            online_relation_quotient_enabled and online_relation_status == 2
+        )
+        relation_collection_complete = trivial_relation_prefix or (
+            streaming_relation_collection
+            and _cubic_modular_relation_collection_complete(
+                modular_workspace,
+                relation_count,
+                relation_collection_target,
+                factor_count,
+            )
+        )
 
         # The bounded PARI-shaped stages use adjacent ideals but no compound
         # products.  Only a later exact-status-authorized effort reaches this

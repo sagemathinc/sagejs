@@ -7,10 +7,11 @@
   "status": "active",
   "owner": "user",
   "objective": "Certify bounded complex-cubic relation prefixes and resume only on explicit mathematical insufficiency within the same resident native computation",
-  "base_commit": "a3a898b7186fcb3cae7aba59530140d4f416f308",
+  "base_commit": "5eff8b3d27b85d41b96a15b6f995a671f6780489",
   "claims": [
     "src/lib/sagejs/number_fields/cubic_class_number_native.py",
     "test/number-field-cubic-staged-certification.cjs",
+    "test/number-field-cubic-adjacent-cursor.cjs",
     "test/number-field-cubic-fmpz-closure.cjs",
     "test/fixtures/cubic-staged-certification.py",
     "test/fixtures/cubic-reconstructed-regulator-guard.py",
@@ -44,40 +45,41 @@
   ],
   "runs": [
     {
-      "command": "pnpm test:baselib:strict",
+      "command": "node --test test/number-field-cubic-adjacent-cursor.cjs test/number-field-cubic-resumable-ellipsoid.cjs test/number-field-cubic-staged-certification.cjs test/number-field-cubic-reconstructed-regulator-guard.cjs",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 40.864,
-      "started_at": "2026-09-05T05:18:30.306Z",
-      "commit": "25e6b2e1b22eba4f904274461f5e9361c3789556",
-      "workspace_fingerprint": "ce57657183d84444fa63cdff44fac8e86708ac82064b846ba2148a8736626fb9",
+      "seconds": 7.707,
+      "started_at": "2026-09-05T06:16:27.384Z",
+      "commit": "855c8cd991240e974a0bb25133e5d54a70320c62",
+      "workspace_fingerprint": "196c74e0f6c724f252ffcb4dbd7699e74df2fdba861cc741bd2cd77f35a69761",
       "platform": "linux-x64"
     },
     {
-      "command": "node --test test/number-field-cubic-staged-certification.cjs test/number-field-cubic-reconstructed-regulator-guard.cjs",
+      "command": "pnpm test:baselib:strict",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 7.461,
-      "started_at": "2026-09-05T05:23:31.680Z",
-      "commit": "25e6b2e1b22eba4f904274461f5e9361c3789556",
-      "workspace_fingerprint": "ce57657183d84444fa63cdff44fac8e86708ac82064b846ba2148a8736626fb9",
+      "seconds": 39.483,
+      "started_at": "2026-09-05T06:16:35.713Z",
+      "commit": "855c8cd991240e974a0bb25133e5d54a70320c62",
+      "workspace_fingerprint": "196c74e0f6c724f252ffcb4dbd7699e74df2fdba861cc741bd2cd77f35a69761",
       "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Pre-registered twenty benchmark-unseen mathematical neighbors of the provisional slow C3/index-three target. Isolated exact proof support from online discovery, separated raw/compact relation count and cheap/proof unit state, and deferred factor publication until index-one acceptance. The full source-matched build and ten cubic regressions pass; same-body dynamic/GMP/fmpz support schedules and generated-core sanitizer/exhaustion tests pass. Independent normalized-AST review found no algebraic change beyond the intended state separation and publication ordering.",
+    "summary": "Pre-registered twenty benchmark-unseen C3/index-three neighbors. Separated proof state from retained discovery; added complete resumable outer ideal/ellipsoid/shell cursor and terminal online-failure propagation. Current source passes a fresh 39-family IR39 production build, ten cubic ledger/receipt/replay regressions, eight cursor/support/publication tests (including actual compiled cursor and exact support sanitizer witnesses), and strict247. Independent review found no valid-state one-shot proposal or root live-output regression. Production still makes one complete collector call; the full staged proof driver remains pending.",
     "risks": [
-      "The full resumable outer cursor, callable proof suffix and staged retry schedule are not yet implemented; no new PARI performance claim is made.",
-      "The support witness's 200576-byte fmpz and 217632-byte GMP checkpoint peaks do not bound the complete repeated certification suffix.",
-      "Architecture inventories pass until the expected stale optimizer manifest; the mathematical source change needs an integration-owned artifact refresh before promotion.",
-      "Full native and cross-platform qualification remain pending; the prerequisite baseline has a separately reproduced rational cache-pressure budget failure.",
-      "The neighboring cohort is conditional on the pending frozen frontier retaining the provisional target; no new-cohort execution has occurred."
+      "The complete reusable proof suffix, explicit mathematical insufficiency statuses and attempt/resume schedule are not implemented; no new PARI speed claim.",
+      "The measured support-only checkpoint envelope is not a bound for complete repeated certification. Public wrapper retry must not count as one resident attempt.",
+      "Architecture currently stops at the source family's measured 422246 bytes exceeding the reviewed420000 allowance. Integration-owned bounded allowance update and optimizer provenance refresh remain pending.",
+      "Full current-source native/platform qualification remains pending; prerequisite baseline separately reproduces rational cache-pressure and synthetic portable discriminant-ratio gate failures.",
+      "The twenty neighbors are conditional on retaining the provisional target after frozen timings; none has executed. The opt baseline remains f7f00552."
     ],
     "next_steps": [
-      "Retain the outer ideal/shell cursor and give the remaining exact proof suffix bounded reusable scratch with explicit fatal versus recoverable exits.",
-      "Implement the in-call attempt/resume schedule and qualify complete memory bounds without increasing the existing checkpoint limit.",
-      "Finish retained opt measurements, freeze the staged candidate, then execute the registered neighbors and recheck the thousand-field frontier.",
-      "Refresh optimizer evidence and run current-source native/platform gates before promoting the eventual measured result."
+      "Use two thin root allocation paths with shared borrowed proof helpers: fixed bounded scratch for staged execution, existing lazy exact-sized allocations for other regimes.",
+      "Split ambiguous recovery statuses; implement at most two same-state attempts (n+6 then n+22) with rigorous fatal/recoverable distinctions and no repeated proof when no rows were added.",
+      "Qualify complete scratch at <=3MiB with one core invocation, zero retry shift/exhaustion/upstream allocation; integrate generic prefix-Arb binding.",
+      "Finish opt baseline; freeze and time the staged candidate and registered neighbors, then recheck the thousand-field frontier.",
+      "Complete integration-owned source-size/provenance and current-source platform gates before promotion."
     ]
   }
 }
