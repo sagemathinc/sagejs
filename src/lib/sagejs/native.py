@@ -226,8 +226,38 @@ class NativeIntegerVector:
     def __getitem__(self, index: int) -> int:
         return self._require_open()[self._position(index)]
 
-    def __setitem__(self, index: int, value: int) -> None:
+    def __setitem__(self, index: int | slice, value: int | tuple[int, ...]) -> None:
+        if isinstance(index, slice):
+            if index.step not in (None, 1):
+                raise ValueError("NativeIntegerVector slices require unit stride")
+            if index.start is None or index.stop is None:
+                raise ValueError("NativeIntegerVector slices require explicit bounds")
+            if not isinstance(value, tuple):
+                raise TypeError("NativeIntegerVector slice values must be a tuple")
+            self.__setslice__(index.start, index.stop, value)
+            return
+        if isinstance(value, tuple):
+            raise TypeError("NativeIntegerVector scalar value must be an integer")
         self._replace(self._position(index), value)
+
+    def __setslice__(self, start: int, stop: int, values: tuple[int, ...]) -> None:
+        """Replace a fixed contiguous range without resizing the vector.
+
+        Bounds and values are validated before stores. Allocation exhaustion
+        during a store has the same partial-write semantics as scalar stores.
+        """
+        current = self._require_open()
+        if not isinstance(start, int) or not isinstance(stop, int):
+            raise TypeError("NativeIntegerVector slice bounds must be integers")
+        if start < 0 or stop < start or stop > len(current):
+            raise IndexError("NativeIntegerVector slice out of range")
+        if not isinstance(values, tuple):
+            raise TypeError("NativeIntegerVector slice values must be a tuple")
+        if stop - start != len(values):
+            raise ValueError("NativeIntegerVector slice cannot resize storage")
+        exact_values = tuple(int(value) for value in values)
+        for offset, value in enumerate(exact_values):
+            self._replace(start + offset, value)
 
     def _reserve_addmul(self, index: int, left: int, right: int) -> None:
         values = self._require_open()
@@ -1158,6 +1188,52 @@ class RationalBuffer:
         return self.numerators[index], self.denominators[index]
 
 
+class NativeWorkspace:
+    """Immutable bindings to existing live exact workspaces.
+
+    Declare owner fields as annotations in a subclass and supply them
+    positionally. Native compilation erases the bundle into borrowed helper
+    parameters: construction does not allocate or copy resident storage.
+    Bundles cannot escape native code or extend an owner's lexical lifetime.
+    The fallback retains the same owners and checks liveness on field access.
+    """
+
+    def __init__(self, *owners: Any) -> None:
+        fields = getattr(type(self), "__annotations__", {})
+        if len(fields) != len(owners):
+            raise TypeError("workspace requires all positional fields")
+        members = {}
+        for (name, annotation), owner in zip(fields.items(), owners, strict=True):
+            expected = (
+                annotation if isinstance(annotation, str) else annotation.__name__
+            )
+            if type(owner).__name__ != expected:
+                raise TypeError(f"workspace field {name} requires {expected}")
+            self._check_owner(owner)
+            members[name] = owner
+        object.__setattr__(self, "_workspace_members", members)
+
+    @staticmethod
+    def _check_owner(owner: Any) -> None:
+        if isinstance(owner, NativeIntegerVector):
+            owner._require_open()
+        elif callable(getattr(owner, "_ffi_borrow", None)):
+            owner._ffi_borrow()
+        else:
+            raise TypeError("workspace member must be a live exact owner")
+
+    def __getattr__(self, name: str) -> Any:
+        members = self._workspace_members
+        if name not in members:
+            raise AttributeError(name)
+        owner = members[name]
+        self._check_owner(owner)
+        return owner
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        raise AttributeError("workspace fields are immutable bindings")
+
+
 class NativeRecord:
     """A fixed-schema value record shared by fallback and native kernels.
 
@@ -1625,6 +1701,7 @@ __all__ = [
     "NativeIntegerMatrix",
     "NativeIntegerVector",
     "NativeRecord",
+    "NativeWorkspace",
     "NativeRecordVector",
     "PrimeFieldMatrix",
     "PrimeFieldModulus",

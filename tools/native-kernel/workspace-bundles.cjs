@@ -1,0 +1,177 @@
+"use strict";
+
+// Workspace bundles are lexical aliases, not another resident representation.
+// Flatten their parameters/projections before ordinary typed lowering, leaving
+// each original owner's type and lifetime checks in force. Construction emits
+// a validation-only AST node so even an unused bundle must borrow live owners.
+const kind = node => node?.constructor?.name;
+const list = value => Array.from(value || []);
+const name = node => node?.name ?? node?.value;
+const isBundleClass = node => kind(node) === "AST_Class" &&
+  list(node.bases).length === 1 && name(node.bases[0]) === "NativeWorkspace";
+const fail = (file, message) => { throw Error(`native workspace: ${file}: ${message}`); };
+const requireThat = (condition, file, message) => { if (!condition) fail(file, message); };
+const clone = (node, changes) => Object.assign(Object.create(Object.getPrototypeOf(node)), node, changes);
+
+function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
+  const schemas = new Map();
+  for (const node of topLevel.filter(isBundleClass)) {
+    const fields = [];
+    requireThat(list(node.decorators).length === 0, filename, "workspace classes cannot have decorators");
+    for (const statement of list(node.body)) {
+      const field = statement.body;
+      if (kind(field) === "AST_String") continue;
+      requireThat(kind(field) === "AST_AnnotatedAssignment" &&
+        kind(field.target) === "AST_SymbolRef" && field.value == null,
+      filename, "workspace classes contain only required annotated fields");
+      const type = name(field.annotation);
+      requireThat(!name(field.target).startsWith("_"), filename,
+        "workspace field names cannot start with underscore");
+      requireThat(type === "NativeIntegerVector" ||
+        (resources.has(type) && resources.get(type).ownership !== "borrowed"),
+      filename, `unsupported workspace field ${name(node.name)}.${name(field.target)}: ${type}`);
+      requireThat(!fields.some(item => item.name === name(field.target)), filename, "duplicate workspace field");
+      fields.push({ name: name(field.target), type, annotation: field.annotation });
+    }
+    requireThat(fields.length > 0, filename, "workspace must have fields");
+    const schemaName = name(node.name);
+    requireThat(!schemas.has(schemaName), filename, "duplicate workspace schema");
+    schemas.set(schemaName, { name: schemaName, fields });
+  }
+  const functions = topLevel.filter(node => kind(node) === "AST_Function");
+  const contracts = new Map(functions.map(fn => [name(fn.name), list(fn.argnames).map(arg =>
+    ({ arg, schema: schemas.get(name(arg.annotation)) }))]));
+  const symbol = (text, source) => new compiler.AST_SymbolRef({ name: text, start: source.start, end: source.end });
+  const semanticKeys = ["expression", "property", "property2", "left", "right", "value",
+    "condition", "target", "assignment", "car", "cdr", "args", "elements"];
+
+  function lower(fn) {
+    if (schemas.size === 0) return { fn, metadata: [] };
+    const environment = new Map();
+    const usedNames = new Set();
+    const metadata = [];
+    const params = [];
+    // Generated flattened names must not capture a user local or parameter.
+    const visitNames = node => {
+      if (!node || typeof node !== "object") return;
+      if (typeof node.name === "string") requireThat(!node.name.startsWith("sagejs_workspace_"),
+        filename, "sagejs_workspace_ is reserved for flattened workspace bindings");
+      for (const [key, value] of Object.entries(node)) {
+        if (!["start", "end", "scope", "parent_scope", "thedef"].includes(key) && value && typeof value === "object") {
+          if (Array.isArray(value)) value.forEach(visitNames);
+          else if (kind(value)?.startsWith("AST_")) visitNames(value);
+        }
+      }
+    };
+    visitNames(fn);
+    for (const { arg, schema } of contracts.get(name(fn.name))) {
+      if (!schema) { params.push(arg); continue; }
+      requireThat(arg.default_value == null, filename, "workspace parameters cannot have defaults");
+      const members = schema.fields.map(field => {
+        const memberName = `sagejs_workspace_${arg.name}__${field.name}`;
+        params.push(clone(arg, { name: memberName, annotation: field.annotation }));
+        return symbol(memberName, arg);
+      });
+      environment.set(arg.name, { schema, members });
+      usedNames.add(arg.name);
+      metadata.push({ kind: "parameter", name: arg.name, schema: schema.name,
+        members: schema.fields.map((field, i) => ({ name: field.name, type: field.type, binding: members[i].name })) });
+    }
+    requireThat(!schemas.has(name(fn.return_annotation)), filename, "workspace bundles cannot escape through returns");
+
+    function expression(node, env) {
+      if (!node || typeof node !== "object") return node;
+      if (Array.isArray(node)) return node.map(item => expression(item, env));
+      if (kind(node) === "AST_Dot" && env.has(name(node.expression))) {
+        const entry = env.get(name(node.expression));
+        const index = entry.schema.fields.findIndex(field => field.name === node.property);
+        requireThat(index >= 0, filename, `unknown workspace field ${node.property}`);
+        return clone(entry.members[index], { start: node.start, end: node.end });
+      }
+      if (kind(node) === "AST_SymbolRef" && (env.has(node.name) || usedNames.has(node.name))) {
+        fail(filename, `workspace ${node.name} cannot escape or be used outside its lexical binding`);
+      }
+      if (["AST_Call", "AST_New"].includes(kind(node))) {
+        requireThat(!schemas.has(name(node.expression)), filename, "workspace construction requires a local binding");
+        const contract = contracts.get(name(node.expression));
+        if (contract?.some(param => param.schema)) {
+          requireThat(list(node.args).length === contract.length && list(node.kwargs).length === 0,
+            filename, "workspace calls require all positional arguments");
+          const args = [];
+          contract.forEach((param, index) => {
+            if (!param.schema) { args.push(expression(node.args[index], env)); return; }
+            const value = env.get(name(node.args[index]));
+            requireThat(kind(node.args[index]) === "AST_SymbolRef" && value?.schema === param.schema,
+              filename, "workspace call requires a live bundle of the declared schema");
+            args.push(...value.members.map(member => clone(member, {})));
+          });
+          return clone(node, { args });
+        }
+      }
+      const changes = {};
+      for (const key of semanticKeys) if (node[key] && typeof node[key] === "object") {
+        changes[key] = expression(node[key], env);
+      }
+      return Object.keys(changes).length ? clone(node, changes) : node;
+    }
+
+    function statements(nodes, env) {
+      return list(nodes).map(statement => {
+        const assignment = statement.body;
+        const target = kind(assignment) === "AST_Assign" ? assignment.left : assignment?.target;
+        const rhs = kind(assignment) === "AST_Assign" ? assignment.right : assignment?.value;
+        if (kind(statement) === "AST_SimpleStatement" &&
+            ["AST_Call", "AST_New"].includes(kind(rhs)) && schemas.has(name(rhs.expression))) {
+          const schema = schemas.get(name(rhs.expression));
+          requireThat(kind(target) === "AST_SymbolRef" && !usedNames.has(target.name),
+            filename, "workspace binding must be a new immutable local");
+          requireThat(list(rhs.args).length === schema.fields.length && list(rhs.kwargs).length === 0,
+            filename, "workspace construction requires all positional fields");
+          const members = list(rhs.args).map(arg => expression(arg, env));
+          requireThat(members.every(member => kind(member) === "AST_SymbolRef"),
+            filename, "workspace members must be existing borrowed owners");
+          usedNames.add(target.name);
+          env.set(target.name, { schema, members });
+          metadata.push({ kind: "binding", name: target.name, schema: schema.name,
+            members: schema.fields.map((field, i) => ({ name: field.name, type: field.type, binding: members[i].name })) });
+          return { constructor: { name: "AST_WorkspaceBind" }, start: statement.start, end: statement.end,
+            members: members.map((member, i) => ({ expression: member, type: schema.fields[i].type })) };
+        }
+        if (kind(target) === "AST_Dot" && env.has(name(target.expression))) {
+          fail(filename, "workspace fields are immutable bindings");
+        }
+        if (kind(target) === "AST_SymbolRef" && usedNames.has(target.name)) {
+          fail(filename, "workspace binding cannot be reassigned");
+        }
+        if (kind(target) === "AST_SymbolRef" && [...env.values()].some(entry =>
+          entry.members.some(member => member.name === target.name))) {
+          fail(filename, "workspace owner binding cannot be reassigned while borrowed");
+        }
+        if (["AST_With", "AST_If", "AST_While", "AST_ForIn", "AST_For"].includes(kind(statement))) {
+          const changes = {};
+          for (const key of ["condition", "expression", "object", "init", "step"]) {
+            if (statement[key]) changes[key] = expression(statement[key], env);
+          }
+          for (const key of ["body", "alternative"]) if (statement[key]) {
+            const block = statement[key];
+            changes[key] = Array.isArray(block) ? statements(block, new Map(env)) :
+              kind(block) === "AST_BlockStatement" ? clone(block, { body: statements(block.body, new Map(env)) }) :
+              statements([block], new Map(env))[0];
+          }
+          return clone(statement, changes);
+        }
+        if (kind(statement) === "AST_BlockStatement") return clone(statement, { body: statements(statement.body, new Map(env)) });
+        // Expressions in simple statements/returns use `body`/`value`; keep
+        // syntax nodes outside this supported numerical subset for lowering
+        // to reject, rather than guessing how a bundle could escape through it.
+        if (kind(statement) === "AST_SimpleStatement") return clone(statement, { body: expression(statement.body, env) });
+        return expression(statement, env);
+      });
+    }
+    const body = statements(fn.body, environment);
+    return { fn: clone(fn, { argnames: params, body }), metadata };
+  }
+  return { schemas, lower, contracts };
+}
+
+module.exports = { isBundleClass, prepareWorkspaceBundles };

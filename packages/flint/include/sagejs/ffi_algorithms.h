@@ -1719,6 +1719,47 @@ static inline int sagejs_flint_integer_log_sqrt_balls_resource(
     return success;
 }
 
+/* The same Arb batch on a logical prefix of caller-owned resident roots.
+ * Check the complete active input before constructing borrowed windows or
+ * mutating output. Inactive input need not be valid, and inactive output is
+ * untouched. Windows never transfer ownership or escape this call.
+ */
+static inline int sagejs_flint_integer_log_sqrt_balls_prefix_resource(
+    sagejs_fmpz_matrix_t output,
+    const sagejs_fmpz_matrix_t source,
+    uint64_t count_requested,
+    uint64_t precision)
+{
+    fmpz_mat_t output_window, source_window;
+    slong count;
+    int success;
+    if (output == source ||
+        fmpz_mat_ncols(source->value) != 1 ||
+        fmpz_mat_ncols(output->value) != 1 ||
+        count_requested == 0 || count_requested > UINT64_C(1000000) ||
+        count_requested > (uint64_t) (WORD_MAX / 4) ||
+        count_requested > (uint64_t) fmpz_mat_nrows(source->value) ||
+        4 * count_requested > (uint64_t) fmpz_mat_nrows(output->value) ||
+        precision < 16 || precision > UINT64_C(4096) ||
+        precision > (uint64_t) (WORD_MAX - 32))
+        return 0;
+    count = (slong) count_requested;
+    for (slong index = 0; index < count; index++)
+    {
+        const fmpz *value = fmpz_mat_entry(source->value, index, 0);
+        if (fmpz_sgn(value) <= 0 || !fmpz_abs_fits_ui(value))
+            return 0;
+    }
+    fmpz_mat_window_init(output_window, output->value, 0, 0, 4 * count, 1);
+    fmpz_mat_window_init(source_window, source->value, 0, 0, count, 1);
+    success = sagejs_flint_integer_log_sqrt_balls_packed(
+        output_window, source_window, precision);
+    fmpz_mat_window_clear(source_window);
+    fmpz_mat_window_clear(output_window);
+    sagejs_fmpz_matrix_recompute_allocated_bytes(output);
+    return success;
+}
+
 /* Batch rigorous log(numerator / denominator) endpoint construction through
  * Arb.  Native exact programs retain the positive rational inputs and the
  * returned dyadic mantissas in arena-owned fmpz matrices; no Arb value or

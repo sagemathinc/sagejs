@@ -116,7 +116,7 @@ test("the complete cubic closure is one direct fmpz program", {
     callees.map((callee) => [caller, callee])
   );
 
-  assert.equal(ir.version, 38);
+  assert.equal(ir.version, 39);
   assert.equal(functions.size, 84);
   assert.equal(edges.length, 195);
   assert.equal(
