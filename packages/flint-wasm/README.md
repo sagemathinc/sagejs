@@ -49,8 +49,13 @@ deterministically, and supplies a tracing-GC finalizer fallback. Browser
 `dumps` and `loads` use the same data-only SagePack codec as Node, so a dense
 integer matrix roundtrip bulk-exports and reconstructs one resource instead of
 materializing scalar entries. Higher-weight and Dirichlet-character Manin
-presentations still require host-neutral core extraction from the Node
-adapter.
+presentations have exact portable implementations, and Gamma1(7) modular-form
+descent is covered by the public browser corpus. Character **Hecke matrices**
+are not yet supported in Wasm: for example, Gamma1(13) cuspidal/newform
+computations report an explicit capability error and require native Sage.js.
+The optional bulk/selected-row Hecke paths do not provide an independent
+browser fallback. Adding that backend is follow-up work, not a claimed
+browser feature of this integration.
 
 Dense matrices over `GF(2)` use a separate generated M4RI WebAssembly module.
 M4RI-to-M4RI operations stay entirely inside that module: the host sees only
