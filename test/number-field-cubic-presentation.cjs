@@ -121,15 +121,19 @@ root = next(node for node in module.body if isinstance(node, ast.FunctionDef)
 arena = next(node for node in root.body if isinstance(node, ast.With))
 statements = [ast.unparse(node) for node in arena.body]
 prepare_at = next(i for i, text in enumerate(statements)
-                  if "= _cubic_prepare_full_relation_presentation(" in text)
+                  if isinstance(arena.body[i], ast.Assign)
+                  and "= _cubic_prepare_full_relation_presentation(" in text)
 smith_at = next(i for i, text in enumerate(statements)
                 if text.startswith("relation_smith = arena.foreign_resource("))
 finish_at = next(i for i, text in enumerate(statements)
-                 if "= _cubic_finish_full_relation_presentation(" in text)
+                 if isinstance(arena.body[i], ast.Assign)
+                 and "= _cubic_finish_full_relation_presentation(" in text)
 assert prepare_at < smith_at < finish_at
 assert statements[prepare_at + 1] == "if presentation_status != 1:\n    return False"
 assert statements[finish_at + 1] == "if presentation_status != 1:\n    return False"
-assert "relation_count, factor_count" in statements[smith_at]
+assert "presentation_storage_rows, factor_count" in statements[smith_at]
+assert any(text == "presentation_storage_rows: uint64 = relation_count"
+           for text in statements[:prepare_at])
 assert "modular_workspace[_CUBIC_MODULAR_RANK_OFFSET] == factor_count" in statements[prepare_at - 1]
 assert "online_relation_status == 2" in statements[prepare_at - 1]
 print("actual CPython helpers, contradiction guards, and lazy Smith allocation pass")

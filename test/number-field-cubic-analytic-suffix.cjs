@@ -60,18 +60,15 @@ test("analytic extraction remains one direct source-transparent fmpz closure", {
     resolveNativeImport: createNativeImportResolver({root, lowerSource, initialSourcePath: sourcePath}),
   });
   for (const fn of ir.functions) assert.equal(fn.analysis.backend.kind, "fmpz", fn.name);
-  // Current compiler exports scalar dependencies even without decorators.
-  // Integration owns the dependency-only export-policy correction (23 -> 21).
-  assert.equal(ir.functions.filter(fn => fn.hostCallable !== false).length, 23);
+  assert.equal(ir.functions.filter(fn => fn.hostCallable !== false).length, 21);
   const generated = generateHostCore(ir);
   for (const name of helperNames) {
     const fn = ir.functions.find(fn => fn.name === name);
     assert.ok(fn, name);
     assert.equal(fn.analysis.liveExactWorkspace?.scopes.length || 0, 0, name);
     assert.equal(fn.lexicallyNative, false, name);
-    assert.equal(fn.hostCallable, name === "_cubic_classify_analytic_index", name);
-    if (name !== "_cubic_classify_analytic_index")
-      assert.doesNotMatch(generated.header, new RegExp(`\\bsagejs_kernel_${name}\\(`));
+    assert.equal(fn.hostCallable, false, name);
+    assert.doesNotMatch(generated.header, new RegExp(`\\bsagejs_kernel_${name}\\(`));
     assert.match(generated.source, new RegExp(`\\bfmpz_native_${name}\\(`));
   }
 });

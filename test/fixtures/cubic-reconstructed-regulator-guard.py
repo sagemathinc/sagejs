@@ -38,25 +38,36 @@ def extract_suffix(path):
     ]
     assert len(starts) == 1, "the reconstruction suffix must be unique"
     suffix = arena.body[starts[0] :]
-    materialize = next(
+    helper_names = {
+        "_cubic_materialize_dependency_unit",
+        "_cubic_analytic_index_bounds",
+        "_cubic_classify_analytic_index",
+        "_cubic_saturate_analytic_unit",
+        "_cubic_publish_analytic_relation_presentation",
+    }
+    helpers = [
         node
         for node in tree.body
-        if isinstance(node, ast.FunctionDef)
-        and node.name == "_cubic_materialize_dependency_unit"
-    )
-    materialize.decorator_list = []
-    materialize.returns = None
-    for argument in materialize.args.args:
-        argument.annotation = None
+        if isinstance(node, ast.FunctionDef) and node.name in helper_names
+    ]
+    assert len(helpers) == len(helper_names)
+    for helper in helpers:
+        helper.decorator_list = []
+        helper.returns = None
+        for argument in helper.args.args:
+            argument.annotation = None
     assert isinstance(suffix[-1], ast.Return)
-    assert isinstance(suffix[-1].value, ast.Constant)
-    assert suffix[-1].value.value is True
+    assert isinstance(suffix[-1].value, ast.Call)
+    assert suffix[-1].value.func.id == "_cubic_publish_analytic_relation_presentation"
     names = sorted(
         {
             node.id
-            for statement in [*suffix, *materialize.body]
+            for statement in [
+                *suffix,
+                *(statement for helper in helpers for statement in helper.body),
+            ]
             for node in ast.walk(statement)
-            if isinstance(node, ast.Name) and node.id != materialize.name
+            if isinstance(node, ast.Name) and node.id not in helper_names
         }
     )
     function = ast.FunctionDef(
@@ -75,7 +86,7 @@ def extract_suffix(path):
     exec(
         compile(
             ast.fix_missing_locations(
-                ast.Module(body=[materialize, function], type_ignores=[])
+                ast.Module(body=[*helpers, function], type_ignores=[])
             ),
             str(path),
             "exec",

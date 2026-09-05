@@ -1,8 +1,24 @@
 # Resident staged closure for complex cubic relations
 
-Status: resident support scratch and complete adjacent-ideal cursor implemented;
-complete staged certification is not yet implemented or timed.
+Status (2026-09-05): the bounded two-attempt native driver is implemented.
+The final 39-family production rebuild and 18 focused public/closure/scheduler
+tests pass, including authenticated receipts, independent exact replay and
+large-regulator witnesses. Source-compression timing and allocation comparisons
+pass; full cross-platform release qualification and the campaign's frozen
+out-of-sample/PARI comparison remain pending. No new PARI win is claimed here.
 Inspected foundation: `2edc78a9f0537a759ca7bc387d081c91239c77e0`.
+
+Diagnostic follow-up (2026-09-05): a source-matched generated fmpz core
+(`d8dfbd3c7ea8d964482aed9b61851246ba59223b1beed3ac040ce0b2859d55de`)
+was instrumented only to count calls to the bounded proof helper. The first
+200 already-exposed survey records with class number greater than one and
+absolute discriminant below $10^6$ produced 199 accepted class numbers agreeing
+with the frozen corpus and one decline. Nineteen called the proof helper twice;
+eighteen of those accepted, including $x^3-32x-92$ (class number 3) and
+$x^3+30x-48$ (class number 5). The same diagnostic scan passed ASan/UBSan.
+The decline was $x^3-x^2-60x+209$ (expected class number 4), at phase 43.
+This diagnostic is not a timing result, authenticated receipt, invariant check,
+or independent replay, and it did not execute any registered unseen neighbor.
 
 ## Implemented prerequisites
 
@@ -106,6 +122,68 @@ the plan is rebuilt rather than reusing stale indices. This qualifies prefix
 semantics, not the full attempt schedule or its no-retry memory bound.
 
 ## Measured motivation
+
+### Implemented two-attempt route
+
+Effort five now starts at $n+6$ admitted rows for $1\leq n\leq11$, without a
+retained cheap unit and with the online presentation enabled. After exact raw
+HNF/Smith computation, a trivial quotient keeps its early return. Otherwise the
+root allocates the complete bounded proof scratch once and calls
+`_cubic_try_bounded_exact_closure`. That helper reuses the same compact,
+dependency, materialization and analytic helpers as the lazy one-shot route.
+It contains no resource construction and resets candidate unit/regulator state
+on each call. Only its explicit zero (valid but insufficient evidence) permits
+the root to raise the target to $n+22$ and resume its retained collector cursor.
+A negative/unknown status, failed arithmetic or publication never resumes.
+No newly admitted rows means no repeated proof. The second attempt recomputes
+the full Smith quotient because admission reuses the invariant scratch slots.
+
+The current closure has 101 functions and 240 direct edges, all qualified for
+fmpz. There are 21 intentional host entries: the previous accidental scalar
+export for the undecorated rank-multiplication helper is now private, as is the
+new analytic classifier. A borrowed matrix alias is qualified only when its
+recorded owner is a same-typed borrowed parameter; it adds no owner or cleanup.
+
+Initial direct compiled executions return $3,5,2,1$ respectively for
+$x^3-x^2-11x-63$, $x^3+9x-55$, $x^3-x^2+3x-4$ and $x^3-x-1$.
+The target publishes a 14-row proof at the first stage. These are functional
+checks, not authenticated public-runtime replay or controlled performance
+measurements; a successful host wrapper does not prove the absence of retries.
+Twenty adversarial executions of the actual root scheduler with explicit
+arithmetic doubles check first/second success, insufficiency, invalid statuses,
+no progress, contradictory rank, capacity/count failure and a newly trivial
+quotient. Those doubles make no mathematical claims.
+
+A standalone ASan/UBSan executable, calling the generated public core once per
+case (not the retrying host adapter), now passes twice on the target, both
+original examples, and $x^3-x^2+x-22$ with class number eight. Their checkpoint
+high-water marks are respectively 248,160, 253,008, 218,032 and 256,128 bytes.
+Every call reports capacity 3,145,728, retry shift zero, zero soft-limit
+exhaustions and zero upstream allocations. This qualifies these executions,
+not a worst-case two-attempt bound or the unseen neighboring regime.
+
+### Why continuation preserves the argument
+
+Every accepted principal row and its exact element remain in their original
+resident owners. The proof suffix writes only its separate matrices, analytic
+vector and ephemeral MAP/ROW workspace slots; it does not mutate the factor
+base, multiplication/norm table, ideal powers, online HNF/support, modular
+admission state or proposal cursor. Thus resumption needs no reconstruction of
+the number field or discovery state. The final proof still establishes both
+positive integral indices are one under the documented GRH assumptions; the
+number or timing of earlier failed attempts is not a proof premise.
+
+With maximum target $T=n+22$, each admission at or above $T$ increases retained
+modular rank. There are at most $n$ such increases over the entire invocation,
+so the raw count is at most $T+n=2n+22\leq44$. All transforms receive their
+logical dimensions; unused capacity never contributes artificial relations.
+This is a row-capacity argument, not a bound on allocated GMP limbs or scratch.
+
+Staging need not reproduce the one-shot $n+22$ ledger: if modular rank is still
+deficient at the first target, dependent proposals can be discarded while
+chasing missing rank. They are not revisited. This can affect success rate or
+speed, but cannot validate a wrong answer because exact certification remains
+mandatory. Do not claim universal one-shot transcript equivalence.
 
 The campaign's supplied forensic measurements for LMFDB `3.1.12716.2`,
 $x^3-x^2-11x-63$, report an effort-3 proof with 14 rows at approximately
@@ -308,7 +386,7 @@ attempts, checkpoint capacity exactly 3 MiB, `retry_shift=0`, zero soft-limit
 exhaustions and upstream allocations, and high-water no larger than capacity.
 A successful public call alone does not establish any of these properties.
 
-The first driver will replace only the existing bounded effort-five route
+The implemented driver replaces only the existing bounded effort-five route
 when $1\leq n\leq11$, no cheap unit is retained, and the online presentation is
 current. Other efforts retain the shared-helper one-shot route. Discovery uses
 the same effort-five ideal plan but starts with the smaller $n+6$ row target;
@@ -318,12 +396,13 @@ Preserve the trivial-quotient allocation shortcut even in this bounded route:
 allocate the reusable raw presentation owners first, establish full rank and
 compute its Smith quotient, and return immediately if it is trivial. Only a
 nontrivial quotient allocates compact, dependency, recovery and analytic
-scratch. A first rank-deficient prefix may request the second collection
-before those expensive owners exist. Once allocated, they stay outside the
+scratch. A first rank-deficient prefix declines: the initial collection has
+already exhausted the fixed traversal when it cannot reach full rank. Raising
+the row target alone cannot supply new proposals. Once allocated, owners stay outside the
 proof/retry loop. The repeated nontrivial attempt calls the same mathematical
 helpers as the one-shot route; only allocation and scheduling are duplicated.
 
-This is a proposed driver contract, not an enabled route. Its final first-pass
+This route is implemented but not yet performance-qualified. Its final first-pass
 target, eligibility and total-cost effect must be frozen before executing the
 registered neighbors. The completed pre-staging `f7f00552` timing evidence
 retains the registered target but still shows a substantial PARI gap; staging
@@ -364,14 +443,39 @@ rank or index changes, and publication failures fatal. In particular,
 insufficient support or compact rank **after full raw rank was established**
 is an internal inconsistency, not permission to collect more relations.
 
-`_cubic_relation_prefix_has_archimedean_unit` currently collapses genuine
-absence of a candidate, reconstruction failures and bad regulator intervals
-into its zero result. That ambiguous result must remain fatal in the first
-extraction unless its reasons are separated. Do not infer recoverability from
-phase 43 alone: that phase also covers some resource limits.
+The extracted recovery helper separates absence of a unit from reconstruction,
+regulator and malformed-state failures. The bounded closure helper returns
+`1` for acceptance, `0` for classified mathematical insufficiency, and `-1`
+for fatal failure. Unknown statuses also fail closed. Do not infer
+recoverability from phase 43 alone: that phase also covers some resource limits.
+
+The outer host effort schedule is a separate boundary. Bounded unit-product
+diagnostics 437/438 may authorize a **fresh closed invocation** at an existing
+alternate effort after the failed invocation has unwound. This never resumes
+its scratch or raises its limits. Other phase-44 failures remain terminal.
+The large-regulator survey regression exercises this distinction without
+weakening its exact-unit and conditional-proof checks.
 
 Proof attempts must not overwrite the collector's raw count, online support
 bits or cheap-unit state. Use separate scratch for compaction, dependency and
 analytic state, and defer factor/row publication until acceptance. These are
-the remaining extraction obligations, not properties established by the
-smaller prerequisite witnesses.
+implemented driver obligations. The adversarial scheduler tests exercise them
+with arithmetic doubles; those tests do not substitute for exact arithmetic
+replay or a complete repeated-attempt checkpoint witness.
+
+## Source-level workspace grouping
+
+`CubicProofWorkspace` groups the 38 caller-owned matrix/vector arguments of
+`_cubic_try_bounded_exact_closure`; its signature now has 36 parameters instead
+of 73. The bundle is constructed before the attempt loop. Its bindings are
+immutable, while the existing scratch matrices remain writable. This adds no
+owner, child arena or native aggregate: the compiler flattens projections back
+to the original borrows, preserving aliases and lexical lifetime checks.
+
+The before/after 101-function executable IR was compared after normalizing
+only flattened parameter order/names and source provenance. It agrees,
+including with the independent slice-initialization migration applied to both
+sides. The scheduler witness checks identical bundle and owner identities
+across attempts. This is a representation/engineering change, not a new
+mathematical certification rule or evidence that the campaign's remaining
+out-of-sample performance obligations are complete.

@@ -333,11 +333,20 @@ gate = next(
     node.test
     for node in ast.walk(runtime)
     if isinstance(node, ast.If)
-    and isinstance(node.test, ast.Compare)
     and any(
         isinstance(item, ast.Name) and item.id == "failed_values"
         for item in ast.walk(node.test)
     )
+)
+retry_helper = next(
+    node
+    for node in runtime.body
+    if isinstance(node, ast.FunctionDef) and node.name == "_retryable_native_decline"
+)
+gate_namespace = {"Any": object, "_CUBIC_OUTPUT_LENGTH": 64}
+exec(
+    compile(ast.Module(body=[retry_helper], type_ignores=[]), "<retry-helper>", "exec"),
+    gate_namespace,
 )
 for phase, must_break in ((8, False), (44, True)):
     values = [0] * 64
@@ -345,7 +354,7 @@ for phase, must_break in ((8, False), (44, True)):
     assert (
         eval(
             compile(ast.Expression(gate), "<actual-host-gate>", "eval"),
-            {"failed_values": values},
+            {**gate_namespace, "failed_values": values},
         )
         == must_break
     )

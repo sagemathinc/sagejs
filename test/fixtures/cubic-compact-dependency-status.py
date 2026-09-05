@@ -380,17 +380,23 @@ assert no_candidate["output"][59] == 434  # Existing optional recovery must foll
 # Inspect the actual host gate rather than copying its allowed phases.
 runtime = ast.parse(Path(sys.argv[3]).read_text())
 gate = next(
-    node
+    node.test
     for node in ast.walk(runtime)
-    if isinstance(node, ast.Compare)
-    and isinstance(node.ops[0], ast.NotIn)
-    and isinstance(node.comparators[0], ast.Tuple)
-    and [
-        item.value
-        for item in node.comparators[0].elts
-        if isinstance(item, ast.Constant)
-    ]
-    == [41, 42, 43, 8]
+    if isinstance(node, ast.If)
+    and any(
+        isinstance(item, ast.Name) and item.id == "failed_values"
+        for item in ast.walk(node.test)
+    )
+)
+retry_helper = next(
+    node
+    for node in runtime.body
+    if isinstance(node, ast.FunctionDef) and node.name == "_retryable_native_decline"
+)
+gate_namespace = {"Any": object, "_CUBIC_OUTPUT_LENGTH": 64}
+exec(
+    compile(ast.Module(body=[retry_helper], type_ignores=[]), "<retry-helper>", "exec"),
+    gate_namespace,
 )
 for phase, expected in ((43, False), (44, True)):
     failed_values = [0] * 64
@@ -398,7 +404,7 @@ for phase, expected in ((43, False), (44, True)):
     assert (
         eval(
             compile(ast.Expression(gate), "<actual-host-gate>", "eval"),
-            {"failed_values": failed_values},
+            {**gate_namespace, "failed_values": failed_values},
         )
         == expected
     )
