@@ -147,9 +147,9 @@ function disabledNativePublicCenter() {
       encoding: "utf8",
       env: { ...process.env, SAGEJS_NATIVE_DISABLE: "1" },
       input: [
-        "G=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])",
+        "G=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,8)(2,7)(3,6)(4,5)'])",
         "expected=G._portable_center().gens()",
-        "H=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])",
+        "H=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,8)(2,7)(3,6)(4,5)'])",
         "actual=H.center().gens()",
         "r=H._last_center_acceleration",
         "print([H.order(),repr(actual)==repr(expected),r.route,r.reason,r.boundaryCrossings,r.work])",
@@ -319,8 +319,8 @@ print("cpython-bounds-ok")
 test("disabled native execution agrees with the independent public fallback", () => {
   assert.equal(
     disabledNativePublicCenter(),
-    "[40320, True, 'portable-computation', " +
-      "'compiled-source-unavailable', 0, 1034577]",
+    "[16, True, 'portable-computation', " +
+      "'compiled-source-unavailable', 0, 558]",
   );
 });
 
