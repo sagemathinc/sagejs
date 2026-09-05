@@ -18,6 +18,7 @@ _eta_products_module_cache = runtime.undefined
 _half_integral_module_cache = runtime.undefined
 _supersingular_module_cache = runtime.undefined
 _brandt_module_cache = runtime.undefined
+_modular_abelian_variety_module_cache = runtime.undefined
 
 
 def _qexp_module() -> Any:
@@ -95,6 +96,39 @@ def _brandt_module() -> Any:
             fromlist=["BrandtModule"],
         )
     return _brandt_module_cache
+
+
+def _modular_abelian_variety_module() -> Any:
+    """Load the weight-two modular-abelian-variety implementation lazily."""
+    global _modular_abelian_variety_module_cache
+    if _modular_abelian_variety_module_cache is runtime.undefined:
+        _modular_abelian_variety_module_cache = __import__(
+            "sagejs.modular_abelian_varieties",
+            fromlist=["AbelianVariety", "J0"],
+        )
+    return _modular_abelian_variety_module_cache
+
+
+def J0(N: Any) -> Any:
+    r"""Return the modular Jacobian $J_0(N)$ over $\mathbf Q$.
+
+    ```sage
+    sage: J = J0(37)
+    sage: (J.dimension(), J.integral_homology().rank())
+    (2, 4)
+    ```
+    """
+    return _modular_abelian_variety_module().J0(N)
+
+
+def AbelianVariety(X: Any) -> Any:
+    r"""Construct a weight-$2$ $\Gamma_0(N)$ modular abelian variety.
+
+    A level or `Gamma0` group constructs $J_0(N)`. A sign-zero cuspidal
+    modular-symbol subspace constructs its saturated embedded subvariety, and
+    a normalized newform constructs the connected quotient $A_f$.
+    """
+    return _modular_abelian_variety_module().AbelianVariety(X)
 
 
 def BrandtModule(
@@ -311,6 +345,15 @@ class CongruenceSubgroup:
 
     def dimension_modular_forms(self, weight: Any = 2) -> int:
         return dimension_modular_forms(self, weight)
+
+    def jacobian(self) -> Any:
+        r"""Return the modular Jacobian attached to this group.
+
+        The initial modular-abelian-variety slice supports only `Gamma0`.
+        """
+        return AbelianVariety(self)
+
+    abelian_variety = jacobian
 
     def __eq__(self, other: object) -> bool:
         return (
@@ -4057,6 +4100,10 @@ class ModularSymbolsSpace(sage.Parent):
     def base_ring(self) -> Any:
         return self._base
 
+    def abelian_variety(self) -> Any:
+        r"""Return the modular abelian variety defined by this symbol space."""
+        return AbelianVariety(self)
+
     def sturm_bound(self) -> int:
         r"""Return the Sturm bound for the associated cusp forms.
 
@@ -6962,6 +7009,92 @@ runtime.register_doc(
                 "Full-Jacobian component groups are implemented; newform-quotient "
                 "groups await audited integral modular-degree maps."
             ),
+        ],
+    },
+)
+
+runtime.register_doc(
+    "J0",
+    J0,
+    {
+        "kind": "function",
+        "module": "sage.modular.abvar.constructor",
+        "tags": [
+            "modular abelian varieties",
+            "modular symbols",
+            "integral homology",
+            "Hecke operators",
+        ],
+        "backends": [
+            "Sage.js exact modular symbols",
+            "FLINT integer kernels and normal forms",
+        ],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "The weight-two Gamma0/Q object and integral-homology core "
+                "are implemented; general groups and arithmetic invariants "
+                "remain future slices."
+            ),
+        },
+        "provenance": [
+            {
+                "kind": "sage-derived",
+                "source": "SageMath modular abelian variety object model",
+                "url": ("https://doc.sagemath.org/html/en/reference/modabvar/"),
+                "license": "GPL-2.0-or-later",
+            },
+            {
+                "kind": "sagejs-original",
+                "source": (
+                    "Connected quotient lattice and construction-authenticated "
+                    "SagePack representation"
+                ),
+            },
+        ],
+        "limitations": [
+            "Only weight two, Gamma0, trivial character, and base field QQ are supported.",
+            "Period lattices, polarizations, modular degrees, and component groups are deferred.",
+        ],
+    },
+)
+
+runtime.register_doc(
+    "AbelianVariety",
+    AbelianVariety,
+    {
+        "kind": "function",
+        "module": "sage.modular.abvar.constructor",
+        "tags": [
+            "modular abelian varieties",
+            "newforms",
+            "quotients",
+            "integral homology",
+        ],
+        "backends": [
+            "Sage.js exact modular symbols",
+            "FLINT integer kernels, Hermite forms, and Smith forms",
+        ],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "Accepts Gamma0 levels/groups, sign-zero cuspidal modular "
+                "symbols, and weight-two normalized newforms. Newforms "
+                "construct connected quotients and also expose the embedded "
+                "isogenous subvariety."
+            ),
+        },
+        "provenance": [
+            {
+                "kind": "sage-derived",
+                "source": "SageMath modular abelian variety constructors",
+                "url": ("https://doc.sagemath.org/html/en/reference/modabvar/"),
+                "license": "GPL-2.0-or-later",
+            }
+        ],
+        "limitations": [
+            "Products and arbitrary Hecke-ideal quotients are not implemented.",
+            "Only weight-two Gamma0 spaces over QQ are accepted.",
         ],
     },
 )

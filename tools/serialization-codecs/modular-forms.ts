@@ -119,6 +119,26 @@ function encodeParent(value: unknown, context: EncodeContext): WireValue {
         kind: "OldModularFormsSubspace",
         cuspSpace: Reflect.get(Object(value), "_cusp_space"),
       });
+    case "ModularAbelianVariety": {
+      const construction = String(callMethod(value, "construction"));
+      const newform = Reflect.get(Object(value), "_newform");
+      return context.encode({
+        kind: "ModularAbelianVariety",
+        construction,
+        level: callMethod(value, "level"),
+        modularSymbols: construction === "modular-symbol subvariety" &&
+            (newform === null || newform === undefined)
+          ? callMethod(value, "modular_symbols", [])
+          : null,
+        newform: newform ?? null,
+      });
+    }
+    case "AbelianVarietyHomology":
+      return context.encode({
+        kind: "AbelianVarietyHomology",
+        variety: callMethod(value, "abelian_variety"),
+        base: callMethod(value, "base_ring"),
+      });
     default:
       throw new SageSerializationError("unsupported modular-forms parent");
   }
@@ -176,6 +196,23 @@ function decodeParent(payload: WireValue, context: DecodeContext): unknown {
       ]);
     case "OldModularFormsSubspace":
       return callMethod(data.cuspSpace, "old_subspace", []);
+    case "ModularAbelianVariety":
+      if (data.construction === "J0") {
+        return callGlobal("J0", [data.level]);
+      }
+      if (data.construction === "newform quotient") {
+        return callGlobal("AbelianVariety", [data.newform]);
+      }
+      if (data.newform !== null && data.newform !== undefined) {
+        return callMethod(
+          callGlobal("AbelianVariety", [data.newform]),
+          "embedded_subvariety",
+          [],
+        );
+      }
+      return callGlobal("AbelianVariety", [data.modularSymbols]);
+    case "AbelianVarietyHomology":
+      return callMethod(data.variety, "homology", [data.base]);
     default:
       throw new SageSerializationError(
         `unsupported modular-forms parent ${String(data.kind)}`,
@@ -206,6 +243,27 @@ function encodeOperator(value: unknown, context: EncodeContext): WireValue {
         space: Reflect.get(Object(value), "_space"),
         index: Reflect.get(Object(value), "_index"),
       });
+    case "AbelianVarietyHeckeOperator":
+      return context.encode({
+        kind: "AbelianVarietyHeckeOperator",
+        parent: callMethod(value, "parent"),
+        index: callMethod(value, "index"),
+      });
+    case "ModularAbelianVarietyMap": {
+      const domain = callMethod(value, "domain");
+      const codomain = callMethod(value, "codomain");
+      return context.encode({
+        kind: "ModularAbelianVarietyMap",
+        domain,
+        codomain,
+        quotient: Boolean(callMethod(codomain, "is_quotient")),
+      });
+    }
+    case "AbelianVarietySerializationCertificate":
+      return context.encode({
+        kind: "AbelianVarietySerializationCertificate",
+        variety: callMethod(value, "variety"),
+      });
     default:
       throw new SageSerializationError("unsupported modular-symbol operator");
   }
@@ -227,6 +285,14 @@ function decodeOperator(payload: WireValue, context: DecodeContext): unknown {
       ]);
     case "ClassicalModularFormsHeckeOperator":
       return callMethod(data.space, "T", [data.index]);
+    case "AbelianVarietyHeckeOperator":
+      return callMethod(data.parent, "T", [data.index]);
+    case "ModularAbelianVarietyMap":
+      return data.quotient
+        ? callMethod(data.codomain, "quotient_map", [])
+        : callMethod(data.domain, "inclusion_map", []);
+    case "AbelianVarietySerializationCertificate":
+      return callMethod(data.variety, "serialization_certificate", []);
     default:
       throw new SageSerializationError(
         `unsupported modular-symbol operator ${String(data.kind)}`,
@@ -338,6 +404,8 @@ const parentCodec: SageCodec = {
     "ModularFormsSubspace",
     "EisensteinSubspace",
     "OldModularFormsSubspace",
+    "ModularAbelianVariety",
+    "AbelianVarietyHomology",
   ].includes(
     kind(value) ?? "",
   ),
@@ -369,6 +437,9 @@ const operatorCodec: SageCodec = {
     "HeckeOperator",
     "ModularSymbolsLinearOperator",
     "ClassicalModularFormsHeckeOperator",
+    "AbelianVarietyHeckeOperator",
+    "ModularAbelianVarietyMap",
+    "AbelianVarietySerializationCertificate",
   ].includes(
     kind(value) ?? "",
   ),

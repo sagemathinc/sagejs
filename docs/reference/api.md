@@ -9,6 +9,31 @@ generated: true
 This file is generated from the runtime DocSpec registry. Edit the
 adjacent public docstring and registration metadata, then regenerate it.
 
+## `AbelianVariety`
+
+```sage
+AbelianVariety(X: Any) -> Any
+```
+
+Construct a weight-$2$ $\Gamma_0(N)$ modular abelian variety.
+
+A level or `Gamma0` group constructs $J_0(N)`. A sign-zero cuspidal
+modular-symbol subspace constructs its saturated embedded subvariety, and
+a normalized newform constructs the connected quotient $A_f$.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.abvar.constructor`
+- Tags: modular abelian varieties, newforms, quotients, integral homology
+- Backends: Sage.js exact modular symbols, FLINT integer kernels, Hermite forms, and Smith forms
+- Sage compatibility: partial — Accepts Gamma0 levels/groups, sign-zero cuspidal modular symbols, and weight-two normalized newforms. Newforms construct connected quotients and also expose the embedded isogenous subvariety.
+- Limitations: Products and arbitrary Hecke-ideal quotients are not implemented. Only weight-two Gamma0 spaces over QQ are accepted.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular abelian variety constructors](https://doc.sagemath.org/html/en/reference/modabvar/); license GPL-2.0-or-later
+
 ## `AffineSpace`
 
 ```sage
@@ -5389,6 +5414,34 @@ Return whether `value` is prime, using FLINT's primality test.
 ### References
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `J0`
+
+```sage
+J0(N: Any) -> Any
+```
+
+Return the modular Jacobian $J_0(N)$ over $\mathbf Q$.
+
+```sage
+sage: J = J0(37)
+sage: (J.dimension(), J.integral_homology().rank())
+(2, 4)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.abvar.constructor`
+- Tags: modular abelian varieties, modular symbols, integral homology, Hecke operators
+- Backends: Sage.js exact modular symbols, FLINT integer kernels and normal forms
+- Sage compatibility: partial — The weight-two Gamma0/Q object and integral-homology core are implemented; general groups and arithmetic invariants remain future slices.
+- Limitations: Only weight two, Gamma0, trivial character, and base field QQ are supported. Period lattices, polarizations, modular degrees, and component groups are deferred.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular abelian variety object model](https://doc.sagemath.org/html/en/reference/modabvar/); license GPL-2.0-or-later
+- `sagejs-original` — Connected quotient lattice and construction-authenticated SagePack representation
 
 ## `Jacobian`
 

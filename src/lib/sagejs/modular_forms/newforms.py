@@ -254,6 +254,10 @@ class NormalizedNewform(sage.Element):
     def hecke_constituent(self) -> Any:
         return self._constituent
 
+    def abelian_variety(self) -> Any:
+        r"""Return the connected quotient $A_f$ attached to this newform."""
+        return _global("AbelianVariety")(self)
+
     def _coordinates_for_operator(self, operator: Any) -> Any:
         ground_field = self._parent.base_ring()
         solution = self._power_rows.solve_left(
