@@ -44,6 +44,23 @@ remaining N0/N1 qualification. Keep each source candidate and its measurements
 distinct; the release owner and frozen product release remain untouched. N2–N6
 and all acceptance criteria below remain open.
 
+[Draft PR #146](https://github.com/sagemathinc/sagejs/pull/146) now separates
+the private accurately rounded sum and prefix-free binary64 compiler boundary
+from N1. Its [four-host source receipts](../bench/numerics/performance/results/n2-source-2026-09-05/README.md)
+include the macOS path-alias and Windows cleanup corrections; two unavailable
+Windows WASI builds remain explicit skips. Subsequent
+[centered/scaled regions](numerical-statistics-regions-checkpoint.md) pass 198
+exact-rational cases through native, JavaScript IR, Node-Wasm and real browser
+workers. No public statistics acceleration or full N2 acceptance is claimed.
+
+The [isolated local #124 comparison](../bench/numerics/performance/results/n0-dictionary-local-2026-09-05/README.md)
+uses fresh candidate `45093cdea` against `bd26cfefb` in A/B/B/A order, with
+identical numerical source and all eight public observations matching. It finds
+modest root/minimum gains but no clear `describe(20_000)` improvement. That is
+evidence to continue complete arithmetic/representation-region acceleration,
+not to dismiss the runtime work or claim these local differences confirmed on
+the persistent hosts. None of the priority latency targets passes yet.
+
 ## Objective and scope
 
 Make the **existing supported numerical laboratory** fast enough for interactive
