@@ -12,6 +12,8 @@
     "src/lib/sagejs/number_fields/cubic_class_number_native.py",
     "test/number-field-cubic-staged-certification.cjs",
     "test/number-field-cubic-adjacent-cursor.cjs",
+    "test/number-field-cubic-bf-prefix.cjs",
+    "test/fixtures/cubic-bf-prefix.py",
     "test/number-field-cubic-fmpz-closure.cjs",
     "test/fixtures/cubic-staged-certification.py",
     "test/fixtures/cubic-reconstructed-regulator-guard.py",

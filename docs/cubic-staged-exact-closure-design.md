@@ -94,6 +94,17 @@ allocations consume checkpoint space even when their mathematical owners are
 later cleared. Full schedule accounting and end-to-end measurements remain
 required. The frozen `f7f00552` census/timing candidate predates these changes.
 
+The BF evaluator now passes its live value count to the logical-prefix Arb
+binding. An actual-source test rebuilds the plan while changing both the
+threshold and the candidate class bound, reusing 256 value slots and 1024
+endpoint slots. The live counts grow and shrink as $91,127,90,91$; negative
+200-bit poison in inactive slots remains untouched. Dynamic/GMP/fmpz results
+match the previous exact-sized, whole-batch evaluation entry for entry,
+including the finite-sum value indices. In particular, changing the class
+bound can change deduplication against seed slot four; the test verifies that
+the plan is rebuilt rather than reusing stale indices. This qualifies prefix
+semantics, not the full attempt schedule or its no-retry memory bound.
+
 ## Measured motivation
 
 The campaign's supplied forensic measurements for LMFDB `3.1.12716.2`,

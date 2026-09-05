@@ -23,6 +23,7 @@ from sagejs.ffi.flint import (
     fmpz_matrix_lll_transform,
     fmpz_matrix_snf,
     fmpz_matrix_snf_into,
+    integer_log_sqrt_balls_prefix_resource,
     integer_log_sqrt_balls_resource,
     number_field_analysis_resource_project,
     number_field_analysis_resource_project_proof,
@@ -5682,16 +5683,17 @@ def _cubic_evaluate_bf_plan(
     analytic_value_count: uint64,
     analytic_scale: int,
 ) -> tuple[bool, int, int, int]:
-    """Evaluate one prepared BF plan with rigorous resident intervals."""
+    """Evaluate the live BF plan, leaving oversized scratch tails untouched."""
     analytic_index: uint64 = 0
     while analytic_index < analytic_value_count:
         analytic_values[analytic_index, 0] = analytic_workspace[
             _CUBIC_ANALYTIC_VALUE_OFFSET + analytic_index
         ]
         analytic_index += 1
-    if not integer_log_sqrt_balls_resource(
+    if not integer_log_sqrt_balls_prefix_resource(
         analytic_endpoints,
         analytic_values,
+        analytic_value_count,
         _CUBIC_ANALYTIC_PRECISION,
     ):
         return (False, 0, 0, 0)
