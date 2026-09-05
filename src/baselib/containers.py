@@ -1340,10 +1340,24 @@ class _DictView:
 
 def _dict_storage_setitem(mapping: Any, key: Any, value: Any) -> None:
     """Set an item without dispatching to a dict subclass override."""
-    normalized_key = _dict_resolve_key(mapping, key)
+    key_type = runtime.jstype(key)
+    if runtime.strict_equal(key_type, "string"):
+        normalized_key = key
+    elif runtime.strict_equal(key_type, "number"):
+        normalized_key = _numeric_key(key)
+    elif runtime.strict_equal(key_type, "bigint"):
+        normalized_key = runtime.normalize_integer(key)
+    elif runtime.strict_equal(key_type, "boolean"):
+        normalized_key = 1 if key else 0
+    else:
+        normalized_key = _dict_resolve_key(mapping, key)
     if not mapping.jsmap.has(normalized_key):
         mapping.keymap.set(normalized_key, key)
     mapping.jsmap.set(normalized_key, value)
+
+
+# Stable generated-runtime name used by the exact-dict item-assignment path.
+ρσ_dict_storage_setitem = _dict_storage_setitem
 
 
 @runtime.lightweight_math_class
@@ -1794,7 +1808,30 @@ def ρσ_dict(
     iterable: Any = runtime.undefined,
     **keywords: Any,
 ) -> SageDict:
-    return SageDict(iterable, **keywords)
+    answer = runtime.object.create(runtime.reflect.get(SageDict, "prototype"))
+    answer.jsmap = _new_map()
+    answer.keymap = _new_map()
+    if iterable is not runtime.undefined:
+        SageDict.update(answer, iterable)
+    if len(keywords):
+        SageDict.update(answer, keywords)
+    return answer
+
+
+def ρσ_dict_literal(items: Any) -> SageDict:
+    """Build a dictionary from alternating literal keys and values."""
+    answer = runtime.object.create(runtime.reflect.get(SageDict, "prototype"))
+    answer.jsmap = _new_map()
+    answer.keymap = _new_map()
+    index = 0
+    while index < items.length:
+        _dict_storage_setitem(
+            answer,
+            runtime.native_get(items, index),
+            runtime.native_get(items, index + 1),
+        )
+        index += 2
+    return answer
 
 
 def ρσ_dict_unpack(*parts: Any) -> SageDict:
