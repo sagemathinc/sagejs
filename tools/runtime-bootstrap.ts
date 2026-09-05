@@ -373,7 +373,32 @@ export function runRuntimeBootstrap(
       "__sagejs_native_resolve__",
       "__sagejs_native_fallback_policy__",
     ]);
+    const pythonBuiltinNames = new Set<PropertyKey>();
+    const baselibRegistry = Reflect.get(
+      globalThis,
+      "__sagejs_baselib_modules__",
+    ) as Record<string, unknown> | undefined;
+    for (const moduleName of [
+      "sagejs._baselib.builtins",
+      "sagejs._baselib.errors",
+    ]) {
+      const namespace = baselibRegistry?.[moduleName];
+      if (namespace && (typeof namespace === "object" || typeof namespace === "function")) {
+        for (const property of Reflect.ownKeys(namespace)) {
+          pythonBuiltinNames.add(property);
+        }
+      }
+    }
     const metadata: Record<PropertyKey, any> = Object.create(null);
+    const explicitlyWrittenBuiltinNames = new Set<PropertyKey>();
+    const existingDeletedBuiltin = Reflect.get(
+      globalThis,
+      "ρσ_deleted_builtin",
+    );
+    const deletedBuiltin = existingDeletedBuiltin?.__sagejs_deleted_builtin__ === true
+      ? existingDeletedBuiltin
+      : Object.freeze({ __sagejs_deleted_builtin__: true });
+    Reflect.set(globalThis, "ρσ_deleted_builtin", deletedBuiltin);
     Object.assign(metadata, {
       __name__: "builtins",
       __package__: "",
@@ -394,28 +419,54 @@ export function runRuntimeBootstrap(
         submodule_search_locations: null,
       },
     });
+    Object.defineProperties(metadata, {
+      __sagejs_builtin_facade_names__: { value: builtinNames },
+      __sagejs_python_builtin_names__: { value: pythonBuiltinNames },
+      __sagejs_explicit_builtin_names__: {
+        value: explicitlyWrittenBuiltinNames,
+      },
+    });
     const builtins = new Proxy(metadata, {
       get(target, property) {
         if (Reflect.has(target, property)) return Reflect.get(target, property);
-        return builtinNames.has(property)
-          ? Reflect.get(globalThis, property)
-          : undefined;
+        if (!builtinNames.has(property)) return undefined;
+        const value = Reflect.get(globalThis, property);
+        return value === deletedBuiltin ? undefined : value;
       },
       has(target, property) {
-        return Reflect.has(target, property) ||
-          (builtinNames.has(property) && Reflect.has(globalThis, property));
+        return Reflect.has(target, property) || (builtinNames.has(property) &&
+          Reflect.has(globalThis, property) &&
+          Reflect.get(globalThis, property) !== deletedBuiltin);
       },
       set(target, property, value) {
         if (Reflect.has(target, property)) return Reflect.set(target, property, value);
         if (builtinNames.has(property)) {
+          explicitlyWrittenBuiltinNames.add(property);
           return Reflect.set(globalThis, property, value);
         }
         return Reflect.set(target, property, value);
       },
+      deleteProperty(target, property) {
+        if (Reflect.has(target, property)) {
+          return Reflect.deleteProperty(target, property);
+        }
+        if (builtinNames.has(property)) {
+          explicitlyWrittenBuiltinNames.delete(property);
+          if (Reflect.deleteProperty(globalThis, property)) return true;
+          // Top-level `var` bindings are non-configurable in the host realm.
+          // A process-wide tombstone preserves Python deletion semantics
+          // without pretending that JavaScript removed the property.
+          return Reflect.set(globalThis, property, deletedBuiltin);
+        }
+        return true;
+      },
       ownKeys(target) {
         return [...new Set([
           ...Reflect.ownKeys(target),
-          ...facadeNames.filter((property) => Reflect.has(globalThis, property)),
+          ...facadeNames.filter((property) =>
+            Reflect.has(globalThis, property) &&
+            Reflect.get(globalThis, property) !== deletedBuiltin
+          ),
         ])];
       },
       getOwnPropertyDescriptor(target, property) {

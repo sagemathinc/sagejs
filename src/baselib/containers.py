@@ -13,6 +13,16 @@ import sagejs.runtime as runtime
 
 _Str = str
 _CONTAINERS_MISSING = runtime.object.create(None)
+_LIST_REPR_ACTIVE = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakSet"), []
+)
+
+
+def _containers_is_missing_binding(value: Any) -> bool:
+    predicate = runtime.reflect.get(runtime.global_object, "ρσ_is_missing_binding")
+    if runtime.strict_equal(runtime.jstype(predicate), "function"):
+        return runtime.reflect.apply(predicate, runtime.undefined, [value])
+    return value is runtime.undefined
 
 
 def _new_array(length: Any = runtime.undefined) -> Any:
@@ -158,9 +168,18 @@ def equals(left: Any, right: Any) -> Any:
     elif runtime.strict_equal(left_type, "function") and runtime.strict_equal(
         right_type, "function"
     ):
-        left_self = runtime.native_get(left, "__self__")
-        right_self = runtime.native_get(right, "__self__")
-        if left_self is not runtime.undefined and right_self is not runtime.undefined:
+        baselib_modules = runtime.reflect.get(
+            runtime.global_object, "__sagejs_baselib_modules__"
+        )
+        builtins_namespace = runtime.reflect.get(
+            baselib_modules, "sagejs._baselib.builtins"
+        )
+        is_bound_method = runtime.reflect.get(builtins_namespace, "ρσ_is_bound_method")
+        left_bound = runtime.reflect.apply(is_bound_method, runtime.undefined, [left])
+        right_bound = runtime.reflect.apply(is_bound_method, runtime.undefined, [right])
+        if left_bound and right_bound:
+            left_self = runtime.native_get(left, "__self__")
+            right_self = runtime.native_get(right, "__self__")
             return left_self is right_self and (
                 runtime.native_get(left, "__func__")
                 is runtime.native_get(right, "__func__")
@@ -355,7 +374,7 @@ def _list_extend(self: Any, iterable: Any) -> None:
             self[start + index] = iterable[index]
         return
     for value in iterable:
-        self.push(value)
+        runtime.reflect.apply(runtime.array.prototype.push, self, [value])
 
 
 @runtime.native_method
@@ -406,7 +425,7 @@ def _list_pop(self: Any, index: Any = runtime.undefined) -> Any:
         raise IndexError("pop from empty list")
     if index is runtime.undefined:
         index = -1
-    answer = self.splice(index, 1)
+    answer = runtime.reflect.apply(runtime.array.prototype.splice, self, [index, 1])
     if answer.length == 0:
         raise IndexError("pop index out of range")
     return answer[0]
@@ -415,12 +434,41 @@ def _list_pop(self: Any, index: Any = runtime.undefined) -> Any:
 @runtime.native_method
 def _list_remove(self: Any, value: Any) -> None:
     index = runtime.reflect.apply(_list_index, self, [value])
-    self.splice(index, 1)
+    runtime.reflect.apply(runtime.array.prototype.splice, self, [index, 1])
 
 
 @runtime.native_method
 def _list_to_string(self: Any) -> str:
-    return "[" + self.join(", ") + "]"
+    return "[" + runtime.reflect.apply(runtime.array.prototype.join, self, [", "]) + "]"
+
+
+@runtime.native_method
+def _list_repr(self: Any) -> str:
+    if runtime.reflect.apply(
+        runtime.reflect.get(_LIST_REPR_ACTIVE, "has"),
+        _LIST_REPR_ACTIVE,
+        [self],
+    ):
+        return "[...]"
+    runtime.reflect.apply(
+        runtime.reflect.get(_LIST_REPR_ACTIVE, "add"),
+        _LIST_REPR_ACTIVE,
+        [self],
+    )
+    entries = _new_array()
+    try:
+        index = 0
+        while index < self.length:
+            value = runtime.reflect.get(self, index)
+            entries.push(runtime.repr(value))
+            index += 1
+        return "[" + entries.join(", ") + "]"
+    finally:
+        runtime.reflect.apply(
+            runtime.reflect.get(_LIST_REPR_ACTIVE, "delete"),
+            _LIST_REPR_ACTIVE,
+            [self],
+        )
 
 
 @runtime.native_method
@@ -428,7 +476,7 @@ def _list_insert(self: Any, index: int, value: Any) -> None:
     if index < 0:
         index += self.length
     index = min(self.length, max(index, 0))
-    self.splice(index, 0, value)
+    runtime.reflect.apply(runtime.array.prototype.splice, self, [index, 0, value])
 
 
 @runtime.native_method
@@ -619,6 +667,8 @@ def _list_prototype() -> Any:
         prototype.append = _list_append
         prototype.toString = _list_to_string
         prototype.inspect = _list_to_string
+        prototype.__repr__ = _list_repr
+        prototype.__str__ = _list_repr
         prototype.__init__ = _list_init
         prototype.extend = _list_extend
         prototype.index = _list_index
@@ -1530,18 +1580,37 @@ class SageDict:
 class _LiveScopeDict(SageDict):
     """A Python dictionary view over a compiled module namespace."""
 
-    def __init__(self, scope: Any) -> None:
+    def __init__(self, scope: Any, hide_eager_bound_cache: bool = False) -> None:
         SageDict.__init__(self)
         self._scope = scope
-        self._exports_to_global = runtime.reflect.get(scope, "__name__") == "__main__"
+        self._hide_eager_bound_cache = hide_eager_bound_cache
+        # The second cache is used for ordinary instance ``__dict__`` views.
+        # An instance is never a module merely because user data gives it the
+        # conventional main-module name.
+        self._exports_to_global = (
+            not hide_eager_bound_cache
+            and runtime.reflect.get(scope, "__name__") == "__main__"
+        )
 
     def _refresh(self) -> None:
         self.jsmap.clear()
         self.keymap.clear()
         for key in runtime.object.keys(self._scope):
             value = runtime.reflect.get(self._scope, key)
-            if value is not runtime.undefined:
+            if not _containers_is_missing_binding(
+                value
+            ) and not self._is_eager_bound_cache(key, value):
                 SageDict.__setitem__(self, key, value)
+
+    def _is_eager_bound_cache(self, key: Any, value: Any) -> bool:
+        return (
+            self._hide_eager_bound_cache
+            and value is not None
+            and value is not runtime.undefined
+            and runtime.native_get(value, "__sagejs_eager_bound_cache__") is True
+            and runtime.native_get(value, "__self__") is self._scope
+            and runtime.native_get(value, "__name__") == key
+        )
 
     @property
     def length(self) -> int:
@@ -1560,10 +1629,12 @@ class _LiveScopeDict(SageDict):
     def __contains__(self, key: Any) -> bool:
         if not runtime.strict_equal(runtime.jstype(key), "string"):
             return False
-        return (
-            _has_own(self._scope, key)
-            and runtime.reflect.get(self._scope, key) is not runtime.undefined
-        )
+        if not _has_own(self._scope, key):
+            return False
+        value = runtime.reflect.get(self._scope, key)
+        return not _containers_is_missing_binding(
+            value
+        ) and not self._is_eager_bound_cache(key, value)
 
     has = __contains__
 
@@ -1579,7 +1650,19 @@ class _LiveScopeDict(SageDict):
     def __setitem__(self, key: Any, value: Any) -> None:
         if not runtime.strict_equal(runtime.jstype(key), "string"):
             raise TypeError("globals dictionary keys must be strings")
-        runtime.reflect.set(self._scope, key, value)
+        if self._hide_eager_bound_cache:
+            # Instance dictionaries hold own data fields.  Reflect.set would
+            # invoke inherited host accessors such as Object.__proto__ rather
+            # than create the Python dictionary entry.
+            descriptor = runtime.object.create(None)
+            descriptor.value = value
+            descriptor.writable = True
+            descriptor.enumerable = True
+            descriptor.configurable = True
+            runtime.object.defineProperty(self._scope, key, descriptor)
+        else:
+            # Compiled module cells are accessors, so preserve their setter.
+            runtime.reflect.set(self._scope, key, value)
         if self._exports_to_global:
             runtime.reflect.set(runtime.global_object, key, value)
         SageDict.__setitem__(self, key, value)
@@ -1725,7 +1808,7 @@ def ρσ_dict_unpack(*parts: Any) -> SageDict:
 def ρσ_scope_dict(values: Any) -> SageDict:
     answer = SageDict()
     for key in runtime.object.keys(values):
-        if values[key] is not runtime.undefined:
+        if not _containers_is_missing_binding(values[key]):
             # ``Object.keys`` returns primitive strings, whose normalized key
             # is the string itself.  Populate both native maps directly rather
             # than repeating the generic Python mapping protocol for every
@@ -1736,14 +1819,22 @@ def ρσ_scope_dict(values: Any) -> SageDict:
 
 
 _LIVE_SCOPE_DICTIONARIES = runtime.reflect.construct(runtime.map_class, [])
+_INSTANCE_SCOPE_DICTIONARIES = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
 
 
-def ρσ_live_scope_dict(scope: Any) -> SageDict:
-    cached = _LIVE_SCOPE_DICTIONARIES.get(scope)
+def ρσ_live_scope_dict(scope: Any, hide_eager_bound_cache: bool = False) -> SageDict:
+    cache = (
+        _INSTANCE_SCOPE_DICTIONARIES
+        if hide_eager_bound_cache
+        else _LIVE_SCOPE_DICTIONARIES
+    )
+    cached = cache.get(scope)
     if cached is not runtime.undefined:
         return cached
-    answer = _LiveScopeDict(scope)
-    _LIVE_SCOPE_DICTIONARIES.set(scope, answer)
+    answer = _LiveScopeDict(scope, hide_eager_bound_cache)
+    cache.set(scope, answer)
     return answer
 
 
@@ -1798,6 +1889,8 @@ list_constructor = ρσ_list_constructor
 runtime.reflect.set(list_constructor, "prototype", _list_prototype())
 runtime.reflect.set(list_constructor, "__init__", _list_static_init)
 runtime.reflect.set(list_constructor, "append", _list_type_append)
+runtime.reflect.set(list_constructor, "__name__", "list")
+runtime.reflect.set(list_constructor, "__qualname__", "list")
 runtime.reflect.set(_list_prototype(), "__python_type__", list_constructor)
 runtime.set_class_repr(list_constructor, "<class 'list'>")
 runtime.set_class_repr(ρσ_dict, "<class 'dict'>")

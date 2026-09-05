@@ -7,27 +7,12 @@ from typing import Any, Callable
 import sagejs.runtime as runtime
 
 
-class ModuleType:
-    """Mutable module namespace compatible with `types.ModuleType`."""
-
-    __sagejs_module_type__ = True
-
-    def __init__(self, name, doc=None):
-        self.__name__ = name
-        self.__doc__ = doc
-        self.__package__ = None
-        self.__loader__ = None
-        self.__spec__ = None
-
-    def __repr__(self):
-        return "<module '" + self.__name__ + "'>"
-
-
-# Compiled imports use lightweight live namespace objects rather than
-# allocating ``ModuleType`` for every module.  Publish the Python class so the
-# builtin ``type``/``isinstance`` operations can preserve CPython semantics
-# for those native namespaces.
-runtime.reflect.set(runtime.global_object, "__sagejs_module_type_class__", ModuleType)
+# The runtime creates this class during core bootstrap so imported module
+# namespaces have the correct type even before ``types`` itself is imported.
+# Re-export the canonical object rather than manufacturing a second class.
+ModuleType: Any = runtime.reflect.get(
+    runtime.global_object, "__sagejs_module_type_class__"
+)
 
 
 def MethodType(function, instance, cls=None):
