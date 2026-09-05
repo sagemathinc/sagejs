@@ -84,12 +84,35 @@
   },
   "selection": "explicit-only",
   "qualification": {
-    "status": "pending_source_current_requalification",
-    "reason": "The integrated Python runtime and macOS qualification fixtures changed; refresh portable numerical qualification before release.",
+    "status": "qualified",
+    "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
+    "summary_sha256": "351a5d475c2d63ce8763dfaf36391adab433dc640445c7236e8750ef6bb85ac7",
+    "summary_bytes": 121835,
     "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
     "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
     "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+    "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
-    "invalidated_summary": "qualification-v1.json"
+    "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+    "artifact_sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+    "artifact_bytes": 72592,
+    "case_execution_sha256": "c77c2ff1cedc8ed45281779a8e7730f555d875483c62da51de55be23482384f1",
+    "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
+    "evidence_receipts_sha256": {
+      "sanitizer": "61ba813323218466c571d8890457f31505838acd49201373012974a97c2b24d1",
+      "destructive-wasm": "50088045eeb6dd2116fca775ced3a8d071b6370fab454db0155190dcd1ca8b7a",
+      "browser-lifecycle": "f25b14ea5819e1e5fb843e89ed59a05bfb9b835922dd3d2101d45f5f5f566010",
+      "public-integration": "f84129c23ac2ddfd2162fb2cd410a44f8756b384634a3332af75aacdbdafd4e5",
+      "resource-corruption": "2c83b3dec72b781073068b2628fe93198a8d4d2e675a29d46a13cdb74dd712ad",
+      "relocation": "1122bbfd0562199acfdfbe0b0f2b1e0e36a8435bdb2a8c1d90962584f50313fa",
+      "sea": "b9b94b8df2291c4ccca95df51f58d1386a419a5f15298ef2b0571cb9283c2930"
+    },
+    "portable_receipts_sha256": {
+      "linux-x64": "c77c2ff1cedc8ed45281779a8e7730f555d875483c62da51de55be23482384f1",
+      "linux-arm64": "8e412ca72f1efdf5e91f0ab2d97beceb8d89e72efea2111caa2a2116008606d7",
+      "macos-arm64": "e85cce175c214e1c01eac9a5babd727baea410c8c51fc1d24f697cb0b5176c7b",
+      "windows-x64": "5da55e4ba6c80ad16b9bb5306a91ccbcbf732b617902cdbe121f021315cccfb5"
+    },
+    "historical_cobyla_status": "excluded-not-qualified"
   }
 }

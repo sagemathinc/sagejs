@@ -1,12 +1,12 @@
 {
   "schema": "sagejs.numerical-nlopt-qualification-summary/v3",
   "status": "qualified",
-  "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+  "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
   "method": "nlopt-nelder-mead",
   "upstream_identity": "NLOPT_LN_NELDERMEAD",
   "automatic_selection": false,
   "optimality_claim": "heuristic-only; neither local nor global optimality is certified",
-  "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+  "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
   "artifact": {
     "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
     "bytes": 72592
@@ -19,11 +19,11 @@
   },
   "public_semantics_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523"
+    "sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605"
   },
   "qualification_tooling_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1"
+    "sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167"
   },
   "selection": {
     "sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
@@ -47,17 +47,17 @@
     "selected_results_sha256": "97ed532b80ec63b3ab23ce9146fc52f8563c870fdd450cf533a092a43ac30a80"
   },
   "case_execution": {
-    "sha256": "13b574546279cfaa3e5bc4226d81bbae5b860481280cddc048684a5b368f9762",
+    "sha256": "c77c2ff1cedc8ed45281779a8e7730f555d875483c62da51de55be23482384f1",
     "bytes": 4592,
     "receipt": {
       "schema": "sagejs.numerical-nlopt-case-execution/v3",
-      "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+      "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
       "artifact": {
         "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
         "bytes": 72592
       },
-      "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
-      "qualification_tooling_bundle_sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1",
+      "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
+      "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
       "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
       "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
       "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
@@ -168,28 +168,28 @@
         "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
         "platform_id": "linux-x64",
         "host_alias": "bench-1",
-        "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+        "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
         "algorithm": "rsa-pkcs1-sha256",
         "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
-        "payload_sha256": "61334d9c353ade031361553bf4b96ab7109d1c2b15569c37f867d4c9567f3909",
+        "payload_sha256": "bc8abb4d6715fd6e2fa7dc2c56d0c21405ca250441cfd277ad65d02131be5cdd",
         "payload_bytes": 3556,
-        "signature": "EVe1BZMZDwMxaOxXA4BZCFhGp27I2aSH4G8IWX6BbepYNG2w6Mdj8IRWhuSeEORdWZ57pvM3ahvNM1FTQ15Rpx5BDJdLUUHP6PbtbtWhQMjBI6pFwy8B16w0sR8uZ5LhnHKw73onEhezw9JjpBcN1BsATiFixinLKAMj1ljy8iuSb+kn3XWZ9oaE8rC6mD6Y4Htk87OV8fBN+SfeF/7QcME9fej9Cg/LImJ850Hmvt9+0lJ4VLOLYLq5eXDzAQq0KeaKAUnHeGl1KdR9DUcSrZ0iubBHozj/tmZs8PMEKEY6CbuP6+2iLTVevG8/Lo2wLLmrf2w0aX67SycOFNYo7Sb2HTiC00WZxa0J3uqL3I+pVHV0+Ge9FfbNPvgzCqWKO/EePUZz6WGjQKNFdUQ9zW9RTdX+SUVIXEC/gHeyu9fDYqmDYcAzz2n6nb8S7hXTRQ20maUUShEpiNyEm8kPI6ZlYm+L0Qq+LgGtpyqVCmnKPJwQk7qaxP7VKfAELbPj"
+        "signature": "k56qMOyJxAQy+cBA55IhaMgynG3+V8/MOBZVVOr0E85tZCZ2Z5Sw9Y0+GCyb8CwRwHWgb4fmOaFjEFskUYuAqyQg54yQDhbOUITFEZETlwafIb+LojGNPhcl6Knvtko+PNsVzlNAsv+/RIYYIW7/qH8RvRsCUeto6peEFebYaVBYiQeo8kErUwl8KTLwgBP5EJB3IIJNFwXc/s6rz2n6yssjZFuZKipMffZ97iGKuDez1k8iLKNy2iePmLBjJxan4BYLeWmR9z2yssU00NuTK8iF3i4V+v804w2VXYLYb9qjAjSe5LhGpV+vRVSluI+N1yklyuaq/8qy4VAkXM39pnvLQ770E/buVc9oT0aNAVqj4gmToIb8j7514AEIiXm8SteO8+CogrxsEpSDYdT0q7ROSUCvgAnRAYOdH7ylXmI4l5T49B/cNaJc7cMEr60Qh2JTvo4t6mMMRUdIM1IPWfGLn1205fgXIgiHh2IsPaMU8YlFp8twbgtFTNCebceI"
       }
     }
   },
   "evidence": {
     "sanitizer": {
-      "sha256": "00a111a04aca3e56a90ed5befb9c4fca0102b9e95ad07d2228c4072d5e06005e",
-      "bytes": 39658,
+      "sha256": "61ba813323218466c571d8890457f31505838acd49201373012974a97c2b24d1",
+      "bytes": 39664,
       "receipt": {
         "schema": "sagejs.numerical-nlopt-release-evidence/v2",
-        "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+        "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
         "artifact": {
           "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
           "bytes": 72592
         },
-        "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
-        "qualification_tooling_bundle_sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1",
+        "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
         "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
         "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
         "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
@@ -222,8 +222,8 @@
         },
         "source_evidence": {
           "schema": "sagejs.numerical-nlopt-program-evidence/v1",
-          "sha256": "12ba966383d11797434dcb64b1ecbe6edff5516e3e69cf42a29c93bbad006266",
-          "bytes": 34068,
+          "sha256": "8ad883be6fa5e2455f25e51026df65efc0f7e5c47f8fae7034b2da616484ff72",
+          "bytes": 34074,
           "payload": {
             "programs": [
               {
@@ -236,17 +236,17 @@
                 ],
                 "status": 0,
                 "signal": null,
-                "stdout": "passed: sha256:2fc10dee912746b763ce053ce288ca4b9b1445fa411dccd222d9e13d58be45ba -> /tmp/sagejs-nlopt-evidence-smlmjU/sanitizer.json\n",
+                "stdout": "passed: sha256:d3a399786b8f6bcca1d3f07116f36fddb503805b4deb841a07a38b55eacc1713 -> /tmp/sagejs-nlopt-evidence-LWyt5k/sanitizer.json\n",
                 "stderr": "",
-                "stdout_sha256": "95af0838f34886d057695b09537fa51dfd8d54fd0a282139d8abcfb6313b6d53",
+                "stdout_sha256": "b686d0093839b47f260c1c56a78f59ecc9132ff38887722e67c2da14e1a2266f",
                 "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                 "result": {
                   "schema": "sagejs.numerical-native-sanitizer-evidence/v1",
-                  "generated_at": "2026-09-05T00:03:56.254Z",
+                  "generated_at": "2026-09-05T09:37:58.835Z",
                   "status": "passed",
                   "repository": {
-                    "commit": "435171bee6b872065413b85af307c3c4877d07b0",
-                    "tree": "03b3f09c65fc53f6b09041f57a230a4fa05e89d5",
+                    "commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
+                    "tree": "38dd720b71d446afbe747a3602afd03f56d93ea9",
                     "clean": true,
                     "status_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                   },
@@ -418,10 +418,10 @@
                             "signal": null,
                             "error": null,
                             "stdout": "",
-                            "stderr": "/home/user/sagejs-release-080-recovery/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:51:34: warning: \"/*\" within comment [-Wcomment]\n   51 |   correct. cminpack's pure C (src/*.c) is a hand-cleaned-up rewrite of the f2c\n      |                                   \n/home/user/sagejs-release-080-recovery/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:52:18: warning: \"/*\" within comment [-Wcomment]\n   52 |   output (src/f2c/*.c): they agree on well-conditioned inputs, but the cleanup\n      |                   \n",
-                            "elapsed_ms": 652.000789
+                            "stderr": "/home/user/sagejs-release-080-c9-frozen/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:51:34: warning: \"/*\" within comment [-Wcomment]\n   51 |   correct. cminpack's pure C (src/*.c) is a hand-cleaned-up rewrite of the f2c\n      |                                   \n/home/user/sagejs-release-080-c9-frozen/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:52:18: warning: \"/*\" within comment [-Wcomment]\n   52 |   output (src/f2c/*.c): they agree on well-conditioned inputs, but the cleanup\n      |                   \n",
+                            "elapsed_ms": 631.716711
                           },
-                          "executable_sha256": "86587f39855d85b039a203e424fecb2ca8740eb58a72c58307762bcc12600a3b",
+                          "executable_sha256": "4a94ee51fb9497dcd175fb1feb25d346b51e5d3b4f30cba42c44ece5fabc0e22",
                           "execute": {
                             "command": "<temporary>/cminpack-address",
                             "arguments": [],
@@ -430,7 +430,7 @@
                             "error": null,
                             "stdout": "",
                             "stderr": "",
-                            "elapsed_ms": 9.086239
+                            "elapsed_ms": 8.91147
                           }
                         },
                         {
@@ -482,10 +482,10 @@
                             "signal": null,
                             "error": null,
                             "stdout": "",
-                            "stderr": "/home/user/sagejs-release-080-recovery/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:51:34: warning: \"/*\" within comment [-Wcomment]\n   51 |   correct. cminpack's pure C (src/*.c) is a hand-cleaned-up rewrite of the f2c\n      |                                   \n/home/user/sagejs-release-080-recovery/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:52:18: warning: \"/*\" within comment [-Wcomment]\n   52 |   output (src/f2c/*.c): they agree on well-conditioned inputs, but the cleanup\n      |                   \n",
-                            "elapsed_ms": 901.764134
+                            "stderr": "/home/user/sagejs-release-080-c9-frozen/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:51:34: warning: \"/*\" within comment [-Wcomment]\n   51 |   correct. cminpack's pure C (src/*.c) is a hand-cleaned-up rewrite of the f2c\n      |                                   \n/home/user/sagejs-release-080-c9-frozen/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:52:18: warning: \"/*\" within comment [-Wcomment]\n   52 |   output (src/f2c/*.c): they agree on well-conditioned inputs, but the cleanup\n      |                   \n",
+                            "elapsed_ms": 919.828513
                           },
-                          "executable_sha256": "a5376eae8d9d98c1a8c0ad713e769e0c8b609c43cf647b962ab482817919d18f",
+                          "executable_sha256": "55c80266b25a8c53839ce3a64cfa99b00fd1076d417ad9095a1ea2bfb25a8a09",
                           "execute": {
                             "command": "<temporary>/cminpack-undefined",
                             "arguments": [],
@@ -494,7 +494,7 @@
                             "error": null,
                             "stdout": "",
                             "stderr": "",
-                            "elapsed_ms": 3.576069
+                            "elapsed_ms": 4.05033
                           }
                         },
                         {
@@ -546,10 +546,10 @@
                             "signal": null,
                             "error": null,
                             "stdout": "",
-                            "stderr": "/home/user/sagejs-release-080-recovery/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:51:34: warning: \"/*\" within comment [-Wcomment]\n   51 |   correct. cminpack's pure C (src/*.c) is a hand-cleaned-up rewrite of the f2c\n      |                                   \n/home/user/sagejs-release-080-recovery/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:52:18: warning: \"/*\" within comment [-Wcomment]\n   52 |   output (src/f2c/*.c): they agree on well-conditioned inputs, but the cleanup\n      |                   \n",
-                            "elapsed_ms": 479.100295
+                            "stderr": "/home/user/sagejs-release-080-c9-frozen/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:51:34: warning: \"/*\" within comment [-Wcomment]\n   51 |   correct. cminpack's pure C (src/*.c) is a hand-cleaned-up rewrite of the f2c\n      |                                   \n/home/user/sagejs-release-080-c9-frozen/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:52:18: warning: \"/*\" within comment [-Wcomment]\n   52 |   output (src/f2c/*.c): they agree on well-conditioned inputs, but the cleanup\n      |                   \n",
+                            "elapsed_ms": 508.697282
                           },
-                          "executable_sha256": "a82299552b822240cae3c588e024c585efb869be9486a7371c00b583a6012e21",
+                          "executable_sha256": "21ab15494b32880fe1f42c194d90dce280e5ad0bf3718d22b5b842b15b89c1d1",
                           "execute": {
                             "command": "<temporary>/cminpack-leak",
                             "arguments": [],
@@ -558,7 +558,7 @@
                             "error": null,
                             "stdout": "",
                             "stderr": "",
-                            "elapsed_ms": 6.171939
+                            "elapsed_ms": 6.83843
                           }
                         }
                       ]
@@ -681,10 +681,10 @@
                             "signal": null,
                             "error": null,
                             "stdout": "",
-                            "stderr": "/home/user/sagejs-release-080-recovery/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c:49:15: warning: ‘equality_constraint’ defined but not used [-Wunused-function]\n   49 | static double equality_constraint(unsigned n, const double *x,\n      |               ^~~~~~~~~~~~~~~~~~~\n",
-                            "elapsed_ms": 479.884095
+                            "stderr": "/home/user/sagejs-release-080-c9-frozen/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c:49:15: warning: ‘equality_constraint’ defined but not used [-Wunused-function]\n   49 | static double equality_constraint(unsigned n, const double *x,\n      |               ^~~~~~~~~~~~~~~~~~~\n",
+                            "elapsed_ms": 511.716232
                           },
-                          "executable_sha256": "b60b7568c1537bdc7f8605b48e6c3a66c71c0706d543f36780e5d08f3e4d21ef",
+                          "executable_sha256": "2b94e78afa09a9ed3ffd2d5b7909a8befdcca9f058e1f405dec549e3d41071ba",
                           "execute": {
                             "command": "<temporary>/nlopt-address",
                             "arguments": [],
@@ -693,7 +693,7 @@
                             "error": null,
                             "stdout": "",
                             "stderr": "",
-                            "elapsed_ms": 13.762008
+                            "elapsed_ms": 13.774059
                           }
                         },
                         {
@@ -747,10 +747,10 @@
                             "signal": null,
                             "error": null,
                             "stdout": "",
-                            "stderr": "/home/user/sagejs-release-080-recovery/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c:49:15: warning: ‘equality_constraint’ defined but not used [-Wunused-function]\n   49 | static double equality_constraint(unsigned n, const double *x,\n      |               ^~~~~~~~~~~~~~~~~~~\n",
-                            "elapsed_ms": 703.978874
+                            "stderr": "/home/user/sagejs-release-080-c9-frozen/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c:49:15: warning: ‘equality_constraint’ defined but not used [-Wunused-function]\n   49 | static double equality_constraint(unsigned n, const double *x,\n      |               ^~~~~~~~~~~~~~~~~~~\n",
+                            "elapsed_ms": 763.918639
                           },
-                          "executable_sha256": "f453958e39e1d14a47668709fb6bf86be2fc59694c96ae835f6f8879abac52d3",
+                          "executable_sha256": "1306b066fe0075bb453ede169f8d085dc110405d65a01fc433632fa34c207509",
                           "execute": {
                             "command": "<temporary>/nlopt-undefined",
                             "arguments": [],
@@ -759,7 +759,7 @@
                             "error": null,
                             "stdout": "",
                             "stderr": "",
-                            "elapsed_ms": 9.343159
+                            "elapsed_ms": 9.871719
                           }
                         },
                         {
@@ -813,10 +813,10 @@
                             "signal": null,
                             "error": null,
                             "stdout": "",
-                            "stderr": "/home/user/sagejs-release-080-recovery/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c:49:15: warning: ‘equality_constraint’ defined but not used [-Wunused-function]\n   49 | static double equality_constraint(unsigned n, const double *x,\n      |               ^~~~~~~~~~~~~~~~~~~\n",
-                            "elapsed_ms": 357.737456
+                            "stderr": "/home/user/sagejs-release-080-c9-frozen/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c:49:15: warning: ‘equality_constraint’ defined but not used [-Wunused-function]\n   49 | static double equality_constraint(unsigned n, const double *x,\n      |               ^~~~~~~~~~~~~~~~~~~\n",
+                            "elapsed_ms": 649.781268
                           },
-                          "executable_sha256": "1e70ac653d3e1d344a9ab748d111c08c31b0efdba564d1bf1606e23338366f3b",
+                          "executable_sha256": "217f87eadcf51fd31400cf4d8b490582e7a050f7afbd73d44ed6984b914d4041",
                           "execute": {
                             "command": "<temporary>/nlopt-leak",
                             "arguments": [],
@@ -825,13 +825,13 @@
                             "error": null,
                             "stdout": "",
                             "stderr": "",
-                            "elapsed_ms": 10.452369
+                            "elapsed_ms": 11.414399
                           }
                         }
                       ]
                     }
                   ],
-                  "id": "sha256:2fc10dee912746b763ce053ce288ca4b9b1445fa411dccd222d9e13d58be45ba"
+                  "id": "sha256:d3a399786b8f6bcca1d3f07116f36fddb503805b4deb841a07a38b55eacc1713"
                 }
               }
             ]
@@ -840,34 +840,34 @@
         "execution": {
           "status": 0,
           "signal": null,
-          "stdout_sha256": "68dc963b6f62485b9c8fb8e43d381289d2fe98c7f5313a315d51adc691ef9ea2",
+          "stdout_sha256": "e1167553ac9ca11033aa6fad0b0a24d806d0b5b3d130828a20dd82eafa20512a",
           "stderr_sha256": "73f832082e08279e2351cd52a6decd257d86e0c971b00e408671234074f3276b"
         },
         "origin": {
           "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
           "platform_id": "linux-x64",
           "host_alias": "bench-1",
-          "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+          "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
           "algorithm": "rsa-pkcs1-sha256",
           "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
-          "payload_sha256": "03b9df6d7f2c35e60249cb5f6fcbd11a80135c9388bad5811ce2dea2b518ff57",
-          "payload_bytes": 38621,
-          "signature": "gKaWiAUSDj40y19w5a3WlFn4bVoEOxlgifLJDBl5pSrpAZ5MxRyEYqx4JE16DbCtkaJOZiDhhjZhx4mSSmgiMUjVH8GBJ4PlwbbZU2i6o3dNnjK4Ek+otVaENdkumq37mzYW57jmE004CvHkMFqUJtpi1uhkFsRRt1KhWqU3/5964KgoQVrEjfF4n+UbzohXY2bLOfWpTDmYSKFh7RZUJoWMB1LOi95hhSzpxx5DaXqdnvbOKHt0lEQNUSMLrqLW2j8OEj0zceOq5bZ5In9HIA01oyXOGEMW8VHariLLE/tKDK6GJlHPVPJgmYvY/lGhwxmVxJ1BJ8eaKc/P9woonoIzQbsA29cvOEJhRQhPxTsEM0a7p38MSOKLSYP32xk6DjpcjSE4bKMXK88QaGX3Ej+eA8aW0LyRqTHk0PEohOdum6eyKqgXqlXNgKqSW1+iDANVyZis8+ut/kFK9wJtpDwuvw/bqm5dothBh/CsLwDGZkOUFnazKd3BNdjC7DNq"
+          "payload_sha256": "2e23134fe847054914c065207cb8b943a096c96e3b1adeee03c0954def824958",
+          "payload_bytes": 38627,
+          "signature": "QymOpdHn1pTHNS1lgwHcfuBtyT4rcaG2x+zDCQNA+AwxuC2W6NJASZ33eNXfOtkyhAvzk6A4QE1AvON36MZWK4SWjV2EDcpI+WAjJfldA8R9cPAwLETVI/iwZdJGGKUKoPfo9/Dn/zIoST9yP3V3j4kSzCHN5lhW8wnqi1sLBpVtyu4KN/hrhueDUtGAiJ9jXjiozK42YzjgWshlSrY7RWwitENlGu9cyKZgI8a/laO7aVKdI4+HZHXpgjgRWSRn/fTHkI+JJplEePU072MU5IR7gBzA9SOjpfwJUilrUckmlvziYhInCgnGSjD3auXyr0fKjVbTXRLhFOzY6Z8ZUxuwoTeEGbhaA+d/JN6sI/A2ea/MG5EWi1v8NGYnxO7pCMtO7NP7x+A8upN82/36lkOqvkPZKoPXAJyod+VDup2+OVQ43btj+W7IoH8ExZeRSxyrc64xJ/352G9TQY4KxYehz6Ps04oasyRsUXxndP1iwHaf8UETfWb5am3TqzAY"
         }
       }
     },
     "destructive-wasm": {
-      "sha256": "133defdc8b497e808dda27476588be5b58d20adecdd0877c062b05b2bd186110",
+      "sha256": "50088045eeb6dd2116fca775ced3a8d071b6370fab454db0155190dcd1ca8b7a",
       "bytes": 13623,
       "receipt": {
         "schema": "sagejs.numerical-nlopt-release-evidence/v2",
-        "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+        "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
         "artifact": {
           "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
           "bytes": 72592
         },
-        "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
-        "qualification_tooling_bundle_sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1",
+        "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
         "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
         "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
         "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
@@ -901,7 +901,7 @@
         },
         "source_evidence": {
           "schema": "sagejs.numerical-nlopt-program-evidence/v1",
-          "sha256": "7809acc89dbb615aa398503b4f302f282340cf034d44db1611d6fb7bc040e56a",
+          "sha256": "9fbd829dfd1cf36cbd0a983b590169dd95cfb0c72393b9e720cc030993e3227a",
           "bytes": 9448,
           "payload": {
             "programs": [
@@ -915,17 +915,17 @@
                 ],
                 "status": 0,
                 "signal": null,
-                "stdout": "passed: sha256:db93de953986f65902a93fedd0cb2223c0b7e32c00e26558da1e6e62b7b30039 -> /tmp/sagejs-nlopt-evidence-b1n3d6/destructive-wasm.json\n",
+                "stdout": "passed: sha256:c5666e0d8a984d5ad25ec649483ab87b9771fe6baf36a4d96f2ebf451fdd855c -> /tmp/sagejs-nlopt-evidence-pYJUgT/destructive-wasm.json\n",
                 "stderr": "",
-                "stdout_sha256": "88d8e1a7a19438fad478c7f53dd25ecd29308489e66b66905c494656e9e71b0e",
+                "stdout_sha256": "d548020d29c092327c8653d933ee1b8eaff4a1e841ecb0c9554efed478db9877",
                 "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                 "result": {
                   "schema": "sagejs.numerical-wasm-destructive-evidence/v1",
-                  "generated_at": "2026-09-05T00:07:24.918Z",
+                  "generated_at": "2026-09-05T09:37:59.914Z",
                   "status": "passed",
                   "repository": {
-                    "commit": "435171bee6b872065413b85af307c3c4877d07b0",
-                    "tree": "03b3f09c65fc53f6b09041f57a230a4fa05e89d5",
+                    "commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
+                    "tree": "38dd720b71d446afbe747a3602afd03f56d93ea9",
                     "clean": true,
                     "status_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                   },
@@ -1079,7 +1079,7 @@
                     ],
                     "status": 0,
                     "signal": null,
-                    "elapsed_ms": 93.765101,
+                    "elapsed_ms": 94.356072,
                     "stdout_sha256": "c69f283d5fdc4689979399949134ed387b3d1e6bdd42e68fe7cb5f930d74aa62",
                     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                     "stdout_bytes": 930,
@@ -1140,7 +1140,7 @@
                     "source_and_artifact_bound": true,
                     "host_output_independently_validated": true
                   },
-                  "id": "sha256:db93de953986f65902a93fedd0cb2223c0b7e32c00e26558da1e6e62b7b30039"
+                  "id": "sha256:c5666e0d8a984d5ad25ec649483ab87b9771fe6baf36a4d96f2ebf451fdd855c"
                 }
               }
             ]
@@ -1149,34 +1149,34 @@
         "execution": {
           "status": 0,
           "signal": null,
-          "stdout_sha256": "39c23cb96006779949ec018d9bf860248c31d327fc796609685badaa8490d9af",
+          "stdout_sha256": "a4da9010664c957ffbbd644d0e2c756afdab015ab5b380114c8698358ec51a74",
           "stderr_sha256": "8d1d9d104f9921dea99783b3872effb714f1336f6d4635e4a460248fa4980f3a"
         },
         "origin": {
           "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
           "platform_id": "linux-x64",
           "host_alias": "bench-1",
-          "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+          "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
           "algorithm": "rsa-pkcs1-sha256",
           "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
-          "payload_sha256": "22cd3351261c05afd07578cdb25749db833a86469e9a1d4e0985d859fbd42fc5",
+          "payload_sha256": "5bb988689144787abf403f5b6917d27d468f054283417c631586b513e19b6353",
           "payload_bytes": 12586,
-          "signature": "OXoSu/4LX3WtDOc0RleeK6fkXGkwmZdlqySvZwQeEpdYqAM4wEfvh4RJ73/IQgi6NvN1bDmEGoSbJeOn9XG91qs4Ygejv1IFdkfp5uizFO/zOHMqnTTY3a5UsiOlNaczbuYo7KN6z6XBdACa+TyxM33IrpmowfdmtsIa1tnQBSbTjps1QacIHbUy84fooqaujAL5R7L484xvFltkVYYSxf1AHDh5OttNOcq0H7ljZToJqvTPxu0OcPDFITjQlR0/I+yRhQ10Eh31mWhwYjgJhCPp9J5I8HmGrahDQjyMjp9F/N/3MvN8G9Xxs0QtFbS+Ak8RVDcOSb7Xx4aaPDdUQIhPE1ZJPmCHQR8W86dLaz9MDgX/f2qZA5xQXvTgqsPWRsupXF8Lni37p2j2fDjAnD3GctrF9mukTEI4NvaLfMTiuv9QXlWNH6u9fZlP+a2JODs0Nd3Z/eCBfOCY+vZHLC+RerBhX538ysGG5Vcc02vfNpiPb8sxSSDp5JTeo3R9"
+          "signature": "VkIoRkE1RBqcqfiNSMq8X1UHWLW6RhELMbAeXpmo5lko46nLczOsGTOMMXjBy47iUfjl/u11l1n3KkphIzcwxb4rLAdYI6PCQeRcWZHR+bHBPoNz9ugXMN7ampru9hwM7KcIha1GhMg7pHCLIndhJ037JkImCSVDwvFuk/bQawjJqls6+SvjqS4lxDTnwLzdwZ9+/+B0EuazsJ9SpPYe5Ddp4EZ/ojAc8vq+dVFIe9XRqskZ/YAIf1rmFodOB0fj4n6gReLiN47K6QKJXH+uf7ktk0a86mysZefK25OuWN3XbBmiWpqC9ECPgXJ0JQaPxxBchp261XWXPrmDt7hkI32TDnbqmZQjVmwIJ+QNXHiQoKB4pZypOgIb/dft2n53l8yJsUJdj6+hAMAJA2bnawlkeW487ctPgaj+LYnn5vzfzF9tOsQ7Shgkpnamrv/QAyXx/9O6vJYkGokjPIxjszxIEkeiVfyw7gh2YWvKe1ZORdO3KMVQ45m5vNJmDN8t"
         }
       }
     },
     "browser-lifecycle": {
-      "sha256": "70a3ffe2efcde7c0f02a6bab4ed7d495d5210c8fbc2db4980b116bcb08d37dff",
+      "sha256": "f25b14ea5819e1e5fb843e89ed59a05bfb9b835922dd3d2101d45f5f5f566010",
       "bytes": 5410,
       "receipt": {
         "schema": "sagejs.numerical-nlopt-release-evidence/v2",
-        "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+        "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
         "artifact": {
           "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
           "bytes": 72592
         },
-        "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
-        "qualification_tooling_bundle_sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1",
+        "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
         "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
         "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
         "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
@@ -1210,7 +1210,7 @@
         },
         "source_evidence": {
           "schema": "sagejs.numerical-nlopt-program-evidence/v1",
-          "sha256": "ded01acc6981636b30d50b9be27fbc8b1d93ecb901fe9ea72493a497aac53405",
+          "sha256": "dd9ba0ea16416d1d9f43684ee04651f4dc6e702c603517b3352ecd4465e3043f",
           "bytes": 2037,
           "payload": {
             "programs": [
@@ -1222,9 +1222,9 @@
                 ],
                 "status": 0,
                 "signal": null,
-                "stdout": "{\n  \"schema\": \"sagejs.numerical-nlopt-browser/v1\",\n  \"chromium\": \"149.0.7827.196\",\n  \"cases\": 5,\n  \"result_case_ids\": [\n    \"nelder-rosenbrock-2\",\n    \"nelder-beale-2\",\n    \"nelder-nonsmooth-absolute\",\n    \"nelder-bounded-boundary\",\n    \"nelder-ill-scaled\"\n  ],\n  \"results_sha256\": \"db90cb27296d477fc73a9521acea629f6471da257879cf738a500f7bcc339c76\",\n  \"public_semantics_bundle_sha256\": \"9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523\",\n  \"pre_set_shared_atomic_force_stop\": \"pass\",\n  \"hard_worker_replacement\": \"pass\",\n  \"lifecycle_after\": {\n    \"activeContexts\": 0,\n    \"activeHandle\": 0,\n    \"liveAllocations\": 0,\n    \"liveBytes\": 0,\n    \"memoryBytes\": 2097152\n  }\n}\n",
+                "stdout": "{\n  \"schema\": \"sagejs.numerical-nlopt-browser/v1\",\n  \"chromium\": \"149.0.7827.196\",\n  \"cases\": 5,\n  \"result_case_ids\": [\n    \"nelder-rosenbrock-2\",\n    \"nelder-beale-2\",\n    \"nelder-nonsmooth-absolute\",\n    \"nelder-bounded-boundary\",\n    \"nelder-ill-scaled\"\n  ],\n  \"results_sha256\": \"db90cb27296d477fc73a9521acea629f6471da257879cf738a500f7bcc339c76\",\n  \"public_semantics_bundle_sha256\": \"6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605\",\n  \"pre_set_shared_atomic_force_stop\": \"pass\",\n  \"hard_worker_replacement\": \"pass\",\n  \"lifecycle_after\": {\n    \"activeContexts\": 0,\n    \"activeHandle\": 0,\n    \"liveAllocations\": 0,\n    \"liveBytes\": 0,\n    \"memoryBytes\": 2097152\n  }\n}\n",
                 "stderr": "",
-                "stdout_sha256": "edced6bf0fc7ed4331f603af3521b9a373a6e1b2b1464024b04fee21a9e8a468",
+                "stdout_sha256": "6ed3e749cbacbcd6b263ed206ac8ac9b15b67a7f923bc028615df901ec3a00f1",
                 "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                 "result": {
                   "schema": "sagejs.numerical-nlopt-browser/v1",
@@ -1238,7 +1238,7 @@
                     "nelder-ill-scaled"
                   ],
                   "results_sha256": "db90cb27296d477fc73a9521acea629f6471da257879cf738a500f7bcc339c76",
-                  "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
+                  "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
                   "pre_set_shared_atomic_force_stop": "pass",
                   "hard_worker_replacement": "pass",
                   "lifecycle_after": {
@@ -1256,34 +1256,34 @@
         "execution": {
           "status": 0,
           "signal": null,
-          "stdout_sha256": "e66dcf10dd617dd63038256365a9825502f47117ab82de4b2b291d952630f82f",
+          "stdout_sha256": "f5ab4e3be7eec47d1715bad11a467b54f935e72e1bf64f03f28765a000daba75",
           "stderr_sha256": "5ce676ab2149529be2e479689f83b82a1845508d7fad16e5cf094dd1bec21005"
         },
         "origin": {
           "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
           "platform_id": "linux-x64",
           "host_alias": "bench-1",
-          "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+          "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
           "algorithm": "rsa-pkcs1-sha256",
           "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
-          "payload_sha256": "fcef88e9fae8f3cd3e23d4b53003e3c133f8236446601706c012692a55175b12",
+          "payload_sha256": "03dbe99e8da9302bdfd73515c093a4767f6dcdca093b9edd6037b76d1eb01c9e",
           "payload_bytes": 4374,
-          "signature": "bVQUIt2t5YSU1U6pm/kJgJuRdvF7OXBhyXeOoy95z1roSK9lYp9UzM/midWd84UfGVvRMLcN1FJhhzHHSgctDT9I9+ZJ3h7NMH3ORqREaL8iMG8t4xHTvbzxuhwoJzemqUdwBT5PTVuQxGSx2YK+4TZfJRhaXhCFHY5jr6dxDPp7/Js1LJg9gCdEYVa0nXOcezBWvkJLEolufYcKKb7jgarYVDZtFxnv/YRhngrmr2Qx681IOvPXt7WLDN3QzWX6XlIFn7Iz0oTcQKMiO1le0A80aP3qEKT1azUXQHPPKIiNzbgGU1hSZJLPa/2jtq83+BijyrNJ04kd3khHZp0MS1YHtzjjlvcRYjGGAQiVead7FTx1HI4UAnKWezpGrqgLklNy7htEYVbxYJOySG6aufz6Kgkw2Pvi2Hmtu8nUJo+ehYOnN9KC5GNKqWzq2VT8a3CbO84aqGH3lRNCNicq2nndk6Ioi/hUoTfoCJVp8z0jVJHEPUVYtXEjFRZk/eFd"
+          "signature": "NFJ3E85UI996SwhgLEJeFZG4X0YSuyLsUjMQ25Enawic22Z7ytHYEJB5kol3qF0Pe6xPaQXtdwsW9d/NCc7NlRVDo/Ao6bDNB7vLZNgttJf/JcC89NI9r/sORjm34CRMzX7On4zeQsiA6pZTWFPP2CiRIP06nBn5OzNaP62x/Ab55/4dFrG5kYk8bIJzLNs6Z66Dsx4YXrWvKHyxm8hxIfLtK8koY0WcYyWydpQ3SgbQOWrt8siotVtpmXT5KLdsk4en5vBrKZ0ildQXlTs8wv4OcYhaj5HoPwjrOyLBavb1xHL3d3wasBmADJ4e2YGkf7SL8r5rHX+BmsprLWSOUTTykNZvzn5ZvJ0mgRginZJ7dOMU1rNflyseWGJwUXOFLRHLra3ChdBQ/Sr+3R1tYURU9EJhyj8WTmNLHdeqYBjd1geB4pY+KzLMDht4Q3R3syHfDwc9o/f5xJq3Ux7aoFv+kxYvZ08xVlPICjxaAqRkulEqJllOxNJbZUvOL7Rv"
         }
       }
     },
     "public-integration": {
-      "sha256": "78606e12c42c11c6f6e69d7014dd88667ac36505c9316943d7d5215fd2716d13",
+      "sha256": "f84129c23ac2ddfd2162fb2cd410a44f8756b384634a3332af75aacdbdafd4e5",
       "bytes": 6630,
       "receipt": {
         "schema": "sagejs.numerical-nlopt-release-evidence/v2",
-        "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+        "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
         "artifact": {
           "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
           "bytes": 72592
         },
-        "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
-        "qualification_tooling_bundle_sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1",
+        "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
         "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
         "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
         "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
@@ -1318,7 +1318,7 @@
         },
         "source_evidence": {
           "schema": "sagejs.numerical-nlopt-program-evidence/v1",
-          "sha256": "c628edaf8d2800407b6bf9304d57a860db0f70f56adac148c7b3b3a7b5c8b86d",
+          "sha256": "8e5f9daf3817cb700935e2afcb0666d13076b49fb4026c030fa5b8677b8506df",
           "bytes": 3237,
           "payload": {
             "programs": [
@@ -1332,9 +1332,9 @@
                 ],
                 "status": 0,
                 "signal": null,
-                "stdout": "TAP version 13\n# Subtest: public NLopt Nelder-Mead has an exact identity and heuristic conclusion\nok 1 - public NLopt Nelder-Mead has an exact identity and heuristic conclusion\n  ---\n  duration_ms: 16595.832899\n  type: 'test'\n  ...\n# Subtest: representably lower independent probes veto heuristic success\nok 2 - representably lower independent probes veto heuristic success\n  ---\n  duration_ms: 973.812978\n  type: 'test'\n  ...\n# Subtest: opaque black-box optimality is never certified\nok 3 - opaque black-box optimality is never certified\n  ---\n  duration_ms: 762.759888\n  type: 'test'\n  ...\n# Subtest: finite high-scale objectives fail closed without nonfinite diagnostics\nok 4 - finite high-scale objectives fail closed without nonfinite diagnostics\n  ---\n  duration_ms: 1271.0335\n  type: 'test'\n  ...\n# Subtest: COBYLA and nonlinear constraints are explicitly deferred\nok 5 - COBYLA and nonlinear constraints are explicitly deferred\n  ---\n  duration_ms: 640.241079\n  type: 'test'\n  ...\n# Subtest: NLopt failures are attributed honestly and leave the backend reusable\nok 6 - NLopt failures are attributed honestly and leave the backend reusable\n  ---\n  duration_ms: 1050.308551\n  type: 'test'\n  ...\n# Subtest: NLopt option and unavailable-resource failures stay structured and unexecuted\nok 7 - NLopt option and unavailable-resource failures stay structured and unexecuted\n  ---\n  duration_ms: 99.030731\n  type: 'test'\n  ...\n# Subtest: NLopt rejects contradictory termination and counter evidence\nok 8 - NLopt rejects contradictory termination and counter evidence\n  ---\n  duration_ms: 38.842477\n  type: 'test'\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 21496.465065\n",
+                "stdout": "TAP version 13\n# Subtest: public NLopt Nelder-Mead has an exact identity and heuristic conclusion\nok 1 - public NLopt Nelder-Mead has an exact identity and heuristic conclusion\n  ---\n  duration_ms: 1595.49679\n  type: 'test'\n  ...\n# Subtest: representably lower independent probes veto heuristic success\nok 2 - representably lower independent probes veto heuristic success\n  ---\n  duration_ms: 1051.011011\n  type: 'test'\n  ...\n# Subtest: opaque black-box optimality is never certified\nok 3 - opaque black-box optimality is never certified\n  ---\n  duration_ms: 762.595739\n  type: 'test'\n  ...\n# Subtest: finite high-scale objectives fail closed without nonfinite diagnostics\nok 4 - finite high-scale objectives fail closed without nonfinite diagnostics\n  ---\n  duration_ms: 1366.844571\n  type: 'test'\n  ...\n# Subtest: COBYLA and nonlinear constraints are explicitly deferred\nok 5 - COBYLA and nonlinear constraints are explicitly deferred\n  ---\n  duration_ms: 663.854418\n  type: 'test'\n  ...\n# Subtest: NLopt failures are attributed honestly and leave the backend reusable\nok 6 - NLopt failures are attributed honestly and leave the backend reusable\n  ---\n  duration_ms: 1109.113516\n  type: 'test'\n  ...\n# Subtest: NLopt option and unavailable-resource failures stay structured and unexecuted\nok 7 - NLopt option and unavailable-resource failures stay structured and unexecuted\n  ---\n  duration_ms: 40.609746\n  type: 'test'\n  ...\n# Subtest: NLopt rejects contradictory termination and counter evidence\nok 8 - NLopt rejects contradictory termination and counter evidence\n  ---\n  duration_ms: 38.033617\n  type: 'test'\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 6693.709892\n",
                 "stderr": "",
-                "stdout_sha256": "9937848fac2d5396457b17f1cc1fdf393f6e71081a5c2d38e90ad61502276ad8",
+                "stdout_sha256": "6a66286f31619c7bb7dcfc96e4d11467ca8aff3b54f7fe2a85b6eddda8abdc96",
                 "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                 "result": {
                   "schema": "sagejs.node-test-tap-summary/v1",
@@ -1354,7 +1354,7 @@
                     "NLopt option and unavailable-resource failures stay structured and unexecuted",
                     "NLopt rejects contradictory termination and counter evidence"
                   ],
-                  "stdout_sha256": "9937848fac2d5396457b17f1cc1fdf393f6e71081a5c2d38e90ad61502276ad8"
+                  "stdout_sha256": "6a66286f31619c7bb7dcfc96e4d11467ca8aff3b54f7fe2a85b6eddda8abdc96"
                 }
               }
             ]
@@ -1363,34 +1363,34 @@
         "execution": {
           "status": 0,
           "signal": null,
-          "stdout_sha256": "0b62643f21a2e98fded617a850bea6d42fa46dd5040f22bb2d67c1e05e709560",
+          "stdout_sha256": "4f8c1c3cb7251416f5c1c7651034ebdb5eac2088be0500d78c530cadc3d533fb",
           "stderr_sha256": "82a235ff43e26edb4ecfbdc3b4122e7c2c1a575a89e09af300a42da5617ffaea"
         },
         "origin": {
           "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
           "platform_id": "linux-x64",
           "host_alias": "bench-1",
-          "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+          "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
           "algorithm": "rsa-pkcs1-sha256",
           "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
-          "payload_sha256": "4e44261f9fa147117bbb210a56e45ef8e59d38e2152851cfbcc5602c706bd4ca",
+          "payload_sha256": "ce183da5339ea4132b6d27b4aa9bd82846d7c9ce75ca4249b17cbe10aa984338",
           "payload_bytes": 5594,
-          "signature": "RB8o6Q2w3B8XimL9xwvT505vARzpMPmlP4VvqVeYVWV24VItMfxFI1s90Hy9kxCLc48kHpoAlEwMADQJ8MC6uJHLk+nT5zbhukH16joPmzFzNN5v0tKqQ3mRzyCsrKsyb8r9HlK42pWjBtg+qfU3++586Jdh/wJSM5IjFLlP4wWgvhyAjmLxROvAmQQZTKu+n2m45cU5wHkdnBseMCLxLInDLeuCVkEpaLQpvBJtdooQ11I552FUt3/fu1i19vE833RQap2+EsEN5y6GP/3bhBJ7jwQSRnE7rqL5KQEU5ZyTYHqyK8nPnUMc2Fvza+bbBCShsxoeadT+wuZEz9p6dZzaH2Yftc0T95r3ZF80xbD5tgmoIY3sgS1w5BJrvamUmKzmkMJi1NY1Q+1tMtHN327zvcgHrettl9AvLdKMTuN85eTCxIjBzRk9qoYLSUtlaaRyNywKnNLVqGPRrPQpxwiwDdrGXUSXWAcELfyvVBVw8ur4ggjMocY7wuHb9YZN"
+          "signature": "c05SgyENAZFY59rQWDcoHiLex6NF2wHI9ZV0GklKbZL+Y8/PMt4F3zO6f4umKD9er+cEQfguYSrizTLV7HH1ByF9edZLP46o0ymgw1NoDzY1lpnqqd3OyLcb+7SNMBOZrhzmypCqvbEaHHidzrKzsstEp4y+5xrP+aX4On2x3MPRIe5QBKasfq6cJ05b9aDcVEdDNVn5ivOZkAPTZLf73pAMvFFRTSMsyL6XylGjR4J9PJraTEWKlmXmpO1AUGggN5jJ1lB/V9d1gUYhYWslHp6YnBRFiDwrT8WBOyQwngERUFOKMdK5HklqbUTgiCUhY3i6MNT6Z9EXssvrT/KzVQcNTzXhoVCxE6ilTBJZNURkzvtn52IAtmjJm2r83owXPo16CSo2xhy4kSXzITU5DgrNKU7hgU+4ZwFWX4zewI5ORAJ96jaR4P7WMhXbgczXmpjPv9BQXbSUCTQBsp1K3vrzj8lKO+1MNBOLcy6xxGODQV04pbne8VSuPkQl6Ock"
         }
       }
     },
     "resource-corruption": {
-      "sha256": "83e29d6b2b0b51f5dcf785241676dc9a02ada8684544f7e020b48d5a719e8dc3",
-      "bytes": 5900,
+      "sha256": "2c83b3dec72b781073068b2628fe93198a8d4d2e675a29d46a13cdb74dd712ad",
+      "bytes": 5899,
       "receipt": {
         "schema": "sagejs.numerical-nlopt-release-evidence/v2",
-        "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+        "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
         "artifact": {
           "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
           "bytes": 72592
         },
-        "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
-        "qualification_tooling_bundle_sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1",
+        "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
         "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
         "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
         "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
@@ -1423,8 +1423,8 @@
         },
         "source_evidence": {
           "schema": "sagejs.numerical-nlopt-program-evidence/v1",
-          "sha256": "835de5bee9152abec7fbc3eba849228b86e149a2052ea675e083e2978d4b19ba",
-          "bytes": 2457,
+          "sha256": "6362e78c50d49c7d94d4f02bed0180e3858624f03927e2a1c5cd1a7b07559b65",
+          "bytes": 2456,
           "payload": {
             "programs": [
               {
@@ -1437,9 +1437,9 @@
                 ],
                 "status": 0,
                 "signal": null,
-                "stdout": "TAP version 13\n# Subtest: a real browser routes explicit minimize through NLopt\nok 1 - a real browser routes explicit minimize through NLopt\n  ---\n  duration_ms: 8200.549404\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 8580.187767\n",
+                "stdout": "TAP version 13\n# Subtest: a real browser routes explicit minimize through NLopt\nok 1 - a real browser routes explicit minimize through NLopt\n  ---\n  duration_ms: 8468.487555\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 8847.35616\n",
                 "stderr": "",
-                "stdout_sha256": "599220d55c57f4dbd3702efdd52756e0c86cc6a7c68b2fb702cf6d0d9daddf9e",
+                "stdout_sha256": "30f8d706505cd05c248e7f4917357532bcbf2b9fc90b35800ccd66ca38f12549",
                 "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                 "result": {
                   "schema": "sagejs.node-test-tap-summary/v1",
@@ -1452,7 +1452,7 @@
                   "subtest_names": [
                     "a real browser routes explicit minimize through NLopt"
                   ],
-                  "stdout_sha256": "599220d55c57f4dbd3702efdd52756e0c86cc6a7c68b2fb702cf6d0d9daddf9e"
+                  "stdout_sha256": "30f8d706505cd05c248e7f4917357532bcbf2b9fc90b35800ccd66ca38f12549"
                 }
               },
               {
@@ -1465,9 +1465,9 @@
                 ],
                 "status": 0,
                 "signal": null,
-                "stdout": "TAP version 13\n# $ node scripts/prepack.cjs\n# Subtest: a packed and relocated npm package executes public NLopt\nok 1 - a packed and relocated npm package executes public NLopt\n  ---\n  duration_ms: 33652.235733\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 33718.396828\n",
+                "stdout": "TAP version 13\n# $ node scripts/prepack.cjs\n# Subtest: a packed and relocated npm package executes public NLopt\nok 1 - a packed and relocated npm package executes public NLopt\n  ---\n  duration_ms: 20488.873447\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 20548.446262\n",
                 "stderr": "",
-                "stdout_sha256": "e82a64dea7d734ed89ad721cff7525e0d4271e49f86765967fb83b3b0eb4e1c5",
+                "stdout_sha256": "0df97acf3e1cca059e54956da10332410259ff66961331023b71e9e78c39b8ae",
                 "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                 "result": {
                   "schema": "sagejs.node-test-tap-summary/v1",
@@ -1480,7 +1480,7 @@
                   "subtest_names": [
                     "a packed and relocated npm package executes public NLopt"
                   ],
-                  "stdout_sha256": "e82a64dea7d734ed89ad721cff7525e0d4271e49f86765967fb83b3b0eb4e1c5"
+                  "stdout_sha256": "0df97acf3e1cca059e54956da10332410259ff66961331023b71e9e78c39b8ae"
                 }
               }
             ]
@@ -1489,34 +1489,34 @@
         "execution": {
           "status": 0,
           "signal": null,
-          "stdout_sha256": "3f44bf67c302ce45ab08fb13c5e746dbefae2353ce3459ad6c8782f90331d1da",
+          "stdout_sha256": "b6006412e553d87468cde162309679136fc1fbd501817005f82ee9496a143dc8",
           "stderr_sha256": "5a89917223fc404f91b806410e53e57848a90cd24b2dcf6a1ddaad278bb17385"
         },
         "origin": {
           "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
           "platform_id": "linux-x64",
           "host_alias": "bench-1",
-          "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+          "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
           "algorithm": "rsa-pkcs1-sha256",
           "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
-          "payload_sha256": "facf3914795a4060759170e7d06795965b3202c46214a7fafdceda13cdfb3c39",
-          "payload_bytes": 4864,
-          "signature": "j0Bi6XqCdivBR9zCNGYb7fkYfc8a0EfBZkT1V91Hjk7UOdHn7mjR31ezeU5ZJEJ76Mr5gNGOzBsQ9V4HlwXKkLDGZywTXtizv3fXVms/VXuDQt6DS8tDBEbHUsshMMjH3hwBBAdyyCzHAdbQcXFOR1zrMFT+MB/U9DSJIM4En/RjLljE37zx7LBpy7HkEOl6KB71gOrRqsTcn241FVHVnXtyjVuXcNhtJaJPhG7q04hXqdflM6afea2b8o9YlemjD+7fLoOIvbFXl7CGbyrmlo73otGh6wF/7fSScb7W0AHfTSMYKZHSI7Yb1xAoYO1lREr4XNSMYg+7ZGmGRW3KMewnaNZ9V1HGtDaGAws/GgWsVpArDy1A5egH8+TASrMxElpkKhX/37/Lko+5W1VkGIqYsJBdWRWuqS0I55EKK1xbuGLTyGzRZIlJASdGeO0ZcYNe+ZlZNpVyNnCZT0joB9Y+FoSSIZEd2NItcojFstWFdUnRXpcBgSaDUVlrjuxZ"
+          "payload_sha256": "7b6fd27c8c6eac51335d772c94af454cf1d7a5dbb4b4fa5947792941f8c8717a",
+          "payload_bytes": 4863,
+          "signature": "pzqSWZyI2/ezZQ7aeL8OjcRJKaIYZ2PKrvRbnIKebLiZdcNpFj+WSnpx8WvcJT0frKTBftVkmHjmNj/it9McW3qt4K3kj7exrbNwdEMqti18BdDsumJh7SeTL4ljwlXFXfvW0Wrioo+OtHDQbutZl05jgnGpPiLmNIThNCAwSbRjOgQUmdeGgUYzMP64zh4pmAtyZqlRe7dUV/F4mwqCKFmO5u8d+t9+H1EtENVJYrEZUuLc9iiG7ZU/xFYAm+dIX9SPvibhj6axwxRezFOES9tPn/bXJI6QSczlmCmAT/XaCqYpfawYrHBbwSmQuliaH4QrLnWK7WfVribng51uio0dIl1GfRiMRj5O7igUbWV2LE2H5vXW5XoiAK8zgpz9LSuLiPHTXX1eHqHgCVbhVwyUAR3mvt4z+iMNNfs4k+2A5p77oScUkMGxeHfPT8zLPprZPxTtoj2xIZVWVORhwy6oyQMn3I1M/x2SrOgL44AXOHiT5JR+UYcNyk5wXJN2"
         }
       }
     },
     "relocation": {
-      "sha256": "4637cc942efabd4f3b613f45ee2683d6c21f34aec16e9578dd48c90a970e07ed",
+      "sha256": "1122bbfd0562199acfdfbe0b0f2b1e0e36a8435bdb2a8c1d90962584f50313fa",
       "bytes": 4540,
       "receipt": {
         "schema": "sagejs.numerical-nlopt-release-evidence/v2",
-        "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+        "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
         "artifact": {
           "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
           "bytes": 72592
         },
-        "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
-        "qualification_tooling_bundle_sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1",
+        "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
         "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
         "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
         "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
@@ -1549,7 +1549,7 @@
         },
         "source_evidence": {
           "schema": "sagejs.numerical-nlopt-program-evidence/v1",
-          "sha256": "cfe275899f74d07af0583c133f444aca4f9c5589309406cbd7e42177706b775c",
+          "sha256": "8b57ace2290d93e972e96d1b46f59d7b9fd250da8a20d7eb6431804250abd305",
           "bytes": 1251,
           "payload": {
             "programs": [
@@ -1563,9 +1563,9 @@
                 ],
                 "status": 0,
                 "signal": null,
-                "stdout": "TAP version 13\n# $ node scripts/prepack.cjs\n# Subtest: a packed and relocated npm package executes public NLopt\nok 1 - a packed and relocated npm package executes public NLopt\n  ---\n  duration_ms: 33569.497222\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 33635.231286\n",
+                "stdout": "TAP version 13\n# $ node scripts/prepack.cjs\n# Subtest: a packed and relocated npm package executes public NLopt\nok 1 - a packed and relocated npm package executes public NLopt\n  ---\n  duration_ms: 20601.223447\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 20662.586391\n",
                 "stderr": "",
-                "stdout_sha256": "e621ac171765bf5b546cf9a4a78e9f146958839e1e15c27d537c2ace4c35fea6",
+                "stdout_sha256": "3645c39393b7393e1c05d754c3ecbe4eccff61cd372c7cc7148ff16c6e3b5178",
                 "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                 "result": {
                   "schema": "sagejs.node-test-tap-summary/v1",
@@ -1578,7 +1578,7 @@
                   "subtest_names": [
                     "a packed and relocated npm package executes public NLopt"
                   ],
-                  "stdout_sha256": "e621ac171765bf5b546cf9a4a78e9f146958839e1e15c27d537c2ace4c35fea6"
+                  "stdout_sha256": "3645c39393b7393e1c05d754c3ecbe4eccff61cd372c7cc7148ff16c6e3b5178"
                 }
               }
             ]
@@ -1587,34 +1587,34 @@
         "execution": {
           "status": 0,
           "signal": null,
-          "stdout_sha256": "e21fe7bf15b5f2262bcd4ac03f1555c0498a8ec964369f60d8775f611046c57e",
+          "stdout_sha256": "cb10f3abba6156687d8ac6f456c725c58f49a1fe4d5b11bde47ecb35cfc9eb97",
           "stderr_sha256": "7bfaeb43800862d5e4faebd5951d42c84aa580849c61575c7145670aef04503f"
         },
         "origin": {
           "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
           "platform_id": "linux-x64",
           "host_alias": "bench-1",
-          "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+          "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
           "algorithm": "rsa-pkcs1-sha256",
           "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
-          "payload_sha256": "dbb75d6817b306086625fc205d85e73c90ac92498b7324d30344d9ee7b8fc48a",
+          "payload_sha256": "be4d56ad0f4c66ea6ec84b144e4caf0155c7c6eec60499e65c4679bf606ca63c",
           "payload_bytes": 3504,
-          "signature": "nJ5DcepHggxQaaY781DuqL3B64k8CnsBEsryp9IPUNYc06d/KGEu7yzIfs9C3kO2ZtfG7fjWtRneVIdOGJoJrBDW9mvoal2ym8SlzcwBgeSALO/63kAZs3XnjsJgfChwZZF1Gog5dGMtzyymc0MJq05eUyfg4xVpkdq2pJo8/mfjZz+GTV0+GcCUzOmlgTyCowHen2KuW4/Aq8cHyTEjNQzs3yPIve9Ccxjbl/qZyXtTHQovFLgZgSevV7v8q1ACFIMMtwfrvwBM7pnNir6+b/cAKibYegOVAxHNJ0LqrqB1d6wrpEzLKhYEDxL6BB5MnH0FSDH2XZRRCKNOwht/2s2gMqWAcBxT2kqebfODWpZqYqVbTE1p8BXbbf+UK8r9smmgaB20R3hMusFbEHvgIdpNP9x1mK/047TJeUUM1mmXRM3KdD29adrQeKSy4I66HbNb1r/TQIC/zcNtHQ8Hz+Ghe7V+M7DP3QTwncleUuresnqQ7nBnPtJK88kI6MQ8"
+          "signature": "FnzJV4O8GGHGTGrblsCepDAWGCYFCey3RYnf/beHVBRk2jYPemMCT2yEnFE0WbLRpI8txcbJQ93Gh3yudttKzFNRF+snYUJZtWpK3s2O8QUJG3KllqvDh9ZhT44SZgI/SSfbuRylqYy+4Hyb3+X9hhzlWytrp90hUY4gPCXgDKQDgiUf+lX/Lsr6kv8SruYY4yGHm9IIH7GadHzSDmQfIosRPAnAqdY5H3e3jbaEZrpLOA1xOcGumBfKzvKcf9mbOvsUr4fF7At2Im0AkDl8xUT4budj08F7wgVHDfcS8hI7bJrr7ilXFUzG6tF2cICQhCJh3X+4gmyejG72frRQd+zJaGICAvRj60FPr0rBWKhYnipEHlq+oAui6FAmfEmFr9F4rVuT6LEq8nLf9ELyk/QQdMJ2IuUfdhAWcYi+UHhufQcL0S15yLQrrxAwAJMgJVICZ6IkUmje1kcOXznDrlj4mA00OSS4XPNauVOvIAGcd/0GcRxm5Q17udvTGjgI"
         }
       }
     },
     "sea": {
-      "sha256": "dfd34bf94fc87e39371579dff5f953a5b0d24d87c6f4f12e97bc15c5edbd0d15",
-      "bytes": 6088,
+      "sha256": "b9b94b8df2291c4ccca95df51f58d1386a419a5f15298ef2b0571cb9283c2930",
+      "bytes": 6087,
       "receipt": {
         "schema": "sagejs.numerical-nlopt-release-evidence/v2",
-        "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+        "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
         "artifact": {
           "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
           "bytes": 72592
         },
-        "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
-        "qualification_tooling_bundle_sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1",
+        "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
         "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
         "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
         "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
@@ -1646,8 +1646,8 @@
         },
         "source_evidence": {
           "schema": "sagejs.numerical-nlopt-program-evidence/v1",
-          "sha256": "dd5ad7022a8f533a392f1a116595e6b71c6bf88e36816619606710a763daa203",
-          "bytes": 2677,
+          "sha256": "1884c77af0f84902643618fe36c819f11dcd643e890b0706ad7d9f1706443ef6",
+          "bytes": 2676,
           "payload": {
             "programs": [
               {
@@ -1660,9 +1660,9 @@
                 ],
                 "status": 0,
                 "signal": null,
-                "stdout": "TAP version 13\n# Subtest: a relocated Python SEA executes explicit NLopt Nelder-Mead\nok 1 - a relocated Python SEA executes explicit NLopt Nelder-Mead\n  ---\n  duration_ms: 2505.194802\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 2566.738146\n",
+                "stdout": "TAP version 13\n# Subtest: a relocated Python SEA executes explicit NLopt Nelder-Mead\nok 1 - a relocated Python SEA executes explicit NLopt Nelder-Mead\n  ---\n  duration_ms: 2583.648586\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 2645.44341\n",
                 "stderr": "",
-                "stdout_sha256": "40f2e8998759c8271ab43ea5d131a58e05d510dd74d395bb8561a848ce9e86d0",
+                "stdout_sha256": "51f3583810465dc60f33cedd7cd278c0aca21d57d78db02636929e6ca7ee4159",
                 "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                 "result": {
                   "schema": "sagejs.node-test-tap-summary/v1",
@@ -1675,7 +1675,7 @@
                   "subtest_names": [
                     "a relocated Python SEA executes explicit NLopt Nelder-Mead"
                   ],
-                  "stdout_sha256": "40f2e8998759c8271ab43ea5d131a58e05d510dd74d395bb8561a848ce9e86d0"
+                  "stdout_sha256": "51f3583810465dc60f33cedd7cd278c0aca21d57d78db02636929e6ca7ee4159"
                 }
               },
               {
@@ -1717,37 +1717,37 @@
         "execution": {
           "status": 0,
           "signal": null,
-          "stdout_sha256": "214183293cdea2b42efc3cdada6b62e59b15626bfbe9e56f063d19dd471b22a5",
+          "stdout_sha256": "d2ef2430bf2ff5134232a468e930b54239aaec1be8bbef53578c5a3a1856c01c",
           "stderr_sha256": "f044a295270c8cc535236b80b1f837519a1c2eb32be6d80a38593d2f75ce6a86"
         },
         "origin": {
           "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
           "platform_id": "linux-x64",
           "host_alias": "bench-1",
-          "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+          "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
           "algorithm": "rsa-pkcs1-sha256",
           "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
-          "payload_sha256": "282c3fa4c77275af6709bd8717b63f4f25c0243a0677230402bce270da26221f",
-          "payload_bytes": 5052,
-          "signature": "nFds9GqKKmbrYsRzKtNmA5cfp1wmw4oYatk7kBRBfH7Pc0GxSDHUmwxndCvwdNfdP8J6G1birKjqenGCdupa3jkjcYml8vE+782Fu4dyQWjWs4Smr8OAi2QNlmIENTJ2690UQmYtsA0mRblSXfdxv8rAPfJ8w0xh4arMTGcIQB21pm08ev3X0ifakD49I+sZ8i6qz5SXbFRX+Q2Ea+PJDVdT1623sSWKm1WOATGMWFkgKgyFyzEVdHFUEhh8Eo9d24wRkZIhQ7k96UGqeB5TSpCQyRA4kL/IHQq/ikmaLqmCb1T2TnMwJzbGxA+fHiwGpxFFq2QbgoINkR81T4IIlLt7GgpwxN6uu4vjqhTHVcmKsALeqzx71xN+7nGj1zcj75p+wPC71fwAME7O+osbGD7Dlc3V70WqKvVAkvFZH9KdHRQgsG8o1j/SgHBUHRIwORkZufRDWh5sk6AX88ULlSGgRefKaOD08Y5PXc2unZtVMfr6kdEr4exqjWKT3Urn"
+          "payload_sha256": "0ad371a32139f1ba13c66dbe5814a454e232d4b0b3b53c9904a0996ddf99d99f",
+          "payload_bytes": 5051,
+          "signature": "e+P09be6f4Xghkc+Ar6Vni6Q3qi9a2cpanrw9lJNZMoUkfn5AnHMtbpOH6SyBIasf1CjZigUFC/SnMLQ3u2sTMuR9oD6Sh2IEURT+OiWqitjGFLniXP2Sc80/VEPJjOLlH0ArWTZ+PUYVPptiprerrUz6YIfmQj6il/JNm0UIxPXlN5nKUDOeccOyBoV+Xs6dZ2fJpdahgjCuXqV31gf+/oYpo4S4ObFPc9fiECVSQkRd7AIUbvHxvumKS3V/aK26JxFUuvgjsuoy/gDxQ7DFF/18qiLcIK6+vsHKbQ5ZhhUSKtKXT6K0WwKPYz8qIbHaVQN9h6ofDFpnGsbWj66FzuLDhwViv8YbHMXTQOPUkwzMK9nZ7iL2pNQweCyiZfDrMeP7EDvASO0Gk7bqNh657oTGcsAI26UjVK1CsQfd4Sf+8gBLUVawJrWGCOsy5kH6rqvpcrLt70rSkuqJe23OG1gvCNN3exes9b3l0s+gJYw+jAmlq3G9Tme/sQzC0vH"
         }
       }
     }
   },
   "portable_receipts": {
     "linux-x64": {
-      "sha256": "13b574546279cfaa3e5bc4226d81bbae5b860481280cddc048684a5b368f9762",
+      "sha256": "c77c2ff1cedc8ed45281779a8e7730f555d875483c62da51de55be23482384f1",
       "bytes": 4592,
       "node": "v26.5.1",
       "receipt": {
         "schema": "sagejs.numerical-nlopt-case-execution/v3",
-        "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+        "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
         "artifact": {
           "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
           "bytes": 72592
         },
-        "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
-        "qualification_tooling_bundle_sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1",
+        "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
         "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
         "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
         "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
@@ -1858,28 +1858,28 @@
           "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
           "platform_id": "linux-x64",
           "host_alias": "bench-1",
-          "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+          "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
           "algorithm": "rsa-pkcs1-sha256",
           "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
-          "payload_sha256": "61334d9c353ade031361553bf4b96ab7109d1c2b15569c37f867d4c9567f3909",
+          "payload_sha256": "bc8abb4d6715fd6e2fa7dc2c56d0c21405ca250441cfd277ad65d02131be5cdd",
           "payload_bytes": 3556,
-          "signature": "EVe1BZMZDwMxaOxXA4BZCFhGp27I2aSH4G8IWX6BbepYNG2w6Mdj8IRWhuSeEORdWZ57pvM3ahvNM1FTQ15Rpx5BDJdLUUHP6PbtbtWhQMjBI6pFwy8B16w0sR8uZ5LhnHKw73onEhezw9JjpBcN1BsATiFixinLKAMj1ljy8iuSb+kn3XWZ9oaE8rC6mD6Y4Htk87OV8fBN+SfeF/7QcME9fej9Cg/LImJ850Hmvt9+0lJ4VLOLYLq5eXDzAQq0KeaKAUnHeGl1KdR9DUcSrZ0iubBHozj/tmZs8PMEKEY6CbuP6+2iLTVevG8/Lo2wLLmrf2w0aX67SycOFNYo7Sb2HTiC00WZxa0J3uqL3I+pVHV0+Ge9FfbNPvgzCqWKO/EePUZz6WGjQKNFdUQ9zW9RTdX+SUVIXEC/gHeyu9fDYqmDYcAzz2n6nb8S7hXTRQ20maUUShEpiNyEm8kPI6ZlYm+L0Qq+LgGtpyqVCmnKPJwQk7qaxP7VKfAELbPj"
+          "signature": "k56qMOyJxAQy+cBA55IhaMgynG3+V8/MOBZVVOr0E85tZCZ2Z5Sw9Y0+GCyb8CwRwHWgb4fmOaFjEFskUYuAqyQg54yQDhbOUITFEZETlwafIb+LojGNPhcl6Knvtko+PNsVzlNAsv+/RIYYIW7/qH8RvRsCUeto6peEFebYaVBYiQeo8kErUwl8KTLwgBP5EJB3IIJNFwXc/s6rz2n6yssjZFuZKipMffZ97iGKuDez1k8iLKNy2iePmLBjJxan4BYLeWmR9z2yssU00NuTK8iF3i4V+v804w2VXYLYb9qjAjSe5LhGpV+vRVSluI+N1yklyuaq/8qy4VAkXM39pnvLQ770E/buVc9oT0aNAVqj4gmToIb8j7514AEIiXm8SteO8+CogrxsEpSDYdT0q7ROSUCvgAnRAYOdH7ylXmI4l5T49B/cNaJc7cMEr60Qh2JTvo4t6mMMRUdIM1IPWfGLn1205fgXIgiHh2IsPaMU8YlFp8twbgtFTNCebceI"
         }
       }
     },
     "linux-arm64": {
-      "sha256": "bbfe1b7f57b0f0bd5d0ff307ee3a859a9eb60e783248b14b497ed967cf9824ad",
+      "sha256": "8e412ca72f1efdf5e91f0ab2d97beceb8d89e72efea2111caa2a2116008606d7",
       "bytes": 4598,
       "node": "v26.5.1",
       "receipt": {
         "schema": "sagejs.numerical-nlopt-case-execution/v3",
-        "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+        "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
         "artifact": {
           "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
           "bytes": 72592
         },
-        "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
-        "qualification_tooling_bundle_sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1",
+        "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
         "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
         "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
         "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
@@ -1990,28 +1990,28 @@
           "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
           "platform_id": "linux-arm64",
           "host_alias": "bench-arm",
-          "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+          "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
           "algorithm": "rsa-pkcs1-sha256",
           "public_key_spki_sha256": "78d44c4f7112a2f36eaddfa53fe5b375c2eec232bc0a1bee203da287aac6fbad",
-          "payload_sha256": "7ea4fe7115cad3e1726d6804796d549ebc31fdaa2c2bb7ebca356cfd58fa6c4e",
+          "payload_sha256": "6aa254ab3dadbbfadf66eb69c69679a5f31e93af32d029d644335db8ebc316f4",
           "payload_bytes": 3558,
-          "signature": "HpvStfCsSo/4RM8GrehhJU8BQOX51dV8qgfleSKCpuXXni9yHJv/bUpznlL1k+xBdYYQiaE7uAtNK60lnoUFjFreddmNvEw/90zDYezK3DMT1kphc2ml2vMQ2pde8cmY3rG6U+sZdTkfRADExxRNjb61wVK9eHjCSuhN2AaoSNMtU5rhB73Ys+aBw9N7CB9/bRVbibOx6Cm9pjznd8VljyhO0//slzAnZ/a0eSPHFMc/cA4NVhgIuafmp30bpssup2CG6XLPPMcMLnbg325/lLe1PV+4dJXuSYguLlVbJGn9vJMQ7faASYQz7lXwg96DdrmVUO6H1O6cM8hyYvgBdlAwbHBVKA2pKU0+KGckhc8z7z/xOO1Agbu7geI8bvez29mPOHMy8YH8sl5/whgfpbDVxIVWVcMG6rBhCwtB3txzRmuAN8d7satUEj4mnocaHXu8WpYIMLS5DN3vnxQ6Tkmxr0Jt/NX2jS+1aXWKP1CgQiivSXqr4uijZJoWXE/O"
+          "signature": "Z9yb8lCKU37imJEX0auS+LDa2zfo6KmjQ4JQcw4QO768KTZ/ThGIujpb3cB4whymWJC7Tp/4Hqo2OkybO4v9oj0NYzeR7uy+2/7LnGVi7AJ/98FP0JKmm7ec9tA4DDIjObqQTAbf05XW5E9hjv85nqCd/9ySyHG+88A6JxrsreuorZTu4NbFVkBOx44HQ1hA0h1JkyhWofq83RJklbXZTriqS2/F44eG/4Z0coKCrrxjejmahSg6dmg+FS0WBKvz2noWbgRPLch3Arh/8U7KzDo8LHrwHgwGRmRPpwupBr+/bACfGkqjky8I2thu9ZW3rDipeTaXyegV3r8llubNwahkd3limfNhoYhhhhM7fs/FTcEacFrvPV+l5Q8Q39q1pnWG2KVwtuiq/W20DHSuVn2hL4zag4tF20xwVNhfNlTLpsy3T9fEIIGiwlJ2dLvRPPuLQDR+Vrc1e5Uiv/ax0S9As7OgGg4AEzdpqu02Oz2NydB9DlRluLidfNg4JBf1"
         }
       }
     },
     "macos-arm64": {
-      "sha256": "7b50184dbb2e277ba5f4ccd543cce668850eb0af4c71ba9e4893fcb8b5f8d9b4",
+      "sha256": "e85cce175c214e1c01eac9a5babd727baea410c8c51fc1d24f697cb0b5176c7b",
       "bytes": 4592,
-      "node": "v26.5.1",
+      "node": "v26.5.0",
       "receipt": {
         "schema": "sagejs.numerical-nlopt-case-execution/v3",
-        "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+        "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
         "artifact": {
           "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
           "bytes": 72592
         },
-        "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
-        "qualification_tooling_bundle_sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1",
+        "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
         "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
         "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
         "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
@@ -2027,7 +2027,7 @@
           "nelder-ill-scaled"
         ],
         "runtime": {
-          "node": "v26.5.1",
+          "node": "v26.5.0",
           "os": "darwin",
           "architecture": "arm64"
         },
@@ -2122,28 +2122,28 @@
           "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
           "platform_id": "macos-arm64",
           "host_alias": "m1",
-          "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+          "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
           "algorithm": "rsa-pkcs1-sha256",
           "public_key_spki_sha256": "ad9ad8bcd3f244220017efc0127bf7c094487c828d3f6e2e8b36f96855d7e654",
-          "payload_sha256": "db9e8fae52aaf3bef73fae6677e73884e9c9feeecc3e230e61fa61873b855bf7",
+          "payload_sha256": "1e34577e498afe2ba4ace8e363bbcb821e479c89cceb873298cd08d49dcfb6ce",
           "payload_bytes": 3559,
-          "signature": "cLksSrgGAUEztYhpGjnGT9lcHbyLRWutH4ZlCma5yb5iFkw3YDpnPzHUByNUmLq/iuhgSyxJgchfUn3gOP9xWlhB6tjbXzz//5SfsgkPSTtXcp0YTMJ2pWKQFTmX75fSCfHP4a+Z3nE9xb7Swe15DQDUCectXNqrN9LpYKw0T9fjcYe8cAkvyyBgaj+ZPYFqI3f3aGH19CvCueIAXa1RneE+W4C8m1JOGkF41l6h3+ua+zd5hW5Hnno/ocYRvoqZbRQYKr5xotXYvBPux3h049RmzHVReeoMhukwEipxO6qoqQHNpQkvQgFv39haolZftdQMTLrjeNFs0SQ7Vqvs0olI3/RjBm4aagoDHaPRdZudPwYKneAJEGd8l1ejc2gvdMODha45dCWv5duAsOHSKveGnQKmLW3wQ+mf2MkTBGUO+qlxGT2o8Ijw11kf077LqFnuwkcQvsgT77Zr6zcFa8bR9kist45oYSqgOMUS0AaSq6oyj0I7UBa4iV7/kg0R"
+          "signature": "FUOP9Fu7lVBgy0Dub0ja++e8eRUeMF/CS4mBvfMKMp5KkWDCtZzeen73Kfvg+YbwaznrbM4AVoK1wsJxvnMpfQ8BhNgMFbJV4Pam7HxRF9LKDV7HDfQO7y3gsT0SzjDXYcMg6uo6FQ4kBjOcqc5SBVj3+uJrFi4AIBFrv7VzN36B1NFzJvJpFR64jxV71AZjg+TBZ1IGnzPxtrH8WsalChlq2Ha4dJZA/pFjrTu2OgeuC9+xnvFQxBvugqvySb4ZyFrbNNuXOBYpsG+D0hEwVw1x+7TidDiG5FngHH5/6bSD1+LF3moRHiL0xY2ZeLtpvUQxSgAeEXgVau92qGCdiXEKfP+AGuQllIvdQuDiRGENhBbf0Q5MpfuKwCfF9SwRMcqelx2VeJv3zsDTQQLvkmc1w1N0ZxtyhsQaiVnDn9VEe8FB5GdsEGxayIEAWzE6yYVJGuepcHZVkPXI1Kb3ZykKAyBpEpFzTvFMH+RGQ+hXJbTV0bCmYU8Lmd5JI3mI"
         }
       }
     },
     "windows-x64": {
-      "sha256": "6cd54335368b97e322f93a4415e76f35dc64e4654d675ff403119e9e5ecfa6c1",
+      "sha256": "5da55e4ba6c80ad16b9bb5306a91ccbcbf732b617902cdbe121f021315cccfb5",
       "bytes": 4594,
       "node": "v26.5.1",
       "receipt": {
         "schema": "sagejs.numerical-nlopt-case-execution/v3",
-        "candidate_commit": "435171bee6b872065413b85af307c3c4877d07b0",
+        "candidate_commit": "e4e8590cb6d2483e5f477d804667ca2a4c0eab9d",
         "artifact": {
           "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
           "bytes": 72592
         },
-        "public_semantics_bundle_sha256": "9c050b22e1d98758659e28e51a9466b45c0f4eb99de2451cd142c3e74c41f523",
-        "qualification_tooling_bundle_sha256": "dadd38e5c9d18bc0040b7f2e97a79a9d6be2623cd2c2d528dcfe2b2335e7e0d1",
+        "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
         "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
         "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
         "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
@@ -2254,12 +2254,12 @@
           "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
           "platform_id": "windows-x64",
           "host_alias": "windows",
-          "campaign_challenge": "375745f162bd2fdd8c7cbf15b0e46a91d3fb9c43f7972ad04014f6545fcac7e7",
+          "campaign_challenge": "d49b91987f6bcfc37754dd7135bdacc1c5eb596fe1cd04d64dfdbeee6d0c80e3",
           "algorithm": "rsa-pkcs1-sha256",
           "public_key_spki_sha256": "4b4fc63d18802dbf3faaf7c5bbc90e25d152ad30ab90e754be61beb6f17f5bce",
-          "payload_sha256": "f143d088f67cf11cd861b8a4b832aa545b0526c219bad410155a98bf9fe66a3c",
+          "payload_sha256": "fc72abf6a6bc5f37973aa7c5259f15470e151c6442c63a823cb61c55a8343075",
           "payload_bytes": 3556,
-          "signature": "RZ0IZbINs3sx2f7bGJqj/PNABYdnLvqyT7B5k2Grm41AE2eIS2G5SQfjl29s1AAuKN5bcSQjrGo59qIIbPhGzunyFVVeosCp4guzyAO/bUtF8p0meMGhS73aaV/vt3qSrlAKDP7nNBAbcPh7aKO8TFOAzzJtC7y1hVT59SZwIAhSmf5FVNOvbIyKkRq7Tms8dUUou0Rv6t64s8IXFYnrlX1OvReOScu62w01WkpZ/3fFamGrgokI+dPwO6MHp17nnnqWd6aH4Sf5Z+jCE6PH96p9yfvolfd1KPzLfVrxWuigSDjmoyzcYn5KCKJP+iWumIwSTrLgv4/cG8ShmIr3Fw9nZK3ny+HqWpH4ZQMX898h56o0x3pWHpyUDeDN9KKBEiXBYbA4XBDiptcedd3eFRHK3R8KVHeu7XvJt0vgRYhz+hAoqN9GtflWEY2tE3vzCdVNHJv9Gk1Tz2pvkcx7uGHqJFPZrkv8sz4uiflFqbyvUfCGwFSuOywCxmPUWEmJ"
+          "signature": "IqWp6IAT2escrlBswc4RxhrhdFtzGq7H3hodYyXtRmjnx1IyBgdWhZNydpUfjQgjQLE668CwzoTM7ICKelpwWfLvOxg6SF7BXSVuwtdgPvknpbeZkfdwTZjcSBx8qwtBYyx5as9AjMJSGODKg5VBchI+ilZ6jD1jCiUQY/Bk335bLP68Z0HW4EymzoZGTxI5DRXVrtdh+9OT/0hJDvHR1+nB268q/B2voXlq337mYiFI3ksPUbIjs6vY8KO5+CvzFCC8q6yYRoZIOdEMZC6L4CrUpFzujZOpw+/eccSJ4omDVmFb/2NkOHh2GLr4DMewxR7sbLttwDE0Q+a1dc8Cnve7HMJmqlo4Dg/x6Zso+AkkgenNwKMIjQaQjU8fCD33WwyQw/bWNQwmDP2RNqZF+KLOhxxJx8IeA1hrHxrxqj+DEQWSLr3GZhb8Duh/sMPCGQzHa+vc2xWUCvrD2WXRv85NI5FMkXgP9c6YyF1/CyMvD8fnxg1Bx7E45988djzK"
         }
       }
     }
