@@ -153,12 +153,22 @@ milestones, not a claim that every PR is merged or the program is complete.
   mechanisms before assuming a JavaScript performance ceiling.
 - The performance laboratory currently covers warm workloads. Separate cold
   CLI, compilation, import, and first-call scopes remain work to do.
-- Source- and raw-outcome-bound baseline evidence is still being implemented.
-  Existing status comparisons are not equivalent to that stronger guarantee:
-  one wrong output must not replace another under the same accepted status.
+- PR [#133](https://github.com/sagemathinc/sagejs/pull/133) binds the MicroPython
+  baseline to source and byte-preserving execution evidence, explicitly invokes
+  the source launcher, and records a finite set of reviewed GC outcomes. Its
+  fresh gate passed 506 exact comparisons and two reviewed differences. This
+  is not yet the general multi-suite evidence engine.
 - Broad build-receipt invalidation and tests observing in-progress compiler
   output caused expensive rebuilds and misleading failures. Improving the
   edit-test feedback loop is now an early enabling milestone.
+- Build-receipt v2 binds complete compiler, tool, vendor, module-cache, and
+  runtime-cache inventories and digests, plus the native pack when installed.
+  Native-only refresh must preserve the earlier source-output bindings. Old
+  existence-only receipts require rebuilding; they must not be upgraded by
+  hashing whatever artifacts happen to be present. Focused synthetic tests
+  cover tampering, missing/added outputs, links, and refresh refusal. This is
+  an integrity prerequisite, not completion of generation locking, mid-build
+  source-change detection, dependency identity, or narrower invalidation.
 
 Use this checkpoint to guide sequencing, not as a permanent status dashboard.
 Current claims must link the exact revisions and receipts; consult

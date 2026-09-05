@@ -21,7 +21,7 @@ const {
 
 const repositoryRoot = resolve(__dirname, "..");
 const receiptRelativePath = "dist/build-receipt.json";
-const receiptSchema = "sagejs.build-receipt/v1";
+const receiptSchema = "sagejs.build-receipt/v2";
 
 const fallbackSourceRoots = [
   ".agents",
@@ -187,15 +187,20 @@ function currentBuildIdentity(root = repositoryRoot) {
 
 function outputWitnesses(root = repositoryRoot, identity = currentBuildIdentity(root)) {
   const witnesses = [
+    "dist/compiler",
     "dist/compiler/compiler.js",
+    "dist/tools",
     "dist/tools/kernel.js",
+    "dist/vendor",
     "dist/module-cache",
+    "dist/runtime-cache",
     "dist/runtime-cache/manifest.json",
+    "dist/sagejs-version.json",
   ];
   witnesses.push(...numericalFilesForIdentity(identity)
     .map(([, installedPath]) => installedPath));
   if (existsSync(join(root, "packages/flint/build/generated-ffi/sagejs_flint_ffi.node"))) {
-    witnesses.push("dist/native-kernels/index.json");
+    witnesses.push("dist/native-kernels", "dist/native-kernels/index.json");
   }
   return witnesses;
 }
@@ -241,6 +246,75 @@ function sameIdentity(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+// Bind complete directory inventories, not just manifests or file existence.
+// In particular, a module-cache entry can change without its directory or
+// runtime-cache manifest changing. Reject links instead of hashing only their
+// names and accidentally trusting a mutable target outside the build tree.
+function outputBindings(root, outputs) {
+  if (!Array.isArray(outputs) || outputs.length === 0) {
+    throw new Error("receipt has no output witnesses");
+  }
+  const entries = new Map();
+  function visit(name, checkAncestors = false) {
+    const filename = resolve(root, name);
+    const local = relative(resolve(root), filename).replaceAll("\\", "/");
+    if (!local || local === ".." || local.startsWith("../") ||
+        local !== name) {
+      throw new Error(`invalid build output path: ${name}`);
+    }
+    if (checkAncestors) {
+      const parts = name.split("/");
+      for (let count = 1; count < parts.length; count++) {
+        const ancestor = parts.slice(0, count).join("/");
+        const status = lstatSync(join(root, ancestor));
+        if (!status.isDirectory() || status.isSymbolicLink()) {
+          throw new Error(`build output ancestor is not a regular directory: ${ancestor}`);
+        }
+      }
+    }
+    let status;
+    try {
+      status = lstatSync(filename);
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      throw new Error(`build output is missing: ${name}`);
+    }
+    if (status.isSymbolicLink() || (!status.isFile() && !status.isDirectory())) {
+      throw new Error(`build output is not a regular file or directory: ${name}`);
+    }
+    if (status.isDirectory()) {
+      entries.set(name, { path: name, kind: "directory" });
+      for (const child of readdirSync(filename).sort()) visit(`${name}/${child}`);
+    } else {
+      entries.set(name, {
+        path: name, kind: "file", bytes: status.size, sha256: sha256File(filename),
+      });
+    }
+  }
+  for (const name of outputs) visit(name, true);
+  return [...entries.values()].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+}
+
+function validateOutputBindings(receipt, root, { afterNative = false } = {}) {
+  // Native reconciliation deliberately republishes this product. Everything
+  // else must still match the *previous* successful source build before a new
+  // receipt may bind the replacement native pack.
+  const stable = (name) => !afterNative ||
+    (name !== "dist/native-kernels" && !name.startsWith("dist/native-kernels/"));
+  try {
+    if (!sameIdentity(receipt.outputs?.filter(stable),
+      outputWitnesses(root, receipt.identity).filter(stable))) {
+      return "build output witness contract differs";
+    }
+    const actual = outputBindings(root, receipt.outputs?.filter(stable));
+    const expected = receipt.outputBindings?.filter((entry) => stable(entry.path));
+    return sameIdentity(actual, expected)
+      ? null : "build output digest or inventory differs";
+  } catch (error) {
+    return error.message;
+  }
+}
+
 function validateBuildReceipt(receipt, identity, root = repositoryRoot) {
   if (receipt?.schema !== receiptSchema) {
     return { current: false, reason: "no valid successful-build receipt" };
@@ -252,14 +326,8 @@ function validateBuildReceipt(receipt, identity, root = repositoryRoot) {
   if (numericalFailure !== null) {
     return { current: false, reason: numericalFailure };
   }
-  for (const witness of receipt.outputs ?? []) {
-    if (!existsSync(join(root, witness))) {
-      return { current: false, reason: `build output is missing: ${witness}` };
-    }
-  }
-  if (!Array.isArray(receipt.outputs) || receipt.outputs.length === 0) {
-    return { current: false, reason: "receipt has no output witnesses" };
-  }
+  const outputFailure = validateOutputBindings(receipt, root);
+  if (outputFailure !== null) return { current: false, reason: outputFailure };
   return {
     current: true,
     reason: "exact build inputs and required outputs match",
@@ -312,14 +380,8 @@ function inspectSourceBuildReceipt(root = repositoryRoot) {
   if (numericalFailure !== null) {
     return { current: false, reason: numericalFailure };
   }
-  if (!Array.isArray(receipt.outputs) || receipt.outputs.length === 0) {
-    return { current: false, reason: "receipt has no output witnesses" };
-  }
-  for (const witness of receipt.outputs) {
-    if (!existsSync(join(root, witness))) {
-      return { current: false, reason: `build output is missing: ${witness}` };
-    }
-  }
+  const outputFailure = validateOutputBindings(receipt, root, { afterNative: true });
+  if (outputFailure !== null) return { current: false, reason: outputFailure };
   return {
     current: true,
     reason: "source inputs and required outputs match",
@@ -332,12 +394,14 @@ function writeBuildReceipt({
   durationMilliseconds,
   identity = currentBuildIdentity(root),
 } = {}) {
+  const outputs = outputWitnesses(root, identity);
   const receipt = {
     schema: receiptSchema,
     completedAt: new Date().toISOString(),
     durationMilliseconds,
     identity,
-    outputs: outputWitnesses(root, identity),
+    outputs,
+    outputBindings: outputBindings(root, outputs),
     numericalOutputs: numericalOutputBindings(root, identity),
   };
   writeFileSync(
@@ -369,6 +433,7 @@ module.exports = {
   nativeInputIdentity,
   numericalRuntimeProviderIdentity,
   numericalOutputBindings,
+  outputBindings,
   outputWitnesses,
   refreshBuildReceiptAfterNative,
   receiptRelativePath,
