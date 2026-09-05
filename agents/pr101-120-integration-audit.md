@@ -54,6 +54,32 @@ Evidence, with scope kept explicit:
   both after the fresh build and the browser-scope decision.
 
 Starting main: `675b1d3f494d1e9dedab86e5a348524b0493b1fb`.
+
+### Final local checkpoint before browser-scope decision
+
+- Full native build at the `fffb82cdb` checkpoint: eight stages pass in
+  15m13s, with all 41 production kernel families reused. Its receipt matched
+  exact current inputs and outputs immediately after completion.
+- Startup: 392.6 ms full / 178.2 ms empty, unchanged 400/225 ms budgets.
+- Full unit: **138/138 files pass**, including all 123 portable files.
+- Smoke: **4/4 files pass**.
+- Compiler: initially exposed missing standalone geometry dependencies.
+  `9c2fc32e7` explicitly adds three lazy ideal helper modules only to the
+  standalone Groebner prelude, not the eager runtime. Its focused dependency
+  tests pass; the full compiler rerun passes **21 fixtures with 28 existing
+  disabled/stage-zero skips, zero failures** (163 seconds).
+- Architecture, strict Python (377 modules), docs and merge inventories pass.
+  The last standalone-prelude change invalidates the conservative whole-build
+  receipt; it has targeted and complete compiler validation, not a new full
+  build receipt. Do not relabel the earlier build as source-current.
+- Main advanced independently with test-only capability corrections to
+  `a4d46174c`; these are included. PR125 advanced with generated-only source
+  freeze `dbfb1dad9`; its ancestry is included while retaining the combined
+  source freeze. Integration branch is pushed and clean.
+
+Promotion remains paused for the explicit browser Hecke implementation/scope
+decision above. No PR has been rejected and no release has been made.
+
 Integration branch: `agent/integrate-prs101-120`.
 Coordination: GitHub Discussion #104.
 
