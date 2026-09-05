@@ -53,6 +53,31 @@
         "recursive fibonacci",
         "matrix multiplication"
       ]
+    },
+    "python-compat-warm-v1": {
+      "description": "Representative portable Python warm-throughput compatibility workloads",
+      "benchmarks": [
+        "simple assignment",
+        "augmented_assignment",
+        "augmented_assignment_and_list_append",
+        "build_dictionary",
+        "build_dictionary_2",
+        "set_dictionary_item",
+        "build_list",
+        "list_slice",
+        "string_addition",
+        "function_call",
+        "function call, complex arguments",
+        "create simple class",
+        "create class with init",
+        "create instance of simple class",
+        "create instance of class with init",
+        "call_instance_method",
+        "gcd",
+        "xgcd",
+        "sum_reversed",
+        "recursive fibonacci"
+      ]
     }
   }
 }
