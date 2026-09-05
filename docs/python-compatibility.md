@@ -59,6 +59,32 @@ would send packages down potentially invalid implementation-specific paths.
 
 ## Evidence, not a compatibility percentage
 
+### Structured kernel diagnostics
+
+Errors rejected by `createSage().evaluate(...)` now expose a JSON-safe
+`error.pythonDiagnostic` envelope (`schemaVersion: 1`). The exported TypeScript
+types are `PythonDiagnostic` and `SageDiagnosticError`. The envelope distinguishes
+parse, compile, import, execution, and host phases, with an exception type,
+message, category, and source span where the compiler actually provides one.
+Filenames are preserved verbatim, including logical Windows paths. Lines and
+columns are one-based; columns and zero-based offsets use UTF-16 code units,
+matching the JavaScript source string. Parser spans can cover the offending
+expression rather than a single token.
+Timing-directive prefixes are accounted for: spans refer to the submitted cell,
+not the shortened statement passed to the compiler.
+
+Cause/context fields and suppression flags survive the worker boundary;
+traversal is bounded against cycles and branching chains. This does **not** yet
+implement Python `raise ... from ...` or automatic exception-context tracking.
+Runtime Python frames are not yet available: `frames` is empty and unknown
+runtime filenames/spans are `null`, not locations guessed from generated
+JavaScript. The envelope omits host stacks by default; the original Error still
+retains its existing stack for debugging. Parent-side worker shutdown/timeout
+errors, CLI/browser error presentation, and full Python tracebacks remain
+separate work. This is a structured kernel API, not complete traceback support.
+
+### Qualification scope
+
 The [MicroPython corpus](../upstream-tests/micropython/README.md) compares exact
 observable output with a pinned CPython oracle. The
 [multi-suite corpus](../upstream-tests/python-compat/README.md) adds unchanged

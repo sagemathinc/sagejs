@@ -1,3 +1,4 @@
+import { serializeDiagnosticError } from "./python/diagnostics";
 import { parentPort, workerData } from "worker_threads";
 
 import {
@@ -7,23 +8,6 @@ import {
 
 if (!parentPort) {
   throw new Error("the Sage.js kernel worker requires a parent port");
-}
-
-function serializeError(error: unknown) {
-  const value = error as {
-    code?: string;
-    name?: string;
-    message?: string;
-    stack?: string;
-  };
-  const interrupted = value?.code === "ERR_SCRIPT_EXECUTION_INTERRUPTED";
-  return {
-    name: interrupted ? "KeyboardInterrupt" : (value?.name ?? "Error"),
-    message: interrupted
-      ? "Sage.js evaluation interrupted"
-      : (value?.message ?? String(error)),
-    stack: value?.stack,
-  };
 }
 
 let evaluationId: number | undefined;
@@ -100,17 +84,15 @@ async function main(): Promise<void> {
         result,
       });
     } catch (error) {
-      if (
-        (error as { code?: string })?.code ===
-        "ERR_SCRIPT_EXECUTION_INTERRUPTED"
-      ) {
+      const serialized = serializeDiagnosticError(error);
+      if (serialized.name === "KeyboardInterrupt") {
         Atomics.store(interruptState, 0, 0);
       }
       port.postMessage({
         type: "result",
         id: message.id,
         ok: false,
-        error: serializeError(error),
+        error: serialized,
       });
     } finally {
       evaluationId = undefined;
@@ -130,7 +112,7 @@ async function main(): Promise<void> {
 void main().catch((error) => {
   parentPort!.postMessage({
     type: "startup-error",
-    error: serializeError(error),
+    error: serializeDiagnosticError(error),
   });
   parentPort!.close();
 });
