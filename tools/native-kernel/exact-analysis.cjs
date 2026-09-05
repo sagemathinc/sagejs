@@ -1514,7 +1514,11 @@ function inspectFmpzFunction(fn) {
       borrowedAggregateParameter(param)
     ) &&
     fn.locals.every((local) =>
-      ["Integer", "uint64", "bool", "UInt64Buffer"].includes(local.type)
+      ["Integer", "uint64", "bool", "UInt64Buffer"].includes(local.type) ||
+      (fmpzResourceTypes.has(local.type) && fn.params.some((param) =>
+        param.type === local.type &&
+        param.name === (fn.resourceAliases || {})[local.name]
+      ))
     )
   ) {
     return {

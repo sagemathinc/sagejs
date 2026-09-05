@@ -3,6 +3,7 @@
 const { createHash } = require("node:crypto");
 
 const {
+  isLiveExactOwnerType,
   isTupleType,
   tupleElementTypes,
 } = require("./integer-ir.cjs");
@@ -4109,8 +4110,15 @@ function generateHostCore(ir, options = {}) {
   );
   const functionMap = new Map(exact.map((fn) => [fn.name, fn]));
   const fmpz = generateFmpzFunctions(exact);
-  const tagged = generateTaggedFunctions(exactEntries);
-  const wordFunctions = exactEntries.filter((fn) =>
+  // Scalar dependency-only functions still need internal tagged/word bodies.
+  // Host export selection is distinct from representation eligibility: live
+  // owned and fmpz-only aggregate borrows continue to use their direct core.
+  const bridgeFunctions = exact.filter((fn) =>
+    !fn.params.some((param) => isLiveExactOwnerType(param.type)) &&
+    fn.analysis?.fmpzExact?.hostBoundary !== "none-internal-borrowed-aggregate-only"
+  );
+  const tagged = generateTaggedFunctions(bridgeFunctions);
+  const wordFunctions = bridgeFunctions.filter((fn) =>
     ![fn.returnType, ...fn.params.map((param) => param.type)].some((type) =>
       resourceForFunctionType(fn, type) !== undefined
     )
