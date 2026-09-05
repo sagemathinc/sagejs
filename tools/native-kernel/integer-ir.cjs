@@ -392,6 +392,8 @@ function createContext(
     integerConstants,
     controlDepth: 0,
     loopDepth: 0,
+    loopTargets: [],
+    resourceScopeDepth: 0,
     locals: new Map(),
     nextTemporary: 0,
     params: signature.params,
@@ -3199,7 +3201,9 @@ function lowerStatements(statements, context) {
           loopDepth: context.loopDepth,
         };
         context.activeExactArenas.set(owner, arenaState);
+        context.resourceScopeDepth += 1;
         const body = lowerBlock(statement.body, context);
+        context.resourceScopeDepth -= 1;
         expect(
           context,
           statement,
@@ -3267,7 +3271,9 @@ function lowerStatements(statements, context) {
         ? context.activeIntegerMatrices
         : context.activeIntegerVectors;
       activeOwners.add(owner);
+      context.resourceScopeDepth += 1;
       const body = lowerBlock(statement.body, context);
+      context.resourceScopeDepth -= 1;
       activeOwners.delete(owner);
       context.initialized.delete(owner);
       const operation = ownerType === LIVE_INTEGER_MATRIX_TYPE
@@ -3370,6 +3376,27 @@ function lowerStatements(statements, context) {
       result.push(operation);
       continue;
     }
+    if (nodeType(statement) === "AST_Break" ||
+        nodeType(statement) === "AST_Continue") {
+      const kind = nodeType(statement) === "AST_Break" ? "break" : "continue";
+      const target = context.loopTargets.at(-1);
+      expect(context, statement, target !== undefined,
+        `native ${kind} requires an enclosing while loop`);
+      expect(context, statement, target.kind === "while",
+        `native ${kind} currently supports while-loop targets, not range loops`);
+      // A C transfer would bypass lexical owner cleanup when a scope was
+      // entered after the target loop. Loops entirely inside an existing owner
+      // do not end its lifetime and require no cleanup at the transfer site.
+      expect(context, statement,
+        target.resourceScopeDepth === context.resourceScopeDepth,
+        `native ${kind} cannot exit a live exact resource scope; ` +
+          "cross-scope loop cleanup is not yet supported");
+      context.scalarCoercions = new Map();
+      const operation = { kind: `loop.${kind}` };
+      annotateOperations([operation], sourceSpan(statement, context.filename));
+      result.push(operation);
+      continue;
+    }
     if (nodeType(statement) === "AST_While") {
       context.scalarCoercions = new Map();
       expect(
@@ -3388,7 +3415,10 @@ function lowerStatements(statements, context) {
       context.initialized = new Set(before);
       context.controlDepth += 1;
       context.loopDepth += 1;
+      context.loopTargets.push({ kind: "while",
+        resourceScopeDepth: context.resourceScopeDepth });
       const body = lowerBlock(statement.body, context);
+      context.loopTargets.pop();
       context.loopDepth -= 1;
       context.controlDepth -= 1;
       context.initialized = before;
@@ -3416,7 +3446,10 @@ function lowerStatements(statements, context) {
       context.initialized.add(index);
       context.controlDepth += 1;
       context.loopDepth += 1;
+      context.loopTargets.push({ kind: "range",
+        resourceScopeDepth: context.resourceScopeDepth });
       const body = lowerBlock(statement.body, context);
+      context.loopTargets.pop();
       context.loopDepth -= 1;
       context.controlDepth -= 1;
       context.initialized = before;

@@ -1256,6 +1256,8 @@ const FMPZ_OPERATION_KINDS = new Set([
   "integer.vector.set",
   "integer.vector.submul",
   "integer.vector.swap",
+  "loop.break",
+  "loop.continue",
   "native.call",
   "range.validate_step",
   "raise",
