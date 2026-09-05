@@ -68,10 +68,12 @@ release lane's changes; do not move tags or publish release artifacts.
   dispatch into its owning lazy package; retain small routes in the modular
   codec. The resulting modular-forms source is 348,679 bytes without changing
   its limit. A test verifies registration alone does not load the new module.
-- Keep main's existing optimizer evidence manifest and matching documentation
-  as a historical snapshot. Neither branch's earlier generated snapshot is
-  evidence for the current integrated compiler; use actual integration tests
-  and scoped comparative benchmarks for the acceptance decision.
+- Neither branch's earlier optimizer snapshot qualifies the integrated compiler.
+  The architecture gate requires current inputs, so regenerate the entire
+  census with the actual compiler: 16,502 functions, 14,446 loops, 270 near
+  misses. The content-addressed infrastructure assets are published as a
+  non-latest prerelease and cold-download integrity was checked. This is
+  structural evidence, not a mathematical performance qualification.
 - Composite-level full-Hecke isotypic decomposition is explicitly not Sage's
   finer degeneracy-labelled isogeny decomposition. Preserve this documented
   boundary and the exact oldspace comparison.
@@ -87,3 +89,49 @@ confirmation. Do not increase size or performance limits simply to turn a
 check green.
 
 Coordination is in [Discussion #104](https://github.com/sagemathinc/sagejs/discussions/104).
+
+## Integration discoveries
+
+- Unit tests exposed benchmark history inside `dist/runtime-cache`, changing
+  the authenticated build-output inventory. Move controlled history to
+  `dist/benchmark-state`, continue binding it in the benchmark's own runtime
+  closure, and bump that environment schema to v5. The output-inventory guard
+  remains strict; no receipt is rewritten to conceal a mutation.
+- Preserve main's native explicit-receiver descriptor fix (`93c80383c`) and
+  Windows replay timeout adjustment (`4cf78fcf0`). Keep the source-level
+  runtime `__dir__` instead of reinstalling the temporary generated JS hook.
+- Browser testing found that the new abelian-variety package was missing from
+  the explicit lazy import list. Register both package and implementation,
+  and add a shared Node-Wasm/Chromium quotient/serialization regression.
+- Add the missing executable `AbelianVariety` constructor example; keep the
+  existing website coverage ceiling unchanged.
+
+## Intermediate validation and comparative evidence
+
+Before the final documentation/browser-import corrections, the combined
+candidate passed all eight build stages, 95 focused integration tests, and
+the 508-case CPython gate (506 exact passes, two reviewed GC outcomes).
+Unlike the first diagnostic run, that conformance gate retained a valid
+build receipt. Strict Python passes with 379 modules and zero errors.
+These observations are not a substitute for the final corrected build.
+
+Three fresh processes per system, on the shared Linux x64 host, compared
+the actual Sage 10.9.post1 workload with Sage.js. Quotient dimensions, map
+sizes, and full Hecke polynomials match exactly. Decomposition checks compare
+all factor dimensions and force every factor lattice. Interpreter startup
+is excluded; only unrelated `J0(11)` is warmed. The host's Sage Python was
+launched through a small `-python` adapter because its installed modern CLI
+does not implement the legacy launcher flag.
+
+| Workload | Level | Sage.js median | Sage median |
+| --- | ---: | ---: | ---: |
+| Connected quotient | 389 | 0.786 s | 1.812 s |
+| Connected quotient | 1009 | 3.327 s | 9.378 s |
+| Decomposition + factor lattices | 389 | 0.405 s | 0.251 s |
+| Decomposition + factor lattices | 1009 | 1.660 s | 1.428 s |
+| Decomposition + factor lattices | 2003 | 6.491 s | 17.369 s |
+
+Small-case counterexamples remain explicit. These are scoped observations,
+not universal speed claims or timing guarantees. Raw reports retain source
+hashes and all samples in [quotient evidence](validation/ready-wave-quotient-linux-x64.json)
+and [decomposition evidence](validation/ready-wave-decomposition-linux-x64.json).
