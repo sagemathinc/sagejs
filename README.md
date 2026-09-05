@@ -893,6 +893,13 @@ grammar, lowers it through Sage.js's Python AST, and executes generated
 JavaScript on V8. CPython is not embedded and CPython's extension-module ABI is
 not provided.
 
+The portable, user-visible language target is Python 3.14, not complete
+emulation of CPython internals. `sys.version_info` reports that language
+target; `sys.implementation.name` is `sagejs`, and
+`sys.implementation.version` describes the Sage.js product release.
+See [Python compatibility](docs/python-compatibility.md) for the implementation
+contract, intentional differences, and the scope of current test evidence.
+
 The compatibility target is increasingly ordinary, unmodified pure-Python
 code. Install platform-independent wheels with the bundled package command:
 
@@ -1327,11 +1334,10 @@ release claims; the scripts are included to keep comparisons reproducible.
 
 ## Status
 
-Sage.js 0.1 is a research prototype. Its existing language test suite is
-substantial, but Python compatibility is deliberately incomplete and the
-mathematical object model covers only integers, rationals, and univariate
-polynomials over `ZZ` and `QQ`. The FLINT package is an architectural
-prototype, not yet a supported or published dependency.
+Sage.js is early-alpha research software. Python language, standard-library,
+and mathematical coverage are substantial but incomplete. Consult the
+feature-specific documentation and executable compatibility corpora rather
+than assuming that every SageMath or CPython facility is available.
 
 Python compatibility is measured systematically using a pinned copy of
 MicroPython's standalone language corpus. Each applicable program must produce
