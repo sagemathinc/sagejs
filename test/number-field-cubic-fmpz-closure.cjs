@@ -161,8 +161,9 @@ test("the complete cubic closure is one direct fmpz program", {
   assert.equal((header.match(/\bint sagejs_kernel_/g) || []).length, 21);
   assert.equal((core.match(/\nint sagejs_kernel_/g) || []).length, 21);
 
-  // Scalar helpers may retain an inspectable public bridge. Aggregate helpers
-  // remain private, so the direct call graph never invents a public ABI for a
+  // Lexically native scalar helpers may retain an inspectable public bridge.
+  // Undecorated dependencies and aggregate helpers remain private, so the
+  // direct call graph never invents a public ABI for a
   // borrowed vector, matrix, or packed buffer.
   const aggregateTypes = new Set([
     "FmpzMatrix",

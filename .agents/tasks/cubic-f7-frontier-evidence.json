@@ -1,0 +1,131 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-f7-frontier-evidence",
+  "title": "Cubic F7 Frontier Evidence",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "f7_frontier_evidence",
+  "objective": "Authenticate and publish the frozen f7f00552 complex-cubic frontier census and timing baseline without changing mathematical source",
+  "base_commit": "fab12fdff948ca3dfbc555ce29df6fa322b10108",
+  "claims": [
+    "docs/cubic-frontier-f7f00552-baseline.md",
+    "bench/optimization-engine/cubic-frontier-f7f00552-evidence.json",
+    "scripts/verify-cubic-f7-frontier-evidence.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/sagemathinc/sagejs/releases/tag/cubic-frontier-baseline-f7f00552",
+    "https://github.com/sagemathinc/sagejs/releases/tag/optimization-corpus-complex-cubic-v1"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact frozen census and timing receipt validation; remote/local/release SHA-256 agreement"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check",
+    "node --check scripts/verify-cubic-f7-frontier-evidence.cjs",
+    "node scripts/verify-cubic-f7-frontier-evidence.cjs /home/user/frontier-evidence/f7f00552-published-Cy0kZo --self-test",
+    "node scripts/verify-cubic-f7-frontier-evidence.cjs /home/user/frontier-evidence/f7f00552-download-lZlBf4 --self-test",
+    "git diff --check"
+  ],
+  "runs": [
+    {
+      "command": "node --check scripts/verify-cubic-f7-frontier-evidence.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.031,
+      "started_at": "2026-09-05T06:52:23.512Z",
+      "commit": "fab12fdff948ca3dfbc555ce29df6fa322b10108",
+      "workspace_fingerprint": "badd4f1960d9640bf35c9d1da0a5c08595647a649f1669b3307c998df34837f2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/verify-cubic-f7-frontier-evidence.cjs /home/user/frontier-evidence/f7f00552-published-Cy0kZo --self-test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.791,
+      "started_at": "2026-09-05T06:52:24.153Z",
+      "commit": "fab12fdff948ca3dfbc555ce29df6fa322b10108",
+      "workspace_fingerprint": "badd4f1960d9640bf35c9d1da0a5c08595647a649f1669b3307c998df34837f2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.031,
+      "started_at": "2026-09-05T06:52:28.557Z",
+      "commit": "fab12fdff948ca3dfbc555ce29df6fa322b10108",
+      "workspace_fingerprint": "badd4f1960d9640bf35c9d1da0a5c08595647a649f1669b3307c998df34837f2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check scripts/verify-cubic-f7-frontier-evidence.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.032,
+      "started_at": "2026-09-05T06:55:12.234Z",
+      "commit": "fab12fdff948ca3dfbc555ce29df6fa322b10108",
+      "workspace_fingerprint": "5dd36e20bd960b0a5f111a9ceee1ee32f9f6d3a4790451376db06520df11c9e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/verify-cubic-f7-frontier-evidence.cjs /home/user/frontier-evidence/f7f00552-published-Cy0kZo --self-test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.855,
+      "started_at": "2026-09-05T06:55:12.897Z",
+      "commit": "fab12fdff948ca3dfbc555ce29df6fa322b10108",
+      "workspace_fingerprint": "5dd36e20bd960b0a5f111a9ceee1ee32f9f6d3a4790451376db06520df11c9e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/verify-cubic-f7-frontier-evidence.cjs /home/user/frontier-evidence/f7f00552-download-lZlBf4 --self-test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.979,
+      "started_at": "2026-09-05T06:55:17.377Z",
+      "commit": "fab12fdff948ca3dfbc555ce29df6fa322b10108",
+      "workspace_fingerprint": "5dd36e20bd960b0a5f111a9ceee1ee32f9f6d3a4790451376db06520df11c9e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.036,
+      "started_at": "2026-09-05T06:55:22.009Z",
+      "commit": "fab12fdff948ca3dfbc555ce29df6fa322b10108",
+      "workspace_fingerprint": "5dd36e20bd960b0a5f111a9ceee1ee32f9f6d3a4790451376db06520df11c9e5",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Published and independently downloaded five content-addressed assets for the frozen f7f00552 census/timing baseline. Added a compact manifest, boundary-qualified report, and read-only evidence verifier with six rejection probes. All 1,000 census entries pass; prepared and fresh paired-shard geometric-mean Sage.js/PARI ratios are 5.155038 and 14.332991. Target 3.1.12716.2 remains selected, and generated dispatch proves automatic fmpz selection of the closed cubic root.",
+    "risks": [
+      "This is pre-staging evidence, not a PARI win or validation of the current staged mathematical source.",
+      "Mathematical replay is recorded in the authenticated census; publication verifies that evidence without rerunning number-field computations.",
+      "Historical secondary diagnostic strata contain undefined keys; aggregate roots and exact selector recompute correctly, and the report documents the display limitation.",
+      "The optimizer-development lane requires build/compiler/architecture checks, and the changed-check planner additionally selects broad unit/docs checks. These broad mathematical-source gates were not run in this publication-only lane. The contract remains active, not review, pending integrated source qualification. Focused read-only validation and artifact roundtrip checks pass.",
+      "No Hecke, Magma, new neighboring-field executions, or additional opt jobs were run. No main-worktree or frozen timing-branch files were modified."
+    ],
+    "next_steps": [
+      "Integrate this evidence-only PR independently of the staged mathematical implementation.",
+      "Retain the already preregistered target and twenty-neighbor protocol; root owns persistence and eventual held-out execution.",
+      "Measure the completed staged implementation on an isolated opt run with fresh source-bound receipts and unchanged boundaries; do not overwrite this release."
+    ]
+  }
+}
