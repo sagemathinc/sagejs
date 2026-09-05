@@ -2,6 +2,57 @@
 
 Status: in progress. This is development integration, not a release.
 
+## Combined candidate checkpoint (2026-09-05)
+
+The remaining stacks are integrated on `agent/integrate-prs101-120` through
+`bf2d27204`, but **not promoted to main**. This includes #106/#125, #114,
+#101/#123 and the regulator-safety correction #127. Upstream main at
+`16527fa5d` and #125's generated-only refresh `fe773c951` are preserved.
+
+Fresh combined validation found and corrected additional integration issues:
+
+- The private native-helper fallback sentinel was not exposed by the builtins
+  proxy, causing attempts to assign `__wrapped__` to the frozen sentinel.
+  Both language modes and the actual cubic public receipt/replay tests pass
+  with the corrected whitelist.
+- Cubic holdout protocol fixtures paired arbitrary discriminants with an
+  unrelated polynomial. The strengthened equation-index check correctly
+  rejected them. Fixtures now use matching squarefree polynomial/discriminant
+  pairs; their class-group outcomes remain explicitly synthetic protocol data.
+- Runtime-directory filtering hid declared JavaScript-undefined intrinsics.
+  A live intrinsic-module directory fixes this without exposing ordinary
+  Python unbound slots; the focused canonical-namespace test passes.
+- Algebraic matrix pivots were routed into the rational Wasm backend. A
+  batched shared-FLINT binding now returns pivot indices without per-entry
+  scalar transfers; real Wasm and ASan/UBSan shared-core checks pass. The mock
+  ABI used by wrapper lifecycle tests now includes the new exports.
+
+Evidence, with scope kept explicit:
+
+- The first combined native build completed all eight stages in 18m02s.
+  A new full build is running for the final runtime-directory changes; the
+  older receipt is not a source-current receipt for these follow-ups.
+- Native Windows x64: 22 focused kernel/adapter tests passed and two Unix-only
+  sanitizer tests skipped. This used an isolated checkout and the already
+  validated dependency prefix read-only, not a full Windows runtime build.
+- Combined architecture and merge inventories passed; strict Python passed
+  for 377 modules. They must be rechecked after the last source changes.
+- The completed Wasm artifact contained 286 compiled functions and the one
+  deliberate wasm32 cubic fallback. Its eager payload measured 15,384,841
+  gzip bytes / 9,160,091 Brotli bytes against unchanged 17,400,000 / 9,600,000
+  limits. The algebraic specialist measured 2,053,470 / 1,652,810 against
+  unchanged 2,200,000 / 1,800,000 limits. These precede the pivot follow-up.
+- Actual Node-Wasm passes the geometry fixture, Gamma1(7) rational descent,
+  dynamic import identity, and all seven other public-gap cases. The larger
+  Gamma1(13) cusp/newform case is **not passing**: the nonreal-character
+  `p1ListCharacterHeckeMatrix` backend is missing. The capability inventory's
+  claim of an ordinary portable fallback is too broad and must be corrected
+  or implemented before promotion. User guidance has been requested on
+  whether this substantial additional Wasm backend belongs in this wave.
+- Full unit and portable attempts stopped fail-fast at integration defects
+  above. Do not describe those attempts as complete passing suites. Rerun
+  both after the fresh build and the browser-scope decision.
+
 Starting main: `675b1d3f494d1e9dedab86e5a348524b0493b1fb`.
 Integration branch: `agent/integrate-prs101-120`.
 Coordination: GitHub Discussion #104.
