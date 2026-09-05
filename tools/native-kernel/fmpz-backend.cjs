@@ -177,7 +177,8 @@ function emitFmpzOperation(operation, context, indent) {
         `${indent}        goto fail;`;
     return [
       `${indent}{`,
-      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    size_t sagejs_buffer_position` +
+        (operation.indexType === "uint64" ? ` = (size_t) ${index};` : ";"),
       `${indent}    if (${indexCheck})`,
       `${indent}    {`,
       statusFailure(

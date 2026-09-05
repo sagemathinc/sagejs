@@ -1,0 +1,95 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-nested-arena-call-guard",
+  "title": "Native Nested Arena Call Guard",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reject call-induced nested exact arena lifetimes before native generation",
+  "base_commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+  "claims": [
+    "tools/native-kernel/ir.cjs",
+    "tools/native-kernel/test/nested-arena-call-guard.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "docs/cubic-staged-exact-closure-design.md",
+    "https://github.com/sagemathinc/sagejs/pull/101"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "IR rejection before native execution; existing cubic root-only arena remains accepted"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/nested-arena-call-guard.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.886,
+      "started_at": "2026-09-05T03:05:43.288Z",
+      "commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+      "workspace_fingerprint": "f9b48b965ccb6adf4bc852de2f2af9928b39649f9af2227bf3a5ac074b69dc06",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.749,
+      "started_at": "2026-09-05T03:06:31.826Z",
+      "commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+      "workspace_fingerprint": "75652cde9b85d8371712e03b80317ec6acc3679f3bb3b8f7588d8cd00bb060de",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/nested-arena-call-guard.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.804,
+      "started_at": "2026-09-05T03:07:18.928Z",
+      "commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+      "workspace_fingerprint": "75652cde9b85d8371712e03b80317ec6acc3679f3bb3b8f7588d8cd00bb060de",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern closed native helpers borrow|fmpz selection propagates|checked uint64 helpers tools/native-kernel/test/borrowed-resident-vector.cjs tools/native-kernel/test/fmpz-call-graph.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.632,
+      "started_at": "2026-09-05T03:07:33.226Z",
+      "commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+      "workspace_fingerprint": "75652cde9b85d8371712e03b80317ec6acc3679f3bb3b8f7588d8cd00bb060de",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Reject transitive and imported call-induced nested NativeExactArena scopes before backend selection. Six focused qualification regressions and three existing borrowed-vector/fmpz call-graph qualification/emission tests pass. Architecture, merge inventories, and strict Python checks pass. The existing production cubic source still qualifies for fmpz with one root arena. Isolated tests reused prepared compiler/parser artifacts copied read-only from the integration snapshot; no native build, execution, sanitizer run, or opt measurement was performed.",
+    "risks": [
+      "This is source-qualification evidence, not a sanitizer-confirmed runtime defect. Before this guard the matrix-promotion reproducer was admitted to GMP lowering despite nested checkpoint lifetimes; returned-integer publication does not establish ownership for arbitrary borrowed matrix mutations.",
+      "The conservative guard also declines independently safe nested calls until ownership is proved. It preserves sequential independent arena calls outside an active arena and ordinary helpers inside a root arena.",
+      "Public borrowed foreign-resource promotion inside even one root arena remains a separate follow-up requiring an ownership proof or fail-closed restriction; this correction does not claim to solve it.",
+      "Task remains active and PR draft pending full changed-check build/unit/compiler/integration suites and native cross-platform validation; Windows and Wasm runtime behavior has not been tested here."
+    ],
+    "next_steps": [
+      "Review and validate this safety change separately from PR101's frozen performance snapshot; do not merge automatically.",
+      "For staged cubic closure, implement a private borrowed arena capability with explicit same-budget child cleanup, not an independent checkpoint or rewind. Account for cumulative root checkpoint high-water across failed closure attempts.",
+      "Before richer scopes ship, cover borrowed small-to-large promotion, existing-large reallocations, mutation aliases, nested exhaustion, exception cleanup, repeated child entry, detached publication, and GMP/FLINT caches with isolated sanitizer and Windows/Wasm tests."
+    ]
+  }
+}

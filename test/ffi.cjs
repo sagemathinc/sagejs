@@ -2411,6 +2411,36 @@ test("generated binding.gyp selects exact-platform link declarations", () => {
     .includes(join(prefix, "fallback.a")), false);
 });
 
+test("native foreign identity tracks inline headers in external reused prefixes", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-inline-inputs-"));
+  const previous = process.env.SAGEJS_INLINE_TEST_PREFIX;
+  try {
+    mkdirSync(join(temporary, "include"));
+    writeFileSync(join(temporary, "include", "root.h"), '#include "leaf.h"\n');
+    const leaf = join(temporary, "include", "leaf.h");
+    writeFileSync(leaf, "static inline int answer(void) { return 1; }\n");
+    process.env.SAGEJS_INLINE_TEST_PREFIX = temporary;
+    const ir = {foreignLibraries: [{id: "inline_test", native: {
+      headers: ["root.h"], link: {unix: [], windows: []}, toolchain: {
+        prefix_environment: "SAGEJS_INLINE_TEST_PREFIX",
+        unix_default: "unused", windows_default: "unused",
+        include_dirs: ["include"], source_include_dirs: [],
+      },
+    }}]};
+    const before = foreignCompilationInputs(ir)[0];
+    assert.equal(before.transitiveHeaders.length, 1);
+    writeFileSync(leaf, "static inline int answer(void) { return 2; }\n");
+    const after = foreignCompilationInputs(ir)[0];
+    assert.notEqual(before.fingerprint, after.fingerprint);
+    assert.deepEqual(before.headers, after.headers);
+    assert.deepEqual(before.libraries, after.libraries);
+  } finally {
+    if (previous === undefined) delete process.env.SAGEJS_INLINE_TEST_PREFIX;
+    else process.env.SAGEJS_INLINE_TEST_PREFIX = previous;
+    rmSync(temporary, {recursive: true, force: true});
+  }
+});
+
 test("native foreign input identity hashes only selected platform links", () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-platform-link-inputs-"));
   const previous = process.env.SAGEJS_PLATFORM_LINK_TEST_PREFIX;

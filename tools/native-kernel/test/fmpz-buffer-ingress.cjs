@@ -14,7 +14,8 @@ const { join, resolve } = require("node:path");
 const test = require("node:test");
 
 const { generateHostCore } = require("../c-backend.cjs");
-const { compileKernel } = require("../compiler.cjs");
+const { generateFmpzFunctions } = require("../fmpz-backend.cjs");
+const { compileKernel, foreignCompilationInputs } = require("../compiler.cjs");
 const { lowerSource } = require("../ir.cjs");
 const {
   sanitizerEnvironment,
@@ -64,6 +65,33 @@ def resident_fmpz_integer_buffers(
         return checksum + output[-1]
 `;
 
+function unsignedPackedIndices(input) {
+  // Source lowering currently promotes packed-buffer indices to Integer.
+  // Exercise the backend's separately supported uint64 IR form as well,
+  // replacing only exact uint64-to-Integer coercions with their source.
+  const ir = structuredClone(input);
+  const operations = [];
+  function visit(value) {
+    if (value === null || typeof value !== "object") return;
+    if (typeof value.kind === "string") operations.push(value);
+    for (const child of Object.values(value)) visit(child);
+  }
+  for (const fn of ir.functions) {
+    operations.length = 0;
+    visit(fn.body);
+    const conversions = new Map(operations.filter(op =>
+      op.kind === "integer.from_uint64").map(op => [op.target, op.source]));
+    for (const op of operations) {
+      if (["integer.buffer.get", "integer.buffer.set"].includes(op.kind) &&
+          conversions.has(op.index)) {
+        op.index = conversions.get(op.index);
+        op.indexType = "uint64";
+      }
+    }
+  }
+  return ir;
+}
+
 function emittedFunction(text, marker) {
   let start = text.indexOf(marker);
   while (
@@ -81,6 +109,17 @@ function emittedFunction(text, marker) {
   return text.slice(start, end);
 }
 
+function coreWithUnsignedFmpzIndices(ir) {
+  // The GMP alternative still uses canonical Integer indices. Replace only
+  // the fmpz emission to exercise its unsigned backend contract in the same
+  // standalone sanitizer harness, without inventing a GMP index ABI.
+  const core = generateHostCore(ir);
+  const original = generateFmpzFunctions(ir.functions).functions;
+  const unsigned = generateFmpzFunctions(unsignedPackedIndices(ir).functions).functions;
+  assert.ok(core.source.includes(original));
+  return {...core, source: core.source.replace(original, unsigned)};
+}
+
 test("closed fmpz roots admit borrowed packed integer ingress and publication", async () => {
   const ir = await lowerSource(source, "fmpz-buffer-ingress.py");
   const functions = new Map(ir.functions.map((fn) => [fn.name, fn]));
@@ -96,8 +135,11 @@ test("closed fmpz roots admit borrowed packed integer ingress and publication", 
   );
   assert.match(rootFunction.analysis.fmpzExact.hostBoundary, /packed-limb-views/);
   assert.equal(functions.get("fmpz_buffer_step").analysis.backend.kind, "fmpz");
+  const inputs = foreignCompilationInputs(ir).find(({id}) => id === "sagejs-resident-fmpz");
+  assert.ok(inputs.transitiveHeaders.length > 0,
+    "resident fmpz inline header dependencies must be fingerprinted");
 
-  const core = generateHostCore(ir).source;
+  const core = coreWithUnsignedFmpzIndices(ir).source;
   const implementation = emittedFunction(
     core,
     "static int fmpz_native_resident_fmpz_integer_buffers(",
@@ -108,6 +150,7 @@ test("closed fmpz roots admit borrowed packed integer ingress and publication", 
   );
   assert.match(implementation, /sagejs_integer_buffer_get_fmpz/);
   assert.match(implementation, /sagejs_integer_buffer_set_fmpz/);
+  assert.match(implementation, /size_t sagejs_buffer_position = \(size_t\) /);
   assert.match(implementation, /sagejs_fmpz_integer_buffer_index/);
   assert.doesNotMatch(implementation, /sagejs_integer_buffer_(?:get|set)_mpz/);
   assert.doesNotMatch(implementation, /fmpz_(?:set|get)_mpz/);
@@ -317,7 +360,7 @@ test("borrowed packed views survive success and failure under sanitizers", {
   skip: process.platform === "win32" ? "sanitizer harness is Unix-only" : false,
 }, async () => {
   const ir = await lowerSource(source, "fmpz-buffer-sanitizer.py");
-  const core = generateHostCore(ir);
+  const core = coreWithUnsignedFmpzIndices(ir);
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-fmpz-buffer-asan-"));
   const harness = String.raw`
 #include <assert.h>

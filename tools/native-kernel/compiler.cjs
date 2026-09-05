@@ -526,7 +526,7 @@ function resolveDeclaredHeader(
   );
 }
 
-function repositoryHeaderDependencies(headers, includeDirectories, digestStore) {
+function resolvedHeaderDependencies(headers, includeDirectories, digestStore) {
   const direct = new Set(headers.map((header) => header.resolvedPath));
   const visited = new Set();
   const pending = headers.map((header) => header.path);
@@ -563,13 +563,9 @@ function repositoryHeaderDependencies(headers, includeDirectories, digestStore) 
         }
       }
       if (resolvedHeader === null) continue;
+      // Reused dependency prefixes may live outside this checkout. Their
+      // inline definitions are compiler inputs just like repository headers.
       const repositoryRelative = relative(root, resolvedHeader);
-      if (
-        repositoryRelative === "" || repositoryRelative === ".." ||
-        repositoryRelative.startsWith(`..${sep}`)
-      ) {
-        continue;
-      }
       const identity = contentAddressedFile(
         resolvedHeader,
         `transitive native header ${name}`,
@@ -606,7 +602,7 @@ function resolveForeignCompilationInputs(ir, digestStore) {
               ),
             )),
         );
-        const transitiveHeaders = repositoryHeaderDependencies(
+        const transitiveHeaders = resolvedHeaderDependencies(
           headers,
           includeDirectories,
           digestStore,
@@ -663,7 +659,9 @@ function resolveForeignCompilationInputs(ir, digestStore) {
       prefix: portablePath(nativePrefix),
       includeOrder: Object.freeze(includeDirectories.map(portablePath)),
       headers,
-      transitiveHeaders: Object.freeze([]),
+      transitiveHeaders: resolvedHeaderDependencies(
+        headers, includeDirectories, digestStore,
+      ),
       libraries,
     };
     inputs.push(Object.freeze({
