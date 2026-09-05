@@ -6110,7 +6110,6 @@ def _cubic_publish_relation_rows(
     return True
 
 
-@native
 def _cubic_compact_relation_plan(
     proof_relation_support: FmpzMatrix,
     relation_count: uint64,
@@ -6130,7 +6129,6 @@ def _cubic_compact_relation_plan(
     return compact_tail_start, compact_relation_count
 
 
-@native
 def _cubic_prepare_compact_presentation(
     relation_matrix: FmpzMatrix,
     relation_elements: FmpzMatrix,
@@ -6209,7 +6207,6 @@ def _cubic_prepare_compact_presentation(
     return True
 
 
-@native
 def _cubic_verify_compact_presentation_index(
     compact_smith: FmpzMatrix,
     compact_relation_matrix: FmpzMatrix,
@@ -6238,7 +6235,6 @@ def _cubic_verify_compact_presentation_index(
     return compact_index == class_number_upper
 
 
-@native
 def _cubic_reduce_dependency_prefix(
     compact_relation_transform: FmpzMatrix,
     dependency_relations: FmpzMatrix,
@@ -6317,7 +6313,6 @@ def _cubic_reduce_dependency_prefix(
     )
 
 
-@native
 def _cubic_fill_dependency_logs(
     coefficients: IntegerBuffer,
     log_numerators: FmpzMatrix,
@@ -6376,7 +6371,6 @@ def _cubic_fill_dependency_logs(
     return True
 
 
-@native
 def _cubic_discover_dependency_unit(
     dependency_reduced: FmpzMatrix,
     relation_logs: FmpzMatrix,

@@ -56,11 +56,13 @@ test("compact dependency helpers retain the actual one-arena fmpz closure", {
   for (const name of helpers) {
     const fn = ir.functions.find((f) => f.name === name);
     assert.ok(fn, name);
+    assert.equal(fn.hostCallable, false, name + " must remain a private borrowed helper");
     assert.equal(fn.analysis.backend.kind, "fmpz");
     assert.equal(fn.analysis.liveExactWorkspace?.scopes.length || 0, 0);
     assert.doesNotMatch(JSON.stringify(fn), /arena\.foreign_resource/);
   }
   const entry = ir.functions.find((f) => f.name === "certified_complex_cubic_class_group_v1");
+  assert.equal(ir.functions.filter((fn) => fn.hostCallable !== false).length, 22);
   assert.equal(entry.analysis.liveExactWorkspace.scopes.length, 1);
   assert.match(JSON.stringify(entry), /fmpz_matrix_hnf_transform_prefix/);
   const helperText = JSON.stringify(ir.functions.filter((f) => helpers.includes(f.name)));
