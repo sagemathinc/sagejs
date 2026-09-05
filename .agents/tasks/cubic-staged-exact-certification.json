@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Certify bounded complex-cubic relation prefixes and resume only on explicit mathematical insufficiency within the same resident native computation",
-  "base_commit": "24dfde35b1472436c6d77a6f10313233863d01a3",
+  "base_commit": "380a35822a5dc7738a2bd4bf6018bb994bd5799c",
   "claims": [
     "src/lib/sagejs/number_fields/cubic_class_number_native.py",
     "docs/cubic-presentation-extraction-audit.md",
@@ -119,12 +119,22 @@
       "commit": "24dfde35b1472436c6d77a6f10313233863d01a3",
       "workspace_fingerprint": "f20806d76d340cc3eb1e99bb86d11ac0b3532b5ca7eb5ebebf1f20140c574030",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test packages/flint-wasm/test/integer-log-sqrt-prefix.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.219,
+      "started_at": "2026-09-05T21:05:29.060Z",
+      "commit": "380a35822a5dc7738a2bd4bf6018bb994bd5799c",
+      "workspace_fingerprint": "d6a3dbd36f1488afd5e320532857cda2629001f62e099e571cecb2a05bdd7490",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
     "summary": "Implemented and qualified the bounded effort-five two-attempt driver with one resident collector and root-owned proof scratch. CubicProofWorkspace groups 38 borrowed owners, reducing 73 source parameters to 36 without changing the 101-function executable bundle IR. The final production rebuild and 18 public/arithmetic/scheduler tests pass, including authenticated receipts, independent exact replay, pinned invariants and large-regulator units. Classified materialization limits can trigger only a fresh closed alternate effort, never continuation of failed scratch. Fourteen-field controlled source-compression comparisons show no measured slowdown; this is not a new PARI-frontier claim.",
     "risks": [
-      "Full cross-platform CI is queued; current Wasm routine CI fails its production export allowlist after compiling 280 supported kernels. Local sanitizer/WASI and compiler differential evidence does not substitute for release execution.",
+      "Final production Wasm artifact 7415e1b120ded47b75282d683bed118738f8d65422ddacf2b089220e2da41d0c passes receipt validation, the prefix-Arb public Chromium witness and routine browser parity. Broader native platform CI remains pending. The full cubic native function remains explicitly unsupported on wasm32 because it requires 64-bit FLINT limbs; its exact fallback is retained.",
       "The complete native suite passes through compiler/ownership/matrix migration checks, then fails the same three QQ selection/stack timing budgets as clean pre-feature cf82b0eb. No thresholds are waived; the task remains active rather than claiming a passing release handoff.",
       "The frozen thousand-field frontier and twenty registered unseen neighbors belong to the separate staged PARI campaign and are not newly qualified by these source-compression measurements.",
       "Existing source allowance 485000 and arena/checkpoint limits are unchanged. Published optimizer evidence 3382c44514037290603db4edcca46ef772749ac2b3329ba2328739cb29d00e32 binds the staged source separately from its prerequisite branch."
