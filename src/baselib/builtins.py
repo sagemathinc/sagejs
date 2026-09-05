@@ -5382,6 +5382,13 @@ def ρσ_getattr_internal(
                 or ρσ_is_bound_method(class_member)
                 or (
                     _builtins_is_baselib_function(class_member)
+                    # Receiver-style native methods need an explicit-receiver
+                    # adapter when they are retrieved from the class.  Bound
+                    # calls such as ``items.extend(values)`` supply JavaScript
+                    # ``this``; CPython's ``list.extend(items, values)`` form
+                    # does not.
+                    and _builtins_get_member(class_member, "__sagejs_native_method__")
+                    is not True
                     and _builtins_get_member(class_member, "__python_descriptor__")
                     is not True
                     and _builtins_get_member(
