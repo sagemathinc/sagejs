@@ -2694,6 +2694,12 @@ class PolynomialElement(sage.Element):
                 )
             )
         if base._kind == "GF_EXTENSION":
+            if not _flint_backend_has_function("fqPolyGcd"):
+                euclidean = __import__(
+                    "sagejs.polynomial_algorithms.univariate_field",
+                    fromlist=["monic_gcd"],
+                )
+                return euclidean.monic_gcd(operands.left, operands.right)
             native_value = runtime.flint_backend().fqPolyGcd(
                 operands.left._native, operands.right._native
             )
@@ -2853,7 +2859,13 @@ class PolynomialElement(sage.Element):
                     left._new(_canonical_uint64_output(right_output)),
                 ]
             )
-        raise TypeError("polynomial xgcd is implemented over ZZ, QQ, and GF(p)")
+        if parent.base_ring()._kind == "GF_EXTENSION":
+            euclidean = __import__(
+                "sagejs.polynomial_algorithms.univariate_field",
+                fromlist=["monic_xgcd"],
+            )
+            return runtime.math_tuple(euclidean.monic_xgcd(left, right))
+        raise TypeError("polynomial xgcd is implemented over ZZ, QQ, and finite fields")
 
     def is_irreducible(self) -> bool:
         if self._parent.base_ring()._kind == "GF_EXTENSION":
@@ -5237,10 +5249,11 @@ class PolynomialIdeal:
         ring: MultivariatePolynomialRingParent,
         generators: Any,
     ) -> None:
-        if ring.base_ring()._kind not in ["QQ", "GF"]:
-            raise NotImplementedError(
-                "polynomial ideal arithmetic currently supports QQ and prime fields"
-            )
+        capabilities = __import__(
+            "sagejs.polynomial_algorithms.field_capabilities",
+            fromlist=["require_field_operation"],
+        )
+        capabilities.require_field_operation(ring.base_ring(), "ideal", ring._order)
         self._ring = ring
         self._kind = "PolynomialIdeal"
         self._generators = runtime.math_tuple(

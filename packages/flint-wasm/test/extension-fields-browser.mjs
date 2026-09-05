@@ -16,7 +16,12 @@ test("extension coefficient groundwork passes in production Chromium", { timeout
     const page = await browser.newPage();
     await page.goto(`${server.origin}/browser-wasm-harness.html`);
     await page.evaluate(() => window.__sagejsReady);
-    for (const name of ["extension-field-enumeration", "extension-field-coordinates", "exact-field-contract"]) {
+    await assert.rejects(page.evaluate(() => window.__sagejsTest.evaluate(
+      "AffineSpace(GF(4, 'a'), 2)", 10000,
+    )), /extension domains await/);
+    const recovered = await page.evaluate(() => window.__sagejsTest.evaluate("2+2", 10000));
+    assert.equal(recovered.repr, "4", "a capability rejection must leave the worker usable");
+    for (const name of ["extension-field-enumeration", "extension-field-coordinates", "exact-field-contract", "extension-field-capabilities"]) {
       const source = await readFile(new URL(`../../../test/${name}.py`, import.meta.url), "utf8");
       const result = await page.evaluate((source) => window.__sagejsTest.evaluate(source, 60000), source);
       if (name === "extension-field-coordinates") {

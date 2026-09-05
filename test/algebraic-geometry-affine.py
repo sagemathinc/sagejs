@@ -67,7 +67,8 @@ try:
     AffineSpace(K, 1)
     raise AssertionError("number fields are outside this milestone")
 except NotImplementedError as error:
-    assert "number fields" in str(error)
+    assert "exact coefficient adapter" in str(error)
+    assert "operation=geometry" in str(error)
 
 try:
     AffineSpace(True, QQ)

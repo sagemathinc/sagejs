@@ -156,6 +156,57 @@ bytes for the exact-field contract and generic engine (274375 bytes used).
 No eager-loading or browser payload
 ratchet is implied; production compressed-size evidence is still pending.
 
+## Capability and Euclidean checkpoint
+
+The central `field_capabilities` registry now records operation, construction
+descriptor, order, proof request, execution target, resource envelope, and
+available fallback. The public scheme/ideal gates delegate to it; internal
+packed-v1 ring construction and term export independently reject extension
+coefficients before export or entry into a rational backend. Scalar or generic
+reference availability is explicitly **not** public geometry qualification.
+Some prime-field enumeration and zero-dimensional candidate assumptions remain
+gated and must still move behind the exact-field boundary before F2 opens them.
+
+Actual production testing uncovered a pre-existing univariate gap:
+`GF(p^d)[t].gcd()` called a native-only function, and extension `xgcd()` was
+absent. An ordinary-Python exact Euclidean implementation now supplies the
+Wasm gcd fallback and native/Wasm extended gcd. Native gcd retains FLINT.
+The fallback is bounded to degree 4096 and checks a 30-second deadline between
+divisions; it cannot interrupt a single foreign operation. Tests cover zero
+and constant inputs, monicity, characteristic-2/3 repeated factors and
+derivatives, factor recomposition, and exact Bezout identities. An additional
+local differential probe checked 60 cases over GF(4), GF(8), GF(9), GF(25),
+and GF(27) against native FLINT gcd.
+
+Commit `75fced5a4` separately fixes an unhandled child promise in the Wasm
+worker queue: ordinary Python exceptions previously could kill the worker.
+Node-Wasm checks subsequent evaluation after ValueError/NameError; Chromium
+checks it after an expected extension-geometry capability rejection.
+
+Production artifact
+`sha256:bc30229899928b51c29a00147221a1bbb90434139635ac5e2a1e9df3989324dc`
+passes the capability/Euclidean fixture, core no-Singular geometry fixture,
+worker recovery, and Chromium coefficient groundwork plus six representative
+Groebner cases (4 test files, 54 seconds combined). Native capability,
+geometry, and the full 108-case independent Groebner corpus pass (42 seconds).
+Strict Python passes for 380 modules and architecture checks pass. The previous
+108-case full production corpus receipt above is not relabeled as a full
+corpus run on this newer artifact.
+
+The production packaging guard correctly rejected a stale compiler dependency
+cache after an incremental baselib rebuild. Rebuilding the 94 standard-library
+and 56 baselib dependency cache entries resolved the version mismatch; no
+provenance check was bypassed. All 269 native C/header inputs still match the
+completed full-build receipt before and after Wasm source generation. The
+result verifies 287 kernels with zero unsupported kernels and 15 ABI modules.
+
+The lazy polynomial-algorithms source budget is now 285000 bytes (283141 used)
+for the capability registry and exact Euclidean fallback. Source-dependent
+optimizer evidence is
+`sha256:8078979d16945ff2841e287d675bf7e622c9f05111ff4575c3f009b0e3e482d9`,
+local and unpublished. Regenerating the modular source manifest for the shared
+package-graph budget change does not renew its historical platform receipts.
+
 ## Still required
 
 - Finish E0 fixtures, capability routing, generic v2 contracts/certificates,

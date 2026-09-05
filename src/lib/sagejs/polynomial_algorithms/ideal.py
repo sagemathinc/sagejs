@@ -96,18 +96,20 @@ def _groebner_contract() -> Any:
 
 
 def _groebner_contract_ring(ring: Any) -> Any:
-    base = ring.base_ring()
-    characteristic = (
-        runtime.normalize_integer(base._modulus) if base._kind == "GF" else 0
-    )
+    from sagejs.polynomial_algorithms.field_capabilities import packed_v1_characteristic
+
+    characteristic = packed_v1_characteristic(ring.base_ring(), ring._order)
     return _groebner_contract().GroebnerRing(ring.ngens(), ring._order, characteristic)
 
 
 def _pack_groebner_polynomial(polynomial: Any) -> Any:
+    from sagejs.polynomial_algorithms.field_capabilities import packed_v1_characteristic
+
     base = polynomial.parent().base_ring()
+    characteristic = packed_v1_characteristic(base, polynomial.parent()._order)
     packed = []
     for coefficient, exponents in polynomial.terms():
-        if base._kind == "QQ":
+        if characteristic == 0:
             scalar = runtime.math_tuple(
                 [
                     runtime.normalize_integer(coefficient._numerator),
@@ -274,6 +276,9 @@ def groebner_basis(
     proof_required = proof_module.resolve_polynomial_proof(proof)
     ring = ideal._ring
     base = ring.base_ring()
+    from sagejs.polynomial_algorithms.field_capabilities import require_field_operation
+
+    require_field_operation(base, "ideal", ring._order, proof_required)
     if base._kind == "GF":
         if algorithm not in ["auto", "msolve", "buchberger"]:
             raise ValueError("unknown prime-field Gröbner basis algorithm")

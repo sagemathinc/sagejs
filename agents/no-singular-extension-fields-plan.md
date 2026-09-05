@@ -502,6 +502,28 @@ The existing native `fq_nmod_mpoly` selection is not public support until
 coefficients can cross the sparse-term boundary and the same operations work
 in the production Wasm artifact.
 
+Implementation constraints from the E0 boundary audit:
+
+- Prefer one declared, host-neutral FLINT resource interface for native and
+  Wasm multivariate values, with a retained context and explicit bulk sparse
+  transfers. Keep backend selection behind the existing public polynomial
+  classes; do not create a separate public extension-polynomial hierarchy.
+- Construct that resource context from canonical characteristic/modulus data.
+  Do not pass legacy native scalar handles or assume that scalar and lazy
+  multivariate Wasm resources inhabit the same reactor or linear memory.
+- Audit copied-byte output ownership when assigning the new specialist group.
+  A byte-transfer resource must remain associated with the reactor that owns
+  its storage until the bytes have been copied and the resource closed.
+- Require native exponent-width checks before FLINT word export, checked
+  products for `terms * degree` and `terms * variables`, and transactional
+  sparse input/output. Include zero-variable ambient spaces in the audit
+  rather than silently assuming every polynomial context has a variable.
+
+The E0 `field_capabilities` registry deliberately distinguishes scalar and
+internal generic-engine availability from public ideal/geometry availability.
+Opening a later capability must accompany the actual storage/dispatch path
+and positive tests; it must not merely relax the existing rejection gate.
+
 1. Implement exact storage-neutral import/export of sparse
    `(coefficient, exponent_vector)` terms for native `fq_nmod_mpoly` values.
    Coefficients returned to Python are ordinary elements of the original

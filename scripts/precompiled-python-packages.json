@@ -106,6 +106,8 @@
     "sagejs.number_fields.zeta_coefficients",
     "sagejs.polynomial_algorithms.exact_field",
     "sagejs.polynomial_algorithms.generic_groebner",
+    "sagejs.polynomial_algorithms.field_capabilities",
+    "sagejs.polynomial_algorithms.univariate_field",
     "sagejs.polynomial_algorithms.extension_field_factor",
     "sagejs.polynomial_algorithms.extension_field_roots",
     "sagejs.polynomial_algorithms.hilbert",
