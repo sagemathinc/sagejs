@@ -1,13 +1,98 @@
 {
-  "format": 1,
+  "format": 2,
   "tests": {
     "weakref_finalize_collect.py": {
       "expectedStatus": "output-mismatch",
-      "reason": "V8 finalizers are deliberately asynchronous and nondeterministic; gc.collect() cannot force a FinalizationRegistry callback"
+      "reason": "V8 finalizers are deliberately asynchronous and nondeterministic; gc.collect() cannot force a FinalizationRegistry callback; the final callback may run at process exit or remain deferred, with both observed outputs explicitly fingerprinted",
+      "reference": {
+        "implementation": "CPython",
+        "version": "3.14.4"
+      },
+      "evidence": {
+        "schema": "sagejs.python-case-evidence/v1",
+        "sourceSha256": "ddb2b0a769266edb5ca126bb64735d3cbd16e05229b19d4baeded86c1074523b",
+        "normalization": "crlf-to-lf-bytes",
+        "oracle": {
+          "exitCode": 0,
+          "signal": null,
+          "timedOut": false,
+          "errorCode": null,
+          "errorMessage": null,
+          "outputSha256": "783b4366d1342e89fcd406e266d30778fa076441d59f8fb33de3a82e41ac3f93",
+          "stdoutSha256": "783b4366d1342e89fcd406e266d30778fa076441d59f8fb33de3a82e41ac3f93",
+          "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "subject": {
+          "exitCode": 0,
+          "signal": null,
+          "timedOut": false,
+          "errorCode": null,
+          "errorMessage": null,
+          "outputSha256": "80354168ffb86ec9c80b595b0677519421d0d699e85747a8fdcdccec09f8f425",
+          "stdoutSha256": "80354168ffb86ec9c80b595b0677519421d0d699e85747a8fdcdccec09f8f425",
+          "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "alternateEvidence": [
+        {
+          "schema": "sagejs.python-case-evidence/v1",
+          "sourceSha256": "ddb2b0a769266edb5ca126bb64735d3cbd16e05229b19d4baeded86c1074523b",
+          "normalization": "crlf-to-lf-bytes",
+          "oracle": {
+            "exitCode": 0,
+            "signal": null,
+            "timedOut": false,
+            "errorCode": null,
+            "errorMessage": null,
+            "outputSha256": "783b4366d1342e89fcd406e266d30778fa076441d59f8fb33de3a82e41ac3f93",
+            "stdoutSha256": "783b4366d1342e89fcd406e266d30778fa076441d59f8fb33de3a82e41ac3f93",
+            "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "subject": {
+            "exitCode": 0,
+            "signal": null,
+            "timedOut": false,
+            "errorCode": null,
+            "errorMessage": null,
+            "outputSha256": "cf33f240ccc3763922ba4cc186b23ebf8da30370650bed72086c26be2c480847",
+            "stdoutSha256": "cf33f240ccc3763922ba4cc186b23ebf8da30370650bed72086c26be2c480847",
+            "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        }
+      ]
     },
     "weakref_ref_collect.py": {
       "expectedStatus": "output-mismatch",
-      "reason": "V8 collection is deliberately nondeterministic; gc.collect() cannot synchronously make a native WeakRef go dead"
+      "reason": "V8 collection is deliberately nondeterministic; gc.collect() cannot synchronously make a native WeakRef go dead",
+      "reference": {
+        "implementation": "CPython",
+        "version": "3.14.4"
+      },
+      "evidence": {
+        "schema": "sagejs.python-case-evidence/v1",
+        "sourceSha256": "61e898f7349773412a8408636d55a4ef082f6ee65976dbf7df5756c721406881",
+        "normalization": "crlf-to-lf-bytes",
+        "oracle": {
+          "exitCode": 0,
+          "signal": null,
+          "timedOut": false,
+          "errorCode": null,
+          "errorMessage": null,
+          "outputSha256": "b39ceff3753c4dc4c36e28477f6f5aac6b5dbfbb30d92f0f242111763c7b3f51",
+          "stdoutSha256": "b39ceff3753c4dc4c36e28477f6f5aac6b5dbfbb30d92f0f242111763c7b3f51",
+          "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "subject": {
+          "exitCode": 0,
+          "signal": null,
+          "timedOut": false,
+          "errorCode": null,
+          "errorMessage": null,
+          "outputSha256": "3e9965e33d4d70621c9dd7dcece9073ec91602da1f0d7f287d18d9723e5ae72a",
+          "stdoutSha256": "3e9965e33d4d70621c9dd7dcece9073ec91602da1f0d7f287d18d9723e5ae72a",
+          "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
     }
   }
 }
