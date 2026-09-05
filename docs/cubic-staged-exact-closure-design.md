@@ -1,7 +1,37 @@
 # Resident staged closure for complex cubic relations
 
-Status: bounded design and compiler-obstruction witness; no production change.
+Status: resident scratch and ellipsoid-cursor prerequisites implemented;
+complete staged certification is not yet implemented or timed.
 Inspected foundation: `2edc78a9f0537a759ca7bc387d081c91239c77e0`.
+
+## Implemented prerequisites
+
+The integration branch now combines these separately tested changes:
+
+- [Fixed root-owned scratch](root-owned-staged-closure-scratch.md) qualifies
+  existing logical-prefix HNF, Smith and LLL operations in borrowed-matrix
+  helpers. Its dynamic/GMP/fmpz and sanitizer witnesses retain one checkpoint.
+  The lattice stage therefore does not currently require a new arena API.
+- `_cubic_append_reduced_ideal_ellipsoid` returns the next unexamined proposal
+  and cumulative candidate count. Pause-boundary tests and compiled witnesses
+  cover rejected and duplicate proposals, target changes and exhaustion. The
+  production root still makes one complete call; the outer ideal/shell cursor
+  remains to be retained before a staged schedule can use this helper.
+- Call-induced nested exact arenas fail at native lowering. This conservative
+  guard prevents a helper from silently introducing an unqualified child
+  checkpoint; it does not reject ordinary borrowed-matrix helpers.
+- Reconstructed units must pass their independent regulator authentication
+  before replacing the retained witness. A synthetic fault-injection test
+  exposed an earlier branch that could retain stale identity coordinates when
+  that authentication failed. It now declines with bad-regulator phase 44.
+  This is a tested control-flow correction, not a discovered ordinary-field
+  failure or a change to the mathematical acceptance theorem.
+
+None of these changes establishes that the full proof suffix fits the current
+memory budget across repeated attempts. In particular, foreign temporary
+allocations consume checkpoint space even when their mathematical owners are
+later cleared. Full schedule accounting and end-to-end measurements remain
+required. The frozen `f7f00552` census/timing candidate predates these changes.
 
 ## Measured motivation
 
@@ -155,10 +185,12 @@ attempts' scratch.
 
 ## Integration sequence and acceptance
 
-1. Qualify shared-budget helper ownership and scratch cleanup independently of
-   class-group mathematics. Replace the expected-rejection witness when the
-   feature exists.
-2. Extract a resumable proposal cursor with pause/resume equivalence tests.
+1. Apply the qualified fixed-root scratch mechanism to the suffix. The
+   expected arena-parameter rejection witness remains valid: that API was not
+   added. Demonstrate the complete attempt schedule's memory accounting, not
+   merely the smaller lattice witness's bounds.
+2. Complete the resumable outer ideal/shell cursor around the now-resumable
+   ellipsoid helper, with pause/resume equivalence tests.
 3. Extract the current exact suffix without changing one-shot outputs. Keep
    failure categories explicit and preserve the small-unit branch.
 4. Attempt closure at the initial general threshold and continue from the
@@ -171,6 +203,29 @@ attempts' scratch.
    checkpoint exhaustion tests, and controlled measurements on `opt` before
    promoting a performance claim.
 
-This lane intentionally supplies the extraction and compiler plan rather
-than changing the current production routine before those ownership and
-continuation contracts are established.
+## Recoverable versus fatal proof exits
+
+The initial suffix audit identifies these narrow recovery candidates:
+
+| Condition | Meaning |
+| --- | --- |
+| Raw row count or exact raw HNF rank below the factor count | Need more relations. |
+| Full class rank but no cheap unit and no dependency dimension | Need unit evidence. |
+| Well-formed final index enclosure still reaches $\log 2$ after the existing saturation/refinement steps | Need stronger joint relation/unit/analytic evidence; not necessarily more numerical precision alone. |
+
+Keep malformed intervals, FFI failures, capacity/exponent limits, impossible
+rank or index changes, and publication failures fatal. In particular,
+insufficient support or compact rank **after full raw rank was established**
+is an internal inconsistency, not permission to collect more relations.
+
+`_cubic_relation_prefix_has_archimedean_unit` currently collapses genuine
+absence of a candidate, reconstruction failures and bad regulator intervals
+into its zero result. That ambiguous result must remain fatal in the first
+extraction unless its reasons are separated. Do not infer recoverability from
+phase 43 alone: that phase also covers some resource limits.
+
+Proof attempts must not overwrite the collector's raw count, online support
+bits or cheap-unit state. Use separate scratch for compaction, dependency and
+analytic state, and defer factor/row publication until acceptance. These are
+the remaining extraction obligations, not properties established by the
+smaller prerequisite witnesses.
