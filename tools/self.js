@@ -470,6 +470,12 @@ async function compile(
       basedir: path.dirname(file),
       libdir: path.join(src_path, "lib"),
       compiler_bootstrap: true,
+      // The compiler implementation uses native JavaScript receiver calls.
+      // Match the immutable bootstrap's class policy instead of allocating
+      // Python bound-method caches on every AST node and token. This setting
+      // propagates to imported compiler modules, not the separately compiled
+      // Python baselib, whose bound methods remain enabled above.
+      scoped_flags: { bound_methods: false },
     });
   }
 
