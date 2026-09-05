@@ -96,6 +96,7 @@ test("the production artifact manifest is deterministic and uses dist-relative f
     assert.deepEqual(
       first.topology.groups.filter(({ kind }) => kind === "specialist").map(({ id }) => id),
       [
+        "floating-kernel-loader",
         "algebraic",
         "m4ri",
         "cminpack",

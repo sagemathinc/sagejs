@@ -79,6 +79,8 @@ export interface BrowserSageSessionOptions {
   flint?: string | URL;
   algebraic?: string | URL;
   nativeKernels?: string | URL;
+  /** Experimental source-bound statistics pack, loaded on first statistics import. */
+  floatingKernels?: string | URL;
   m4ri?: string | URL;
   numerical?: string | URL;
   numericalNlopt?: string | URL;

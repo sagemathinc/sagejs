@@ -91,6 +91,7 @@
     "curve-backend.mjs",
     "dirichlet-group.mjs",
     "evaluator.mjs",
+    "floating-kernels.mjs",
     "index.mjs",
     "m4ri.mjs",
     "multivariate-backend.mjs",

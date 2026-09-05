@@ -16,7 +16,7 @@
     ]
   },
   "reviewed_sagejs_files": {
-    "packages/flint-wasm/evaluator.mjs": "58adaa3026498ab20df2c2f6ae0698891ce205a38245e4209781f7c1537118f2",
+    "packages/flint-wasm/evaluator.mjs": "710496bdd9f374d3237ae954103a8042f6d9389393113584f0d9b8d5ea392f36",
     "packages/flint-wasm/numerical/nlopt-index.mjs": "21d752734022de158af44bc8f8cf9c164a5cd0ab95358c532632573447cbebb3",
     "packages/flint-wasm/numerical/scripts/build-all.cjs": "6aefdb71fa589b773be46926e24c5a8e0c84a1a953ac72a1a99138a419fe014f",
     "packages/flint-wasm/numerical/scripts/production-toolchain-identity.cjs": "b626c20d9bc4e1cd13cb301bbaa2d6d418b22fd796b8e7980bc140a7fa69fcb8",
@@ -40,7 +40,7 @@
   },
   "public_semantics_bundle": {
     "encoding": "sorted-repository-path-nul-sha256-nul/v1",
-    "sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605"
+    "sha256": "59dc28bb258b31fa63c5d18e7fc447615cb828a7c6b7f5b0737acf864a0cc1bf"
   },
   "qualification_tooling_files": {
     "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs": "f99aed93937473cd43c6ea7150b641c98230fbbe4c1a4bf8f5a99c90169563c5",
@@ -85,8 +85,8 @@
   "selection": "explicit-only",
   "qualification": {
     "status": "pending_source_current_requalification",
-    "reason": "The integrated Python runtime and macOS qualification fixtures changed; refresh portable numerical qualification before release.",
-    "public_semantics_bundle_sha256": "6d7ac2f27b13eea6bf328997ba365c6f6adb9c8780d5107dddbffd6731647605",
+    "reason": "The evaluator now supports an explicit lazy floating-kernel resource; source-current portable numerical qualification remains required before release.",
+    "public_semantics_bundle_sha256": "59dc28bb258b31fa63c5d18e7fc447615cb828a7c6b7f5b0737acf864a0cc1bf",
     "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
     "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
