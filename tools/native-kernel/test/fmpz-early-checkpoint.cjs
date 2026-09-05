@@ -168,7 +168,7 @@ def pure_fmpz_vector(
   ]);
 });
 
-test("the complete cubic root initializes all 55 children inside its checkpoint", {
+test("the complete cubic root initializes all 59 children inside its checkpoint", {
   timeout: 120_000,
 }, async () => {
   const sourcePath = join(
@@ -194,7 +194,14 @@ test("the complete cubic root initializes all 55 children inside its checkpoint"
   const fn = ir.functions.find((candidate) => candidate.name === rootFunction);
   assert.equal(fn.analysis.backend.kind, "fmpz");
   const [scope] = fn.analysis.liveExactWorkspace.scopes;
-  assert.equal(scope.children.length, 55);
+  // Online HNF adds three resident basis matrices and membership coordinates.
+  // They must obey the same initialization/all-exit cleanup ordering below.
+  assert.equal(scope.children.length, 59);
+  for (const owner of ["online_relation_basis", "online_relation_source",
+    "online_relation_hnf", "online_membership_coordinates"]) {
+    assert.ok(scope.children.some((child) => child.owner === owner &&
+      child.resourceId === "fmpz_matrix"));
+  }
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(
@@ -206,7 +213,7 @@ test("the complete cubic root initializes all 55 children inside its checkpoint"
       ).sort(),
     ),
     {
-      fmpz_matrix: 51,
+      fmpz_matrix: 55,
       fmpz_polynomial: 1,
       "inline-promoting-fmpz-vector": 2,
       number_field_analysis_resource: 1,
