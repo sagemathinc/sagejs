@@ -105,6 +105,7 @@ class TraceEvent:
         if not isinstance(important, bool):
             raise TypeError("trace important must be a boolean")
         self._important = important
+        self._encoded_bytes: int | None = None
 
     @property
     def sequence(self) -> int:
@@ -130,9 +131,19 @@ class TraceEvent:
             "evaluation": self._evaluation,
             "accepted": self._accepted,
             "data": self.data,
-            "diagnostics": [dict(value) for value in self._diagnostics],
+            "diagnostics": [
+                materialize_object(value, "$.trace.event.diagnostics")
+                for value in self._diagnostics
+            ],
             "important": self._important,
         }
+
+    def _json_bytes(self) -> int:
+        # Public views are detached and events have no public mutators. Keep a
+        # size, not another serialized copy of potentially large event data.
+        if self._encoded_bytes is None:
+            self._encoded_bytes = len(canonical_json(self.to_dict()).encode("utf-8"))
+        return self._encoded_bytes
 
 
 class NumericalTrace:
@@ -143,6 +154,7 @@ class NumericalTrace:
             raise TypeError("trace policy must be a TracePolicy")
         self._policy = TracePolicy() if policy is None else policy
         self._events: list[TraceEvent] = []
+        self._retained_event_bytes = 0
         self._next_sequence = 0
         self._observed = 0
         self._dropped = 0
@@ -197,14 +209,37 @@ class NumericalTrace:
             diagnostics=diagnostics,
             important=important,
         )
+        return self._retain_prepared(event)
+
+    def _retain_prepared(self, event: TraceEvent) -> TraceEvent:
+        """Retain an already checked event after its observation was counted."""
+        if event.sequence != self._next_sequence:
+            raise ValueError("prepared trace event has the wrong sequence")
+        size = event._json_bytes()
         self._next_sequence += 1
         self._events.append(event)
+        self._retained_event_bytes += size
         self._enforce_budget()
         return event
 
     def _event_bytes(self) -> int:
-        return len(
-            canonical_json([event.to_dict() for event in self._events]).encode("utf-8")
+        # Exactly the canonical UTF-8 JSON array: brackets and inter-event
+        # commas plus each immutable event's encoded size, counted only once.
+        return 2 + self._retained_event_bytes + max(0, len(self._events) - 1)
+
+    def _projected_record_bytes(self, event: TraceEvent) -> int:
+        """Size after one append, before retention, without copying history."""
+        metadata = self._record_metadata()
+        metadata["observed_events"] = self._observed + 1
+        metadata["retained_events"] = len(self._events) + 1
+        # Metadata contains an empty events array. Replace those two brackets
+        # with the projected array, including its optional additional comma.
+        return (
+            len(canonical_json(metadata).encode("utf-8"))
+            - 2
+            + self._event_bytes()
+            + event._json_bytes()
+            + (1 if self._events else 0)
         )
 
     def _remove_retained_event(self, *, allow_endpoints: bool) -> None:
@@ -228,6 +263,7 @@ class NumericalTrace:
                 removable = self._events[:-1] or self._events
             remove = removable[0]
         self._events.remove(remove)
+        self._retained_event_bytes -= remove._json_bytes()
         self._dropped += 1
         self._truncated = True
 
@@ -237,8 +273,8 @@ class NumericalTrace:
         while self._event_bytes() > self._policy.max_bytes and self._events:
             self._remove_retained_event(allow_endpoints=True)
 
-    def to_dict(self) -> dict[str, JSONValue]:
-        diagnostics: list[dict[str, JSONValue]] = []
+    def _record_metadata(self) -> dict[str, JSONValue]:
+        diagnostics: list[JSONValue] = []
         if self._truncated:
             diagnostics.append(
                 NumericalDiagnostic(
@@ -246,19 +282,21 @@ class NumericalTrace:
                     details={"dropped_events": self._dropped},
                 ).to_dict()
             )
-        return materialize_object(
-            {
-                "schema_version": TRACE_SCHEMA_VERSION,
-                "policy": self._policy.to_dict(),
-                "observed_events": self._observed,
-                "retained_events": len(self._events),
-                "dropped_events": self._dropped,
-                "truncated": self._truncated,
-                "events": [event.to_dict() for event in self._events],
-                "diagnostics": diagnostics,
-            },
-            "$.trace",
-        )
+        return {
+            "schema_version": TRACE_SCHEMA_VERSION,
+            "policy": self._policy.to_dict(),
+            "observed_events": self._observed,
+            "retained_events": len(self._events),
+            "dropped_events": self._dropped,
+            "truncated": self._truncated,
+            "events": [],
+            "diagnostics": diagnostics,
+        }
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        record = self._record_metadata()
+        record["events"] = [event.to_dict() for event in self._events]
+        return materialize_object(record, "$.trace")
 
     def to_json(self) -> str:
         return canonical_json(self.to_dict())

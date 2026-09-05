@@ -46,6 +46,13 @@ const DEFAULT_MARKDOWN = path.join(
   "optimizer-opportunities.md",
 );
 
+// Native/reactor builders keep downloaded dependency trees below mathematical
+// packages. Those generated files must not become first-party optimizer inputs
+// merely because a developer built an optional backend in this checkout.
+const GENERATED_DIRECTORY_NAMES = new Set([
+  ".git", ".cache", ".native", "__pycache__", "build", "dist", "node_modules",
+]);
+
 const IGNORED_AST_KEYS = new Set([
   "start",
   "end",
@@ -163,7 +170,9 @@ function recursiveFiles(directory, predicate) {
   const result = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const filename = path.join(directory, entry.name);
-    if (entry.isDirectory()) result.push(...recursiveFiles(filename, predicate));
+    if (entry.isDirectory() && !GENERATED_DIRECTORY_NAMES.has(entry.name)) {
+      result.push(...recursiveFiles(filename, predicate));
+    }
     else if (entry.isFile() && predicate(filename)) result.push(filename);
   }
   return result.sort();
