@@ -86,10 +86,11 @@ async function runFloat64Cases({ bytes, bridge, cases }) {
   return answers;
 }
 
-async function runBrowserCases(engine, runner, payload) {
+async function runBrowserCases(engine, runner, payload, { pageUrl } = {}) {
   const browser = await require("playwright-core")[engine].launch({ headless: true });
   try {
     const page = await browser.newPage();
+    if (pageUrl !== undefined) await page.goto(pageUrl);
     return await page.evaluate(async ({ source, payload }) => {
       const url = URL.createObjectURL(new Blob([
         "const run = " + source + "; onmessage = async (event) => { " +

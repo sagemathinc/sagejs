@@ -27,6 +27,16 @@ inventory, but they require a generated adapter in the FLINT ownership domain.
 Until that adapter exists, an absent resolver result selects their correct
 same-source implementation.
 
+Callers opting into `isolateFloat64: true` separate pure binary64 modules
+(all lowered functions are `float64`, no foreign
+declarations, and only libc/libm dependencies) have a separate `float64` domain.
+Its pack needs no GMP, FLINT, MPFR or MPC prefix and does not link their host
+compatibility shims. FP contraction is disabled to preserve source rounding.
+This classification does not itself register or enable any public accelerator;
+production inventory, lazy loading, public dispatch and qualification still
+require their own integration. Existing domain selection stays unchanged unless
+the builder opts in: its consumers must accept and qualify the new domain first.
+
 ## Portable identity
 
 Native and WebAssembly manifests share these platform-independent identities:
@@ -74,6 +84,13 @@ and compiler-owned record objects. They copy mutable packed buffers back after
 the call and return exact `bigint` results. They expose `nativeAvailable`,
 `sourceTransparent`, `executionTarget`, and all selection identities as
 read-only metadata.
+
+Binary64 callables additionally expose owned `createFloat64Buffer` and stable
+`sortedFloat64Buffer` host-storage helpers. Sorting stays outside the isolated
+core, rejects nonfinite data, and preserves the relative order of equal values,
+including opposite signed zeros. Buffers are independent host storage, not
+borrowed Wasm memory views; the existing checked marshaller still copies them
+into and out of each call. Retained Wasm memory/zero-copy dispatch is not claimed.
 
 ## Browser bootstrap integration
 

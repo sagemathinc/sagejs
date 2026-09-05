@@ -232,6 +232,26 @@ function float64Value(argument) {
   );
 }
 
+function createFloat64Buffer(source) {
+  if (Number.isSafeInteger(source) && source >= 0) return new Float64Array(source);
+  return Float64Array.from(source, (value) => Number(value));
+}
+
+function sortedFloat64Buffer(source) {
+  const result = Float64Array.from(source, (entry) => {
+    const value = directFloat64Value(entry);
+    if (value === undefined) throw new TypeError("Float64 buffer values must be numbers");
+    if (!Number.isFinite(value)) {
+      const ErrorType = typeof globalThis.ValueError === "function" ? globalThis.ValueError : RangeError;
+      throw new ErrorType("sorted Float64Buffer requires finite values");
+    }
+    return value;
+  });
+  // Numeric equality preserves original signed-zero order, as Python sorted does.
+  result.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+  return result;
+}
+
 function isPackedIntegerBuffer(argument) {
   return argument !== null && typeof argument === "object" &&
     argument.sizes instanceof Int32Array &&
@@ -620,6 +640,10 @@ function callable(instance, kernel, fn, resourceBridge) {
     automaticSelection: { value: receipt ?? null },
     automaticSelectionAccepted: { value: automaticSelectionAccepted },
   };
+  if (fn.kernelKind === "float64") {
+    properties.createFloat64Buffer = { value: createFloat64Buffer };
+    properties.sortedFloat64Buffer = { value: sortedFloat64Buffer };
+  }
   let result = invoke;
   if (automaticSelectionAccepted !== null) {
     const bindFallback = (fallback) => {
