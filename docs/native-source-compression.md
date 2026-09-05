@@ -216,3 +216,8 @@ unsupported target nor changes a memory/resource budget. Generic slice and
 bundle WASI witnesses remain distinct from the full cubic target capability.
 The corresponding production capability ledger also includes the one added
 prefix-Arb adapter; both ledgers must agree before a build can issue its receipt.
+`packages/flint-wasm/test/integer-log-sqrt-prefix.test.mjs` checks the actual
+Wasm adapter's exact endpoints, ignored poisoned tail, invalid active entry
+exception without mutation, and resource cleanup. Its public Chromium witness
+also passes. Only after these executions was the public capability report moved
+from planned to available; the routine Chromium workflow requires this witness.

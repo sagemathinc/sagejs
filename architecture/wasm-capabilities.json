@@ -93,7 +93,8 @@
         "differential": true,
         "paths": [
           "test/integer-log-sqrt-prefix-resource.cjs",
-          "test/fixtures/integer-log-sqrt-prefix-resource.py"
+          "test/fixtures/integer-log-sqrt-prefix-resource.py",
+          "packages/flint-wasm/test/integer-log-sqrt-prefix.test.mjs"
         ]
       },
       "partition-count-wasm-differential": {
@@ -4621,15 +4622,15 @@
       "tests": [
         "integer-log-sqrt-prefix-differential"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The borrowed-prefix adapter reuses the shared Arb endpoint implementation. Native dynamic/GMP/fmpz differential tests and checkpoint sanitizer tests cover the prefix contract; this new entry has not yet been published or executed in a WebAssembly production artifact.",
+      "review_note": "The borrowed-prefix adapter reuses the shared Arb endpoint implementation. Native differential and checkpoint sanitizer tests cover the prefix contract. The production Wasm regression checks exact endpoints, poisoned inactive tails, active-input rejection without mutation and resource cleanup; the public Chromium FFI witness executes the same logical-prefix operation.",
       "wasm_declared": true,
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Integrate the generated entry into the next production WebAssembly closure and execute its active-prefix and inactive-tail differential witness before advertising browser availability."
+        "status": "included",
+        "explanation": "The generated prefix adapter is included in the reviewed ABI and production capability ledgers and executes in the production Wasm and public Chromium witnesses."
       },
-      "public_explanation": "The resident logical-prefix logarithm and square-root operation is implemented for native execution. Browser publication and validation remain pending; the existing exact-shape operation remains available."
+      "public_explanation": "The resident logical-prefix logarithm and square-root operation is included in the receipt-authenticated production WebAssembly artifact, with exact endpoint and inactive-tail tests plus a public Chromium FFI witness."
     },
     {
       "id": "ffi:flint:integer_log_sqrt_balls_resource",
