@@ -20,7 +20,9 @@ from sagejs.ffi.flint import (
     fmpz_matrix,
     fmpz_matrix_hnf_into,
     fmpz_matrix_hnf_transform,
+    fmpz_matrix_hnf_transform_prefix,
     fmpz_matrix_lll_transform,
+    fmpz_matrix_lll_transform_prefix,
     fmpz_matrix_snf,
     fmpz_matrix_snf_into,
     integer_log_sqrt_balls_prefix_resource,
@@ -3234,14 +3236,23 @@ def _cubic_relation_prefix_has_archimedean_unit(
 ) -> int:
     """Return whether a relation prefix proves a non-torsion exact unit.
 
-    The return value is `1` when the exact unit was reconstructed into
-    `prefix_unit_result`, `0` when the prefix has incomplete relation rank or
-    no reconstructible dependency, and `-1` for an invalid exact computation.
-    The analytic index proof still independently certifies whichever relation
-    set and unit are selected.
+    Return `1` only after publishing an authenticated exact unit into
+    `prefix_unit_result`. Return `0` for full relation rank with no certified
+    non-torsion candidate, and `2` for an incomplete relation rank. Neither
+    result asserts that every dependency is torsion. Negative results are
+    fatal: `-1` means an invalid exact computation, interval or resource bound;
+    `-2` means reconstruction was unavailable or failed its exact checks;
+    `-3` means reconstructed regulator authentication failed.
+
+    All matrix reductions use logical shapes, not owner capacities. Inactive
+    entries may retain previous attempts' values. Only success changes the
+    result row. The caller must interpret rank deficiency in context: after
+    full raw rank and complete support were established, it is inconsistent,
+    not permission to collect more relations. The analytic index proof still
+    independently certifies whichever relation set and unit are selected.
     """
     if relation_count < factor_count:
-        return 0
+        return 2
     relation_row: uint64 = 0
     while relation_row < relation_count:
         factor_index: uint64 = 0
@@ -3251,13 +3262,16 @@ def _cubic_relation_prefix_has_archimedean_unit(
             ]
             factor_index += 1
         relation_row += 1
-    if not fmpz_matrix_hnf_transform(
+    if not fmpz_matrix_hnf_transform_prefix(
         prefix_hnf,
         prefix_transform,
         prefix_matrix,
+        relation_count,
+        factor_count,
     ):
         return -1
     relation_rank: uint64 = 0
+    zero_row_seen = False
     relation_row = 0
     while relation_row < relation_count:
         row_nonzero = False
@@ -3267,9 +3281,17 @@ def _cubic_relation_prefix_has_archimedean_unit(
                 row_nonzero = True
             factor_index += 1
         if row_nonzero:
+            if zero_row_seen:
+                return -1
             relation_rank += 1
+        else:
+            zero_row_seen = True
         relation_row += 1
-    if relation_rank != factor_count or relation_rank >= relation_count:
+    if relation_rank > factor_count:
+        return -1
+    if relation_rank < factor_count:
+        return 2
+    if relation_rank == relation_count:
         return 0
 
     dependency_count: uint64 = relation_count - relation_rank
@@ -3282,10 +3304,12 @@ def _cubic_relation_prefix_has_archimedean_unit(
             ]
             relation_index += 1
         dependency_row += 1
-    if not fmpz_matrix_lll_transform(
+    if not fmpz_matrix_lll_transform_prefix(
         prefix_dependencies_reduced,
         prefix_dependency_transform,
         prefix_dependencies,
+        dependency_count,
+        relation_count,
     ):
         return -1
 
@@ -3490,7 +3514,7 @@ def _cubic_relation_prefix_has_archimedean_unit(
         dependency_scale,
     )
     if reconstruction_status != 1:
-        return 0
+        return -2
     reconstructed_regulator_lower, reconstructed_regulator_upper = (
         _cubic_regulator_bounds(
             log_numerators,
@@ -3522,7 +3546,7 @@ def _cubic_relation_prefix_has_archimedean_unit(
             > reconstructed_regulator_upper * dependency_scale_quotient
         )
     ):
-        return 0
+        return -3
     prefix_unit_result[0, 0] = reconstructed_zero
     prefix_unit_result[0, 1] = reconstructed_one
     prefix_unit_result[0, 2] = reconstructed_two
@@ -9268,7 +9292,12 @@ def certified_complex_cubic_class_group_v1(
                 prefix_unit_combinations,
                 prefix_unit_result,
             )
-            if prefix_unit_status < 0:
+            if prefix_unit_status != 0 and prefix_unit_status != 1:
+                # Recovery includes complete class support. Missing rank here
+                # is inconsistent; reconstruction and interval failures are
+                # likewise not evidence authorizing another relation effort.
+                output[62] = prefix_unit_status
+                output[63] = 44
                 return False
             if prefix_unit_status == 1:
                 proof_unit_zero = prefix_unit_result[0, 0]

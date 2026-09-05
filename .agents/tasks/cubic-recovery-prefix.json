@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-recovery-prefix",
+  "title": "Reentrant exact cubic recovery prefixes",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make the actual cubic unit-recovery helper operate on logical matrix prefixes and distinguish mathematical insufficiency from invalid reconstruction without authorizing staged retries",
+  "base_commit": "813e77a1d108a7da5f37a05726f3b8a514f6e3a6",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+    "test/number-field-cubic-recovery-prefix.cjs",
+    "test/fixtures/cubic-recovery-prefix.py",
+    "test/fixtures/cubic-recovery-status-faults.py",
+    "docs/cubic-recovery-prefix-contract.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Exact alpha unit from equal ideal rows for 2 and 2alpha in x^3-x-1",
+      "Actual helper exact-sized versus poisoned over-capacity scratch with grow/shrink schedules"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-cubic-recovery-prefix.cjs",
+    "node --test test/number-field-cubic-reconstructed-regulator-guard.cjs test/number-field-cubic-adjacent-cursor.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
