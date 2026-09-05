@@ -1,0 +1,107 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-compression-evidence",
+  "title": "Cubic Compression Evidence",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Publish the exact optimizer evidence snapshot for the qualified staged source-compression implementation",
+  "base_commit": "ee9e4d0f10970678237919c6092744a582bb2c7a",
+  "claims": [
+    "architecture/optimizer-opportunities.manifest.json",
+    "docs/optimizer-opportunities.md",
+    "test/complex-cubic-frontier-holdout-gate.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.749,
+      "started_at": "2026-09-05T20:05:51.617Z",
+      "commit": "ee9e4d0f10970678237919c6092744a582bb2c7a",
+      "workspace_fingerprint": "eca1abef25bce80beb56e13931e20d807ff9aba56b0eee9400e6577e8a39fee2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.609,
+      "started_at": "2026-09-05T20:12:01.478Z",
+      "commit": "24dfde35b1472436c6d77a6f10313233863d01a3",
+      "workspace_fingerprint": "e590a80cec3bc2d054e4b3ae7676b501cfab1ce018619a53f06addeeba113cf7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 157.581,
+      "started_at": "2026-09-05T20:12:11.715Z",
+      "commit": "24dfde35b1472436c6d77a6f10313233863d01a3",
+      "workspace_fingerprint": "e590a80cec3bc2d054e4b3ae7676b501cfab1ce018619a53f06addeeba113cf7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.093,
+      "started_at": "2026-09-05T20:22:41.260Z",
+      "commit": "24dfde35b1472436c6d77a6f10313233863d01a3",
+      "workspace_fingerprint": "e590a80cec3bc2d054e4b3ae7676b501cfab1ce018619a53f06addeeba113cf7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 157.115,
+      "started_at": "2026-09-05T20:28:37.073Z",
+      "commit": "24dfde35b1472436c6d77a6f10313233863d01a3",
+      "workspace_fingerprint": "e590a80cec3bc2d054e4b3ae7676b501cfab1ce018619a53f06addeeba113cf7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 42.071,
+      "started_at": "2026-09-05T20:31:14.788Z",
+      "commit": "24dfde35b1472436c6d77a6f10313233863d01a3",
+      "workspace_fingerprint": "e590a80cec3bc2d054e4b3ae7676b501cfab1ce018619a53f06addeeba113cf7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Published staged source snapshot 3382c44514037290603db4edcca46ef772749ac2b3329ba2328739cb29d00e32 as canonical, legacy and SQLite GitHub release assets with a tracked manifest. Corrected synthetic holdout fixtures to use consistent polynomial/discriminant pairs without weakening production guards. Current workspace passes architecture, strict Python and all 108 portable test files.",
+    "risks": [
+      "Portable execution uses a stable prepared compiler/browser asset tree; it is not a newly built whole-cubic Wasm qualification.",
+      "Compiler and mathematical release qualification remains in PRs 130 and 134: native QQ timing budgets reproduce a pre-feature failure, and current production Wasm ABI changes require review."
+    ],
+    "next_steps": [
+      "Review this evidence-only handoff separately from pending native/platform release gates."
+    ]
+  }
+}
