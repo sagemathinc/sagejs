@@ -1277,7 +1277,10 @@ function generateJavaScript(ir, options = {}) {
     if (operation.kind === "float64.constant") {
       return `${indent}${operation.target} = ${operation.value};`;
     }
-    if (operation.kind === "float64.copy" || operation.kind === "uint64.copy") {
+    if (operation.kind === "bool.constant") {
+      return `${indent}${operation.target} = ${operation.value};`;
+    }
+    if (["float64.copy", "uint64.copy", "bool.copy"].includes(operation.kind)) {
       return `${indent}${operation.target} = ${operation.source};`;
     }
     if (operation.kind === "float64.from_uint64") {

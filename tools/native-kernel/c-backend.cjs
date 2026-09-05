@@ -2547,7 +2547,10 @@ function emitFloat64Operation(operation, indent) {
   if (operation.kind === "float64.constant") {
     return `${indent}${target} = ${operation.value};`;
   }
-  if (operation.kind === "float64.copy" || operation.kind === "uint64.copy") {
+  if (operation.kind === "bool.constant") {
+    return `${indent}${target} = ${operation.value ? 1 : 0};`;
+  }
+  if (["float64.copy", "uint64.copy", "bool.copy"].includes(operation.kind)) {
     return `${indent}${target} = ${cName(operation.source)};`;
   }
   if (operation.kind === "float64.from_uint64") {
@@ -2730,7 +2733,7 @@ function float64Parameter(param) {
 function float64CoreSignature(fn, prototype = false) {
   return `int sagejs_kernel_${fn.name}(` + [
     "sagejs_native_status *status",
-    "double *sagejs_native_output",
+    `${fn.returnType === "bool" ? "int" : "double"} *sagejs_native_output`,
     ...fn.params.map(float64Parameter),
   ].join(", ") + `)${prototype ? ";" : ""}`;
 }
@@ -2777,7 +2780,7 @@ function emitFloat64NodeAdapter(fn) {
   const float64Result = fresh("sagejs_float64_result");
   const declarations = [
     `    sagejs_native_status ${wrapperStatus} = {0, NULL};`,
-    `    double ${float64Result} = 0.0;`,
+    `    ${fn.returnType === "bool" ? "int" : "double"} ${float64Result} = 0;`,
     "    napi_value result;",
   ];
   const parsing = [];
@@ -2832,7 +2835,7 @@ ${parsing.join("\n")}
         return NULL;
     }
     if (!sagejs_native_check_napi(env,
-            napi_create_double(env, ${float64Result}, &result)))
+            ${fn.returnType === "bool" ? "napi_get_boolean" : "napi_create_double"}(env, ${float64Result}, &result)))
         return NULL;
     return result;
 }`;

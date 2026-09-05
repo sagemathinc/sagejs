@@ -191,10 +191,10 @@ function lowerCall(node, context, operations, expectedType) {
       expect(context, arg, value.type === type, "binary64 helper argument expects " + type);
       return value;
     });
-    const target = temporary(context, node, "Float64");
+    const target = temporary(context, node, signature.returnType);
     context.dependencies.add(name);
     operations.push({ kind: "float64.call", target, function: name, arguments: arguments_ });
-    return { name: target, type: "Float64" };
+    return { name: target, type: signature.returnType };
   }
   if (name === "float" || name === "RealNumber") {
     expect(context, node, args.length === 1, name + "() requires one argument");
@@ -354,6 +354,13 @@ function lowerComparison(node, context, operations) {
 }
 
 function lowerExpression(node, context, operations, expectedType) {
+  if (["AST_True", "AST_False"].includes(nodeType(node))) {
+    expect(context, node, expectedType === undefined || expectedType === "bool",
+      "boolean literal requires a bool expression");
+    const target = temporary(context, node, "bool");
+    operations.push({ kind: "bool.constant", target, value: nodeType(node) === "AST_True" });
+    return { name: target, type: "bool" };
+  }
   if (expectedType === "uint64") {
     const integer = uint64Literal(node);
     if (integer !== undefined) {
@@ -528,18 +535,20 @@ function assign(statement, context) {
       : undefined;
     declaredType = raw === "float" || raw === "Float64"
       ? "Float64"
-      : raw === "uint64"
-        ? "uint64"
-        : raw === "Float64Buffer"
-          ? "Float64Buffer"
-          : raw === "Float64Record"
-            ? "Float64Record"
-            : undefined;
+      : raw === "bool"
+        ? "bool"
+        : raw === "uint64"
+          ? "uint64"
+          : raw === "Float64Buffer"
+            ? "Float64Buffer"
+            : raw === "Float64Record"
+              ? "Float64Record"
+              : undefined;
     expect(
       context,
       annotation,
       declaredType !== undefined,
-      "binary64 local annotation must be float, Float64, uint64, " +
+      "binary64 local annotation must be float, Float64, bool, uint64, " +
         "Float64Buffer, or Float64Record",
     );
     targetNode = node.target;
@@ -595,7 +604,9 @@ function assign(statement, context) {
         ? "float64.copy"
         : value.type === "uint64"
           ? "uint64.copy"
-          : "float64.buffer.copy",
+          : value.type === "bool"
+            ? "bool.copy"
+            : "float64.buffer.copy",
       target,
       source: value.name,
       type: value.type,
@@ -897,7 +908,9 @@ function analyzeFloat64Calls(functions) {
 }
 
 function isFloat64Signature(signature) {
-  return signature.returnType === "Float64" &&
+  return (signature.returnType === "Float64" ||
+    (signature.returnType === "bool" && signature.params.some(param =>
+      ["Float64", "Float64Buffer"].includes(param.type)))) &&
     signature.params.every((param) =>
       ["Float64", "uint64", "Float64Buffer", "UInt64Buffer"].includes(param.type)
     );
