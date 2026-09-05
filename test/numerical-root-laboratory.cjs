@@ -275,6 +275,28 @@ test("Sage scalar view and rich result share one root engine", async () => {
       "r=numerical_root(x^2-2,1,2)\n(r.status,r.success,r.method,r.validation.truth_level)",
     );
     assert.equal(record.repr, "('converged', True, 'brent', 'validated_approximate')");
+    const defaultTrace = await session.evaluate(
+      "r=(x^2-2).find_root(1,2,full_output=True)\n(r.problem.trace_policy.level,len(r.trace.events)>2)",
+    );
+    assert.equal(defaultTrace.repr, "('iterations', True)");
+    const scalarTrace = await session.evaluate(`
+import sagejs.numerics as numerics
+original_solver = numerics.find_root
+observed_traces = []
+def capture_trace(*args, **options):
+    result = original_solver(*args, **options)
+    observed_traces.append((result.problem.trace_policy.level, any(event.kind == "iteration" for event in result.trace.events)))
+    return result
+numerics.find_root = capture_trace
+try:
+    scalar = (x^2-2).find_root(1,2)
+    explicit = (x^2-2).find_root(1,2,trace="iterations")
+    silent = (x^2-2).find_root(1,2,full_output=True,trace="none")
+finally:
+    numerics.find_root = original_solver
+(observed_traces, scalar==explicit)
+`);
+    assert.equal(scalarTrace.repr, "([('none', False), ('iterations', True), ('none', False)], True)");
   } finally {
     await session.close();
   }

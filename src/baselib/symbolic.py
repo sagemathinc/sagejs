@@ -758,7 +758,7 @@ class Expression(sage.Element):
         xtol: float = 1e-12,
         method: str = "auto",
         full_output: bool = False,
-        trace: str = "iterations",
+        trace: str | None = None,
     ) -> Any:
         expression = self
         if (
@@ -796,6 +796,9 @@ class Expression(sage.Element):
         evaluator = fast_callable(expression, vars=variables)
         module = _numerics_module()
         solver = module.find_root
+        trace_level = trace
+        if trace_level is None:
+            trace_level = "iterations" if full_output else "none"
         result = solver(
             evaluator,
             float(lower),
@@ -803,7 +806,7 @@ class Expression(sage.Element):
             method=method,
             maxiter=int(maxiter),
             xtol=float(xtol),
-            trace=trace,
+            trace=trace_level,
             expression=str(expression),
             variable=_symbol_name(variables[0]),
             source_language="sage",
