@@ -23,6 +23,14 @@ backend choices. It does not by itself qualify a new backend: each addition
 must still perform its own library survey, correctness study, portability work,
 and performance evaluation.
 
+The focused follow-up is the
+[numerical computing performance program](numerical-computing-performance-plan.md).
+It prioritizes current public-call benchmarks, shared tracing overhead, packed
+source-transparent kernels, and method-specific library acceleration. Functional
+coverage and qualification infrastructure do not by themselves establish that
+the supported product is fast; the program tracks that work separately without
+changing the current release candidate.
+
 ### Implementation and qualification record
 
 As of 2026-09-02, P0-P7 are implemented and validated for the published
