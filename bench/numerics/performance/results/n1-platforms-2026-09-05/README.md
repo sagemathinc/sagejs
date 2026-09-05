@@ -67,10 +67,34 @@ No manifest, mathematical receipt or release threshold was changed to obtain
 these records. Native compilation, public browser worker execution, npm/SEA
 packaging and peak memory are not qualified by these dynamic host observations.
 
+## Linux x64: second independent A/B/B/A confirmation
+
+After the user enlarged `/home/user` on `bench-1`, both dedicated builds passed.
+`x64-paired-{A1,B1,B2,A2}.json` records the same whole-corpus block protocol on
+AMD EPYC 7B13 / Node 26.5.1. All 15 public observations agree, the collector and
+workload hashes match, and each candidate's artifact digest is unchanged
+between its two blocks. No competing build or measurement ran on this host.
+
+| Workload / trace | A1 baseline | B1 candidate | B2 candidate | A2 baseline |
+| --- | ---: | ---: | ---: | ---: |
+| Brent root / summary | 31.764 | 27.108 | 27.050 | 31.755 |
+| Brent root / iterations | 86.690 | 38.739 | 39.077 | 91.883 |
+| Bounded minimum / summary | 80.452 | 36.061 | 36.723 | 81.799 |
+| Bounded minimum / iterations | 92.611 | 38.082 | 38.233 | 93.155 |
+| Classroom ODE / summary | 125.618 | 102.788 | 107.278 | 126.787 |
+| Classroom ODE / iterations | 345.905 | 147.948 | 145.745 | 354.491 |
+| Trace 32 / iterations | 694.059 | 52.108 | 51.574 | 663.140 |
+| Trace 128 / iterations | 12,150.659 | 235.368 | 233.848 | 12,201.988 |
+
+These are milliseconds, not new acceptance thresholds. The unchanged default
+latency targets remain unmet. This comparison isolates the trace change;
+PR #140's subsequent result-construction change is not included.
+
 ## Outstanding checks
 
-The extra disk on `bench-1` is now available; its baseline and trace-candidate
-builds passed and the corresponding A/B/B/A measurement is in progress.
+The x64 result-construction candidate is being built separately before a paired
+comparison with the trace candidate. Browser and automatic-route measurements
+remain distinct outstanding work.
 
 PR #132's routine Linux gate and all three cross-platform CI smokes passed.
 Its separate browser job rejected eager payload size (gzip 17,528,500 against
@@ -78,3 +102,9 @@ Its separate browser job rejected eager payload size (gzip 17,528,500 against
 PR #140's routine gate hit a pre-existing group fallback test's 30-second child
 timeout; the identical test passed locally in 14.1 seconds. Neither failure is
 reported as green, and payload/deadline limits have not been relaxed here.
+
+The successful release build at `c9b69001c` has eager gzip/Brotli totals
+17,337,075 / 9,565,754 bytes. Comparing its artifact report with #132 locates the
+growth in `baselib.js`, `compiler.js`, `stdlib.json` and `lazy-modules.json`.
+That release predates the intervening Python/compiler integration on main;
+it is **not** the unchanged-source control for attributing growth to N1.
