@@ -11,6 +11,8 @@ from ast_types import (
     AST_Existential,
     AST_ForIn,
     AST_ItemAccess,
+    AST_New,
+    AST_Null,
     AST_Number,
     AST_Object,
     AST_Return,
@@ -184,6 +186,20 @@ def print_getitem(self, output):  # AST_Sub
 
 
 def print_rich_getitem(self, output):  # AST_ItemAccess
+    prop = self.property
+    if (
+        not self.assignment
+        and is_node_type(prop, AST_New)
+        and is_node_type(prop.expression, AST_SymbolRef)
+        and prop.expression.name is "slice"
+        and not prop.expression.python_identifier
+        and prop.args.length is 3
+        and all(is_node_type(argument, AST_Null) for argument in prop.args)
+    ):
+        output.print("ρσ_getslice_all(")
+        self.expression.print(output)
+        output.print(")")
+        return
     func = "ρσ_" + ("setitem" if self.assignment else "getitem")
     output.print(func + "(")
     self.expression.print(output), output.comma(), self.property.print(output)

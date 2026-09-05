@@ -17,7 +17,7 @@
     "declared-ffi": 463,
     "declared-ffi-resource": 34,
     "napi-export": 353,
-    "runtime-intrinsic": 147,
+    "runtime-intrinsic": 148,
     "wasm-export": 74
   },
   "boundaries": [
@@ -11595,6 +11595,14 @@
       "path": "tools/python/contract.ts",
       "export": "list_contains",
       "symbol": "ρσ_list_contains",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:list_decorate",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "list_decorate",
+      "symbol": "ρσ_list_decorate",
       "disposition": "runtime-primitive"
     },
     {

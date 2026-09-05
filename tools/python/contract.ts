@@ -112,6 +112,7 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   lightweight_math_class: "ρσ_lightweight_math_class",
   list_constructor: "ρσ_list_constructor",
   list_contains: "ρσ_list_contains",
+  list_decorate: "ρσ_list_decorate",
   map: "ρσ_new_map",
   map_class: "Map",
   math: "Math",

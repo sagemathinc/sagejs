@@ -41,6 +41,16 @@ comments before final publication; branch authors may still be working.
 - #106's routine CI run `33914376124` failed because its q-expansion source
   freeze did not match `modular.py` and `qexp.py`. Regenerate from the integrated
   source after validating it; do not disable the source-freeze check.
+- #120's full-slice recognizer now distinguishes source identifiers from the
+  synthetic `slice` constructor. User classes/functions named `slice` remain
+  ordinary calls, while shadowing does not change actual slicing syntax.
+- Explicit noncallable `__getitem__` overrides were ignored during slicing.
+  The fast paths now require an absent method, not merely a nonfunction;
+  disabled/replaced methods retain Python dispatch and TypeError behavior.
+- #119's benchmark smoke was in the unit/portable tier but compiled the full
+  corpus. Keep pure policy checks in that tier and move real compilation to
+  integration, bounded by a five-minute process-tree deadline. Its benchmark
+  provenance references are narrowly classified by the dependency audit.
 
 ## Validation so far
 
@@ -51,19 +61,31 @@ comments before final publication; branch authors may still be working.
 - After fixing those defects, all 13 runtime hot-path tests pass. Compiler
   convergence, cache-dependent tests, and final generated manifests will be
   checked again after integrating the dependent slice optimization.
+- The combined #117/#119/#120 compiler converges in two passes. All 18 focused
+  runtime/slice tests pass, including user-defined `slice` and disabled or
+  dynamically replaced subclass subscription methods.
+- The 63 CST lowering tests and strict Python checks (367 modules, zero errors)
+  pass. The performance lab's five policy tests and real end-to-end smoke pass;
+  cold standalone corpus compilation took 179 seconds on this loaded host.
 - Initial build was deliberately stopped after defect reproduction. Cache
   tests attempted during module-cache construction saw missing artifacts and
   must be rerun after the final build; they are not passing receipts.
 
 ## Review follow-ups
 
-- Audit #120's full-slice pattern against user-defined classes named `slice`;
-  source identifiers must not be confused with compiler-created slice syntax.
+- Finalize the Python stack's complete build and cache/portable/startup checks
+  before advancing main; intermediate merge commits are on the staging branch.
 - Review #114's recursive Laplace determinant for Jacobian minors: order eight
   is bounded but still factorial work. Prefer a division-free subset recurrence
   if the public matrix engine cannot handle this coefficient domain directly.
 - Check #101's implicit FLINT backend fingerprint includes transitive headers,
   not only `fmpz.h` and the static library.
+- #101 advanced to `f7f00552dd4178993ceef4522cc2897622cdf2c6` during review;
+  review the new online relation-support reuse and equation-index diagnostics
+  before merging that head.
+- Check geometry resource limits before dense Hilbert-numerator allocation,
+  stop high-order derivatives once zero, and reject constant/zero defining
+  equations as plane curves without misclassifying empty affine patches.
 - Measure combined bootstrap source and emitted runtime growth. Preserve all
   startup and compressed-size guardrails; explain any narrow reviewed source
   budget change with actual measurements.

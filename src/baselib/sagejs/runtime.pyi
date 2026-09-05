@@ -164,6 +164,7 @@ int_builtin: Any
 bool_builtin: Any
 list_constructor: Any
 list_contains: Any
+list_decorate: Any
 map_class: Any
 math: Any
 modules: Any

@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "9cd076ca0a124233aec56299db8b50e1a1095184fab4d97b007d86ee26cbaecf",
+  "source_sha256": "7f8bca65e1537ae5c6cd68cda446a4c24829d00e38eb69b77881594a0f0efa43",
   "counts": {
-    "total": 1080,
+    "total": 1081,
     "by_kind": {
       "declared-ffi-function": 463,
       "declared-ffi-resource": 34,
       "napi-export": 353,
       "production-kernel": 55,
-      "runtime-intrinsic": 147,
+      "runtime-intrinsic": 148,
       "specialist-capability": 28
     },
     "by_disposition": {
       "compiled-source": 55,
       "desktop-only": 47,
       "generated-wasm": 363,
-      "portable-fallback": 565,
+      "portable-fallback": 566,
       "shared-core": 50
     },
     "by_status": {
-      "available": 609,
+      "available": 610,
       "desktop-only": 47,
       "fallback": 424
     }
@@ -12050,6 +12050,18 @@
     },
     {
       "id": "runtime:list_contains",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:list_decorate",
       "family": "runtime",
       "disposition": "portable-fallback",
       "status": "available",

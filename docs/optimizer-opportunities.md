@@ -10,7 +10,7 @@ Imports are stubbed, optimizer IR is independently verified, and every loop-bear
 function, method, or lambda is retained with its exact source location and portable identity.
 
 Input identity: `1acf884d176b3d900fd8ddb506ddece105d97cf409627191840a16c569fd4108` (707 files, 14396526 bytes).
-Analyzed source bundle: `sha256:453c408a0db48752d2001168ee5feafb9bdad3e4c4f4a313a1e66bcd463c6b65`; compiler identity: `sha256:7bd20de99b84db9511a8710e4ccd4ff97e670e975cccaf07107a6f4b792f246c`.
+Analyzed source bundle: `sha256:453c408a0db48752d2001168ee5feafb9bdad3e4c4f4a313a1e66bcd463c6b65`; compiler identity: `sha256:b3f6b89e1ad418a0b671ad3f2d716e66a376ed8857507459808a86ded300c3ea`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
