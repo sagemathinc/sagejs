@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-staged-exact-certification",
+  "title": "Cubic Staged Exact Certification",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Certify bounded complex-cubic relation prefixes and resume only on explicit mathematical insufficiency within the same resident native computation",
+  "base_commit": "a3a898b7186fcb3cae7aba59530140d4f416f308",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+    "test/number-field-cubic-staged-certification.cjs",
+    "test/number-field-cubic-fmpz-closure.cjs",
+    "test/fixtures/cubic-staged-certification.py",
+    "test/fixtures/cubic-reconstructed-regulator-guard.py",
+    "docs/cubic-staged-exact-closure-design.md",
+    "docs/cubic-staged-neighbor-protocol.md",
+    "docs/complex-cubic-native-class-group-proof.md",
+    "bench/class-unit-groups/cubic-staged-certification.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI and independent exact certificate replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
