@@ -86,8 +86,10 @@ function uint64Literal(node) {
   return value <= UINT64_MAX ? value.toString() : undefined;
 }
 
-function createContext(fn, signature, filename, decorated) {
+function createContext(fn, signature, filename, decorated, signatures) {
   return {
+    signatures,
+    dependencies: new Set(),
     decorated,
     filename,
     functionName: signature.name,
@@ -157,6 +159,7 @@ function staticType(node, context) {
     }
     if (name === "len") return "uint64";
     if (name === "float64_record") return "Float64Record";
+    if (context.signatures.has(name)) return context.signatures.get(name).returnType;
   }
   if (nodeType(node) === "AST_Binary") {
     if (COMPARISONS.has(node.operator)) return "bool";
@@ -177,6 +180,22 @@ function lowerCall(node, context, operations, expectedType) {
   );
   const name = node.expression.name;
   const args = array(node.args);
+  const signature = context.signatures.get(name);
+  if (signature !== undefined) {
+    expect(context, node, isFloat64Signature(signature), "binary64 helper must have a binary64 signature");
+    expect(context, node, !context.variables.has(name), "shadowed binary64 helper " + name);
+    expect(context, node, args.length === signature.params.length, "binary64 helper argument count mismatch");
+    const arguments_ = args.map((arg, index) => {
+      const type = signature.params[index].type;
+      const value = lowerExpression(arg, context, operations, type);
+      expect(context, arg, value.type === type, "binary64 helper argument expects " + type);
+      return value;
+    });
+    const target = temporary(context, node, "Float64");
+    context.dependencies.add(name);
+    operations.push({ kind: "float64.call", target, function: name, arguments: arguments_ });
+    return { name: target, type: "Float64" };
+  }
   if (name === "float" || name === "RealNumber") {
     expect(context, node, args.length === 1, name + "() requires one argument");
     const literal = name === "RealNumber" ? numericString(args[0]) : undefined;
@@ -751,7 +770,7 @@ function lowerBlock(block, context) {
   return result;
 }
 
-function mutationRoots(statements, aliases, result) {
+function mutationRoots(statements, aliases, result, functions = new Map()) {
   function addAliases(target, sources) {
     const current = aliases.get(target) || new Set();
     const before = current.size;
@@ -774,25 +793,33 @@ function mutationRoots(statements, aliases, result) {
     } else if (statement.kind === "float64.buffer.set") {
       const roots = aliases.get(statement.buffer) || new Set([statement.buffer]);
       for (const root of roots) result.add(root);
+    } else if (statement.kind === "float64.call") {
+      const callee = functions.get(statement.function);
+      for (const name of callee?.analysis.effects.mutates || []) {
+        const position = callee.params.findIndex(param => param.name === name);
+        const argument = statement.arguments[position];
+        for (const root of aliases.get(argument.name) || new Set([argument.name])) result.add(root);
+      }
     } else if (statement.kind === "loop.range") {
       // A buffer variable may rotate through several borrowed parameters in a
       // loop (double buffering). Iterate the finite alias lattice to a fixed
       // point before reporting externally visible writes.
       let nestedChanged;
       do {
-        nestedChanged = mutationRoots(statement.body, aliases, result);
+        nestedChanged = mutationRoots(statement.body, aliases, result, functions);
         changed = nestedChanged || changed;
       } while (nestedChanged);
     } else if (statement.kind === "if") {
-      changed = mutationRoots(statement.body, aliases, result) || changed;
-      changed = mutationRoots(statement.alternative, aliases, result) || changed;
+      changed = mutationRoots(statement.condition.operations, aliases, result, functions) || changed;
+      changed = mutationRoots(statement.body, aliases, result, functions) || changed;
+      changed = mutationRoots(statement.alternative, aliases, result, functions) || changed;
     }
   }
   return changed;
 }
 
-function lowerFloat64Function(fn, signature, filename, decorated) {
-  const context = createContext(fn, signature, filename, decorated);
+function lowerFloat64Function(fn, signature, filename, decorated, signatures = new Map()) {
+  const context = createContext(fn, signature, filename, decorated, signatures);
   const body = lowerBlock(fn.body, context);
   expect(
     context,
@@ -819,7 +846,7 @@ function lowerFloat64Function(fn, signature, filename, decorated) {
       type,
       storage: BUFFER_TYPES.has(type) ? "borrowed-view" : "local",
     })),
-    dependencies: [],
+    dependencies: Array.from(context.dependencies).sort(),
     optimizations: {},
     analysis: {
       representation: "IEEE-754 binary64 with borrowed packed buffers",
@@ -840,6 +867,35 @@ function lowerFloat64Function(fn, signature, filename, decorated) {
   };
 }
 
+function analyzeFloat64Calls(functions) {
+  const byName = new Map(functions.map(fn => [fn.name, fn]));
+  const visiting = new Set();
+  const visited = new Set();
+  function visit(fn) {
+    if (visited.has(fn.name)) return;
+    if (visiting.has(fn.name)) throw new Error("native kernel: recursive binary64 helper graph is unsupported: " + fn.name);
+    visiting.add(fn.name);
+    for (const name of fn.dependencies) {
+      const callee = byName.get(name);
+      if (callee?.kernelKind !== "float64") throw new Error("native kernel: non-binary64 helper " + name);
+      visit(callee);
+    }
+    const aliases = new Map(fn.params.filter(p => p.type === "Float64Buffer").map(p => [p.name, new Set([p.name])]));
+    const writes = new Set();
+    mutationRoots(fn.body, aliases, writes, byName);
+    fn.analysis.effects.mutates = [...writes].sort();
+    fn.analysis.effects.pure = writes.size === 0;
+    fn.analysis.effects.mayRaise = [...new Set([
+      ...fn.analysis.effects.mayRaise,
+      ...fn.dependencies.flatMap(name => byName.get(name).analysis.effects.mayRaise),
+    ])];
+    visiting.delete(fn.name);
+    visited.add(fn.name);
+  }
+  for (const fn of functions) if (fn.kernelKind === "float64") visit(fn);
+  return functions;
+}
+
 function isFloat64Signature(signature) {
   return signature.returnType === "Float64" &&
     signature.params.every((param) =>
@@ -848,6 +904,7 @@ function isFloat64Signature(signature) {
 }
 
 module.exports = {
+  analyzeFloat64Calls,
   isFloat64Signature,
   lowerFloat64Function,
   numericLiteral,

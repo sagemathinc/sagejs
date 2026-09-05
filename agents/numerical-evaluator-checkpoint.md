@@ -51,6 +51,13 @@ crossings remain more expensive than keeping the computation inside a solver.
 
 ## Next required work
 
+The separate `perf/numerical-evaluator-calls` follow-up implements direct
+binary64 helper calls through the typed source closure, propagates buffer
+writes (including aliases and condition evaluations) and exceptions, and
+rejects recursion and opaque calls. Its CPython/native/JavaScript/Wasm witness
+passes, as do 21 combined compiler/evaluator/reduction regressions. It is a
+compiler boundary, not yet the root-solver integration or a speedup claim.
+
 1. Source-transparent typed binary64 helper calls, including transitive
    effects, status propagation, full call-graph isolation and rejection of
    unsupported recursive graphs. Do not duplicate the evaluator body into a
