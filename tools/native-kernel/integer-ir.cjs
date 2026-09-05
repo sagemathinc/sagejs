@@ -359,16 +359,12 @@ function createContext(
   filename,
   decorated,
   integerConstants = new Map(),
+  canonicalForeignResources = new Map(),
 ) {
   const variables = new Map(
     signature.params.map((param) => [param.name, param.type]),
   );
-  const foreignResources = new Map();
-  for (const foreign of foreignFunctions.values()) {
-    for (const resource of foreign.resources || []) {
-      foreignResources.set(resource.python_name, resource);
-    }
-  }
+  const foreignResources = new Map(canonicalForeignResources);
   for (const [name, resource] of importedForeignResources) {
     foreignResources.set(name, resource);
   }
@@ -1816,7 +1812,9 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       return { name: target, type: vector.record.type };
     }
     const foreignResource = context.foreignResources.get(liveOwnerType);
-    if (foreignResource?.item_get !== undefined) {
+    if (foreignResource !== undefined) {
+      expect(context, node, foreignResource.item_get?.function?.signature !== undefined,
+        `${liveOwnerType} does not declare a qualified native indexed read`);
       const indices = sequenceElements(node.property) || [node.property];
       const dimensions =
         foreignResource.item_get.function.signature.parameters.length - 1;
@@ -2162,7 +2160,9 @@ function lowerBufferAssignment(item, right, operator, context) {
     ? context.variables.get(item.expression.name)
     : undefined;
   const foreignResource = context.foreignResources.get(liveOwnerType);
-  if (foreignResource?.item_set !== undefined) {
+  if (foreignResource !== undefined) {
+    expect(context, item, foreignResource.item_set?.function?.signature !== undefined,
+      `${liveOwnerType} does not declare a qualified native indexed assignment`);
     expect(
       context,
       item,
@@ -3497,6 +3497,7 @@ function lowerIntegerFunction(
   filename,
   decorated,
   integerConstants = new Map(),
+  canonicalForeignResources = new Map(),
 ) {
   const context = createContext(
     fn,
@@ -3508,6 +3509,7 @@ function lowerIntegerFunction(
     filename,
     decorated,
     integerConstants,
+    canonicalForeignResources,
   );
   const body = lowerStatements(array(fn.body), context);
   expect(context, fn, containsReturn(body), "function has no return");

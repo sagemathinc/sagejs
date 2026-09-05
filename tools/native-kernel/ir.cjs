@@ -767,10 +767,41 @@ function foreignDescriptor(
   });
 }
 
+function foreignResourceDescriptor(library, resource, moduleName, localName) {
+  const operations = {};
+  for (const [member, method] of [
+    ["item_get", "__getitem__"],
+    ["item_set", "__setitem__"],
+  ]) {
+    if (resource[member] === undefined) continue;
+    const declaration = library.byPythonName.get(resource[member]);
+    expect(declaration !== undefined,
+      `${moduleName}.${resource.python_name}.${member} names an undeclared operation`);
+    operations[member] = foreignDescriptor(
+      library,
+      declaration,
+      moduleName,
+      declaration.python_name,
+      `${localName}.${method}`,
+    );
+  }
+  return Object.freeze({
+    ...resource,
+    ...operations,
+    compiler_type: localName,
+    declaration_identity: library.identity,
+    library: library.library,
+  });
+}
+
 function ffiImports(topLevel, filename) {
   const registry = loadFfiRegistry();
   const functions = new Map();
   const resources = new Map();
+  // Constructors infer their declared canonical result type without importing
+  // that type's Python name. Resolve its operations just as for an explicit
+  // resource import, while keeping annotation visibility in `resources`.
+  const canonicalResources = new Map();
   for (const statement of topLevel) {
     if (nodeType(statement) !== "AST_Imports") continue;
     for (const item of array(statement.imports)) {
@@ -783,6 +814,11 @@ function ffiImports(topLevel, filename) {
         `${filename} imports undeclared FFI module ${moduleName}`,
       );
       expect(!item.star, "native FFI imports may not use star imports");
+      for (const resource of library.resources || []) {
+        canonicalResources.set(resource.python_name, foreignResourceDescriptor(
+          library, resource, moduleName, resource.python_name,
+        ));
+      }
       for (const imported of array(item.argnames)) {
         const localName = imported.alias?.name || imported.name;
         const resource = library.byResourceType.get(imported.name);
@@ -791,40 +827,9 @@ function ffiImports(topLevel, filename) {
             !resources.has(localName) && !functions.has(localName),
             `duplicate native FFI import name ${localName}`,
           );
-          const itemGetDeclaration = resource.item_get === undefined
-            ? undefined
-            : library.byPythonName.get(resource.item_get);
-          const itemSetDeclaration = resource.item_set === undefined
-            ? undefined
-            : library.byPythonName.get(resource.item_set);
-          resources.set(localName, Object.freeze({
-            ...resource,
-            ...(itemGetDeclaration === undefined
-              ? {}
-              : {
-                  item_get: foreignDescriptor(
-                    library,
-                    itemGetDeclaration,
-                    moduleName,
-                    itemGetDeclaration.python_name,
-                    `${localName}.__getitem__`,
-                  ),
-                }),
-            ...(itemSetDeclaration === undefined
-              ? {}
-              : {
-                  item_set: foreignDescriptor(
-                    library,
-                    itemSetDeclaration,
-                    moduleName,
-                    itemSetDeclaration.python_name,
-                    `${localName}.__setitem__`,
-                  ),
-                }),
-            compiler_type: localName,
-            declaration_identity: library.identity,
-            library: library.library,
-          }));
+          resources.set(localName, foreignResourceDescriptor(
+            library, resource, moduleName, localName,
+          ));
           continue;
         }
         const declaration = library.byPythonName.get(imported.name);
@@ -846,7 +851,7 @@ function ffiImports(topLevel, filename) {
       }
     }
   }
-  return { functions, resources };
+  return { functions, resources, canonicalResources };
 }
 
 function rejectNestedArenaCalls(functions, filename) {
@@ -1116,6 +1121,7 @@ async function lowerSource(source, filename, options = {}) {
             filename,
             decoratedMode,
             integerConstants,
+            foreignImports.canonicalResources,
           );
   }
   const loweredDefinitions = [...selectedDefinitions];
