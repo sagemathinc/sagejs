@@ -63,7 +63,7 @@
         },
         "numeric-mpfr-symbolic": {
           "warm_ms": {
-            "median": 110.40295399999013
+            "median": 143.96971100001247
           }
         },
         "moebius-range-100000": {
