@@ -26,8 +26,8 @@ Completed source-path checks:
   numerical statistics to the lazy native marker/buffer interface. This does
   not add a dependency on a FLINT package or enable a production kernel.
 
-Commands (a prepared existing native dependency prefix and WASI toolchain are
-needed for compiler tests; browser mode requires the three Playwright engines):
+Commands (native tests need a C/Node-API toolchain, not FLINT/MPC; Wasm tests
+need the prepared WASI toolchain and browser mode the three Playwright engines):
 
 ```sh
 pnpm test:baselib:strict
@@ -59,10 +59,14 @@ repeatable product measurements still have to include the surrounding costs.
    or JavaScript; prove a checked input envelope rather than moving arbitrary
    callbacks across it.
 3. Avoid binding these small floating kernels to the monolithic exact-arithmetic
-   production pack. The current standalone compiler also checks for an MPC
-   development prefix even for float-only code; reuse it for experiments, but
-   do not confuse that build dependency with an acceptable numerical runtime
-   dependency. Qualify a small independently lazy native/Wasm path.
+   production pack. The standalone compiler now exempts certified float-only,
+   no-foreign-call modules from the MPC link/prefix requirement and emits only
+   their Node-API adapter, not the exact-arithmetic representation header.
+   A fresh subprocess compiles and executes with a nonexistent FLINT prefix;
+   the Wasm witness links only libc/libm. Mixed kernels retain the existing
+   dependency path. Explicit FP-contraction-off flags preserve the reduction's
+   binary64 rounding contract. This fixes the local compiler boundary, not
+   production packaging: qualify a small independently lazy native/Wasm path.
 4. Measure the entire public call against the frozen `bd26cfefb` baseline,
    including packing, independent validation, results, cancellation and memory;
    then qualify four native platforms and real public browser workers.

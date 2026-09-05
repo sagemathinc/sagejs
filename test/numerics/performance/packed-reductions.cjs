@@ -7,7 +7,7 @@ const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
-const { compileKernel } = require("../../../tools/native-kernel/compiler.cjs");
+const { bindingGyp, compileKernel } = require("../../../tools/native-kernel/compiler.cjs");
 const { generateHostCore } = require("../../../tools/native-kernel/c-backend.cjs");
 const { lowerSource } = require("../../../tools/native-kernel/ir.cjs");
 const { classifyWasmFunction, generateWasmBridge } = require("../../../tools/native-kernel/wasm-bridge.cjs");
@@ -67,6 +67,56 @@ test("finite sums have isolated, source-transparent binary64 lowering", async ()
   assert.equal(core.audit.isolated, true);
   assert.equal(core.audit.hostCallbacks, 0);
   assert.doesNotMatch(core.source, /\b(?:napi_|PyObject|Py_|JSValue|v8::)/);
+  assert.deepEqual(core.audit.nativeDependencies, ["libc", "libm"]);
+  for (const platform of ["linux", "darwin", "win32"]) {
+    const target = bindingGyp(ir, null, false, platform).targets[0];
+    assert.deepEqual(target.libraries, platform === "win32" ? [] : ["-lm"]);
+    if (platform === "win32") {
+      assert.ok(target.msvs_settings.VCCLCompilerTool.AdditionalOptions
+        .includes("/clang:-ffp-contract=off"));
+    } else {
+      assert.ok(target.cflags.includes("-ffp-contract=off"));
+      if (platform === "darwin") assert.ok(target.xcode_settings.OTHER_CFLAGS
+        .includes("-ffp-contract=off"));
+    }
+  }
+  // Narrow exemption only: mixed/field kernels retain their existing links.
+  const mixed = { ...ir, functions: [...ir.functions, { kernelKind: "real-field" }] };
+  assert.ok(bindingGyp(mixed, null, false, "linux").targets[0].libraries
+    .some((name) => name.endsWith("libmpc.a")));
+});
+
+test("binary64 compilation and execution need no exact-arithmetic prefix", {
+  timeout: 180000,
+}, () => {
+  const temporary = mkdtempSync(path.join(tmpdir(), "sagejs-float-only-prefix-"));
+  try {
+    // Fresh process: the compiler resolves its prefix at module load time.
+    const run = spawnSync(process.execPath, ["-e", String.raw`
+      const fs = require('node:fs'), assert = require('node:assert/strict');
+      const { compileKernel } = require('./tools/native-kernel/compiler.cjs');
+      compileKernel({ sourcePath: process.argv[1], cacheRoot: process.argv[2] })
+        .then(artifact => {
+          const adapter = fs.readFileSync(artifact.outputPath + '/kernel.c', 'utf8');
+          assert.doesNotMatch(adapter, /#include <(?:sagejs\/native|flint\/[^>]+|mpc|mpfr|gmp)\.h>/);
+          const module = require(artifact.modulePath);
+          assert.equal(module.finite_sum.nativeAvailable, true);
+          const output = new Float64Array(1);
+          assert.equal(module.finite_sum(new Float64Array([1e100, 1, -1e100]),
+            new Float64Array(3), output, 3), 0);
+          assert.equal(output[0], 1);
+          console.log('PREFIX_FREE_FLOAT64_OK');
+        }).catch(error => { console.error(error); process.exitCode = 1; });
+    `, sourcePath, path.join(temporary, "cache")], {
+      cwd: root, encoding: "utf8", timeout: 150000,
+      env: { ...process.env, SAGEJS_FLINT_PREFIX: path.join(temporary, "absent") },
+    });
+    if (run.error) throw run.error;
+    assert.equal(run.status, 0, run.stderr || run.stdout);
+    assert.match(run.stdout, /PREFIX_FREE_FLOAT64_OK/);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test("ordinary Sage.js source preserves cancellation and final half-even rounding", {
@@ -137,9 +187,9 @@ async function compileWasm(directory) {
   const compiled = spawnSync(toolchain.clang, [
     "--target=wasm32-wasi", `--sysroot=${toolchain.sysroot}`,
     "-mexec-model=reactor", "-O2", "-ffp-contract=off",
-    `-I${directory}`, `-I${path.join(toolchain.gmpPrefix, "include")}`,
+    `-I${directory}`,
     path.join(directory, "kernel_core.c"), path.join(directory, "wasm_bridge.c"),
-    `-L${path.join(toolchain.gmpPrefix, "lib")}`, "-lgmp", "-lm",
+    "-lm",
     ...bridge.exports.map((name) => `-Wl,--export=${name}`),
     "-Wl,--export-memory", "-Wl,--gc-sections", "-o", wasm,
   ], { cwd: root, encoding: "utf8", timeout: 120000 });
