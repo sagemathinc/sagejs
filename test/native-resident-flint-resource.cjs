@@ -28,7 +28,7 @@ function runNode(modulePath, source) {
 
 test("arena-owned FLINT resources remain resident through resource calls", async () => {
   const ir = await lowerSource(readFileSync(sourcePath, "utf8"), sourcePath);
-  assert.equal(ir.version, 38);
+  assert.equal(ir.version, 39);
   const fn = ir.functions[0];
   const arena = fn.body.find((operation) =>
     operation.kind === "integer.arena.scope"

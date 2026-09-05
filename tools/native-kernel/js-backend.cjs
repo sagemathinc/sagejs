@@ -531,6 +531,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     }
     return lines.join("\n");
   }
+  if (operation.kind === "loop.break" || operation.kind === "loop.continue") {
+    return `${indent}${operation.kind.slice(5)};`;
+  }
   if (operation.kind === "while") {
     return [
       `${indent}while (true) {`,
