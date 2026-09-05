@@ -365,6 +365,10 @@ int main(void)
     assert.equal(run.status, 0, run.stderr || run.stdout);
     const symbols = spawnSync("nm", ["-S", "--defined-only", executable], {
       cwd: root, encoding: "utf8", timeout: 30_000,
+      // Statically linked FLINT/OpenBLAS contribute many unrelated symbols.
+      // Keep the size comparison below unchanged, but do not truncate its
+      // input at spawnSync's 1 MiB default before parsing our two functions.
+      maxBuffer: 16 * 1024 * 1024,
     });
     assert.equal(symbols.status, 0, symbols.stderr || symbols.stdout);
     const sizes = new Map();
