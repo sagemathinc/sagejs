@@ -119,3 +119,76 @@ This was explicitly an **artifact-only, unqualified** diagnosis because the
 workspace had advanced after the build. Current-source and cross-platform
 qualification remain required after fixes. No pass percentage represents the
 Python language or any upstream project's overall support.
+
+## RustPython candidate inventory (not adoption)
+
+[`inventory/rustpython.json`](inventory/rustpython.json) inventories every pinned
+top-level snippet without adding runnable cases. The required manifest remains
+28 cases, including 12 RustPython programs. This is agent-facing selection
+metadata, not another runner, a pass-rate baseline, or a compatibility claim.
+
+The plan's “221 functional snippets” is a file count: upstream discovery actually
+includes 220 files because it excludes `xfail_assert.py`. Seven of those 220 are
+the test helper and import fixtures, leaving 213 non-helper candidate programs.
+The catalog retains all 221 records and their exact upstream paths, byte counts,
+SHA-256 values, revision, tree identity and license provenance.
+
+Review levels are intentionally separate from provisional triage recommendations:
+
+- 12 records inherit existing manifest adoption, without refreshed execution;
+- eight have reviewed helper/expected-failure roles, not passing-test status;
+- ten have complete source/helper safety and assertion-scope review, with
+  unchanged historical CPython 3.14.4 oracle evidence, but remain unadopted;
+- 191 additional records have complete source/helper reviews without execution,
+  giving 201 whole-source-reviewed, unadopted candidates in total;
+- no records remain at static-triage-only review level.
+
+Whole-source review is not adoption, execution or whole-file portability
+approval. The ten additional batches retain their exact source-bound review
+records, helper/resource closure, conditional and dormant coverage, license
+caveats, host/resource requirements, output contracts and original recommendations.
+Their 179 backlog recommendations are deliberately separate from settled
+decisions: 101 high-value, 24 case-selection, 51 suite-adapter and three smoke-only.
+`review.backlogDisposition` records those recommendations while
+`review.disposition` remains `null`. Even a high-value recommendation can require
+case selection before an oracle run.
+
+There are 32 settled dispositions: twelve existing required adoptions,
+eight helper/negative-example roles, and twelve new exact-source decisions
+(seven implementation-internal, one host-scoped unsupported capability and four
+low-value rejections). Only 24 of those 32 are candidate programs. Internal
+decisions concern the reviewed whole sources, never an entire module's public
+behavior. The capability decision concerns synchronous weakref clearing on the
+named current JavaScript GC hosts; it does not waive ordinary container,
+iterator, buffer or explicit cleanup behavior, or a future different collector.
+No intentional semantic differences are approved. Phase 2's requirement that
+every candidate have a reviewed final disposition is **not complete**.
+AST parsing accepted all 221 files, which is not execution or an oracle pass.
+The separate ten-case oracle records retain raw streams and the existing
+`sagejs.python-case-evidence/v1` format with a `null` subject. They establish only
+oracle eligibility, never Sage.js, platform, build or performance qualification.
+
+The original dependency/capability lists remain static candidates: imports can
+be conditional or intentionally absent. Detailed full-source reviews narrow
+these requirements but do not qualify host capabilities. In particular,
+`builtin_slice` still needs generated exhaustive slice data; the two TLS cases
+need a source-bound certificate fixture outside the snippets directory; mixed
+private APIs and representation assertions need explicit selection. Large
+allocation and recursion probes in `io`, `itertools`, `hashlib`, `ast` and `json`
+are not authorized routine smoke runs. Most of the large `stdlib_datetime`
+file is inert string content, with copied-source provenance still requiring
+review before adoption. No additional upstream source or fixture is vendored.
+
+```sh
+node --test test/python-compat-inventory.cjs
+```
+
+These fast source-only tests reuse the existing manifest and evidence utilities.
+They bind the recorded source-inventory digest, cross-check adopted sources and
+license bytes, bind all ten disjoint review batches, reject review/role/count
+drift, preserve the ten original oracle records, and prevent backlog or source
+review from becoming implicit adoption or qualification. They require no
+upstream checkout, Python executable,
+generated build, or network. They do not independently fetch/hash unvendored
+upstream source: changing the pin or recorded source bytes requires reviewed
+extraction from pinned Git objects, not merely regenerating a golden digest.
