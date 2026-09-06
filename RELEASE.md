@@ -60,6 +60,74 @@ when the fix is a one-line test-portability correction.
 
 ## Recommended release sequence
 
+### Resumable execution (required before tagging)
+
+`pnpm release:run --candidate FULL_SHA` executes the native-host plan. First
+install the pinned JavaScript dependencies and place the **same candidate's**
+canonical numerical product at `build/authenticated-numerical-product` and
+canonical public root archive at `build/release/npm/sagejs.tgz` on each host.
+Set `SAGEJS_NUMERICAL_PRODUCT_ROOT` to that product directory and
+`SAGEJS_NUMERICAL_RUNTIME_REQUIRED=1`; use the required native dependency
+catalog as in CI. This command is not a toolchain provisioning substitute.
+
+Use `--list` to inspect commands and gate classes without running them, or
+`--stage integration,native` to diagnose selected stages. A partial run is
+**not** a complete release qualification. `--fresh` reruns selected stages.
+GitHub's native build, integration, native tests, and SEA steps use this same
+runner; CI still independently collects and authenticates publication evidence.
+
+Checkpoints and separate attempt logs live in
+`build/release-runner/FULL_SHA/`. A successful checkpoint is reusable only for
+the same clean source, runner, command, host, Node version, relevant environment,
+input content, and output content. Interrupted/failed/corrupt checkpoints are
+not successful evidence. A host lock prevents two runners from mutating the
+same checkout. Do not manually relabel receipts. Never restore a checkpoint
+from another machine as proof of local execution.
+
+Gate classes are explicit in `scripts/release/stages.cjs`:
+
+- `build`, `integrity`, `installation`, `packaging`, `correctness`, and
+  `numerical-evidence` are required; missing inputs fail closed.
+- `performance` is also required, but runs separately, after correctness,
+  without parallel sibling files. The explicit integration timing partition
+  currently covers the Python/CPython experiments; benchmark-policy regression
+  tests remain correctness tests. The unfiltered developer test command still
+  includes every file. No threshold is disabled by choosing a gate class.
+- Compiler/tutorial compatibility diagnostics and broad research campaigns
+  retain their existing non-blocking/scheduled policy; they are not substituted
+  for required mathematical evidence.
+
+Package installation runs before long suites and numerical soaks. Numerical
+Node/npm/SEA subjects have independent checkpoints. Retrying one preserves
+successful siblings and moves its previous output into runner history rather
+than deleting it. The existing final numerical gate still authenticates all
+16 product rows and supplemental evidence. Local checkpoints do not authorize
+publication or replace clean CI, macOS signing, or browser qualification.
+
+To launch the four hosts together, use
+`pnpm release:coordinate --candidate FULL_SHA --hosts build/release-hosts.json`.
+The ignored JSON file is an array of four objects with `host` (SSH config name),
+`target`, `root` (absolute checkout), optional `node` (absolute executable),
+and `env` (explicit release/build environment). Targets are exactly
+`linux-x64`, `linux-arm64`, `macos-arm64`, and `windows-x64`. Provision and
+check out the clean candidate beforehand; the coordinator will not reset a
+host's existing work. Do not place secrets in this configuration. Coordinate
+host occupancy in the public discussion before starting it.
+
+Coordinator logs are under `build/release-coordinator/FULL_SHA/`. It waits for
+all four independent hosts; a failing host stops its own stages without
+discarding successful work on the others. After a disconnected controller,
+inspect remote processes before restarting: the per-checkout lock prevents
+duplicate builds, and a stale lock requires orphan-process inspection rather
+than automatic deletion. A successful coordinator exit covers the native
+profile only, not signing, browser/reproducibility or final aggregation.
+
+Checkpoint reuse is intentionally limited to one exact candidate. Reuse of
+unchanged compiled components across candidates remains the build system's
+content-addressed cache responsibility; test evidence is always recollected
+for a new candidate. This distinction avoids claiming that a test on an old
+source commit qualified a new release.
+
 ### 1. Freeze and inspect
 
 Create a release branch or detached worktree from the intended commit. Confirm

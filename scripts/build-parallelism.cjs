@@ -88,7 +88,7 @@ function runBufferedCommand(command, arguments_, options = {}) {
       options.signal?.removeEventListener("abort", abort);
       rejectPromise(error);
     });
-    child.once("exit", (status, signal) => {
+    child.once("close", (status, signal) => {
       if (forceKill !== undefined) clearTimeout(forceKill);
       options.signal?.removeEventListener("abort", abort);
       resolvePromise({
