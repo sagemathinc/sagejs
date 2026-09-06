@@ -11,13 +11,16 @@ from output.functions import set_module_name
 from compiler_version import get_compiler_version
 from utils import cache_file_name
 from ast_types import (
+    AST_Array,
     AST_Call,
     AST_Class,
     AST_Import,
     AST_Lambda,
+    AST_Seq,
     AST_String,
     AST_SymbolRef,
     AST_Toplevel,
+    AST_UnaryPrefix,
     TreeWalker,
     is_node_type,
 )
@@ -30,11 +33,26 @@ def control_flow_import_names(module):
     has_module_star_import = False
     walker = None
 
+    def record_deleted_target(target):
+        if is_node_type(target, AST_SymbolRef):
+            if target.python_resolution_provenance is "module":
+                names[target.name] = True
+        elif is_node_type(target, AST_Array):
+            for value in target.flatten():
+                record_deleted_target(value)
+        elif is_node_type(target, AST_Seq):
+            for value in target.to_array():
+                record_deleted_target(value)
+
     def detect_star_import(node, descend):
         nonlocal has_module_star_import
         if node is module:
             return
-        if is_node_type(node, AST_Lambda) or is_node_type(node, AST_Class):
+        # Deleting a module binding revives builtin fallback in every scope
+        # which reads that binding, including lambdas and nested global deletes.
+        # Attribute/subscript deletion does not delete its receiver's binding.
+        if is_node_type(node, AST_UnaryPrefix) and node.operator is "delete":
+            record_deleted_target(node.expression)
             return True
         if is_node_type(node, AST_Import) or (
             node.key and (node.argnames is not undefined or node.alias is not undefined)
@@ -196,19 +214,53 @@ def write_imports(module, output):
             "Object.assign(ρσ_modules, globalThis.__sagejs_baselib_modules__)"
         )
         output.end_statement()
-    if any(module_.module_id == "builtins" for module_ in imports):
+    if not output.options.baselib_module_id and output.options.standalone_builtins:
+        # Seed the public facade from lexical baselib exports, not host globals.
+        # Registry insertion order matches facade publication in tools/self.js;
+        # intrinsic sagejs.runtime and package shells never publish the facade.
+        # Initialize even without an import: ordinary Python name lookup uses it.
+        # The reserved-JS builtin uses an explicit public global property.
+        # Forward its deletion too, so global fallback cannot resurrect it.
+        # Other host globals are deliberately not exposed by this adapter.
         output.indent()
         output.print(
-            "if (!ρσ_modules.builtins) { ρσ_modules.builtins = {}; "
-            "Object.defineProperties(ρσ_modules.builtins, {"
-            "abs:{enumerable:true,get:function(){return abs},"
+            "if (!ρσ_modules.builtins && "
+            "Array.isArray(globalThis.__sagejs_baselib_facade_names__)) { "
+            "var builtinTarget=Object.create(null);"
+            "var facadeNames=new Set(globalThis.__sagejs_baselib_facade_names__);"
+            "var baselibModules=globalThis.__sagejs_baselib_modules__ || {};"
+            "Object.keys(baselibModules).forEach(function(moduleName){"
+            'if(moduleName.indexOf("sagejs._baselib.") !== 0)return;'
+            "var namespace=baselibModules[moduleName];"
+            "Object.keys(namespace).forEach(function(name){"
+            'if(name !== "super" && facadeNames.has(name))builtinTarget[name]=namespace[name];'
+            "});});"
+            'builtinTarget.__name__="builtins";builtinTarget.__package__="";'
+            "builtinTarget.__loader__=null;builtinTarget.eval=builtinTarget.ρσ_eval;"
+            "ρσ_modules.builtins = new Proxy(builtinTarget, {"
+            'get:function(target,name){return name === "super" ? '
+            "globalThis.super : Reflect.get(target,name)},"
+            'set:function(target,name,value){return name === "super" ? '
+            "Reflect.set(globalThis,name,value) : Reflect.set(target,name,value)},"
+            'has:function(target,name){return name === "super" ? '
+            "Reflect.has(globalThis,name) : Reflect.has(target,name)},"
+            'deleteProperty:function(target,name){return name === "super" ? '
+            "Reflect.deleteProperty(globalThis,name) : Reflect.deleteProperty(target,name)},"
+            "ownKeys:function(target){var keys=Reflect.ownKeys(target);"
+            'if(Reflect.has(globalThis,"super"))keys.push("super");return keys},'
+            "getOwnPropertyDescriptor:function(target,name){"
+            'if(name === "super"){if(!Reflect.has(globalThis,name))return undefined;'
+            "return {configurable:true,enumerable:true,writable:true,value:globalThis.super}}"
+            "return Reflect.getOwnPropertyDescriptor(target,name)}"
+            "}); Object.defineProperties(ρσ_modules.builtins, {"
+            "abs:{configurable:true,enumerable:true,get:function(){return abs},"
             "set:function(value){abs=value}},"
-            "open:{enumerable:true,get:function(){return ρσ_open},"
+            "open:{configurable:true,enumerable:true,get:function(){return ρσ_open},"
             "set:function(value){ρσ_open=value}},"
-            "__build_class__:{enumerable:true,"
+            "__build_class__:{configurable:true,enumerable:true,"
             "get:function(){return __build_class__},"
             "set:function(value){__build_class__=value}},"
-            "__import__:{enumerable:true,"
+            "__import__:{configurable:true,enumerable:true,"
             "get:function(){return __import__},"
             "set:function(value){__import__=value}}"
             "}) }"
@@ -403,6 +455,8 @@ def module_directory(filename):
 
 def write_module_metadata(module, output):
     """Create the standard import globals for an ordinary Python module."""
+    if module.module_id == output.options.execution_namespace_module_id:
+        return
     module_id = module.module_id
     filename = module.filename or ""
     normalized = filename.replaceAll("\\", "/")
@@ -499,7 +553,11 @@ def bind_module_namespace(module, output, hidden_names=None):
 
     module.walk(TreeWalker(collect_control_flow_definition))
     magic_names = []
-    if module_id is not "__main__":
+    if module_id == output.options.execution_namespace_module_id:
+        # Supplied metadata remains in the caller's namespace. Explicit
+        # assignments are already covered by the ordinary binding inventory.
+        pass
+    elif module_id is not "__main__":
         magic_names = [
             "__name__",
             "__file__",

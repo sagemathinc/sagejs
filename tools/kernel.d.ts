@@ -1,5 +1,31 @@
 import { EventEmitter } from "events";
 
+export interface PythonDiagnostic {
+  schemaVersion: 1;
+  category: "python.syntax" | "python.import" | "python.interrupt" | "python.runtime" | "host.error";
+  exceptionType: string;
+  message: string;
+  phase: "parse" | "compile" | "import" | "execute" | "host";
+  filename: string | null;
+  /** Lines/columns are one-based; columns/offsets use UTF-16 code units. */
+  span: {
+    start: { line: number; column: number; offset: number | null };
+    end: { line: number; column: number; offset: number | null } | null;
+  } | null;
+  /** Runtime Python source frames are not yet available. */
+  frames: never[];
+  cause: PythonDiagnostic | null;
+  context: PythonDiagnostic | null;
+  suppressContext: boolean;
+  chainTruncated: boolean;
+  hostStack?: string;
+}
+
+/** Evaluation errors with a structured, JSON-safe diagnostic envelope. */
+export interface SageDiagnosticError extends Error {
+  pythonDiagnostic: PythonDiagnostic;
+}
+
 export type SageLanguageMode = "sage" | "python";
 
 export interface SageDisplayData {

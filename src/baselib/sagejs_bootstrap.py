@@ -107,15 +107,13 @@ def ρσ_unbound_method_adapter(target_function):
             "__varargs__",
             "__varkw__",
         ]) {
-            if (name !== "__argnames__") {
-                const descriptor = Object.getOwnPropertyDescriptor(
-                    target_function, name
-                );
-                if (descriptor && typeof descriptor.get === "function") {
-                    Object.defineProperty(method, name, descriptor);
-                } else {
-                    method[name] = target_function[name];
-                }
+            const descriptor = Object.getOwnPropertyDescriptor(
+                target_function, name
+            );
+            if (descriptor && typeof descriptor.get === "function") {
+                Object.defineProperty(method, name, descriptor);
+            } else {
+                method[name] = target_function[name];
             }
         }
         method.__func__ = target_function;
@@ -1464,7 +1462,7 @@ def ρσ_brand_machine_field_element(value):
     })()"""
 
 
-def ρσ_bind_rectangular_binary64_dataflow_runtime():
+def ρσ_bind_rectangular_binary64_dataflow_runtime(list_constructor):
     """Capture the immutable host capabilities used by rectangular fast paths."""
     return r"""%js (() => {
         if (ρσ_bind_rectangular_binary64_dataflow_runtime.__context !== undefined) {
@@ -1483,6 +1481,12 @@ def ρσ_bind_rectangular_binary64_dataflow_runtime():
             checkInterrupt: ρσ_check_interrupt,
             intrinsicBrands: new WeakMap(),
             intrinsicsByIdentity: new Map(),
+            pythonBuiltins: Object.freeze({
+                isinstance: globalThis.isinstance,
+                list: list_constructor,
+                float: ρσ_float,
+                enumerate: ρσ_enumerate,
+            }),
         });
         Object.defineProperty(ρσ_bind_rectangular_binary64_dataflow_runtime,
             "__context", {
@@ -1550,6 +1554,8 @@ def ρσ_fast_arrow_segment_geometry_region(
     hypot_function,
     poll_interrupts,
     maximum_output_entries,
+    module_namespace,
+    builtin_namespace,
 ):
     """Execute one completely preflighted private arrow geometry transaction."""
     return r"""%js (() => {
@@ -1560,6 +1566,28 @@ def ρσ_fast_arrow_segment_geometry_region(
             context.floatResult !== ρσ_float_result ||
             context.checkInterrupt !== ρσ_check_interrupt) {
             return reject("runtime-intrinsic-identity-mismatch");
+        }
+        // Inspect descriptors, not values: a user accessor must not run during
+        // preflight, nor may missing bindings fail before a zero-trip loop.
+        if (!globalThis.__sagejs_module_namespaces__?.has(module_namespace) ||
+            builtin_namespace !== ρσ_modules.builtins) {
+            return reject("python-builtin-namespace-mismatch");
+        }
+        for (const name of ["isinstance", "list", "float", "enumerate"]) {
+            const canonical = context.pythonBuiltins[name];
+            // The Node builtin facade consults the host global. Reject a host
+            // accessor before asking that facade for its property descriptor.
+            const globalDescriptor = context.getOwnPropertyDescriptor(globalThis, name);
+            if (globalDescriptor?.get !== undefined || globalDescriptor?.set !== undefined) {
+                return reject("python-builtin-identity-mismatch");
+            }
+            const descriptor = context.getOwnPropertyDescriptor(builtin_namespace, name);
+            if (typeof canonical !== "function" ||
+                context.getOwnPropertyDescriptor(module_namespace, name) !== undefined ||
+                descriptor === undefined || descriptor.value !== canonical ||
+                descriptor.get !== undefined || descriptor.set !== undefined) {
+                return reject("python-builtin-identity-mismatch");
+            }
         }
         if (context.intrinsicsByIdentity.get(
                 "python.math.hypot.strict-binary64.v1") !== hypot_function ||

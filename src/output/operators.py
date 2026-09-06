@@ -272,6 +272,8 @@ def print_delete(self, output):
         self.print(output)
         output.comma()
         output.print(JSON.stringify(self.name))
+        if self.python_resolution_provenance is "local":
+            output.print(", true")
         output.print(")")
     elif is_node_type(self, AST_Dot) and output.options.python_attributes:
         output.print("ρσ_delattr(")

@@ -29,10 +29,19 @@ const receiptSchema = "sagejs.build-receipt/v3";
 const validationOnlyRoots = [
   "agents/", "docs/", "test/",
   "upstream-tests/micropython/", "upstream-tests/python-compat/",
+  "upstream-tests/python-packages/",
 ];
 const validationOnlyFiles = new Set([
   "AGENTS.md", "ARCHITECTURE.md", "README.md", "RELEASE.md", "TODO.md",
   "website/reference-data.json", "website/reference.html",
+  // Derived validation evidence; generators and source inputs remain build
+  // inputs. Rewriting these manifests invalidates validation, not the build.
+  "architecture/optimizer-opportunities.manifest.json",
+  "bench/modular/qexp-correctness/source-freeze.json",
+  // Reviewed validation harnesses only: their generated programs live in
+  // task scratch directories, not shipped compiler/runtime build outputs.
+  "scripts/run-pure-python-packages.cjs", "scripts/python-package-phases.cjs",
+  "bench/cowasm/run.cjs", "bench/python-compat/qualification.cjs",
 ]);
 
 function isArtifactInput(name, reviewedInputs = new Set()) {

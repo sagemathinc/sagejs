@@ -22,6 +22,10 @@ const allowed = [
   // Benchmark provenance only; neither file imports the retired toolchain.
   /^bench\/python-compat\/README\.md$/,
   /^test\/python-performance-runner\.cjs$/,
+  // Build freshness classifies the retained benchmark runner as validation
+  // input; these references do not load the retired toolchain or runtime.
+  /^scripts\/build-receipt\.cjs$/,
+  /^test\/build-input-partition\.cjs$/,
   /^bench\/(?:compare-native-cowasm\.cjs|native_cowasm_workload\.py|JULIA-NATIVE-COMPARISON\.md|NATIVE-COMPILER\.md)$/,
   /^bench\/julia-math-comparison\.jl$/,
   /^(?:HACKING|IMPLEMENTATION|README|TESTING)\.md$/,

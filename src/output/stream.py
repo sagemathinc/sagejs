@@ -79,9 +79,14 @@ output_stream_defaults = {
     "discard_asserts": False,
     "module_cache_dir": "",
     "module_registry": "",
+    # Node bootstrap installs its own live global facade after evaluation.
+    "standalone_builtins": True,
     # Interactive evaluators execute one compiled fragment at a time inside
     # the same Python `__main__` module.
     "reuse_main_module": False,
+    # exec/eval compile statements in a caller-owned namespace, not a new
+    # imported module. Only that root skips automatic import metadata.
+    "execution_namespace_module_id": "",
     "write_name": True,
     "exact_integers": False,
     "rational_division": False,

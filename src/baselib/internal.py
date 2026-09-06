@@ -254,14 +254,18 @@ def ρσ_is_missing_binding(value: Any) -> bool:
     )
 
 
-def ρσ_check_unbound(value: Any, name: str) -> Any:
+def ρσ_check_unbound(value: Any, name: str, local: bool = False) -> Any:
     if ρσ_is_missing_binding(value):
-        raise NameError("local variable '" + name + "' referenced before assignment")
+        if local:
+            raise UnboundLocalError(
+                "local variable '" + name + "' referenced before assignment"
+            )
+        raise NameError("name '" + name + "' is not defined")
     return value
 
 
-def ρσ_delete_name(value: Any, name: str) -> Any:
-    ρσ_check_unbound(value, name)
+def ρσ_delete_name(value: Any, name: str, local: bool = False) -> Any:
+    ρσ_check_unbound(value, name, local)
     return runtime.undefined
 
 

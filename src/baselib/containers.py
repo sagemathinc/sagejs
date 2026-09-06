@@ -1965,4 +1965,4 @@ dict = ρσ_dict
 
 # Capture the runtime-owned list and float capabilities only after both
 # builtins.py and this module have initialized their final representations.
-ρσ_bind_rectangular_binary64_dataflow_runtime()  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
+ρσ_bind_rectangular_binary64_dataflow_runtime(list_constructor)  # noqa: F821  # pyright: ignore[reportUndefinedVariable]

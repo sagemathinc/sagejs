@@ -26,6 +26,7 @@ export interface PythonSyntaxTree {
 
 export class PythonSyntaxError extends SyntaxError {
   readonly diagnostic: PythonSyntaxDiagnostic;
+  readonly filename: string;
   readonly line: number;
   readonly col: number;
   readonly pos: number;
@@ -44,6 +45,7 @@ export class PythonSyntaxError extends SyntaxError {
     );
     this.name = "PythonSyntaxError";
     this.diagnostic = diagnostic;
+    this.filename = filename;
     this.line = line;
     this.col = column;
     this.pos = offset;

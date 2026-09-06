@@ -8,6 +8,22 @@
     "rustpython": {
       "root": "suites/rustpython",
       "sourceSha256": "c886911c2310ee32ca2b96f99ef5f9dc47bfb55c26e4380369745a036e7ae749"
+    },
+    "pypy": {
+      "root": "suites/pypy",
+      "sourceSha256": "077584fe4a1ff9f892d10285741d8d36fc1dd5215006500dd1e411a67b63499b"
+    },
+    "graalpy": {
+      "root": "suites/graalpy",
+      "sourceSha256": "28387d62dc4581573d90411dc36517a63eb78b647ccbd05cb1c06695bb0c6c61"
+    },
+    "ironpython": {
+      "root": "suites/ironpython",
+      "sourceSha256": "6c67eb96fef144aec4284eb6542a9d9e13155bfa654ee3bc9bc7047c684f4599"
+    },
+    "cpython": {
+      "root": "suites/cpython",
+      "sourceSha256": "2527430b2a0596d0b1b12f17f7aed3c355eba98d271d28c820de3505cfe27e4c"
     }
   },
   "cases": [
@@ -24,6 +40,156 @@
       "valueTags": [
         "agent-core",
         "calls"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "graalpy/function_changes_defaults",
+      "suite": "graalpy",
+      "path": "selected/test_function_changes_defaults.py",
+      "upstreamPath": "graalpython/com.oracle.graal.python.test/src/tests/test_functions.py",
+      "sourceSha256": "efeddf57f3a72cd5cc8971bafdba34aeec2e2ad6887edbe9d18e9498e69245d6",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "argument-binding",
+        "defaults"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "graalpy/function_kwdefaults_dict_is_live",
+      "suite": "graalpy",
+      "path": "selected/test_function_kwdefaults_dict_is_live.py",
+      "upstreamPath": "graalpython/com.oracle.graal.python.test/src/tests/test_functions.py",
+      "sourceSha256": "58dd4056e7a0309ac8172e1c6992fe6e626df6383f16f706bb9e8a2243fd7846",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "argument-binding",
+        "keyword-defaults"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "graalpy/mangled_kwonly_kwdefaults_dict_is_live",
+      "suite": "graalpy",
+      "path": "selected/test_mangled_kwonly_kwdefaults_dict_is_live.py",
+      "upstreamPath": "graalpython/com.oracle.graal.python.test/src/tests/test_functions.py",
+      "sourceSha256": "6f9177f5af70aefc1f3bc3538fbf10d6f4f6ee5873e252a2356088b63b8204a9",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "argument-binding",
+        "name-mangling"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "graalpy/method_kwdefaults_dict_is_live",
+      "suite": "graalpy",
+      "path": "selected/test_method_kwdefaults_dict_is_live.py",
+      "upstreamPath": "graalpython/com.oracle.graal.python.test/src/tests/test_functions.py",
+      "sourceSha256": "2fa56ccbc68135ed0aeafbfd0ef826148a4295a5ed5e234e5c6bce70fb3ebd79",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "object-model",
+        "descriptors"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "graalpy/int_format",
+      "suite": "graalpy",
+      "path": "selected/test_int_format.py",
+      "upstreamPath": "graalpython/com.oracle.graal.python.test/src/tests/test_formatting.py",
+      "sourceSha256": "83768bc0948df773abba176c21a579c071c528e0b46edb85fcb88e33107e6f86",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "formatting",
+        "special-methods"
       ],
       "capabilities": [
         "filesystem:temporary"
@@ -380,6 +546,337 @@
       ],
       "timeoutMs": 5000,
       "maxOutputBytes": 1048576,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "pypy/overriding_base_binop_explict",
+      "suite": "pypy",
+      "path": "selected/test_overriding_base_binop_explict.py",
+      "upstreamPath": "pypy/objspace/test/apptest_binop_overriding.py",
+      "sourceSha256": "6c4da07f8f99e4c6e8a85a458eb55b6914df71e5573e6d81b5c99c7dc865c68b",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "operators",
+        "inheritance"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "pypy/non_data_descr",
+      "suite": "pypy",
+      "path": "selected/test_non_data_descr.py",
+      "upstreamPath": "pypy/objspace/test/apptest_descriptor.py",
+      "sourceSha256": "1dcdbc380d31d9e22972cce6c19e818c03c3c5e07a56987412f0aa20b0bf7fb4",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "descriptors",
+        "attribute-lookup"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "pypy/set_without_get",
+      "suite": "pypy",
+      "path": "selected/test_set_without_get.py",
+      "upstreamPath": "pypy/objspace/test/apptest_descriptor.py",
+      "sourceSha256": "9644bcdf27f2cc254e244bd581efce36bd1372fa62dbe513c90dfad25991fa6d",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "descriptors",
+        "object-model"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "pypy/nested_scope4",
+      "suite": "pypy",
+      "path": "selected/test_nested_scope4.py",
+      "upstreamPath": "pypy/interpreter/test/apptest_nestedscope.py",
+      "sourceSha256": "566bd063cc93590d108bfaa355f975b452525a5a8286e3be1f89061e7137440e",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "lexical-scope",
+        "closures"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "ironpython/defaults",
+      "suite": "ironpython",
+      "path": "selected/test_defaults.py",
+      "upstreamPath": "tests/suite/test_function.py",
+      "sourceSha256": "a81654ae569e14ee809af241185fde07138e93f813265f18f9a0e527566ef3d4",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "calls",
+        "defaults",
+        "mutation"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "ironpython/descriptors_custom_attrs",
+      "suite": "ironpython",
+      "path": "selected/test_descriptors_custom_attrs.py",
+      "upstreamPath": "tests/suite/test_class.py",
+      "sourceSha256": "486af9eef3385e6df1d250ed5b25c88bad989db314c2e73bfdab2983eb131132",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "descriptors",
+        "attribute-lookup"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "ironpython/axioms",
+      "suite": "ironpython",
+      "path": "selected/test_axioms.py",
+      "upstreamPath": "tests/suite/test_bigint.py",
+      "sourceSha256": "755d1e18cf2fad5ecea9d2e20f37ecfbef1e5781ee79c67629f52462cec3079b",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "bigint",
+        "division"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "ironpython/computed_format",
+      "suite": "ironpython",
+      "path": "selected/test_computed_format.py",
+      "upstreamPath": "tests/suite/test_strformat.py",
+      "sourceSha256": "e8d80729724b3321c53933453d62aa2073f7fe6b25d475383983b4bec67c0a69",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "strings",
+        "formatting"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "cpython/testFreeVarInMethod",
+      "suite": "cpython",
+      "path": "selected/testFreeVarInMethod.py",
+      "upstreamPath": "Lib/test/test_scope.py",
+      "sourceSha256": "52a3c97a619c2e86d5cb0c899e3b5cb5c6f6278265d18d257f7b59096a7f89ac",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "closures",
+        "argument-binding"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "cpython/testCellIsKwonlyArg",
+      "suite": "cpython",
+      "path": "selected/testCellIsKwonlyArg.py",
+      "upstreamPath": "Lib/test/test_scope.py",
+      "sourceSha256": "ab0d465248716a9d86cfff285703e9d60a633a2dd02250e064cd14c9eb04349d",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "closures",
+        "argument-binding"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
+      "priority": "P1",
+      "disposition": "required",
+      "performanceScopes": [
+        "source-compile",
+        "warm-throughput"
+      ]
+    },
+    {
+      "id": "cpython/testNonLocalGenerator",
+      "suite": "cpython",
+      "path": "selected/testNonLocalGenerator.py",
+      "upstreamPath": "Lib/test/test_scope.py",
+      "sourceSha256": "e3c53f43d0b9d0c4ddd760433e43fbfe4649e1e243f4c8eb769d4f9d2c29e5b4",
+      "fixtures": [],
+      "runner": "program",
+      "comparison": "assertion-exit-empty-output",
+      "mode": "python",
+      "valueTags": [
+        "agent-core",
+        "closures",
+        "argument-binding"
+      ],
+      "capabilities": [
+        "filesystem:temporary"
+      ],
+      "targets": [
+        "node"
+      ],
+      "timeoutMs": 5000,
+      "maxOutputBytes": 65536,
       "priority": "P1",
       "disposition": "required",
       "performanceScopes": [

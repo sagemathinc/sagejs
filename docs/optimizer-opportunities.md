@@ -162,6 +162,7 @@ convenience, not a performance ranking.
 | `bounded-integer.unsupported-operation:%=` | 8 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `modular-sequence.element-representation-unproved` | 6 | Resolve the stable compiler rejection "modular-sequence.element-representation-unproved" and rerun the dashboard. |
 | `modular-sequence.iterator-semantics-unproved` | 6 | Resolve the stable compiler rejection "modular-sequence.iterator-semantics-unproved" and rerun the dashboard. |
+| `modular-sequence.machine-range-unproved` | 6 | Resolve the stable compiler rejection "modular-sequence.machine-range-unproved" and rerun the dashboard. |
 
 ## Interpretation limits
 

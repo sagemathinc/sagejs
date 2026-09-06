@@ -389,7 +389,117 @@ test("empty lock crash remnants are preserved while fresh and reclaimed stale", 
   assert.equal(existsSync(lock), false);
 });
 
-test("concurrent stale-lock takeover admits at most one cleanup worker", async (t) => {
+// Wait for both a result and a clean process close: a missing IPC message must
+// fail the test rather than leave Promise.all pending forever.
+function cleanupChildResult(source, args = [], { timeoutMs = 10_000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      process.execPath,
+      ["-e", source, ...args],
+      { stdio: ["ignore", "ignore", "pipe", "ipc"] },
+    );
+    let received = false;
+    let result;
+    let stderr = "";
+    let settled = false;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (error) {
+        if (child.exitCode === null && child.signalCode === null) {
+          child.kill("SIGKILL");
+        }
+        reject(error);
+      } else {
+        resolve(result);
+      }
+    };
+    const failure = (message) => new Error(
+      `cleanup helper ${message}${stderr ? `: ${stderr.trim()}` : ""}`,
+    );
+    const timer = setTimeout(
+      () => finish(failure(`timed out after ${timeoutMs} ms`)),
+      timeoutMs,
+    );
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => {
+      stderr = (stderr + chunk).slice(-8192);
+    });
+    child.once("error", finish);
+    child.on("message", (message) => {
+      if (received) {
+        finish(failure("sent more than one result"));
+        return;
+      }
+      received = true;
+      result = message;
+    });
+    // Unlike exit, close follows the closing of the child's IPC/stdio streams.
+    child.once("close", (code, signal) => {
+      if (code !== 0 || signal !== null) {
+        finish(failure(`closed with code ${code}, signal ${signal}`));
+      } else if (!received) {
+        finish(failure("closed without a result"));
+      } else {
+        finish();
+      }
+    });
+    try {
+      child.send("go", (error) => {
+        if (error) finish(error);
+      });
+    } catch (error) {
+      finish(error);
+    }
+  });
+}
+
+test("cleanup child results reject missing messages and unsuccessful exits", async () => {
+  await assert.rejects(
+    cleanupChildResult('process.once("message", () => process.exit(0));'),
+    /closed without a result/,
+  );
+  await assert.rejects(
+    cleanupChildResult(`
+      process.once("message", () => {
+        console.error("cleanup failed");
+        process.exitCode = 1;
+        process.disconnect();
+      });
+    `),
+    /closed with code 1.*cleanup failed/,
+  );
+  await assert.rejects(
+    cleanupChildResult(`
+      process.once("message", () => {
+        process.send("applied", () => {
+          process.exitCode = 1;
+          process.disconnect();
+        });
+      });
+    `),
+    /closed with code 1/,
+  );
+});
+
+test("cleanup child results bound stalled IPC and child shutdown", { timeout: 5_000 }, async () => {
+  await assert.rejects(
+    cleanupChildResult('setInterval(() => {}, 1000);', [], { timeoutMs: 250 }),
+    /timed out after 250 ms/,
+  );
+  await assert.rejects(
+    cleanupChildResult(`
+      process.once("message", () => {
+        process.send("applied");
+        setInterval(() => {}, 1000);
+      });
+    `, [], { timeoutMs: 250 }),
+    /timed out after 250 ms/,
+  );
+});
+
+test("concurrent stale-lock takeover admits at most one cleanup worker", { timeout: 30_000 }, async (t) => {
   const { base, root } = temporaryRoot(t);
   const current = versionName("5");
   const expired = versionName("6");
@@ -405,10 +515,15 @@ test("concurrent stale-lock takeover admits at most one cleanup worker", async (
   const source = `
     const { runAutomaticModuleCacheCleanup } = require(process.argv[1]);
     const options = JSON.parse(process.argv[2]);
-    process.on("message", () => {
+    process.once("message", () => {
       const result = runAutomaticModuleCacheCleanup(options);
-      process.send(result.status);
-      process.exit(0);
+      process.send(result.status, (error) => {
+        if (error) {
+          console.error(error);
+          process.exitCode = 1;
+        }
+        if (process.connected) process.disconnect();
+      });
     });
   `;
   const options = {
@@ -418,23 +533,15 @@ test("concurrent stale-lock takeover admits at most one cleanup worker", async (
     lockStaleMs: 60_000,
     root,
   };
-  const children = Array.from(
+  // Await both outcomes before teardown; deadline failures kill their child.
+  const outcomes = await Promise.allSettled(Array.from(
     { length: 2 },
-    () => spawn(
-      process.execPath,
-      ["-e", source, helper, JSON.stringify(options)],
-      { stdio: ["ignore", "ignore", "pipe", "ipc"] },
-    ),
-  );
-  t.after(() => children.forEach((child) => {
-    if (child.exitCode === null) child.kill();
-  }));
-  const statuses = children.map((child) => new Promise((resolve, reject) => {
-    child.once("error", reject);
-    child.once("message", resolve);
-  }));
-  children.forEach((child) => child.send("go"));
-  const results = await Promise.all(statuses);
+    () => cleanupChildResult(source, [helper, JSON.stringify(options)]),
+  ));
+  const results = outcomes.map((outcome) => {
+    if (outcome.status === "rejected") throw outcome.reason;
+    return outcome.value;
+  });
   assert.equal(results.filter((status) => status === "applied").length, 1);
   assert.ok(
     results.every((status) => ["applied", "locked", "recent"].includes(status)),
