@@ -6,6 +6,7 @@
  */
 
 import Compile from "./compile";
+import { renderCliDiagnostic } from "./python/diagnostics";
 import { runDocumentationCli } from "./docs";
 import { createKernelEvaluatorAsync } from "./kernel-evaluator";
 import { installCliOutputHandler } from "./process-output";
@@ -483,11 +484,18 @@ async function main(): Promise<void> {
     return;
   }
   if (argv.mode === "compile") {
-    await Compile({
-      argv: argv as any,
-      src_path: dirname(importPath),
-      lib_path: libraryPath,
-    });
+    try {
+      await Compile({
+        argv: argv as any,
+        src_path: dirname(importPath),
+        lib_path: libraryPath,
+      });
+    } catch (error) {
+      process.stderr.write(renderCliDiagnostic(error, {
+        includeHostStack: process.env.SAGEJS_DIAGNOSTIC_HOST_STACK === "1",
+      }));
+      process.exitCode = 1;
+    }
     return;
   }
   if (argv.mode === "docs") {

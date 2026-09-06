@@ -204,3 +204,34 @@ export function serializeDiagnosticError(error: unknown) {
     pythonDiagnostic,
   };
 }
+
+/** Concise CLI output from trusted boundary metadata, with no inferred frames. */
+export function renderCliDiagnostic(
+  error: unknown,
+  options: { includeHostStack?: boolean } = {},
+): string {
+  const attached = (typeof error === "object" && error !== null) || typeof error === "function"
+    ? attachedDiagnostics.get(error) : undefined;
+  // An error merely named ValueError (or carrying a public pythonDiagnostic)
+  // is not evidence that Python execution began.
+  const diagnostic = attached ?? normalizePythonDiagnostic(error, { phase: "host" });
+  function render(value: PythonDiagnostic): string {
+    let prefix = "";
+    if (value.cause) {
+      prefix = render(value.cause) +
+        "\n\nThe above exception was the direct cause of the following exception:\n\n";
+    } else if (value.context && !value.suppressContext) {
+      prefix = render(value.context) +
+        "\n\nDuring handling of the above exception, another exception occurred:\n\n";
+    }
+    const host = !attached || value.category === "host.error" ? "Sage.js host error: " : "";
+    const message = value.message === "" ? "" : `: ${value.message}`;
+    return prefix + host + value.exceptionType + message;
+  }
+  let output = render(diagnostic) + "\n";
+  if (options.includeHostStack) {
+    const stack = string(get(error, "stack"));
+    if (stack !== undefined) output += `\nHost stack (developer diagnostics):\n${stack}\n`;
+  }
+  return output;
+}

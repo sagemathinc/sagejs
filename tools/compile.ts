@@ -8,7 +8,7 @@
 import { dirname, join, normalize, resolve } from "path";
 import { mkdirSync, realpathSync, writeFileSync } from "fs";
 import { readFile } from "fs/promises";
-import { runInThisContext } from "vm";
+import { Script } from "vm";
 import { getImportDirs, once } from "./utils";
 import createCompiler from "./compiler";
 import { expandSageLoads } from "./sage-source";
@@ -27,6 +27,7 @@ import { installNodeHost } from "./host";
 import { installNodeGraphicsSaveHook } from "./graphics-export";
 import { runRuntimeBootstrap } from "./runtime-bootstrap";
 import { createPythonCompilerFrontend } from "./python/compiler-frontend";
+import { attachPythonDiagnostic } from "./python/diagnostics";
 import { formatOptimizationExplanation } from "./python/optimizer";
 import { runForeignInspectionCli } from "./foreign/inspect";
 import {
@@ -193,7 +194,7 @@ export default async function Compile({
     });
   }
 
-  function writeOutput(output) {
+  function writeOutput(output: string, sourceFilename: string) {
     if (argv.output) {
       if (argv.output == "/dev/stdout") {
         // Node's filesystem module doesn't write directly to /dev/stdout
@@ -207,14 +208,23 @@ export default async function Compile({
       console.log(output);
     }
     if (argv.execute) {
+      // Compiling the generated JavaScript is a host/compiler operation, not
+      // evidence that Python began executing. Attach provenance only around
+      // the actual evaluation boundary below.
+      const script = new Script(output);
       try {
-        runInThisContext(output);
+        script.runInThisContext();
       } catch (error) {
+        let errorName: unknown;
+        try { errorName = (error as { name?: unknown })?.name; } catch {}
         const pythonError = error as {
-          name?: string;
           code?: unknown;
         };
-        if (pythonError?.name !== "SystemExit") throw error;
+        if (errorName !== "SystemExit") {
+          throw attachPythonDiagnostic(error, {
+            phase: "execute", pythonExecution: true, filename: sourceFilename,
+          });
+        }
         const code = pythonError.code;
         if (code === undefined || code === null) process.exit(0);
         if (typeof code === "number" || typeof code === "bigint") {
@@ -285,7 +295,7 @@ export default async function Compile({
         topLevel = parseFile(code, filename);
       } catch (err) {
         if (!(err instanceof PyLang.SyntaxError)) {
-          throw err;
+          throw attachPythonDiagnostic(err, { phase: "parse", filename });
         }
         console.error(err.toString());
         process.exit(1);
@@ -315,7 +325,7 @@ export default async function Compile({
     });
 
     output = output.get();
-    writeOutput(output);
+    writeOutput(output, sourceFilename || argv.filename_for_stdin || "<stdin>");
   }
 
   if (argv.comments) {
