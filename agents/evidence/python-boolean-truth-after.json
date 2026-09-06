@@ -1,0 +1,1262 @@
+{
+  "scope": "local diagnostic; warmed body; no comparative performance qualification",
+  "options": {
+    "root": "/home/user/sagejs",
+    "python": "/opt/cocalc-webdev-python/bin/python",
+    "count": 10000,
+    "warmups": 3,
+    "samples": 7,
+    "oracleOnly": false,
+    "out": "/tmp/bool-after.json"
+  },
+  "operationsPerSample": 40000,
+  "sourceSha256": "e65234c76b524f95bcfcf2c0eca13f33bed4e474982a20863886bfb375366f44",
+  "programSha256": "5ed664201d42f90e9588f7b306a15379738b8d77bf958c3744ed2cc8c8f62aba",
+  "driverSha256": "2f27a7a564afb81694ca53aaba2532e6f0cc9e6e325b0bb88dd45506252fd45f",
+  "program": "import time\n\n\nclass Truth:\n    def __init__(self, answer):\n        self.answer = answer\n\n    def __bool__(self):\n        return self.answer\n\n\nclass Length:\n    def __init__(self, answer):\n        self.answer = answer\n\n    def __len__(self):\n        return self.answer\n\n\ntruth_left = Truth(True)\ntruth_right = Truth(False)\nlength_left = Length(1)\nlength_right = Length(0)\n\n\ndef probe(mode, kind, count):\n    # Resolve and allocate operands outside the measured region.\n    if kind == \"boolean\":\n        left, right = True, False\n    elif kind == \"number\":\n        left, right = 7, 0\n    elif kind == \"string\":\n        left, right = \"value\", \"\"\n    elif kind == \"list\":\n        left, right = [0], []\n    elif kind == \"custom-bool\":\n        left, right = truth_left, truth_right\n    else:\n        left, right = length_left, length_right\n    truth = bool\n    total = 0\n    if mode == \"explicit\":\n        started = time.perf_counter()\n        for index in range(count):\n            total += truth(left)\n            total += truth(right)\n            total += truth(left)\n            total += truth(right)\n    else:\n        started = time.perf_counter()\n        for index in range(count):\n            if left:\n                total += 1\n            if right:\n                total += 1\n            if left:\n                total += 1\n            if right:\n                total += 1\n    return time.perf_counter() - started, total\n\nfor mode in (\"explicit\", \"branch\"):\n    for kind in (\"boolean\", \"number\", \"string\", \"list\", \"custom-bool\", \"custom-len\"):\n        for warmup in range(3):\n            assert probe(mode, kind, 10000)[1] == 20000\n        for sample in range(7):\n            elapsed, total = probe(mode, kind, 10000)\n            assert total == 20000\n            print(mode, kind, sample, elapsed, total)\n",
+  "reference": {
+    "implementation": "CPython",
+    "version": "3.14.4",
+    "executable": "/usr/bin/python3.14",
+    "sha256": "fa9796cd3a30878e11a2f40372f773d3fcd913fff35e5bee8dd9a036e22e93ab"
+  },
+  "runtime": {
+    "node": "26.8.1",
+    "v8": "14.6.202.34-node.28",
+    "platform": "linux",
+    "arch": "x64",
+    "cpu": "AMD EPYC 7B13",
+    "executable": "/opt/cocalc/bin/node",
+    "executableSha256": "19235a9b678f84729464c52623f92de130a165452747c6826d3fdc13df3abcc3"
+  },
+  "before": {
+    "commit": "71414f6f5eeb9c686ba65d2fe887547f3dcd3152",
+    "dirty": "M architecture/optimizer-opportunities.manifest.json\n M docs/optimizer-opportunities.md\n M src/baselib/builtins.py\n M test/python-container-truthiness.cjs\n M website/reference-data.json\n M website/reference.html\n?? agents/python-boolean-truth-fastpath.md\n?? test/python-bool-identity-fastpath.cjs",
+    "workspaceSha256": "2aced50cab8e4e8d267a5ec007c35f6e33fff53cec364a07130bd643291084f5",
+    "artifactInputsSha256": "e1be208301cdcd11e915f7a385a93764a92ffcf5993d373673f315065971a426",
+    "inputs": {
+      "src/baselib/builtins.py": "08f04667725fdbf8028a29ca9a7d068e72f292c14223e2685d0b3879afd6da5b",
+      "src/output/stream.py": "e731614f16976892a57c5f79eb579b5ec7a6f8e9ed74465f6d24cdc1be9a7960",
+      "src/output/operators.py": "2e7b3cc3c3bb4de6bb20af17cbfc01f0723cb9bda4392de54002a904933e27eb"
+    },
+    "build": {
+      "current": true,
+      "reason": "artifact inputs and required outputs match; validation is separate",
+      "buildWorkspaceSha256": "2aced50cab8e4e8d267a5ec007c35f6e33fff53cec364a07130bd643291084f5",
+      "validationWorkspaceSha256": "2aced50cab8e4e8d267a5ec007c35f6e33fff53cec364a07130bd643291084f5",
+      "completedAt": "2026-09-06T17:45:07.857Z",
+      "durationMilliseconds": 529239
+    },
+    "artifacts": {
+      "dist/build-receipt.json": "87ae9b3c967d772302a1a3450e00ae5074ae6435cc59a8097a7d94de99e35971",
+      "dist/tools/kernel.js": "369a04c2969ea10fa126adaba1981b5e2e7593cd4e089cbddeeb00c957170d11",
+      "dist/compiler/compiler.js": "ec91ea4836df95e75d3fd46f89ea2fac9902b937d398d5eb6e13586be6a46b28",
+      "dist/runtime-cache/runtime-bootstrap-python.js": "9688ab67ac87fc2a67a9b1d8a804f67f3e57d4cd6a38af1bd95bc90cb3fae1b7"
+    }
+  },
+  "after": {
+    "commit": "71414f6f5eeb9c686ba65d2fe887547f3dcd3152",
+    "dirty": "M architecture/optimizer-opportunities.manifest.json\n M docs/optimizer-opportunities.md\n M src/baselib/builtins.py\n M test/python-container-truthiness.cjs\n M website/reference-data.json\n M website/reference.html\n?? agents/python-boolean-truth-fastpath.md\n?? test/python-bool-identity-fastpath.cjs",
+    "workspaceSha256": "2aced50cab8e4e8d267a5ec007c35f6e33fff53cec364a07130bd643291084f5",
+    "artifactInputsSha256": "e1be208301cdcd11e915f7a385a93764a92ffcf5993d373673f315065971a426",
+    "inputs": {
+      "src/baselib/builtins.py": "08f04667725fdbf8028a29ca9a7d068e72f292c14223e2685d0b3879afd6da5b",
+      "src/output/stream.py": "e731614f16976892a57c5f79eb579b5ec7a6f8e9ed74465f6d24cdc1be9a7960",
+      "src/output/operators.py": "2e7b3cc3c3bb4de6bb20af17cbfc01f0723cb9bda4392de54002a904933e27eb"
+    },
+    "build": {
+      "current": true,
+      "reason": "artifact inputs and required outputs match; validation is separate",
+      "buildWorkspaceSha256": "2aced50cab8e4e8d267a5ec007c35f6e33fff53cec364a07130bd643291084f5",
+      "validationWorkspaceSha256": "2aced50cab8e4e8d267a5ec007c35f6e33fff53cec364a07130bd643291084f5",
+      "completedAt": "2026-09-06T17:45:07.857Z",
+      "durationMilliseconds": 529239
+    },
+    "artifacts": {
+      "dist/build-receipt.json": "87ae9b3c967d772302a1a3450e00ae5074ae6435cc59a8097a7d94de99e35971",
+      "dist/tools/kernel.js": "369a04c2969ea10fa126adaba1981b5e2e7593cd4e089cbddeeb00c957170d11",
+      "dist/compiler/compiler.js": "ec91ea4836df95e75d3fd46f89ea2fac9902b937d398d5eb6e13586be6a46b28",
+      "dist/runtime-cache/runtime-bootstrap-python.js": "9688ab67ac87fc2a67a9b1d8a804f67f3e57d4cd6a38af1bd95bc90cb3fae1b7"
+    }
+  },
+  "oracle": [
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 0,
+      "seconds": 0.0013944100064691156,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 1,
+      "seconds": 0.0013392100227065384,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 2,
+      "seconds": 0.0013391500106081367,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 3,
+      "seconds": 0.0013484600058291107,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 4,
+      "seconds": 0.0013459999754559249,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 5,
+      "seconds": 0.0013427600206341594,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 6,
+      "seconds": 0.001350950013147667,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 0,
+      "seconds": 0.0014351199788507074,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 1,
+      "seconds": 0.0014420200022868812,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 2,
+      "seconds": 0.001432071003364399,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 3,
+      "seconds": 0.0014369690034072846,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 4,
+      "seconds": 0.0014307909877970815,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 5,
+      "seconds": 0.0014341400237753987,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 6,
+      "seconds": 0.0014266599901020527,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 0,
+      "seconds": 0.0014315199805423617,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 1,
+      "seconds": 0.001447679998818785,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 2,
+      "seconds": 0.001442039996618405,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 3,
+      "seconds": 0.0014295300061348826,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 4,
+      "seconds": 0.001438609993783757,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 5,
+      "seconds": 0.0014274099958129227,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 6,
+      "seconds": 0.0014356299943756312,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 0,
+      "seconds": 0.0014346700045280159,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 1,
+      "seconds": 0.0014375700266100466,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 2,
+      "seconds": 0.0014410899893846363,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 3,
+      "seconds": 0.00145626999437809,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 4,
+      "seconds": 0.001425119990017265,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 5,
+      "seconds": 0.0014288500242400914,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 6,
+      "seconds": 0.0014332499995362014,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 0,
+      "seconds": 0.0029615199891850352,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 1,
+      "seconds": 0.0029975600191392004,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 2,
+      "seconds": 0.0030087399936746806,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 3,
+      "seconds": 0.0029963510169181973,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 4,
+      "seconds": 0.003012008994119242,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 5,
+      "seconds": 0.0030048400221858174,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 6,
+      "seconds": 0.0030001600098330528,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 0,
+      "seconds": 0.002859810017980635,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 1,
+      "seconds": 0.002831630001310259,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 2,
+      "seconds": 0.002845750015694648,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 3,
+      "seconds": 0.0028326199972070754,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 4,
+      "seconds": 0.002857229992514476,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 5,
+      "seconds": 0.0028590000001713634,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 6,
+      "seconds": 0.0028564299864228815,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 0,
+      "seconds": 0.0006186699902173132,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 1,
+      "seconds": 0.0006091800169087946,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 2,
+      "seconds": 0.0006133599963504821,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 3,
+      "seconds": 0.0006196600152179599,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 4,
+      "seconds": 0.0006123100174590945,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 5,
+      "seconds": 0.0006140900077298284,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 6,
+      "seconds": 0.0006081799801904708,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 0,
+      "seconds": 0.0006242100207600743,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 1,
+      "seconds": 0.000617241021245718,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 2,
+      "seconds": 0.0006073090189602226,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 3,
+      "seconds": 0.0006173589790705591,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 4,
+      "seconds": 0.000610549992416054,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 5,
+      "seconds": 0.0006164700025692582,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 6,
+      "seconds": 0.0006215909961611032,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 0,
+      "seconds": 0.0006024799949955195,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 1,
+      "seconds": 0.0006056709971744567,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 2,
+      "seconds": 0.0006095109856687486,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 3,
+      "seconds": 0.0006101909966673702,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 4,
+      "seconds": 0.00059544897521846,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 5,
+      "seconds": 0.0006000690045766532,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 6,
+      "seconds": 0.0006029000214766711,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 0,
+      "seconds": 0.0006380600098054856,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 1,
+      "seconds": 0.0006447490013670176,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 2,
+      "seconds": 0.0006511800165753812,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 3,
+      "seconds": 0.000643020001007244,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 4,
+      "seconds": 0.0006490700179710984,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 5,
+      "seconds": 0.0006418999982997775,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 6,
+      "seconds": 0.00065666000591591,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 0,
+      "seconds": 0.0022202300024218857,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 1,
+      "seconds": 0.0022283800062723458,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 2,
+      "seconds": 0.002226069977041334,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 3,
+      "seconds": 0.0022440699976868927,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 4,
+      "seconds": 0.0022076799941714853,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 5,
+      "seconds": 0.002231340011348948,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 6,
+      "seconds": 0.002242140006273985,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 0,
+      "seconds": 0.0022135699982754886,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 1,
+      "seconds": 0.00221738000982441,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 2,
+      "seconds": 0.0022153600002638996,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 3,
+      "seconds": 0.0022075609886087477,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 4,
+      "seconds": 0.0022449310054071248,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 5,
+      "seconds": 0.002215460001025349,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 6,
+      "seconds": 0.0022277209791354835,
+      "checksum": 20000
+    }
+  ],
+  "subject": [
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 0,
+      "seconds": 0.007684230804443359,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 1,
+      "seconds": 0.00793600082397461,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 2,
+      "seconds": 0.007921457290649414,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 3,
+      "seconds": 0.007992267608642578,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 4,
+      "seconds": 0.0078046321868896484,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 5,
+      "seconds": 0.007731199264526367,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 6,
+      "seconds": 0.007904052734375,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 0,
+      "seconds": 0.008150339126586914,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 1,
+      "seconds": 0.007985830307006836,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 2,
+      "seconds": 0.008179903030395508,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 3,
+      "seconds": 0.008245706558227539,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 4,
+      "seconds": 0.007971048355102539,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 5,
+      "seconds": 0.007952451705932617,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 6,
+      "seconds": 0.008147954940795898,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 0,
+      "seconds": 0.00827336311340332,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 1,
+      "seconds": 0.008138418197631836,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 2,
+      "seconds": 0.008093595504760742,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 3,
+      "seconds": 0.008496522903442383,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 4,
+      "seconds": 0.008185386657714844,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 5,
+      "seconds": 0.008240699768066406,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 6,
+      "seconds": 0.008229494094848633,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 0,
+      "seconds": 0.010356664657592773,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 1,
+      "seconds": 0.009813308715820312,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 2,
+      "seconds": 0.009716272354125977,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 3,
+      "seconds": 0.009763717651367188,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 4,
+      "seconds": 0.009708642959594727,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 5,
+      "seconds": 0.009808063507080078,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 6,
+      "seconds": 0.00971364974975586,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 0,
+      "seconds": 0.03698897361755371,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 1,
+      "seconds": 0.0368344783782959,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 2,
+      "seconds": 0.0368654727935791,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 3,
+      "seconds": 0.03693079948425293,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 4,
+      "seconds": 0.036778926849365234,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 5,
+      "seconds": 0.0368649959564209,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 6,
+      "seconds": 0.036713600158691406,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 0,
+      "seconds": 0.04355144500732422,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 1,
+      "seconds": 0.04339909553527832,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 2,
+      "seconds": 0.04342937469482422,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 3,
+      "seconds": 0.043619394302368164,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 4,
+      "seconds": 0.04336285591125488,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 5,
+      "seconds": 0.043313026428222656,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 6,
+      "seconds": 0.04359793663024902,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 0,
+      "seconds": 0.003252267837524414,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 1,
+      "seconds": 0.0034379959106445312,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 2,
+      "seconds": 0.0032532215118408203,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 3,
+      "seconds": 0.003252744674682617,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 4,
+      "seconds": 0.003245830535888672,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 5,
+      "seconds": 0.0032587051391601562,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 6,
+      "seconds": 0.003255605697631836,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 0,
+      "seconds": 0.003437519073486328,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 1,
+      "seconds": 0.003465890884399414,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 2,
+      "seconds": 0.0034437179565429688,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 3,
+      "seconds": 0.0034379959106445312,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 4,
+      "seconds": 0.0034608840942382812,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 5,
+      "seconds": 0.00359344482421875,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 6,
+      "seconds": 0.003430604934692383,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 0,
+      "seconds": 0.0034987926483154297,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 1,
+      "seconds": 0.0035326480865478516,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 2,
+      "seconds": 0.003735780715942383,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 3,
+      "seconds": 0.003516674041748047,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 4,
+      "seconds": 0.0036199092864990234,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 5,
+      "seconds": 0.003458738327026367,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 6,
+      "seconds": 0.003453969955444336,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 0,
+      "seconds": 0.004895925521850586,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 1,
+      "seconds": 0.00486445426940918,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 2,
+      "seconds": 0.004849910736083984,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 3,
+      "seconds": 0.004888772964477539,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 4,
+      "seconds": 0.0048694610595703125,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 5,
+      "seconds": 0.005045652389526367,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 6,
+      "seconds": 0.004859209060668945,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 0,
+      "seconds": 0.0303037166595459,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 1,
+      "seconds": 0.030288219451904297,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 2,
+      "seconds": 0.030559778213500977,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 3,
+      "seconds": 0.030252933502197266,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 4,
+      "seconds": 0.030272722244262695,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 5,
+      "seconds": 0.0303037166595459,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 6,
+      "seconds": 0.030599594116210938,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 0,
+      "seconds": 0.03525972366333008,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 1,
+      "seconds": 0.03525280952453613,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 2,
+      "seconds": 0.03535270690917969,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 3,
+      "seconds": 0.03520703315734863,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 4,
+      "seconds": 0.035288095474243164,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 5,
+      "seconds": 0.03530526161193848,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 6,
+      "seconds": 0.03519153594970703,
+      "checksum": 20000
+    }
+  ]
+}

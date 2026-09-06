@@ -192,6 +192,7 @@ test("only the truth primitive uses native bootstrap conditions", () => {
     /ρσ_bool\(/,
   );
   assert.doesNotMatch(truthPrimitive, /ρσ_cond_temp/);
+  assert.match(truthPrimitive, /if \(value === true \|\| value === false\) \{\s*return value;/);
 
   // This exception is exactly function-scoped, not a builtins-module escape
   // hatch: functions on both sides of it retain Python-aware truth tests.
