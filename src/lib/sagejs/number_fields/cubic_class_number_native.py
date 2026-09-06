@@ -2234,6 +2234,52 @@ def _cubic_real_root_interval(
         return (1, 0)
     bisections: uint64 = 0
     while root_upper - root_lower > 1 and bisections < 1024:
+        # Newton is only a proposal. Exact signs certify every accepted bound,
+        # and an ordinary bisection below guarantees halving if it stagnates.
+        previous_width = root_upper - root_lower
+        probe = root_lower
+        probe_value = lower_value
+        if upper_value < -lower_value:
+            probe = root_upper
+            probe_value = upper_value
+        derivative = (
+            3 * probe * probe
+            + 2 * coefficients[2] * probe * scale
+            + coefficients[1] * scale * scale
+        )
+        if derivative != 0:
+            proposal = probe - probe_value // derivative
+            if proposal > root_lower and proposal < root_upper:
+                proposal_value = _cubic_scaled_polynomial_value(
+                    coefficients, proposal, scale
+                )
+                if proposal_value == 0:
+                    return (proposal, proposal)
+                if proposal_value < 0:
+                    root_lower = proposal
+                    lower_value = proposal_value
+                    neighbor = proposal + 1
+                    neighbor_value = _cubic_scaled_polynomial_value(
+                        coefficients, neighbor, scale
+                    )
+                    if neighbor_value == 0:
+                        return (neighbor, neighbor)
+                    if neighbor_value > 0:
+                        return (proposal, neighbor)
+                else:
+                    root_upper = proposal
+                    upper_value = proposal_value
+                    neighbor = proposal - 1
+                    neighbor_value = _cubic_scaled_polynomial_value(
+                        coefficients, neighbor, scale
+                    )
+                    if neighbor_value == 0:
+                        return (neighbor, neighbor)
+                    if neighbor_value < 0:
+                        return (neighbor, proposal)
+        if 2 * (root_upper - root_lower) <= previous_width:
+            bisections += 1
+            continue
         middle = (root_lower + root_upper) // 2
         middle_value = _cubic_scaled_polynomial_value(
             coefficients,
@@ -2242,8 +2288,10 @@ def _cubic_real_root_interval(
         )
         if middle_value < 0:
             root_lower = middle
+            lower_value = middle_value
         elif middle_value > 0:
             root_upper = middle
+            upper_value = middle_value
         else:
             root_lower = middle
             root_upper = middle
@@ -2631,38 +2679,8 @@ def _cubic_complex_root_approximations(
     scale: int,
 ) -> tuple[int, int, int, int]:
     """Return fixed-point real and upper-half-plane roots of a complex cubic."""
-    root_bound = 1
-    coefficient_index: uint64 = 0
-    while coefficient_index < 3:
-        candidate = coefficients[coefficient_index]
-        if candidate < 0:
-            candidate = -candidate
-        if candidate + 1 > root_bound:
-            root_bound = candidate + 1
-        coefficient_index += 1
-    root_lower = -root_bound * scale
-    root_upper = root_bound * scale
-    lower_value = _cubic_scaled_polynomial_value(coefficients, root_lower, scale)
-    upper_value = _cubic_scaled_polynomial_value(coefficients, root_upper, scale)
-    if lower_value >= 0 or upper_value <= 0:
-        return (0, 0, 0, 0)
-    bisections: uint64 = 0
-    while root_upper - root_lower > 1 and bisections < 1024:
-        root_middle = (root_lower + root_upper) // 2
-        middle_value = _cubic_scaled_polynomial_value(
-            coefficients,
-            root_middle,
-            scale,
-        )
-        if middle_value < 0:
-            root_lower = root_middle
-        elif middle_value > 0:
-            root_upper = root_middle
-        else:
-            root_lower = root_middle
-            root_upper = root_middle
-        bisections += 1
-    if root_upper - root_lower > 1:
+    root_lower, root_upper = _cubic_real_root_interval(coefficients, scale)
+    if root_upper < root_lower:
         return (0, 0, 0, 0)
     real_root = (root_lower + root_upper) // 2
     complex_real_root = (-coefficients[2] * scale - real_root) // 2
@@ -3926,23 +3944,10 @@ def _cubic_reconstruct_archimedean_unit(
     )
     if lower_value >= 0 or upper_value <= 0:
         return (10, 0, 0, 0)
-    bisections: uint64 = 0
-    while root_upper - root_lower > 1 and bisections < 1024:
-        root_middle = (root_lower + root_upper) // 2
-        middle_value = _cubic_scaled_polynomial_value(
-            coefficients,
-            root_middle,
-            reconstruction_scale,
-        )
-        if middle_value < 0:
-            root_lower = root_middle
-        elif middle_value > 0:
-            root_upper = root_middle
-        else:
-            root_lower = root_middle
-            root_upper = root_middle
-        bisections += 1
-    if root_upper - root_lower > 1:
+    root_lower, root_upper = _cubic_real_root_interval(
+        coefficients, reconstruction_scale
+    )
+    if root_upper < root_lower:
         return (11, 0, 0, 0)
     real_root = (root_lower + root_upper) // 2
     complex_real_root = (-coefficients[2] * reconstruction_scale - real_root) // 2

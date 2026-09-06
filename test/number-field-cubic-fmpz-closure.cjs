@@ -120,7 +120,10 @@ test("the complete cubic closure is one direct fmpz program", {
   // Splitting adds three nodes; hoisting bound-independent constants adds
   // one private helper. Every node remains reachable from the cubic root.
   assert.equal(functions.size, 105);
-  assert.equal(edges.length, 244);
+  assert.equal(edges.length, 245);
+  for (const caller of ["_cubic_complex_root_approximations", "_cubic_reconstruct_archimedean_unit"]) {
+    assert.ok(ir.callGraph[caller].includes("_cubic_real_root_interval"));
+  }
   assert.equal(
     createHash("sha256").update(names.join("\n")).digest("hex"),
     expectedNameDigest,

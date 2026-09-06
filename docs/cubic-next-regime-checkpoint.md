@@ -2,6 +2,30 @@
 
 Status: active research branch; no new PARI win or production promotion.
 
+## Shared exact root-isolation follow-up
+
+The next candidate consolidates the analytic-logarithm, ideal-embedding, and
+unit-reconstruction root searches. Safeguarded integer Newton proposals retain
+exact sign checks and the existing bounded bisection fallback. Its argument,
+resource comparison, and validation scope are recorded in
+[the shared-root note](cubic-shared-root-isolation.md).
+
+Source SHA-256:
+`777e58921ec188112372f2c984dcb8f2b124c80f46ca11ea58156a60c360b9b0`.
+The local whole-native survey matched all 64 output slots on all 1,012 records
+(940 accepted, 72 identical declines, no exceptions); eight focused/public
+tests subsequently passed, including independent exact replay. Raw survey
+SHA-256 is `0c6a12cb5a2a3220b71a2f09ed67dffee63508f962c38bc2f227f5953baf22bd`.
+The uncontrolled local alternating pilot has SHA-256
+`8199e9f97086e3039f11ea40581a606a95d8a5ca2d30b1d38ba062ab5bc4cd4f`.
+Neither observation is retained public timing or a new PARI win.
+
+The ongoing clean public census on `opt` remains pinned to
+`bbe1d2ca347942a96835ade8611d28ba0c54f782`, without this root-isolation change.
+Do not attribute its eventual results to the follow-up candidate.
+
+## Earlier diagnostic evidence
+
 The integrated baseline is `ea2027439601c4cabe4a4f5be93b226083d7262b`.
 Its closed cubic source SHA-256 is
 `73321ea581628c90e74f53441e12fc8a26439fe9c45ebdd70f5d7644d3670a7e`.
