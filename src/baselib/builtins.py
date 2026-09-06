@@ -6915,7 +6915,6 @@ def ρσ_type(*values: Any) -> Any:
             raise TypeError("type() bases must be types")
         if not _builtins_member_is_function(namespace, "items"):
             raise TypeError("type() argument 3 must be dict")
-        runtime.validate_class_bases(bases)
         if not plain_type_new:
             inherited_metaclass = _builtins_inherited_metaclass(bases)
             if inherited_metaclass is not ρσ_type:
@@ -6925,6 +6924,8 @@ def ρσ_type(*values: Any) -> Any:
                     bases,
                     namespace,
                 )
+
+        runtime.validate_class_bases(bases)
 
         def dynamic_class(*args: Any, **keywords: Any) -> Any:
             # Forward user keywords as the eventual instance initializer's
@@ -6969,6 +6970,7 @@ def ρσ_type(*values: Any) -> Any:
             if (
                 runtime.strict_equal(runtime.jstype(member), "function")
                 and _builtins_get_member(member, "__staticmethod__") is not True
+                and _builtins_get_member(member, "__sagejs_native_method__") is not True
             ):
                 # Functions supplied to ``type(name, bases, namespace)`` are
                 # descriptors.  Compiler-emitted class methods normally rely
@@ -7221,6 +7223,7 @@ def ρσ_apply_inherited_metaclass(
                 "be a subclass of the metaclasses of all its bases"
             )
     if selected is runtime.undefined:
+        runtime.validate_class_bases(bases)
         return compiled_class
     return ρσ_apply_metaclass(selected, class_name, bases, compiled_class)
 
@@ -9960,3 +9963,4 @@ runtime.reflect.set(runtime.global_object, "ρσ_py_true", True)
 runtime.reflect.set(runtime.global_object, "ρσ_py_false", False)
 runtime.set_class_repr(_Code, "<class 'code'>")
 runtime.set_class_repr(ρσ_function_type, "<class 'function'>")
+runtime.register_native_layout(ρσ_function_type, False)

@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "e566b3de97c26ab67dc8ec41bf77282fc68b913e461873d2c00da68b3d0e31b9",
+  "source_sha256": "8b22be49cae40bcb9d073dc560c1b0578e3aa109c46861a8d7d5025e47dafd51",
   "counts": {
-    "total": 1091,
+    "total": 1093,
     "by_kind": {
       "declared-ffi-function": 469,
       "declared-ffi-resource": 34,
       "napi-export": 357,
       "production-kernel": 55,
-      "runtime-intrinsic": 148,
+      "runtime-intrinsic": 150,
       "specialist-capability": 28
     },
     "by_disposition": {
       "compiled-source": 55,
       "desktop-only": 47,
       "generated-wasm": 364,
-      "portable-fallback": 575,
+      "portable-fallback": 577,
       "shared-core": 50
     },
     "by_status": {
-      "available": 610,
+      "available": 612,
       "desktop-only": 47,
       "fallback": 434
     }
@@ -12841,6 +12841,18 @@
       "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
     },
     {
+      "id": "runtime:register_native_layout",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python classes"
+      ],
+      "explanation": "Native class storage registration uses the shared JavaScript runtime."
+    },
+    {
       "id": "runtime:repr",
       "family": "runtime",
       "disposition": "portable-fallback",
@@ -13127,6 +13139,18 @@
         "compiled Sage and Python modules"
       ],
       "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:validate_class_bases",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python classes"
+      ],
+      "explanation": "Class base validation uses the shared JavaScript runtime."
     },
     {
       "id": "runtime:wall_time",

@@ -63,6 +63,34 @@ assert type('DynamicMixed', (Mixin, list), {}).__bases__ == (Mixin, list)
 assert type('DynamicShared', (Left, Right), {}).__bases__ == (Left, Right)
 assert type('DynamicCompatible', (Left, NativeList), {}).__bases__ == (Left, NativeList)
 assert ListMixed([1, 2]).marker() == 17
+for final_base in (type(lambda: None), type([].append)):
+    for dynamic in (False, True):
+        try:
+            if dynamic:
+                type('InvalidFunctionSubclass', (final_base,), {})
+            else:
+                class InvalidFunctionSubclass(final_base):
+                    pass
+        except TypeError:
+            pass
+        else:
+            raise AssertionError('function type accepted as a base')
+
+class NormalizingMeta(type):
+    def __new__(mcls, name, bases, namespace):
+        if name in ('DynamicNormalized', 'StatementNormalized', 'ExplicitNormalized'):
+            bases = (list,)
+        return super().__new__(mcls, name, bases, namespace)
+class MetaTuple(tuple, metaclass=NormalizingMeta):
+    pass
+DynamicNormalized = type('DynamicNormalized', (MetaTuple, list), {})
+class StatementNormalized(MetaTuple, list):
+    pass
+class ExplicitNormalized(tuple, list, metaclass=NormalizingMeta):
+    pass
+for normalized in (DynamicNormalized, StatementNormalized, ExplicitNormalized):
+    assert normalized.__bases__ == (list,)
+conflict(MetaTuple, list)
 print('native-layout-ok')
 `);
     assert.equal(result.stdout.trim(), "native-layout-ok");

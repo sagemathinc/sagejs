@@ -12,13 +12,13 @@ from typing import Any, Callable
 import sagejs.runtime as runtime
 
 _native_layout_roots = runtime.reflect.construct(
-    runtime.reflect.get(runtime.global_object, "WeakSet"), []
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
 
 
-def ρσ_register_native_layout(cls: Any) -> None:
+def ρσ_register_native_layout(cls: Any, subclassable: bool = True) -> None:
     """Declare a representation-owning builtin independently of class metadata."""
-    _native_layout_roots.add(cls)
+    _native_layout_roots.set(cls, subclassable)
 
 
 def _collect_native_layouts(base: Any, layouts: Any, visited: Any) -> None:
@@ -70,7 +70,7 @@ def ρσ_extends(child: Any, parent: Any) -> None:
     child.prototype.constructor = child
 
 
-def ρσ_validate_class_bases(bases: Any) -> None:
+def ρσ_validate_class_bases(bases: Any, check_layouts: bool = True) -> None:
     """Reject non-types and incompatible native instance layouts."""
     native_layouts = runtime.reflect.construct(runtime.array, [])
     visited = runtime.reflect.construct(runtime.array, [])
@@ -87,7 +87,10 @@ def ρσ_validate_class_bases(bases: Any) -> None:
         prototype = runtime.reflect.get(base, "prototype")
         if prototype is runtime.undefined:
             raise TypeError("bases must be types")
-        _collect_native_layouts(base, native_layouts, visited)
+        if check_layouts:
+            if _native_layout_roots.get(base) is False:
+                raise TypeError("type is not an acceptable base type")
+            _collect_native_layouts(base, native_layouts, visited)
     if native_layouts.length > 1:
         raise TypeError("multiple bases have instance lay-out conflict")
 
