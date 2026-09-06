@@ -16,6 +16,29 @@ import json
 import sys
 sys.path.insert(0, ${JSON.stringify(moduleRoot)})
 from sagejs.polynomial_algorithms.groebner_contract import *
+from sagejs.polynomial_algorithms.generic_groebner import GroebnerBudget
+from fractions import Fraction
+
+class CountingField:
+    def __init__(self):
+        self.additions = 0
+    def coerce(self, value):
+        return Fraction(value)
+    def zero(self):
+        return Fraction(0)
+    def add(self, left, right):
+        self.additions += 1
+        return left + right
+
+counted = CountingField()
+counted_ring = GroebnerRing(2, "degrevlex", 0)
+counted_ring.coefficient_field = counted
+counted_ring.budget = GroebnerBudget()
+assert canonical_polynomial(((1, (1, 0)), (1, (0, 1))), counted_ring) == (
+    (Fraction(1), (1, 0)), (Fraction(1), (0, 1)))
+assert counted.additions == 0
+assert canonical_polynomial(((1, (1, 0)), (-1, (1, 0))), counted_ring) == ()
+assert counted.additions == 1
 
 def p(*terms):
     return tuple(terms)

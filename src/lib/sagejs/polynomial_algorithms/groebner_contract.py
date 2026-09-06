@@ -323,9 +323,15 @@ def canonical_polynomial(terms: Iterable[Term], ring: GroebnerRing) -> Polynomia
         coefficient = _coefficient(raw_coefficient, ring)
         if coefficient == _zero(ring):
             continue
-        combined[exponents] = _coefficient_add(
-            combined.get(exponents, _zero(ring)), coefficient, ring
-        )
+        # The coefficient is already normalized. Only duplicate monomials
+        # need addition; adding a first coefficient to zero otherwise creates
+        # an unnecessary foreign-field resource on every canonicalization.
+        if exponents in combined:
+            combined[exponents] = _coefficient_add(
+                combined[exponents], coefficient, ring
+            )
+        else:
+            combined[exponents] = coefficient
         if ring.budget is not None:
             ring.budget.check_terms(len(combined))
     return tuple(

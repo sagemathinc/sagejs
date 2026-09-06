@@ -454,6 +454,25 @@ architecture checks and strict Python (388 modules, zero errors). The optimizer
 provenance snapshot is regenerated locally, not published as a release. These
 checks still do not replace production-Wasm or the reserved cross-host checks.
 
+At `f24a4c44e`, the rebuilt production artifact
+`sha256:c3f29fa74dda75cb5709cedbfe865216f73c08518fd6b41160e1006cd71a2d5b`
+passes the lazy-import regression, all five public ideal field batches, and all
+three geometry field batches in both Node-Wasm and Chromium. The 132-file
+portable suite passes. A fresh npm package authenticates and executes that
+artifact after obsolete, unreferenced top-level KaTeX files from an older local
+build were moved aside; no authenticated asset was changed.
+
+Decomposition qualification exposed a separate performance limit: Node-Wasm
+hit the unchanged 30-second per-Gröbner-operation budget in the mixed-component
+GF(4) example; Chromium passed that batch but later hit the same limit in the
+non-split example. An isolated Node-Wasm probe measured 26.5 seconds for the
+initial ideal intersection and then exhausted the budget during primary
+decomposition. These are safe resource failures, not successful qualification.
+`bench/extension-groebner-components.py` records the representative workload
+without relaxing proof or resource defaults. A source-level normalization
+optimization removes unnecessary additions to zero for first-seen monomials;
+its production performance and complete differential checks remain pending.
+
 ## Still required
 
 - F4 source-current native four-platform public tests, production Node-Wasm,
