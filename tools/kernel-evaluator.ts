@@ -1,3 +1,5 @@
+import { attachPythonDiagnostic, DiagnosticPhase } from "./python/diagnostics";
+import { PythonSyntaxError } from "./python/frontend";
 import { dirname, join } from "path";
 import { randomBytes } from "crypto";
 import { compileFunction, runInThisContext } from "vm";
@@ -899,12 +901,15 @@ export function createKernelEvaluator({
       activeParentId = parentId;
       activeEvents = [];
       activeCommEvents = [];
+      let diagnosticPhase: DiagnosticPhase = "compile";
+      const submittedSourceLength = source.length;
       try {
         const timeit = parseTimeitDirective(source);
         if (timeit) source = timeit.source;
         const timing = parseTimeDirective(source, language === "sage");
         if (timing) source = timing.source;
         const javascript = compile(source, filename, language, timeit?.options);
+        diagnosticPhase = "execute";
         const execution = measureExecution(() => {
           if (interruptState) Atomics.store(interruptState, 1, 1);
           try {
@@ -917,6 +922,7 @@ export function createKernelEvaluator({
             if (interruptState) Atomics.store(interruptState, 1, 0);
           }
         });
+        diagnosticPhase = "host";
         const durationMs = execution.timing.wallMs;
         if (timing) {
           writeOutput(
@@ -933,6 +939,18 @@ export function createKernelEvaluator({
           activeCommEvents ?? [],
           structuredResult,
         );
+      } catch (error) {
+        const phase = diagnosticPhase === "compile"
+          ? error instanceof PythonSyntaxError ? "parse"
+            : error instanceof compiler.ImportError ? "import" : "compile"
+          : diagnosticPhase;
+        throw attachPythonDiagnostic(error, {
+          phase,
+          pythonExecution: phase === "execute",
+          filename: phase === "parse" || phase === "compile" || phase === "import"
+            ? filename : undefined,
+          sourceOffset: submittedSourceLength - source.length,
+        });
       } finally {
         activeEvents = undefined;
         activeCommEvents = undefined;

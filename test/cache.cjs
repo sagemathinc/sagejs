@@ -669,3 +669,82 @@ test("the CLI output handler does not swallow non-EPIPE stream errors", () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /synthetic stdout failure/);
 });
+
+for (const disappearingName of [".sagejs-auto-cleanup.lock.guard", versionName("c")]) {
+  test(`cache pruning tolerates a root entry disappearing before lstat (${disappearingName})`, (t) => {
+    const { root } = temporaryRoot(t);
+    const current = versionName("a");
+    const expired = versionName("b");
+    addVersion(root, current, { ageDays: 0 });
+    addVersion(root, expired, { ageDays: 100, bytes: 37 });
+    const disappearing = join(root, disappearingName);
+    mkdirSync(disappearing);
+    writeFileSync(join(disappearing, "payload"), "retired concurrently");
+    const fs = require("node:fs");
+    const originalReaddir = fs.readdirSync;
+    let removed = false;
+    t.mock.method(fs, "readdirSync", (directory, ...args) => {
+      const entries = originalReaddir(directory, ...args);
+      if (directory === root && !removed) {
+        assert.ok(entries.includes(disappearingName));
+        fs.rmSync(disappearing, { recursive: true });
+        removed = true;
+      }
+      return entries;
+    });
+    const report = pruneModuleCache({
+      apply: true,
+      currentVersions: [current],
+      expectedRoot: root,
+      policy: { keepVersions: 0, maxAgeDays: 30, minAgeDays: 7, maxBytes: 10_000 },
+      root,
+    });
+    assert.equal(removed, true);
+    assert.deepEqual(report.removedVersions, [expired]);
+    assert.equal(report.reclaimedBytes, 37);
+    assert.equal(report.entries.some((entry) => entry.path === disappearing), false);
+    assert.equal(report.ignoredEntries.includes(disappearingName), false);
+    assert.equal(existsSync(join(root, current)), true);
+  });
+}
+
+test("cache pruning still rejects root read failures and non-ENOENT entry errors", (t) => {
+  const { root } = temporaryRoot(t);
+  const fs = require("node:fs");
+  const guard = join(root, ".sagejs-auto-cleanup.lock.guard");
+  mkdirSync(guard);
+  const options = { currentVersions: [], expectedRoot: root, root };
+  const originalLstat = fs.lstatSync;
+  const denied = Object.assign(new Error("guard metadata denied"), { code: "EACCES" });
+  const metadataMock = t.mock.method(fs, "lstatSync", (filename, ...args) => {
+    if (filename === guard) throw denied;
+    return originalLstat(filename, ...args);
+  });
+  assert.throws(() => pruneModuleCache(options), (error) => error === denied);
+  metadataMock.mock.restore();
+  const missingRoot = Object.assign(new Error("root read failed"), { code: "ENOENT" });
+  const originalReaddir = fs.readdirSync;
+  t.mock.method(fs, "readdirSync", (directory, ...args) => {
+    if (directory === root) throw missingRoot;
+    return originalReaddir(directory, ...args);
+  });
+  assert.throws(() => pruneModuleCache(options), (error) => error === missingRoot);
+});
+
+test("cache pruning still rejects a symlinked maintenance guard", (t) => {
+  const { root } = temporaryRoot(t);
+  const guard = join(root, ".sagejs-auto-cleanup.lock.guard");
+  try {
+    symlinkSync(root, guard, process.platform === "win32" ? "junction" : "dir");
+  } catch (error) {
+    if (error && ["EPERM", "EACCES"].includes(error.code)) {
+      t.skip("host does not permit creating a directory symlink");
+      return;
+    }
+    throw error;
+  }
+  assert.throws(
+    () => pruneModuleCache({ currentVersions: [], expectedRoot: root, root }),
+    /symlinked root entry/,
+  );
+});

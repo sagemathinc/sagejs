@@ -1,3 +1,11 @@
+import type { PythonDiagnostic } from "./python/diagnostics";
+export type { PythonDiagnostic } from "./python/diagnostics";
+
+/** Worker evaluation errors expose a JSON-safe diagnostic without parsing host stacks. */
+export interface SageDiagnosticError extends Error {
+  pythonDiagnostic: PythonDiagnostic;
+}
+
 import { EventEmitter } from "events";
 import { join } from "path";
 import { Worker } from "worker_threads";
@@ -109,11 +117,17 @@ function deserializeError(serialized): Error {
       serialized.message || undefined,
     );
     if (serialized.stack) interrupted.stack = serialized.stack;
+    if (serialized.pythonDiagnostic) {
+      (interrupted as SageDiagnosticError).pythonDiagnostic = serialized.pythonDiagnostic;
+    }
     return interrupted;
   }
   const error = new Error(serialized.message);
   error.name = serialized.name;
   if (serialized.stack) error.stack = serialized.stack;
+  if (serialized.pythonDiagnostic) {
+    (error as SageDiagnosticError).pythonDiagnostic = serialized.pythonDiagnostic;
+  }
   return error;
 }
 
