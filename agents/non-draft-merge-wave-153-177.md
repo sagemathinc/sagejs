@@ -24,6 +24,14 @@ Then integrate #155 (`c5702e58d`), portable exact character-Hecke action.
 All eleven heads were non-draft; no inline review comments were present.
 Recheck heads and draft status before publication.
 
+Final addition: #178 (`b779c2067`), opened during qualification, restricts
+virtual ABC registry lookup to the candidate's own class. Existing registration
+propagates upward explicitly; inherited registry lookup incorrectly admits
+unrelated child classes. Review includes collection ABCs, sibling and later
+children, and subclasses of registered concrete classes. It does not claim
+complete ABC hooks, cycle rejection or pyparsing qualification. Freeze this
+twelve-PR wave here rather than continuously admitting new arrivals.
+
 ## Review decisions
 
 - Retain the distinction between corpus adoption and passing qualification.
