@@ -174,4 +174,8 @@ still rejects unsupported floating foreign calls. The full production closure,
 real FLINT Wasm resource lifecycle, focused floating witness, and all 116 local
 portable files now pass; architecture passes again. No integer/resource target
 contract was newly broadened. The lazy bundle rebuilt successfully (411 modules,
-eight dynamic programs); the final public browser-statistics rerun is underway.
+eight dynamic programs). The final public browser-statistics rerun passes all
+twelve disabled/floating/stale/missing routes across Chromium, Firefox and
+WebKit; its source/pack hashes and query records are retained with the local
+reconstruction report. This closes the local packaging checks, not remote
+qualification, npm/SEA verification or public dense acceleration.
