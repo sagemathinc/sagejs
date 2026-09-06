@@ -24,7 +24,7 @@ function rootsByEnumeration(constant, linear, quadratic, prime) {
   return [distinct, multiplicity];
 }
 
-test("Frobenius cubic splitting agrees with exhaustive roots and multiplicities", {
+test("Discriminant and Frobenius cubic splitting agree with exhaustive roots and multiplicities", {
   timeout: 180_000,
 }, async (t) => {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-cubic-splitting-"));
@@ -49,7 +49,7 @@ test("Frobenius cubic splitting agrees with exhaustive roots and multiplicities"
     }
     cases++;
   }
-  for (const prime of [2, 3, 5, 7, 11, 13]) {
+  for (const prime of [2, 3, 5, 7, 11, 13, 17, 19, 23, 31]) {
     for (let constant = 0; constant < prime; constant++) {
       for (let linear = 0; linear < prime; linear++) {
         for (let quadratic = 0; quadratic < prime; quadratic++) {
@@ -88,6 +88,26 @@ exec(compile(module, sys.argv[1], "exec"), namespace)
 for arguments, expected in json.load(sys.stdin):
     actual = namespace["cubic_root_multiplicity_counts"](*arguments)
     assert list(actual) == expected, (arguments, actual, expected)
+
+# Check the algorithmic shortcut, not just its answer: nonsquare discriminants
+# must not enter polynomial powering, while the other regimes retain it.
+multiply = namespace["_multiply_mod_cubic"]
+calls = 0
+def counted_multiply(*arguments):
+    global calls
+    calls += 1
+    return multiply(*arguments)
+namespace["_multiply_mod_cubic"] = counted_multiply
+for arguments in [(1, 0, 0, 5), (1, 1, 0, 3)]:
+    calls = 0
+    assert namespace["cubic_root_multiplicity_counts"](*arguments) == (1, 1)
+    assert calls == 0, (arguments, calls)
+for arguments, expected in [((0, 0, 0, 5), (1, 3)),
+                            ((0, 4, 0, 5), (3, 3)),
+                            ((1, 1, 0, 2), (0, 0))]:
+    calls = 0
+    assert namespace["cubic_root_multiplicity_counts"](*arguments) == expected
+    assert calls > 0, arguments
 `, sourcePath], { input: JSON.stringify(pythonCases), encoding: "utf8", timeout: 30_000 });
   assert.equal(python.status, 0, `${python.error || ""}\n${python.stderr}`);
   t.diagnostic(`${cases} exact splitting/multiplicity comparisons per backend`);

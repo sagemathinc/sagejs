@@ -73,8 +73,15 @@ review only with accurately scoped validation claims.
   linked from that argument. Controlled `opt` timing remains separate.
 - [Direct interval division](../docs/cubic-direct-interval-division.md) removes
   reciprocal rounding while giving sharper exact bounds. Its diagnostic
-  survey preserves 948/1012 fixed-effort coverage; integrated qualification
-  is in progress. No current-source PARI win is established.
+  survey preserves 948/1012 fixed-effort coverage. Commit `47a7db451` also
+  passes all 1,000 additional local public authenticated receipts and exact
+  replays. Controlled performance qualification remains outstanding.
+- [Discriminant-character splitting](../docs/cubic-discriminant-splitting.md)
+  bypasses polynomial Frobenius when the cubic discriminant is a nonsquare.
+  The prototype preserves every output slot on the 1,012-field survey and
+  passes 58,397 standalone oracle cases per backend and CPython. Integration
+  is into the reusable polynomial module, not duplicated class-group source.
+  No current-source PARI win is established.
 - [Twenty fresh neighbors](../docs/cubic-rank-pending-neighbor-protocol.md)
   are selected and excluded from development execution. Freeze the candidate
   before running them; retain all outcomes. Selection alone is not validation.

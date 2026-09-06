@@ -61,11 +61,16 @@ def cubic_root_multiplicity_counts(
     Invalid bounds return the impossible counts `(4, 4)`. Primality is a
     caller obligation, not an unchecked claim established by this function.
 
-    The squarefree polynomial `x^p-x` contains every element of `F_p` once.
+    At odd primes a nonsquare discriminant forces splitting type `(1, 2)`:
+    Frobenius has negative sign on the three roots and is a transposition.
+    This certifies one simple root without polynomial powering. See
+    `docs/cubic-discriminant-splitting.md` for the argument and word bounds.
+
+    Otherwise the squarefree polynomial `x^p-x` contains every element of `F_p` once.
     Thus its gcd with the monic cubic counts distinct roots, including in
     characteristics two and three. Compute its remainder by binary powering,
     then finish the degree-at-most-two Euclidean algorithm with word scalars.
-    All multiplication sums are below `3*p*p`, hence fit in `uint64`.
+    All arithmetic intermediates are below `32*p*p`, hence fit in `uint64`.
     """
     no_roots: uint64 = 0
     one_root: uint64 = 1
@@ -80,6 +85,22 @@ def cubic_root_multiplicity_counts(
         or quadratic >= prime
     ):
         return invalid, invalid
+    if prime > 2:
+        quadratic_square: uint64 = quadratic * quadratic % prime
+        discriminant_positive: uint64 = (
+            quadratic_square * (linear * linear % prime)
+            + (18 * quadratic * linear % prime) * constant
+        ) % prime
+        discriminant_negative: uint64 = (
+            (4 * linear * linear % prime) * linear
+            + (4 * quadratic_square * quadratic % prime) * constant
+            + 27 * constant * constant
+        ) % prime
+        discriminant: uint64 = (
+            discriminant_positive + prime - discriminant_negative
+        ) % prime
+        if _power_mod(discriminant, (prime - 1) // 2, prime) == prime - 1:
+            return one_root, one_root
     zero: uint64 = 1
     one: uint64 = 0
     two: uint64 = 0

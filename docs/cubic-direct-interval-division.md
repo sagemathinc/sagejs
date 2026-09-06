@@ -87,6 +87,13 @@ architecture check rerun successfully; the wrapper's remaining Wasm/all-CLI
 suite was not completed. The inherited parallel-task registry ambiguity also
 remains. Neither is presented as a passed qualification gate.
 
-The full current-source 1,000-field public replay and controlled performance
-evidence remain required before qualification. Do not relabel the already
-completed `0ad63e092` public replay as evidence for this change.
+The integrated commit `47a7db45171feb07af113ea2297c007033774684` also passes
+the additional local 1,000-field public replay: all native receipts authenticate,
+all independent exact replays pass, and class numbers and invariants agree
+with LMFDB and the saved PARI census. Source and HEAD were checked unchanged
+on completion. The report SHA-256 is
+`0614b68349ac0e99d875747d96735276c17db909fc1cf5b384af71b42b07b692`.
+[The immutable evidence archive](https://github.com/sagemathinc/sagejs/releases/tag/cubic-public-replay-47a7db451-20260906)
+has SHA-256 `220becdd122b8448f7b41260b08cd56d22f2491f749c8abbd64fd6c83a2ff0b8`.
+This is not a retained `opt` census or performance qualification. Controlled
+current-source performance evidence remains required.

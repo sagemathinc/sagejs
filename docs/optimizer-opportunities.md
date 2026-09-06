@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `9e0badf66f9ae61ef878db50c6eea45f048bf041231ba2acf9b3b84c7350a948` (718 files, 14688728 bytes).
-Analyzed source bundle: `sha256:4cca3630f129c019681c9a743ab5a43e082206d43c69a8d3a2ebe4f24d4bcfd9`; compiler identity: `sha256:c51acaee653415d6abdb5be6b71bd5a6c68e37076568b0909a9b656529ca4f10`.
+Input identity: `521f97b73cfafb09cfa582d1b770f8883f2248843714964b75f8b4563f4ad6e7` (718 files, 14689747 bytes).
+Analyzed source bundle: `sha256:f65a834bdee34679ae851cd3f92e6ab91d620874baa6ed3367a1d22513048cfb`; compiler identity: `sha256:c51acaee653415d6abdb5be6b71bd5a6c68e37076568b0909a9b656529ca4f10`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
