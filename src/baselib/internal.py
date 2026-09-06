@@ -1712,18 +1712,15 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
         )
     ):
         return True
-    registry = _internal_get_member(candidate, "_abc_registry")
-    if not runtime.array.isArray(registry):
-        candidate_prototype = _internal_get_member(candidate, "prototype")
-        registry = _internal_get_member(candidate_prototype, "_abc_registry")
-    if not runtime.array.isArray(registry):
-        candidate_mro = _internal_get_member(candidate, "__mro__")
-        if candidate_mro is not runtime.undefined:
-            for candidate_base in candidate_mro:
-                base_prototype = _internal_get_member(candidate_base, "prototype")
-                registry = _internal_get_member(base_prototype, "_abc_registry")
-                if runtime.array.isArray(registry):
-                    break
+    # A base's virtual subclasses are not virtual subclasses of every child.
+    # abc.register explicitly records upward propagation; never inherit a
+    # registry through candidate.prototype or the candidate's MRO.
+    registration = runtime.object.getOwnPropertyDescriptor(candidate, "_abc_registry")
+    registry = (
+        runtime.undefined
+        if registration is runtime.undefined
+        else runtime.reflect.get(registration, "value")
+    )
     if runtime.array.isArray(registry):
         for registered_class in registry:
             if ρσ_instanceof_one(value, registered_class):
