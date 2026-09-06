@@ -20,6 +20,12 @@ The uncontrolled local alternating pilot has SHA-256
 `8199e9f97086e3039f11ea40581a606a95d8a5ca2d30b1d38ba062ab5bc4cd4f`.
 Neither observation is retained public timing or a new PARI win.
 
+The source, raw diagnostics, unintegrated precision surveys, and focused
+validation logs are preserved in the
+[immutable shared-root evidence release](https://github.com/sagemathinc/sagejs/releases/tag/cubic-shared-root-b8698266a-20260906).
+The matching query snapshot is in its separate
+[immutable optimizer release](https://github.com/sagemathinc/sagejs/releases/tag/optimizer-evidence-campaign-1-13da289a0a48c13550787edea7ba6ec62f56c7f9864d0801a5e5213a3f71c710-ce705fde377b920e).
+
 The ongoing clean public census on `opt` remains pinned to
 `bbe1d2ca347942a96835ade8611d28ba0c54f782`, without this root-isolation change.
 Do not attribute its eventual results to the follow-up candidate.
