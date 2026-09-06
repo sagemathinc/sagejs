@@ -266,10 +266,13 @@ assert.match(
 const instanceChecks = compile(
   "one = isinstance(value, candidate)\n" +
     "many = isinstance(value, (first_type, second_type))\n",
-  {}, ["value", "candidate", "first_type", "second_type"],
+  { python_tuples: true }, ["isinstance", "value", "candidate", "first_type", "second_type"],
 );
-assert.match(instanceChecks, /one = ρσ_instanceof_one\(value, candidate\)/);
-assert.match(instanceChecks, /many = ρσ_instanceof\.apply/);
+// The public Python builtin is an ordinary live callable, not a spelling-based
+// intrinsic. Its tuple classinfo must also retain the Python tuple boundary.
+assert.match(instanceChecks, /one = ρσ_resolve_callable\(isinstance\)\(value, candidate\)/);
+assert.match(instanceChecks, /many = ρσ_resolve_callable\(isinstance\)\(value, ρσ_math_tuple\(\[first_type, second_type\]\)\)/);
+assert.doesNotMatch(instanceChecks, /ρσ_instanceof/);
 
 const tupleLiteral = compile("value = (1, 2)\n", { python_tuples: true });
 assert.match(tupleLiteral, /value = ρσ_math_tuple\(\[1, 2\]\)/);

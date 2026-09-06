@@ -83,6 +83,15 @@ class Exception(BaseException):
     pass
 
 
+class UnboundLocalError(NameError):
+    """A function-local binding was read or deleted before assignment."""
+
+    def __init__(self, *args: object) -> None:
+        # Native NameError's prototype joins Exception below; static typing
+        # cannot observe that runtime inheritance edge.
+        BaseException.__init__(self, *args)  # pyright: ignore[reportArgumentType]
+
+
 class BaseExceptionGroup(BaseException):
     """A group of exceptions, compatible with Python 3.11's core surface.
 

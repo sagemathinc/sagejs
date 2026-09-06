@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `4a537a1eccf4cb1d3a00805607d20670d6ea40e6b87adbf5e62d4783ee6df359` (656 files, 13552727 bytes).
-Analyzed source bundle: `sha256:1a22a0c225ceacd2cdd2b64572a0ab369d59e3b3a9cb7361b1c9353bdc49b29e`; compiler identity: `sha256:517ec67d21f3b198257b72cb13bf88a73cc1f43ca531f574cafff1ed376e9e58`.
+Input identity: `b743379777b026f22413ef838a4f4b1f0451e2e76b2a632db3a39fee57a4ced6` (656 files, 13553038 bytes).
+Analyzed source bundle: `sha256:1a22a0c225ceacd2cdd2b64572a0ab369d59e3b3a9cb7361b1c9353bdc49b29e`; compiler identity: `sha256:a3b478d3813d9c8a7815f9322d034c216a8c92b8ef964e9e1732f0104e593d7f`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -39,8 +39,8 @@ pnpm optimizer:opportunities:query -- sha256:<digest>
 | Loop-bearing functions and methods | 4902 |
 | Loops in functions | 13497 |
 | Selected optimized loops | 54 |
-| Compiler-rejected loops | 3121 |
-| Unrecognized loops | 10322 |
+| Compiler-rejected loops | 3120 |
+| Unrecognized loops | 10323 |
 | One-reason compiler near-misses | 266 |
 
 A rejected loop has a stable reason from a domain pass. An unrecognized loop was compiled
@@ -53,7 +53,7 @@ are explicitly heuristic triage signals, not correctness proofs.
 - Collection-allocation sites: 10894
 - Known coercion sites: 17608
 - Potential boundary-call sites: 86
-- Unresolved call sites: 45131
+- Unresolved call sites: 45632
 - Selected-target allocations: 3 known; 50 runtime-dependent
 - Selected-target representation conversions: 3 known; 52 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -122,15 +122,15 @@ convenience, not a performance ranking.
 
 | Stable reason | Loops | Remediation |
 | --- | ---: | --- |
-| `dashboard.no-current-pass-claimed` | 10322 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
-| `dashboard.dynamic-call-sites` | 9226 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
+| `dashboard.no-current-pass-claimed` | 10323 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
+| `dashboard.dynamic-call-sites` | 9272 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
 | `dashboard.no-mathematical-domain-evidence` | 8804 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
-| `dashboard.comprehension-loop` | 5048 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
+| `dashboard.comprehension-loop` | 5049 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
 | `dashboard.indexed-access-sites` | 3706 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
-| `bounded-integer.dynamic-call` | 2500 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| `bounded-integer.dynamic-call` | 2502 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | `dashboard.control-flow-sites` | 2471 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
 | `dashboard.nested-loop-sites` | 1975 | Consider a fused multidimensional region with explicit shape and work bounds. |
-| `bounded-integer.unsupported-iterator` | 1940 | Use a proved built-in `range` iteration shape or add a verifier for the required iterator semantics. |
+| `bounded-integer.unsupported-iterator` | 1939 | Use a proved built-in `range` iteration shape or add a verifier for the required iterator semantics. |
 | `bounded-integer.mutable-buffer-access` | 1818 | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
 | `bounded-integer.unsupported-operation:=` | 1561 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `dashboard.unsupported-while-loop` | 819 | Prove a finite progress measure and transactional exits before lowering a `while` loop. |
@@ -156,12 +156,12 @@ convenience, not a performance ranking.
 | `bounded-integer.unsupported-operation:in` | 48 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:&` | 47 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:<<` | 41 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:instanceof` | 35 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:|` | 21 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:>>` | 15 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:%=` | 8 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `modular-sequence.element-representation-unproved` | 6 | Resolve the stable compiler rejection "modular-sequence.element-representation-unproved" and rerun the dashboard. |
 | `modular-sequence.iterator-semantics-unproved` | 6 | Resolve the stable compiler rejection "modular-sequence.iterator-semantics-unproved" and rerun the dashboard. |
+| `modular-sequence.machine-range-unproved` | 6 | Resolve the stable compiler rejection "modular-sequence.machine-range-unproved" and rerun the dashboard. |
 
 ## Interpretation limits
 

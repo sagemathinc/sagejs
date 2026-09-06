@@ -768,6 +768,15 @@ def function_definition(
                 "var", "result", "=", "js_generator.apply(this,", "arguments)"
             )
             output.end_statement()
+            # Native generator .constructor is a non-callable host object, not
+            # a Python type. Share one canonical type across all generator sites.
+            # The immutable stage-zero bootstrap can run before it is installed.
+            output.indent()
+            output.print(
+                'if (typeof ρσ_generator_type === "function") '
+                "result.__python_type__ = ρσ_generator_type"
+            )
+            output.end_statement()
             # Python's generator objects use a separate method to send data to the generator
             output.indent()
             output.spaced("result.send", "=", "ρσ_generator_send.bind(null, result)")

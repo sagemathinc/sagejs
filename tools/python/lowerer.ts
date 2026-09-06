@@ -3619,7 +3619,10 @@ export class PythonCstLowerer {
         );
       }
     }
+    // Bootstrap sources use the low-level helper before the public builtin
+    // is initialized. Ordinary Python must resolve and call its actual binding.
     if (
+      this.options.compiler_bootstrap &&
       functionNode.type === "identifier" &&
       functionNode.text === "isinstance"
     ) {
