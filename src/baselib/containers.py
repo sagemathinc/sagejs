@@ -1939,6 +1939,8 @@ def _containers_set_type_metadata(cls: Any, name: _Str) -> None:
     runtime.reflect.set(cls, "__name__", name)
     runtime.reflect.set(cls, "__qualname__", name)
     runtime.reflect.set(cls, "__module__", "builtins")
+    runtime.reflect.deleteProperty(cls, "__annotations__")
+    runtime.reflect.deleteProperty(cls, "__annotations_text__")
 
 
 _containers_set_type_metadata(list_constructor, "list")

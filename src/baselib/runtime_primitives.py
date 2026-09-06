@@ -335,6 +335,23 @@ def ρσ_callable_sequence_class(target: Any) -> Any:
     runtime.reflect.set(handler, "apply", call_class)
     runtime.reflect.set(handler, "construct", construct_class)
     wrapper = runtime.reflect.construct(runtime.proxy_class, [target, handler])
+    modules = runtime.reflect.get(runtime.global_object, "__sagejs_baselib_modules__")
+    builtins_module = (
+        runtime.undefined
+        if modules is runtime.undefined
+        else runtime.reflect.get(modules, "sagejs._baselib.builtins")
+    )
+    alias_heap_class = (
+        runtime.undefined
+        if builtins_module is runtime.undefined
+        else runtime.reflect.get(builtins_module, "ρσ_alias_heap_class")
+    )
+    if not runtime.strict_equal(runtime.jstype(alias_heap_class), "function"):
+        alias_heap_class = runtime.reflect.get(
+            runtime.global_object, "ρσ_alias_heap_class"
+        )
+    if runtime.strict_equal(runtime.jstype(alias_heap_class), "function"):
+        runtime.reflect.apply(alias_heap_class, runtime.undefined, [wrapper, target])
     target.prototype.constructor = wrapper
     runtime.reflect.apply(
         _runtime_primitive_class_repr,
