@@ -264,6 +264,12 @@ for index, coefficients in enumerate((
     # LMFDB 3.1.12763.1 has class group C2 x C4.  This guards exact replay of
     # the first adjacent-ideal regime whose invariants are noncyclic.
     (-22, 1, -1, 1),
+    # A smaller checkpoint used to discard a modularly dependent relation
+    # needed to lower the integral index from 80 to 40 (LMFDB 3.1.816744.1).
+    (-298, 189, 0, 1),
+    # Retention also helps outside the <=11-factor staged envelope: this
+    # exposed 23-factor field formerly declined at fixed effort five.
+    (-8869, 0, 0, 1),
 )):
     polynomial = R(0)
     for exponent, coefficient in enumerate(coefficients):
@@ -272,7 +278,17 @@ for index, coefficients in enumerate((
     receipt = certified_complex_cubic_class_number(K)
     assert receipt is not None
     assert receipt.verify_conditional_grh()
-    assert receipt.verify()
+    # Preserve unconditional replay on the original small witnesses. The new
+    # larger fields test the campaign's conditional-GRH certificate, not a
+    # separate exhaustive Minkowski computation at a much larger bound.
+    if coefficients not in ((-298, 189, 0, 1), (-8869, 0, 0, 1)):
+        assert receipt.verify()
+    if coefficients == (-298, 189, 0, 1):
+        assert receipt.class_number == 40 and receipt.invariants == (40,)
+        assert receipt.relation_effort == 5
+    if coefficients == (-8869, 0, 0, 1):
+        assert receipt.class_number == 81 and receipt.invariants == (3, 3, 9)
+        assert receipt.relation_effort == 5
 
 # LMFDB 3.1.91099.1 is a boundary case for the deliberately small native
 # rational enclosures in the BDF cutoff proof. The native program safely
@@ -541,7 +557,9 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.104072.1":
         assert receipt.generator_bound == 18, label
         assert receipt.factor_base_size == 11, label
-        assert receipt.relation_count == 15, label
+        # The earlier checkpoint needs a retry here and publishes two more
+        # support rows than the former schedule; retain this regression.
+        assert receipt.relation_count == 17, label
         assert receipt.verify_conditional_grh(), label
     if label == "3.1.26412.1":
         assert receipt.generator_bound == 15, label
@@ -583,9 +601,9 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.588.1":
         assert receipt.generator_bound == 8, label
         assert receipt.factor_base_size == 5, label
-        # The first staged prefix certifies with factor_count + 6 rows;
-        # retaining the former twelfth row is no longer necessary.
-        assert receipt.relation_count == 11, label
+        # Rank-pending retention reaches a certifiable nine-row prefix,
+        # rather than the former eleven-row support.
+        assert receipt.relation_count == 9, label
         assert receipt.verify_conditional_grh(), label
         assert receipt.proof_status == "exact-relations-conditional-grh", label
         assert receipt.assumptions == (
@@ -620,7 +638,7 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label
-        assert receipt.relation_count == 14, label
+        assert receipt.relation_count == 11, label
         assert receipt.verify_conditional_grh(), label
     if label == "3.1.49096.1":
         assert receipt.relation_count == 13, label

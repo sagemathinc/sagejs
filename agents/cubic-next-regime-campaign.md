@@ -54,3 +54,25 @@ Do not use shared release hosts or alter release recovery artifacts.
 Independent comparator agreement supplements, but never replaces, the
 mathematical proof and exact replay. Changes are committed and submitted for
 review only with accurately scoped validation claims.
+
+## Current checkpoint, 2026-09-06
+
+- The `bbe1d2ca3` opt public census passes all 1,000 fields. Its retained timing
+  run is separate and must not be relabeled as a later source revision.
+- `67c3b3084` adds cheap unit proposals with unchanged exact certification.
+  Its additional local public replay passes all 1,000 fields; see
+  [the proof/evidence record](../docs/cubic-unit-proposal-precision.md).
+- The next intervention retains dependent relations while modular rank is
+  incomplete and attempts the existing staged certificate at $n+2$ rows.
+  [The argument](../docs/cubic-rank-pending-certification.md) identifies the
+  exact discarded row that caused the earlier smaller-prefix experiment to
+  lose a class-number-$40$ field. Fixed-effort prototype coverage improves from
+  940/1012 to 948/1012 without lost acceptances; this is not a public census.
+- [Twenty fresh neighbors](../docs/cubic-rank-pending-neighbor-protocol.md)
+  are selected and excluded from development execution. Freeze the candidate
+  before running them; retain all outcomes. Selection alone is not validation.
+
+Do not promote these incremental improvements into a PARI-win claim. Finish
+current-source public replay, controlled public timing and the frozen neighbor
+evaluation, report regressions, and keep PR190 draft until its actual gates
+are satisfied.

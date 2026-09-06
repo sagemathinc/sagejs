@@ -81,9 +81,20 @@ on nontrivial examples, with approximately 1% slower medians on two tiny
 class-number-one examples. These are native-call diagnostics, not public
 PARI comparisons, statistical non-regression certification, or a PARI win.
 
-The earlier successful full public census is pinned to `bbe1d2ca3`; it does
-not qualify this follow-up. Full public replay, retained timings, new held-out
+The earlier successful full opt census is pinned to `bbe1d2ca3`; it does
+not qualify this follow-up. An additional local public replay at `67c3b3084`
+subsequently passed all 1,000 frozen survey fields: authenticated native
+receipts, independent exact replay, and agreement with LMFDB and the retained
+PARI census. This uses four 250-field batches with local concurrency two,
+not the dedicated opt census/timing protocol. Retained timings, new held-out
 neighbors, and platform qualification remain separate gates.
+
+The [complete local replay evidence](https://github.com/sagemathinc/sagejs/releases/tag/cubic-public-replay-67c3b3084-20260906)
+includes source/cache identities, scripts and process outputs. Its archive
+SHA-256 is `b456a4133d51bb4abc4d4673ce748d16415ba96b73efd6617626ded6842c9f0f`;
+the combined report SHA-256 is
+`cce17dfad78413b03f35ad4924306d32b9ed6ab5bc8fe17ed8d557de454272b0`.
+These receipts qualify that commit only, not later scheduling changes.
 
 The integrated source passed all nine focused native/public tests, including
 authenticated production receipts, independent exact replay, pinned nontrivial

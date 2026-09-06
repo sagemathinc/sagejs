@@ -1131,10 +1131,15 @@ def _cubic_modular_admit_relation(
             return True
         column += 1
 
-    # Before reaching the bounded target, dependent rows are the exact
-    # witnesses from which the rank-one unit lattice is recovered.  Once the
-    # target is full, retain only rows that increase modular rank.
-    return relation_row < relation_target
+    # The target is a certification checkpoint, not a dependent-row quota.
+    # Until full rank, a modularly dependent row can still lower the integral
+    # relation index. Discarding it here permanently loses that witness when
+    # collection resumes past this proposal. The caller retains the same hard
+    # storage bound; exact closure remains the only acceptance authority.
+    return (
+        relation_row < relation_target
+        or modular_workspace[_CUBIC_MODULAR_RANK_OFFSET] < factor_count
+    )
 
 
 def _cubic_append_smooth_principal_relation(
@@ -9406,6 +9411,10 @@ def certified_complex_cubic_class_group_v1(
             and not unit_found
             and online_relation_quotient_enabled
         )
+        if staged_certification:
+            # Try the smaller prefix without discarding dependent witnesses
+            # encountered while the final modular pivots are still missing.
+            relation_collection_target = factor_count + 2
         if relation_effort == 4:
             # The exact dependency reconstruction can need a slightly wider
             # retained tail than PARI's approximate transformed-log sidecar.
