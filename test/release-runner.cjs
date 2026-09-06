@@ -102,14 +102,32 @@ test("coordinator quotes host launch commands without interpolating checkout or 
   assert.ok(remoteCommand({ ...host, target: "windows-x64" }, "b".repeat(40)).startsWith("& 'node' '"));
 });
 test("native profile performs installation before long tests and retains numerical gates", () => {
-  const stages = require("../scripts/release/stages.cjs").plan();
-  const ids = stages.map((stage) => stage.id);
-  assert.ok(ids.indexOf("package-install") < ids.indexOf("integration"));
-  for (const id of ["numerical-node", "numerical-npm", "numerical-sea", "native-performance"]) assert.ok(ids.includes(id));
-  const target = require("../scripts/package-qualification/runtime.cjs").targetForHost();
-  if (target !== "linux-arm64") assert.ok(ids.includes("integration-performance"));
-  else assert.ok(!ids.includes("integration"), "ARM64 matches its portable/native CI inventory");
-  assert.equal(new Set(ids).size, ids.length);
+  const source = fs.readFileSync(path.join(__dirname, "../scripts/release/stages.cjs"), "utf8");
+  for (const target of ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]) {
+    const module = { exports: {} };
+    require("node:vm").runInNewContext(source, {
+      module,
+      require(name) {
+        assert.equal(name, "../package-qualification/runtime.cjs");
+        return { targetForHost: () => target };
+      },
+    });
+    const ids = module.exports.plan().map((stage) => stage.id);
+    const install = ids.indexOf("package-install");
+    assert.ok(install >= 0);
+    for (const id of ["numerical-node", "numerical-npm", "numerical-sea", "native", "native-performance",
+      target === "linux-x64" ? "unit" : "portable"]) {
+      assert.ok(ids.indexOf(id) > install, `${target}: installation precedes ${id}`);
+    }
+    if (target !== "linux-arm64") {
+      assert.ok(ids.indexOf("integration") > install);
+      assert.ok(ids.indexOf("integration-performance") > ids.indexOf("integration"));
+    } else {
+      assert.ok(!ids.includes("integration"), "ARM64 matches its portable/native CI inventory");
+      assert.ok(!ids.includes("integration-performance"));
+    }
+    assert.equal(new Set(ids).size, ids.length);
+  }
 });
 test("canonical runtime completes the lazy cache before browser inputs are frozen", () => {
   const stages = require("../scripts/release/stages.cjs").plan("canonical");
