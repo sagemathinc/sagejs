@@ -80,7 +80,8 @@ test("routine gate does not build native dependencies or SEA executables", () =>
 test("release jobs reuse one required native bootstrap", () => {
   const stages = require("../scripts/release/stages.cjs").plan("native", "bootstrap,native,native-performance,sea");
   assert.deepEqual(stages.map((stage) => stage.commands), [
-    [["pnpm", "bootstrap", "--without-sea"]],
+    [["pnpm", "bootstrap", "--without-sea"], ["pnpm", "python:precompile:run"],
+      ["node", "scripts/release/prepare-test-runtime.cjs"]],
     [["pnpm", "test:native:correctness:run"]],
     [["pnpm", "test:native:performance:run"]],
     [["pnpm", "test:sea:reuse"]],

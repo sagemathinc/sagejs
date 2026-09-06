@@ -98,6 +98,19 @@ Stages consuming the native/Node `dist` additionally require the existing
 source-current build receipt before running or reusing tests. Hashing an old
 runtime next to a new checkout is not qualification of that checkout.
 
+Native bootstrap also completes the full lazy cache and initializes the existing
+cubic-frontier harness's empty, validated history file before freezing `dist`.
+SEA packaging and tests must consume those completed inputs. On older candidates
+whose runner predates this preparation, explicitly run the full precompile and
+the harness's `prepareCandidateDirectEnvironment()` before qualification; never
+turn off the input mutation check to accommodate lazy preparation.
+
+Browser workload enforcement is an aggregate gate: it follows all three engine
+parity and timing stages and explicitly consumes their receipts. It is not a
+Node-only prerequisite. When qualifying an older frozen candidate, use explicit
+stage ordering and the same receipt handoff as the clean CI DAG rather than
+rebuilding the mathematical product merely to change the scheduler.
+
 Gate classes are explicit in `scripts/release/stages.cjs`:
 
 - `build`, `integrity`, `installation`, `packaging`, `correctness`, and

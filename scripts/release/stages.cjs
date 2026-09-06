@@ -33,7 +33,8 @@ function plan(profile = "native", selected) {
       { inputs: ["dist", "packages/flint-wasm/dist"], outputs: ["build/release/npm/sagejs.tgz"] }),
     stage("metadata", "integrity", [["pnpm", "test:release"],
       ...(target.startsWith("linux-") ? [["pnpm", "test:installer"]] : [])], { inputs: [], timeoutSeconds: 300 }),
-    stage("bootstrap", "build", [["pnpm", "bootstrap", "--without-sea"]],
+    stage("bootstrap", "build", [["pnpm", "bootstrap", "--without-sea"],
+      ["pnpm", "python:precompile:run"], ["node", "scripts/release/prepare-test-runtime.cjs"]],
       { inputs: ["build/authenticated-numerical-product"], outputs: runtime }),
     stage("startup", "performance", [["pnpm", "test:startup:run"]], { timeoutSeconds: 300 }),
     stage("strict", "correctness", [["pnpm", "test:baselib:strict"]], { timeoutSeconds: 600 }),
@@ -67,7 +68,6 @@ function plan(profile = "native", selected) {
     stage("wasm-node", "correctness", [
       ["node", "packages/flint-wasm/test/browser-wasm-node-parity.cjs", "--tier", "release", "--receipt", "build/wasm-node-oracle.json"],
       ["node", "packages/flint-wasm/scripts/node-cli-parity.cjs", "--tier", "release", "--receipt", "build/wasm-node-cli-parity.json"],
-      ["pnpm", "wasm:workload-enforce"],
     ], { inputs: [...runtime, "packages/flint-wasm/dist"], outputs: ["build/wasm-node-oracle.json", "build/wasm-node-cli-parity.json"] }),
     ...["chromium", "firefox", "webkit"].map((engine) => stage(`wasm-${engine}`, "correctness",
       [["node", "packages/flint-wasm/test/browser-wasm-parity.mjs", "--tier", "release", "--engines", engine,
@@ -88,6 +88,14 @@ function plan(profile = "native", selected) {
         "--native-reference", "build/wasm-performance-node-native.json", "--budget", "bench/browser-wasm-budget.json",
         "--require-baseline", "--report-regressions", "--output", `build/wasm-performance-${engine}.json`]],
       { inputs: ["packages/flint-wasm/dist", "build/wasm-performance-node-native.json"], outputs: [`build/wasm-performance-${engine}.json`] })),
+    stage("wasm-workload", "correctness", [["node", "scripts/wasm-workload-dashboard.cjs", "--check",
+      "--explicit-receipts-only",
+      ...["chromium", "firefox", "webkit"].flatMap((engine) => [
+        "--receipt", `build/wasm-parity-${engine}.json`,
+        "--receipt", `build/wasm-performance-${engine}.json`,
+      ])]], { inputs: ["packages/flint-wasm/dist", ...["chromium", "firefox", "webkit"].flatMap((engine) => [
+      `build/wasm-parity-${engine}.json`, `build/wasm-performance-${engine}.json`,
+    ])] }),
   ];
   if (selected) {
     const ids = selected.split(",");

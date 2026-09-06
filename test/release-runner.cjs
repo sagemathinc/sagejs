@@ -138,3 +138,23 @@ test("canonical runtime completes the lazy cache before browser inputs are froze
   assert.ok(browser.inputs.includes("dist"));
   assert.ok(stages.indexOf(runtime) < stages.indexOf(browser));
 });
+test("native preparation finishes mutable runtime caches before qualification", () => {
+  const stages = require("../scripts/release/stages.cjs").plan("native");
+  const bootstrap = stages.find((stage) => stage.id === "bootstrap");
+  assert.deepEqual(bootstrap.commands.slice(1), [["pnpm", "python:precompile:run"],
+    ["node", "scripts/release/prepare-test-runtime.cjs"]]);
+  assert.ok(stages.indexOf(bootstrap) < stages.findIndex((stage) => stage.id === "sea"));
+});
+test("browser workload enforcement consumes completed engine receipts last", () => {
+  const stages = require("../scripts/release/stages.cjs").plan("browser");
+  const enforcement = stages.at(-1);
+  assert.equal(enforcement.id, "wasm-workload");
+  assert.ok(enforcement.commands[0].includes("--explicit-receipts-only"));
+  assert.ok(!stages.find((stage) => stage.id === "wasm-node").commands.flat().includes("wasm:workload-enforce"));
+  for (const engine of ["chromium", "firefox", "webkit"]) {
+    for (const name of [`build/wasm-parity-${engine}.json`, `build/wasm-performance-${engine}.json`]) {
+      assert.ok(enforcement.inputs.includes(name));
+      assert.ok(enforcement.commands[0].includes(name));
+    }
+  }
+});
