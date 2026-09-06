@@ -117,6 +117,38 @@ The refreshed census again compiles 16553 functions with zero failures.
 A fresh complete build and packaged browser check remain required after this
 correction; the earlier artifact qualification does not cover it yet.
 
+## Final constructor-fix qualification
+
+The complete build passes in 10m18s. All 41 native families are reused, and an
+independent emit-only comparison confirms identical core hashes and foreign
+declarations for all 47 Wasm source modules. The final browser artifact is
+`sha256:a1f0a9cd5954acde61e6c0fee895c7eb44536e147f4548a62d058b8bed0a349a`.
+It passes the exact ABI inventory, both prefix-Arb tests, routine Chromium parity
+and all nine Python browser fixtures, including the previously failing warning
+fixture through the ordinary, unmodified harness.
+The final artifact also passes the unchanged compressed payload and pack-topology
+budgets with the required baseline; no budget was raised for browser packaging.
+
+Architecture passes. Post-fix public cubic replay/closure and constructor tests
+pass 11/11. Routine validation passes in 1m34s. CPython 3.14.4 conformance has
+505 passes, three unchanged declared incompatibilities and the existing 68
+exclusions. A first routine attempt encountered a late cache-cleanup file while
+removing a test directory; bounded filesystem-removal retries address that
+cleanup race without retrying or weakening assertions. Conformance was rerun
+after routine tests to avoid a transient concurrent build-freshness observation.
+
+The cubic checkpoint `7b4e39cc2` passes GitHub run `34013267770`, including Linux
+x64 routine and Linux ARM64, macOS ARM64 and Windows x64 native smoke builds.
+That run precedes the small constructor fix; do not label it CI evidence for a
+later main commit. Publication to main will trigger that commit's own CI.
+
+Disposition: integrate #130 and #134 with the corrections above. Their copied
+cubic components (#126, #128, #129, #131, #135, #138, #142, #144, #150, #151,
+#152) are subsumed by the reviewed aggregates, not separately merged head
+ancestries. Preserve that distinction when closing duplicate PRs. Numerical
+and finite-extension geometry drafts remain excluded. No product release or
+deployment is part of this integration.
+
 ## #130 and #134: aggregate review authorized
 
 Reviewed scope at #130 `3a694809b95e7e08f1b12adee78121b96f4eed69`
