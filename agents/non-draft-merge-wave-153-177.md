@@ -1,4 +1,4 @@
-# Non-draft integration wave 153–177
+# Non-draft integration wave 153–178
 
 Scope pinned from open PRs on 2026-09-06. No release, no draft dependencies.
 Start from `origin/main` at `60ab78c2a`; use `agent/non-draft153-177`.
@@ -61,10 +61,54 @@ twelve-PR wave here rather than continuously admitting new arrivals.
 
 ## Validation
 
-Pending combined build, focused semantic/mathematical tests, unit/portable,
-strict Python, architecture, current optimizer census, generated reference,
-and real packaged browser qualification. The initial 51 source-level tooling
-tests pass. No main push is justified by this preliminary result alone.
+Final runtime corrections are in `e200d188c`; generated evidence is in
+`020f79904`. All twelve reviewed heads are ancestors of the candidate.
+
+- Full eight-stage build: pass in 10m19s, all 41 native kernel families reused.
+- Routine `pnpm test`: all eight stages pass in 1m34s, including 142 portable
+  files, startup budget, smoke, strict Python and generated-document integrity.
+- Complete unit coverage: the 142 portable files plus all 15 remaining unit
+  files pass. The latter contain 51 passing cases and one existing optional
+  external-SageMath oracle skip; no failing or cancelled cases.
+- Focused combined semantic/mathematical tests: 133 pass, including exact
+  native/portable character-Hecke comparisons and lazy analytic batches.
+- Strict Python: 381 modules, zero errors; formatting is current.
+- Architecture: pass, including 1090 reviewed Wasm capabilities and the
+  source-current optimizer census (16521 functions, zero compilation failures).
+- CPython 3.14.4 conformance: 505 pass, three declared incompatibilities,
+  unchanged baseline; 68 existing exclusions remain explicit.
+- Reference: 226 pass, two expected failures, four skips, zero failures or
+  unexpected passes.
+- Fresh Wasm build: 286 compiled kernels, one explicitly unsupported, all 15
+  reviewed ABI modules verified. Artifact identity:
+  `sha256:7e580dd1fc77d1f3f52c587e1c61635e572ce318aba1f264a9f53544ff2c8fb1`.
+- Packaged Node-Wasm/Chromium mathematical tests: seven pass, no skips.
+  Real Chromium additionally passes four character-Hecke/Gamma1 cases and
+  seven Python protocol fixtures, including builtin deletion and ABC isolation.
+- Optimizer evidence cold-download and content hashes verify. Its infrastructure
+  prerelease is explicitly not Latest; no product release or deployment is made.
+
+## Integration fixes and qualification lessons
+
+The combined source exceeded the unchanged core limit. Move unchanged
+gamma/xi/zeta host orchestration into lazy `sagejs.special_functions`, with
+public signatures retained and cache/batch regressions. Final core source is
+889462/890000 bytes. The native inventory changes only three consumer paths;
+no native export policy was relaxed. The generated compiler is 4103036 bytes,
+below the existing limit.
+
+Real Chromium exposed a deleted-builtin resurrection missed by private-scope
+standalone tests. The standalone facade now advertises its names, and missing
+known builtins cannot fall through to stale worker-global aliases. Add both
+global-realm standalone and real-worker coverage; retain normal module and
+lexical lookup before this guard.
+
+Two unsuccessful validation attempts were rerun rather than waived: a contended
+zeta integration test timed out but passed isolated in 13 seconds; a unit run
+overlapped runtime-cache replacement and correctly failed its missing-output
+guard. Final routine and complementary unit checks ran with stable build
+outputs. Do not parallelize output-inspecting tests with a build mutating the
+same output directories.
 
 Coordinate progress in GitHub Discussion #104. Existing empty-arrow-loop
 `math` lookup ordering and wider package compatibility remain explicit
