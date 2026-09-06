@@ -12,6 +12,9 @@ const isBundleClass = node => kind(node) === "AST_Class" &&
 const fail = (file, message) => { throw Error(`native workspace: ${file}: ${message}`); };
 const requireThat = (condition, file, message) => { if (!condition) fail(file, message); };
 const clone = (node, changes) => Object.assign(Object.create(Object.getPrototypeOf(node)), node, changes);
+const positionalOnly = node => list(node.kwargs).length === 0 &&
+  list(node.args?.kwargs).length === 0 && list(node.args?.kwarg_items).length === 0 &&
+  !node.args?.starargs;
 
 function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
   const schemas = new Map();
@@ -112,7 +115,15 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
 
     function expression(node, env) {
       if (!node || typeof node !== "object") return node;
-      if (Array.isArray(node)) return node.map(item => expression(item, env));
+      if (Array.isArray(node)) {
+        const result = node.map(item => expression(item, env));
+        // Call argument lists carry named/starred arguments on the array.
+        // Do not erase those effects or validation inputs during projection.
+        for (const key of ["kwargs", "kwarg_items", "starargs"]) {
+          if (Object.hasOwn(node, key)) result[key] = expression(node[key], env);
+        }
+        return result;
+      }
       if (kind(node) === "AST_Dot" && env.has(name(node.expression))) {
         const entry = env.get(name(node.expression));
         const index = entry.schema.fields.findIndex(field => field.name === node.property);
@@ -126,7 +137,7 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
         requireThat(!schemas.has(name(node.expression)), filename, "workspace construction requires a local binding");
         const contract = contracts.get(name(node.expression));
         if (contract?.some(param => param.schema)) {
-          requireThat(list(node.args).length === contract.length && list(node.kwargs).length === 0,
+          requireThat(list(node.args).length === contract.length && positionalOnly(node),
             filename, "workspace calls require all positional arguments");
           const args = [];
           contract.forEach((param, index) => {
@@ -156,7 +167,7 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
           const schema = schemas.get(name(rhs.expression));
           requireThat(kind(target) === "AST_SymbolRef" && !usedNames.has(target.name) && !boundNames.has(target.name),
             filename, "workspace binding must be a new immutable local");
-          requireThat(list(rhs.args).length === schema.fields.length && list(rhs.kwargs).length === 0,
+          requireThat(list(rhs.args).length === schema.fields.length && positionalOnly(rhs),
             filename, "workspace construction requires all positional fields");
           const members = list(rhs.args).map(arg => expression(arg, env));
           requireThat(members.every(member => kind(member) === "AST_SymbolRef"),

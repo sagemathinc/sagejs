@@ -97,6 +97,26 @@ test("workspace helper parameters cannot be selected as a public ABI", async () 
     /workspace bundle parameters have no public host ABI/);
 });
 
+test("workspace calls reject named and expanded arguments before erasure", async () => {
+  for (const [construction, call] of [
+    ["Scratch(vector, vector, left=vector)", "update(scratch, value)"],
+    ["Scratch(vector, vector, **unknown)", "update(scratch, value)"],
+    ["Scratch(vector, vector, *unknown)", "update(scratch, value)"],
+    ["Scratch(vector, vector)", "update(scratch, value, value=99)"],
+    ["Scratch(vector, vector)", "update(scratch, value, **unknown)"],
+    ["Scratch(vector, vector)", "update(scratch, value, *unknown)"],
+  ]) {
+    await assert.rejects(() => lowerSource(prefix + `
+@native
+def witness(value: int) -> int:
+    with NativeExactArena(8192, 1048576) as arena:
+        vector = arena.integer_vector(2, 0)
+        scratch = ${construction}
+        return ${call}
+`, "workspace.py", { functions: ["witness"] }), /workspace.*positional/i);
+  }
+});
+
 test("workspace schema names cannot be shadowed by loops or context managers", async () => {
   for (const schema of ["Scratch", "NativeWorkspace"]) {
     for (const binding of [`for ${schema} in range(1):`,
