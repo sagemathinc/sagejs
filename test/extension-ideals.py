@@ -7,8 +7,12 @@ from sagejs.polynomial_algorithms.generic_groebner import (
 )
 
 previous_proof = proof.polynomial()
+assert globals().get("_extension_field_selection") in (None, 4, 8, 9, 27, 65519**2)
 try:
-    for K in [GF(4, "a"), GF(8, "a"), GF(9, "a"), GF(27, "a"), GF(65519**2, "a")]:
+    for q in [4, 8, 9, 27, 65519**2]:
+        if globals().get("_extension_field_selection") not in (None, q):
+            continue
+        K = GF(q, "a")
         a = K.gen()
         for order in ["lex", "deglex", "degrevlex"]:
             R = PolynomialRing(K, ["x", "y"], order=order)

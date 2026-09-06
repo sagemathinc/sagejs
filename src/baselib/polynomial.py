@@ -4448,7 +4448,7 @@ class MultivariatePolynomialElement(sage.Element):
                 for _, powers in terms
             ):
                 raise TypeError("multivariate polynomial involves other generators")
-            degree = max((powers[index] for _, powers in terms), default=-1)
+            degree = max([-1] + [powers[index] for _, powers in terms])
             if degree > 4096:
                 raise ValueError(
                     "finite-field univariate extraction exceeds degree 4096"

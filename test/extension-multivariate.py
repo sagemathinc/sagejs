@@ -34,6 +34,8 @@ for K in fields:
         assert len(factors) == 2 and f in factors and g in factors
         assert R(a).irreducible_factors() == []
         assert R(0).terms() == []
+        assert R(0).univariate_polynomial(x) == 0
+        assert R(a).univariate_polynomial(x) == a
         u = (f**3).univariate_polynomial(x)
         assert u.parent().base_ring() is K and u.degree() == 3
         assert u(a) == (2 * a) ** 3

@@ -1,6 +1,11 @@
 """Core scheme operations over genuine extension coefficients."""
 
-for K in [GF(4, "a"), GF(9, "a"), GF(27, "a")]:
+assert globals().get("_extension_field_selection") in (None, 4, 9, 27)
+
+for q in [4, 9, 27]:
+    if globals().get("_extension_field_selection") not in (None, q):
+        continue
+    K = GF(q, "a")
     a = K.gen()
     q = int(K.cardinality())
     A = AffineSpace(K, 2, names=("x", "y"))
@@ -19,6 +24,17 @@ for K in [GF(4, "a"), GF(9, "a"), GF(27, "a")]:
     parabola = A.subscheme([y - x**2 - a])
     P = parabola(a, a**2 + a)
     assert parabola.dimension() == 1
+    assert parabola.codimension() == 1
+    vertical = A.subscheme([x - a])
+    horizontal = A.subscheme([y - a])
+    assert (
+        vertical.intersection(horizontal)
+        .defining_ideal()
+        .is_equal(R.ideal(x - a, y - a))
+    )
+    assert (
+        vertical.union(horizontal).defining_ideal().is_equal(R.ideal((x - a) * (y - a)))
+    )
     assert parabola.tangent_space(P).dimension() == 1
     assert parabola.is_smooth(P) and parabola.is_smooth()
     assert parabola.singular_subscheme().is_empty()
@@ -57,6 +73,9 @@ for K in [GF(4, "a"), GF(9, "a"), GF(27, "a")]:
     r, s, u = P2.gens()
     conic = Curve(r * u - a * s**2)
     assert conic.degree() == 2 and conic.arithmetic_genus() == 0
+    assert conic.codimension() == 1
+    hilbert = conic.defining_ideal().hilbert_polynomial()
+    assert hilbert == 2 * hilbert.parent().gen() + 1
     assert conic.is_smooth(conic(1, 0, 0))
     assert (
         conic.tangent_line(conic(1, 0, 0))

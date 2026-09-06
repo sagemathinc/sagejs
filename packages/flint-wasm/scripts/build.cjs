@@ -992,6 +992,11 @@ fs.writeFileSync(
   JSON.stringify({
     modules: standardLibraryModules,
     preload: browserAdditionalModules,
+    // Names only: executable bodies remain in the authenticated lazy bundle.
+    // The compiler must not recreate these package shells on each cell.
+    runtimeModules: Object.keys(JSON.parse(
+      fs.readFileSync(lazyModulesSource, "utf8"),
+    ).modules).sort(),
   }),
 );
 fs.copyFileSync(lazyModulesSource, lazyModulesOutput);

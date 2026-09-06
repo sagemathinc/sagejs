@@ -355,7 +355,13 @@ export class PythonModuleResolver {
       this.importedModules[key] = shell;
       return;
     }
-    if (moduleOptions.runtime_imports) {
+    if (moduleOptions.runtime_imports ||
+        (Array.isArray(moduleOptions.runtime_module_names) &&
+          moduleOptions.runtime_module_names.includes(key))) {
+      // A browser may have source metadata for a package shell while its
+      // implementation and children belong to the authenticated lazy loader.
+      // Keep those imports dynamic even if findSource(key) would succeed:
+      // static emission would recreate the parent and bypass from-list loading.
       this.importedModules[key] = {
         is_cached: true,
         dynamic: true,

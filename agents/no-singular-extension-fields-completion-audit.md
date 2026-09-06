@@ -422,6 +422,38 @@ or production-Wasm receipts. The F1/F2 public Node-Wasm and Chromium harnesses
 are added but still require the combined source-current production build.
 Earlier F0 browser evidence cannot qualify the new ideal and geometry code.
 
+## F2 production qualification findings
+
+The combined production artifact built from `a5a9eded1` has identity
+`sha256:b9f8c083628ed139047c1493e294c0b7ea2d88c9b05275da5ce5b12e608f837c`.
+Its public ideal and geometry fixtures passed in both Node-Wasm and Chromium.
+The subsequent decomposition fixture failed before entering the algorithm:
+`from sagejs.polynomial_algorithms import zero_dimensional` bypassed the lazy
+loader when static metadata existed for the package shell. Repeated static
+imports could also recreate the parent package and lose its child bindings.
+This is not a complete production-Wasm pass.
+
+The corrective compiler boundary uses an explicit runtime-owned module-name
+inventory from the authenticated lazy bundle. Submitted browser code imports
+those modules through the existing runtime importer; bootstrap and ordinary
+non-bundled imports retain their previous behavior. Regression coverage checks
+from-list loading, parent/child identity across evaluations, missing-child
+errors, and recovery. Development probes pass; the rebuilt production artifact
+must independently pass before this finding is closed.
+
+The long public browser fixtures are split into 20 field/stage batches, with
+the same native assertions and independent Sage fixtures retained. Each worker
+evaluation keeps its 240-second limit. Selector assertions and a batch coverage
+test prevent an empty or accidentally omitted shard from counting as success.
+Clean rebuilding also exposed a bootstrap-parser incompatibility with the
+`default` keyword in univariate extraction; an equivalent non-keyword expression
+preserves the zero-polynomial degree convention.
+
+The clean eight-stage native build after that correction passes, as do the
+architecture checks and strict Python (388 modules, zero errors). The optimizer
+provenance snapshot is regenerated locally, not published as a release. These
+checks still do not replace production-Wasm or the reserved cross-host checks.
+
 ## Still required
 
 - F4 source-current native four-platform public tests, production Node-Wasm,

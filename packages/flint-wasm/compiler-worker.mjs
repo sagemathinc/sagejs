@@ -75,6 +75,7 @@ let pythonFrontend;
 let dynamicCompiler;
 let baselib;
 let toplevel;
+let runtimeModuleNames = [];
 let foreignFrontendUrl;
 let treeSitterRuntimeUrl;
 let foreignGrammarUrls;
@@ -110,6 +111,7 @@ function compileWithFrontend(source, filename, frontend, language) {
     jsage: language === "sage",
     exact_integer_literals: true,
     strict_python_scopes: true,
+    runtime_module_names: runtimeModuleNames,
     optimization_level: configuredOptimizationLevel,
   });
   const javascript = outputJavaScript(
@@ -240,6 +242,7 @@ self.onmessage = async ({ data }) => {
       dynamicCompiler = undefined;
       baselib = undefined;
       toplevel = undefined;
+      runtimeModuleNames = [];
       foreignFrontendModulePromise = undefined;
       configuredForeignGrammars.clear();
       foreignFrontends.clear();
@@ -267,6 +270,14 @@ self.onmessage = async ({ data }) => {
         compilerSource,
         standardLibrary,
       );
+      const names = standardLibrary.runtimeModules ?? [];
+      if (!Array.isArray(names) || names.some(name =>
+        typeof name !== "string" ||
+        !/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(name) ||
+        name.split(".").some(part => ["__proto__", "prototype", "constructor"].includes(part)))) {
+        throw new TypeError("invalid browser runtime module inventory");
+      }
+      runtimeModuleNames = [...new Set(names)];
       compilerFrontend.configureBrowserCompilerResources({
         treeSitterRuntime,
         pythonGrammar,
