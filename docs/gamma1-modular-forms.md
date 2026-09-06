@@ -23,6 +23,33 @@ sage: M.q_expansion_basis()
 of all nebentypus components of the correct parity, rather than a space with
 one distinguished character.
 
+## Browser cusp forms and Hecke operators
+
+The browser uses an exact portable character-Hecke implementation when the
+native accelerator is unavailable. In particular, this cusp/newform example
+does not require a native Node.js backend:
+
+```sage
+sage: S = CuspForms(Gamma1(13), 2, prec=8)
+sage: S.q_expansion_basis()
+[q - 4*q^3 - q^4 + 3*q^5 + 6*q^6 + O(q^8), q^2 - 2*q^3 - q^4 + 2*q^5 + 2*q^6 + O(q^8)]
+sage: S.hecke_matrix(2)
+[ 0 -3]
+[ 1 -3]
+sage: len(S.newforms())
+1
+sage: S.q_expansion_basis_certificate().verify()
+True
+```
+
+The portable path includes character factors and bad-prime operators; it uses
+the same exact coefficient fields and public objects as native execution.
+It is not a promise of native-speed browser performance, and existing browser
+presentation-size guards still apply.
+General cyclotomic polynomial factorization remains a separate browser
+limitation for higher-dimensional newform decompositions; the one-dimensional
+character constituents in this example need no factorization.
+
 ## Exact character-orbit descent
 
 The implementation uses

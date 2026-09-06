@@ -43,7 +43,7 @@
     },
     {
       "path": "bench/modular/qexp-correctness/source-freeze.cjs",
-      "sha256": "4bf5018b081945b30558f7889a4df8fa214dc5cc560f8aa06c5890b86b00a96a"
+      "sha256": "6f9d65e3bc8987bc9df276104b38f6edc115a1ecff7471790cd8970545d2713a"
     },
     {
       "path": "docs/index.md",
@@ -55,7 +55,7 @@
     },
     {
       "path": "docs/gamma1-modular-forms.md",
-      "sha256": "bc3ee78d54cd4f00435a03b00fcc048f88b133a3d9bd4da8511cfd62684ae75a"
+      "sha256": "378184b145bfc36ce9ace4e87544b0372a35a2fc370d61267a46627b9b99ec9a"
     },
     {
       "path": "docs/modular-form-q-expansions.md",
@@ -72,6 +72,10 @@
     {
       "path": "src/lib/sagejs/modular_forms/__init__.py",
       "sha256": "16dc0beff34beeed89a117e8189458bd28da42a93623510ac3be4b1c1064e423"
+    },
+    {
+      "path": "src/lib/sagejs/modular_forms/character_hecke.py",
+      "sha256": "823f76f4c4ae4ab48db1b5f5da4fcade499695eb703c81868129968cba07d15a"
     },
     {
       "path": "src/lib/sagejs/modular_forms/eta_products.py",
@@ -127,11 +131,15 @@
     },
     {
       "path": "test/modular-qexp-source-freeze.cjs",
-      "sha256": "8c45645f2ae8bfd01f50e1f165a8344b72b1d1b29ca56d93072b14cf7101cb77"
+      "sha256": "8a1cfff34eb05aa422f565a44b3764a953e3f16b2ab7920cb2fa8f83dae5a920"
     },
     {
       "path": "test/modular.cjs",
       "sha256": "0bf6339fa0a1f423d1f0b4ddc8a4b609b7c8b6915d609681558fb85874e60108"
+    },
+    {
+      "path": "test/portable-character-hecke.cjs",
+      "sha256": "18c5c7771cff66cfb1377fa7f52a58dfaff999ce4473702bb1f9b95d632a7e3e"
     },
     {
       "path": "test/qexp-algebra.cjs",

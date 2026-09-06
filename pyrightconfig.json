@@ -173,6 +173,7 @@
     "src/lib/sagejs/modular_forms/__init__.py",
     "src/lib/sagejs/modular_forms/half_integral.py",
     "src/lib/sagejs/modular_forms/gamma1.py",
+    "src/lib/sagejs/modular_forms/character_hecke.py",
     "src/lib/sagejs/modular_forms/newforms.py",
     "src/lib/sagejs/modular_forms/object_layer.py",
     "src/lib/sagejs/modular_forms/qexp.py",

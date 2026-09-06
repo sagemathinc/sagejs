@@ -1205,6 +1205,14 @@ export function createAlgebraicBackend(instance, {
     matrixAdd(left, right) { return matrixBinary("add", left, right); },
     matrixSub(left, right) { return matrixBinary("sub", left, right); },
     matrixMul(left, right) { return matrixBinary("mul", left, right); },
+    matrixSparseLeftMul(left, right) {
+      if (!liveMatrices.has(left)) {
+        return fallbackMatrix("matrixSparseLeftMul", [left, right]);
+      }
+      // Sparse-left is an optimization hint, not a different operation.
+      // Algebraic resources must stay in their owning exact Wasm backend.
+      return matrixBinary("mul", left, right);
+    },
     matrixNeg(value) { return matrixUnary("neg", value); },
     matrixTranspose(value) { return matrixUnary("transpose", value); },
     matrixRref(value) { return matrixUnary("rref", value); },

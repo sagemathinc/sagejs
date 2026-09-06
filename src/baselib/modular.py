@@ -3626,6 +3626,20 @@ class P1List:
             return cached
         presentation = self.character_presentation(weight, sign, character, base_ring)
         dimension = presentation.dimension()
+        backend = runtime.flint_backend()
+        if (
+            runtime.jstype(runtime.reflect.get(backend, "p1ListCharacterHeckeMatrix"))
+            != "function"
+        ):
+            portable = __import__(
+                "sagejs.modular_forms.character_hecke",
+                fromlist=["character_hecke_matrix"],
+            )
+            cached = portable.character_hecke_matrix(
+                self, weight, character, base_ring, prime, presentation
+            )
+            self._character_hecke_cache.set(key, cached)
+            return cached
         native = runtime.flint_backend().p1ListCharacterHeckeMatrix(
             self._native,
             weight,
@@ -5327,6 +5341,11 @@ class ModularSymbolsSpace(sage.Parent):
         for prime in self._good_hecke_primes(decomposition_bound):
             remaining = []
             for space in active:
+                # A one-dimensional module is already simple. Do not require
+                # polynomial factorization merely to certify a linear factor.
+                if space.dimension() == 1:
+                    finished.append(space)
+                    continue
                 operator = space.hecke_matrix(prime)
                 factors = list(operator.charpoly().factor())
                 if len(factors) == 1 and factors[0][1] == 1:

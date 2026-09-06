@@ -50,6 +50,7 @@
     "sagejs.modular_abelian_varieties.abelian_variety",
     "sagejs.modular_forms",
     "sagejs.modular_forms.brandt",
+    "sagejs.modular_forms.character_hecke",
     "sagejs.modular_forms.component_groups",
     "sagejs.modular_forms.eta_products",
     "sagejs.modular_forms.gamma1",
