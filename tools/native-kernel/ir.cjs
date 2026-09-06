@@ -768,8 +768,7 @@ function foreignDescriptor(
   });
 }
 
-function ffiImports(topLevel, filename) {
-  const registry = loadFfiRegistry();
+function ffiImports(topLevel, filename, registry = loadFfiRegistry()) {
   const functions = new Map();
   const resources = new Map();
   for (const statement of topLevel) {
@@ -905,7 +904,7 @@ async function lowerSource(source, filename, options = {}) {
   }
   const integerConstants = moduleIntegerConstants(topLevel, filename);
   const records = nativeRecordSchemas(topLevel, filename);
-  const foreignImports = ffiImports(topLevel, filename);
+  const foreignImports = ffiImports(topLevel, filename, options.ffiRegistry);
   const foreignFunctions = foreignImports.functions;
   const foreignResources = foreignImports.resources;
   const definitions = topLevel.filter(
@@ -1033,6 +1032,7 @@ async function lowerSource(source, filename, options = {}) {
             filename,
             decoratedMode,
             signatures,
+            foreignFunctions,
           )
         : isPrimeFieldSignature(signature)
         ? isPrimeFieldIntrinsicFunction(fn)

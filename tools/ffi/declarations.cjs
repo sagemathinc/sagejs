@@ -793,6 +793,10 @@ function validateFunction(
   if (!fn.targets.dynamic || !fn.targets.native) {
     fail(filename, `${fn.id} must provide dynamic and native implementations`);
   }
+  if (fn.signature.parameters.some(parameter => parameter.type === "Float64Buffer") &&
+      fn.targets.wasm) {
+    fail(filename, `${fn.id} floating foreign storage is not yet supported by generated Wasm adapters`);
+  }
 
   validateResourceAggregateComposition(
     filename, fn, resourcesByType, returnResource, catalog,
@@ -1090,7 +1094,8 @@ function generatePythonModule(declaration) {
       : JSON.stringify(value);
   const pythonType = (type) => type === "bool"
     ? "bool" : (type === "UInt64Buffer" || type === "IntegerBuffer") ? "list[int]"
-      : resourcesByType.has(type) ? type : "int";
+      : type === "Float64Buffer" ? "list[float]"
+        : resourcesByType.has(type) ? type : "int";
   const resourceClasses = declaration.resources.map((resource) => {
     const identity = resourceIdentity(resource);
     const hostIngress = resource.host_ingress?.kind === "copied_bytes"

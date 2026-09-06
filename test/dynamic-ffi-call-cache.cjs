@@ -70,6 +70,31 @@ function runProgram(source, environment = {}) {
   }
 }
 
+test("dynamic FFI accepts floating storage without accepting nonnumeric entries", () => {
+  const result = runProgram(({ firstBackend, declarationHash: hash }) => [
+    "import sagejs.runtime as runtime",
+    `backend_path = ${JSON.stringify(firstBackend)}`,
+    "def call(values):",
+    "    return runtime.ffi_call(",
+    `        ${JSON.stringify(`test@${hash}:floating`)}, backend_path, 'bufferLength',`,
+    "        [values], ['Float64Buffer'], 'bool', ['direct', [], None],",
+    "        'RuntimeError', 'failed', [],",
+    "    )",
+    "assert call([1.0, -0.0, float('inf'), float('nan')])",
+    "assert call([])",
+    "for values in [[True], ['1'], [None]]:",
+    "    try:",
+    "        call(values)",
+    "    except TypeError:",
+    "        pass",
+    "    else:",
+    "        raise AssertionError('invalid floating entry accepted')",
+    "print('floating-storage-ok')",
+  ].join("\n"));
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /floating-storage-ok/);
+});
+
 test("dynamic FFI caches invariant resolution but checks every call", () => {
   const result = runProgram(({ firstBackend, declarationHash: hash }) => [
     "import sagejs.runtime as runtime",

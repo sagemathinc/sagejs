@@ -48,6 +48,7 @@ const {
 } = require("./gmp-checkpoint-allocator.cjs");
 const {
   emitExactForeignCall,
+  emitPackedSliceCall,
   exceptionShimInclude,
   foreignDependencies,
   foreignHeaders,
@@ -2535,6 +2536,11 @@ function emitFieldNodeAdapter(fn) {
 }
 
 function emitFloat64Operation(operation, indent) {
+  if (operation.kind === "ffi.call") {
+    return emitPackedSliceCall(operation, {
+      value: cName, result: cName, failure: "goto fail;",
+    }, indent);
+  }
   const target = cName(operation.target);
   if (operation.kind === "float64.call") {
     const args = operation.arguments.map(argument => cName(argument.name));
@@ -4000,8 +4006,7 @@ ${pieces.join("\n\n")}
 function generateNodeAdapter(ir) {
   const functions = ir.functions.filter(hostCallable);
   const floatOnly = ir.functions.length > 0 &&
-    ir.functions.every((fn) => fn.kernelKind === "float64") &&
-    (ir.foreignLibraries || []).length === 0;
+    ir.functions.every((fn) => fn.kernelKind === "float64");
   const exact = exactFunctions(ir);
   const exactEntries = exact.filter(hostCallable);
   const usesExactArena = exact.some((fn) =>

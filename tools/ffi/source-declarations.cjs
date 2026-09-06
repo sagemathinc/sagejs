@@ -17,7 +17,7 @@ const allowedImports = new Set([
   "CxxToStatus", "Direct", "Effects", "Library", "Min", "Nullable",
   "Status", "Writable", "in_", "out", "packed_fmpz_matrix",
   "packed_nmod_matrix",
-  "packed_slice", "record", "copied_bytes", "computed_bytes",
+  "packed_slice", "packed_float64_slice", "record", "copied_bytes", "computed_bytes",
 ]);
 
 function nodeType(node) {
@@ -451,6 +451,7 @@ function parseAdapter(filename, node) {
       "data", "rows", "columns", "modulus", "access", "aliasing", "transactional",
     ],
     packed_slice: ["data", "length", "access", "aliasing", "transactional"],
+    packed_float64_slice: ["data", "length", "access", "aliasing", "transactional"],
   };
   const keys = specs[name];
   expect(filename, node, keys !== undefined, `unsupported adapter ${name}`);

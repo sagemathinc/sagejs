@@ -69,12 +69,12 @@ function generatedHostAdapterSource(declaration, options = {}) {
   for (const fn of functions) {
     for (const parameter of fn.signature.parameters) {
       if (resources.has(parameter.type)) continue;
-      if (["Integer", "IntegerBuffer", "UInt64Buffer", "uint64"].includes(
+      if (["Integer", "IntegerBuffer", "UInt64Buffer", "Float64Buffer", "uint64"].includes(
         parameter.type,
       )) types.add(parameter.type);
     }
     if (!resources.has(fn.signature.return_type) &&
-      ["Integer", "IntegerBuffer", "UInt64Buffer", "uint64"].includes(
+      ["Integer", "IntegerBuffer", "UInt64Buffer", "Float64Buffer", "uint64"].includes(
       fn.signature.return_type,
     )) types.add(fn.signature.return_type);
   }

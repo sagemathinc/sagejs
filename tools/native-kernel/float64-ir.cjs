@@ -86,9 +86,12 @@ function uint64Literal(node) {
   return value <= UINT64_MAX ? value.toString() : undefined;
 }
 
-function createContext(fn, signature, filename, decorated, signatures) {
+function createContext(fn, signature, filename, decorated, signatures, foreignFunctions) {
   return {
     signatures,
+    foreignFunctions,
+    foreignDependencies: new Set(),
+    foreignEffects: [],
     dependencies: new Set(),
     decorated,
     filename,
@@ -182,6 +185,30 @@ function lowerCall(node, context, operations, expectedType) {
   const args = array(node.args);
   expect(context, node, !context.variables.has(name), "shadowed binary64 callable " + name);
   const signature = context.signatures.get(name);
+  const foreign = context.foreignFunctions.get(name);
+  if (foreign !== undefined) {
+    const fn = foreign.function;
+    expect(context, node, fn.targets.native && fn.signature.return_type === "bool",
+      "floating foreign calls require a native boolean result");
+    expect(context, node, fn.result.domain === "status" && fn.errors.exception === "RuntimeError",
+      "floating foreign calls currently require RuntimeError status failures");
+    expect(context, node, fn.signature.parameters.every(param =>
+      ["Float64Buffer", "uint64"].includes(param.type)),
+      "floating foreign calls require packed float buffers and unsigned dimensions");
+    expect(context, node, args.length === fn.signature.parameters.length,
+      "floating foreign call argument count mismatch");
+    const lowered = args.map((arg, index) => {
+      const type = fn.signature.parameters[index].type;
+      const value = lowerExpression(arg, context, operations, type);
+      expect(context, arg, value.type === type, "floating foreign argument expects " + type);
+      return value;
+    });
+    const target = temporary(context, node, "bool");
+    operations.push({ kind: "ffi.call", target, arguments: lowered, returnType: "bool", foreign });
+    context.foreignDependencies.add(foreign.declarationIdentity);
+    context.foreignEffects.push(fn.effects);
+    return { name: target, type: "bool" };
+  }
   if (signature !== undefined) {
     expect(context, node, isFloat64Signature(signature), "binary64 helper must have a binary64 signature");
     expect(context, node, args.length === signature.params.length, "binary64 helper argument count mismatch");
@@ -804,6 +831,12 @@ function mutationRoots(statements, aliases, result, functions = new Map()) {
     } else if (statement.kind === "float64.buffer.set") {
       const roots = aliases.get(statement.buffer) || new Set([statement.buffer]);
       for (const root of roots) result.add(root);
+    } else if (statement.kind === "ffi.call") {
+      for (const transaction of statement.foreign.function.call_plan.transactions) {
+        const index = statement.foreign.function.signature.parameters.findIndex(param => param.name === transaction.buffer);
+        const argument = statement.arguments[index];
+        for (const root of aliases.get(argument.name) || new Set([argument.name])) result.add(root);
+      }
     } else if (statement.kind === "float64.call") {
       const callee = functions.get(statement.function);
       for (const name of callee?.analysis.effects.mutates || []) {
@@ -829,8 +862,8 @@ function mutationRoots(statements, aliases, result, functions = new Map()) {
   return changed;
 }
 
-function lowerFloat64Function(fn, signature, filename, decorated, signatures = new Map()) {
-  const context = createContext(fn, signature, filename, decorated, signatures);
+function lowerFloat64Function(fn, signature, filename, decorated, signatures = new Map(), foreignFunctions = new Map()) {
+  const context = createContext(fn, signature, filename, decorated, signatures, foreignFunctions);
   const body = lowerBlock(fn.body, context);
   expect(
     context,
@@ -858,17 +891,19 @@ function lowerFloat64Function(fn, signature, filename, decorated, signatures = n
       storage: BUFFER_TYPES.has(type) ? "borrowed-view" : "local",
     })),
     dependencies: Array.from(context.dependencies).sort(),
+    foreignDependencies: Array.from(context.foreignDependencies).sort(),
     optimizations: {},
     analysis: {
       representation: "IEEE-754 binary64 with borrowed packed buffers",
       backend: { kind: "native-double-buffer" },
       effects: {
-        pure: mutated.size === 0,
+        pure: mutated.size === 0 && context.foreignEffects.every(effect => effect.pure),
         mutates: Array.from(mutated).sort(),
         mayRaise: [
           "IndexError",
           "ZeroDivisionError",
           "ValueError",
+          ...context.foreignEffects.flatMap(effect => effect.may_raise),
           ...(hasUint64Bitwise(body) ? ["OverflowError"] : []),
         ],
       },
@@ -895,7 +930,8 @@ function analyzeFloat64Calls(functions) {
     const writes = new Set();
     mutationRoots(fn.body, aliases, writes, byName);
     fn.analysis.effects.mutates = [...writes].sort();
-    fn.analysis.effects.pure = writes.size === 0;
+    fn.analysis.effects.pure = fn.analysis.effects.pure && writes.size === 0 &&
+      fn.dependencies.every(name => byName.get(name).analysis.effects.pure);
     fn.analysis.effects.mayRaise = [...new Set([
       ...fn.analysis.effects.mayRaise,
       ...fn.dependencies.flatMap(name => byName.get(name).analysis.effects.mayRaise),

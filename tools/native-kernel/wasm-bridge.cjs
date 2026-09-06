@@ -65,6 +65,24 @@ function resourceDescriptor(resource) {
 }
 
 function classifyWasmFunction(fn, ir) {
+  const visited = new Set();
+  function unavailableForeign(value) {
+    if (value === null || typeof value !== "object") return false;
+    if (visited.has(value)) return false;
+    visited.add(value);
+    if (value.kind === "ffi.call" && value.foreign?.function?.targets?.wasm !== true) return true;
+    return Object.values(value).some(unavailableForeign);
+  }
+  const checkedFunctions = new Set();
+  function unavailableClosure(current) {
+    if (!current || checkedFunctions.has(current.name)) return false;
+    checkedFunctions.add(current.name);
+    return unavailableForeign(current.body) || (current.dependencies || []).some(name =>
+      unavailableClosure(ir?.functions.find(candidate => candidate.name === name)));
+  }
+  if (unavailableClosure(fn)) {
+    return { supported: false, reason: "foreign-function-not-declared-for-wasm" };
+  }
   if (!["float64", "integer", "prime-field-source"].includes(fn.kernelKind)) {
     return {
       supported: false,
