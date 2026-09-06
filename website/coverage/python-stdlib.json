@@ -10,9 +10,9 @@
   },
   "metric": {
     "name": "Importable public top-level module breadth",
-    "numerator": 86,
+    "numerator": 87,
     "denominator": 194,
-    "percentage": 44.3,
+    "percentage": 44.8,
     "limitation": "Successful import counts a module once. It does not imply that every class, function, constant, submodule, platform behavior, or CPython edge case inside that module is implemented."
   },
   "importableModules": [
@@ -76,6 +76,7 @@
     "pprint",
     "random",
     "re",
+    "reprlib",
     "shlex",
     "shutil",
     "socket",

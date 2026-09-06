@@ -12,8 +12,12 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { join, relative } = require("node:path");
-const { inspectBuildReceipt } = require("./build-receipt.cjs");
+const { inspectBuildReceipt, workspaceFingerprint } = require("./build-receipt.cjs");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
+const {
+  schema: evidenceSchema, sha256, canonical, normalizeOutput, snapshotSource,
+  caseEvidence, reviewedEvidence, reviewMatches, compareCaseRecord, executionBytes,
+} = require("../tools/python-compat/evidence.cjs");
 
 const root = join(__dirname, "..");
 const suiteRoot = join(root, "upstream-tests", "micropython");
@@ -24,7 +28,8 @@ const intentionalPath = join(
   suiteRoot,
   "INTENTIONAL-INCOMPATIBILITIES.json",
 );
-const sagejs = join(root, "bin", "sagejs");
+// Never qualify a separately installed SEA/native package as this checkout.
+const sagejs = join(root, "bin", "sagejs-source.cjs");
 
 const statusOrder = [
   "pass",
@@ -57,6 +62,9 @@ Options:
   --timeout MS            Per-runtime timeout (default: 5000)
   --only REGEXP           Run only matching corpus-relative paths
   --verbose               Print diagnostics for every non-passing test
+  --json PATH             Preserve raw executions and source/artifact identities
+  --artifact-report       Read-only diagnosis of existing artifacts, even if
+                          the workspace build receipt is stale; never a gate
   --help                  Show this help
 
 With neither --check nor --update-baseline, the command is a read-only report.`);
@@ -81,6 +89,8 @@ function parseArguments(argv) {
     timeout: 5000,
     only: null,
     verbose: false,
+    json: null,
+    artifactReport: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -102,6 +112,11 @@ function parseArguments(argv) {
       options.only = new RegExp(pattern);
     } else if (argument === "--verbose") {
       options.verbose = true;
+    } else if (argument === "--json") {
+      options.json = argv[++index];
+      if (!options.json) throw new Error("--json requires a path");
+    } else if (argument === "--artifact-report") {
+      options.artifactReport = true;
     } else if (argument === "--help" || argument === "-h") {
       usage();
       process.exit(0);
@@ -119,6 +134,9 @@ function parseArguments(argv) {
   if (options.check && options.only) {
     throw new Error("--check cannot be combined with --only");
   }
+  if (options.artifactReport && (options.check || options.updateBaseline)) {
+    throw new Error("--artifact-report cannot check or update a baseline");
+  }
   return options;
 }
 
@@ -132,8 +150,8 @@ function requireCurrentBuild(inspector = inspectBuildReceipt) {
   return status;
 }
 
-function normalizeOutput(output) {
-  return output.replace(/\r\n/g, "\n");
+function requireUnchangedWorkspace(before, after = workspaceFingerprint(root)) {
+  if (before !== after) throw new Error("validation workspace changed during execution");
 }
 
 function execute(command, args, { cwd, env, timeout }) {
@@ -150,27 +168,43 @@ function execute(command, args, { cwd, env, timeout }) {
         status: null,
         signal: null,
         output: "",
+        stdout: "",
+        stderr: "",
+        raw: { output: "", stdout: "", stderr: "" },
         timedOut: false,
-        error,
+        error: { name: error.name, code: error.code ?? null, message: error.message },
       });
       return;
     }
 
     const chunks = [];
+    const stdout = [];
+    const stderr = [];
     let timedOut = false;
     let settled = false;
     const finish = (result) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      const raw = {
+        output: Buffer.concat(chunks), stdout: Buffer.concat(stdout),
+        stderr: Buffer.concat(stderr),
+      };
       resolve({
         ...result,
-        output: normalizeOutput(Buffer.concat(chunks).toString("utf8")),
+        error: result.error ? {
+          name: result.error.name, code: result.error.code ?? null,
+          message: result.error.message,
+        } : null,
+        output: normalizeOutput(raw.output.toString("utf8")),
+        stdout: normalizeOutput(raw.stdout.toString("utf8")),
+        stderr: normalizeOutput(raw.stderr.toString("utf8")),
+        raw: Object.fromEntries(Object.entries(raw).map(([stream, bytes]) => [stream, bytes.toString("base64")])),
         timedOut,
       });
     };
-    child.stdout.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-    child.stderr.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    child.stdout.on("data", (chunk) => { chunks.push(Buffer.from(chunk)); stdout.push(Buffer.from(chunk)); });
+    child.stderr.on("data", (chunk) => { chunks.push(Buffer.from(chunk)); stderr.push(Buffer.from(chunk)); });
     child.on("error", (error) => {
       finish({ status: null, signal: null, error });
     });
@@ -193,7 +227,7 @@ function firstDiagnosticLine(output) {
   );
 }
 
-function classifySagejs(result, expectedOutput) {
+function classifySagejs(result, expected) {
   if (result.error) {
     return {
       status: "launch-error",
@@ -207,12 +241,12 @@ function classifySagejs(result, expectedOutput) {
     };
   }
   if (result.status === 0) {
-    if (result.output === expectedOutput) {
+    if (executionBytes(result, "output").equals(executionBytes(expected, "output"))) {
       return { status: "pass", detail: "" };
     }
     return {
       status: "output-mismatch",
-      detail: firstOutputDifference(expectedOutput, result.output),
+      detail: firstOutputDifference(expected.output, result.output),
     };
   }
 
@@ -280,9 +314,9 @@ function discoverTests() {
 
 function loadIntentionalIncompatibilities(selected) {
   const document = JSON.parse(readFileSync(intentionalPath, "utf8"));
-  if (document.format !== 1 || !document.tests) {
+  if (document.format !== 2 || !document.tests) {
     throw new Error(
-      "INTENTIONAL-INCOMPATIBILITIES.json must use format 1",
+      "INTENTIONAL-INCOMPATIBILITIES.json must use source/outcome-bound format 2",
     );
   }
   const candidates = new Set(selected.map((test) => test.name));
@@ -295,26 +329,35 @@ function loadIntentionalIncompatibilities(selected) {
     if (
       !entry ||
       !statusOrder.includes(entry.expectedStatus) ||
-      entry.expectedStatus === "pass" ||
-      entry.expectedStatus === "intentional-incompatibility" ||
+      ["pass", "intentional-incompatibility", "launch-error", "oracle-error", "timeout"].includes(entry.expectedStatus) ||
       typeof entry.reason !== "string" ||
-      !entry.reason
+      !entry.reason || !entry.reference || entry.evidence?.schema !== evidenceSchema ||
+      (entry.alternateEvidence !== undefined && !Array.isArray(entry.alternateEvidence))
     ) {
       throw new Error(
         `intentional incompatibility ${name} has an invalid review record`,
       );
     }
+    for (const evidence of reviewedEvidence(entry)) {
+      if (evidence?.schema !== evidenceSchema ||
+          evidence.sourceSha256 !== entry.evidence.sourceSha256 ||
+          evidence.normalization !== entry.evidence.normalization ||
+          canonical(evidence.oracle) !== canonical(entry.evidence.oracle)) {
+        throw new Error(`intentional incompatibility ${name} has an invalid alternate fingerprint`);
+      }
+    }
   }
   return document.tests;
 }
 
-function applyIntentionalIncompatibilities(results, reviewed) {
+function applyIntentionalIncompatibilities(results, reviewed, reference) {
   return results.map((result) => {
     const entry = reviewed[result.name];
-    if (!entry || result.status !== entry.expectedStatus) return result;
+    if (!entry || !reviewMatches(entry, result, reference)) return result;
     return {
       ...result,
       rawStatus: result.status,
+      reviewedEvidence: reviewedEvidence(entry),
       status: "intentional-incompatibility",
       detail: `${entry.reason} (observed ${result.status})`,
     };
@@ -360,6 +403,7 @@ async function inspectReference(options, environment) {
 }
 
 async function runOne(test, options, environment) {
+  const sourceSha256 = sha256(readFileSync(test.file));
   const oracle = await execute(options.python, ["-BS", test.file], {
     cwd: corpusRoot,
     env: environment,
@@ -370,6 +414,8 @@ async function runOne(test, options, environment) {
       name: test.name,
       status: "launch-error",
       detail: oracle.error.message,
+      evidence: caseEvidence(sourceSha256, oracle, null),
+      executions: { oracle, subject: null },
     };
   }
   if (oracle.timedOut) {
@@ -377,6 +423,8 @@ async function runOne(test, options, environment) {
       name: test.name,
       status: "oracle-error",
       detail: "CPython exceeded the per-runtime timeout",
+      evidence: caseEvidence(sourceSha256, oracle, null),
+      executions: { oracle, subject: null },
     };
   }
   if (oracle.status !== 0) {
@@ -384,6 +432,8 @@ async function runOne(test, options, environment) {
       name: test.name,
       status: "oracle-error",
       detail: firstDiagnosticLine(oracle.output),
+      evidence: caseEvidence(sourceSha256, oracle, null),
+      executions: { oracle, subject: null },
     };
   }
 
@@ -398,7 +448,9 @@ async function runOne(test, options, environment) {
   );
   return {
     name: test.name,
-    ...classifySagejs(candidate, oracle.output),
+    ...classifySagejs(candidate, oracle),
+    evidence: caseEvidence(sourceSha256, oracle, candidate),
+    executions: { oracle, subject: candidate },
   };
 }
 
@@ -464,11 +516,37 @@ function printDiagnostics(results) {
   }
 }
 
-function makeBaseline(results, reference, excluded) {
+function sourceProvenance() {
+  return {
+    sourceMetadataSha256: sha256(readFileSync(sourcePath)),
+    corpus: snapshotSource(corpusRoot),
+    licenseSha256: sha256(readFileSync(join(suiteRoot, "LICENSE"))),
+    upstreamReadmeSha256: sha256(readFileSync(join(suiteRoot, "UPSTREAM-TESTS-README.md"))),
+    intentionalReviewsSha256: sha256(readFileSync(intentionalPath)),
+  };
+}
+
+function makeReport({ reference, provenance, excluded, artifacts, build, results, gate, workspaceSha256 }) {
+  return {
+    schema: "sagejs.python-conformance-report/v1",
+    reference, provenance, excluded, workspaceSha256,
+    subject: { route: "source", command: process.execPath, args: [sagejs, "--python"] },
+    artifact: {
+      files: artifacts, node: process.versions.node, v8: process.versions.v8,
+      platform: process.platform, arch: process.arch, currentBuild: build.current,
+      qualifiedGate: build.current === true && gate.status === "passed",
+    },
+    gate,
+    results,
+  };
+}
+
+function makeBaseline(results, reference, excluded, provenance) {
   const source = JSON.parse(readFileSync(sourcePath, "utf8"));
   return {
-    format: 1,
+    format: 2,
     source,
+    provenance,
     reference: {
       implementation: reference.implementation,
       version: reference.version,
@@ -482,6 +560,15 @@ function makeBaseline(results, reference, excluded) {
     outcomes: Object.fromEntries(
       results.map((result) => [result.name, result.status]),
     ),
+    rawStatuses: Object.fromEntries(
+      results.map((result) => [result.name, result.rawStatus ?? result.status]),
+    ),
+    evidence: Object.fromEntries(
+      results.map((result) => [result.name, result.reviewedEvidence?.[0] ?? result.evidence]),
+    ),
+    reviewedEvidence: Object.fromEntries(results
+      .filter((result) => result.status === "intentional-incompatibility")
+      .map((result) => [result.name, result.reviewedEvidence])),
   };
 }
 
@@ -489,15 +576,15 @@ function baselinePathFor(reference) {
   return join(baselineRoot, `${reference.majorMinor}.json`);
 }
 
-function compareBaseline(results, reference, excluded, baselinePath) {
+function compareBaseline(results, reference, excluded, baselinePath, provenance) {
   if (!existsSync(baselinePath)) {
     throw new Error(
       `missing ${relative(root, baselinePath)}; run with --update-baseline`,
     );
   }
   const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
-  if (baseline.format !== 1) {
-    throw new Error(`unsupported baseline format ${baseline.format}`);
+  if (baseline.format !== 2) {
+    throw new Error(`baseline format ${baseline.format} lacks source/outcome fingerprints; use report mode and explicitly review a format-2 migration`);
   }
   const source = JSON.parse(readFileSync(sourcePath, "utf8"));
   if (JSON.stringify(baseline.source) !== JSON.stringify(source)) {
@@ -505,28 +592,33 @@ function compareBaseline(results, reference, excluded, baselinePath) {
   }
   if (
     baseline.reference.implementation !== reference.implementation ||
-    baseline.reference.majorMinor !== reference.majorMinor
+    baseline.reference.version !== reference.version
   ) {
     throw new Error(
       `baseline uses ${baseline.reference.implementation} ` +
-        `${baseline.reference.majorMinor}, but the reference is ` +
-        `${reference.implementation} ${reference.majorMinor}`,
+        `${baseline.reference.version}, but the reference is ` +
+        `${reference.implementation} ${reference.version}`,
     );
   }
 
   const changes = [];
-  const current = new Map(results.map((result) => [result.name, result.status]));
+  if (baseline.selection.candidates !== results.length) {
+    changes.push("candidate count changed");
+  }
+  if (canonical(baseline.provenance) !== canonical(provenance)) {
+    changes.push("source/fixture/license/review provenance changed");
+  }
+  const current = new Map(results.map((result) => [result.name, result]));
   for (const [name, expected] of Object.entries(baseline.outcomes)) {
     const actual = current.get(name);
-    if (actual === undefined) {
-      changes.push(`${name}: missing (baseline ${expected})`);
-    } else if (actual !== expected) {
-      changes.push(`${name}: ${expected} -> ${actual}`);
-    }
+    changes.push(...compareCaseRecord(name, {
+      status: expected, rawStatus: baseline.rawStatuses[name], evidence: baseline.evidence[name],
+      reviewedEvidence: baseline.reviewedEvidence?.[name],
+    }, actual && { ...actual, rawStatus: actual.rawStatus ?? actual.status }));
   }
   for (const [name, actual] of current) {
     if (!(name in baseline.outcomes)) {
-      changes.push(`${name}: new test (${actual})`);
+      changes.push(`${name}: new test (${actual.status})`);
     }
   }
 
@@ -543,7 +635,16 @@ function compareBaseline(results, reference, excluded, baselinePath) {
 
 async function main() {
   const options = parseArguments(process.argv.slice(2));
-  requireCurrentBuild();
+  const workspaceSha256 = workspaceFingerprint(root);
+  const build = options.artifactReport ? inspectBuildReceipt(root) : requireCurrentBuild();
+  if (options.artifactReport) {
+    console.log(`Artifact-only diagnostic report; not a current-source gate (${build.reason ?? "build receipt is current"}).`);
+  }
+  const artifacts = Object.fromEntries([
+    "bin/sagejs-source.cjs",
+    "dist/compiler/compiler.js", "dist/runtime-cache/runtime-bootstrap-python.js",
+  ].map((path) => [path, sha256(readFileSync(join(root, path)))]));
+  const provenance = sourceProvenance();
   const environment = {
     ...process.env,
     LC_ALL: "C.UTF-8",
@@ -569,39 +670,66 @@ async function main() {
   const results = applyIntentionalIncompatibilities(
     rawResults,
     intentional,
+    reference,
   );
   printSummary(results, excluded, reference, Date.now() - started);
   if (options.verbose) printDiagnostics(results);
 
-  const launchErrors = results.filter(
-    (result) => result.status === "launch-error",
-  );
-  if (launchErrors.length > 0) {
-    printDiagnostics(launchErrors);
-    throw new Error("conformance run had infrastructure failures");
-  }
+  const gate = { status: options.check ? "not-completed" : "not-requested" };
+  try {
+    requireUnchangedWorkspace(workspaceSha256);
+    if (canonical(provenance) !== canonical(sourceProvenance())) {
+      throw new Error("corpus source, fixtures, license, reviews, or source metadata changed during execution");
+    }
+    for (const [path, hash] of Object.entries(artifacts)) {
+      if (sha256(readFileSync(join(root, path))) !== hash) throw new Error(`runtime artifact changed during execution: ${path}`);
+    }
+    if (!options.artifactReport) requireCurrentBuild();
 
-  if (options.updateBaseline) {
-    mkdirSync(baselineRoot, { recursive: true });
-    const baselinePath = baselinePathFor(reference);
-    const baseline = makeBaseline(results, reference, excluded);
-    writeFileSync(baselinePath, `${JSON.stringify(baseline, null, 2)}\n`);
-    console.log(`Updated ${relative(root, baselinePath)}`);
-  } else if (options.check) {
-    const baselinePath = baselinePathFor(reference);
-    const changes = compareBaseline(
-      results,
-      reference,
-      excluded,
-      baselinePath,
+    const launchErrors = rawResults.filter(
+      (result) => result.status === "launch-error",
     );
-    if (changes.length > 0) {
-      console.error("\nConformance outcomes changed:");
-      for (const change of changes) console.error(`  ${change}`);
-      console.error("\nReview the changes, then run --update-baseline.");
-      process.exitCode = 1;
-    } else {
-      console.log("Baseline matches.");
+    if (launchErrors.length > 0) {
+      printDiagnostics(launchErrors);
+      throw new Error("conformance run had infrastructure failures");
+    }
+
+    if (options.updateBaseline) {
+      mkdirSync(baselineRoot, { recursive: true });
+      const baselinePath = baselinePathFor(reference);
+      const baseline = makeBaseline(results, reference, excluded, provenance);
+      writeFileSync(baselinePath, `${JSON.stringify(baseline, null, 2)}\n`);
+      console.log(`Updated ${relative(root, baselinePath)}`);
+    } else if (options.check) {
+      const baselinePath = baselinePathFor(reference);
+      const changes = compareBaseline(
+        results,
+        reference,
+        excluded,
+        baselinePath,
+        provenance,
+      );
+      if (changes.length > 0) {
+        gate.status = "failed";
+        gate.changes = changes;
+        console.error("\nConformance outcomes changed:");
+        for (const change of changes) console.error(`  ${change}`);
+        console.error("\nReview the changes, then run --update-baseline.");
+        process.exitCode = 1;
+      } else {
+        gate.status = "passed";
+        console.log("Baseline matches.");
+      }
+    }
+  } catch (error) {
+    gate.status = options.check ? "failed" : "not-requested";
+    gate.error = error.message;
+    throw error;
+  } finally {
+    if (options.json) {
+      writeFileSync(options.json, `${JSON.stringify(makeReport({
+        reference, provenance, excluded, artifacts, build, results, gate, workspaceSha256,
+      }), null, 2)}\n`);
     }
   }
 }
@@ -614,5 +742,9 @@ if (require.main === module) {
 }
 
 module.exports = {
-  requireCurrentBuild,
+  requireUnchangedWorkspace,
+  requireCurrentBuild, makeBaseline, compareBaseline, sourceProvenance,
+  applyIntentionalIncompatibilities, runOne, execute, parseArguments,
+  makeReport, discoverTests,
+  classifySagejs,
 };

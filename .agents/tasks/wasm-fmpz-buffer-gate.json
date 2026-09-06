@@ -1,0 +1,92 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fmpz-buffer-gate",
+  "title": "Wasm Fmpz Buffer Gate",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Fail closed before wasm32 C compilation when production kernels require unsupported resident fmpz IntegerBuffer views, while preserving qualified native targets and exact fallback semantics",
+  "base_commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+  "claims": [
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/wasm-production-pack.cjs",
+    "test/wasm-production-native-kernels.cjs",
+    "test/wasm-production-resource-closure.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Generated wasm32 production pack omits unsupported resident-fmpz-buffer kernels and retained supported kernels compile and execute differentially"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.13,
+      "started_at": "2026-09-04T15:34:13.954Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "182e2723d0fd8ee90cc30930f14f31f4084ae1c678c760be17c1a4f848f2416c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 42.632,
+      "started_at": "2026-09-04T15:34:32.045Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "182e2723d0fd8ee90cc30930f14f31f4084ae1c678c760be17c1a4f848f2416c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=resident fmpz IntegerBuffers|production linking uses only|generated runtime manifests expose|production resource closure records test/wasm-production-native-kernels.cjs test/wasm-production-resource-closure.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 42.421,
+      "started_at": "2026-09-04T15:36:10.266Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "105c0144ec6883da51ed8a350f4fa534fc633f008a23636170a015ace40f5c9d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_WASI_CLANG=/home/user/sagejs/.git/sagejs-wasm-toolchains/v2/bfd7e48e622a912f95ef24f64e93c85f3838459b8f75e47590f658b1feb84c74/sdk/bin/clang SAGEJS_WASI_SYSROOT=/home/user/sagejs/.git/sagejs-wasm-toolchains/v2/bfd7e48e622a912f95ef24f64e93c85f3838459b8f75e47590f658b1feb84c74/sdk/share/wasi-sysroot SAGEJS_WASM_GMP_PREFIX=/home/user/sagejs/.git/sagejs-wasm-toolchains/v2/bfd7e48e622a912f95ef24f64e93c85f3838459b8f75e47590f658b1feb84c74/prefixes/gmp SAGEJS_WASM_FLINT_PREFIX=/home/user/sagejs/.git/sagejs-wasm-toolchains/v2/bfd7e48e622a912f95ef24f64e93c85f3838459b8f75e47590f658b1feb84c74/prefixes/flint SAGEJS_WASM_MPFR_PREFIX=/home/user/sagejs/.git/sagejs-wasm-toolchains/v2/bfd7e48e622a912f95ef24f64e93c85f3838459b8f75e47590f658b1feb84c74/prefixes/mpfr SAGEJS_WASM_MPC_PREFIX=/home/user/sagejs/.git/sagejs-wasm-toolchains/v2/bfd7e48e622a912f95ef24f64e93c85f3838459b8f75e47590f658b1feb84c74/prefixes/mpc node --test --test-name-pattern=wasm32 links around the unsupported cubic resident-fmpz core test/wasm-production-native-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.181,
+      "started_at": "2026-09-04T15:37:04.937Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "105c0144ec6883da51ed8a350f4fa534fc633f008a23636170a015ace40f5c9d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Wasm production inventory now fails closed before C compilation when a generated core combines resident fmpz arithmetic with 64-bit-word IntegerBuffer views on 32-bit FLINT limbs. The unsupported cubic class-group route retains authenticated source/core identity and same-source fallback metadata, while only callable module identities enter pack identity and linking. A real wasm32 regression links the neighboring rank-four FLINT core and proves the cubic route unavailable.",
+    "risks": [
+      "The distribution builder must select kernels through productionKernelsForPack(manifest.kernels, pack), rather than selecting every kernel sharing pack.domain, before PR #101 chromium parity is fixed.",
+      "Canonical Wasm coverage and capability manifests need deterministic regeneration after integration; they currently predate the one-function fallback classification."
+    ],
+    "next_steps": [
+      "In packages/flint-wasm/scripts/build.cjs import productionKernelsForPack from tools/native-kernel/wasm-production-pack.cjs and replace the domain-only kernel filter with productionKernelsForPack(manifest.kernels, pack).",
+      "Run node scripts/generate-wasm-kernel-coverage.cjs followed by pnpm wasm:workload-dashboard, review the generated capability/coverage diff, and commit it in the integration lane.",
+      "Run pnpm --dir packages/flint-wasm build with the pinned toolchain and the focused Wasm production tests; confirm 280 compiled functions, one explicit same-source fallback, and no cubic core in clang inputs."
+    ]
+  }
+}

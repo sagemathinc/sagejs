@@ -1,0 +1,195 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fmpz-early-checkpoint",
+  "title": "Early fmpz arena checkpoint lifetime",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "For proven eligible closed fmpz NativeExactArena roots, begin the GMP checkpoint before all arena child initialization, keep it live through root execution, clear children before checkpoint end, and fail closed for rewind-capable or escaping lifetimes while preserving exact cleanup and allocation failure semantics",
+  "base_commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+  "claims": [
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/fmpz-backend.cjs",
+    "tools/native-kernel/test/fmpz-early-checkpoint.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "generated C lifetime-order proof",
+      "GMP and JavaScript exact differential execution",
+      "allocator telemetry and sanitizer cleanup"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test tools/native-kernel/test/fmpz-early-checkpoint.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/fmpz-early-checkpoint.cjs tools/native-kernel/test/fmpz-backend-override.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.466,
+      "started_at": "2026-09-04T15:59:02.846Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "8b3056fef00c0ac8457824dbf7e274574e877c99758eb1fefbc9044493576edf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/fmpz-*.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.63,
+      "started_at": "2026-09-04T15:59:18.695Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "8b3056fef00c0ac8457824dbf7e274574e877c99758eb1fefbc9044493576edf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/native-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 67.308,
+      "started_at": "2026-09-04T15:59:36.045Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "8b3056fef00c0ac8457824dbf7e274574e877c99758eb1fefbc9044493576edf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.951,
+      "started_at": "2026-09-04T16:00:50.036Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "8b3056fef00c0ac8457824dbf7e274574e877c99758eb1fefbc9044493576edf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.711,
+      "started_at": "2026-09-04T16:01:10.594Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "b54d09db6eada8b66d2156f4a7c0a8643186c3c0c5f69315fedfce1ea386de84",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 45.704,
+      "started_at": "2026-09-04T16:02:19.988Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "b54d09db6eada8b66d2156f4a7c0a8643186c3c0c5f69315fedfce1ea386de84",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-live-exact-arena.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.023,
+      "started_at": "2026-09-04T16:03:08.791Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "b54d09db6eada8b66d2156f4a7c0a8643186c3c0c5f69315fedfce1ea386de84",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/fmpz-backend-override.cjs tools/native-kernel/test/fmpz-backend.cjs tools/native-kernel/test/fmpz-borrowed-aggregates.cjs tools/native-kernel/test/fmpz-buffer-ingress.cjs tools/native-kernel/test/fmpz-call-graph.cjs tools/native-kernel/test/fmpz-early-checkpoint.cjs tools/native-kernel/test/fmpz-resource-projection.cjs tools/native-kernel/test/fmpz-word-containers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.311,
+      "started_at": "2026-09-04T16:03:48.144Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "255e63e79b7354beb62e311b60a3490d8ab651f9f6f8128cccb30a7052138757",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/native-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 70.729,
+      "started_at": "2026-09-04T16:04:05.893Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "255e63e79b7354beb62e311b60a3490d8ab651f9f6f8128cccb30a7052138757",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.671,
+      "started_at": "2026-09-04T16:05:19.907Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "255e63e79b7354beb62e311b60a3490d8ab651f9f6f8128cccb30a7052138757",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.003,
+      "started_at": "2026-09-04T16:05:33.828Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "255e63e79b7354beb62e311b60a3490d8ab651f9f6f8128cccb30a7052138757",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-live-exact-arena.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.096,
+      "started_at": "2026-09-04T16:06:22.050Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "255e63e79b7354beb62e311b60a3490d8ab651f9f6f8128cccb30a7052138757",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/fmpz-early-checkpoint.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.484,
+      "started_at": "2026-09-04T16:07:21.783Z",
+      "commit": "e75c35c6f8cf60dfbb991e71209e21052b5b12b2",
+      "workspace_fingerprint": "72226e691d01e1e8d1f62742523a6470c90bda569e757765cf966b1e184ff650",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.465,
+      "started_at": "2026-09-04T16:07:51.669Z",
+      "commit": "e75c35c6f8cf60dfbb991e71209e21052b5b12b2",
+      "workspace_fingerprint": "72226e691d01e1e8d1f62742523a6470c90bda569e757765cf966b1e184ff650",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Eligible closed fmpz NativeExactArena scopes now carry an explicit nonescaping/no-rewind lifetime certificate and begin their allocation checkpoint immediately after arena initialization, before all owned child vectors and resources. Entry drains FLINT promotion caches so promoted limbs are checkpoint-owned; success and failure clear all children in reverse order before ending the checkpoint. The current complex cubic root remains fmpz-qualified, and generated-C evidence places all 55 current children inside the checkpoint. Focused differential, sentinel, capacity, allocator-provenance, and ASan/UBSan coverage passes, as do all 26 fmpz tests, the canonical native compiler harness, architecture checks, strict baselib, and generic exact-arena tests.",
+    "risks": [
+      "Validation was executed on linux-x64; the focused harness contains the macOS-specific UBSan/link path but cross-platform CI remains authoritative for macOS, Windows, and arm64.",
+      "A broad pnpm test:native attempt found the now-fixed generic analysis-shape regression caused by an undefined checkpointLifetime property; the complete broad command was not rerun after that fix, while its focused generic suite and the full canonical compiler harness both pass.",
+      "The concurrent wasm32 qualification lane also touches exact-analysis.cjs and fmpz-backend.cjs, so integration must serialize those commits and resolve the overlap deliberately."
+    ],
+    "next_steps": [
+      "Integrate after the wasm32 qualification change with a semantic merge preserving both capability gating and this lifetime certificate.",
+      "Run the complete pnpm test:native gate and cross-platform CI on the integrated commit.",
+      "Measure the resident cubic program separately after integration; this lane deliberately did not use the dedicated opt benchmark VM."
+    ]
+  }
+}

@@ -30,6 +30,14 @@ explicitly dependent on #114. Once it merges, integrate a green `origin/main`
 containing it and repeat the affected validation. The earlier audited commit
 records inspected evidence rather than a permanent fork point.
 
+Integration update (2026-09-06): PR #114 has merged. The extension branch
+integrates green `origin/main` at `60ab78c2a0044797538d396bdb3797d811421d7b`.
+Regenerate combined FFI/architecture inventories and rebuild compiler tooling,
+the self-hosted compiler, and runtime/module caches before qualification; the
+old compiled caches are not evidence for this merged source. Milestone F
+remains unqualified until its complete native and production-Wasm matrix
+passes, and this integration does not authorize a release.
+
 The implementation order is intentional:
 
 1. define one exact-field coefficient boundary shared by future domains;

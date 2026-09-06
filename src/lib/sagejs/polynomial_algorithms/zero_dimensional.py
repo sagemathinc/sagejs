@@ -8,7 +8,7 @@ factors of multiplication minimal polynomials and exactly recomposed.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterator
 
 _MAX_RECURSION = 64
 _MAX_SEPARATOR_CANDIDATES = 65536
@@ -90,74 +90,76 @@ def is_radical(
     return ideal.is_equal(radical(ideal, algorithm, proof), algorithm, proof)
 
 
-def _append_unique(values: list[Any], value: Any) -> None:
-    text = repr(value)
-    if all(repr(previous) != text for previous in values):
-        values.append(value)
-
-
-def _initial_candidates(ideal: Any, algorithm: str, proof: Any) -> list[Any]:
+def _initial_candidate_values(ideal: Any, algorithm: str, proof: Any) -> Iterator[Any]:
     ring = ideal.ring()
-    candidates = []
-    for variable in ring.gens():
-        _append_unique(candidates, variable)
+    yield from ring.gens()
     basis = list(ideal.normal_basis(algorithm=algorithm, proof=proof))
     nonconstant = [value for value in basis if value != ring(1)]
-    for value in nonconstant:
-        _append_unique(candidates, value)
+    yield from nonconstant
     for left in range(len(nonconstant)):
         for right in range(left + 1, len(nonconstant)):
             for coefficient in [1, -1, 2, -2, 3]:
-                _append_unique(
-                    candidates,
-                    nonconstant[left] + coefficient * nonconstant[right],
-                )
-                if len(candidates) >= 512:
-                    return candidates
-    return candidates
+                yield nonconstant[left] + coefficient * nonconstant[right]
+
+
+def _initial_candidates(ideal: Any, algorithm: str, proof: Any) -> Iterator[Any]:
+    seen: set[str] = set()
+    for value in _initial_candidate_values(ideal, algorithm, proof):
+        key = repr(value)
+        if key not in seen:
+            seen.add(key)
+            yield value
+            if len(seen) >= 512:
+                return
 
 
 def _finite_candidates(
     ideal: Any,
     algorithm: str,
     proof: Any,
-) -> list[Any]:
+) -> Iterator[Any]:
     ring = ideal.ring()
     field = ring.base_ring()
-    if not hasattr(field, "is_prime_field") or not bool(field.is_prime_field()):
-        return []
-    basis = list(ideal.normal_basis(algorithm=algorithm, proof=proof))
+    if field.characteristic() == 0:
+        return
     order = int(field.cardinality())
-    count = order ** len(basis)
-    if count > _MAX_SEPARATOR_CANDIDATES:
-        raise OverflowError(
-            "exact separator search exceeds 65536 finite quotient elements"
+    if order != int(field.characteristic()):
+        raise NotImplementedError(
+            "finite separator enumeration currently supports only prime GF(p)"
         )
-    answer = []
+    basis = list(ideal.normal_basis(algorithm=algorithm, proof=proof))
+    count = 1
+    for _basis_value in basis:
+        if count > _MAX_SEPARATOR_CANDIDATES // order:
+            raise OverflowError(
+                "exact separator search exceeds 65536 finite quotient elements"
+            )
+        count *= order
     for encoded in range(1, count):
         value = encoded
         polynomial = ring(0)
         for basis_value in basis:
             polynomial += field(value % order) * basis_value
             value //= order
-        _append_unique(answer, polynomial)
-    return answer
+        # Coordinate encoding in a quotient basis is injective: no quadratic
+        # repr-based deduplication or eager list of every element is needed.
+        yield polynomial
 
 
 def _rational_candidates(
     ideal: Any,
     algorithm: str,
     proof: Any,
-) -> list[Any]:
+) -> Iterator[Any]:
     ring = ideal.ring()
     field = ring.base_ring()
-    if hasattr(field, "is_prime_field"):
-        return []
+    if field.characteristic() != 0:
+        return
     basis = list(ideal.normal_basis(algorithm=algorithm, proof=proof))
     nonconstant = [value for value in basis if value != ring(1)]
-    answer = []
+    seen: set[str] = set()
     if len(nonconstant) == 0:
-        return answer
+        return
     for seed in range(1, 2049):
         state = seed
         candidate = ring(0)
@@ -169,8 +171,10 @@ def _rational_candidates(
                 nonzero = True
                 candidate += coefficient * basis_value
         if nonzero:
-            _append_unique(answer, candidate)
-    return answer
+            key = repr(candidate)
+            if key not in seen:
+                seen.add(key)
+                yield candidate
 
 
 def _separator_status(
@@ -182,30 +186,29 @@ def _separator_status(
         radical_ideal.vector_space_dimension(algorithm=algorithm, proof=proof)
     )
     quotient = radical_ideal.quotient_ring(algorithm=algorithm, proof=proof)
-    candidates = _initial_candidates(radical_ideal, algorithm, proof)
-    candidates.extend(_rational_candidates(radical_ideal, algorithm, proof))
-    for candidate in candidates:
-        minimum = quotient.minimal_polynomial(quotient(candidate), "_sagejs_split_t")
-        factors = _factor_records(minimum)
-        if len(factors) > 1:
-            return "split", candidate, factors
-        if (
-            len(factors) == 1
-            and factors[0][1] == 1
-            and factors[0][0].degree() == dimension
-        ):
-            return "field", candidate, factors
-    for candidate in _finite_candidates(radical_ideal, algorithm, proof):
-        minimum = quotient.minimal_polynomial(quotient(candidate), "_sagejs_split_t")
-        factors = _factor_records(minimum)
-        if len(factors) > 1:
-            return "split", candidate, factors
-        if (
-            len(factors) == 1
-            and factors[0][1] == 1
-            and factors[0][0].degree() == dimension
-        ):
-            return "field", candidate, factors
+    seen: set[str] = set()
+    for candidates in (
+        _initial_candidates(radical_ideal, algorithm, proof),
+        _rational_candidates(radical_ideal, algorithm, proof),
+        _finite_candidates(radical_ideal, algorithm, proof),
+    ):
+        for candidate in candidates:
+            key = repr(candidate)
+            if key in seen:
+                continue
+            seen.add(key)
+            minimum = quotient.minimal_polynomial(
+                quotient(candidate), "_sagejs_split_t"
+            )
+            factors = _factor_records(minimum)
+            if len(factors) > 1:
+                return "split", candidate, factors
+            if (
+                len(factors) == 1
+                and factors[0][1] == 1
+                and factors[0][0].degree() == dimension
+            ):
+                return "field", candidate, factors
     raise OverflowError(
         "could not certify a separating element within the deterministic "
         "zero-dimensional resource envelope"

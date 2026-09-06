@@ -43,6 +43,27 @@
           "test/extension-field-coordinates.py"
         ]
       },
+      "character-hecke-capability-limit": {
+        "differential": false,
+        "paths": [
+          "packages/flint-wasm/test/public-gap-closure.test.mjs",
+          "packages/flint-wasm/test/public-gap-closure-browser.mjs"
+        ]
+      },
+      "gamma1-algebraic-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "packages/flint-wasm/test/algebraic-gamma1-boundaries.test.mjs",
+          "packages/flint-wasm/test/gamma1-modular-forms.test.mjs"
+        ]
+      },
+      "classical-eisenstein-differential": {
+        "differential": true,
+        "paths": [
+          "test/classical-eisenstein-portable.cjs",
+          "packages/flint-wasm/test/gamma1-modular-forms.test.mjs"
+        ]
+      },
       "certified-interval-wasm-differential": {
         "differential": true,
         "paths": [
@@ -1410,9 +1431,9 @@
       "kind": "declared-ffi-resource",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "generated-wasm",
-      "fallback": "declared-ffi-capability-fallback",
-      "wasm_module": "flint",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
@@ -2981,6 +3002,26 @@
         "status": "included"
       },
       "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_full_row_rank_pivots",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
     {
       "id": "ffi:flint:fmpq_matrix_from_fmpz",
@@ -5553,6 +5594,26 @@
       "public_explanation": "The reviewed caller-owned HNF declaration is included in the generated WebAssembly resource closure for the source-transparent stable selector."
     },
     {
+      "id": "ffi:flint:fmpz_matrix_hnf_prefix_into",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded caller-owned HNF prefix operation is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_hnf_transform",
       "kind": "declared-ffi-function",
       "family": "flint",
@@ -5573,6 +5634,26 @@
       "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
     {
+      "id": "ffi:flint:fmpz_matrix_hnf_transform_prefix",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded caller-owned HNF transform is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_lll_transform",
       "kind": "declared-ffi-function",
       "family": "flint",
@@ -5589,6 +5670,26 @@
       "status": "fallback",
       "reviewed": true,
       "review_note": "The caller-owned LLL transform is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_lll_transform_prefix",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded caller-owned LLL transform is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
       "wasm_declared": false,
       "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
@@ -6083,6 +6184,26 @@
       "status": "fallback",
       "reviewed": true,
       "review_note": "The caller-owned SNF operation is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_snf_prefix_into",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded caller-owned SNF operation is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
       "wasm_declared": false,
       "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
@@ -11395,16 +11516,18 @@
         "production-kernel-differential",
         "complex-cubic-native-class-group-differential"
       ],
-      "status": "available",
+      "status": "fallback",
       "reviewed": true,
-      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
-      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "review_note": "The production pack compiles 0 of 1 functions. The remaining 1 functions use their tested same-source dynamic fallback (fmpz-integer-buffer-requires-64-bit-flint-limbs).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 functions.",
       "compiled_coverage": {
-        "compiled_functions": 1,
-        "fallback_functions": 0,
+        "compiled_functions": 0,
+        "fallback_functions": 1,
         "total_functions": 1,
         "production_pack": true,
-        "fallback_reasons": []
+        "fallback_reasons": [
+          "fmpz-integer-buffer-requires-64-bit-flint-limbs"
+        ]
       }
     },
     {
@@ -13509,12 +13632,31 @@
         "src/baselib/dirichlet.py"
       ],
       "tests": [
+        "gamma1-algebraic-wasm-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "Browser algebraic expressions retain exact power-basis coordinates; matrix-produced values use bounded FLINT qqbar_express_in_field through the algebraic reactor. Failure to obtain a certificate is reported, never replaced by approximate coordinates.",
+      "public_explanation": "Browser algebraic expressions retain exact power-basis coordinates; matrix-produced values use bounded FLINT qqbar_express_in_field through the algebraic reactor. Failure to obtain a certificate is reported, never replaced by approximate coordinates."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicElementsFromIntegralCoordinates",
+      "kind": "napi-export",
+      "family": "algebraic",
+      "source": "packages/flint/src/algebraic.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/lib/sagejs/modular_forms/qexp.py"
+      ],
+      "tests": [
         "native-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The Node adapter batches exact cyclotomic materialization; browser execution uses the coefficientwise exact constructor in the same public formula.",
+      "public_explanation": "Exact cyclotomic Eisenstein coefficients remain available through the ordinary Sage.js fallback when the batched Node representation primitive is unavailable."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixPolyEvaluate",
@@ -13537,6 +13679,25 @@
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRightKernel",
+      "kind": "napi-export",
+      "family": "dense-matrix-algorithms",
+      "source": "packages/flint/src/matrix.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/matrix.py"
+      ],
+      "tests": [
+        "native-public-fallback-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
+      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRowBasis",
       "kind": "napi-export",
       "family": "dense-matrix-algorithms",
       "source": "packages/flint/src/matrix.c",
@@ -13585,12 +13746,12 @@
         "algebraic"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "gamma1-algebraic-wasm-differential"
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The browser reduces integral monomials modulo the cyclotomic polynomial using the existing exact coordinate representation, for explicit orders 1 through 4096.",
+      "public_explanation": "The browser reduces integral monomials modulo the cyclotomic polynomial using the existing exact coordinate representation, for explicit orders 1 through 4096."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletBernoulli",
@@ -16798,38 +16959,60 @@
       "kind": "napi-export",
       "family": "modular-symbols",
       "source": "packages/flint/src/p1.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
+      "disposition": "desktop-only",
+      "fallback": "unavailable",
+      "capability_error": "Character Hecke matrices are not yet supported in WebAssembly; use the native Sage.js backend.",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
       "tests": [
-        "modular-symbols-differential"
+        "character-hecke-capability-limit"
       ],
-      "status": "fallback",
+      "status": "desktop-only",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "Native character Hecke arithmetic is supported. The browser recurrence also needs the missing character Hecke matrix backend and is not an independent fallback.",
+      "public_explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
       "kind": "napi-export",
       "family": "modular-symbols",
       "source": "packages/flint/src/p1.c",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-public-operation",
+      "disposition": "desktop-only",
+      "fallback": "unavailable",
+      "capability_error": "Character Hecke matrices are not yet supported in WebAssembly; use the native Sage.js backend.",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
       "tests": [
-        "modular-symbols-differential"
+        "character-hecke-capability-limit"
       ],
-      "status": "fallback",
+      "status": "desktop-only",
       "reviewed": true,
-      "review_note": "The Node bulk power-basis adapter is optional; browser execution uses the exact prime-power Hecke recurrence.",
-      "public_explanation": "Higher-character q-expansions use the exact portable Hecke recurrence when the native bulk power-basis adapter is unavailable."
+      "review_note": "Native character Hecke arithmetic is supported. The browser recurrence also needs the missing character Hecke matrix backend and is not an independent fallback.",
+      "public_explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeSelectedRows",
+      "kind": "napi-export",
+      "family": "modular-symbols",
+      "source": "packages/flint/src/p1.c",
+      "disposition": "desktop-only",
+      "fallback": "unavailable",
+      "capability_error": "Character Hecke matrices are not yet supported in WebAssembly; use the native Sage.js backend.",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/modular.py"
+      ],
+      "tests": [
+        "character-hecke-capability-limit"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "Native character Hecke arithmetic is supported. The browser recurrence also needs the missing character Hecke matrix backend and is not an independent fallback.",
+      "public_explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",
@@ -18221,12 +18404,12 @@
         "src/baselib/modular.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "classical-eisenstein-differential"
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "Native execution retains the FLINT path. The browser uses the same exact divisor-sum formula as an ordinary Python O(prec log prec) sieve in the lazy qexp module, preserving linear, constant, and integral normalization. High-weight Bernoulli computation remains an optimization opportunity, not a claimed native-speed path.",
+      "public_explanation": "Native execution retains the FLINT path. The browser uses the same exact divisor-sum formula as an ordinary Python O(prec log prec) sieve in the lazy qexp module, preserving linear, constant, and integral normalization. High-weight Bernoulli computation remains an optimization opportunity, not a claimed native-speed path."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqMatrix",
@@ -18314,6 +18497,25 @@
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/polynomial.py"
+      ],
+      "tests": [
+        "native-public-fallback-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
+      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyPacked",
+      "kind": "napi-export",
+      "family": "polynomials",
+      "source": "packages/flint/src/addon.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/series.py"
       ],
       "tests": [
         "native-public-fallback-differential"
@@ -20996,6 +21198,25 @@
     },
     {
       "id": "runtime:list_contains",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation.",
+      "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:list_decorate",
       "kind": "runtime-intrinsic",
       "family": "runtime",
       "source": "tools/python/contract.ts",

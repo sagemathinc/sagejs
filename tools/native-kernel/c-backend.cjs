@@ -10,6 +10,9 @@ const {
   generateTaggedFunctions,
 } = require("./tagged-backend.cjs");
 const {
+  generateFmpzFunctions,
+} = require("./fmpz-backend.cjs");
+const {
   fitsInt64,
   generateWordFunctions,
   int64Constant,
@@ -43,6 +46,9 @@ const {
   generateExactCoreRuntime,
   generateExactNodeHelpers,
 } = require("./exact-runtime.cjs");
+const {
+  FMPZ_EXACT_RUNTIME_C_SOURCE,
+} = require("./fmpz-runtime.cjs");
 const {
   GMP_CHECKPOINT_ALLOCATOR_C_SOURCE,
 } = require("./gmp-checkpoint-allocator.cjs");
@@ -84,6 +90,41 @@ function isIntegerBufferType(type) {
 
 function isUInt64BufferType(type) {
   return type === "UInt64Buffer";
+}
+
+/**
+ * Classify target properties that affect the generated isolated C core.
+ *
+ * Packed `IntegerBuffer` slots are arrays of 64-bit words.  The resident fmpz
+ * helpers deliberately borrow those words without allocating or repacking, so
+ * they are valid only when one FLINT limb is also 64 bits.  Keep this predicate
+ * beside the emitter that owns that representation invariant.  Target packers
+ * must call it before presenting a generated core as compilable.
+ */
+function classifyHostCoreTarget(ir, capabilities = {}) {
+  const exact = ir.functions.filter((fn) => fn.kernelKind === "integer");
+  const usesFmpz = exact.some((fn) =>
+    fn.analysis?.backend?.kind === "fmpz"
+  );
+  const usesIntegerBuffers = exact.some((fn) =>
+    fn.params.some((param) => isIntegerBufferType(param.type)) ||
+    fn.locals.some((local) => isIntegerBufferType(local.type))
+  );
+  if (usesFmpz && usesIntegerBuffers && capabilities.flintLimbBits !== 64) {
+    return {
+      supported: false,
+      reason: "fmpz-integer-buffer-requires-64-bit-flint-limbs",
+      requirement: {
+        integerBufferWordBits: 64,
+        flintLimbBits: 64,
+      },
+      actual: {
+        target: capabilities.target ?? null,
+        flintLimbBits: capabilities.flintLimbBits ?? null,
+      },
+    };
+  }
+  return { supported: true };
 }
 
 function exactBufferCType(type) {
@@ -569,6 +610,23 @@ function emitExactOperation(operation, context, indent) {
   }
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
+  }
+  if (operation.kind === "range.validate_step") {
+    const step = exactValue(operation.step, context);
+    const condition = operation.stepType === "Integer"
+      ? `mpz_sgn(${step}) == 0`
+      : `${step} == 0`;
+    return [
+      `${indent}if (${condition})`,
+      `${indent}{`,
+      statusFailure(
+        "range",
+        "range() arg 3 must not be zero",
+        `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+    ].join("\n");
   }
   if (operation.kind === "integer.copy") {
     return `${indent}mpz_set(${target}, ` +
@@ -1379,32 +1437,45 @@ function emitExactStatements(statements, context, indent) {
     }
     if (statement.kind === "loop.range") {
       const index = exactValue(statement.index, context);
-      const bound = exactValue(statement.count, context);
-      const condition = statement.boundIsStop
-        ? `${index} < ${bound}`
-        : `(${index} - UINT64_C(${statement.start})) < ${bound}`;
+      const iterator = exactValue(statement.iterator, context);
+      const start = exactValue(statement.start, context);
+      const stop = exactValue(statement.stop, context);
+      const step = exactValue(statement.step, context);
       lines.push(
-        `${indent}for (${index} = ` +
-          `UINT64_C(${statement.start}); ` +
-          `${condition}; ` +
-          `${index} += ` +
-          `UINT64_C(${statement.step || 1}))`,
+        `${indent}${iterator} = ${start};`,
+        `${indent}while (${iterator} < ${stop})`,
         `${indent}{`,
+        `${indent}    ${index} = ${iterator};`,
+        `${indent}    (void) ${index};`,
         emitExactStatements(statement.body, context, `${indent}    `),
+        `${indent}    if (${step} >= ${stop} - ${iterator})`,
+        `${indent}        break;`,
+        `${indent}    ${iterator} += ${step};`,
         `${indent}}`,
       );
       continue;
     }
     if (statement.kind === "loop.range_exact") {
       const index = exactValue(statement.index, context);
+      const iterator = exactValue(statement.iterator, context);
+      const start = exactValue(statement.start, context);
+      const stop = exactValue(statement.stop, context);
+      const step = exactValue(statement.step, context);
       lines.push(
-        `${indent}mpz_set(${index}, ` +
-          `${exactValue(statement.start, context)});`,
-        `${indent}while (mpz_cmp(${index}, ` +
-          `${exactValue(statement.stop, context)}) < 0)`,
+        `${indent}mpz_set(${iterator}, ${start});`,
+        `${indent}for (;;)`,
         `${indent}{`,
+        `${indent}    if (mpz_sgn(${step}) > 0)`,
+        `${indent}    {`,
+        `${indent}        if (mpz_cmp(${iterator}, ${stop}) >= 0)`,
+        `${indent}            break;`,
+        `${indent}    }`,
+        `${indent}    else if (mpz_cmp(${iterator}, ${stop}) <= 0)`,
+        `${indent}        break;`,
+        `${indent}    mpz_set(${index}, ${iterator});`,
+        `${indent}    (void) ${index};`,
         emitExactStatements(statement.body, context, `${indent}    `),
-        `${indent}    mpz_add_ui(${index}, ${index}, 1);`,
+        `${indent}    mpz_add(${iterator}, ${iterator}, ${step});`,
         `${indent}}`,
       );
       continue;
@@ -1981,7 +2052,7 @@ function resourceFailureRefreshStatements(fn, parameterValue = wrapperValue) {
   );
 }
 
-function emitTaggedWrapper(fn) {
+function emitTaggedWrapper(fn, options = {}) {
   const identifiers = wrapperIdentifierContext(fn);
   const parameterValue = (param) => identifiers.parameter(param);
   const wrapperStatus = identifiers.fresh("sagejs_wrapper_status");
@@ -2156,7 +2227,8 @@ function emitTaggedWrapper(fn) {
     declarations,
   );
   return `
-static napi_value compiled_${fn.name}(napi_env env, napi_callback_info info)
+static napi_value ${options.wrapper || `compiled_${fn.name}`}(
+    napi_env env, napi_callback_info info)
 {
     napi_value args[${Math.max(1, fn.params.length)}];
     size_t argc = ${fn.params.length};
@@ -2186,7 +2258,7 @@ ${cleanup.join("\n")}
 }`;
 }
 
-function emitExactWrapper(fn) {
+function emitExactWrapper(fn, options = {}) {
   const identifiers = wrapperIdentifierContext(fn);
   const parameterValue = (param) => identifiers.parameter(param);
   const wrapperStatus = identifiers.fresh("sagejs_wrapper_status");
@@ -2352,7 +2424,8 @@ function emitExactWrapper(fn) {
   const failureRefresh = resourceFailureRefreshStatements(fn, parameterValue);
   const execution = exactWrapperExecution(
     fn,
-    `native_${fn.name}(&${wrapperStatus}, ${resultArguments.join(", ")}` +
+    `${options.call || `native_${fn.name}`}(&${wrapperStatus}, ` +
+      `${resultArguments.join(", ")}` +
       `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""})`,
     wrapperStatus,
     failureRefresh,
@@ -2360,7 +2433,8 @@ function emitExactWrapper(fn) {
     declarations,
   );
   return `
-static napi_value compiled_${fn.name}_gmp(napi_env env, napi_callback_info info)
+static napi_value ${options.wrapper || `compiled_${fn.name}_gmp`}(
+    napi_env env, napi_callback_info info)
 {
     napi_value args[${Math.max(1, fn.params.length)}];
     size_t argc = ${fn.params.length};
@@ -2391,6 +2465,18 @@ ${cleanup.join("\n")}
 }
 
 function emitExactWrappers(fn) {
+  if (fn.analysis?.backend?.kind === "fmpz") {
+    return [
+      emitExactWrapper(fn, {
+        wrapper: `compiled_${fn.name}`,
+        call: `sagejs_kernel_${fn.name}`,
+      }),
+      emitTaggedWrapper(fn, {
+        wrapper: `compiled_${fn.name}_tagged`,
+      }),
+      emitExactWrapper(fn),
+    ].join("\n\n");
+  }
   return [emitTaggedWrapper(fn), emitExactWrapper(fn)].join("\n\n");
 }
 
@@ -2972,7 +3058,7 @@ typedef struct
 } sagejs_integer_buffer;`;
 }
 
-function generateIntegerBufferCoreSupport() {
+function generateIntegerBufferCoreSupport(includeFmpz = false) {
   return `
 static int sagejs_integer_buffer_index(
     const sagejs_integer_buffer *buffer,
@@ -3002,6 +3088,86 @@ static int sagejs_mpz_integer_buffer_index(
     return mpz_to_int64(index, &small) &&
         sagejs_integer_buffer_index(buffer, small, position);
 }
+${includeFmpz ? `
+#if FLINT_BITS != 64
+#error "resident fmpz IntegerBuffer views require 64-bit FLINT limbs"
+#endif
+
+static int sagejs_fmpz_integer_buffer_index(
+    const sagejs_integer_buffer *buffer,
+    const fmpz_t index,
+    size_t *position)
+{
+    if (!fmpz_fits_si(index))
+        return 0;
+    return sagejs_integer_buffer_index(
+        buffer, (int64_t) fmpz_get_si(index), position);
+}
+
+static void sagejs_integer_buffer_get_fmpz(
+    const sagejs_integer_buffer *buffer,
+    size_t position,
+    fmpz_t result)
+{
+    const int32_t signed_size = buffer->sizes[position];
+    const slong count = signed_size < 0
+        ? (slong) (-(int64_t) signed_size) : (slong) signed_size;
+    if (count == 0)
+    {
+        fmpz_zero(result);
+        return;
+    }
+    fmpz_set_ui_array(result,
+        (const ulong *) (buffer->limbs +
+            position * buffer->word_capacity), count);
+    if (signed_size < 0)
+        fmpz_neg(result, result);
+}
+
+static int sagejs_integer_buffer_set_fmpz(
+    sagejs_native_status *status,
+    sagejs_integer_buffer *buffer,
+    size_t position,
+    const fmpz_t value)
+{
+    const int sign = fmpz_sgn(value);
+    const flint_bitcnt_t bits = fmpz_bits(value);
+    const size_t count = sign == 0 ? 0 :
+        (size_t) (UINT64_C(1) + (bits - 1) / 64);
+    uint64_t *slot = buffer->limbs + position * buffer->word_capacity;
+    if (count > buffer->word_capacity || count > (size_t) INT32_MAX)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "IntegerBuffer word capacity exceeded");
+        return 0;
+    }
+    memset(slot, 0, buffer->word_capacity * sizeof(*slot));
+    if (count != 0)
+    {
+        if (sign > 0)
+        {
+            fmpz_get_ui_array((ulong *) slot, (slong) count, value);
+        }
+        else
+        {
+            uint64_t carry = UINT64_C(1);
+            /* FLINT publishes a negative value in two's-complement form.
+               IntegerBuffer stores a separate sign and unsigned magnitude,
+               so negate the fixed-width limb sequence in place. */
+            fmpz_get_signed_ui_array((ulong *) slot, (slong) count, value);
+            for (size_t limb = 0; limb < count; limb += 1)
+            {
+                const uint64_t inverted = ~slot[limb];
+                slot[limb] = inverted + carry;
+                carry = carry && slot[limb] == 0;
+            }
+        }
+    }
+    buffer->sizes[position] = sign < 0
+        ? -(int32_t) count : (int32_t) count;
+    return 1;
+}
+` : ""}
 
 static void sagejs_integer_buffer_get_mpz(
     const sagejs_integer_buffer *buffer,
@@ -3608,6 +3774,59 @@ function publicCoreSignature(fn, prototype = false) {
 }
 
 function publicCoreFunction(fn) {
+  if (fn.analysis?.backend?.kind === "fmpz") {
+    const declarations = ["    int sagejs_core_ok;"];
+    const initialization = [];
+    const cleanup = [];
+    const conversions = [];
+    const tuple = tupleElementTypes(fn.returnType);
+    const resultTypes = tuple || [fn.returnType];
+    const resultArguments = [];
+    resultTypes.forEach((type, index) => {
+      const suffix = tuple === undefined ? "" : `_${index}`;
+      const output = `sagejs_native_output${suffix}`;
+      if (type !== "Integer") {
+        resultArguments.push(output);
+        return;
+      }
+      const value = `sagejs_fmpz_result${suffix}`;
+      declarations.push(`    fmpz_t ${value};`);
+      initialization.push(`    fmpz_init(${value});`);
+      cleanup.unshift(`    fmpz_clear(${value});`);
+      resultArguments.push(value);
+      conversions.push(`        fmpz_get_mpz(${output}, ${value});`);
+    });
+    const arguments_ = [];
+    for (const param of fn.params) {
+      if (param.type !== "Integer") {
+        arguments_.push(`sagejs_arg_${param.name}`);
+        continue;
+      }
+      const value = `sagejs_core_arg_${cName(param.name)}`;
+      declarations.push(`    fmpz_t ${value};`);
+      initialization.push(
+        `    fmpz_init(${value});`,
+        `    fmpz_set_mpz(${value}, sagejs_arg_${param.name});`,
+      );
+      cleanup.unshift(`    fmpz_clear(${value});`);
+      arguments_.push(value);
+    }
+    return `${publicCoreSignature(fn)}
+{
+${declarations.join("\n")}
+    sagejs_native_status_reset(status);
+${initialization.join("\n")}
+    sagejs_core_ok = fmpz_native_${fn.name}(status, ` +
+      `${resultArguments.join(", ")}` +
+      `${arguments_.length ? `, ${arguments_.join(", ")}` : ""});
+    if (sagejs_core_ok)
+    {
+${conversions.join("\n")}
+    }
+${cleanup.join("\n")}
+    return sagejs_core_ok;
+}`;
+  }
   if (fn.analysis?.backend?.kind === "tagged") {
     const declarations = ["    int sagejs_core_ok;"];
     const initialization = [];
@@ -3885,6 +4104,7 @@ function generateHostCore(ir, options = {}) {
     fn.kernelKind === "prime-field-matrix"
   );
   const functionMap = new Map(exact.map((fn) => [fn.name, fn]));
+  const fmpz = generateFmpzFunctions(exact);
   const tagged = generateTaggedFunctions(exactEntries);
   const wordFunctions = exactEntries.filter((fn) =>
     ![fn.returnType, ...fn.params.map((param) => param.type)].some((type) =>
@@ -3910,13 +4130,18 @@ function generateHostCore(ir, options = {}) {
     generateStatusRuntime(),
     exact.length > 0 ? GMP_CHECKPOINT_ALLOCATOR_C_SOURCE : "",
     exact.length > 0 ? generateExactCoreRuntime() : "",
+    fmpz.selected.length > 0 ? FMPZ_EXACT_RUNTIME_C_SOURCE : "",
     usesInt64Buffers ? generateInt64BufferCoreSupport() : "",
-    usesIntegerBuffers ? generateIntegerBufferCoreSupport() : "",
+    usesIntegerBuffers
+      ? generateIntegerBufferCoreSupport(fmpz.selected.length > 0)
+      : "",
     exact.map((fn) => internalSignature(fn, true)).join("\n"),
+    fmpz.prototypes,
     word.prototypes,
     tagged.prototypes,
     word.functions,
     tagged.functions,
+    fmpz.functions,
     ...exact.map((fn) => emitExactInternalFunction(fn, functionMap)),
     ...exactEntries.map(publicCoreFunction),
     ...floats.map(emitFloat64CoreFunction),
@@ -3944,6 +4169,7 @@ function generateHostCore(ir, options = {}) {
 #endif
 
 ${exact.length > 0 ? "#include <gmp.h>" : ""}
+${fmpz.selected.length > 0 ? "#include <flint/fmpz.h>" : ""}
 ${fields.some((fn) => fn.kernelKind === "real-field") ? "#include <mpfr.h>" : ""}
 ${fields.some((fn) => fn.kernelKind === "complex-field") ? "#include <mpc.h>" : ""}
 ${primeSources.length + primeFields.length > 0
@@ -4104,6 +4330,10 @@ static int get_precision(
     return fn.kernelKind === "integer"
       ? [
         ordinary,
+        ...(fn.analysis?.backend?.kind === "fmpz" ? [
+          `        {${cString(`${fn.name}$tagged`)}, NULL, ` +
+            `compiled_${fn.name}_tagged, NULL, NULL, NULL, napi_default, NULL}`,
+        ] : []),
         `        {${cString(`${fn.name}$gmp`)}, NULL, ` +
           `compiled_${fn.name}_gmp, NULL, NULL, NULL, napi_default, NULL}`,
       ]
@@ -4245,6 +4475,7 @@ function generateArtifacts(ir, options = {}) {
 module.exports = {
   NATIVE_ABI_VERSION,
   RESOURCE_FINALIZATION_CAPABILITY,
+  classifyHostCoreTarget,
   generateArtifacts,
   generateC,
   generateHostCore,

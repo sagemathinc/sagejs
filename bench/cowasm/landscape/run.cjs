@@ -201,7 +201,7 @@ function sourceHashes() {
     ["landscape/c.c", join(directory, "c.c")],
     ["native/scalar_exact.py", join(directory, "..", "native", "scalar_exact.py")],
     ["native/scalar_float.py", join(directory, "..", "native", "scalar_float.py")],
-    ["src/nt.py", join(directory, "..", "src", "nt.py")],
+    ["src/cowasm_nt.py", join(directory, "..", "src", "cowasm_nt.py")],
     ["src/native_number_theory.py", join(directory, "..", "src", "native_number_theory.py")],
     ["src/numbers.py", join(directory, "..", "src", "numbers.py")],
     ["src/fib.py", join(directory, "..", "src", "fib.py")],

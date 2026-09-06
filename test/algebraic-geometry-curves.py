@@ -49,3 +49,14 @@ try:
     raise AssertionError("geometric genus must not be guessed")
 except NotImplementedError as error:
     assert "normalization" in str(error)
+
+for ambient in [A2, P2]:
+    for constant in [0, 1, 2]:
+        try:
+            Curve(ambient.coordinate_ring()(constant))
+            raise AssertionError("constant equations do not define plane curves")
+        except ValueError as error:
+            assert "nonconstant" in str(error)
+
+# The line at infinity has an empty affine patch, not a degree-zero curve.
+assert Curve(t).affine_patch(2).is_empty()

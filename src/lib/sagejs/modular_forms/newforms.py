@@ -209,14 +209,16 @@ class NormalizedNewform(sage.Element):
                     ground_field,
                 )
         identity = _global("identity_matrix")(ground_field, self._dimension)
-        powers = [identity]
+        # The primitive polynomial is irreducible of degree d, so every
+        # nonzero row is cyclic. A d-by-d Krylov basis determines elements of
+        # K[primitive], without storing d full d-by-d matrix powers.
+        rows = [identity.row(0)]
         for _index in range(1, self._dimension):
-            powers.append(powers[-1] * primitive)
-        self._powers = runtime.math_tuple(powers)
-        self._power_rows = _global("matrix")(
-            ground_field, [power.list() for power in powers]
+            rows.append(rows[-1] * primitive)
+        self._cyclic_basis = _global("matrix")(
+            ground_field, [row.list() for row in rows]
         )
-        if self._power_rows.rank() != self._dimension:
+        if self._cyclic_basis.rank() != self._dimension:
             raise ArithmeticError("primitive Hecke powers are linearly dependent")
         self._coefficient_cache = runtime.map()
         self._coefficient_cache.set(1, self._coefficient_field(1))
@@ -254,11 +256,20 @@ class NormalizedNewform(sage.Element):
     def hecke_constituent(self) -> Any:
         return self._constituent
 
+    def abelian_variety(self) -> Any:
+        r"""Return the connected quotient $A_f$ attached to this newform."""
+        return _global("AbelianVariety")(self)
+
     def _coordinates_for_operator(self, operator: Any) -> Any:
         ground_field = self._parent.base_ring()
-        solution = self._power_rows.solve_left(
-            _global("vector")(ground_field, operator.list())
-        )
+        # Commutation and agreement on a cyclic row imply agreement on the
+        # whole module. Preserve the old full-matrix membership check: an
+        # arbitrary matrix cannot masquerade as a Hecke algebra element by
+        # merely sharing its first row.
+        primitive = self._primitive_operator
+        if operator * primitive != primitive * operator:
+            raise ArithmeticError("operator is not in the primitive Hecke algebra")
+        solution = self._cyclic_basis.solve_left(operator.row(0))
         return _global("vector")(ground_field, solution.list())
 
     def hecke_eigenvalue(self, index: Any) -> Any:
@@ -467,10 +478,10 @@ class NewformCertificate:
             coordinates = form._coordinates_for_operator(
                 form.hecke_constituent().hecke_matrix(index)
             )
-            replay = form._powers[0] * coordinates[0]
-            for exponent in range(1, form._dimension):
-                replay += form._powers[exponent] * coordinates[exponent]
-            if replay != form.hecke_constituent().hecke_matrix(index):
+            # _coordinates_for_operator verifies commutation; equality on
+            # this cyclic row then certifies equality of the full matrices.
+            replay = coordinates * form._cyclic_basis
+            if replay != form.hecke_constituent().hecke_matrix(index).row(0):
                 return False
             if form._dimension == 1:
                 expected = coordinates[0]
@@ -521,7 +532,15 @@ def _descended_character(character: Any, lower_level: int) -> Any:
     raise ArithmeticError("could not descend the Dirichlet character")
 
 
-def _old_q_expansion_matrix(space: Any, precision: int) -> Any:
+def _old_q_expansion_matrix(
+    space: Any,
+    precision: int,
+    prime: Any = None,
+) -> Any:
+    if space.group()._family == "Gamma1":
+        from . import gamma1
+
+        return gamma1.q_expansion_basis_matrix(space, precision, "Old")
     rows: list[list[Any]] = []
     level = space.level()
     coefficient_ring = space.base_ring()
@@ -531,9 +550,16 @@ def _old_q_expansion_matrix(space: Any, precision: int) -> Any:
     character = ambient.character()
     has_character = runtime.reflect.get(ambient, "_character") is not None
     conductor = runtime.number(character.conductor()) if has_character else 1
-    for prime, _exponent in sage.factor(level):
-        prime = runtime.number(prime)
-        lower_level = level // prime
+    selected_prime = None
+    if prime is not None:
+        selected_prime = _nonnegative(prime, "old-subspace prime")
+        if not sage.is_prime(selected_prime) or level % selected_prime != 0:
+            raise ValueError("p must be a prime divisor of the level")
+    for factor_prime, _exponent in sage.factor(level):
+        factor_prime = runtime.number(factor_prime)
+        if selected_prime is not None and factor_prime != selected_prime:
+            continue
+        lower_level = level // factor_prime
         if lower_level % conductor != 0:
             continue
         defining_data = (
@@ -550,7 +576,7 @@ def _old_q_expansion_matrix(space: Any, precision: int) -> Any:
         )
         algorithm = "formulas" if lower_level == 1 else "modular_symbols"
         for form in lower.q_expansion_basis(precision, algorithm=algorithm):
-            for factor in [1, prime]:
+            for factor in [1, factor_prime]:
                 inflated = form._inflate(factor, precision)
                 rows.append(
                     [coefficient_ring(inflated[index]) for index in range(precision)]
@@ -568,9 +594,14 @@ class OldModularFormsSubspace(sage.Parent):
         self._kind = "OldModularFormsSubspace"
         self._subspace_kind = "Old"
         self._cusp_space = cusp_space
-        self._dimension = _old_q_expansion_matrix(
-            cusp_space, _sturm_precision(cusp_space)
-        ).rank()
+        if cusp_space.group()._family == "Gamma1":
+            from . import gamma1
+
+            self._dimension = gamma1.descended_dimension(cusp_space, "Old")
+        else:
+            self._dimension = _old_q_expansion_matrix(
+                cusp_space, _sturm_precision(cusp_space)
+            ).rank()
         self._classical_qexp_basis_cache = runtime.map()
         self._classical_hecke_cache = runtime.map()
         runtime.object.freeze(self)
@@ -780,14 +811,20 @@ class NewOldDecompositionCertificate:
 def modular_forms_new_subspace(space: Any, prime: Any = None) -> Any:
     if getattr(space, "_subspace_kind", None) == "New" and prime is None:
         return space
+    if space.group()._family == "Gamma1":
+        from . import gamma1
+
+        dimension = gamma1.descended_dimension(space, "New", prime)
+        answer = space.__class__(space.ambient_space(), "New", dimension)
+        if prime is not None:
+            answer._new_prime = _nonnegative(prime, "new prime")
+        return answer
     source_symbols = space._modular_symbols_cusp_space()
     try:
         symbols = source_symbols.new_submodule(prime)
     except NotImplementedError:
-        if prime is not None:
-            raise
         precision = _sturm_precision(space)
-        old_matrix = _old_q_expansion_matrix(space, precision)
+        old_matrix = _old_q_expansion_matrix(space, precision, prime)
         selected = []
         for constituent in source_symbols.decomposition(anemic=False):
             expansions = constituent.q_expansion_basis(precision)
@@ -846,6 +883,10 @@ def modular_forms_old_subspace(space: Any) -> OldModularFormsSubspace:
 def modular_forms_newforms(space: Any, names: str = "a") -> list[NormalizedNewform]:
     if not isinstance(names, str) or len(names) == 0:
         raise TypeError("newform generator name must be a nonempty string")
+    if space.group()._family == "Gamma1":
+        from . import gamma1
+
+        return gamma1.newforms(space, names)
     new_space = modular_forms_new_subspace(space)
     constituents = new_space._modular_symbols_cusp_space().decomposition(anemic=False)
     answer = []

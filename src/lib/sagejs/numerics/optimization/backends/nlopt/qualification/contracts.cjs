@@ -53,6 +53,27 @@ function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
+// A production build report records both the canonical toolchain recipe and
+// the host which executed that recipe.  Host-builder provenance is important
+// evidence, but it is not a portable source/artifact identity: reproducible
+// Linux and macOS builds intentionally have different builder digests.  Bind
+// qualification receipts to every report field except that local provenance.
+// The raw report remains available through buildReportBinding for auditing.
+function portableBuildReportBinding(report) {
+  assertObject(report, "NLopt build report");
+  const portable = structuredClone(report);
+  const toolchain = assertObject(portable.toolchain, "NLopt build report toolchain");
+  const builder = assertObject(toolchain.builder, "NLopt build report builder");
+  exactKeys(builder, ["identity", "platform"], "NLopt build report builder");
+  assertSha(builder.identity, "NLopt build report builder identity");
+  if (typeof builder.platform !== "string" || builder.platform.length === 0) {
+    fail("NLopt build report builder platform must be a non-empty string");
+  }
+  delete toolchain.builder;
+  const bytes = Buffer.from(canonicalJson(portable));
+  return { sha256: sha256(bytes), bytes: bytes.length };
+}
+
 function assertSha(value, label) {
   if (typeof value !== "string" || !SHA256.test(value)) fail(`${label} must be a SHA-256 digest`);
 }
@@ -512,6 +533,7 @@ function loadCurrentContext({ root, candidate, manifestPath, artifactPath, build
   const sourceLock = readJson(path.join(packageRoot, "source-lock.json"), "NLopt source lock");
   const license = regularBytes(path.join(packageRoot, "licenses/COPYING"), "NLopt license");
   const build = readJson(buildReportPath, "NLopt build report");
+  const portableBuild = portableBuildReportBinding(build.value);
   const artifact = regularBytes(artifactPath, "NLopt Wasm artifact");
   if (build.value.schema !== "sagejs.numerical-nlopt-build/v1" ||
       canonicalJson(build.value.methods) !== canonicalJson(["nlopt-nelder-mead"]) ||
@@ -609,7 +631,7 @@ function loadCurrentContext({ root, candidate, manifestPath, artifactPath, build
       revision: build.value.source.revision,
       source_lock_sha256: sourceLock.sha256,
       source_closure_sha256: build.value.source_closure.sha256,
-      build_report_sha256: build.sha256,
+      build_report_sha256: portableBuild.sha256,
     },
     publicSemantics: { ...manifest.public_semantics_bundle },
     tooling: { ...manifest.qualification_tooling_bundle },
@@ -1344,6 +1366,7 @@ module.exports = {
   formattedJson,
   loadCurrentContext,
   parseJsonText,
+  portableBuildReportBinding,
   readJson,
   sha256,
   validateCaseReceipt,

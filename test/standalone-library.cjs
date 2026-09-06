@@ -8,6 +8,7 @@ const {
   BASELIB_STANDALONE_CACHE_MODULES,
   BASELIB_STANDALONE_MODULES,
   MATRIX_STANDALONE_MODULES,
+  GROEBNER_STANDALONE_MODULES,
   moduleClosure,
 } = require("../tools/standalone-library.cjs");
 
@@ -20,6 +21,14 @@ test("matrix standalone modules follow literal lazy imports", () => {
     "sagejs.kernels.matrix.dense_word_prime_flint",
   ]) {
     assert(MATRIX_STANDALONE_MODULES.includes(name), name);
+  }
+});
+
+test("standalone ideal operations include the new lazy geometry helpers", () => {
+  for (const name of ["ideal_operations", "hilbert", "zero_dimensional"]) {
+    assert(GROEBNER_STANDALONE_MODULES.includes(
+      `sagejs.polynomial_algorithms.${name}`,
+    ));
   }
 });
 

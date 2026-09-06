@@ -9,7 +9,10 @@ CertifiedFormulaSubspace: Any
 CertifiedEtaProduct: Any
 CertifiedModularForm: Any
 ClassicalModularFormElement: Any
+ClassicalModularFormsDiamondOperator: Any
 ClassicalModularFormsHeckeOperator: Any
+Gamma1CharacterComponent: Any
+Gamma1DescentCertificate: Any
 EtaProductCertificate: Any
 ExactNebentypus: Any
 FormulaAmbientComparisonCertificate: Any
@@ -186,7 +189,13 @@ _HALF_INTEGRAL_EXPORTS = [
 
 _OBJECT_LAYER_EXPORTS = [
     "ClassicalModularFormElement",
+    "ClassicalModularFormsDiamondOperator",
     "ClassicalModularFormsHeckeOperator",
+]
+
+_GAMMA1_EXPORTS = [
+    "Gamma1CharacterComponent",
+    "Gamma1DescentCertificate",
 ]
 
 __all__ = [
@@ -194,7 +203,10 @@ __all__ = [
     "CertifiedEtaProduct",
     "CertifiedModularForm",
     "ClassicalModularFormElement",
+    "ClassicalModularFormsDiamondOperator",
     "ClassicalModularFormsHeckeOperator",
+    "Gamma1CharacterComponent",
+    "Gamma1DescentCertificate",
     "EtaProductCertificate",
     "ExactNebentypus",
     "FormulaAmbientComparisonCertificate",
@@ -344,6 +356,10 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         from . import object_layer
 
         return getattr(object_layer, name)
+    if name in _GAMMA1_EXPORTS:
+        from . import gamma1
+
+        return getattr(gamma1, name)
     if name in ["FiniteHeckeSet", "SupersingularFiniteHeckeSet", "finite_hecke_set"]:
         from . import finite_hecke
 

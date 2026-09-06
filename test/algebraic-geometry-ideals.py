@@ -68,3 +68,13 @@ left_points = {repr(point) for point in left.variety()}
 right_points = {repr(point) for point in right.variety()}
 union_points = {repr(point) for point in union.variety()}
 assert union_points == left_points.union(right_points)
+
+# A sparse high-degree ideal must not allocate a huge dense numerator first.
+from sagejs.polynomial_algorithms.hilbert import _taylor_numerator
+
+assert _taylor_numerator([(2, 0), (0, 3)], 2) == [1, 0, -1, -1, 0, 1]
+try:
+    _taylor_numerator([(10**12, 0)], 2)
+    raise AssertionError("dense Hilbert coefficients must be bounded before allocation")
+except OverflowError as error:
+    assert "coefficient limit" in str(error)

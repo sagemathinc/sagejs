@@ -81,3 +81,22 @@ try:
     raise AssertionError("zero-variable coordinate rings are not implemented")
 except NotImplementedError as error:
     assert "zero-variable polynomial-ring" in str(error)
+
+# Constructing unrelated spaces must not evict a live mathematical parent.
+live_affine = AffineSpace(QQ, 2, names=("live_x", "live_y"))
+live_projective = ProjectiveSpace(QQ, 2, names=("live_r", "live_s", "live_t"))
+affine_point = live_affine(1, 2)
+projective_point = live_projective(1, 2, 3)
+for index in range(140):
+    AffineSpace(QQ, 2, names=("other_x" + str(index), "other_y" + str(index)))
+    ProjectiveSpace(
+        QQ,
+        2,
+        names=("other_r" + str(index), "other_s" + str(index), "other_t" + str(index)),
+    )
+assert AffineSpace(QQ, 2, names=("live_x", "live_y")) is live_affine
+assert ProjectiveSpace(QQ, 2, names=("live_r", "live_s", "live_t")) is live_projective
+assert affine_point == AffineSpace(QQ, 2, names=("live_x", "live_y"))(1, 2)
+assert projective_point == ProjectiveSpace(QQ, 2, names=("live_r", "live_s", "live_t"))(
+    1, 2, 3
+)

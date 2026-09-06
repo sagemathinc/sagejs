@@ -127,8 +127,62 @@ This is an expansion of working infrastructure, not a new conformance effort:
   size budgets, and the source-transparent native architecture already provide
   the controls needed to keep compatibility work from bloating releases.
 
-The first implementation task is therefore to generalize and connect these
-assets while preserving their current guarantees.
+Extend these assets only as needed to deliver the next useful, tested slice.
+Generalizing the harness is a means to improve Python, not a prerequisite for
+every runtime fix or package measurement.
+
+### First implementation checkpoint and lessons
+
+The first implementation cycle has already produced separate PRs for language
+and object-model regressions ([#117](https://github.com/sagemathinc/sagejs/pull/117)),
+a behavior-gated warm-performance laboratory
+([#119](https://github.com/sagemathinc/sagejs/pull/119)), native sequence slicing
+([#120](https://github.com/sagemathinc/sagejs/pull/120)), and dictionary fast paths
+([#124](https://github.com/sagemathinc/sagejs/pull/124)). These are delivered PR
+milestones, not a claim that every PR is merged or the program is complete.
+
+- The 506 exact MicroPython comparisons and two reviewed GC differences were
+  validated against CPython **3.14.4**. This is a bounded language corpus, not
+  qualification of the later suite/package matrix or the proposed 3.14.7 pin.
+- Initial measurements indicate roughly 24-fold faster full-list slicing and
+  9-fold faster small dictionary construction than their earlier Sage.js
+  implementations. The comparison data are provisional; remaining CPython
+  gaps stay visible, and formal confirmation still follows the policy below.
+- These gains remove shared allocation/dispatch costs while preserving
+  generic and subclass behavior. They justify investigating common runtime
+  mechanisms before assuming a JavaScript performance ceiling.
+- The performance laboratory currently covers warm workloads. Separate cold
+  CLI, compilation, import, and first-call scopes remain work to do.
+- PR [#133](https://github.com/sagemathinc/sagejs/pull/133) binds the MicroPython
+  baseline to source and byte-preserving execution evidence, explicitly invokes
+  the source launcher, and records a finite set of reviewed GC outcomes. Its
+  fresh gate passed 506 exact comparisons and two reviewed differences. This
+  is not yet the general multi-suite evidence engine.
+- Broad build-receipt invalidation and tests observing in-progress compiler
+  output caused expensive rebuilds and misleading failures. Improving the
+  edit-test feedback loop is now an early enabling milestone.
+- Build-receipt v2 binds complete compiler, tool, vendor, module-cache, and
+  runtime-cache inventories and digests, plus the native pack when installed.
+  Native-only refresh must preserve the earlier source-output bindings. Old
+  existence-only receipts require rebuilding; they must not be upgraded by
+  hashing whatever artifacts happen to be present. Focused synthetic tests
+  cover tampering, missing/added outputs, links, and refresh refusal. This is
+  an integrity prerequisite, not completion of generation locking, mid-build
+  source-change detection, dependency identity, or narrower invalidation.
+- Build-receipt v3 separates a conservative artifact-input fingerprint from
+  the full validation-workspace fingerprint. Audited test, documentation, and
+  baseline edits can reuse byte-verified compiler outputs; validation still
+  records and checks its own complete before/after workspace. Numerical
+  publication's manifest-reviewed test files remain build inputs, as do
+  unknown paths, source docstrings, generators, and parser submodule contents.
+  Native refresh preserves the original compiler-build workspace lineage.
+  Old receipts still require a genuine build. This is narrower invalidation,
+  not a claim to bind every installed dependency or source-symlink referent,
+  detect mid-build edits, or safely publish concurrent build generations.
+
+Use this checkpoint to guide sequencing, not as a permanent status dashboard.
+Current claims must link the exact revisions and receipts; consult
+`bench/python-compat/README.md` for the measurement scope and remaining cliffs.
 
 ## Pinned upstream inputs
 
@@ -155,17 +209,21 @@ not match. CI and release artifacts must not include the more than 2 GB of
 upstream Git checkouts.
 
 The pins above are bootstrap choices, not permanent claims that old releases
-are ideal. Updating a suite is an explicit reviewed change with a generated
-case diff and a fresh baseline.
+are ideal or that every oracle has already been qualified. Keep the actually
+executed interpreter version in each receipt. Adopting a newer reference,
+including moving the existing 3.14.4 evidence to the proposed 3.14.7 oracle,
+requires an explicit reviewed change, a generated case diff, and a fresh
+baseline; never relabel historical measurements.
 
 ## What to take from each suite
 
 ### MicroPython
 
-Keep the complete existing differential corpus and its strict raw-outcome
-fingerprint rule. It is exceptionally good at short programs involving basic
-syntax, numeric operations, containers, functions, classes, generators, and
-exceptions. It should remain the fast, broad language smoke gate.
+Keep the complete existing differential corpus and strengthen its status-only
+baseline checks to enforce the raw-outcome fingerprint rule below. It is
+exceptionally good at short programs involving basic syntax, numeric
+operations, containers, functions, classes, generators, and exceptions. It
+should remain the fast, broad language smoke gate.
 
 Do not broaden Sage.js's emulation of deterministic garbage collection merely
 to turn the two reviewed differences green.
@@ -477,6 +535,36 @@ agent workflows. One descriptor or argument-binding correction which unblocks
 traitlets, dataclasses, decorators, and dozens of upstream cases outranks four
 isolated compatibility shims.
 
+### Delivery loop: correctness, performance, and applications together
+
+Treat the numbered phases below as workstreams with acceptance gates, not a
+waterfall. Start performance and representative package workflows immediately;
+do not wait for all upstream suites, all runner types, or full package-suite
+qualification. Carry a small negative-diagnostics corpus alongside them.
+
+Repeat this loop in small independently reviewable PRs:
+
+1. Select a bounded upstream tranche or an observed high-value workflow cliff.
+2. Reproduce its behavior with exact source, oracle, and artifact identities.
+3. Reduce the defect and identify the shared runtime/compiler mechanism.
+4. Fix the general rule, retaining fallback, subclass, mutation, and error
+   behavior as applicable.
+5. Run connected semantic regressions and measure both the isolated mechanism
+   and a relevant real workflow. Report no application gain if none is shown.
+6. Record remaining limitations, validate the change, commit, and push the PR.
+
+Do not require a speedup from every correctness fix or put every benchmark in
+every PR gate. Do require explicit performance consideration for common hot
+paths, and make semantic, performance, and workflow evidence independently
+visible. A fast path which shrinks a cliff without closing it is useful, but
+the remaining cliff remains open.
+
+After the evidence foundation and first RustPython tranche, calls, argument
+binding, bound methods, and instance construction are strong candidates for
+the next shared-mechanism investigations. Confirm their profiles and package
+impact before selecting a particular optimization; this is a priority
+hypothesis, not permission to weaken the Python object model.
+
 ## Intentional-difference policy
 
 An intentional difference requires a checked record with:
@@ -510,6 +598,15 @@ large” are backlog explanations, not intentional differences.
 Replace suite-specific orchestration with a manifest-driven engine while
 retaining the existing MicroPython command as a thin compatibility entry point
 until the new engine has exact report parity.
+
+Build the minimum rigorous slice first: provenance and license hashes, exact
+oracle/artifact identity, bounded execution, raw outcomes, explicit reviewed
+dispositions, and synthetic tests that reject changed failures. Migrate the
+existing corpus with reviewed parity, then add an assertion runner for the
+first selected RustPython cases. Do not wait for every runner, a comprehensive
+dashboard, automatic minimization, or complete inventories to ship that slice.
+Add each adapter or reporting abstraction when a selected case needs it. This
+staging does not relax isolation or evidence requirements for adopted cases.
 
 Proposed layout:
 
@@ -641,6 +738,14 @@ stating the Python language version it targets. Accept `py3-none-any` artifacts
 which satisfy the declared version; reject CPython ABI and incompatible native
 wheel tags explicitly.
 
+Land truthful identity and a compact human/machine-readable capability guide
+early, alongside the first useful corpus expansion. Start structured errors
+with representative syntax, import, and runtime failures; expand callbacks and
+other contexts incrementally. Users and agents should not have to wait for the
+full diagnostics workstream to discover that this is not CPython or understand
+a known unsupported facility. Existing packaging support is the starting point,
+not something to replace wholesale.
+
 ### Isolation and security
 
 Upstream tests are pinned code, but the runner must still behave like a safe
@@ -719,6 +824,37 @@ cases, P0/P1 blockers, and slow outliers. Full traces and machine-readable JSON
 belong in report files. A newly passing case should fail baseline checking until
 reviewed so that a latent wrong-result or weaker diagnostic is not silently
 blessed.
+
+### Fast and trustworthy build/test feedback
+
+Measure the development loop as well as execution speed. Record time spent
+compiling, validating, and waiting, and eliminate redundant rebuilds before
+scaling the corpus. Start with the existing build receipts and caches rather
+than introducing another independent build system.
+
+- Separate artifact freshness from test/corpus/policy freshness. A test-only
+  or documentation-only edit should rerun its relevant checks without
+  recompiling an unchanged compiler/runtime. If documentation is an input to
+  a generated artifact, rebuild that affected artifact, not everything.
+- Derive cache identity from the actual source, generators, configuration,
+  dependencies, and toolchain used. Retain full source/test identities in
+  validation receipts; narrower artifact invalidation must not erase evidence.
+- Publish compiler/runtime generations atomically or coordinate readers with
+  build completion. A failed or interrupted build must not expose partial or
+  mixed-generation outputs as a usable successful build, including on Windows.
+- Allow explicit read-only diagnosis of an existing artifact, naming its hash
+  and its mismatch with the current source when applicable. Such a report is
+  not a current-source qualification gate and cannot bless a release baseline.
+- Batch related edits before expensive validation; do not run tests against
+  compiler files while self-compilation is replacing them. Show whether each
+  phase is building, testing, or reusing verified artifacts and explain misses.
+
+Acceptance includes synthetic invalidation tests: no-op/docs/test-only edits
+reuse unaffected artifacts, actual compiler/dependency changes invalidate the
+right artifacts, stale qualification fails, and interrupted/concurrent builds
+cannot be mistaken for success. Record before/after edit-test timings. Do not
+solve this problem by disabling receipts, relaxing gates, or refreshing a
+receipt for artifacts which were never rebuilt from their changed inputs.
 
 ## From failures to small, durable fixes
 
@@ -820,6 +956,15 @@ test time, and loaded size. One end-to-end workflow remains alongside the full
 suite because passing internal unit tests does not prove package installation
 and public use.
 
+Begin representative workflow probes before full-suite qualification. Keep a
+small pinned set covering traitlets/ipywidgets import and object construction,
+decorator/dataclass-heavy code, JSON and collection processing, and multi-file
+imports. Exercise actual operations and observable results, not just imports.
+Pair relevant primitive optimizations with these probes and report cold
+import, first useful operation, and warm operation separately. A passing probe
+does not upgrade a package to `package-qualified`; the full selected suite and
+host receipts are still required for that claim.
+
 ## Performance program
 
 Correctness suites are valuable performance workloads only after both runtimes
@@ -844,6 +989,12 @@ Separate at least these costs:
 - cache bytes, shipped source bytes, SEA bytes, and browser compressed bytes;
   and
 - latency under Node, SEA, and browser/Wasm where applicable.
+
+For container operations and other size-sensitive paths, include a small
+input-size sweep and allocation measurements where feasible. A single ratio
+can hide an accidental quadratic algorithm or allocation pressure that appears
+only at larger sizes. Keep these diagnostic measurements distinct from the
+uninstrumented timing used to qualify a performance claim.
 
 Report both absolute time and comparison ratio. Ratios become meaningless for
 microsecond baselines, while a small ratio can still hide multi-second user
@@ -976,6 +1127,13 @@ accepting a program says nothing about safe or terminating execution.
 
 ## Phased implementation
 
+The phase numbers identify scope and completion gates, not mandatory serial
+execution. Phase 0 and a minimal Phase 1 enable the first adoption loop. Start
+build-feedback improvements, identity/basic diagnostics (Phase 5), real-package
+probes (Phase 6), and performance work (Phase 7) during that loop. Broaden each
+workstream as evidence warrants. No early PR must complete the whole program,
+and no early milestone substitutes for the primary definition of done.
+
 ### Phase 0 — Freeze policy, provenance, and current evidence
 
 1. Approve the public positioning text and intentional-difference policy.
@@ -983,10 +1141,13 @@ accepting a program says nothing about safe or terminating execution.
    and Python hot-path results without changing behavior.
 3. Pin the CPython 3.14, PyPy, RustPython, GraalPy, and IronPython revisions
    and exact applicable licenses above.
-4. Audit `sys.implementation`, language-version reporting, environment markers,
-   and wheel tags for truthfulness.
+4. Audit and correct `sys.implementation`, language-version reporting,
+   environment markers, and wheel tags for truthfulness; publish the first
+   concise capability guide without waiting for full diagnostics coverage.
 5. Define capability names and the three-axis semantic/disposition/performance
    vocabulary.
+6. Capture build/edit-test timing and establish the artifact-versus-validation
+   freshness contract; implement its first safe feedback-loop improvement.
 
 Acceptance:
 
@@ -996,18 +1157,23 @@ Acceptance:
 - the public statement distinguishes Python language compatibility from
   CPython implementation identity.
 
-### Phase 1 — Build the unified compatibility engine
+### Phase 1 — Grow the unified compatibility engine in useful slices
 
 1. Add manifest/schema parsing, isolated execution, CPython oracle capture,
    baselines, filtering, sharding, and JSON reports.
-2. Register the existing MicroPython corpus without weakening its comparison or
-   intentional-difference fingerprints.
+2. Bind existing MicroPython outcomes and reviewed differences to source,
+   oracle, and raw-result fingerprints, then register the corpus with exact
+   reviewed parity. Reject status-only exceptions once migrated.
 3. Add program, assertion, syntax, selected unittest/pytest, package fixture,
    persistent session, and typed-JSON runners.
 4. Add capability-aware environment isolation and process-tree cleanup.
 5. Add explain and baseline-diff commands with concise console output.
 6. Keep old commands as thin entry points only until output/result parity is
    verified, then use the greenfield rule to remove duplicate internals.
+
+The first delivery boundary is fingerprinted MicroPython parity plus the
+program/assertion runner needed by the initial RustPython tranche. The other
+runner types are later slices of this phase, not blockers for Phase 2.
 
 Acceptance:
 
@@ -1016,6 +1182,10 @@ Acceptance:
   each fail a synthetic baseline test;
 - runner self-tests pass on Linux and Windows path/process conventions; and
 - filtered local diagnosis does not require a full compiler rebuild.
+
+Complete the fast-feedback contract above before expanding expensive routine
+gates across more suites; diagnostic convenience must preserve source/artifact
+qualification boundaries.
 
 ### Phase 2 — Adopt RustPython's compact snippets
 
@@ -1083,6 +1253,9 @@ Acceptance:
 
 ### Phase 5 — Make failures excellent
 
+Start the identity/capability guide and small syntax/import/runtime negative
+corpus during Phases 0–2. This phase's full gate extends that early contract.
+
 1. Establish the negative diagnostics corpus.
 2. Correct source spans, exception translation/chaining, import errors, and
    async/callback tracebacks.
@@ -1103,6 +1276,9 @@ Acceptance:
 
 ### Phase 6 — Qualify standard-library and package value
 
+Start meaningful public-workflow probes and their timings during the first
+adoption loop; full-suite breadth below follows demonstrated package value.
+
 1. Generate the stdlib support-tier table and import dependency graph.
 2. Use real package failures to select high-centrality stdlib work.
 3. Expand each current smoke workflow into a meaningful upstream test subset.
@@ -1120,6 +1296,10 @@ Acceptance:
 - startup, source, browser, SEA, and retained-memory budgets remain green.
 
 ### Phase 7 — Turn compatibility workloads into a performance engine
+
+This is an ongoing workstream, not the seventh step to begin. Reuse the
+delivered warm-workload laboratory and primitive fixes; next add package-level
+and cold/import/first-call evidence rather than rebuilding the dashboard.
 
 1. Add behavior-gated phase timings and warm/cold execution modes.
 2. Implement the 5-fold watch, 10-fold/default, interactive-latency, 50-fold
@@ -1259,6 +1439,14 @@ Mitigation: separate raw outcome from reviewed disposition and bind every
 exception to source/oracle/outcome fingerprints. Newly green is review-worthy,
 not automatically accepted.
 
+### Infrastructure and rebuilds consume the useful-work budget
+
+Mitigation: deliver the smallest safe evidence/runner slice required by the
+next corpus tranche, track edit-test latency, separate artifact freshness from
+validation freshness, and publish outputs safely. Keep full inventories and
+runner coverage as completion requirements, not prerequisites for the next
+general Python fix. Prefer small reviewed PRs to a long harness-only project.
+
 ### Compatibility adds unacceptable startup or distribution weight
 
 Mitigation: keep suites/test packages out of releases, keep stdlib lazy, retain
@@ -1350,24 +1538,39 @@ what Python behavior to implement, proving that behavior, making failures
 pleasant, and continuously finding the compiler/runtime improvements with the
 largest payoff.
 
-## Recommended first milestones
+## Recommended next milestones
 
-Land these as small pushed commits rather than one long-lived mega-change:
+The first language fixes, warm-performance laboratory, slicing, and dictionary
+improvements are already separate PRs. Preserve them and continue with small
+tested, pushed PRs rather than restarting or accumulating a mega-change:
 
-1. policy/schema/provenance plus a frozen current-evidence report;
-2. unified runner with exact MicroPython parity;
-3. RustPython inventory and first portable builtins/protocol tranche;
-4. fixes for the highest-fanout P0/P1 root causes found by that tranche;
-5. PyPy descriptor/operator/scope tranche plus focused GraalPy and IronPython
-   independent-runtime tranches;
-6. selected CPython syntax/builtins/object-model harness;
-7. structured diagnostics and capability identity;
-8. first full upstream package-suite qualification tranche;
-9. behavior-gated performance dashboard with an explicit 5x/10x/50x cliff
-   ledger; and
-10. one independently confirmed general runtime speedup which closes a real
-    high-value performance-cliff incompatibility.
+1. Finish source/oracle/raw-outcome-bound evidence, migrate the existing
+   MicroPython baseline with reviewed parity, and freeze honest current results.
+2. Improve build/test freshness and safe artifact publication using measured
+   edit-test costs and invalidation/concurrency regressions. Land independently
+   of language changes; do not make every harness feature a prerequisite.
+3. Land truthful implementation/capability identity and the first small
+   structured negative-diagnostics slice.
+4. Adopt the first useful RustPython builtins/protocol tranche with the minimum
+   program/assertion engine. Extend the inventory incrementally to all 221
+   candidates; do not require complete inventory before fixing adopted cases.
+5. Establish pinned package/workflow probes with separate import/first/warm
+   timings. Then pair the next high-fanout semantic or performance fix—likely
+   calls, argument binding, or construction—with those probes. Keep the
+   existing 5x/10x/50x policies and absolute-time floors unchanged.
+6. Repeat that adoption/fix/measure/ship loop with PyPy descriptors/operators/
+   scopes and focused GraalPy, IronPython, and CPython selections. Add adapters
+   when a selected tranche actually needs them.
+7. Expand the highest-value package probes into selected upstream suite
+   qualification and broaden diagnostics, cold-start, and allocation/scaling
+   coverage alongside demonstrated needs.
+8. Independently confirm major speedups and close real high-value cliffs;
+   publish unresolved ones rather than declaring them solved by relative gains.
+9. Finish the remaining engine, suite, generated-testing, and four-platform/
+   browser gates in the primary definition of done.
 
-This sequence produces useful improvements early, exercises the hardest harness
-decisions before copying a large corpus, and leaves every milestone valuable
-even if later compatibility work is reprioritized.
+Milestones 2, 3, and initial workflow measurements can progress alongside the
+first adoption tranche when file ownership and build coordination allow it.
+Keep each PR valuable independently: the objective is ordinary Python that is
+correct, understandable, useful, and fast—not infrastructure breadth, a pass
+percentage, or a green dashboard obtained by weakening the rules.

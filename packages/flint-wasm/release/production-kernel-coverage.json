@@ -4,10 +4,10 @@
   "totals": {
     "registered_kernels": 55,
     "production_kernels": 47,
-    "compiled_functions": 287,
-    "unsupported_production_functions": 0,
+    "compiled_functions": 286,
+    "unsupported_production_functions": 1,
     "non_production_functions": 54,
-    "same_source_fallback_functions": 54
+    "same_source_fallback_functions": 55
   },
   "kernels": [
     {
@@ -60,11 +60,13 @@
     {
       "id": "complex-cubic-class-group-production",
       "production": true,
-      "status": "available",
-      "compiled_functions": 1,
-      "fallback_functions": 0,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 1,
       "total_functions": 1,
-      "fallback_reasons": []
+      "fallback_reasons": [
+        "fmpz-integer-buffer-requires-64-bit-flint-limbs"
+      ]
     },
     {
       "id": "dense-binary-m4ri-optional",

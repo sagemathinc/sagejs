@@ -3,13 +3,18 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 223,
+    "pass": 226,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
     "xpass": 0
   },
   "results": [
+    {
+      "id": "src/baselib/modular.py#1a780ee3bd4934d5-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
     {
       "id": "src/baselib/schemes.py#e010c74c332f5782-e3b0c44298fc1c14",
       "status": "pass",
@@ -705,6 +710,16 @@
       "id": "docs/reference/fixtures/numerical.cjs#60922b0372e1f6b1-3cbc87c7681f34db",
       "status": "pass",
       "actual": "True\n"
+    },
+    {
+      "id": "src/baselib/modular.py#1665a8c36eb3b94f-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/modular.py#9ae049674c64cb20-91e727de99f94075",
+      "status": "pass",
+      "actual": "(2, 4)\n"
     },
     {
       "id": "src/baselib/hyperelliptic_curves.py#b0ba7464f1ad3eef-e3b0c44298fc1c14",

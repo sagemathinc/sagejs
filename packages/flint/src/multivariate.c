@@ -2259,10 +2259,24 @@ napi_value sagejs_mpoly_reduce(napi_env env, napi_callback_info info)
         nmod_mpoly_t remainder;
         napi_value item;
         sagejs_mpoly_value *divisor = NULL, *result;
-        if (!check_napi(env, napi_is_array(env, args[1], &is_array)) ||
-            !is_array ||
-            !check_napi(env, napi_get_array_length(env, args[1], &length)))
+        if (!check_napi(env, napi_is_array(env, args[1], &is_array)))
             return NULL;
+        if (!is_array)
+        {
+            napi_throw_type_error(env, NULL,
+                "multivariate reduction basis must be an array");
+            return NULL;
+        }
+        if (!check_napi(env, napi_get_array_length(env, args[1], &length)))
+            return NULL;
+        if ((size_t) length > SIZE_MAX / sizeof(*divisors) ||
+            (size_t) length > SIZE_MAX / sizeof(*quotients) ||
+            (size_t) length > SIZE_MAX / sizeof(*quotient_values))
+        {
+            napi_throw_range_error(env, NULL,
+                "multivariate reduction basis is too large");
+            return NULL;
+        }
         object = create_value(env, context);
         if (object == NULL || (result = unwrap_value(env, object)) == NULL)
             return NULL;
@@ -2325,10 +2339,24 @@ napi_value sagejs_mpoly_reduce(napi_env env, napi_callback_info info)
         fmpq_mpoly_struct *quotient_values = NULL;
         napi_value item;
         sagejs_mpoly_value *divisor = NULL, *result;
-        if (!check_napi(env, napi_is_array(env, args[1], &is_array)) ||
-            !is_array ||
-            !check_napi(env, napi_get_array_length(env, args[1], &length)))
+        if (!check_napi(env, napi_is_array(env, args[1], &is_array)))
             return NULL;
+        if (!is_array)
+        {
+            napi_throw_type_error(env, NULL,
+                "multivariate reduction basis must be an array");
+            return NULL;
+        }
+        if (!check_napi(env, napi_get_array_length(env, args[1], &length)))
+            return NULL;
+        if ((size_t) length > SIZE_MAX / sizeof(*divisors) ||
+            (size_t) length > SIZE_MAX / sizeof(*quotients) ||
+            (size_t) length > SIZE_MAX / sizeof(*quotient_values))
+        {
+            napi_throw_range_error(env, NULL,
+                "multivariate reduction basis is too large");
+            return NULL;
+        }
         object = create_value(env, context);
         if (object == NULL || (result = unwrap_value(env, object)) == NULL)
             return NULL;

@@ -1538,7 +1538,15 @@ def native(function: Any) -> Any:
     if not callable(function):
         raise TypeError("@native expects a callable")
     replacement = _compiled(function)
-    if replacement is None:
+    private_fallback = getattr(builtins, "__sagejs_native_private_fallback__", None)
+    if private_fallback is not None and replacement is private_fallback:
+        # This function is an authenticated same-source private member of a
+        # compiled dependency graph.  It deliberately has no public host ABI:
+        # compiled callers invoke its native body directly, while an external
+        # Python call retains this ordinary source implementation even when
+        # strict native loading is requested.
+        replacement = function
+    elif replacement is None:
         policy = getattr(builtins, "__sagejs_native_fallback_policy__", "allow")
         code = getattr(function, "__code__", None)
         filename = getattr(code, "co_filename", "<unknown>")

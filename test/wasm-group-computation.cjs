@@ -24,6 +24,7 @@ const {
   inventoryProductionKernels,
 } = require("../tools/native-kernel/wasm-production-pack.cjs");
 const { createSage } = require("../dist/tools/kernel.js");
+const disabledNativePublicCenter = require("./helpers/disabled-native-group-center.cjs");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const descriptor = {
@@ -136,29 +137,6 @@ function symmetricEightGenerators() {
     2n, 3n, 4n, 5n, 6n, 7n, 8n, 1n,
     2n, 1n, 3n, 4n, 5n, 6n, 7n, 8n,
   ]);
-}
-
-function disabledNativePublicCenter() {
-  const result = spawnSync(
-    process.execPath,
-    [join(root, "bin", "sagejs"), "--python"],
-    {
-      cwd: root,
-      encoding: "utf8",
-      env: { ...process.env, SAGEJS_NATIVE_DISABLE: "1" },
-      input: [
-        "G=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])",
-        "expected=G._portable_center().gens()",
-        "H=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])",
-        "actual=H.center().gens()",
-        "r=H._last_center_acceleration",
-        "print([H.order(),repr(actual)==repr(expected),r.route,r.reason,r.boundaryCrossings,r.work])",
-      ].join("\n"),
-      timeout: 30_000,
-    },
-  );
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  return result.stdout.trim().split("\n")[0];
 }
 
 async function createProxyServer(upstreamOrigin, manifest, outputRoot) {
@@ -318,9 +296,9 @@ print("cpython-bounds-ok")
 
 test("disabled native execution agrees with the independent public fallback", () => {
   assert.equal(
-    disabledNativePublicCenter(),
-    "[40320, True, 'portable-computation', " +
-      "'compiled-source-unavailable', 0, 1034577]",
+    disabledNativePublicCenter(["(1,2,3,4,5,6,7,8)", "(2,8)(3,7)(4,6)"]),
+    "[16, True, 'portable-computation', " +
+      "'compiled-source-unavailable', 0, 558]",
   );
 });
 

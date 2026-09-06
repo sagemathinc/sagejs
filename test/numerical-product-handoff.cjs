@@ -28,6 +28,8 @@ const {
 const {
   numericalRuntimeProviderIdentity,
   numericalOutputBindings,
+  outputBindings,
+  outputWitnesses,
   validateBuildReceipt,
 } = require("../scripts/build-receipt.cjs");
 const {
@@ -143,11 +145,18 @@ test("the numerical product handoff is exact, source-bound, and installable", (c
   assert.equal(readFileSync(join(root, "dist/numerical/cminpack.wasm"), "utf8"),
     "cminpack-production-wasm");
 
-  const identity = { numericalRuntimeProvider: { available: true } };
+  const identity = { numericalRuntimeProvider: { available: true }, artifactInputsSha256: "a".repeat(64) };
+  for (const name of ["compiler", "tools", "vendor", "module-cache", "runtime-cache"]) {
+    mkdirSync(join(root, "dist", name), { recursive: true });
+  }
+  for (const name of ["compiler/compiler.js", "tools/kernel.js", "runtime-cache/manifest.json", "sagejs-version.json"]) {
+    write(join(root, "dist", name), "built\n");
+  }
   const receipt = {
-    schema: "sagejs.build-receipt/v1",
+    schema: "sagejs.build-receipt/v3",
     identity,
-    outputs: ["dist/numerical/cminpack.wasm"],
+    outputs: outputWitnesses(root, identity),
+    outputBindings: outputBindings(root, outputWitnesses(root, identity)),
     numericalOutputs: numericalOutputBindings(root, identity),
   };
   assert.equal(validateBuildReceipt(receipt, identity, root).current, true);

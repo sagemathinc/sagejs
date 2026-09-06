@@ -129,7 +129,9 @@ def ρσ_exact_integer_range_iterator(start, step, length):
 
 def ρσ_dynamic_eval(javascript, input_namespace, module_id):
     return r"""%js (() => {
-        const dynamicModules = {[module_id]: Object.assign({}, input_namespace)};
+        const dynamicModules = Object.create(null,
+            Object.getOwnPropertyDescriptors(globalThis.ρσ_modules || ρσ_modules));
+        dynamicModules[module_id] = Object.assign({}, input_namespace);
         const inputNamespace = input_namespace;
         const evaluate = new Function(
             "ρσ_modules", "__sagejs_input_namespace__", "javascript",
@@ -615,7 +617,9 @@ def ρσ_fast_arrow_segment_geometry_region(
 def ρσ_fast_closed_binary(left, right, operation, missing):
     return r"""%js (() => {
         if (left !== null && right !== null &&
-            typeof left === "object" && typeof right === "object") {
+            typeof left === "object" && typeof right === "object" &&
+            Object.prototype.hasOwnProperty.call(left, "_parent") &&
+            Object.prototype.hasOwnProperty.call(right, "_parent")) {
             const parent = left._parent;
             if (parent !== undefined && parent === right._parent &&
                 parent._closedScalarArithmetic === true) {

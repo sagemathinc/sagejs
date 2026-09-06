@@ -98,6 +98,8 @@ jobs:
             --output build/wasm-routine-artifact.json
           node --test \
             test/browser-wasm-release-gates.cjs \
+            test/browser-module-cache.cjs \
+            packages/flint-wasm/test/gamma1-modular-forms.test.mjs \
             packages/flint-wasm/test/browser-wasm-wasi-quota.test.mjs
 
       - name: Install Chromium matched to playwright-core

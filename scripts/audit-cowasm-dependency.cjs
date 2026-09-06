@@ -19,6 +19,9 @@ const allowed = [
   /^agents\/webassembly-production-parity-and-apps-plan\.md$/,
   /^architecture\/(?:native-boundaries|native-code|native-kernels|wasm-capabilities)\.json$/,
   /^bench\/cowasm\//,
+  // Benchmark provenance only; neither file imports the retired toolchain.
+  /^bench\/python-compat\/README\.md$/,
+  /^test\/python-performance-runner\.cjs$/,
   /^bench\/(?:compare-native-cowasm\.cjs|native_cowasm_workload\.py|JULIA-NATIVE-COMPARISON\.md|NATIVE-COMPILER\.md)$/,
   /^bench\/julia-math-comparison\.jl$/,
   /^(?:HACKING|IMPLEMENTATION|README|TESTING)\.md$/,

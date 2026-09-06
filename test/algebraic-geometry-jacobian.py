@@ -56,3 +56,49 @@ assert P2.is_smooth()
 conic = P2.subscheme([r * t - s**2])
 assert conic.tangent_space(conic(1, 0, 0)).dimension() == 1
 assert conic.is_smooth()
+
+# Polynomial minors agree with the independent exact integer matrix backend,
+# including sign changes from row reversal and the largest admitted order.
+from sagejs.schemes.jacobian import _determinant
+
+state = 17
+for size in range(1, 9):
+    values = []
+    for _index in range(size * size):
+        state = (1103515245 * state + 12345) % 2147483648
+        values.append(state % 19 - 9)
+    integer_matrix = matrix(ZZ, size, size, values)
+    rows = [
+        [A2.coordinate_ring()(value) for value in row] for row in integer_matrix.rows()
+    ]
+    expected = A2.coordinate_ring()(integer_matrix.det())
+    assert _determinant(rows) == expected
+    assert (
+        _determinant(list(reversed(rows)))
+        == (-1) ** (size * (size - 1) // 2) * expected
+    )
+
+
+class CountedRingElement:
+    multiplications = 0
+
+    def __init__(self, value):
+        self.value = value
+
+    def parent(self):
+        return CountedRingElement
+
+    def __mul__(self, other):
+        CountedRingElement.multiplications += 1
+        return CountedRingElement(self.value * other.value)
+
+    def __add__(self, other):
+        return CountedRingElement(self.value + other.value)
+
+    def __sub__(self, other):
+        return CountedRingElement(self.value - other.value)
+
+
+counted = [[CountedRingElement(int(i == j)) for j in range(8)] for i in range(8)]
+assert _determinant(counted).value == 1
+assert CountedRingElement.multiplications == 8 * 2**7

@@ -19,7 +19,11 @@ const {
   totalmem,
   tmpdir,
 } = require("node:os");
-const { join } = require("node:path");
+const { join, resolve } = require("node:path");
+const {
+  classifyMeasurement,
+  validatePolicy,
+} = require("../python-compat/classify.cjs");
 
 const root = join(__dirname, "..", "..");
 const source = join(__dirname, "src", "corpus.py");
@@ -45,6 +49,7 @@ Options:
   --runtime NAME=PATH      Add a Python-compatible runtime executable
   --json PATH              Write samples and environment metadata as JSON
   --budget PATH            Check relative performance budgets from JSON
+  --policy PATH            Classify performance compatibility with a versioned policy
   --help                   Show this help
 
 Sage.js always runs in Python mode. Performance mode compares Sage.js with
@@ -74,6 +79,7 @@ function parseArguments(argv) {
     runtimes: [],
     jsonPath: null,
     budgetPath: null,
+    policyPath: null,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -109,6 +115,8 @@ function parseArguments(argv) {
       options.jsonPath = argv[++index] || "";
     } else if (argument === "--budget") {
       options.budgetPath = argv[++index] || "";
+    } else if (argument === "--policy") {
+      options.policyPath = argv[++index] || "";
     } else if (argument === "--help" || argument === "-h") {
       usage();
       process.exit(0);
@@ -427,25 +435,45 @@ function ratioSummary(ratios) {
   };
 }
 
-function createReport(options, measurements) {
+function createReport(options, measurements, policyRecord = null) {
   const reference = measurements.find(
     ({ runtime }) => runtime.key === "python",
   );
+  const repository = gitMetadata();
   const benchmarks = {};
   for (const name of benchmarkNames) {
     const runtimes = {};
     for (const { runtime, measurement } of measurements) {
       const medianUs = measurement.timings.get(name);
-      runtimes[runtime.key] = {
+      const referenceMedianUs = reference.measurement.timings.get(name);
+      const runtimeResult = {
         firstPassUs: measurement.firstPass.get(name),
         samplesUs: measurement.samples.map((sample) => sample.get(name)),
         medianUs,
+        deltaToPythonUs: medianUs - referenceMedianUs,
         ratioToPython:
           runtime.key === "python"
             ? 1
             : Math.max(medianUs, 0.5) /
-              Math.max(reference.measurement.timings.get(name), 0.5),
+              Math.max(referenceMedianUs, 0.5),
       };
+      if (policyRecord !== null && runtime.key === "sagejs") {
+        const classification = classifyMeasurement(policyRecord.policy, {
+          scope: "warm-throughput",
+          subjectMs: medianUs / 1000,
+          referenceMs: referenceMedianUs / 1000,
+          behaviorMatch: true,
+          comparable: true,
+        });
+        runtimeResult.performance = {
+          ...classification,
+          sampleQualified:
+            options.samples >= policyRecord.policy.minimumConfirmedSamples,
+          confirmationStatus: "provisional-single-run",
+          samples: options.samples,
+        };
+      }
+      runtimes[runtime.key] = runtimeResult;
     }
     benchmarks[name] = { runtimes };
   }
@@ -468,7 +496,7 @@ function createReport(options, measurements) {
 
   const cpuList = cpus();
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: new Date().toISOString(),
     corpus: {
       name: "cowasm-python-benchmarks",
@@ -480,7 +508,7 @@ function createReport(options, measurements) {
       warmups: options.warmups,
       samples: options.samples,
     },
-    repository: gitMetadata(),
+    repository,
     host: {
       platform: platform(),
       release: release(),
@@ -492,9 +520,61 @@ function createReport(options, measurements) {
       loadAverage: loadavg(),
     },
     runtimes: measurements.map(({ runtime }) => runtimeMetadata(runtime)),
+    performancePolicy: policyRecord === null ? null : {
+      path: policyRecord.path,
+      sha256: policyRecord.sha256,
+      schema: policyRecord.policy.schema,
+      minimumConfirmedSamples: policyRecord.policy.minimumConfirmedSamples,
+    },
     benchmarks,
     summaries,
   };
+}
+
+function readPerformancePolicy(filename) {
+  const absolutePath = resolve(root, filename);
+  const bytes = readFileSync(absolutePath);
+  return {
+    path: filename,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    policy: validatePolicy(JSON.parse(bytes.toString("utf8"))),
+  };
+}
+
+function printPerformanceClassifications(report) {
+  if (report.performancePolicy === null) return;
+  const rows = Object.entries(report.benchmarks).map(([name, benchmark]) => ({
+    name,
+    ...benchmark.runtimes.sagejs.performance,
+  }));
+  const rank = new Map([
+    ["critical-performance-cliff", 0],
+    ["performance-cliff", 1],
+    ["watch", 2],
+    ["within-envelope", 3],
+    ["not-comparable", 4],
+  ]);
+  rows.sort((left, right) =>
+    (rank.get(left.status) ?? 99) - (rank.get(right.status) ?? 99) ||
+    right.deltaMs - left.deltaMs || left.name.localeCompare(right.name));
+  console.log();
+  console.log(
+    `Performance compatibility (${rows[0]?.sampleQualified ? "sample-qualified" : "provisional"}; ` +
+      `${report.corpus.samples}/${report.performancePolicy.minimumConfirmedSamples} samples):`,
+  );
+  for (const row of rows) {
+    if (row.status === "within-envelope") continue;
+    console.log(
+      `  ${row.status.padEnd(28)} ${row.name}: ` +
+        `${Number.isFinite(row.ratio) ? row.ratio.toFixed(2) : "infinite"}x, ` +
+        `${row.deltaMs.toFixed(2)} ms (${row.reason})`,
+    );
+  }
+  const counts = Object.create(null);
+  for (const row of rows) counts[row.status] = (counts[row.status] ?? 0) + 1;
+  console.log(
+    `  totals: ${Object.entries(counts).map(([status, count]) => `${status}=${count}`).join(", ")}`,
+  );
 }
 
 function readBudget(path) {
@@ -549,6 +629,8 @@ function checkBudget(budget, report) {
 
 function main() {
   const options = parseArguments(process.argv.slice(2));
+  const policyRecord =
+    options.policyPath === null ? null : readPerformancePolicy(options.policyPath);
   if (options.suite !== null && options.only.length > 0) {
     throw new Error("--suite cannot be combined with --only");
   }
@@ -661,7 +743,8 @@ function main() {
       });
     }
     printPerformanceTable(measurements);
-    const report = createReport(options, measurements);
+    const report = createReport(options, measurements, policyRecord);
+    printPerformanceClassifications(report);
     if (options.jsonPath !== null) {
       writeFileSync(options.jsonPath, `${JSON.stringify(report, null, 2)}\n`);
       console.log(`Wrote benchmark report to ${options.jsonPath}`);

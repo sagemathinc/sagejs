@@ -16,12 +16,86 @@ const test = require("node:test");
 
 const root = resolve(__dirname, "..");
 const {
+  classifyHostCoreTarget,
+} = require("../tools/native-kernel/c-backend.cjs");
+const {
   buildWasmProductionPacks,
   inventoryProductionKernels,
+  productionKernelsForPack,
 } = require("../tools/native-kernel/wasm-production-pack.cjs");
 const {
   portableKernelIdentity,
 } = require("../tools/native-kernel/portable-identity.cjs");
+
+test("resident fmpz IntegerBuffers declare their target limb requirement", () => {
+  const affected = {
+    functions: [{
+      kernelKind: "integer",
+      params: [{ name: "values", type: "IntegerBuffer" }],
+      locals: [],
+      analysis: { backend: { kind: "fmpz" } },
+    }],
+  };
+  assert.deepEqual(classifyHostCoreTarget(affected, {
+    target: "wasm32-wasip1",
+    flintLimbBits: 32,
+  }), {
+    supported: false,
+    reason: "fmpz-integer-buffer-requires-64-bit-flint-limbs",
+    requirement: {
+      integerBufferWordBits: 64,
+      flintLimbBits: 64,
+    },
+    actual: { target: "wasm32-wasip1", flintLimbBits: 32 },
+  });
+  assert.deepEqual(
+    classifyHostCoreTarget(affected, { flintLimbBits: 64 }),
+    { supported: true },
+  );
+  assert.deepEqual(classifyHostCoreTarget({
+    functions: [{
+      ...affected.functions[0],
+      analysis: { backend: { kind: "gmp" } },
+    }],
+  }, { flintLimbBits: 32 }), { supported: true });
+});
+
+test("production linking uses only authenticated pack module identities", () => {
+  const included = {
+    id: "included-production",
+    identityHash: "a".repeat(64),
+    domain: "flint",
+  };
+  const unsupported = {
+    id: "unsupported-production",
+    identityHash: "b".repeat(64),
+    domain: "flint",
+  };
+  const otherDomain = {
+    id: "other-production",
+    identityHash: "c".repeat(64),
+    domain: "gmp",
+  };
+  const pack = { domain: "flint", modules: [included.identityHash] };
+  assert.deepEqual(
+    productionKernelsForPack([included, unsupported, otherDomain], pack),
+    [included],
+  );
+  assert.throws(
+    () => productionKernelsForPack([included], {
+      ...pack,
+      modules: [unsupported.identityHash],
+    }),
+    /names unknown kernel identity/,
+  );
+  assert.throws(
+    () => productionKernelsForPack([included, otherDomain], {
+      ...pack,
+      modules: [otherDomain.identityHash],
+    }),
+    /names gmp kernel/,
+  );
+});
 
 test("the Wasm source-kernel inventory accounts for all registered kernels", async () => {
   const manifestPath = join(root, "architecture", "native-kernels.json");
@@ -47,17 +121,19 @@ test("the Wasm source-kernel inventory accounts for all registered kernels", asy
   const nonProductionFunctions = inventory.nonProduction.flatMap(
     (kernel) => kernel.functions,
   );
+  const unsupportedProductionFunctions = productionFunctions.filter(
+    (fn) => fn.status === "unsupported"
+  ).length;
   assert.deepEqual(coverage.totals, {
     registered_kernels: inventory.registered.length,
     production_kernels: inventory.production.length,
     compiled_functions: productionFunctions.filter(
       (fn) => fn.status === "compiled-source"
     ).length,
-    unsupported_production_functions: productionFunctions.filter(
-      (fn) => fn.status === "unsupported"
-    ).length,
+    unsupported_production_functions: unsupportedProductionFunctions,
     non_production_functions: nonProductionFunctions.length,
-    same_source_fallback_functions: nonProductionFunctions.length,
+    same_source_fallback_functions:
+      nonProductionFunctions.length + unsupportedProductionFunctions,
   });
   const coverageById = new Map(coverage.kernels.map((item) => [item.id, item]));
   for (const omitted of inventory.nonProduction) {
@@ -142,7 +218,10 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
     assert.equal(manifest.completeInventory, true);
     assert.equal(manifest.registeredKernels, inventory.registered.length);
     assert.equal(manifest.productionKernels, inventory.production.length);
-    assert.equal(manifest.compiledKernelCores, inventory.modules.length);
+    assert.equal(
+      manifest.compiledKernelCores,
+      inventory.modules.filter((module) => module.functions.length !== 0).length,
+    );
     assert.equal(
       manifest.compiledFunctions,
       inventory.inventory.flatMap((kernel) => kernel.functions)
@@ -155,6 +234,13 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
     );
     assert.equal(manifest.nonProductionKernels.length, inventory.nonProduction.length);
     assert.deepEqual(manifest.packs.map((pack) => pack.domain), ["flint", "gmp"]);
+    for (const pack of manifest.packs) {
+      assert.deepEqual(
+        productionKernelsForPack(manifest.kernels, pack)
+          .map((kernel) => kernel.identityHash),
+        pack.modules,
+      );
+    }
     const zeta = manifest.kernels.find((kernel) =>
       kernel.id === "number-field-zeta-coefficients-production"
     );
@@ -170,7 +256,48 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
       kernel.id === "extension-polynomial-flint-production"
     );
     assert.ok(extension.functions.every((fn) => fn.status === "compiled-source"));
-    assert.deepEqual(manifest.unsupported, []);
+    const cubic = manifest.kernels.find((kernel) =>
+      kernel.id === "complex-cubic-class-group-production"
+    );
+    assert.ok(cubic);
+    assert.equal(cubic.fallback, "same-source");
+    assert.deepEqual(cubic.functions.map((fn) => ({
+      name: fn.name,
+      status: fn.status,
+      reason: fn.reason,
+      targetRequirement: fn.targetRequirement,
+      targetActual: fn.targetActual,
+      bridge: fn.bridge,
+    })), [{
+      name: "certified_complex_cubic_class_group_v1",
+      status: "unsupported",
+      reason: "fmpz-integer-buffer-requires-64-bit-flint-limbs",
+      targetRequirement: {
+        integerBufferWordBits: 64,
+        flintLimbBits: 64,
+      },
+      targetActual: { target: "wasm32-wasip1", flintLimbBits: 32 },
+      bridge: undefined,
+    }]);
+    assert.ok(manifest.packs.every((pack) =>
+      !pack.modules.includes(cubic.identityHash)
+    ));
+    const cubicCore = readFileSync(join(
+      outputRoot,
+      "sources",
+      cubic.moduleIdentity,
+      "kernel_core.c",
+    ), "utf8");
+    assert.match(cubicCore, /cubic_class_number_native\.py/);
+    assert.match(
+      cubicCore,
+      /resident fmpz IntegerBuffer views require 64-bit FLINT limbs/,
+    );
+    assert.ok(manifest.unsupported.some((fn) =>
+      fn.kernel === cubic.id &&
+      fn.function === "certified_complex_cubic_class_group_v1" &&
+      fn.reason === "fmpz-integer-buffer-requires-64-bit-flint-limbs"
+    ));
     assert.ok(manifest.unsupported.every((fn) =>
       fn.fallback === "same-source" && fn.oracles.length > 0 &&
       fn.tests.length > 0
@@ -412,6 +539,71 @@ async function instantiateKernelRuntime(manifest, outputRoot) {
 function words(values) {
   return Array.from(values, String);
 }
+
+test("wasm32 links around the unsupported cubic resident-fmpz core", {
+  skip: flintToolchainAvailable
+    ? false
+    : "set the complete SAGEJS WASI FLINT/GMP/MPFR/MPC toolchain",
+  timeout: 180_000,
+}, async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-wasm-fmpz-gate-"));
+  try {
+    const registered = JSON.parse(readFileSync(
+      join(root, "architecture", "native-kernels.json"),
+      "utf8",
+    ));
+    const kernelIds = new Set([
+      "complex-cubic-class-group-production",
+      "number-field-round4-state-production",
+    ]);
+    const kernels = registered.kernels.filter((item) => kernelIds.has(item.id));
+    assert.deepEqual(new Set(kernels.map((item) => item.id)), kernelIds);
+    const manifestPath = join(temporary, "native-kernels.json");
+    writeFileSync(manifestPath, `${JSON.stringify({ kernels }, null, 2)}\n`);
+    const outputRoot = join(temporary, "output");
+    const manifest = await buildWasmProductionPacks({
+      root,
+      manifestPath,
+      outputRoot,
+      domains: ["flint"],
+      emitOnly: false,
+      toolchain: {
+        clang,
+        target: "wasm32-wasip1",
+        sysroot,
+        gmpPrefix,
+        flintPrefix,
+        mpfrPrefix,
+        mpcPrefix,
+      },
+    });
+    assert.equal(manifest.compiledKernelCores, 1);
+    assert.equal(manifest.compiledFunctions, 3);
+    assert.equal(manifest.unsupportedFunctions, 1);
+    assert.equal(manifest.packs.length, 1);
+    assert.equal(manifest.packs[0].status, "built");
+    const cubic = manifest.kernels.find((kernel) =>
+      kernel.id === "complex-cubic-class-group-production"
+    );
+    const round4 = manifest.kernels.find((kernel) =>
+      kernel.id === "number-field-round4-state-production"
+    );
+    assert.ok(cubic);
+    assert.ok(round4);
+    assert.deepEqual(manifest.packs[0].modules, [round4.identityHash]);
+    const runtime = await instantiateKernelRuntime(manifest, outputRoot);
+    assert.equal(runtime.available(
+      cubic.logicalSource,
+      "certified_complex_cubic_class_group_v1",
+    ), false);
+    assert.equal(runtime.available(
+      round4.logicalSource,
+      "packed_round4_padic_characteristic",
+    ), true);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
 
 test("number-field Wasm cores execute the same exact sources as fallbacks", {
   skip: flintToolchainAvailable

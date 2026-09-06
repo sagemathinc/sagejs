@@ -39,6 +39,7 @@ const {
 } = require("../../../scripts/numerical-computing/report.cjs");
 const {
   discoverCorpora,
+  reportReceiptRecord,
   usage,
 } = require("../../../scripts/numerical-computing/qualify.cjs");
 
@@ -629,6 +630,18 @@ test("matrix reports preserve missing evidence as missing and never infer metric
   ]);
   assert.equal(duplicate.status, "failed");
   assert.match(duplicate.rows[0].reasons[0], /must be unambiguous/);
+});
+
+test("matrix reports bind receipt paths relative to their repository", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-report-path-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const filename = path.join(root, "evidence", "measured.receipt.json");
+  fs.mkdirSync(path.dirname(filename), { recursive: true });
+  writeJson(filename, { status: "passed" });
+
+  const record = reportReceiptRecord(filename, root);
+  assert.equal(record.path, "evidence/measured.receipt.json");
+  assert.equal(record.value.status, "passed");
 });
 
 test("memory evidence is authenticated by the collector, never by adapters", async (t) => {

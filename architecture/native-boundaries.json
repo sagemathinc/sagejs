@@ -14,10 +14,10 @@
   },
   "counts": {
     "classified-native-file": 246,
-    "declared-ffi": 474,
+    "declared-ffi": 479,
     "declared-ffi-resource": 37,
-    "napi-export": 354,
-    "runtime-intrinsic": 147,
+    "napi-export": 358,
+    "runtime-intrinsic": 148,
     "wasm-export": 74
   },
   "boundaries": [
@@ -1034,6 +1034,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqMatrixFromFmpz",
       "symbol": "sagejs_fmpq_matrix_from_fmpz",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_full_row_rank_pivots",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_full_row_rank_pivots",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixFullRowRankPivots",
+      "symbol": "sagejs_fmpq_matrix_full_row_rank_pivots",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -2555,6 +2566,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpz_matrix_hnf_prefix_into",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_hnf_prefix_into",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixHnfPrefixInto",
+      "symbol": "sagejs_fmpz_matrix_hnf_prefix_into",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_hnf_transform",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -2563,6 +2585,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatrixHnfTransform",
       "symbol": "sagejs_fmpz_matrix_hnf_transform",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_hnf_transform_prefix",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_hnf_transform_prefix",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixHnfTransformPrefix",
+      "symbol": "sagejs_fmpz_matrix_hnf_transform_prefix",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -2596,6 +2629,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatrixLllTransform",
       "symbol": "sagejs_fmpz_matrix_lll_transform",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_lll_transform_prefix",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_lll_transform_prefix",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixLllTransformPrefix",
+      "symbol": "sagejs_fmpz_matrix_lll_transform_prefix",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -2827,6 +2871,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatrixSnfInto",
       "symbol": "sagejs_fmpz_matrix_snf_into",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_snf_prefix_into",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_snf_prefix_into",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixSnfPrefixInto",
+      "symbol": "sagejs_fmpz_matrix_snf_prefix_into",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -6085,6 +6140,16 @@
       "family": "algebraic"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicElementsFromIntegralCoordinates",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "cyclotomicElementsFromIntegralCoordinates",
+      "symbol": "sagejs_cyclotomic_elements_from_integral_coordinates",
+      "disposition": "retain-representation-primitive",
+      "family": "algebraic"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixPolyEvaluate",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -6101,6 +6166,16 @@
       "package": "@sagemath/sagejs-flint",
       "export": "cyclotomicMatrixRightKernel",
       "symbol": "sagejs_cyclotomic_matrix_right_kernel",
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRowBasis",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "cyclotomicMatrixRowBasis",
+      "symbol": "sagejs_cyclotomic_matrix_row_basis",
       "disposition": "migrate-to-typed-python",
       "family": "dense-matrix-algorithms"
     },
@@ -7816,6 +7891,16 @@
       "family": "modular-symbols"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeSelectedRows",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListCharacterHeckeSelectedRows",
+      "symbol": "sagejs_p1list_character_hecke_selected_rows",
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -8573,6 +8658,16 @@
       "export": "qqPolyGen",
       "symbol": "qq_poly_gen",
       "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyPacked",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqPolyPacked",
+      "symbol": "qq_poly_packed",
+      "disposition": "retain-representation-primitive",
       "family": "polynomials"
     },
     {
@@ -11785,6 +11880,14 @@
       "path": "tools/python/contract.ts",
       "export": "list_contains",
       "symbol": "ρσ_list_contains",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:list_decorate",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "list_decorate",
+      "symbol": "ρσ_list_decorate",
       "disposition": "runtime-primitive"
     },
     {

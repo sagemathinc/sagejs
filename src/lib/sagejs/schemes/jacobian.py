@@ -30,21 +30,37 @@ def _combinations(
 
 
 def _determinant(rows: list[list[Any]]) -> Any:
+    """Evaluate a small minor in `O(n * 2**n)` ring operations, without division.
+
+    Each subset stores the determinant of the first `len(subset)` rows on
+    those columns. Expanding its last row reuses all smaller minors instead
+    of rebuilding the factorial-size Laplace recursion tree.
+    """
     size = len(rows)
     if size == 0:
         raise ValueError("zero-order Jacobian minors are not materialized")
+    if size > _MAX_MINOR_ORDER:
+        raise OverflowError("Jacobian minor order exceeds the limit of 8")
     if size == 1:
         return rows[0][0]
-    answer = rows[0][0].parent()(0)
-    for column in range(size):
-        submatrix = []
-        for row in range(1, size):
-            submatrix.append(
-                [rows[row][index] for index in range(size) if index != column]
-            )
-        term = rows[0][column] * _determinant(submatrix)
-        answer = answer - term if column % 2 else answer + term
-    return answer
+    ring = rows[0][0].parent()
+    count = 1 << size
+    minors = [ring(0)] * count
+    widths = [0] * count
+    minors[0] = ring(1)
+    for mask in range(1, count):
+        widths[mask] = widths[mask >> 1] + (mask & 1)
+        row = widths[mask] - 1
+        position = 0
+        answer = ring(0)
+        for column in range(size):
+            bit = 1 << column
+            if mask & bit:
+                term = minors[mask ^ bit] * rows[row][column]
+                answer = answer - term if (row + position) % 2 else answer + term
+                position += 1
+        minors[mask] = answer
+    return minors[-1]
 
 
 @runtime.callable_instance_class

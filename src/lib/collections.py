@@ -913,6 +913,22 @@ def namedtuple(type_name: str, field_names: Any) -> Any:
 
     tuple_class.__name__ = type_name
     tuple_class._fields = runtime.math_tuple(names)
+    tuple_bases = runtime.math_tuple([runtime.tuple_builtin])
+    runtime.reflect.set(
+        tuple_class,
+        "__bases__",
+        tuple_bases,
+    )
+    compute_mro = runtime.reflect.get(runtime.global_object, "ρσ_compute_mro")
+    runtime.reflect.set(
+        tuple_class,
+        "__mro__",
+        runtime.reflect.apply(
+            compute_mro,
+            runtime.undefined,
+            [tuple_class, tuple_bases],
+        ),
+    )
     runtime.reflect.setPrototypeOf(
         tuple_class.prototype,
         runtime.tuple_builtin.prototype,

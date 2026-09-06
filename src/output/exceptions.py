@@ -81,28 +81,12 @@ def print_catch(self, output):
                             output.print("||")
                             output.space()
 
-                        if err.name is "Exception":
-                            output.print("ρσ_Exception")
-                            output.space()
-                            output.print("instanceof")
-                            output.space()
-                            output.print("Error")
-                            output.space()
-                            output.print("||")
-                            output.space()
-                            output.print(
-                                "Object.prototype.toString.call("
-                                'ρσ_Exception) === "[object Error]"'
-                            )
-                        else:
-                            # The exception expression may evaluate to either
-                            # one class or a runtime tuple of classes (pytest
-                            # stores such tuples in module constants).  Raw
-                            # JavaScript ``instanceof`` cannot accept the
-                            # latter and leaks a host TypeError.
-                            output.print("ρσ_instanceof_one(ρσ_Exception,")
-                            err.print(output)
-                            output.print(")")
+                        # Resolve the actual expression at runtime. A local
+                        # binding named `Exception` must not retain the broad
+                        # host-error behavior of Python's builtin Exception.
+                        output.print("ρσ_exception_matches(ρσ_Exception,")
+                        err.print(output)
+                        output.print(")")
 
                 output.with_parens(f_errors)
                 output.space()

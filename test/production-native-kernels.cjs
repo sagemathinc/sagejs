@@ -50,6 +50,7 @@ function runWithCache(cache, source, required = true) {
         ...process.env,
         SAGEJS_NATIVE_CACHE_DIR: cache,
         SAGEJS_NATIVE_REQUIRED: required ? "1" : "0",
+        SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: "off",
       },
       input: source,
     },
@@ -172,6 +173,7 @@ test("all production native kernels are published and autoloadable", () => {
     assert.equal(wrapper.cacheKey, record.cacheKey);
     assert.equal(wrapper.sourceHash, record.sourceHash);
     assert.equal(wrapper.nativeAbi, record.nativeAbi);
+    assert.deepEqual(wrapper.privateFunctions, record.privateFunctions);
     assert.deepEqual(wrapper.foreignDeclarations, record.foreignDeclarations);
     for (const name of kernel.functions) {
       assert.equal(
@@ -205,6 +207,7 @@ test("all production native kernels are published and autoloadable", () => {
         ...process.env,
         SAGEJS_NATIVE_CACHE_DIR: published,
         SAGEJS_NATIVE_REQUIRED: "1",
+        SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: "off",
       },
       input: program,
     },
@@ -214,6 +217,52 @@ test("all production native kernels are published and autoloadable", () => {
     result.stdout.trim(),
     production.map(() => "True").join("\n"),
   );
+});
+
+test("the complex-cubic pack authenticates only lexical same-source private helpers", () => {
+  const logicalSource = "sagejs/number_fields/cubic_class_number_native.py";
+  const expected = [
+    "_cubic_analysis_fixed_points_are_valid",
+    "_cubic_bf_tail_bounds",
+    "_cubic_complex_root_approximations",
+    "_cubic_copy_relation_support_tail",
+    "_cubic_grh_prime_degree_contribution",
+    "_cubic_log_interval_bounds",
+    "_cubic_log_two_pi_bounds",
+    "_cubic_real_log_bounds",
+    "_cubic_real_log_bounds_from_root_interval",
+    "_cubic_real_root_interval",
+    "_cubic_regulator_bounds",
+    "_cubic_scaled_polynomial_value",
+  ].sort();
+  const index = JSON.parse(readFileSync(join(published, "index.json"), "utf8"));
+  const record = index.logicalSources[logicalSource];
+  assert.deepEqual(record.privateFunctions, expected);
+  const wrapper = require(join(published, record.cacheKey, "index.cjs"));
+  assert.deepEqual(wrapper.privateFunctions, expected);
+  const packManifest = JSON.parse(readFileSync(
+    join(published, "pack", "index.json"),
+    "utf8",
+  ));
+  const packed = packManifest.kernels.find((entry) =>
+    entry.logicalSource === logicalSource
+  );
+  assert.deepEqual(packed.privateFunctions, expected);
+  const identity = packManifest.identity.kernels.find((entry) =>
+    entry.logicalSource === logicalSource
+  );
+  assert.deepEqual(identity.privateFunctions, expected);
+
+  const loaded = runWithCache(published, [
+    "from sagejs.native import is_compiled, is_native",
+    "from sagejs.number_fields.cubic_class_number_native import _cubic_log_interval_bounds, certified_complex_cubic_class_group_v1",
+    "print(is_native(_cubic_log_interval_bounds))",
+    "print(is_compiled(_cubic_log_interval_bounds))",
+    "print(is_compiled(certified_complex_cubic_class_group_v1))",
+    "",
+  ].join("\n"));
+  assert.equal(loaded.status, 0, loaded.stdout + loaded.stderr);
+  assert.equal(loaded.stdout.trim(), "True\nFalse\nTrue");
 });
 
 test("the production pack eliminates repeated static dependency payloads", () => {

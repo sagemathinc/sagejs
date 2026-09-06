@@ -8,6 +8,7 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 _MAX_LCM_STATES = 200000
+_MAX_NUMERATOR_COEFFICIENTS = 200000
 
 
 def _factorial(value: int) -> int:
@@ -63,9 +64,13 @@ def _taylor_numerator(generators: list[Any], variables: int) -> list[int]:
     for exponents, coefficient in states.items():
         degree = sum(exponents)
         by_degree[degree] = by_degree.get(degree, 0) + coefficient
+    by_degree = {degree: value for degree, value in by_degree.items() if value != 0}
     if len(by_degree) == 0:
         return []
-    coefficients = [0] * (max(by_degree.keys()) + 1)
+    count = max(by_degree.keys()) + 1
+    if count > _MAX_NUMERATOR_COEFFICIENTS:
+        raise OverflowError("Hilbert numerator exceeds the 200000 coefficient limit")
+    coefficients = [0] * count
     for degree, coefficient in by_degree.items():
         coefficients[degree] = coefficient
     while len(coefficients) and coefficients[-1] == 0:

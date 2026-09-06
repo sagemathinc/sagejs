@@ -50,7 +50,7 @@ test("closed native cubic receipts survive declines and authenticate targets", {
   const checkerHash = createHash("sha256")
     .update(readFileSync(checkerPath))
     .digest("hex");
-  assert.equal(compiled.ir.version, 36);
+  assert.equal(compiled.ir.version, 38);
   assert.deepEqual(compiled.ir.nativeSourceDependencies, [{
     module: "sagejs.number_fields.field_analysis_resource",
     path: checkerPath,
@@ -71,6 +71,9 @@ test("closed native cubic receipts survive declines and authenticate targets", {
   const directKernel = directModule.certified_complex_cubic_class_group_v1;
   const zeros = (length) => directKernel.createIntegerBuffer(length, 8);
   const directOutput = zeros(64);
+  const directModularWorkspace = directKernel.createUInt64Buffer(
+    64 * 64 + 64 + 1,
+  );
   const directBuffers = [
     zeros(512), zeros(4), zeros(9), zeros(16),
     zeros(16), zeros(144), zeros(48), zeros(109),
@@ -80,12 +83,13 @@ test("closed native cubic receipts survive declines and authenticate targets", {
     assert.equal(directKernel(
       directOutput,
       directKernel.packIntegerBuffer(coefficients),
+      directModularWorkspace,
       ...directBuffers,
       ...directTranscriptBuffers,
       0,
       1,
-      1048576,
-      2097152,
+      1_048_576,
+      3_145_728,
     ), true);
     return directOutput.toArray().map(Number);
   };
@@ -115,6 +119,7 @@ from sagejs.number_fields.cubic_class_number_native import _CUBIC_ANALYTIC_THRES
 from sagejs.number_fields.cubic_class_number_native import _CUBIC_ANALYTIC_MAX_TERMS
 from sagejs.number_fields.cubic_class_number_native import _CUBIC_ANALYTIC_MAX_VALUES
 from sagejs.number_fields.cubic_class_number_native import _CUBIC_DIRECT_MINKOWSKI_MAX_BOUND
+import sagejs.number_fields.cubic_class_number_native_runtime as cubic_runtime
 from sagejs.number_fields.cubic_class_number_native_runtime import _checked_native_values, certified_complex_cubic_class_number
 
 assert _CUBIC_DIRECT_MINKOWSKI_MAX_BOUND == 8
@@ -177,6 +182,8 @@ for index, (coefficients, order, invariants) in enumerate(cases):
     assert receipt.matches(K)
     if coefficients == (-644, 243, 0, 1):
         assert max(abs(value).bit_length() for value in receipt.unit_coordinates) == 519
+    if coefficients == (-55, 9, 0, 1):
+        assert receipt.relation_effort == 5
     if coefficients == (-5570, 0, 0, 1):
         assert receipt.analytic_threshold == _CUBIC_ANALYTIC_REFINED_THRESHOLD
         assert receipt._values[37] == 156
@@ -203,6 +210,23 @@ for index, (coefficients, order, invariants) in enumerate(cases):
     except AttributeError:
         pass
 
+# Exercise the PARI-shaped bounded collector independently of the ordinary
+# adaptive route. Its modular echelon state is scheduling evidence only; the
+# resulting receipt must still survive the complete exact replay.
+saved_efforts = cubic_runtime._CUBIC_RELATION_EFFORTS
+try:
+    cubic_runtime._CUBIC_RELATION_EFFORTS = (3,)
+    bounded = certified_complex_cubic_class_number(
+        field((-55, 9, 0, 1), "bounded_relation_ledger")
+    )
+finally:
+    cubic_runtime._CUBIC_RELATION_EFFORTS = saved_efforts
+assert bounded is not None
+assert bounded.class_number == 5
+assert bounded.invariants == (5,)
+assert bounded.relation_effort == 3
+assert bounded.verify_conditional_grh()
+
 print("cubic-native-receipts-ok")
 `);
   assert.equal(output, "cubic-native-receipts-ok");
@@ -216,7 +240,15 @@ from sagejs.number_fields.cubic_class_number_native_runtime import certified_com
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-for index, coefficients in enumerate(((1, 0, -1, 1), (-8, -1, 0, 1), (-55, 9, 0, 1), (-4, 3, -1, 1))):
+for index, coefficients in enumerate((
+    (1, 0, -1, 1),
+    (-8, -1, 0, 1),
+    (-55, 9, 0, 1),
+    (-4, 3, -1, 1),
+    # LMFDB 3.1.12763.1 has class group C2 x C4.  This guards exact replay of
+    # the first adjacent-ideal regime whose invariants are noncyclic.
+    (-22, 1, -1, 1),
+)):
     polynomial = R(0)
     for exponent, coefficient in enumerate(coefficients):
         polynomial += coefficient * x**exponent
@@ -422,34 +454,31 @@ cases = (
     ("3.1.2856.1", (-21, 9, -1, 1), 7, (7,), 0),
     ("3.1.4027.2", (8, 7, -1, 1), 6, (6,), 0),
     ("3.1.5448.1", (30, -14, -1, 1), 8, (8,), 0),
-    # The narrow three-ideal prefix leaves analytic index 2. The exact status
-    # authorizes the four-ideal-and-complements retry, which finds the middle
-    # generator above 29 without authorizing a compound multiplier.
+    # The bounded PARI-shaped adjacent search finds the middle generator above
+    # 29 without authorizing a compound multiplier.
     ("3.1.12763.1", (-22, 1, -1, 1), 8, (2, 4), 0),
     # The fundamental unit lies beyond the opportunistic score-9 coordinate
     # shells. Exact relation dependencies recover it without broadening the
     # speculative unit search; this pure cubic has class group C3 x C3.
     ("3.1.24843.1", (-91, 0, 0, 1), 9, (3, 3), 0),
-    # The six-row compact tail misses the fundamental-unit dependency. The
-    # bounded eighteen-row recovery tail finds it without using the entire raw
-    # collection matrix or authorizing a multiplier retry.
+    # Exact dependency recovery finds the fundamental unit without authorizing
+    # a compound multiplier retry.
     ("3.1.49096.1", (-126, -6, -1, 1), 9, (9,), 0),
     # The sharper elementary Euler-constant enclosure proves PARI's GRH
     # generator cutoff 16.  The exact reduced ellipsoid in the complementary
     # norm-9 ideal then supplies the decisive relation without a restart.
     ("3.1.108115.1", (-383, -68, 0, 1), 10, (10,), 0),
-    # PARI's successful small_norm path uses four adjacent ideals. The native
-    # schedule likewise broadens from three to four only after the first exact
-    # presentation has nontrivial analytic index, and obtains PARI's 17-row
-    # presentation of C10 without searching the whole factor base.
+    # PARI's successful small_norm path uses four adjacent ideals. The bounded
+    # native schedule likewise obtains its 17-row presentation of C10 without
+    # searching the whole factor base.
     ("3.1.104072.1", (434, 2, -1, 1), 10, (10,), 0),
     # PARI's norm-sorted sub-factor-base permutation is [2,4,5,1,3,6],
-    # traversed backward as [6,3,1,5,...]. After both compact prefixes fail,
-    # the full checked ellipsoids on those first four ideals certify C9.
+    # traversed backward as [6,3,1,5,...]. Checked ellipsoids on those first
+    # four ideals certify C9.
     ("3.1.26412.1", (-159, 9, -1, 1), 9, (9,), 0),
     # PARI admits its decisive relation after the fifth ideal in the same
-    # reverse permutation. The bounded five-ideal stage certifies C6 without
-    # constructing the complete nine-ideal reduced batch.
+    # reverse permutation. The bounded stage certifies C6 without constructing
+    # the complete nine-ideal reduced batch.
     ("3.1.27116.3", (49, 19, -1, 1), 6, (6,), 0),
     # The defining order has index 4 and a prime discriminant component above
     # one million.  The proof binder must use its deterministic word-prime
@@ -459,9 +488,8 @@ cases = (
     # the source-transparent all-ideal adjacent batch already certifies it.
     # This also exercises a 17-ideal resident factor base.
     ("3.1.1737311.1", (289, -42, -1, 1), 8, (2, 2, 2), 0),
-    # A 16-ideal factor base starts with complete adjacent effort rather than
-    # paying for a structurally narrow three-ideal call that cannot certify
-    # this C2-cubed presentation.
+    # The bounded adjacent effort certifies this 16-ideal C2-cubed
+    # presentation without a compound multiplier pass.
     ("3.1.1802479.1", (-149, 67, 0, 1), 8, (2, 2, 2), 0),
     # The native BDF enclosure conservatively reaches 47 while the independent
     # sharp proof stops at 46.  Replay authenticates the complete 19-ideal
@@ -505,11 +533,11 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.27116.3":
         assert receipt.generator_bound == 20, label
         assert receipt.factor_base_size == 9, label
-        assert receipt.relation_count == 17, label
+        assert receipt.relation_count == 16, label
     if label == "3.1.1181183.1":
         assert receipt.generator_bound == 30, label
         assert receipt.factor_base_size == 11, label
-        assert receipt.relation_count == 19, label
+        assert receipt.relation_count == 17, label
     if label == "3.1.23.1":
         assert receipt.generator_bound == 2, label
         assert receipt.factor_base_size == 0, label
@@ -520,25 +548,25 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.44.1":
         assert receipt.generator_bound == 2, label
         assert receipt.factor_base_size == 1, label
-        assert receipt.relation_count == 4, label
+        assert receipt.relation_count == 2, label
         assert receipt.proof_status == "exact-trivial-presentation-unconditional", label
         assert receipt.assumptions == (), label
         assert receipt.theorem == "minkowski-generators-plus-trivial-relation-presentation", label
     if label == "3.1.59.1":
         assert receipt.generator_bound == 3, label
         assert receipt.factor_base_size == 1, label
-        assert receipt.relation_count == 3, label
+        assert receipt.relation_count == 1, label
         assert receipt.proof_status == "exact-trivial-presentation-unconditional", label
         assert receipt.assumptions == (), label
     if label == "3.1.76.1":
         assert receipt.generator_bound == 3, label
         assert receipt.factor_base_size == 2, label
-        assert receipt.relation_count == 4, label
+        assert receipt.relation_count == 5, label
         assert receipt.proof_status == "exact-trivial-presentation-unconditional", label
     if label == "3.1.588.1":
         assert receipt.generator_bound == 8, label
         assert receipt.factor_base_size == 5, label
-        assert receipt.relation_count == 13, label
+        assert receipt.relation_count == 12, label
         assert receipt.proof_status == "exact-relations-conditional-grh", label
         assert receipt.assumptions == (
             "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
@@ -547,21 +575,38 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.808.1":
         assert receipt.generator_bound == 8, label
         assert receipt.factor_base_size == 4, label
-        assert receipt.relation_count == 59, label
+        assert receipt.relation_count == 8, label
         assert receipt.proof_status == "exact-trivial-presentation-conditional-grh", label
         assert receipt.assumptions == (
             "GRH: L(s, chi) is nonzero whenever Re(s) > 1/2 for every nontrivial character chi of Cl(K)",
         ), label
+    if label in ("3.1.44.1", "3.1.59.1", "3.1.76.1", "3.1.808.1"):
+        planned, enumerated, retained, decisive_rows = tuple(
+            receipt._values[index] for index in range(50, 54)
+        )
+        assert planned > 0, label
+        assert enumerated > 0, label
+        assert retained == receipt.relation_count, label
+        assert decisive_rows == retained, label
+        predecessor_rows = {
+            "3.1.44.1": 8,
+            "3.1.59.1": 7,
+            "3.1.76.1": 11,
+            "3.1.808.1": 21,
+        }
+        assert retained < predecessor_rows[label], label
+        if receipt.factor_base_size > 1:
+            assert planned < receipt.factor_base_size, label
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label
-        assert receipt.relation_count == 18, label
-    if label == "3.1.49096.1":
         assert receipt.relation_count == 16, label
+    if label == "3.1.49096.1":
+        assert receipt.relation_count == 15, label
     if label == "3.1.1802479.1":
         assert receipt.generator_bound == 41, label
         assert receipt.factor_base_size == 16, label
-        assert receipt.relation_count == 26, label
+        assert receipt.relation_count == 24, label
     if label == "3.1.23018700.1":
         assert receipt.generator_bound == 47, label
         assert receipt.factor_base_size == 19, label
@@ -583,7 +628,7 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.3374831.1":
         assert receipt.generator_bound == 49, label
         assert receipt.factor_base_size == 12, label
-        assert receipt.relation_count == 18, label
+        assert receipt.relation_count == 19, label
     if label in (
         "3.1.23018700.1",
         "3.1.99084027.1",
@@ -602,6 +647,7 @@ test("large-regulator cubic receipts publish exact units across the survey regim
   timeout: 240_000,
 }, () => {
   const output = runPython(String.raw`
+import sagejs.number_fields.cubic_class_number_native_runtime as native_runtime
 from sagejs.number_fields.cubic_class_number_native_runtime import certified_complex_cubic_class_number
 
 R = PolynomialRing(QQ, "x")
@@ -633,6 +679,25 @@ cases = (
     # relation-transcript entries remain in their compact tier.
     ("3.1.69305231.3", (48016, 134, -1, 1), 3, (3,)),
 )
+
+# Moving the fmpz checkpoint before child initialization made allocation
+# accounting complete. This field deterministically exhausts the former 2-MiB
+# checkpoint, issues no receipt, and succeeds under the measured 3-MiB public
+# envelope. Use a fresh field so no certificate cache can mask either result.
+assert native_runtime._CUBIC_ARENA_CHECKPOINT_LIMIT == 3_145_728
+old_checkpoint_limit = native_runtime._CUBIC_ARENA_CHECKPOINT_LIMIT
+try:
+    native_runtime._CUBIC_ARENA_CHECKPOINT_LIMIT = 2_097_152
+    low_cap_polynomial = sum(
+        coefficient * x**exponent
+        for exponent, coefficient in enumerate((48016, 134, -1, 1))
+    )
+    low_cap_field = NumberField(low_cap_polynomial, "large_regulator_low_cap")
+    assert certified_complex_cubic_class_number(low_cap_field) is None
+    assert getattr(low_cap_field, "_native_cubic_class_number_certificate", None) is None
+finally:
+    native_runtime._CUBIC_ARENA_CHECKPOINT_LIMIT = old_checkpoint_limit
+
 for label, coefficients, class_number, invariants in cases:
     polynomial = sum(coefficient * x**exponent for exponent, coefficient in enumerate(coefficients))
     K = NumberField(polynomial, "large_" + label.replace(".", "_"))

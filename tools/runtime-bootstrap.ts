@@ -372,8 +372,34 @@ export function runRuntimeBootstrap(
       ...facadeNames,
       "__sagejs_native_resolve__",
       "__sagejs_native_fallback_policy__",
+      "__sagejs_native_private_fallback__",
     ]);
+    const pythonBuiltinNames = new Set<PropertyKey>();
+    const baselibRegistry = Reflect.get(
+      globalThis,
+      "__sagejs_baselib_modules__",
+    ) as Record<string, unknown> | undefined;
+    for (const moduleName of [
+      "sagejs._baselib.builtins",
+      "sagejs._baselib.errors",
+    ]) {
+      const namespace = baselibRegistry?.[moduleName];
+      if (namespace && (typeof namespace === "object" || typeof namespace === "function")) {
+        for (const property of Reflect.ownKeys(namespace)) {
+          pythonBuiltinNames.add(property);
+        }
+      }
+    }
     const metadata: Record<PropertyKey, any> = Object.create(null);
+    const explicitlyWrittenBuiltinNames = new Set<PropertyKey>();
+    const existingDeletedBuiltin = Reflect.get(
+      globalThis,
+      "ρσ_deleted_builtin",
+    );
+    const deletedBuiltin = existingDeletedBuiltin?.__sagejs_deleted_builtin__ === true
+      ? existingDeletedBuiltin
+      : Object.freeze({ __sagejs_deleted_builtin__: true });
+    Reflect.set(globalThis, "ρσ_deleted_builtin", deletedBuiltin);
     Object.assign(metadata, {
       __name__: "builtins",
       __package__: "",
@@ -394,28 +420,54 @@ export function runRuntimeBootstrap(
         submodule_search_locations: null,
       },
     });
+    Object.defineProperties(metadata, {
+      __sagejs_builtin_facade_names__: { value: builtinNames },
+      __sagejs_python_builtin_names__: { value: pythonBuiltinNames },
+      __sagejs_explicit_builtin_names__: {
+        value: explicitlyWrittenBuiltinNames,
+      },
+    });
     const builtins = new Proxy(metadata, {
       get(target, property) {
         if (Reflect.has(target, property)) return Reflect.get(target, property);
-        return builtinNames.has(property)
-          ? Reflect.get(globalThis, property)
-          : undefined;
+        if (!builtinNames.has(property)) return undefined;
+        const value = Reflect.get(globalThis, property);
+        return value === deletedBuiltin ? undefined : value;
       },
       has(target, property) {
-        return Reflect.has(target, property) ||
-          (builtinNames.has(property) && Reflect.has(globalThis, property));
+        return Reflect.has(target, property) || (builtinNames.has(property) &&
+          Reflect.has(globalThis, property) &&
+          Reflect.get(globalThis, property) !== deletedBuiltin);
       },
       set(target, property, value) {
         if (Reflect.has(target, property)) return Reflect.set(target, property, value);
         if (builtinNames.has(property)) {
+          explicitlyWrittenBuiltinNames.add(property);
           return Reflect.set(globalThis, property, value);
         }
         return Reflect.set(target, property, value);
       },
+      deleteProperty(target, property) {
+        if (Reflect.has(target, property)) {
+          return Reflect.deleteProperty(target, property);
+        }
+        if (builtinNames.has(property)) {
+          explicitlyWrittenBuiltinNames.delete(property);
+          if (Reflect.deleteProperty(globalThis, property)) return true;
+          // Top-level `var` bindings are non-configurable in the host realm.
+          // A process-wide tombstone preserves Python deletion semantics
+          // without pretending that JavaScript removed the property.
+          return Reflect.set(globalThis, property, deletedBuiltin);
+        }
+        return true;
+      },
       ownKeys(target) {
         return [...new Set([
           ...Reflect.ownKeys(target),
-          ...facadeNames.filter((property) => Reflect.has(globalThis, property)),
+          ...facadeNames.filter((property) =>
+            Reflect.has(globalThis, property) &&
+            Reflect.get(globalThis, property) !== deletedBuiltin
+          ),
         ])];
       },
       getOwnPropertyDescriptor(target, property) {
@@ -501,9 +553,19 @@ export function runRuntimeBootstrap(
     "__sagejs_native_trace_enabled__",
     process.env.SAGEJS_NATIVE_TRACE === "1",
   );
+  const nativePrivateFallback = Object.freeze(Object.create(null));
+  Reflect.set(
+    globalThis,
+    "__sagejs_native_private_fallback__",
+    nativePrivateFallback,
+  );
   const nativeModules = new Map<
     string,
-    { sourceHash: string; functions: Record<string, unknown> }
+    {
+      sourceHash: string;
+      functions: Record<string, unknown>;
+      privateFunctions: ReadonlySet<string>;
+    }
   >();
   const nativeSourceHashes = new Map<string, string>();
   type NativeForeignDeclaration = {
@@ -516,6 +578,7 @@ export function runRuntimeBootstrap(
     sourceHash: string;
     nativeAbi: number;
     foreignDeclarations: NativeForeignDeclaration[];
+    privateFunctions: string[];
   };
   const nativeLogicalSourceKey = (filename: string): string | undefined => {
     const normalized = filename.replaceAll("\\", "/");
@@ -585,16 +648,34 @@ export function runRuntimeBootstrap(
     const sourceHash = Reflect.get(value, "sourceHash");
     const nativeAbi = Reflect.get(value, "nativeAbi");
     const declarations = Reflect.get(value, "foreignDeclarations");
+    const privateNames = Reflect.get(value, "privateFunctions");
     if (
       typeof cacheKey !== "string" || !/^[a-f0-9]{64}$/.test(cacheKey) ||
       sourceHash !== expectedSourceHash ||
       nativeAbi !== NATIVE_KERNEL_ABI_VERSION ||
-      !Array.isArray(declarations)
+      !Array.isArray(declarations) ||
+      !Array.isArray(privateNames)
     ) {
       throw staleNativeArtifact(
         filename,
         "source, cache, or native ABI metadata does not match",
       );
+    }
+    const privateFunctions: string[] = [];
+    let previousPrivateName: string | undefined;
+    for (const name of privateNames) {
+      if (
+        typeof name !== "string" ||
+        !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ||
+        (previousPrivateName !== undefined && name <= previousPrivateName)
+      ) {
+        throw staleNativeArtifact(
+          filename,
+          "invalid private native-function metadata",
+        );
+      }
+      privateFunctions.push(name);
+      previousPrivateName = name;
     }
     const foreignDeclarations: NativeForeignDeclaration[] = [];
     const seen = new Set<string>();
@@ -650,7 +731,13 @@ export function runRuntimeBootstrap(
       foreignDeclarations.push({ id, declarationIdentity, dynamicPackage });
     }
     foreignDeclarations.sort((left, right) => left.id.localeCompare(right.id));
-    return { cacheKey, sourceHash, nativeAbi, foreignDeclarations };
+    return {
+      cacheKey,
+      sourceHash,
+      nativeAbi,
+      foreignDeclarations,
+      privateFunctions,
+    };
   };
   const nativeCompatibilityKey = (value: NativeCompatibility): string =>
     JSON.stringify({
@@ -658,6 +745,7 @@ export function runRuntimeBootstrap(
       sourceHash: value.sourceHash,
       nativeAbi: value.nativeAbi,
       foreignDeclarations: value.foreignDeclarations,
+      privateFunctions: value.privateFunctions,
     });
   const registerNativeModule = (
     filename: string,
@@ -674,8 +762,24 @@ export function runRuntimeBootstrap(
     ) {
       throw new TypeError("invalid Sage.js native-module registration");
     }
-    validatedNativeCompatibility(filename, compatibility, sourceHash);
-    nativeModules.set(resolve(filename), { sourceHash, functions });
+    const validated = validatedNativeCompatibility(
+      filename,
+      compatibility,
+      sourceHash,
+    );
+    if (validated.privateFunctions.some((name) =>
+      typeof Reflect.get(functions, name) === "function"
+    )) {
+      throw staleNativeArtifact(
+        filename,
+        "private native-function metadata overlaps callable exports",
+      );
+    }
+    nativeModules.set(resolve(filename), {
+      sourceHash,
+      functions,
+      privateFunctions: new Set(validated.privateFunctions),
+    });
   };
   const resolveNativeFunction = (
     filename: string,
@@ -718,6 +822,7 @@ export function runRuntimeBootstrap(
     if (registered?.sourceHash === sourceHash) {
       const candidate = Reflect.get(registered.functions, name);
       if (usableNativeCandidate(candidate)) return candidate;
+      if (registered.privateFunctions.has(name)) return nativePrivateFallback;
     }
 
     // An explicit cache directory is an override, not an additional search
@@ -792,15 +897,17 @@ export function runRuntimeBootstrap(
             "cache index and generated wrapper metadata differ",
           );
         }
-        const candidate = Reflect.get(loaded, name);
-        if (!usableNativeCandidate(candidate)) continue;
         registerNativeModule(
           sourcePath,
           sourceHash,
           loaded,
           moduleCompatibility,
         );
-        return candidate;
+        const candidate = Reflect.get(loaded, name);
+        if (usableNativeCandidate(candidate)) return candidate;
+        if (moduleCompatibility.privateFunctions.includes(name)) {
+          return nativePrivateFallback;
+        }
       } catch (error) {
         // Generated wrappers self-register while `require` evaluates them.
         // Never retain that registration if the cache index or current FFI

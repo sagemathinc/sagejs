@@ -43,7 +43,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_ffi_view_create, ρσ_ffi_view_valid
 # globals: ρσ_iterator_symbol, ρσ_kwargs_symbol
 # globals: ρσ_non_exception_throw
-# globals: ρσ_float, ρσ_int, ρσ_list_constructor, ρσ_list_contains, ρσ_str
+# globals: ρσ_float, ρσ_int, ρσ_list_constructor, ρσ_list_contains, ρσ_list_decorate, ρσ_str
 # globals: ρσ_tuple
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
 # globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power, ρσ_modules
@@ -609,9 +609,12 @@ def ρσ_dynamic_eval(
     module_id,
 ):
     return r"""%js (() => {
-        const ρσ_dynamic_modules = {
-            [module_id]: Object.assign({}, input_namespace)
-        };
+        // Baselib's lexical registry is a prototype view with a private
+        // __main__. Imports belong to the canonical interpreter registry.
+        // Copy descriptors, not values, so lazy entries stay lazy.
+        const ρσ_dynamic_modules = Object.create(null,
+            Object.getOwnPropertyDescriptors(globalThis.ρσ_modules || ρσ_modules));
+        ρσ_dynamic_modules[module_id] = Object.assign({}, input_namespace);
         const __sagejs_input_namespace__ = input_namespace;
         const evaluate = new Function(
             "ρσ_modules",
@@ -720,6 +723,7 @@ kwargs_symbol = ρσ_kwargs_symbol
 lightweight_math_class = ρσ_lightweight_math_class
 list_constructor = ρσ_list_constructor
 list_contains = ρσ_list_contains
+list_decorate = ρσ_list_decorate
 map_class = Map
 math = Math
 math_tuple = ρσ_math_tuple
@@ -770,3 +774,12 @@ tuple_builtin = ρσ_tuple
 undefined = r"%js undefined"
 weak_ref_class = WeakRef
 zero_division_error = ZeroDivisionError
+
+
+def __dir__():
+    """Include host bindings even when their value is `undefined`."""
+    return [
+        name
+        for name in Object.getOwnPropertyNames(ρσ_modules["sagejs.runtime"])
+        if not name.startswith("ρσ")
+    ]

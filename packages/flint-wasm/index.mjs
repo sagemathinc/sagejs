@@ -1343,6 +1343,15 @@ export async function instantiateFlintFactor(
     higherWeightPresentationReduction: (presentation) => presentation.reduction,
     p1ListCharacterPresentation: characterPresentation,
     characterPresentationReduction: (presentation) => presentation.reduction,
+    p1ListCharacterHeckeMatrix() {
+      // Character presentations are portable; their Hecke action is not yet.
+      // Do not advertise a recurrence fallback that needs this same backend.
+      const error = new Error(
+        "Character Hecke matrices are not yet supported in WebAssembly; use the native Sage.js backend.",
+      );
+      error.code = "SAGEJS_WASM_CAPABILITY_UNAVAILABLE";
+      throw error;
+    },
     ...polynomialBackend,
     ...multivariateBackend,
     ...matrixBackend,

@@ -54,37 +54,35 @@ def print_array(self, output):
 
 
 def print_obj_literal_slow(self, output):
+    if self.is_pydict:
+        output.print("ρσ_dict_literal([")
+        for index, prop in enumerate(self.properties):
+            if index:
+                output.comma()
+            prop.key.print(output)
+            output.comma()
+            prop.value.print(output)
+        output.print("])")
+        return
+
     def f_obj_literal_slow():
         output.print("function()")
 
         def f_obj_literal_slow0():
             output.indent()
-            if self.is_pydict:
-                output.spaced.apply(output, "var ρσ_d = ρσ_dict()".split(" "))
-            else:
-                output.spaced(
-                    "var",
-                    "ρσ_d",
-                    "=",
-                    ("Object.create(null)" if self.is_jshash else "{}"),
-                )
+            output.spaced(
+                "var",
+                "ρσ_d",
+                "=",
+                ("Object.create(null)" if self.is_jshash else "{}"),
+            )
             output.end_statement()
             for i, prop in enumerate(self.properties):
                 output.indent()
-                if self.is_pydict:
-                    output.print("ρσ_d.set")
-
-                    def f_py_dict():
-                        prop.key.print(output)
-                        output.print(","), output.space()
-                        prop.value.print(output)
-
-                    output.with_parens(f_py_dict)
-                else:
-                    output.print("ρσ_d")
-                    output.with_square(lambda: prop.key.print(output))
-                    output.space(), output.print("="), output.space()
-                    prop.value.print(output)
+                output.print("ρσ_d")
+                output.with_square(lambda: prop.key.print(output))
+                output.space(), output.print("="), output.space()
+                prop.value.print(output)
                 output.end_statement()
             output.indent()
             output.spaced("return", "ρσ_d")

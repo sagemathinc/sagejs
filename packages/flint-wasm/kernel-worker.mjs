@@ -522,6 +522,8 @@ self.onmessage = ({ data, ports }) => {
       return;
     }
     const run = evaluationTail.then(() => dispatch(privateData));
+    // Catch the promise returned by then, not just run: otherwise an ordinary
+    // evaluation error leaves an unhandled rejection that kills Node workers.
     evaluationTail = run.then((result) => {
       if (privateData.type !== "evaluate") {
         send({ type: "result", id: privateData.id, ok: true, result });

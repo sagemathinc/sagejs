@@ -112,6 +112,15 @@ assert not hasattr(certificate, "_detached_encoding")
 # The detached body and hash bind the height-aware support selected for this
 # fixed field instance, and detached replay still checks the exact proof.
 payload = certificate.to_dict()
+assert payload["plan"]["schema"] == "sagejs.number-fields/factor-base-plan-v2"
+assert payload["plan"]["enumeration_bound"] == payload["plan"]["bound"]["bound"] == 9
+assert [entry["row"] for entry in payload["relations"]] == [
+    [1, 0, 0, 1, 0],
+    [0, 1, 2, 0, 0],
+    [0, 0, 1, 1, 0],
+    [2, 0, 0, 0, 1],
+    [0, 0, 0, 1, 1],
+]
 assert certificate.stable_hash() == (
     "85f1619dd0afe5d6e05cfa50fc8fb1264fe6e10fcb428887c54e527d7beff4f5"
 )

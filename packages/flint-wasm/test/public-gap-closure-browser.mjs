@@ -108,6 +108,16 @@ try {
         const cases = ${JSON.stringify(publicGapCases)};
         const results = [];
         for (const item of cases) {
+          if (item.expectedError) {
+            try {
+              await sage.evaluate(item.source, { timeout: 120000 });
+            } catch (error) {
+              if (!error.message.includes(item.expectedError)) throw error;
+              results.push({ name: item.name, error: item.expectedError });
+              continue;
+            }
+            throw new Error(item.name + ": expected a capability error");
+          }
           const result = await sage.evaluate(item.source, { timeout: 120000 });
           results.push({ name: item.name, repr: result.repr });
         }
@@ -127,7 +137,9 @@ try {
   }
   assert.deepEqual(
     evaluation.result.value,
-    publicGapCases.map(({ name, expected }) => ({ name, repr: expected })),
+    publicGapCases.map(({ name, expected, expectedError }) => expectedError
+      ? { name, error: expectedError }
+      : { name, repr: expected }),
   );
   socket.close();
   process.stdout.write("Public WASM gap corpus passed in Chromium.\n");

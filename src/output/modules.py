@@ -24,16 +24,48 @@ from ast_types import (
 
 
 def control_flow_import_names(module):
-    """Return module names assigned by imports nested in control flow."""
+    """Return module names that require runtime namespace resolution."""
     names = {}
+    star_candidates = {}
+    has_module_star_import = False
     walker = None
+
+    def detect_star_import(node, descend):
+        nonlocal has_module_star_import
+        if node is module:
+            return
+        if is_node_type(node, AST_Lambda) or is_node_type(node, AST_Class):
+            return True
+        if is_node_type(node, AST_Import) or (
+            node.key and (node.argnames is not undefined or node.alias is not undefined)
+        ):
+            if node.star and node.target_module:
+                has_module_star_import = True
+            return True
+
+    module.walk(TreeWalker(detect_star_import))
 
     def collect(node, descend):
         if node is module:
             return
+        if (
+            is_node_type(node, AST_SymbolRef)
+            and node.python_resolution_provenance is "module"
+            and not node.python_lexical_binding
+        ):
+            star_candidates[node.name] = True
         if is_node_type(node, AST_Import) or (
             node.key and (node.argnames is not undefined or node.alias is not undefined)
         ):
+            inside_nested_scope = False
+            for ancestor in walker.stack:
+                if is_node_type(ancestor, AST_Lambda) or is_node_type(
+                    ancestor, AST_Class
+                ):
+                    inside_nested_scope = True
+                    break
+            if inside_nested_scope:
+                return True
             # The parser's import container is transparent to this walk.  A
             # direct module import has only the toplevel as an ancestor; an
             # additional statement/block ancestor means JavaScript ``var``
@@ -50,11 +82,19 @@ def control_flow_import_names(module):
                 elif node.key:
                     names[node.key.split(".")[0]] = True
             return True
-        if is_node_type(node, AST_Lambda) or is_node_type(node, AST_Class):
+        if not has_module_star_import and (
+            is_node_type(node, AST_Lambda) or is_node_type(node, AST_Class)
+        ):
             return True
+        # Only modules with a star import descend through nested scopes to
+        # discover their nonlexical module reads. This keeps ordinary module
+        # emission on the shallow historical traversal.
 
     walker = TreeWalker(collect)
     module.walk(walker)
+    if has_module_star_import:
+        for name in star_candidates:
+            names[name] = True
     return names
 
 
@@ -158,10 +198,8 @@ def write_imports(module, output):
         output.end_statement()
     if any(module_.module_id == "builtins" for module_ in imports):
         output.indent()
-        output.print("ρσ_modules.builtins = {}")
-        output.end_statement()
-        output.indent()
         output.print(
+            "if (!ρσ_modules.builtins) { ρσ_modules.builtins = {}; "
             "Object.defineProperties(ρσ_modules.builtins, {"
             "abs:{enumerable:true,get:function(){return abs},"
             "set:function(value){abs=value}},"
@@ -173,7 +211,7 @@ def write_imports(module, output):
             "__import__:{enumerable:true,"
             "get:function(){return __import__},"
             "set:function(value){__import__=value}}"
-            "})"
+            "}) }"
         )
         output.end_statement()
 
@@ -230,6 +268,22 @@ def write_imports(module, output):
             )
         output.end_statement()
 
+        # The runtime constructs its identity-based module registry before
+        # compiler-emitted modules (especially ``__main__``) exist. Register
+        # each new namespace immediately so Python ``type``, ``dir``, and
+        # ``__dict__`` behavior can distinguish it from an ordinary object.
+        output.indent()
+        output.print(
+            "if (globalThis.__sagejs_module_namespaces__) "
+            "globalThis.__sagejs_module_namespaces__.add("
+        )
+        if module_id.indexOf(".") is -1:
+            output.print("ρσ_modules." + module_id)
+        else:
+            output.print('ρσ_modules["' + module_id + '"]')
+        output.print(")")
+        output.end_statement()
+
     # Every loaded child module is also an attribute of its parent package.
     # Python establishes this relationship independently of whether user code
     # wrote ``import package.child`` or ``from package import child``.
@@ -255,7 +309,15 @@ def write_imports(module, output):
     # Output module code
     for module_ in imports:
         if module_.module_id is not "__main__" and not module_.dynamic:
-            print_module(module_, output)
+            # Imported modules are emitted by this helper rather than through
+            # `AST_Node.print`. Put their toplevel on the output stack
+            # explicitly so class-body LOAD_NAME fallbacks resolve against
+            # the imported module instead of the surrounding `__main__`.
+            output.push_node(module_)
+            try:
+                print_module(module_, output)
+            finally:
+                output.pop_node()
 
 
 def write_main_name(output, filename=None):
@@ -395,6 +457,18 @@ def bind_module_namespace(module, output, hidden_names=None):
     for symbol in (module.localvars or []).concat(module.exports or []):
         if symbol.python_identifier:
             python_bindings[symbol.name] = True
+    # Direct imports are Python module bindings, but the legacy JavaScript
+    # `localvars` analysis can omit them. They must still be visible through
+    # the live module dictionary: class LOAD_NAME falls back there for idioms
+    # such as `class C: alias = alias`. Use the import-specific inventory,
+    # not every Tree-sitter scope binding: the latter also contains erased
+    # annotation-only names and optimizer-elided implementation details.
+    for name in Object.keys(module.python_import_bindings or {}):
+        if module.python_lexical_hygiene:
+            python_bindings[name] = True
+        if not seen[name]:
+            seen[name] = True
+            names.push(name)
     for symbol in module.localvars:
         if not seen[symbol.name]:
             seen[symbol.name] = True
@@ -866,9 +940,18 @@ def print_module(self, output):
                                     "python_attributes": output.options.python_attributes,
                                 }
                             )
-                            co.with_indent(
-                                output.indentation(), lambda: output_module(co)
-                            )
+                            # Cached variants render the module body into a
+                            # secondary stream. Preserve the authoritative
+                            # toplevel on that stream's node stack so class
+                            # LOAD_NAME fallbacks resolve through this module,
+                            # not an accidental `__main__` default.
+                            co.push_node(self)
+                            try:
+                                co.with_indent(
+                                    output.indentation(), lambda: output_module(co)
+                                )
+                            finally:
+                                co.pop_node()
                             raw = co.get()
                             cached.outputs[output_key(beautify, keep_docstrings)] = raw
                     cached_name = cache_file_name(

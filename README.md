@@ -570,7 +570,8 @@ Mestre q-expansion reconstruction, expander graph views, and checked Hilbert
 Brandt modules over $\mathbf Q(\sqrt5)$ and $\mathbf Q(\sqrt3)$. See
 [Brandt modules over the rational numbers](docs/brandt-modules.md) and
 [Mestre's method of graphs and sparse modular forms](docs/mestre-method-of-graphs.md),
-as well as [half-integral-weight modular forms](docs/half-integral-modular-forms.md).
+as well as [half-integral-weight modular forms](docs/half-integral-modular-forms.md)
+and [modular abelian varieties](docs/modular-abelian-varieties.md).
 
 ## Sage mode
 

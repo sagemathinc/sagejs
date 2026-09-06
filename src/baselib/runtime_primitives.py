@@ -94,6 +94,11 @@ def ρσ_compute_mro(cls: Any, bases: Any) -> Any:
         sequence = []
         if inherited is runtime.undefined:
             sequence.push(base)  # type: ignore[attr-defined]
+            # Native builtins do not carry the compiled-class MRO metadata,
+            # but Python still places object after them.  Supplying that tail
+            # is necessary for correct C3 ordering in, for example,
+            # ``class C(PythonBase, list)``.
+            sequence.push(object)  # type: ignore[attr-defined]
         else:
             for item in inherited:
                 sequence.push(item)  # type: ignore[attr-defined]

@@ -11,6 +11,11 @@ const website = path.join(root, "website");
 const publishedRelease = JSON.parse(
   fs.readFileSync(path.join(website, "published-release.json"), "utf8"),
 );
+assert.match(publishedRelease.version, /^\d+\.\d+\.\d+$/);
+assert.match(
+  publishedRelease.releaseTag,
+  new RegExp(`^v${publishedRelease.version.replaceAll(".", "\\.")}(?:\\+release\\.[1-9][0-9]*)?$`),
+);
 const payload = JSON.parse(
   fs.readFileSync(path.join(website, "capabilities.json"), "utf8"),
 );
@@ -224,6 +229,7 @@ test("dashboard covers the three questions and all install paths", () => {
   assert.match(html, /curl -fsSL https:\/\/sagejs\.org\/install\.sh \| sh/);
   assert.match(pagesWorkflow, /node scripts\/stage-website-installer\.cjs/);
   assert.match(installerStager, /published-release\.json/);
+  assert.match(installerStager, /release\.releaseTag/);
   assert.match(installerStager, /SAGEJS_VERSION/);
   assert.match(
     html,
