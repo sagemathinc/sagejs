@@ -29,6 +29,20 @@ is still in progress. This is an operational
 failure, not evidence that can be relabeled as a pass. Reproduction helpers must
 acquire the same checkout lock rather than merely observe it absent.
 
+That macOS integration revalidation stopped after 149 passing files on the
+fresh GF(2) pivot timing comparison in `dense-prime-host-boundary.cjs`: 135 ms
+versus 57 ms for RREF, against its unchanged `2 * rref + 5 ms` ceiling. Exact
+mathematical checks passed. The unchanged file passed in isolation in 8.5 s;
+one complete, otherwise-idle profile retry is underway. The failed observation
+is retained, not overwritten as evidence of a successful run.
+
+The mixed host-boundary file was missing from the serial performance inventory.
+`main` now classifies the entire file into the required performance gate, keeping
+all correctness and timing assertions and adding a routing regression test.
+This follow-up is deliberately outside frozen `ef09`: that candidate must still
+pass its existing complete commands. A repeated failure requires investigation
+and a new candidate, not indefinite retries or a threshold waiver.
+
 Browser numerical collection runs independently on the idle Linux benchmark
 host with its authenticated SciPy oracle. All four numerical browser rows,
 sanitizer/destructive checks, memory records and structural budgets passed.

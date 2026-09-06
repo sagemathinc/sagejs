@@ -2,6 +2,10 @@
 // Actual timing experiments, not tests of benchmark-policy correctness. New
 // entries require review; default correctness classification never drops work.
 const performance = new Set([
+  // Includes exact host-boundary checks, but also compares independent RREF
+  // and pivot wall-clock samples. Keep the entire file in the required serial
+  // gate: parallel correctness workers can distort that comparison.
+  "test/dense-prime-host-boundary.cjs",
   "test/python-round-performance.cjs",
   "test/python-performance-runner.cjs",
 ]);
