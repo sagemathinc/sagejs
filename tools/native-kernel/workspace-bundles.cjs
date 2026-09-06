@@ -42,11 +42,27 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
     schemas.set(schemaName, { name: schemaName, fields });
   }
   const functions = topLevel.filter(node => kind(node) === "AST_Function");
+  const workspaceHelpers = new Map(functions
+    .filter(fn => list(fn.argnames).some(arg => schemas.has(name(arg.annotation))))
+    .map(fn => [name(fn.name), fn]));
+  const protectedBinding = binding => schemas.has(binding) ||
+    workspaceHelpers.has(binding) || binding === "NativeWorkspace";
+  if (schemas.size) {
+    const imports = topLevel.flatMap(node => kind(node) === "AST_Imports" ? list(node.imports) : []);
+    requireThat(imports.some(node => node.key === "sagejs.native" && !node.level &&
+      list(node.argnames).some(arg => name(arg) === "NativeWorkspace" &&
+        (!arg.alias || name(arg.alias) === "NativeWorkspace"))), filename,
+    "workspace schemas require an explicit sagejs.native NativeWorkspace import");
+    for (const helper of workspaceHelpers.keys()) {
+      requireThat(functions.filter(fn => name(fn.name) === helper).length === 1,
+        filename, "workspace helper names cannot be shadowed by definitions");
+    }
+  }
   const checkShadow = target => {
     if (!target || typeof target !== "object") return;
     if (["AST_SymbolRef", "AST_SymbolAlias"].includes(kind(target))) {
-      requireThat(!schemas.has(target.name) && target.name !== "NativeWorkspace", filename,
-        "workspace schema names cannot be shadowed by value bindings");
+      requireThat(!protectedBinding(target.name), filename,
+        "workspace schema/helper names cannot be shadowed by value bindings");
     }
     for (const key of ["elements", "car", "cdr"]) {
       if (Array.isArray(target[key])) target[key].forEach(checkShadow);
@@ -64,8 +80,8 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
         const binding = name(arg.alias) || name(arg);
         const nativeBaseImport = node.key === "sagejs.native" && !node.level &&
           name(arg) === "NativeWorkspace" && binding === "NativeWorkspace";
-        requireThat(nativeBaseImport || (!schemas.has(binding) && binding !== "NativeWorkspace"),
-          filename, "workspace schema names cannot be shadowed by imports");
+        requireThat(nativeBaseImport || !protectedBinding(binding),
+          filename, "workspace schema/helper names cannot be shadowed by imports");
       }
     }
   };
@@ -81,8 +97,9 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
     const visitModule = node => {
       if (!node || typeof node !== "object") return;
       if (["AST_Function", "AST_Class"].includes(kind(node))) {
-        requireThat(isBundleClass(node) || (!schemas.has(name(node.name)) && name(node.name) !== "NativeWorkspace"),
-          filename, "workspace schema names cannot be shadowed by definitions");
+        requireThat(isBundleClass(node) || workspaceHelpers.get(name(node.name)) === node ||
+          !protectedBinding(name(node.name)), filename,
+        "workspace schema/helper names cannot be shadowed by definitions");
         return; // Class/function bodies are separate Python binding scopes.
       }
       checkBindings(node);
@@ -116,8 +133,8 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
     };
     visitNames(fn);
     for (const { arg, schema } of contracts.get(name(fn.name))) {
-      requireThat(!schemas.has(arg.name) && arg.name !== "NativeWorkspace", filename,
-        "workspace schema names cannot be shadowed by parameters");
+      requireThat(!protectedBinding(arg.name), filename,
+        "workspace schema/helper names cannot be shadowed by parameters");
       if (!schema) { params.push(arg); continue; }
       requireThat(arg.default_value == null, filename, "workspace parameters cannot have defaults");
       const members = schema.fields.map(field => {

@@ -97,6 +97,34 @@ test("workspace helper parameters cannot be selected as a public ABI", async () 
     /workspace bundle parameters have no public host ABI/);
 });
 
+test("workspace schemas require the actual imported base", async () => {
+  await assert.rejects(() => lowerSource(prefix.replace("native, NativeWorkspace,", "native,"),
+    "missing-workspace-import.py", { functions: ["update"] }), /workspace.*import/i);
+});
+
+test("workspace helper calls cannot bypass Python value shadowing", async () => {
+  const entry = `
+@native
+def witness(value: int) -> int:
+    with NativeExactArena(8192, 1048576) as arena:
+        vector = arena.integer_vector(2, 0)
+        scratch = Scratch(vector, vector)
+        return update(scratch, value)
+`;
+  for (const source of [
+    (prefix + entry).replace("def witness(value: int)", "def witness(update: int, value: int)"),
+    prefix + entry.replace("    with NativeExactArena", "    update = 7\n    with NativeExactArena"),
+    prefix + "\nupdate = 7\n" + entry,
+    prefix + "\nfrom math import sqrt as update\n" + entry,
+    prefix + "\nclass update:\n    pass\n" + entry,
+    prefix + "\ndef update(value: int) -> int:\n    return value\n" + entry,
+    prefix + entry.replace("    with NativeExactArena", "    for update in range(1):\n        pass\n    with NativeExactArena"),
+  ]) {
+    await assert.rejects(() => lowerSource(source, "shadowed-workspace-helper.py",
+      { functions: ["witness"] }), /workspace.*shadow/i);
+  }
+});
+
 test("workspace schema resolution rejects module-level rebinding", async () => {
   for (const replacement of [
     "class Scratch:\n    pass\n",
