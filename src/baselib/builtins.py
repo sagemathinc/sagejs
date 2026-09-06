@@ -5191,7 +5191,10 @@ def ρσ_getattr_internal(
     descriptor_kind = _BUILTINS_DESCRIPTOR_GENERIC
     owner = runtime.undefined
     if (
-        not runtime.strict_equal(runtime.jstype(value), "function")
+        (
+            not runtime.strict_equal(runtime.jstype(value), "function")
+            or _builtins_get_member(value, "__sagejs_callable_instance__") is True
+        )
         and value is not None
         and value is not runtime.undefined
     ):
