@@ -405,7 +405,7 @@ def python_function_preamble(node, output, offset, javascript_name):
         output.print(source)
         output.end_statement()
 
-    def required(argument, keyword_only):
+    def required(argument, keyword_only, missing_test=None):
         name = argument_name(argument)
         message = (
             "missing required keyword-only argument: "
@@ -414,8 +414,8 @@ def python_function_preamble(node, output, offset, javascript_name):
         ) + argument.name
         return (
             "if ("
-            + name
-            + " === undefined) throw ρσ_function_argument_error("
+            + (missing_test if missing_test is not None else name + " === undefined")
+            + ") throw ρσ_function_argument_error("
             + JSON.stringify(message)
             + ", "
             + fname
@@ -486,7 +486,9 @@ def python_function_preamble(node, output, offset, javascript_name):
                 + str(a.length - index)
                 + "]"
             )
-            statement(required(argument, False))
+            # The runtime's undefined value is a valid declared default.
+            # Only absent tuple storage is missing, not its stored value.
+            statement("else " + required(argument, False))
 
         output.with_block(bind_default)
         output.newline()
@@ -512,14 +514,21 @@ def python_function_preamble(node, output, offset, javascript_name):
 
         def bind_keyword_default():
             statement("var ρσ_kwdefaults = " + fname + ".__kwdefaults__")
+            statement("var ρσ_kwmissing = {}")
             statement(
                 "if (ρσ_kwdefaults !== null) "
                 + name
                 + " = ρσ_dict_storage_get_string(ρσ_kwdefaults, "
                 + key
-                + ", undefined)"
+                + ", ρσ_kwmissing)"
             )
-            statement(required(argument, True))
+            statement(
+                required(
+                    argument,
+                    True,
+                    "ρσ_kwdefaults === null || " + name + " === ρσ_kwmissing",
+                )
+            )
 
         output.with_block(bind_keyword_default)
         output.newline()

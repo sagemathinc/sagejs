@@ -68,6 +68,26 @@ Fresh source-bound upstream results remain 17/28 with no status changes, and
 package workflows remain 8/11 plus seven passing Tomli upstream tests. These
 required upstream/package failures still prevent full-plan qualification.
 
+### Declared undefined defaults
+
+An expanded runtime-hotpath run then exposed a missing edge: `OrderedDict`
+uses the explicit host-boundary value `runtime.undefined` as a default. The
+binder assigned that legitimate default and mistakenly rejected its value as
+missing. Positional defaults now test tuple presence; keyword defaults use a
+fresh missing-key sentinel. A stored value is no longer confused with absence.
+
+The corrected full build passed in 9m 23s. All 107 expanded focused tests pass,
+including the complete runtime-hotpath file, native default adapters, and
+tuple/dict-subclass storage witnesses. Architecture, routine and all 21 enabled
+compiler fixtures pass. Fresh upstream/package outcomes remain 17/28 and 8/11
+plus seven Tomli suite passes. The new regression belongs to the routine
+portable/platform tier, rather than only the broader integration tier.
+
+Separate reproducible follow-ups found by the expanded probes remain open:
+replacing a callable instance's class `__call__` can expose a stale eager
+method cache, and `Counter() == {}` returns false although CPython returns
+true. Neither is hidden by a reviewed difference or claimed fixed here.
+
 ## Local performance evidence and open cliff
 
 The `python-defaults-diagnostic-v1` suite uses equivalent ordinary Python work,
