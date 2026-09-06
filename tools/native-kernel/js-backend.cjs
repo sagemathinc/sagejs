@@ -1262,6 +1262,11 @@ function generateJavaScript(ir, options = {}) {
     (fn) => fn.hostCallable !== false,
   );
   function emitFloat64Statement(operation, indent, uint64BigInt) {
+    if (operation.kind === "ffi.call") {
+      return javascriptForeignCall({ ...operation, arguments: operation.arguments.map(argument =>
+        argument.type === "Float64Buffer"
+          ? { ...argument, name: `${argument.name}.data` } : argument) }, indent);
+    }
     if (operation.kind === "float64.call") {
       const callee = float64Functions.get(operation.function);
       if (!callee) throw new Error("unknown binary64 helper " + operation.function);
@@ -2701,7 +2706,7 @@ function float64BufferGet(buffer, index) {
   if (!Number.isSafeInteger(index) || index < 0 || index >= view.length) {
     nativeRaise("IndexError", "Float64 buffer index out of range");
   }
-  return Number(Reflect.get(view.data, String(view.offset + index)));
+  return float64Scalar(Reflect.get(view.data, String(view.offset + index)), "Float64Buffer entry");
 }
 
 function float64BufferSet(buffer, index, value) {

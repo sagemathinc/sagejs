@@ -100,3 +100,42 @@ The broad `test/native-kernel.cjs` run is incomplete in this portable worktree:
 after exercising generated cores it requires the absent FLINT Node addon.
 Its standalone compilation checks now honor `SAGEJS_FLINT_PREFIX`, as the
 compiler already does. No exact addon was built or installed for this change.
+
+## Floating foreign storage (in progress)
+
+`perf/numerical-floating-slices` extends the declaration catalog with
+`Float64Buffer` and `packed_float64_slice`. The first accepted compiled shape
+uses floating buffers, unsigned dimensions and boolean status, with
+`RuntimeError` failure. Generic C staging preserves aliased input/output and
+does not copy failed output back. The focused witness tests allocation failure,
+length mismatch, empty buffers, generated JavaScript and the generated Linux
+Node adapter. It requires no FLINT/GMP link. Scalar floating arguments, resource
+composition and generated Wasm foreign adapters are deliberately rejected.
+
+The catalog change invalidates declaration identities; regenerated wrappers
+and the opportunity inventory are part of the change, not new mathematics.
+The ordinary Python runtime to generated native Node adapter path now passes,
+including boxed floats and rollback. Node 22.22.2 and 26.8.1 focused checks
+pass. Eleven existing declaration/code-generation checks and six existing
+Wasm FFI checks pass; addon-dependent FLINT/graph integration checks cannot
+run in this portable worktree. Four-host qualification and an actual Eigen
+product binding remain open. The existing source-compiled floating Wasm fallback is
+unchanged. No automatic backend or public performance claim is added.
+
+Local self-hosting convergence passed after restarting the build process: a
+prior four-pass in-process attempt aborted inside Tree-sitter Wasm. This is
+retained as a build-tool incident, not a numerical failure or a claimed parser
+fix. The final generated bootstrap contains the current floating storage
+normalization and its end-to-end runtime tests pass.
+
+The first remote run passed the floating witness on Linux x64, Linux ARM64
+and macOS ARM64. Windows passed standalone C but its test-only Node build
+conflicted on Node 26's inherited `/std:c++20` and explicit `/std:c11` flags.
+The harness now clears the inherited C++ language standard; its Windows rerun
+is pending the release lane's host reservation. This is not yet a four-host
+pass. The collector now selects four addon-independent tests explicitly: the
+existing FLINT resource-ownership test remains in the full integration suite,
+not this portable bundle. Local selected tests also pass from a fresh archive
+extraction with no inherited build tree. Future receipts must use fresh archive
+extractions: copying prior qualification trees retained extra files and changed
+the selected snapshot even though the four remote snapshots agreed.

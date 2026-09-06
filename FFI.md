@@ -242,6 +242,17 @@ semantic parameters to every field of a cataloged C struct; generated C
 performs the casts, initializes the aggregate, and passes it according to its
 declared ABI.
 
+`Float64Buffer` and `packed_float64_slice` provide a separate binary64 storage
+boundary: buffers map to `double *`, never integer residues. The initial
+compiled call shape accepts floating buffers and unsigned dimensions, returns
+a boolean status, and maps failure to `RuntimeError`. Writable slices are
+staged and copied back only on success; aliased read inputs see their original
+values during the call. The generated dynamic host adapter must uphold the
+same transaction contract. Floating scalar foreign arguments, resource-handle
+composition, and generated Wasm foreign adapters remain unsupported; declaring
+this storage with a Wasm target is rejected. This does not prevent ordinary
+source-compiled floating kernels from running in Wasm.
+
 Mixed call plans are supported: one foreign function may combine lexical
 `fmpz_mat_t` storage, caller-owned `IntegerBuffer` output, transactional
 `UInt64Buffer` metadata, and direct scalar dimensions. This is how exact

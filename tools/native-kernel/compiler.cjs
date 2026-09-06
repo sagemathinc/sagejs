@@ -665,8 +665,7 @@ function bindingGyp(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
   const floatOnly = ir.functions.length > 0 &&
-    ir.functions.every((fn) => fn.kernelKind === "float64") &&
-    (ir.foreignLibraries || []).length === 0;
+    ir.functions.every((fn) => fn.kernelKind === "float64");
   const usesFloat64 = ir.functions.some((fn) => fn.kernelKind === "float64");
   const tuning = usesSpecializedPrimeField ? primeFieldTuning() : null;
   const foreignLibraries = Array.from(new Set(
@@ -952,8 +951,7 @@ async function compileKernel(options) {
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
   const floatOnly = ir.functions.length > 0 &&
-    ir.functions.every((fn) => fn.kernelKind === "float64") &&
-    (ir.foreignLibraries || []).length === 0;
+    ir.functions.every((fn) => fn.kernelKind === "float64");
   if (!matrixOnly && !floatOnly && !existsSync(nativeMpcLibrary)) {
     throw new Error(
       "native MPC dependencies are not built; run " +

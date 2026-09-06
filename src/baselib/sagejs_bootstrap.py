@@ -2655,6 +2655,8 @@ def ρσ_ffi_call(
                     kind = 4;
                 } else if (parameterType === "IntegerBuffer") {
                     kind = 5;
+                } else if (parameterType === "Float64Buffer") {
+                    kind = 6;
                 }
                 return Object.freeze([kind, parameterType]);
             });
@@ -2753,6 +2755,26 @@ def ρσ_ffi_call(
                                 throw new TypeError(
                                     "invalid UInt64Buffer entry"
                                 );
+                            }
+                        }
+                        marshalled[index] = value;
+                        continue;
+                    }
+                }
+            }
+            if (parameter_kind === 6) {
+                if (value !== null && typeof value === "object") {
+                    const length = Reflect.get(value, "length");
+                    if (Number.isSafeInteger(length) && length >= 0) {
+                        if (!(value instanceof Float64Array)) {
+                            for (let position = 0; position < length; position++) {
+                                if (typeof Reflect.get(value, String(position)) !== "number") {
+                                    try {
+                                        Number.prototype.valueOf.call(Reflect.get(value, String(position)));
+                                    } catch (_error) {
+                                        throw new TypeError("invalid Float64Buffer entry");
+                                    }
+                                }
                             }
                         }
                         marshalled[index] = value;

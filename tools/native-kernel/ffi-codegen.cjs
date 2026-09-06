@@ -795,12 +795,13 @@ function emitPackedSliceCall(operation, context, indent) {
   const parameter = (name) => context.value(argumentBySource(operation, name).name);
 
   for (const [index, argument] of arguments_.entries()) {
-    if (argument.adapter?.kind === "packed_slice") {
+    if (["packed_slice", "packed_float64_slice"].includes(argument.adapter?.kind)) {
       const adapter = argument.adapter;
+      const elementType = adapter.kind === "packed_float64_slice" ? "double" : "uint64_t";
       const data = parameter(adapter.data);
       const length = parameter(adapter.length);
       validation.push(
-        `${indent}    if (${length} > (uint64_t) SIZE_MAX ||`,
+        `${indent}    if (${length} > (uint64_t) (SIZE_MAX / sizeof(${elementType})) ||`,
         `${indent}        ${data}.length != (size_t) ${length})`,
         `${indent}    {`,
         `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
@@ -812,13 +813,13 @@ function emitPackedSliceCall(operation, context, indent) {
         callArguments.push(`${data}.data`);
       } else {
         const stage = `sagejs_ffi_${cName(operation.target)}_${index}_stage`;
-        declarations.push(`${indent}    uint64_t *${stage} = NULL;`);
-        stages.push({ stage, length });
+        declarations.push(`${indent}    ${elementType} *${stage} = NULL;`);
+        stages.push({ stage, length, elementType });
         callArguments.push(stage);
         copyOutput.push(
           `${indent}    if (${length} != 0)`,
           `${indent}        memcpy(${data}.data, ${stage}, ` +
-            `(size_t) ${length} * sizeof(uint64_t));`,
+            `(size_t) ${length} * sizeof(${elementType}));`,
         );
         cleanup.unshift(`${indent}    free(${stage});`);
       }
@@ -857,11 +858,11 @@ function emitPackedSliceCall(operation, context, indent) {
   }
   const raw = `sagejs_ffi_${cName(operation.target)}_result`;
   declarations.push(`${indent}    ${nativeReturnType(fn)} ${raw};`);
-  const allocation = stages.flatMap(({ stage, length }) => [
+  const allocation = stages.flatMap(({ stage, length, elementType }) => [
     `${indent}    if (${length} != 0)`,
     `${indent}    {`,
-    `${indent}        ${stage} = (uint64_t *) calloc(` +
-      `(size_t) ${length}, sizeof(uint64_t));`,
+    `${indent}        ${stage} = (${elementType} *) calloc(` +
+      `(size_t) ${length}, sizeof(${elementType}));`,
     `${indent}        if (${stage} == NULL)`,
     `${indent}        {`,
     ...stages.map((item) => `${indent}            free(${item.stage});`),
@@ -1181,6 +1182,22 @@ function sagejsFfiCall(
       }
     }
     if (type === "bool" && typeof value === "boolean") return value;
+    if (type === "Float64Buffer" && value !== null &&
+        typeof value === "object") {
+      const length = Reflect.get(value, "length");
+      if (Number.isSafeInteger(length) && length >= 0) {
+        for (let position = 0; position < length; position += 1) {
+          if (typeof Reflect.get(value, String(position)) !== "number") {
+            try {
+              Number.prototype.valueOf.call(Reflect.get(value, String(position)));
+            } catch (_error) {
+              throw new TypeError("invalid Float64Buffer entry");
+            }
+          }
+        }
+        return value;
+      }
+    }
     if (type === "UInt64Buffer" && value !== null &&
         (typeof value === "object" || typeof value === "function")) {
       const length = Number(Reflect.get(value, "length"));
@@ -1346,6 +1363,7 @@ function sagejsFfiTransferResource(value, resources) {
 }
 
 module.exports = {
+  emitPackedSliceCall,
   emitExactForeignCall,
   emitTaggedForeignCall,
   emitWordForeignCall,
