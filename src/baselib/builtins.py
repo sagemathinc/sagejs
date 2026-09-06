@@ -2620,6 +2620,8 @@ def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
 
 
 def ρσ_bool(value: Any) -> _Bool:
+    if value is True or value is False:
+        return value
     if value is None or value is runtime.undefined:
         return False
     value_type = runtime.jstype(value)
@@ -9489,7 +9491,7 @@ def _builtins_replace_instance_dict(instance: Any, namespace: Any) -> None:
     """Replace an instance namespace while preserving its host identity."""
     if not _builtins_member_is_function(namespace, "items"):
         raise TypeError("__dict__ must be set to a dictionary")
-    # Snapshot first: clearing fields also clears their live namespace view.
+    # Snapshot before clearing fields and their live namespace view.
     entries = []
     for pair in namespace.items():
         key = pair[0]

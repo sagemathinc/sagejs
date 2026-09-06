@@ -1,0 +1,1262 @@
+{
+  "scope": "local diagnostic; warmed body; no comparative performance qualification",
+  "options": {
+    "root": "/home/user/sagejs",
+    "python": "/opt/cocalc-webdev-python/bin/python",
+    "count": 10000,
+    "warmups": 3,
+    "samples": 7,
+    "oracleOnly": false,
+    "out": "/tmp/bool-before.json"
+  },
+  "operationsPerSample": 40000,
+  "sourceSha256": "e65234c76b524f95bcfcf2c0eca13f33bed4e474982a20863886bfb375366f44",
+  "programSha256": "5ed664201d42f90e9588f7b306a15379738b8d77bf958c3744ed2cc8c8f62aba",
+  "driverSha256": "2f27a7a564afb81694ca53aaba2532e6f0cc9e6e325b0bb88dd45506252fd45f",
+  "program": "import time\n\n\nclass Truth:\n    def __init__(self, answer):\n        self.answer = answer\n\n    def __bool__(self):\n        return self.answer\n\n\nclass Length:\n    def __init__(self, answer):\n        self.answer = answer\n\n    def __len__(self):\n        return self.answer\n\n\ntruth_left = Truth(True)\ntruth_right = Truth(False)\nlength_left = Length(1)\nlength_right = Length(0)\n\n\ndef probe(mode, kind, count):\n    # Resolve and allocate operands outside the measured region.\n    if kind == \"boolean\":\n        left, right = True, False\n    elif kind == \"number\":\n        left, right = 7, 0\n    elif kind == \"string\":\n        left, right = \"value\", \"\"\n    elif kind == \"list\":\n        left, right = [0], []\n    elif kind == \"custom-bool\":\n        left, right = truth_left, truth_right\n    else:\n        left, right = length_left, length_right\n    truth = bool\n    total = 0\n    if mode == \"explicit\":\n        started = time.perf_counter()\n        for index in range(count):\n            total += truth(left)\n            total += truth(right)\n            total += truth(left)\n            total += truth(right)\n    else:\n        started = time.perf_counter()\n        for index in range(count):\n            if left:\n                total += 1\n            if right:\n                total += 1\n            if left:\n                total += 1\n            if right:\n                total += 1\n    return time.perf_counter() - started, total\n\nfor mode in (\"explicit\", \"branch\"):\n    for kind in (\"boolean\", \"number\", \"string\", \"list\", \"custom-bool\", \"custom-len\"):\n        for warmup in range(3):\n            assert probe(mode, kind, 10000)[1] == 20000\n        for sample in range(7):\n            elapsed, total = probe(mode, kind, 10000)\n            assert total == 20000\n            print(mode, kind, sample, elapsed, total)\n",
+  "reference": {
+    "implementation": "CPython",
+    "version": "3.14.4",
+    "executable": "/usr/bin/python3.14",
+    "sha256": "fa9796cd3a30878e11a2f40372f773d3fcd913fff35e5bee8dd9a036e22e93ab"
+  },
+  "runtime": {
+    "node": "26.8.1",
+    "v8": "14.6.202.34-node.28",
+    "platform": "linux",
+    "arch": "x64",
+    "cpu": "AMD EPYC 7B13",
+    "executable": "/opt/cocalc/bin/node",
+    "executableSha256": "19235a9b678f84729464c52623f92de130a165452747c6826d3fdc13df3abcc3"
+  },
+  "before": {
+    "commit": "71414f6f5eeb9c686ba65d2fe887547f3dcd3152",
+    "dirty": "",
+    "workspaceSha256": "c3a5c0927d5e87ba219531e90b393df443d3cb6ac02efc028c68f57d6cc58916",
+    "artifactInputsSha256": "8234ff54bdfc5cc1498a5ad429b526ce8f4639e0650e1ca3be2d9600e88973c1",
+    "inputs": {
+      "src/baselib/builtins.py": "ea7c300d5150ce3605ef49451b11b098ffd54bbb5ca1bdc86fbb7479e421d958",
+      "src/output/stream.py": "e731614f16976892a57c5f79eb579b5ec7a6f8e9ed74465f6d24cdc1be9a7960",
+      "src/output/operators.py": "2e7b3cc3c3bb4de6bb20af17cbfc01f0723cb9bda4392de54002a904933e27eb"
+    },
+    "build": {
+      "current": true,
+      "reason": "artifact inputs and required outputs match; validation is separate",
+      "buildWorkspaceSha256": "67a6524e5112737d41fe8fc0b1ce7c7f09b41f6c4816fc36c8319e50c77f4026",
+      "validationWorkspaceSha256": "c3a5c0927d5e87ba219531e90b393df443d3cb6ac02efc028c68f57d6cc58916",
+      "completedAt": "2026-09-06T17:23:58.257Z",
+      "durationMilliseconds": 561480
+    },
+    "artifacts": {
+      "dist/build-receipt.json": "399923f58446f463eac028c504a5a107248ca6eabe33ce60da6fdd4e8a1290fc",
+      "dist/tools/kernel.js": "369a04c2969ea10fa126adaba1981b5e2e7593cd4e089cbddeeb00c957170d11",
+      "dist/compiler/compiler.js": "1cd9194a1defd80ff1c208a05cf43c0a683aecefd89cdd97881ef2df5f4ef54f",
+      "dist/runtime-cache/runtime-bootstrap-python.js": "bb675d24ad5e0faae09c3f2dbd116b8919e8ad6bb2003a95de51d29e67a0c183"
+    }
+  },
+  "after": {
+    "commit": "71414f6f5eeb9c686ba65d2fe887547f3dcd3152",
+    "dirty": "",
+    "workspaceSha256": "c3a5c0927d5e87ba219531e90b393df443d3cb6ac02efc028c68f57d6cc58916",
+    "artifactInputsSha256": "8234ff54bdfc5cc1498a5ad429b526ce8f4639e0650e1ca3be2d9600e88973c1",
+    "inputs": {
+      "src/baselib/builtins.py": "ea7c300d5150ce3605ef49451b11b098ffd54bbb5ca1bdc86fbb7479e421d958",
+      "src/output/stream.py": "e731614f16976892a57c5f79eb579b5ec7a6f8e9ed74465f6d24cdc1be9a7960",
+      "src/output/operators.py": "2e7b3cc3c3bb4de6bb20af17cbfc01f0723cb9bda4392de54002a904933e27eb"
+    },
+    "build": {
+      "current": true,
+      "reason": "artifact inputs and required outputs match; validation is separate",
+      "buildWorkspaceSha256": "67a6524e5112737d41fe8fc0b1ce7c7f09b41f6c4816fc36c8319e50c77f4026",
+      "validationWorkspaceSha256": "c3a5c0927d5e87ba219531e90b393df443d3cb6ac02efc028c68f57d6cc58916",
+      "completedAt": "2026-09-06T17:23:58.257Z",
+      "durationMilliseconds": 561480
+    },
+    "artifacts": {
+      "dist/build-receipt.json": "399923f58446f463eac028c504a5a107248ca6eabe33ce60da6fdd4e8a1290fc",
+      "dist/tools/kernel.js": "369a04c2969ea10fa126adaba1981b5e2e7593cd4e089cbddeeb00c957170d11",
+      "dist/compiler/compiler.js": "1cd9194a1defd80ff1c208a05cf43c0a683aecefd89cdd97881ef2df5f4ef54f",
+      "dist/runtime-cache/runtime-bootstrap-python.js": "bb675d24ad5e0faae09c3f2dbd116b8919e8ad6bb2003a95de51d29e67a0c183"
+    }
+  },
+  "oracle": [
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 0,
+      "seconds": 0.0013017999881412834,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 1,
+      "seconds": 0.0013073400186840445,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 2,
+      "seconds": 0.0013104100071359426,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 3,
+      "seconds": 0.0013012000126764178,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 4,
+      "seconds": 0.0013027500244788826,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 5,
+      "seconds": 0.0013205099967308342,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 6,
+      "seconds": 0.0013339699944481254,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 0,
+      "seconds": 0.0013865199871361256,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 1,
+      "seconds": 0.0013930699788033962,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 2,
+      "seconds": 0.001390289980918169,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 3,
+      "seconds": 0.0013931200082879514,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 4,
+      "seconds": 0.0013893900031689554,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 5,
+      "seconds": 0.0013957800110802054,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 6,
+      "seconds": 0.0013947199913673103,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 0,
+      "seconds": 0.001393729995470494,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 1,
+      "seconds": 0.0013960800133645535,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 2,
+      "seconds": 0.0013901199854444712,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 3,
+      "seconds": 0.0013952100125607103,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 4,
+      "seconds": 0.0013872499985154718,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 5,
+      "seconds": 0.0013888899993617088,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 6,
+      "seconds": 0.001395369996316731,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 0,
+      "seconds": 0.001390919991536066,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 1,
+      "seconds": 0.0013958399940747768,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 2,
+      "seconds": 0.0013918899931013584,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 3,
+      "seconds": 0.0013979799987282604,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 4,
+      "seconds": 0.0013988400169182569,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 5,
+      "seconds": 0.0013921500067226589,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 6,
+      "seconds": 0.0013993500033393502,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 0,
+      "seconds": 0.0029630200006067753,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 1,
+      "seconds": 0.0029919699882157147,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 2,
+      "seconds": 0.0029764000209979713,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 3,
+      "seconds": 0.0029769600077997893,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 4,
+      "seconds": 0.0029757099982816726,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 5,
+      "seconds": 0.0029870799917262048,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 6,
+      "seconds": 0.0029804799996782094,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 0,
+      "seconds": 0.0028253099881112576,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 1,
+      "seconds": 0.0028204800037201494,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 2,
+      "seconds": 0.002823210001224652,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 3,
+      "seconds": 0.0028045899816788733,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 4,
+      "seconds": 0.002837840002030134,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 5,
+      "seconds": 0.0028344699821900576,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 6,
+      "seconds": 0.0028283300052862614,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 0,
+      "seconds": 0.0006141999911051244,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 1,
+      "seconds": 0.0006181299977470189,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 2,
+      "seconds": 0.0006205000099726021,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 3,
+      "seconds": 0.0006127799861133099,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 4,
+      "seconds": 0.0006169599946588278,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 5,
+      "seconds": 0.0006134599971119314,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 6,
+      "seconds": 0.000618140009464696,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 0,
+      "seconds": 0.0006226199911907315,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 1,
+      "seconds": 0.0006160400225780904,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 2,
+      "seconds": 0.0006203000084497035,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 3,
+      "seconds": 0.0006175700109452009,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 4,
+      "seconds": 0.0006195300084073097,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 5,
+      "seconds": 0.0006236000044737011,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 6,
+      "seconds": 0.0006159299809951335,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 0,
+      "seconds": 0.0006089700036682189,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 1,
+      "seconds": 0.0006034400139469653,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 2,
+      "seconds": 0.0006115800060797483,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 3,
+      "seconds": 0.000611859984928742,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 4,
+      "seconds": 0.0006028799980413169,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 5,
+      "seconds": 0.0006084500055294484,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 6,
+      "seconds": 0.0006123500061221421,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 0,
+      "seconds": 0.0006556999869644642,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 1,
+      "seconds": 0.000654529983876273,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 2,
+      "seconds": 0.000646460015559569,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 3,
+      "seconds": 0.0006600000197067857,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 4,
+      "seconds": 0.0006648599810432643,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 5,
+      "seconds": 0.0006463699974119663,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 6,
+      "seconds": 0.0006623899971600622,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 0,
+      "seconds": 0.0021951699745841324,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 1,
+      "seconds": 0.0022184900008141994,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 2,
+      "seconds": 0.0022287099855020642,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 3,
+      "seconds": 0.00221450999379158,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 4,
+      "seconds": 0.002214359992649406,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 5,
+      "seconds": 0.0022230600006878376,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 6,
+      "seconds": 0.0022262999846134335,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 0,
+      "seconds": 0.002190880011767149,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 1,
+      "seconds": 0.0021895099780522287,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 2,
+      "seconds": 0.0021947800123598427,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 3,
+      "seconds": 0.002182959986384958,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 4,
+      "seconds": 0.002194550004787743,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 5,
+      "seconds": 0.002171150001231581,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 6,
+      "seconds": 0.002204040007200092,
+      "checksum": 20000
+    }
+  ],
+  "subject": [
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 0,
+      "seconds": 0.011313676834106445,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 1,
+      "seconds": 0.011155366897583008,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 2,
+      "seconds": 0.011331796646118164,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 3,
+      "seconds": 0.01151585578918457,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 4,
+      "seconds": 0.010935544967651367,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 5,
+      "seconds": 0.010894060134887695,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "boolean",
+      "sample": 6,
+      "seconds": 0.011121273040771484,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 0,
+      "seconds": 0.011122941970825195,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 1,
+      "seconds": 0.01095890998840332,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 2,
+      "seconds": 0.01104879379272461,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 3,
+      "seconds": 0.01135396957397461,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 4,
+      "seconds": 0.01107931137084961,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 5,
+      "seconds": 0.011044740676879883,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "number",
+      "sample": 6,
+      "seconds": 0.011263370513916016,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 0,
+      "seconds": 0.011365890502929688,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 1,
+      "seconds": 0.011031866073608398,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 2,
+      "seconds": 0.011065959930419922,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 3,
+      "seconds": 0.011483192443847656,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 4,
+      "seconds": 0.011208295822143555,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 5,
+      "seconds": 0.011185169219970703,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "string",
+      "sample": 6,
+      "seconds": 0.011132001876831055,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 0,
+      "seconds": 0.014486551284790039,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 1,
+      "seconds": 0.013643980026245117,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 2,
+      "seconds": 0.013704061508178711,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 3,
+      "seconds": 0.013641834259033203,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 4,
+      "seconds": 0.013869285583496094,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 5,
+      "seconds": 0.013482809066772461,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "list",
+      "sample": 6,
+      "seconds": 0.013418436050415039,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 0,
+      "seconds": 0.050557851791381836,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 1,
+      "seconds": 0.048543453216552734,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 2,
+      "seconds": 0.05038571357727051,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 3,
+      "seconds": 0.04898333549499512,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 4,
+      "seconds": 0.050208330154418945,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 5,
+      "seconds": 0.04907417297363281,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-bool",
+      "sample": 6,
+      "seconds": 0.05012965202331543,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 0,
+      "seconds": 0.05751347541809082,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 1,
+      "seconds": 0.05733132362365723,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 2,
+      "seconds": 0.057270050048828125,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 3,
+      "seconds": 0.057131290435791016,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 4,
+      "seconds": 0.057668209075927734,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 5,
+      "seconds": 0.057248830795288086,
+      "checksum": 20000
+    },
+    {
+      "mode": "explicit",
+      "kind": "custom-len",
+      "sample": 6,
+      "seconds": 0.05770516395568848,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 0,
+      "seconds": 0.00467228889465332,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 1,
+      "seconds": 0.0047762393951416016,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 2,
+      "seconds": 0.004523277282714844,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 3,
+      "seconds": 0.004531383514404297,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 4,
+      "seconds": 0.004544496536254883,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 5,
+      "seconds": 0.0045452117919921875,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "boolean",
+      "sample": 6,
+      "seconds": 0.004533290863037109,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 0,
+      "seconds": 0.00450587272644043,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 1,
+      "seconds": 0.004503011703491211,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 2,
+      "seconds": 0.004496335983276367,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 3,
+      "seconds": 0.0045108795166015625,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 4,
+      "seconds": 0.004496574401855469,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 5,
+      "seconds": 0.004687070846557617,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "number",
+      "sample": 6,
+      "seconds": 0.004494905471801758,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 0,
+      "seconds": 0.004719734191894531,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 1,
+      "seconds": 0.004717111587524414,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 2,
+      "seconds": 0.004952192306518555,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 3,
+      "seconds": 0.0047092437744140625,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 4,
+      "seconds": 0.0047190189361572266,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 5,
+      "seconds": 0.0046977996826171875,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "string",
+      "sample": 6,
+      "seconds": 0.004723787307739258,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 0,
+      "seconds": 0.00673675537109375,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 1,
+      "seconds": 0.006753683090209961,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 2,
+      "seconds": 0.006781578063964844,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 3,
+      "seconds": 0.006841421127319336,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 4,
+      "seconds": 0.006783962249755859,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 5,
+      "seconds": 0.006768703460693359,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "list",
+      "sample": 6,
+      "seconds": 0.007028341293334961,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 0,
+      "seconds": 0.03869366645812988,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 1,
+      "seconds": 0.03887629508972168,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 2,
+      "seconds": 0.03909420967102051,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 3,
+      "seconds": 0.038857221603393555,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 4,
+      "seconds": 0.03878903388977051,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 5,
+      "seconds": 0.03860330581665039,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-bool",
+      "sample": 6,
+      "seconds": 0.03897857666015625,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 0,
+      "seconds": 0.04618644714355469,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 1,
+      "seconds": 0.046279191970825195,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 2,
+      "seconds": 0.04624772071838379,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 3,
+      "seconds": 0.04605293273925781,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 4,
+      "seconds": 0.04577922821044922,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 5,
+      "seconds": 0.04589533805847168,
+      "checksum": 20000
+    },
+    {
+      "mode": "branch",
+      "kind": "custom-len",
+      "sample": 6,
+      "seconds": 0.04551434516906738,
+      "checksum": 20000
+    }
+  ]
+}
