@@ -22,7 +22,7 @@ async function main() {
   try {
     const before = repositoryIdentity(root);
     const program = fs.readFileSync(path.join(__dirname, "prepared-statistics.py"), "utf8");
-    const files = ["_packed.py", "_packed_centered.py"];
+    const files = ["../_packed_sum.py", "_packed_centered.py"];
     const artifacts = [];
     for (const file of files) {
       artifacts.push(await compileKernel({

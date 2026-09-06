@@ -989,6 +989,7 @@
         "src/lib/sagejs/numerics/__init__.py",
         "src/lib/sagejs/numerics/_json.py",
         "src/lib/sagejs/numerics/_evaluation_core.py",
+        "src/lib/sagejs/numerics/_packed_sum.py",
         "src/lib/sagejs/numerics/_evaluation_root.py",
         "src/lib/sagejs/numerics/evaluators.py",
         "src/lib/sagejs/numerics/prepared_roots.py",

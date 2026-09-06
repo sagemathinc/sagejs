@@ -79,7 +79,7 @@
     "sagejs.numerics.spectral",
     "sagejs.numerics.spectral.visualization",
     "sagejs.numerics.statistics",
-    "sagejs.numerics.statistics._packed",
+    "sagejs.numerics._packed_sum",
     "sagejs.numerics.statistics._packed_centered",
     "sagejs.numerics.statistics._prepared_native",
     "sagejs.numerics.statistics.visualization",

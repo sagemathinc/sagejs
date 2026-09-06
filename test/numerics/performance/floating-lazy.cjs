@@ -11,7 +11,7 @@ const { createHash } = require("node:crypto");
 const { buildWasmProductionPacks } = require("../../../tools/native-kernel/wasm-production-pack.cjs");
 const { inspectToolchain, wasmKernelToolchain } = require("../../../packages/wasm-toolchain/scripts/toolchain.cjs");
 const root = path.resolve(__dirname, "../../..");
-const logical = "sagejs/numerics/statistics/_packed.py";
+const logical = "sagejs/numerics/_packed_sum.py";
 
 test("prepared root loading authenticates imported evaluator source", {
   skip: inspectToolchain({ root }).ready ? false : "prepared WASI toolchain required",
@@ -83,7 +83,7 @@ test("optional floating preparation binds Python sources before importing native
     fs.copyFileSync(path.join(root, "tools/native-kernel/wasm-pack-loader.mjs"), loaderFilename);
     fs.copyFileSync(path.join(root, "packages/flint-wasm/floating-kernels.mjs"), path.join(directory, "floating-kernels.mjs"));
     const { createLazyFloatingKernels } = await import(pathToFileURL(path.join(directory, "floating-kernels.mjs")));
-    const moduleBundle = { modules: { "sagejs.numerics.statistics._packed": {
+    const moduleBundle = { modules: { "sagejs.numerics._packed_sum": {
       source: logical,
       sourceSha256: createHash("sha256").update(fs.readFileSync(path.join(root, "src/lib", logical))).digest("hex"),
     } } };
@@ -123,7 +123,7 @@ test("optional floating preparation binds Python sources before importing native
     await t.test("one shared load, immutable source binding, exact result and close", async () => {
       const bundle = structuredClone(moduleBundle);
       const lazy = make({ moduleBundle: bundle });
-      bundle.modules["sagejs.numerics.statistics._packed"].sourceSha256 = "0".repeat(64);
+      bundle.modules["sagejs.numerics._packed_sum"].sourceSha256 = "0".repeat(64);
       await Promise.all([lazy.prepare(["sagejs.numerics.statistics"]),
         lazy.prepare(["sagejs.numerics.statistics.prepared"])]);
       assert.deepEqual(lazy.status(), { state: "ready" });

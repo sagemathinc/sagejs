@@ -11,7 +11,7 @@ const { compileKernel } = require("../../../tools/native-kernel/compiler.cjs");
 const { removeLoadedNativeCache } = require("../../../test/helpers/native-cache-cleanup.cjs");
 const { repositoryIdentity, sha256 } = require("../../../scripts/numerical-computing/common.cjs");
 const root = path.resolve(__dirname, "../../..");
-const files = ["_packed.py", "_packed_centered.py"].map((name) =>
+const files = ["../_packed_sum.py", "_packed_centered.py"].map((name) =>
   path.join(root, "src/lib/sagejs/numerics/statistics", name));
 
 function timed(call, expected) {

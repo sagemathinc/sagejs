@@ -19,7 +19,7 @@ async function exercisePack({ loader, manifest, assets }) {
     } };
   };
   const resolver = await api.instantiateWasmKernelPacks({manifest, load, host});
-  const logical = "sagejs/numerics/statistics/_packed.py";
+  const logical = "sagejs/numerics/_packed_sum.py";
   const sum = resolver.function(logical, "finite_sum");
   const input = sum.createFloat64Buffer([1e16, 1.0, -1e16, -0.0]);
   const scratch = sum.createFloat64Buffer(4);

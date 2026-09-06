@@ -21,7 +21,7 @@
     },
     {
       "id": "numerical-finite-sum-production",
-      "source": "src/lib/sagejs/numerics/statistics/_packed.py",
+      "source": "src/lib/sagejs/numerics/_packed_sum.py",
       "functions": ["finite_sum"],
       "fallback": "same-source ordinary Python",
       "oracles": ["CPython math.fsum", "exact rational rounding"],

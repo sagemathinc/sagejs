@@ -18,8 +18,8 @@ from sagejs.native import (
     kernel_float64_zeros,
 )
 
+from .._packed_sum import finite_sum
 from ._core import BudgetGuard, StatisticsNumericalError, binary64_ulp, quantile_sorted
-from ._packed import finite_sum
 from ._packed_centered import prepare_centered, prepare_summary_checks
 
 

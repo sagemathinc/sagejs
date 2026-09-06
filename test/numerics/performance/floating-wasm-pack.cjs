@@ -22,10 +22,10 @@ test("pure binary64 packs build and execute without any exact-library prefix", {
   try {
     const manifestPath = path.join(directory,"manifest.json");
     const kernels = [
-      ["_packed.py", ["finite_sum"]],
-      ["_packed_centered.py", ["prepare_centered", "prepare_products", "prepare_summary_checks"]],
+      ["_packed_sum.py", ["finite_sum"]],
+      ["statistics/_packed_centered.py", ["prepare_centered", "prepare_products", "prepare_summary_checks"]],
     ].map(([file,functions],index)=>({id:`float64-test-${index}-production`,
-      source:"src/lib/sagejs/numerics/statistics/"+file,functions,fallback:"same-source",
+      source:"src/lib/sagejs/numerics/"+file,functions,fallback:"same-source",
       oracles:["test/numerics/performance/packed-centered.py"], benchmark:__filename}));
     fs.writeFileSync(manifestPath,JSON.stringify({kernels}));
     const outputRoot = path.join(directory,"pack");
