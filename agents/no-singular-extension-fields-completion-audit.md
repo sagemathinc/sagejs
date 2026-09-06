@@ -354,6 +354,15 @@ historical numerical receipt is promoted. Production linking, public Wasm
 execution, compressed-size/ABI review, and complete platform qualification
 remain open. The fourteen extension capabilities therefore remain planned.
 
+The first specialist link produces 5,181,753 bytes (2,103,763 gzip;
+1,680,720 Brotli), within its separate payload budget. Its Wasm ABI is reviewed;
+the existing FLINT kernel's changed exports differ only by source-hash names.
+The first public Node-Wasm probe caught a missing lazy Python root before
+arithmetic; `extension_mpoly_backend` is now an explicit package root. This
+failure is not a public arithmetic pass. The standalone C witness additionally
+passes native Windows x64 using ClangCL and the existing static dependency
+prefix, completing the four native **boundary-only** checks.
+
 ## Still required
 
 - Finish E0 fixtures, capability routing, generic v2 contracts/certificates,
