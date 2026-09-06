@@ -17,7 +17,7 @@
     "declared-ffi": 469,
     "declared-ffi-resource": 34,
     "napi-export": 357,
-    "runtime-intrinsic": 148,
+    "runtime-intrinsic": 150,
     "wasm-export": 74
   },
   "boundaries": [
@@ -12144,6 +12144,14 @@
       "disposition": "runtime-primitive"
     },
     {
+      "id": "runtime:register_native_layout",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "register_native_layout",
+      "symbol": "ρσ_register_native_layout",
+      "disposition": "runtime-primitive"
+    },
+    {
       "id": "runtime:repr",
       "kind": "runtime-intrinsic",
       "path": "tools/python/contract.ts",
@@ -12333,6 +12341,14 @@
       "path": "tools/python/contract.ts",
       "export": "undefined",
       "symbol": "undefined",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:validate_class_bases",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "validate_class_bases",
+      "symbol": "ρσ_validate_class_bases",
       "disposition": "runtime-primitive"
     },
     {

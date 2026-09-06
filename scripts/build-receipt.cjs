@@ -42,6 +42,10 @@ const validationOnlyFiles = new Set([
   // task scratch directories, not shipped compiler/runtime build outputs.
   "scripts/run-pure-python-packages.cjs", "scripts/python-package-phases.cjs",
   "scripts/python-package-suites.cjs", "tools/python-compat/drivers/tomli-errors.py",
+  "scripts/run-python-conformance.cjs", "scripts/run-python-compat.cjs",
+  "tools/python-compat/evidence.cjs", "tools/python-compat/manifest.cjs",
+  "tools/python-compat/assertion-runner.cjs",
+  "tools/python-compat/output-baseline.cjs",
   "bench/cowasm/run.cjs", "bench/python-compat/qualification.cjs",
 ]);
 
