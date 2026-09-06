@@ -20,6 +20,7 @@ try {
     "isinstance-call-identity.py", "python-module-delete-fallback.py",
     "python-nested-class-bases.py", "python-public-super.py",
     "python-abc-registry-isolation.py",
+    "python-callable-instance-metadata.py",
   ]) {
     await page.goto(`${server.origin}/browser-wasm-harness.html`);
     await page.waitForFunction(() => window.__sagejsReady !== undefined);

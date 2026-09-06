@@ -3616,7 +3616,12 @@ def ρσ_resolve_callable(value: Any) -> Any:
     """Return a host function or an object's bound `__call__` method."""
     if runtime.strict_equal(runtime.jstype(value), "function"):
         return value
-    return ρσ_getattr(value, "__call__")
+    call_target = ρσ_getattr_internal(value, "__call__", runtime.undefined)
+    if call_target is runtime.undefined:
+        raise TypeError(
+            "'" + _builtins_callable_name(ρσ_type(value)) + "' object is not callable"
+        )
+    return call_target
 
 
 def _builtins_callable_name(value: Any) -> _Str:

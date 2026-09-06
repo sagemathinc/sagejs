@@ -557,13 +557,12 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
             method = _internal_get_member(callable_instance, "__call__")
             return runtime.reflect.apply(method, callable_instance, instance_args)
 
-        # Host functions have configurable own ``name`` and ``length``
-        # properties.  They are representation details here: retaining them
-        # would shadow Python properties or attributes with those perfectly
-        # ordinary names on callable instances (pytest's MarkDecorator uses
-        # ``name`` directly).
-        runtime.reflect.deleteProperty(callable_instance, "name")
-        runtime.reflect.deleteProperty(callable_instance, "length")
+        # This fresh function is only an instance's host representation. Remove
+        # configurable host fields and emitted Python function metadata before
+        # adding instance state; neither may shadow the class's attributes.
+        # Reflect deletion safely leaves nonconfigurable host internals alone.
+        for host_member in runtime.object.getOwnPropertyNames(callable_instance):
+            runtime.reflect.deleteProperty(callable_instance, host_member)
         runtime.object.setPrototypeOf(callable_instance, target_class.prototype)
         # Callable Python instances are represented by host functions so that
         # ordinary positional calls stay cheap.  Keep an explicit marker: a
