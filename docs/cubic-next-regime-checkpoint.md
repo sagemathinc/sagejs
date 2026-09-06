@@ -12,9 +12,12 @@ the imported polynomial module SHA-256 is
 
 ## Retained diagnostics
 
-Raw files are retained on `opt` in `/home/user/cubic-next-campaign` and copied
-to the branch's ignored `build/cubic-next-evidence` directory. They must be
-published as external content-addressed evidence before final handoff.
+Raw files and experimental Python sources are published in the
+[diagnostic evidence release](https://github.com/sagemathinc/sagejs/releases/tag/cubic-frontier-diagnostics-2df23f133-20260906),
+with the JSON content identities below. Copies remain on `opt` in
+`/home/user/cubic-next-campaign` and in the branch's ignored
+`build/cubic-next-evidence` directory. This auxiliary release is explicitly
+not marked latest and is not a Sage.js product release.
 
 | File | SHA-256 |
 | --- | --- |
@@ -80,9 +83,9 @@ qualification remains outstanding.
 
 The indexed and Newton experiment source copies and compiled artifacts remain
 in `/home/user/cubic-next-campaign/{indexed,newton}` on `opt` (generated
-code and manifests), with original Python copies in the working host's `/tmp`.
-Preserve their source and manifest bytes with the external evidence before
-cleaning these directories.
+code and manifests). The original Python experiment and check-driver files
+are preserved in the evidence release above; retain the generated manifests
+as well before cleaning the local artifact directories.
 
 ## What remains
 
