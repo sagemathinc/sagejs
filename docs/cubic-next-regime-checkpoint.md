@@ -89,6 +89,50 @@ as well before cleaning the local artifact directories.
 
 ## What remains
 
+### Production import preflight correction
+
+A copied production-only checkout on `opt` exposed a packaging omission:
+although the parent cubic artifact included the imported splitting body,
+Python import still needed the splitting module's own `@native` entry. That
+entry was absent from the production catalog. Required-native import failed,
+and the public class-group dispatcher correctly used its exact fallback.
+The first pilot was stopped and is not timing evidence for this candidate.
+
+The splitting entry is now explicitly catalogued. Public receipt regressions
+use `SAGEJS_NATIVE_REQUIRED=1` and the production cache as their exclusive
+artifact source, preventing source-adjacent development caches from masking
+this omission. All four public receipt/replay regression tests passed under
+that hermetic setting. Generated Wasm eligibility and capability inventories
+are synchronized; these inventories do not replace testing an actual browser
+artifact or four-platform release qualification.
+
+After deploying the corrected pack, all three pilot fields produced native
+authenticated receipts and independently replayed successfully. The pilot
+suggests these approximate prepared/fresh-complete times:
+
+| Field | Sage.js prepared | PARI prepared | Sage.js fresh | PARI fresh |
+| --- | ---: | ---: | ---: | ---: |
+| $x^3-x^2-11x-63$ | 4.6 ms | 0.758 ms | 24 ms | 1.194 ms |
+| $x^3+9x-55$ | 3.6 ms | 0.744 ms | 22 ms | 1.176 ms |
+| $x^3-x^2+3x-4$ | 2.8 ms | 0.588 ms | 21 ms | 1.002 ms |
+
+These are **exploratory, non-promotion** measurements: ten individual Sage.js
+samples after two warmups versus five retained PARI 500-call batches after
+two warmup batches, serialized and CPU-pinned on `opt`. PARI uses version
+2.17.4 with flag-zero BNF, fresh NF objects for prepared calls and full
+`bnfinit(P,0)` for fresh calls. Sage.js includes public field construction in
+the fresh cell. The copied build was not freshly requalified on `opt`; a
+clean-build, common frozen timing protocol is still required.
+
+A source-resolved native diagnostic profile on the selected field now points
+to modular arithmetic: about 36.5% of sampled self time is in cubic modular
+multiplication, 9.8% in the root-count routine and 8.6% in modular powering.
+The emitted code confirms these are word operations, not GMP temporaries.
+Investigate precomputed reciprocal reduction with proved word bounds, as
+well as the separate public field-construction cost, before pursuing more
+small root-isolation or table-lookup changes. Sampling is diagnostic, not a
+conserved public-call phase ledger.
+
 Neither smaller kernel timings nor old pre-staging frontier timings establish
 a current public PARI comparison. The next gate is a clean, authenticated
 current-source public baseline on `opt`, followed by attribution of the

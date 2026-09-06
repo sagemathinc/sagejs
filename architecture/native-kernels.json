@@ -545,6 +545,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "cubic-prime-splitting-production",
+      "source": "src/lib/sagejs/kernels/polynomial/cubic_splitting.py",
+      "functions": ["cubic_root_multiplicity_counts"],
+      "semantic_domain": "distinct roots and total rational-root multiplicity of monic cubics over caller-proven prime fields with canonical coefficients and 2 <= p <= 65535, by bounded word Frobenius remainder and exact gcd",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "exhaustive-root-hasse-enumeration"],
+      "benchmark": "bench:number-field-cubic-native-class-number",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "complex-cubic-class-group-production",
       "source": "src/lib/sagejs/number_fields/cubic_class_number_native.py",
       "functions": ["certified_complex_cubic_class_group_v1"],

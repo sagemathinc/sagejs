@@ -23,7 +23,10 @@ function runPython(source, timeout = 180_000) {
     {
       cwd: root,
       encoding: "utf8",
-      env: { ...process.env, SAGEJS_NATIVE_REQUIRED: "0" },
+      // No source-adjacent compiler cache may hide a missing production
+      // artifact for an imported @native dependency.
+      env: { ...process.env, SAGEJS_NATIVE_REQUIRED: "1",
+        SAGEJS_NATIVE_CACHE_DIR: resolve(root, "dist/native-kernels") },
       input: source,
       timeout,
     },
