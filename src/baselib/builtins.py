@@ -1096,6 +1096,19 @@ runtime.reflect.set(_NoneType, "__sagejs_none_type__", True)
 runtime.set_class_repr(_NoneType, "<class 'NoneType'>")
 
 
+class ρσ_generator_type:
+    """Canonical Python type for emitted native generator instances."""
+
+    def __new__(cls: Any, *args: Any, **kwargs: Any) -> Any:
+        raise TypeError("cannot create 'generator' instances")
+
+
+runtime.reflect.set(ρσ_generator_type, "__name__", "generator")
+runtime.reflect.set(ρσ_generator_type, "__qualname__", "generator")
+runtime.reflect.set(ρσ_generator_type, "__module__", "builtins")
+runtime.set_class_repr(ρσ_generator_type, "<class 'generator'>")
+
+
 def ρσ_operator_add(left: Any, right: Any) -> Any:
     result = runtime.fast_closed_binary(left, right, "add", _BUILTINS_MISSING)
     if result is not _BUILTINS_MISSING:
@@ -9510,13 +9523,19 @@ issubclass = ρσ_issubclass
 runtime.reflect.set(runtime.global_object, "super", ρσ_py_super)
 
 
-def isinstance(value: Any, classinfo: Any) -> _Bool:
+def isinstance(*values: Any) -> _Bool:
+    # Bootstrap functions do not receive the ordinary Python argument-checking
+    # preamble. Validate the public boundary before invoking the internal helper.
+    if len(values) != 2:
+        raise TypeError("isinstance expected 2 arguments, got " + str(len(values)))
     # The internal module is initialized after builtins. Resolve its helper
     # when called, rather than capturing an undefined bootstrap-time alias.
-    return ρσ_instanceof_one(value, classinfo)  # type: ignore[name-defined]  # noqa: F821
+    return ρσ_instanceof_one(values[0], values[1])  # type: ignore[name-defined]  # noqa: F821
 
 
 runtime.reflect.set(isinstance, "__positional_only__", 2)
+runtime.reflect.set(isinstance, "__argnames__", ["value", "classinfo"])
+runtime.reflect.deleteProperty(isinstance, "__varargs__")
 iter = ρσ_iter
 next = ρσ_next
 reversed = ρσ_reversed

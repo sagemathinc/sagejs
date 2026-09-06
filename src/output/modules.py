@@ -11,13 +11,16 @@ from output.functions import set_module_name
 from compiler_version import get_compiler_version
 from utils import cache_file_name
 from ast_types import (
+    AST_Array,
     AST_Call,
     AST_Class,
     AST_Import,
     AST_Lambda,
+    AST_Seq,
     AST_String,
     AST_SymbolRef,
     AST_Toplevel,
+    AST_UnaryPrefix,
     TreeWalker,
     is_node_type,
 )
@@ -30,11 +33,26 @@ def control_flow_import_names(module):
     has_module_star_import = False
     walker = None
 
+    def record_deleted_target(target):
+        if is_node_type(target, AST_SymbolRef):
+            if target.python_resolution_provenance is "module":
+                names[target.name] = True
+        elif is_node_type(target, AST_Array):
+            for value in target.flatten():
+                record_deleted_target(value)
+        elif is_node_type(target, AST_Seq):
+            for value in target.to_array():
+                record_deleted_target(value)
+
     def detect_star_import(node, descend):
         nonlocal has_module_star_import
         if node is module:
             return
-        if is_node_type(node, AST_Lambda) or is_node_type(node, AST_Class):
+        # Deleting a module binding revives builtin fallback in every scope
+        # which reads that binding, including lambdas and nested global deletes.
+        # Attribute/subscript deletion does not delete its receiver's binding.
+        if is_node_type(node, AST_UnaryPrefix) and node.operator is "delete":
+            record_deleted_target(node.expression)
             return True
         if is_node_type(node, AST_Import) or (
             node.key and (node.argnames is not undefined or node.alias is not undefined)

@@ -1134,6 +1134,8 @@ def generate_code():
         if check_unbound:
             output.comma()
             output.print(JSON.stringify(self.name))
+            if self.python_resolution_provenance is "local":
+                output.print(", true")
             output.print(")")
         if parenthesize_constructor:
             output.print(")")
