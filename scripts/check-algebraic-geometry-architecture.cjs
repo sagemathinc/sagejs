@@ -84,6 +84,7 @@ function checkCapabilities() {
     "ideal.hilbert-data",
     "affine.space-point",
     "affine.scheme-basics",
+    "affine.rational-points",
     "projective.space-point",
     "projective.scheme-basics",
     "projective.patch-closure",
@@ -116,6 +117,9 @@ function checkCapabilities() {
     }
     if (operation.domains.some((domain) => !["QQ", "GF(p)", "GF(p^d)"].includes(domain))) {
       throw new Error(`${operation.id} claims an unsupported coefficient domain`);
+    }
+    if (!operation.domains.includes("GF(p^d)")) {
+      throw new Error(`${operation.id} omits the finite-extension capability`);
     }
     if (!sameMembers(operation.proof_modes, ["required", "relaxed"])) {
       throw new Error(`${operation.id} must advertise both proof modes`);

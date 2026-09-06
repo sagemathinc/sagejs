@@ -181,14 +181,14 @@
     {
       "id": "affine.rational-points",
       "phase": 4,
-      "domains": ["GF(p)"],
+      "domains": ["GF(p)", "GF(p^d)"],
       "orders": ["degrevlex-coordinate-ring"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
       "implementation": "src/baselib/schemes.py",
       "fallback": "bounded exact enumeration",
       "resource_envelope": "100000 ambient points by default",
-      "limitation": "prime finite fields only"
+      "limitation": "finite fields only; canonical enumeration and ambient-count preflight use the full field cardinality"
     },
     {
       "id": "projective.space-point",

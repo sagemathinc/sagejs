@@ -217,8 +217,13 @@ class PolynomialQuotientRing(sage.Parent):
         )
 
     def minimal_polynomial(self, value: Any, variable: str = "t") -> Any:
-        """Return the minimal polynomial of multiplication by `value`."""
-        return self.multiplication_matrix(value).minpoly(variable)
+        """Return the minimal polynomial over this quotient's coefficient field."""
+        minimum = self.multiplication_matrix(value).minpoly(variable)
+        # A matrix backend may choose ZZ for an integral QQ result. The
+        # quotient's public parent, and downstream exact-field algorithms,
+        # must not depend on that storage choice.
+        ring = sage.PolynomialRing(self.base_ring(), variable)
+        return ring._from_coefficients(minimum.coefficients())
 
     minpoly = minimal_polynomial
 

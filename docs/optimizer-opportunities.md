@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `6350b1a2b0626d3dada59f1b0ea68f1648a2e87102470a4f9bb0b7f2b5c96198` (726 files, 14666666 bytes).
-Analyzed source bundle: `sha256:0f2994ad0daa98e39e89972fa44f6e21d0575c352b64e8570cbc23788e221104`; compiler identity: `sha256:8a85d0285efce255712571e542330e38712b9df28eef7ae42eefe99af51fb415`.
+Input identity: `53851201f335b8e2bc2310ae5c5b3f426174a12f2002a157818065b55706c8c4` (726 files, 14667059 bytes).
+Analyzed source bundle: `sha256:50de7b5a2743c652f8318be9e67a9927583876f1e21a771c1691c733b6843454`; compiler identity: `sha256:6eb9cd59e5f75a6ed12c414e69df5532f2cb4fd6a3d2d0d400446c15191d90b5`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -36,11 +36,11 @@ pnpm optimizer:opportunities:query -- sha256:<digest>
 | Library modules compiled | 630 / 630 |
 | Explicit control sources compiled | 13 / 13 |
 | Functions and methods compiled | 16648 |
-| Loop-bearing functions and methods | 5236 |
-| Loops in functions | 14522 |
+| Loop-bearing functions and methods | 5235 |
+| Loops in functions | 14521 |
 | Selected optimized loops | 56 |
 | Compiler-rejected loops | 3528 |
-| Unrecognized loops | 10938 |
+| Unrecognized loops | 10937 |
 | One-reason compiler near-misses | 273 |
 
 A rejected loop has a stable reason from a domain pass. An unrecognized loop was compiled
@@ -49,11 +49,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 96664
-- Collection-allocation sites: 11707
+- Potential object-result sites: 96661
+- Collection-allocation sites: 11706
 - Known coercion sites: 20045
 - Potential boundary-call sites: 104
-- Unresolved call sites: 49084
+- Unresolved call sites: 49082
 - Selected-target allocations: 3 known; 52 runtime-dependent
 - Selected-target representation conversions: 3 known; 54 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -122,10 +122,10 @@ convenience, not a performance ranking.
 
 | Stable reason | Loops | Remediation |
 | --- | ---: | --- |
-| `dashboard.no-current-pass-claimed` | 10938 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
-| `dashboard.dynamic-call-sites` | 9792 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
-| `dashboard.no-mathematical-domain-evidence` | 9260 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
-| `dashboard.comprehension-loop` | 5357 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
+| `dashboard.no-current-pass-claimed` | 10937 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
+| `dashboard.dynamic-call-sites` | 9791 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
+| `dashboard.no-mathematical-domain-evidence` | 9259 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
+| `dashboard.comprehension-loop` | 5356 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
 | `dashboard.indexed-access-sites` | 3867 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
 | `bounded-integer.dynamic-call` | 2888 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | `dashboard.control-flow-sites` | 2609 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |

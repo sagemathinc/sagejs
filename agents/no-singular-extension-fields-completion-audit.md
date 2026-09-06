@@ -473,6 +473,64 @@ without relaxing proof or resource defaults. A source-level normalization
 optimization removes unnecessary additions to zero for first-seen monomials;
 its production performance and complete differential checks remain pending.
 
+### Source-current qualification at `3b87f4fb4`
+
+The normalization optimization passes the independent CPython contract and
+native 108-case generic/public ideal fixtures. Production artifact
+`sha256:16007046a5ae2783ec64d446efe1c7eb23044795a579f91c7463d1edcd68ea59`
+passes all four targeted GF(4)/GF(9) mixed-component and non-split Node-Wasm
+cases (124–135 seconds per complete public fixture) under the unchanged
+30-second constituent Gröbner budget. The full 108-case independent Gröbner
+corpus also passes in production Chromium (193 seconds including groundwork).
+
+The original combined GF(9) repeated-Frobenius fixture exceeds the frontend's
+240-second evaluation limit. Isolated radical, is-radical, primary, and
+associated-prime calls pass, taking respectively about 63, 79, 157, and 236
+seconds. Qualification now has 29 independently bounded operation/field
+batches rather than 20; all native assertions remain enabled by default.
+The aggregate test watchdog is 60 minutes, while individual evaluation and
+mathematical resource limits remain unchanged. Complete reruns are pending.
+
+[Mobile CI 34017405052](https://github.com/sagemathinc/sagejs/actions/runs/34017405052)
+passes the canonical numerical runtime preparation, exact browser-asset closure
+checks, and iPhone/iPad simulator application compilation at this commit.
+This is simulator-build evidence, not execution of the extension-field
+mathematical corpus inside those simulators.
+
+[Native CI 34017403859](https://github.com/sagemathinc/sagejs/actions/runs/34017403859)
+failed the routine generated-reference freshness gate before native platform
+jobs ran. The generated reference files are refreshed for the next candidate;
+this failed run supplies no platform qualification. ARM CI additionally needs
+the focused public extension fixtures because its portable/native tiers do
+not include the host-integration fixtures.
+
+A QQ production regression uncovered a separate parent issue: the portable
+matrix minimal-polynomial fallback can return `ZZ[t]` for an integral answer
+over `QQ`. The new factorization capability guard correctly rejects `ZZ` as a
+field. The quotient API must restore its actual coefficient parent before
+publishing the minimal polynomial; this finding remains open until the fix
+passes a fresh production build and baseline checks.
+
+The follow-up normalizes quotient minimal-polynomial coefficients into the
+quotient's base field and computes zero-dimensional associated primes by
+decomposing the radical first. In dimension zero all associated primes are
+maximal, and primary components of the radical are prime, so nilpotent
+multiplicities need not be carried through this operation. Exact recomposition
+and maximal-radical verification are unchanged. Native QQ/prime-field and
+extension geometry fixtures pass, including independent Sage fixtures,
+non-split and multiple-component associated primes, and integral/nonintegral
+QQ minimal-polynomial parent checks. The eight-stage native build, strict
+Python (388 modules), and architecture checks pass. Production requalification
+is pending; the old-artifact 29-batch runs were stopped after their repeated
+Frobenius/associated-prime checks passed, not reported as complete.
+
+The isolated GF(9) reduced-algebra Wasm probe takes about 73 seconds versus
+236 seconds for the prior route. This is diagnostic evidence, not a renewed
+production receipt. `bench/extension-associated-primes.py` retains both exact
+formulas. Its native first-run timings (about 11 seconds for the new route and
+5 seconds for the subsequent reference) include unequal lazy initialization
+and must not be presented as a warmed native speed comparison.
+
 ## Still required
 
 - F4 source-current native four-platform public tests, production Node-Wasm,

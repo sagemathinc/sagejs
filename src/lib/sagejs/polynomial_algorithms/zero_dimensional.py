@@ -308,7 +308,12 @@ def associated_primes(
     algorithm: str = "auto",
     proof: Any = None,
 ) -> list[Any]:
-    return [
-        radical(component, algorithm, proof)
-        for component in primary_decomposition(ideal, algorithm, proof)
-    ]
+    """Return the maximal ideals supporting a zero-dimensional quotient.
+
+    In dimension zero every prime is maximal, so there are no embedded
+    associated primes. Removing nilpotents first preserves the associated
+    primes and avoids repeatedly decomposing the larger nonreduced algebra.
+    A primary component of a radical ideal is itself prime. The existing
+    exact recomposition and maximal-radical checks remain in force.
+    """
+    return primary_decomposition(radical(ideal, algorithm, proof), algorithm, proof)
