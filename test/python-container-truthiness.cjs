@@ -146,6 +146,17 @@ async function compileWithDefaultTruthiness(program, overrides = {}) {
 }
 
 function generatedFunctionBody(javascript, name) {
+  if (name.startsWith("$ρσ$py$")) {
+    // Ordinary functions delay publication until their defaults are ready;
+    // the body uses a private identity rather than the public Python binding.
+    const start = javascript.indexOf(`${name} = (function() {`);
+    assert.notEqual(start, -1, `missing generated function binding ${name}`);
+    const end = javascript.indexOf("ρσ_anonfunc.__name__", start);
+    assert.notEqual(end, -1, `missing metadata for generated binding ${name}`);
+    const body = javascript.slice(start, end);
+    assert.match(body, /var ρσ_anonfunc = function ρσ_function\(/);
+    return body;
+  }
   const start = javascript.indexOf(`function ${name}(`);
   assert.notEqual(start, -1, `missing generated function ${name}`);
   const end = javascript.indexOf(`${name}.__name__`, start);

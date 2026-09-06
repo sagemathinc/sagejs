@@ -427,17 +427,15 @@ def branching(values, left, right, value, step, pivot):
     const javascript = output.get();
     // Restrict the count to the prime target: the first region emits one
     // square, while the write and branch join each force a second square.
-    const moments = javascript.slice(
-      javascript.indexOf("$ρσ$py$moments = function"),
-      javascript.indexOf("$ρσ$py$evolving = function"),
-    );
-    const evolving = javascript.slice(
-      javascript.indexOf("$ρσ$py$evolving = function"),
-      javascript.indexOf("$ρσ$py$branching = function"),
-    );
-    const branching = javascript.slice(
-      javascript.indexOf("$ρσ$py$branching = function"),
-    );
+    const starts = ["moments", "evolving", "branching"].map((name) => {
+      const start = javascript.indexOf(`$ρσ$py$${name} = (function() {`);
+      assert.ok(start >= 0, `missing delayed function binding ${name}`);
+      return start;
+    });
+    assert.ok(starts[0] < starts[1] && starts[1] < starts[2]);
+    const moments = javascript.slice(starts[0], starts[1]);
+    const evolving = javascript.slice(starts[1], starts[2]);
+    const branching = javascript.slice(starts[2]);
     const primeSquares = (target) => {
       const prime = target.slice(
         target.indexOf(".kind === 1"),

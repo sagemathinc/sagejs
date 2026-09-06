@@ -281,6 +281,15 @@ function signature(value: unknown, fallbackName: string): string {
   const name = callableName(value) || fallbackName.split(".").at(-1) || fallbackName;
   const argumentNames = Reflect.get(value, "__argnames__");
   const defaults = Reflect.get(value, "__defaults__");
+  const keywordDefaults = Reflect.get(value, "__kwdefaults__");
+  const keywordDefaultMap = keywordDefaults?.jsmap as Map<string, unknown> | undefined;
+  const legacyDefaults = Reflect.get(value, "__sagejs_bootstrap_defaults__") === true;
+  const tupleStorage = Reflect.get(globalThis, "ρσ_tuple_storage_values");
+  const positionalDefaults = legacyDefaults ? null :
+    typeof tupleStorage === "function"
+      ? Reflect.apply(tupleStorage, undefined, [defaults])
+      // Standalone DocSpec fixtures use the runtime's array/storage shape.
+      : Array.isArray(defaults) ? defaults : defaults?._tuple_values;
   const signatureAnnotationText = Reflect.get(
     value,
     "__signature_annotations_text__",
@@ -307,22 +316,36 @@ function signature(value: unknown, fallbackName: string): string {
     }
     return "";
   };
-  const argumentPart = (argument: string): string => {
+  const missingDefault = Symbol("missing default");
+  const argumentPart = (argument: string, defaultValue: unknown): string => {
     let part = argument;
     const typeName = annotation(argument);
     if (typeName) part += `: ${typeName}`;
-    if (
-      defaults &&
-      (typeof defaults === "object" || typeof defaults === "function") &&
-      Object.prototype.hasOwnProperty.call(defaults, argument)
-    ) {
-      const item = Reflect.get(defaults, argument);
-      part += `=${item === undefined ? "None" : defaultRepr(item)}`;
+    if (defaultValue !== missingDefault) {
+      part += `=${defaultValue === undefined ? "None" : defaultRepr(defaultValue)}`;
     }
     return part;
   };
-  const parts = (Array.isArray(argumentNames) ? argumentNames : []).map(
-    (argument) => argumentPart(String(argument)),
+  const names = Array.isArray(argumentNames) ? argumentNames : [];
+  const legacyDefault = (argument: string): unknown => legacyDefaults && defaults &&
+    Object.prototype.hasOwnProperty.call(defaults, argument)
+    ? Reflect.get(defaults, argument) : missingDefault;
+  const keywordDefault = (argument: string): unknown => {
+    if (legacyDefaults) return legacyDefault(argument);
+    if (keywordDefaults == null) return missingDefault;
+    const lookup = Reflect.get(globalThis, "ρσ_dict_storage_get_string");
+    if (typeof lookup === "function") {
+      return Reflect.apply(lookup, undefined, [keywordDefaults, argument, missingDefault]);
+    }
+    // Standalone DocSpec fixtures have storage but no installed Python runtime.
+    return keywordDefaultMap?.has(argument)
+      ? keywordDefaultMap.get(argument) : missingDefault;
+  };
+  const parts = names.map(
+    (argument, index) => argumentPart(String(argument),
+      Array.isArray(positionalDefaults) && index >= names.length - positionalDefaults.length
+        ? positionalDefaults[index - names.length + positionalDefaults.length]
+        : legacyDefault(String(argument))),
   );
   if (Reflect.get(value, "__positional_only__") === true && parts.length) {
     parts.push("/");
@@ -334,7 +357,8 @@ function signature(value: unknown, fallbackName: string): string {
   const keywordOnly = Reflect.get(value, "__kwonly__");
   if (Array.isArray(keywordOnly) && keywordOnly.length) {
     if (typeof varargs !== "string") parts.push("*");
-    parts.push(...keywordOnly.map((argument) => argumentPart(String(argument))));
+    parts.push(...keywordOnly.map((argument) =>
+      argumentPart(String(argument), keywordDefault(String(argument)))));
   }
   const varkw = Reflect.get(value, "__varkw__");
   if (typeof varkw === "string") {

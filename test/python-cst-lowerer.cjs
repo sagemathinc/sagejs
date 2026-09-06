@@ -79,6 +79,21 @@ function normalizeCheckedModuleReads(javascript, names) {
   return javascript;
 }
 
+function emittedFunctionIife(javascript, binding) {
+  const prefix = `${binding} = (function() {`;
+  const start = javascript.indexOf(prefix);
+  assert.ok(start >= 0, `missing delayed function publication for ${binding}`);
+  assert.equal(javascript.indexOf(prefix, start + prefix.length), -1,
+    `ambiguous function publication for ${binding}`);
+  const suffix = "\n})();";
+  const end = javascript.indexOf(suffix, start);
+  assert.ok(end >= 0, `unterminated function publication for ${binding}`);
+  const expression = javascript.slice(start, end + suffix.length);
+  assert.match(expression, /var ρσ_anonfunc = function ρσ_function\(/);
+  assert.match(expression, /\n\s*return ρσ_anonfunc;\n\}\)\(\);$/);
+  return expression;
+}
+
 // The timing tests deliberately execute no baselib. Supply only the exact
 // lookup contract their one host callback needs, validating every namespace
 // argument rather than silently treating name-resolution helpers as identities.
@@ -954,10 +969,41 @@ test("leading class assignments are available to method defaults", async () => {
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.ok(
-      javascript.indexOf("Example.prototype.sentinel = marker") <
-        javascript.indexOf("Example.prototype.method.__defaults__"),
+    const markerRead = 'ρσ_resolve_module_name(void 0, "marker", ' +
+      'ρσ_modules["__main__"], (typeof __builtins__ !== "undefined" ? ' +
+      '__builtins__ : (ρσ_modules.builtins || globalThis)))';
+    const assignment = javascript.indexOf(
+      `$ρσ$py$Example.prototype.sentinel = ${markerRead};`,
     );
+    const method = emittedFunctionIife(javascript, "$ρσ$py$Example.prototype.method");
+    const defaultPublication = 'ρσ_anonfunc.__defaults__ = ρσ_math_tuple([' +
+      'ρσ_check_unbound($ρσ$py$Example.prototype.sentinel, "sentinel")]);';
+    assert.ok(method.includes(defaultPublication),
+      "method defaults must read the initialized class binding");
+    const defaults = javascript.indexOf(defaultPublication);
+    assert.ok(assignment >= 0, "expected the leading class assignment");
+    assert.ok(defaults >= 0, "expected publication of the method defaults");
+    assert.ok(assignment < defaults);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("keyword defaults use the flat dictionary-literal ABI", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "def defaults(*, first='A', second='B'):\n" +
+        "    return first, second\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript,
+      /__kwdefaults__\s*=\s*ρσ_dict_literal\(\[\s*"first"\s*,\s*"A"\s*,\s*"second"\s*,\s*"B"\s*\]\)/);
+    assert.match(javascript, /ρσ_dict_storage_get_string\(ρσ_kwdefaults,/);
   } finally {
     frontend.close();
   }
@@ -1078,8 +1124,14 @@ test("generator and coroutine functions expose introspection metadata", async ()
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(javascript, /values\.__is_generator__ = true/);
-    assert.match(javascript, /result\.__is_coroutine__ = true/);
+    const values = emittedFunctionIife(javascript, "$ρσ$py$values");
+    const result = emittedFunctionIife(javascript, "$ρσ$py$result");
+    assert.match(values, /ρσ_anonfunc\.__name__ = "values";/);
+    assert.match(values, /ρσ_anonfunc\.__is_generator__ = true;/);
+    assert.doesNotMatch(values, /ρσ_anonfunc\.__is_coroutine__/);
+    assert.match(result, /ρσ_anonfunc\.__name__ = "result";/);
+    assert.match(result, /ρσ_anonfunc\.__is_generator__ = true;/);
+    assert.match(result, /ρσ_anonfunc\.__is_coroutine__ = true;/);
   } finally {
     frontend.close();
   }
@@ -1098,9 +1150,16 @@ test("generator methods shift an explicit descriptor receiver before iteration",
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    const receiverShift =
-      /Values\.prototype\.items = function[^]*?if \(\(this === globalThis \|\| this == null\)[^]*?function\* js_generator/;
-    assert.match(javascript, receiverShift);
+    const method = emittedFunctionIife(javascript, "$ρσ$py$Values.prototype.items");
+    const receiverShift = method.indexOf(
+      "if ((this === globalThis || this == null) && arguments.length > 0) " +
+      "return ρσ_function.apply(arguments[0], Array.prototype.slice.call(arguments, 1));",
+    );
+    const generator = method.indexOf("function* js_generator()");
+    assert.ok(receiverShift >= 0, "expected explicit receiver shift on the outer function");
+    assert.ok(generator >= 0, "expected the inner generator");
+    assert.ok(receiverShift < generator, "receiver shift must precede generator creation");
+    assert.match(method, /ρσ_anonfunc\.__is_generator__ = true;/);
   } finally {
     frontend.close();
   }
@@ -1251,11 +1310,12 @@ test("reserved Python class names stay mangled in method metadata", async () => 
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(
-      javascript,
-      /\$ρσ\$py\$default\.prototype\.__init__\.__name__/,
-    );
+    const initializer = emittedFunctionIife(javascript, "$ρσ$py$default.prototype.__init__");
+    assert.match(initializer, /ρσ_anonfunc\.__name__ = "__init__";/);
+    assert.match(javascript,
+      /\$ρσ\$py\$default\.__argnames__ = \$ρσ\$py\$default\.prototype\.__init__\.__argnames__;/);
     assert.doesNotMatch(javascript, /(?:^|[^\w$])default\.prototype/);
+    assert.doesNotThrow(() => new Script(javascript));
   } finally {
     frontend.close();
   }

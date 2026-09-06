@@ -162,7 +162,7 @@ def print_class(output):
                 stmt,
                 output,
                 strip_first,
-                False,
+                output.options.python_attributes,
                 javascript_name,
             )
             if not is_property:
@@ -176,7 +176,8 @@ def print_class(output):
                     + ("." if is_static else ".prototype.")
                     + name
                 )
-                function_annotation(stmt, output, strip_first, fname)
+                if not output.options.python_attributes:
+                    function_annotation(stmt, output, strip_first, fname)
                 if is_static:
                     output.indent()
                     self.name.print(output)
@@ -830,8 +831,10 @@ def print_class(output):
     emitted_statements = list(early_statements)
 
     constructor_signature_attributes = [
+        ".__sagejs_bootstrap_defaults__",
         ".__argnames__",
         ".__defaults__",
+        ".__kwdefaults__",
         ".__handles_kwarg_interpolation__",
         ".__kwonly__",
         ".__positional_only__",
@@ -842,6 +845,23 @@ def print_class(output):
         (".__annotations__", ".__signature_annotations__"),
         (".__annotations_text__", ".__signature_annotations_text__"),
     ]
+
+    def forward_constructor_default(attribute, inherited=False, synthetic=False):
+        output.indent()
+        output.print("Object.defineProperty(")
+        self.name.print(output)
+        if synthetic:
+            output.print(".prototype.__init__")
+        output.comma()
+        output.print_string(attribute.slice(1))
+        output.comma()
+        output.print("{configurable:true,enumerable:true,get:function(){return ")
+        source = self.parent if inherited else self.name
+        source.print(output)
+        output.print(".prototype.__init__ && ")
+        source.print(output)
+        output.print(".prototype.__init__" + attribute + "}})")
+        output.end_statement()
 
     # actual methods
     if not self.init:
@@ -900,11 +920,17 @@ def print_class(output):
             self.parent.print(output)
             output.print(".prototype.__init__")
             output.end_statement()
-            # The class call binder consults constructor metadata before the
-            # synthetic forwarding method runs.  Mirror the inherited
-            # initializer signature on both the forwarding method and class
-            # so keyword validation and binding remain exact.
+            # Retain constructor metadata for introspection and paths outside
+            # the live user-class protocol. Live calls resolve the current
+            # initializer before binding; these fields do not select it.
             for attr in constructor_signature_attributes:
+                if output.options.python_attributes and attr in (
+                    ".__defaults__",
+                    ".__kwdefaults__",
+                ):
+                    forward_constructor_default(attr, True, True)
+                    forward_constructor_default(attr)
+                    continue
                 output.indent()
                 self.name.print(output)
                 output.print(".prototype.__init__")
@@ -954,7 +980,7 @@ def print_class(output):
                     stmt,
                     output,
                     False,
-                    False,
+                    output.options.python_attributes,
                     (
                         output.make_python_name(stmt.name.name)
                         if stmt.name.python_identifier
@@ -962,23 +988,30 @@ def print_class(output):
                     ),
                 )
                 output.end_statement()
-                function_annotation(
-                    stmt,
-                    output,
-                    False,
-                    (
-                        output.make_python_name(stmt.name.name)
-                        if stmt.name.python_identifier
-                        else stmt.name.name
-                    ),
-                )
+                if not output.options.python_attributes:
+                    function_annotation(
+                        stmt,
+                        output,
+                        False,
+                        (
+                            output.make_python_name(stmt.name.name)
+                            if stmt.name.python_identifier
+                            else stmt.name.name
+                        ),
+                    )
                 continue
             define_method(stmt)
             defined_methods[stmt.name.name] = True
             sname = stmt.name.name
             if sname is "__init__":
-                # Copy argument handling data so that kwarg interpolation works when calling the constructor
+                # Publish introspection and non-live constructor metadata.
                 for attr in constructor_signature_attributes:
+                    if output.options.python_attributes and attr in (
+                        ".__defaults__",
+                        ".__kwdefaults__",
+                    ):
+                        forward_constructor_default(attr)
+                        continue
                     output.indent(), self.name.print(output), output.assign(attr)
                     (
                         self.name.print(output),
@@ -1134,6 +1167,12 @@ def print_class(output):
             # empty primary base with an explicit initializer from a later
             # base.  Refresh the class-call contract from the winning method.
             for attr in constructor_signature_attributes:
+                if output.options.python_attributes and attr in (
+                    ".__defaults__",
+                    ".__kwdefaults__",
+                ):
+                    forward_constructor_default(attr)
+                    continue
                 output.indent()
                 self.name.print(output)
                 output.assign(attr)

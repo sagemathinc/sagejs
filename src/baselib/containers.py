@@ -16,6 +16,9 @@ _CONTAINERS_MISSING = runtime.object.create(None)
 _LIST_REPR_ACTIVE = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakSet"), []
 )
+_LIVE_SCOPE_DICTS = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakSet"), []
+)
 
 
 def _containers_is_missing_binding(value: Any) -> bool:
@@ -1360,6 +1363,28 @@ def _dict_storage_setitem(mapping: Any, key: Any, value: Any) -> None:
 ρσ_dict_storage_setitem = _dict_storage_setitem
 
 
+def ρσ_dict_storage_get_string(mapping: Any, key: str, missing: Any) -> Any:
+    """Read a known string key without dispatching to dict subclass methods.
+
+    Live namespace dictionaries store authoritative values in their scope,
+    not their materialized Map cache. Refresh only the requested entry, keeping
+    the dictionary and default-value identities unchanged.
+    """
+    if _LIVE_SCOPE_DICTS.has(mapping):
+        scope = runtime.native_get(mapping, "_scope")
+        if _has_own(scope, key):
+            value = runtime.reflect.get(scope, key)
+            if not _containers_is_missing_binding(
+                value
+            ) and not _LiveScopeDict._is_eager_bound_cache(mapping, key, value):
+                _dict_storage_setitem(mapping, key, value)
+                return value
+        _native_delete(mapping.jsmap, key)
+        _native_delete(mapping.keymap, key)
+        return missing
+    return mapping.jsmap.get(key) if mapping.jsmap.has(key) else missing
+
+
 @runtime.lightweight_math_class
 class SageDict:
     def __init__(
@@ -1596,6 +1621,7 @@ class _LiveScopeDict(SageDict):
 
     def __init__(self, scope: Any, hide_eager_bound_cache: bool = False) -> None:
         SageDict.__init__(self)
+        _LIVE_SCOPE_DICTS.add(self)
         self._scope = scope
         self._hide_eager_bound_cache = hide_eager_bound_cache
         # The second cache is used for ordinary instance ``__dict__`` views.

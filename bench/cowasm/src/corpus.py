@@ -21,6 +21,7 @@ import lambda_
 import call
 import mypyc_micro
 import parse_int
+import function_defaults
 
 from bench import registered_benchmarks
 from sys import argv

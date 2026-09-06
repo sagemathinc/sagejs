@@ -212,6 +212,7 @@
     "src/lib/sagejs/javascript.py",
     "src/lib/sagejs/compiler.py",
     "src/lib/sagejs/native.py",
+    "src/lib/sagejs/_native_defaults.py",
     "src/lib/sagejs/plotting/__init__.py",
     "src/lib/sagejs/plotting/_json.py",
     "src/lib/sagejs/plotting/axes.py",

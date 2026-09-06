@@ -311,10 +311,28 @@ def signature(
         # have CPython's introspection signature; libraries such as pluggy use
         # this distinction to discover hook arguments.
         names.insert(0, "self")
-    # Compiler metadata is intentionally stored as lightweight JavaScript
-    # records.  Normalize it to Python mappings before using the public dict
-    # API; third-party decorators should never have to know the distinction.
-    defaults = dict(getattr(callable, "__defaults__", {}))
+    defaults = getattr(callable, "__defaults__", None)
+    kwdefaults = getattr(callable, "__kwdefaults__", None)
+    # The compiler prologue's host implementation functions are emitted before
+    # Python container primitives exist.  Only that explicit bootstrap boundary
+    # retains the compiler's internal name-record representation.
+    legacy_defaults = None
+    if (
+        defaults is not None
+        and not isinstance(defaults, tuple)
+        and getattr(callable, "__sagejs_bootstrap_defaults__", False)
+    ):
+        legacy_defaults = dict(defaults)
+    positional_defaults = (
+        () if defaults is None or legacy_defaults is not None else defaults
+    )
+    keyword_defaults = (
+        legacy_defaults
+        if legacy_defaults is not None
+        else {}
+        if kwdefaults is None
+        else kwdefaults
+    )
     annotations = _signature_annotations(
         callable,
         globals_mapping=globals,
@@ -335,7 +353,11 @@ def signature(
             Parameter(
                 name,
                 kind,
-                defaults.get(name, _empty),
+                legacy_defaults.get(name, _empty)
+                if legacy_defaults is not None
+                else positional_defaults[index - len(names) + len(positional_defaults)]
+                if index >= len(names) - len(positional_defaults)
+                else _empty,
                 annotations.get(name, _empty),
             )
         )
@@ -353,7 +375,7 @@ def signature(
             Parameter(
                 name,
                 Parameter.KEYWORD_ONLY,
-                defaults.get(name, _empty),
+                keyword_defaults.get(name, _empty),
                 annotations.get(name, _empty),
             )
         )
