@@ -11,6 +11,14 @@ const { artifactInputsFingerprint, workspaceFingerprint, currentBuildIdentity,
   inspectBuildReceipt, refreshBuildReceiptAfterNative, writeBuildReceipt } = require("../scripts/build-receipt.cjs");
 const { requireUnchangedWorkspace } = require("../scripts/run-python-conformance.cjs");
 
+const packageAndBenchmarkValidationPaths = [
+  "upstream-tests/python-packages/manifest.json",
+  "scripts/run-pure-python-packages.cjs",
+  "scripts/python-package-phases.cjs",
+  "bench/cowasm/run.cjs",
+  "bench/python-compat/qualification.cjs",
+];
+
 function fixture(context, git = false) {
   const root = mkdtempSync(join(tmpdir(), "sagejs-build-inputs-"));
   context.after(() => rmSync(root, { recursive: true, force: true }));
@@ -29,7 +37,8 @@ for (const git of [false, true]) {
     for (const name of ["README.md", "AGENTS.md", "agents/plan.md", "docs/reference/api.md",
       "test/regression.cjs", "website/reference-data.json", "website/reference.html",
       "upstream-tests/micropython/baselines/review.json",
-      "upstream-tests/python-compat/suites/example.py"]) {
+      "upstream-tests/python-compat/suites/example.py",
+      ...packageAndBenchmarkValidationPaths]) {
       const artifact = artifactInputsFingerprint(root);
       const workspace = workspaceFingerprint(root);
       write(name);
@@ -44,6 +53,10 @@ for (const git of [false, true]) {
     for (const name of ["src/baselib/builtins.py", "bin/sagejs-source.cjs", "sagejs-version.json",
       "pnpm-lock.yaml", "tsconfig.json", "scripts/build.cjs", "architecture/native-kernels.json",
       "bench/numerical-p3-nlopt/corpus.json",
+      "scripts/build-receipt.cjs", "scripts/precompiled-python-packages.json",
+      "scripts/run-pure-python-packages-generator.cjs", "scripts/python-package-phases-extra.cjs",
+      "bench/cowasm/run.cjs.in", "bench/python-compat/qualification-schema.json",
+      "upstream-tests/python-packages-generator/generator.cjs",
       "tools/nested/test/example.ts", "tools/grammar/README.md", "packages/math/input.py",
       "upstream-tests/tree-sitter-example/src/scanner.c", "website/unknown-input.json",
       "unknown-config.json"]) {
@@ -53,6 +66,21 @@ for (const git of [false, true]) {
       const added = artifactInputsFingerprint(root);
       write(name, "changed\n");
       assert.notEqual(artifactInputsFingerprint(root), added, name);
+    }
+  });
+}
+
+for (const field of ["reviewed_sagejs_files", "qualification_tooling_files"]) {
+  test(`reviewed production ${field} overrides package/benchmark exclusions`, (context) => {
+    const { root, write } = fixture(context);
+    write("src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json",
+      JSON.stringify({ [field]: Object.fromEntries(
+        packageAndBenchmarkValidationPaths.map((name) => [name, "reviewed"])) }));
+    for (const name of packageAndBenchmarkValidationPaths) {
+      write(name);
+      const artifact = artifactInputsFingerprint(root);
+      write(name, "changed reviewed input");
+      assert.notEqual(artifactInputsFingerprint(root), artifact, name);
     }
   });
 }
