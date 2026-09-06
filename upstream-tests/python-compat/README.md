@@ -1,13 +1,15 @@
 # Value-driven Python compatibility corpus
 
-This is the first assertion-program slice of the compiler/runtime quality plan,
-not a claim of broad CPython equivalence. It supplements the existing exact
-MicroPython runner; that runner has not yet been migrated into this manifest.
+This manifest combines 28 reviewed assertion programs and the existing 508-case
+MicroPython output corpus. It is not a claim of broad CPython equivalence.
+The standalone MicroPython CLI remains available and shares its execution and
+baseline comparison helpers with this engine.
 
 ## Run
 
 ```sh
 node scripts/run-python-compat.cjs --list
+node scripts/run-python-compat.cjs --suite micropython --python /path/to/python3.14
 node scripts/run-python-compat.cjs --artifact-report --json /tmp/rustpython.json
 node scripts/run-python-compat.cjs --artifact-report --only rustpython/builtin_callable
 pnpm build
@@ -21,6 +23,22 @@ and returns failure if any selected required case fails. Filtering qualifies
 only the selected scope, never the full manifest. `--artifact-report` permits
 read-only diagnosis of an older artifact and explicitly **cannot qualify it**.
 There is no baseline-update or accepted-failure option in this first slice.
+
+Repeat `--suite` or `--only` to select multiple suites or cases (OR within each
+filter; AND between filters). Unknown and empty selections fail before execution.
+MicroPython qualification requires all 508 cases; partial selections require
+`--artifact-report` and cannot qualify. Its existing three reviewed differences
+must match their pinned raw fingerprints; no new accepted failures are added.
+
+The MicroPython profile preserves original filenames, corpus working directory,
+ambient environment overrides, five-second timeout, uncapped raw output, and
+the exact original baseline. It is **not** the temporary-directory assertion
+isolation profile described below. The generic adapter additionally verifies
+the oracle's executable bytes in that environment and uses its verified
+absolute path for case launches; wrapper startup effects are not preserved.
+Reports retain the original output report under `outputSuites`, with explicit
+complete-suite and selected-versus-full-manifest qualification. Performance
+remains unmeasured, not inferred from subprocess duration.
 
 The report preserves raw bytes, separate streams, exit/signal/error/timeout and
 output-limit outcomes, exact source/fixture/license provenance, executable
@@ -83,8 +101,8 @@ not admitted here. Broad/generated execution still requires the container-inside
 VM tier in the plan. Home snapshots are recovery, not containment.
 
 Qualification currently targets Node and is pending on all four platform hosts.
-SEA/browser adapters, sharding, other comparison/runner types, full upstream
-inventories, unified MicroPython orchestration, and general diagnostics remain
+SEA/browser adapters, sharding, further comparison/runner types, full upstream
+inventories, and general diagnostics remain
 subsequent slices. None of this corpus belongs in a shipped runtime payload.
 
 ## Additional reviewed upstream Python cases
@@ -123,8 +141,9 @@ Python language or any upstream project's overall support.
 ## RustPython candidate inventory (not adoption)
 
 [`inventory/rustpython.json`](inventory/rustpython.json) inventories every pinned
-top-level snippet without adding runnable cases. The required manifest remains
-28 cases, including 12 RustPython programs. This is agent-facing selection
+top-level snippet without adding runnable cases. The required assertion selection
+remains 28 cases, including 12 RustPython programs, alongside 508 MicroPython
+output cases. This is agent-facing selection
 metadata, not another runner, a pass-rate baseline, or a compatibility claim.
 
 The plan's “221 functional snippets” is a file count: upstream discovery actually

@@ -46,6 +46,9 @@ const validationOnlyFiles = new Set([
   "tools/python-compat/evidence.cjs", "tools/python-compat/manifest.cjs",
   "tools/python-compat/assertion-runner.cjs",
   "tools/python-compat/output-baseline.cjs",
+  "tools/python-compat/legacy-output-manifest.cjs",
+  "tools/python-compat/legacy-output-runner.cjs",
+  "tools/python-compat/output-suite.cjs",
   "bench/cowasm/run.cjs", "bench/python-compat/qualification.cjs",
 ]);
 
