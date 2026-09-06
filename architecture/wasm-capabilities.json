@@ -31,7 +31,9 @@
         "paths": [
           "test/extension-mpoly-resource-ffi.cjs",
           "packages/flint/test/fq_mpoly_resource_ffi.c",
-          "test/extension-multivariate.cjs"
+          "test/extension-multivariate.cjs",
+          "packages/flint-wasm/test/extension-multivariate.test.mjs",
+          "packages/flint-wasm/test/extension-multivariate-browser.mjs"
         ]
       },
       "finite-extension-coordinate-differential": {
@@ -744,7 +746,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -752,14 +754,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi-resource:flint:fq_mpoly_bytes",
@@ -768,7 +769,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -776,14 +777,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi-resource:flint:fq_mpoly_context",
@@ -792,7 +792,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -800,14 +800,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi:flint:fq_mpoly_binary",
@@ -816,7 +815,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -824,14 +823,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi:flint:fq_mpoly_cache_bytes",
@@ -840,7 +838,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -848,14 +846,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi:flint:fq_mpoly_context",
@@ -864,7 +861,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -872,14 +869,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi:flint:fq_mpoly_copy",
@@ -888,7 +884,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -896,14 +892,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi:flint:fq_mpoly_equal",
@@ -912,7 +907,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -920,14 +915,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi:flint:fq_mpoly_factor_bytes",
@@ -936,7 +930,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -944,14 +938,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi:flint:fq_mpoly_from_terms",
@@ -960,7 +953,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -968,14 +961,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi:flint:fq_mpoly_gcd",
@@ -984,7 +976,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -992,14 +984,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi:flint:fq_mpoly_neg",
@@ -1008,7 +999,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -1016,14 +1007,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi:flint:fq_mpoly_resultant",
@@ -1032,7 +1022,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -1040,14 +1030,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi:flint:fq_mpoly_term_bytes",
@@ -1056,7 +1045,7 @@
       "source": "ffi/flint.ffi.json",
       "wasm_declared": true,
       "disposition": "generated-wasm",
-      "fallback": "explicit-capability-error-until-production-qualification",
+      "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint-extension-multivariate",
       "public_consumers": [
         "sagejs.polynomial_algorithms.extension_mpoly_backend"
@@ -1064,14 +1053,13 @@
       "tests": [
         "finite-extension-multivariate-boundary"
       ],
-      "status": "planned",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The declared host-neutral FLINT boundary passes native sanitizer and standalone Wasm witnesses. A separate production ownership group and its authenticated browser qualification are still pending.",
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
       "wasm_closure": {
-        "status": "planned",
-        "explanation": "Production specialist delivery is not yet integrated; standalone Wasm correctness is not a production availability receipt."
+        "status": "included"
       },
-      "public_explanation": "Finite-extension multivariate resource arithmetic is under qualification; this new declaration is not yet available in the published browser artifact."
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "specialist:capability-report-api",

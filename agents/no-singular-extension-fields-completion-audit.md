@@ -363,7 +363,43 @@ failure is not a public arithmetic pass. The standalone C witness additionally
 passes native Windows x64 using ClangCL and the existing static dependency
 prefix, completing the four native **boundary-only** checks.
 
+## F0 public Wasm execution checkpoint
+
+After adding the missing lazy root, the complete public arithmetic/spill
+fixture passes Node-Wasm (about 41 seconds) and Chromium (about 37 seconds).
+It exercises seven fields, all three orders, and one/two/four-entry and
+one-byte cache limits. Chromium observes zero specialist binary requests at
+startup and exactly one across all these operations. Evaluator lifecycle
+regressions pass 10/10; transport/adapter tests pass 13/13.
+
+The fourteen capabilities are now included in the source candidate's
+production capability closure. Artifact-manifest construction passes after
+sorting the asset inventory and adding the specialist capability mapping.
+This supersedes their earlier planned status above; it does **not** qualify
+the whole extension-fields milestone or imply a published release. Final
+source-current combined receipts, mobile checks, and public native tests on
+the other three platforms remain required. The release lane currently has
+the remote hosts reserved; the standalone boundary jobs have all finished.
+
 ## Still required
+
+Concrete dispatch audit after integrating the core plan:
+
+- `ideal.py` constructs packed-v1 coefficients both for Buchberger dispatch
+  and for FGLM's final S-pair verification. Both must select generic v2 for
+  extension fields, including actual-field transformation certificates and
+  truthful algorithm/proof metadata.
+- `zero_dimensional.py` still rejects non-prime finite separator enumeration
+  and uses `field(integer)` as a prime-field coordinate decoder. Replace that
+  decoder with the exact-field canonical enumeration and retain the bound on
+  the full quotient cardinality.
+- Affine/projective point enumeration in `schemes.py` explicitly requires
+  prime fields. Use the field cardinality and canonical coefficient tuples,
+  never powers of a potentially nonprimitive defining generator.
+- The existing extension univariate squarefree factorization already applies
+  inverse Frobenius to coefficients. Preserve that operation and qualify it
+  through public radicals and decomposition rather than introducing a second
+  implementation.
 
 - Finish E0 fixtures, capability routing, generic v2 contracts/certificates,
   and the remaining field-assumption audit.

@@ -1,6 +1,26 @@
 {
   "schema": "sagejs.wasm-production-capabilities/v1",
   "modules": {
+    "flint-extension-multivariate": {
+      "artifact": "flint-extension-multivariate.wasm",
+      "capabilities": [
+        "ffi-resource:flint:fq_mpoly",
+        "ffi-resource:flint:fq_mpoly_bytes",
+        "ffi-resource:flint:fq_mpoly_context",
+        "ffi:flint:fq_mpoly_binary",
+        "ffi:flint:fq_mpoly_cache_bytes",
+        "ffi:flint:fq_mpoly_context",
+        "ffi:flint:fq_mpoly_copy",
+        "ffi:flint:fq_mpoly_equal",
+        "ffi:flint:fq_mpoly_factor_bytes",
+        "ffi:flint:fq_mpoly_from_terms",
+        "ffi:flint:fq_mpoly_gcd",
+        "ffi:flint:fq_mpoly_neg",
+        "ffi:flint:fq_mpoly_resultant",
+        "ffi:flint:fq_mpoly_term_bytes"
+      ],
+      "additionalCapabilities": []
+    },
     "cminpack": {
       "artifact": "cminpack.wasm",
       "capabilities": [],
