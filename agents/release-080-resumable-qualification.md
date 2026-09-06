@@ -1,8 +1,40 @@
 # Sage.js 0.8.0 resumable qualification
 
-Status on 2026-09-06: persistent-host pre-tag qualification complete. Clean
-GitHub confirmation, signing and publication are separate steps and are not
-claimed complete by this record.
+Status on 2026-09-06: release.12 failed native clean CI and is not publishable.
+Its completed pre-tag evidence is retained below as historical evidence, not
+qualification of the replacement candidate. Publication remains pending.
+
+## Replacement candidate
+
+Frozen replacement source: `ef09d3c7cea6032619f641452dc5b00a32e8505d`.
+No replacement tag has been created at the time of this update.
+
+Clean release.12 Wasm CI passed. Native CI exposed two harness problems:
+
+- Windows pnpm installation received URL-encoded filesystem paths, turning
+  the runner's `RUNNER~1` directory into nonexistent `RUNNER%7E1`. Commit
+  `3610b75a6` preserves literal filesystem paths and tests actual offline pnpm
+  installation with spaces, tildes, percent signs and hash characters.
+- The Linux class-group terminal-reuse test killed a healthy cold proof after
+  300 seconds. Commit `ef09d3c7c` uses the existing 600-second allowance on all
+  platforms, retaining the mathematical and reuse assertions.
+
+All four replacement native profiles and the complete browser profile passed.
+The full coordinator is being refreshed after an ARM oracle-directory retry.
+A macOS native refresh accidentally overlapped independent Wasm cache
+preparation; both were stopped, and the interrupted generated cache is being
+rebuilt before sequential revalidation/reproduction. This is an operational
+failure, not evidence that can be relabeled as a pass. Reproduction helpers must
+acquire the same checkout lock rather than merely observe it absent.
+
+Browser numerical collection runs independently on the idle Linux benchmark
+host with its authenticated SciPy oracle. All four numerical browser rows,
+sanitizer/destructive checks, memory records and structural budgets passed.
+Final aggregation and macOS reproduction remain pending. The public npm root
+is `35289e6bdc338d32ad6ee5deafedf41da7d7b9036dc71aaca158649df2ca89b2`;
+the production Wasm artifact remains byte-identical to the historical one below.
+
+## Historical release.12 pre-tag qualification
 
 Frozen source: `d09b1babf3a7de37b414dffb200f2db57c27c96a`.
 Immutable tag: `v0.8.0+release.12`. Newer `main` work is excluded.

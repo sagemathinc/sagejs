@@ -170,6 +170,19 @@ duplicate builds, and a stale lock requires orphan-process inspection rather
 than automatic deletion. A successful coordinator exit covers the native
 profile only, not signing, browser/reproducibility or final aggregation.
 
+Every operation that prepares a checkout's generated files must participate in
+the same exclusive lock, including independent Wasm reproduction. Observing
+that `active.lock` is absent does not reserve the checkout: another controller
+can acquire it immediately afterwards. Finish the complete native coordinator
+and its checkpoint refresh before starting reproduction on those checkouts, or
+use separate reproduction worktrees. Never refresh native checkpoints while a
+Wasm build is preparing the shared lazy compiler cache.
+
+Run long host/coordinator operations under a supervisor or detached session
+with durable logs. A chat/terminal worker disconnect can terminate an ordinary
+foreground process. On recovery, inspect actual local and remote process trees
+and checkpoint state before launching anything again.
+
 Checkpoint reuse is intentionally limited to one exact candidate. Reuse of
 unchanged compiled components across candidates remains the build system's
 content-addressed cache responsibility; test evidence is always recollected
@@ -532,7 +545,10 @@ simpler and faster:
 
 - Extend the existing `release:coordinate` / `release:run` checkpoints into a
   single final campaign summary, including the numerical and reproduction
-  evidence collected by the existing specialized entry points.
+  evidence collected by the existing specialized entry points. Browser numerical
+  collection can start when its exact Linux SEA and canonical browser artifact
+  are ready; it need not wait for every other native platform. Final aggregation
+  still requires all producer evidence.
 - Record native family and final-pack compile timings in the same learned timing
   store used by tests, so heterogeneous hosts can tune the two concurrency
   limits automatically without changing artifact identities.
