@@ -469,6 +469,21 @@ async function compile(
     output_options.python_ordering = false;
   } catch (_error) {}
 
+  try {
+    // Compiler implementation modules do not shadow the literal constructors.
+    // Hoist their immutable numeric constants once per module instead of
+    // parsing them again on every emitter operation. Do not change baselib
+    // compilation or user-output policy; stage zero predates these options.
+    const literalOptions = {
+      pool_numeric_literals: true,
+      numeric_literal_pool_prefix: "compiler_",
+    };
+    // OutputStream fills defaults into its options object; probe a copy so
+    // those defaults cannot overwrite baselib_plain or bootstrap policies.
+    new PyLang.OutputStream({ ...literalOptions });
+    Object.assign(output_options, literalOptions);
+  } catch (_error) {}
+
   var raw = sources[file],
     toplevel;
 
