@@ -41,6 +41,7 @@ const validationOnlyFiles = new Set([
   // Reviewed validation harnesses only: their generated programs live in
   // task scratch directories, not shipped compiler/runtime build outputs.
   "scripts/run-pure-python-packages.cjs", "scripts/python-package-phases.cjs",
+  "scripts/python-package-suites.cjs", "tools/python-compat/drivers/tomli-errors.py",
   "bench/cowasm/run.cjs", "bench/python-compat/qualification.cjs",
 ]);
 

@@ -1914,12 +1914,15 @@ runtime.set_class_repr(list_constructor, "<class 'list'>")
 runtime.set_class_repr(ρσ_dict, "<class 'dict'>")
 runtime.set_class_repr(ρσ_set, "<class 'set'>")
 runtime.set_class_repr(ρσ_frozenset, "<class 'frozenset'>")
-for builtin_container_type in (
-    list_constructor,
-    ρσ_dict,
-    ρσ_set,
-    ρσ_frozenset,
-):
+for builtin_container_type, _builtin_type_name in [
+    (list_constructor, "list"),
+    (ρσ_dict, "dict"),
+    (ρσ_set, "set"),
+    (ρσ_frozenset, "frozenset"),
+]:
+    runtime.reflect.set(builtin_container_type, "__name__", _builtin_type_name)
+    runtime.reflect.set(builtin_container_type, "__qualname__", _builtin_type_name)
+    runtime.reflect.set(builtin_container_type, "__module__", "builtins")
     runtime.object.defineProperty(
         builtin_container_type,
         "__python_type__",

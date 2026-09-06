@@ -12,6 +12,7 @@ const { currentBuildIdentity, inspectBuildReceipt, outputBindings, outputWitness
 const { pythonExecutable } = require("../tools/python-executable.cjs");
 const { phaseOptions, validatePhaseFixture, invalidatePhaseMeasurements, runPhaseProbe } = require("./python-package-phases.cjs");
 const { validatePolicy } = require("../bench/python-compat/classify.cjs");
+const { loadSuiteSelection, selectionUnchanged, prepareSuiteCase, snapshotSuiteCase, suiteCaseUnchanged, checkSuiteWorkflow } = require("./python-package-suites.cjs");
 
 const root = resolve(__dirname, "..");
 const manifestPath = join(root, "upstream-tests/python-packages/manifest.json");
@@ -33,6 +34,7 @@ function parseArguments(args, pythonSelection = {}) {
       } else if (arg === "--only") options.only.push(value);
       else options[arg.slice(2)] = value;
     } else if (arg === "--timings") options.timings = true;
+    else if (arg === "--upstream-suites") options.upstreamSuites = true;
     else if (arg === "--artifact-report") options.artifactReport = true;
     else if (arg === "--list") options.list = true;
     else if (arg === "--help") options.help = true;
@@ -140,8 +142,14 @@ function artifactIdentity() {
     v8: process.versions.v8, platform: process.platform, architecture: process.arch };
 }
 
-async function runCase(entry, python, target, directory, { execute = executeAssertion, resolvePath = realpathSync } = {}) {
-  const program = join(directory, "case.py");
+async function runCase(entry, python, target, directory, { execute = executeAssertion, resolvePath = realpathSync, suite = null } = {}) {
+  let fixtureDirectory = null;
+  if (suite) {
+    const prepared = prepareSuiteCase(suite, entry, directory);
+    entry = prepared.entry;
+    fixtureDirectory = prepared.fixtureDirectory;
+  }
+  const program = join(fixtureDirectory || directory, "case.py");
   const source = entry.source + `print(${JSON.stringify(marker)} + __import__(${JSON.stringify(entry.module)}).__file__)\n`;
   const sourceSha256 = sha256(source);
   writeFileSync(program, source);
@@ -153,11 +161,21 @@ async function runCase(entry, python, target, directory, { execute = executeAsse
     paths: { oracle: null, subject: null },
     performance: { status: "unmeasured", note: "Child duration is diagnostic, not comparative timing qualification." },
     executions: { oracle: null, subject: null } };
+  if (suite) {
+    result.suite = { selection: suite.selection, provenance: suite.provenance,
+      fixtureDirectory, sourceChecks: {}, expectedCount: suite.selection.selection.expectedCount };
+  }
   // Bind the bytes actually offered to each runtime. In particular, a passing
   // oracle must not replace/remove the shared program before the subject runs.
   function checkSource(phase) {
     let actual = null;
-    try { actual = sha256(readFileSync(program)); } catch {}
+    try {
+      actual = sha256(readFileSync(program));
+      if (suite) result.suite.sourceChecks[phase] = snapshotSuiteCase(suite, fixtureDirectory, sourceSha256);
+    } catch {
+      actual = null;
+      if (suite) result.suite.sourceChecks[phase] = null;
+    }
     result.sourceChecks[phase] = actual;
     if (actual === sourceSha256) return true;
     result.sourceUnchanged = false;
@@ -167,12 +185,16 @@ async function runCase(entry, python, target, directory, { execute = executeAsse
   }
   // -S disables site discovery; insert exactly the reviewed wheel target. Avoid
   // ambient PYTHONPATH, global site-packages and bytecode mutations of the tree.
-  const bootstrap = `import sys; sys.path.insert(0, ${JSON.stringify(target)}); exec(compile(open(${JSON.stringify(program)}, encoding='utf-8').read(), ${JSON.stringify(program)}, 'exec'))`;
+  const fixturePath = suite ? `sys.path.insert(0, ${JSON.stringify(fixtureDirectory)}); ` : "";
+  const bootstrap = `import sys; sys.path.insert(0, ${JSON.stringify(target)}); ${fixturePath}exec(compile(open(${JSON.stringify(program)}, encoding='utf-8').read(), ${JSON.stringify(program)}, 'exec'))`;
+  const check = (execution) => suite
+    ? checkSuiteWorkflow(execution, suite, entry, target, fixtureDirectory, { failureKind, checkWorkflow, resolvePath })
+    : checkWorkflow(execution, entry, target, resolvePath);
   if (!checkSource("beforeOracle")) return result;
   const oracle = await execute(python, ["-BS", "-c", bootstrap], bounds);
   result.executions.oracle = oracle;
   if (!checkSource("afterOracle")) return result;
-  const oracleCheck = checkWorkflow(oracle, entry, target, resolvePath);
+  const oracleCheck = check(oracle);
   if (oracleCheck.kind !== "pass") {
     result.status = "oracle-error";
     result.detail = oracleCheck.kind;
@@ -184,7 +206,7 @@ async function runCase(entry, python, target, directory, { execute = executeAsse
     ["--max-old-space-size=512", join(root, "bin/sagejs-source.cjs"), "--python", program], bounds);
   result.executions.subject = subject;
   if (!checkSource("afterSubject")) return result;
-  const subjectCheck = checkWorkflow(subject, entry, target, resolvePath);
+  const subjectCheck = check(subject);
   result.paths.subject = subjectCheck.modulePath ?? null;
   result.status = subjectCheck.kind === "pass" && subjectCheck.modulePath !== oracleCheck.modulePath
     ? "module-path-mismatch" : subjectCheck.kind;
@@ -194,13 +216,20 @@ async function runCase(entry, python, target, directory, { execute = executeAsse
 async function main(args = process.argv.slice(2)) {
   const options = parseArguments(args);
   if (options.help) {
-    console.log("Usage: node scripts/run-pure-python-packages.cjs [--only NAME] [--python PATH] [--json FILE] [--list] [--artifact-report] [--timings --samples N --warmups N --iterations N]\nSelected pinned workflows only; artifact reports cannot qualify source or update baselines.");
+    console.log("Usage: node scripts/run-pure-python-packages.cjs [--only NAME] [--python PATH] [--json FILE] [--list] [--artifact-report] [--upstream-suites] [--timings --samples N --warmups N --iterations N]\nPinned public workflows; --upstream-suites additionally requires every reviewed upstream selection for the selected packages. Artifact reports cannot qualify source or update baselines.");
     return 0;
   }
   const loaded = loadManifest();
   for (const name of options.only) if (!loaded.manifest.packages.some((entry) => entry.name === name)) throw new Error(`unknown package ${name}`);
   const selected = loaded.manifest.packages.filter((entry) => !options.only.length || options.only.includes(entry.name));
-  if (options.list) { for (const entry of selected) console.log(`${entry.name}==${entry.version}`); return 0; }
+  const suites = options.upstreamSuites ? selected.filter((entry) => entry.upstreamSuite)
+    .map((entry) => loadSuiteSelection(root, entry)) : [];
+  if (options.upstreamSuites && suites.length === 0) throw new Error("no reviewed upstream suite for selected packages");
+  if (options.list) {
+    for (const entry of selected) console.log(`${entry.name}==${entry.version}`);
+    for (const suite of suites) for (const id of suite.selection.selection.testIds) console.log(`${suite.entry.name}: ${id}`);
+    return 0;
+  }
   const before = inspectBuildReceipt(root);
   if (!options.artifactReport && !before.current) throw new Error(`current build required: ${before.reason}`);
   const artifacts = artifactIdentity();
@@ -210,6 +239,8 @@ async function main(args = process.argv.slice(2)) {
     artifact: artifacts, build: { before }, reference: null, installation: null, receipts: {}, results: [],
     gate: { qualified: false, artifactOnly: options.artifactReport,
       fullManifest: selected.length === loaded.manifest.packages.length, passed: false, unchanged: false } };
+  if (options.upstreamSuites) report.upstreamSuites = { results: [], qualified: false,
+    scope: "Reviewed selected upstream classes only; not complete package-suite or cross-host qualification." };
   try {
     const env = { ...isolatedEnvironment(scratch), PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8" };
     const identified = await executeAssertion(options.python, ["-BS", "-c", oracleIdentitySource],
@@ -247,6 +278,12 @@ async function main(args = process.argv.slice(2)) {
         comparable: !options.artifactReport && before.current,
       }, { checkWorkflow, failureKind });
       console.log(`${result.status}: ${entry.name} ${entry.version}`);
+      const suite = suites.find((candidate) => candidate.entry.name === entry.name);
+      if (suite) {
+        const suiteResult = await runCase(entry, reference.executable, target, directory, { suite });
+        report.upstreamSuites.results.push(suiteResult);
+        console.log(`${suiteResult.status}: ${entry.name} upstream ${suite.selection.selection.expectedCount} required tests`);
+      }
     }
     const identifiedAfter = await executeAssertion(reference.executable, ["-BS", "-c", oracleIdentitySource],
       { cwd: scratch, env, timeoutMs: 5000, maxOutputBytes: 16384 });
@@ -257,14 +294,22 @@ async function main(args = process.argv.slice(2)) {
       loaded.sha256 === loadManifest().sha256 &&
       canonical(artifacts) === canonical(artifactIdentity()) &&
       canonical(reference) === canonical(report.referenceAfter) &&
-      tree.sha256 === snapshotSource(target).sha256;
+      tree.sha256 === snapshotSource(target).sha256 &&
+      (!options.upstreamSuites || (suites.every(selectionUnchanged) &&
+        report.upstreamSuites.results.every((result, index) => suiteCaseUnchanged(suites[index], result))));
     report.gate.behaviorPassed = report.results.every((entry) => entry.status === "pass");
     report.gate.performancePassed = !options.timings || report.results.every((entry) =>
       entry.performance.status === "measured-provisional" || entry.performance.status === "artifact-observation" ||
       entry.performance.reason === "no-reviewed-phase-fixture");
     report.gate.passed = report.gate.behaviorPassed && report.gate.performancePassed;
+    if (options.upstreamSuites) {
+      report.gate.upstreamSuitesPassed = report.upstreamSuites.results.length === suites.length &&
+        report.upstreamSuites.results.every((result) => result.status === "pass");
+      report.gate.passed &&= report.gate.upstreamSuitesPassed;
+    }
     report.gate.qualified = !options.artifactReport && before.current && report.build.after.current &&
       report.gate.unchanged && report.gate.passed;
+    if (options.upstreamSuites) report.upstreamSuites.qualified = report.gate.qualified;
     for (const result of report.results) {
       if (result.performance.scopes) {
         result.performance.currentSourceQualified = report.gate.qualified;

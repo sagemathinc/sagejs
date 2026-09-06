@@ -1,0 +1,64 @@
+{
+  "schema": "sagejs.python-package-suite-selection/v1",
+  "package": {
+    "name": "tomli",
+    "version": "2.3.0",
+    "wheel": "tomli-2.3.0-py3-none-any.whl",
+    "sha256": "e95b1af3c5b07d9e643909b5abbec77cd9f1217e6d0bca72b0234736b9fb1f1b",
+    "dependencies": []
+  },
+  "source": {
+    "root": "upstream-tests/python-packages/suites/tomli",
+    "manifest": "SOURCE.json",
+    "sha256": "3349cdbff3eece1c9e6937183e08eb74d558e0a804c4f569fd87451fe6147960"
+  },
+  "driver": {
+    "path": "tools/python-compat/drivers/tomli-errors.py",
+    "sha256": "f2935b5676f23af39007dc8a51229f5356aee00a89f4c9c22c530760ec065134"
+  },
+  "selection": {
+    "module": "tests.test_error",
+    "class": "TestError",
+    "testIds": [
+      "tests.test_error.TestError.test_deprecated_tomldecodeerror",
+      "tests.test_error.TestError.test_invalid_char_quotes",
+      "tests.test_error.TestError.test_invalid_parse_float",
+      "tests.test_error.TestError.test_line_and_col",
+      "tests.test_error.TestError.test_missing_value",
+      "tests.test_error.TestError.test_tomldecodeerror",
+      "tests.test_error.TestError.test_type_error"
+    ],
+    "allMethodsInSelectedClass": true,
+    "expectedCount": 7,
+    "expectedSkips": [],
+    "disposition": "required"
+  },
+  "fixtures": [
+    {
+      "path": "tests/__init__.py",
+      "destination": "tests/__init__.py"
+    },
+    {
+      "path": "tests/test_error.py",
+      "destination": "tests/test_error.py"
+    }
+  ],
+  "scope": "Complete upstream TestError class, not all Tomli tests. tests/test_misc.py and tests/test_data.py are not adopted by this selection.",
+  "runtimeCapabilities": [
+    "filesystem:temporary"
+  ],
+  "targets": [
+    "node"
+  ],
+  "comparison": "unittest-required-count-and-origin",
+  "timeoutMs": 30000,
+  "maxOutputBytes": 1048576,
+  "supportClosure": {
+    "upstreamTestSupport": [
+      "tests/__init__.py"
+    ],
+    "thirdPartyTestDependencies": [],
+    "testRunner": "unittest",
+    "setup": "No upstream module/class/test setup or teardown overrides, custom TestCase constructor, cleanup registration, subTests, decorators, parameters, load_tests hook, or external data fixtures are used in this pinned class."
+  }
+}

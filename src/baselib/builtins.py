@@ -5313,6 +5313,10 @@ def ρσ_getattr_internal(
                     else class_member
                 )
             elif (
+                _builtins_get_member(class_member, "__sagejs_synthetic_init__") is True
+            ):
+                return runtime.unbound_method_adapter(class_member)
+            elif (
                 _builtins_is_python_class(class_member)
                 or ρσ_is_bound_method(class_member)
                 or (
@@ -9203,7 +9207,15 @@ runtime.set_class_repr(ρσ_bool, "<class 'bool'>")
 runtime.set_class_repr(ρσ_float, "<class 'float'>")
 runtime.set_class_repr(ρσ_type, "<class 'type'>")
 runtime.set_class_repr(runtime.function_class, "<class 'function'>")
-for builtin_numeric_type in (ρσ_int, ρσ_bool, ρσ_float, ρσ_type):
+for builtin_numeric_type, _builtin_type_name in [
+    (ρσ_int, "int"),
+    (ρσ_bool, "bool"),
+    (ρσ_float, "float"),
+    (ρσ_type, "type"),
+]:
+    runtime.reflect.set(builtin_numeric_type, "__name__", _builtin_type_name)
+    runtime.reflect.set(builtin_numeric_type, "__qualname__", _builtin_type_name)
+    runtime.reflect.set(builtin_numeric_type, "__module__", "builtins")
     runtime.object.defineProperty(
         builtin_numeric_type,
         "__python_type__",

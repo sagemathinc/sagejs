@@ -1463,6 +1463,9 @@ runtime.reflect.set(
 )
 runtime.reflect.set(ρσ_str, "whitespace", WHITESPACE)
 runtime.set_class_repr(ρσ_str, "<class 'str'>")
+runtime.reflect.set(ρσ_str, "__name__", "str")
+runtime.reflect.set(ρσ_str, "__qualname__", "str")
+runtime.reflect.set(ρσ_str, "__module__", "builtins")
 runtime.object.defineProperty(
     ρσ_str,
     "__python_type__",
