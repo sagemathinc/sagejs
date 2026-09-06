@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Certify bounded complex-cubic relation prefixes and resume only on explicit mathematical insufficiency within the same resident native computation",
-  "base_commit": "5387b5e2a58e25c9a2c22b081fd9bd6b19a554f8",
+  "base_commit": "d5eb378471af0d02565811003746b58513f029a1",
   "claims": [
     "src/lib/sagejs/number_fields/cubic_class_number_native.py",
     "docs/cubic-presentation-extraction-audit.md",
@@ -139,13 +139,53 @@
       "commit": "5387b5e2a58e25c9a2c22b081fd9bd6b19a554f8",
       "workspace_fingerprint": "919f6b93badef5cf6390e23467f4d53de6f52d1c629eb5265c5f0b7a4a50b516",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-workspace-bundles.cjs test/native-fixed-slice.cjs test/native-source-compression-resources.cjs test/native-source-compression-sanitizer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.646,
+      "started_at": "2026-09-06T00:03:52.200Z",
+      "commit": "b6e9fb0d607c77a3877a211795461ffc786247c9",
+      "workspace_fingerprint": "8a13fceb5181e037c264ebc3d1106b4c1ff79943138aa05c034cce3018feefd2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.331,
+      "started_at": "2026-09-06T00:05:43.216Z",
+      "commit": "b6e9fb0d607c77a3877a211795461ffc786247c9",
+      "workspace_fingerprint": "8a13fceb5181e037c264ebc3d1106b4c1ff79943138aa05c034cce3018feefd2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.55,
+      "started_at": "2026-09-06T00:13:58.448Z",
+      "commit": "d5eb378471af0d02565811003746b58513f029a1",
+      "workspace_fingerprint": "cfeb932f013f431c0a838b232043c1af38dee4ef7490be58890a07065aa1b023",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-workspace-bundles.cjs test/native-fixed-slice.cjs test/native-source-compression-resources.cjs test/native-source-compression-sanitizer.cjs test/number-field-cubic-native-class-number.cjs test/number-field-cubic-fmpz-closure.cjs test/number-field-cubic-staged-driver.cjs test/number-field-cubic-analytic-suffix.cjs test/number-field-cubic-compact-dependency-prefix.cjs test/number-field-cubic-reconstructed-regulator-guard.cjs test/number-field-cubic-staged-certification.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 110.793,
+      "started_at": "2026-09-06T00:22:18.210Z",
+      "commit": "d5eb378471af0d02565811003746b58513f029a1",
+      "workspace_fingerprint": "cfeb932f013f431c0a838b232043c1af38dee4ef7490be58890a07065aa1b023",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
     "summary": "Implemented and qualified the bounded effort-five two-attempt driver with one resident collector and root-owned proof scratch. CubicProofWorkspace groups 38 borrowed owners, reducing 73 source parameters to 36 without changing the 101-function executable bundle IR. The final production rebuild and 18 public/arithmetic/scheduler tests pass, including authenticated receipts, independent exact replay, pinned invariants and large-regulator units. Classified materialization limits can trigger only a fresh closed alternate effort, never continuation of failed scratch. Fourteen-field controlled source-compression comparisons show no measured slowdown; this is not a new PARI-frontier claim.",
     "risks": [
       "The final compiler review additionally rejects workspace schema shadowing by loop indices and context-manager aliases. This validation-only change is integrated separately from the mathematical lane; archived artifacts retain their historical compiler identities. The combined eager browser payload also exceeds unchanged gzip/Brotli limits, with causal attribution still open.",
-      "Final production Wasm artifact 7415e1b120ded47b75282d683bed118738f8d65422ddacf2b089220e2da41d0c passes receipt validation, the prefix-Arb public Chromium witness and routine browser parity. Broader native platform CI remains pending. The full cubic native function remains explicitly unsupported on wasm32 because it requires 64-bit FLINT limbs; its exact fallback is retained.",
+      "Archived pre-audit production Wasm artifact 7415e1b120ded47b75282d683bed118738f8d65422ddacf2b089220e2da41d0c passes receipt validation, the prefix-Arb public Chromium witness and routine browser parity. The final compiler audit additionally passes 37 combined feature/arithmetic/receipt/replay tests, strict Python and a fresh 39-family native production rebuild. Broader native platform CI remains pending. The full cubic native function remains explicitly unsupported on wasm32 because it requires 64-bit FLINT limbs; its exact fallback is retained.",
       "The complete native suite passes through compiler/ownership/matrix migration checks, then fails the same three QQ selection/stack timing budgets as clean pre-feature cf82b0eb. No thresholds are waived; the task remains active rather than claiming a passing release handoff.",
       "The frozen thousand-field frontier and twenty registered unseen neighbors belong to the separate staged PARI campaign and are not newly qualified by these source-compression measurements.",
       "Existing source allowance 485000 and arena/checkpoint limits are unchanged. Published optimizer evidence 3382c44514037290603db4edcca46ef772749ac2b3329ba2328739cb29d00e32 binds the staged source separately from its prerequisite branch."
