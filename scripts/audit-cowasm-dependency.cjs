@@ -21,6 +21,9 @@ const allowed = [
   /^bench\/cowasm\//,
   // Benchmark provenance only; neither file imports the retired toolchain.
   /^bench\/python-compat\/README\.md$/,
+  // Exact retained JSON timing receipts: the corpus name/path identifies the
+  // existing benchmark harness, not an executable toolchain dependency.
+  /^agents\/evidence\/python-call-binding-local-(?:before|after)\.json$/,
   /^test\/python-performance-runner\.cjs$/,
   // Build freshness classifies the retained benchmark runner as validation
   // input; these references do not load the retired toolchain or runtime.
