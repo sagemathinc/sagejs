@@ -172,12 +172,14 @@ int main(void) {
         fs.writeFileSync(path.join(temporary, "binding.gyp"), JSON.stringify({ targets: [{
           target_name: "sagejs_native_kernel", sources: ["kernel.c"],
           defines: ["NAPI_VERSION=8"], include_dirs: ["."], cflags: ["-std=c11"],
-          msvs_settings: { VCCLCompilerTool: { AdditionalOptions: ["/std:c11"] } },
+          msvs_settings: { VCCLCompilerTool: { AdditionalOptions: ["/std:c11"],
+            // Node 26 injects a C++ language standard even for C-only targets.
+            LanguageStandard: "" } },
         }] }));
         const nodeGyp = require.resolve("node-gyp/bin/node-gyp.js", { paths: [path.resolve(__dirname, "../packages/flint")] });
         buildAddon = spawnSync(process.execPath, [nodeGyp, "rebuild", "--directory", temporary], { encoding: "utf8", timeout: 120000 });
       }
-      assert.equal(buildAddon.status, 0, buildAddon.stderr);
+      assert.equal(buildAddon.status, 0, buildAddon.stdout + buildAddon.stderr);
       const nativeCheck = spawnSync(process.execPath, ["-e", `
         const assert = require('node:assert/strict');
         const checked = require('./dynamic.cjs').checked;

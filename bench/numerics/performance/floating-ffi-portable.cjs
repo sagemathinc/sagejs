@@ -29,11 +29,13 @@ function snapshot() {
   return { sha256: hash(JSON.stringify(files)), files: files.length };
 }
 const before = snapshot();
-const tests = spawnSync(process.execPath, ["--test", "test/ffi-floating-slices.cjs", "test/dynamic-ffi-call-cache.cjs"], {
+// The packed-resource ownership test in the cache file requires FLINT. Keep it
+// in its full integration suite, not this explicitly addon-free qualification.
+const tests = spawnSync(process.execPath, ["--test", "--test-name-pattern=floating|dynamic FFI caches invariant|bootstrap exposes", "test/ffi-floating-slices.cjs", "test/dynamic-ffi-call-cache.cjs"], {
   cwd: root, encoding: "utf8", timeout: 240000, maxBuffer: 4 * 1024 * 1024,
 });
 const after = snapshot();
-const passed = tests.status === 0 && before.sha256 === after.sha256 && /(?:ℹ|#) pass 5\b/.test(tests.stdout);
+const passed = tests.status === 0 && before.sha256 === after.sha256 && /(?:ℹ|#) pass 4\b/.test(tests.stdout);
 const receipt = {
   schema: "sagejs.floating-ffi-qualification/v1", passed,
   declared_source_commit: commit, before, after,
@@ -41,7 +43,7 @@ const receipt = {
   coverage: { standalone_c: true, generated_javascript: true, runtime: true, native_node_adapter: true },
   test_exit_code: tests.status, test_signal: tests.signal,
   stdout: tests.stdout, stderr: tests.stderr, error: String(tests.error || ""),
-  limitations: ["focused-source-not-release", "not-full-suite", "not-performance-evidence", "no-Wasm-foreign-adapter"],
+  limitations: ["focused-source-not-release", "not-full-suite", "FLINT-resource-ownership-test-excluded", "not-performance-evidence", "no-Wasm-foreign-adapter"],
 };
 fs.writeFileSync(output, JSON.stringify(receipt, null, 2) + "\n", { flag: "wx" });
 console.log(JSON.stringify({ passed, output, snapshot: before.sha256 }));

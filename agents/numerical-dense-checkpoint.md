@@ -127,3 +127,15 @@ prior four-pass in-process attempt aborted inside Tree-sitter Wasm. This is
 retained as a build-tool incident, not a numerical failure or a claimed parser
 fix. The final generated bootstrap contains the current floating storage
 normalization and its end-to-end runtime tests pass.
+
+The first remote run passed the floating witness on Linux x64, Linux ARM64
+and macOS ARM64. Windows passed standalone C but its test-only Node build
+conflicted on Node 26's inherited `/std:c++20` and explicit `/std:c11` flags.
+The harness now clears the inherited C++ language standard; its Windows rerun
+is pending the release lane's host reservation. This is not yet a four-host
+pass. The collector now selects four addon-independent tests explicitly: the
+existing FLINT resource-ownership test remains in the full integration suite,
+not this portable bundle. Local selected tests also pass from a fresh archive
+extraction with no inherited build tree. Future receipts must use fresh archive
+extractions: copying prior qualification trees retained extra files and changed
+the selected snapshot even though the four remote snapshots agreed.
