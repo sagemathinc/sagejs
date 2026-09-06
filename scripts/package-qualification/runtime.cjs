@@ -479,10 +479,16 @@ function prepareFreshInstall(options) {
       `overrides:\n  ${JSON.stringify(target.packageName)}: ${JSON.stringify(platformSpec)}\n`,
     );
     const installRunner = options.installRunner || runPnpm;
-    installRunner(["install", "--ignore-scripts"], {
-      cwd: directory,
-      stdio: options.installStdio || "inherit",
-    });
+    try {
+      installRunner(["install", "--ignore-scripts"], {
+        cwd: directory,
+        stdio: options.installStdio || "inherit",
+      });
+    } catch (error) {
+      // Qualification adapters pipe output to protect their JSON protocol.
+      // Preserve the causal package-manager error when that subprocess fails.
+      throw new Error(`Fresh npm installation failed: ${error.message}\n${error.stdout || ""}\n${error.stderr || ""}`, { cause: error });
+    }
     // Do not inspect or execute any installed candidate bytes unless pnpm
     // consumed the exact archive files validated above.
     assertArchiveDigests(archives, archiveDigests);

@@ -364,7 +364,7 @@ jobs:
       - name: Bootstrap the complete native system
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm bootstrap
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage bootstrap
 
       - name: Execute the resident exact native witness
         run: node --test test/native-rank-four-lattice-workspace.cjs
@@ -392,8 +392,8 @@ jobs:
       - name: Run unit, host integration, and native tests
         run: |
           pnpm test:unit
-          pnpm test:integration:run
-          pnpm test:native:run
+          pnpm release:run --candidate "${{ github.sha }}" --stage integration,integration-performance
+          pnpm release:run --candidate "${{ github.sha }}" --stage native,native-performance
           pnpm --dir packages/flint test:eclib:corpus
           pnpm test:installer
           pnpm test:release
@@ -425,7 +425,7 @@ jobs:
       - name: Build and relocation-test both SEA executables
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm test:sea:reuse
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage sea
 
       - name: Exercise the SEA Jupyter wire protocol
         run: pnpm test:jupyter:sea
@@ -598,7 +598,7 @@ jobs:
       - name: Bootstrap the complete native system
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm bootstrap
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage bootstrap
 
       - name: Execute the resident exact native witness
         run: node --test test/native-rank-four-lattice-workspace.cjs
@@ -616,12 +616,12 @@ jobs:
       - name: Run portable and native tests
         run: |
           pnpm test:portable
-          pnpm test:native:run
+          pnpm release:run --candidate "${{ github.sha }}" --stage native,native-performance
 
       - name: Build and relocation-test both SEA executables
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm test:sea:reuse
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage sea
 
       - name: Package the Linux arm64 SEA distribution
         run: |
@@ -801,7 +801,7 @@ jobs:
       - name: Bootstrap the compiler and native mathematics stack
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm bootstrap --without-sea
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage bootstrap
 
       - name: Execute the resident exact native witness
         run: node --test test/native-rank-four-lattice-workspace.cjs
@@ -814,15 +814,15 @@ jobs:
 
       - name: Run host integration tests
         timeout-minutes: 75
-        run: pnpm test:integration:run
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage integration,integration-performance
 
       - name: Run native addon tests
-        run: pnpm test:native:run
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage native,native-performance
 
       - name: Build and relocation-test both Windows SEA executables
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm test:sea:reuse
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage sea
 
       - name: Authenticate to Azure Artifact Signing
         if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
@@ -1033,7 +1033,7 @@ jobs:
       - name: Bootstrap the compiler and native mathematics stack
         env:
           SAGEJS_BUILD_JOBS: "6"
-        run: pnpm bootstrap --without-sea
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage bootstrap
 
       - name: Execute the resident exact native witness
         run: node --test test/native-rank-four-lattice-workspace.cjs
@@ -1046,13 +1046,13 @@ jobs:
           PYTHON: python3
         run: |
           pnpm test:portable
-          pnpm test:integration:run
-          pnpm test:native:run
+          pnpm release:run --candidate "${{ github.sha }}" --stage integration,integration-performance
+          pnpm release:run --candidate "${{ github.sha }}" --stage native,native-performance
 
       - name: Build and relocation-test both macOS SEA executables
         env:
           SAGEJS_BUILD_JOBS: "6"
-        run: pnpm test:sea:reuse
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage sea
 
       - name: Cache authenticated numerical oracle inputs
         if: startsWith(github.ref, 'refs/tags/v')
