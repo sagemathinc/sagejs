@@ -11588,6 +11588,40 @@ def integer_log_sqrt_balls_resource(
 
 
 @flint.function(
+    dynamic="ffiIntegerLogSqrtBallsPrefixResource",
+    symbol="sagejs_flint_integer_log_sqrt_balls_prefix_resource",
+    returns=int,
+    abi=[
+        in_("output", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("count", uint64_t),
+        in_("precision", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message=(
+            "FLINT resident integer logarithm/square-root prefix dimensions, "
+            "aliases, precision, or active entries are invalid"
+        ),
+    ),
+    wasm=True,
+)
+def integer_log_sqrt_balls_prefix_resource(
+    output: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    count: uint64,
+    precision: uint64,
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiPositiveRationalLogBallsResource",
     symbol="sagejs_flint_positive_rational_log_balls_resource",
     returns=int,

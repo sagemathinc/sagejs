@@ -363,6 +363,7 @@ function backendFingerprint() {
       readFileSync(__filename),
       readFileSync(join(__dirname, "ir.cjs")),
       readFileSync(join(__dirname, "integer-ir.cjs")),
+      readFileSync(join(__dirname, "workspace-bundles.cjs")),
       readFileSync(join(__dirname, "float64-ir.cjs")),
       readFileSync(join(__dirname, "exact-analysis.cjs")),
       readFileSync(join(__dirname, "prime-field-ir.cjs")),

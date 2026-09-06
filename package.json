@@ -261,6 +261,7 @@
     "test:m4ri:run": "pnpm --dir packages/m4ri test",
     "test:native": "pnpm run native:prepare && pnpm run test:native:run",
     "test:native:run": "pnpm run test:native:correctness:run && pnpm run test:native:performance:run",
+    "test:native:source-compression": "node --test test/native-fixed-slice.cjs test/native-workspace-bundles.cjs test/native-source-compression-sanitizer.cjs test/native-source-compression-resources.cjs",
     "test:native:correctness:run": "pnpm --dir packages/flint test && pnpm --dir packages/fflas test && pnpm --dir packages/graph test && pnpm run test:m4ri:run && node bin/sagejs packages/flint/test/integration.sage && node bin/sagejs packages/graph/test/integration.sage && node --test test/ffi.cjs test/production-native-kernels.cjs test/fflas-dense-prime.cjs test/native-live-exact-vector.cjs test/native-live-exact-vector-sanitizer.cjs test/native-live-exact-matrix.cjs test/native-live-exact-matrix-sanitizer.cjs test/native-live-exact-arena.cjs test/native-live-exact-arena-sanitizer.cjs test/native-live-exact-records.cjs test/native-rank-four-lattice-workspace.cjs && pnpm run ffi:lifecycle:fuzz && node test/native-kernel.cjs && node test/dense-prime-migration.cjs && node test/dense-integer-migration.cjs && node test/fmpz-matrix-resource-kernels.cjs && node test/dense-rational-migration.cjs",
     "test:numerics": "pnpm run build:check && node scripts/run-numerics-tests.cjs",
     "test:numerics:evidence": "pnpm run build:check && node scripts/run-numerics-tests.cjs --match evidence",

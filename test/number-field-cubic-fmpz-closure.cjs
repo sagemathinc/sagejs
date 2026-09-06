@@ -44,7 +44,6 @@ const expectedHostFunctions = Object.freeze([
   "_cubic_inverse_mod",
   "_cubic_nearest_quotient",
   "_cubic_positive_mod",
-  "_cubic_relation_rank_multiply",
   "_packed_miller_rabin_witness",
   "_packed_modular_power",
   "_packed_word_prime_is_proven",
@@ -116,7 +115,7 @@ test("the complete cubic closure is one direct fmpz program", {
     callees.map((callee) => [caller, callee])
   );
 
-  assert.equal(ir.version, 38);
+  assert.equal(ir.version, 39);
   assert.equal(functions.size, 84);
   assert.equal(edges.length, 195);
   assert.equal(
@@ -153,14 +152,15 @@ test("the complete cubic closure is one direct fmpz program", {
     (fn) => fn.hostCallable === false,
   );
   assert.deepEqual(hostFunctions, expectedHostFunctions);
-  assert.equal(hostFunctions.length, 22);
-  assert.equal(privateFunctions.length, 62);
+  assert.equal(hostFunctions.length, 21);
+  assert.equal(privateFunctions.length, 63);
   assert.equal(functions.get(rootFunction).hostCallable, true);
-  assert.equal((header.match(/\bint sagejs_kernel_/g) || []).length, 22);
-  assert.equal((core.match(/\nint sagejs_kernel_/g) || []).length, 22);
+  assert.equal((header.match(/\bint sagejs_kernel_/g) || []).length, 21);
+  assert.equal((core.match(/\nint sagejs_kernel_/g) || []).length, 21);
 
-  // Scalar helpers may retain an inspectable public bridge. Aggregate helpers
-  // remain private, so the direct call graph never invents a public ABI for a
+  // Lexically native scalar helpers may retain an inspectable public bridge.
+  // Undecorated dependencies and aggregate helpers remain private, so the
+  // direct call graph never invents a public ABI for a
   // borrowed vector, matrix, or packed buffer.
   const aggregateTypes = new Set([
     "FmpzMatrix",
@@ -172,8 +172,9 @@ test("the complete cubic closure is one direct fmpz program", {
   ]);
   for (const fn of privateFunctions) {
     assert.ok(
-      fn.params.some((parameter) => aggregateTypes.has(parameter.type)),
-      `${fn.name} is private without a borrowed aggregate parameter`,
+      fn.params.some((parameter) => aggregateTypes.has(parameter.type)) ||
+        fn.lexicallyNative === false,
+      `${fn.name} is private without aggregate or dependency-only provenance`,
     );
     assert.doesNotMatch(
       header,

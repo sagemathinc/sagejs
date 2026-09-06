@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-resumable-ellipsoid",
+  "title": "Cubic Resumable Ellipsoid",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Preserve exact ellipsoid proposal cursors across bounded relation-collection pauses without changing one-shot transcripts",
+  "base_commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+    "test/number-field-cubic-resumable-ellipsoid.cjs",
+    "test/number-field-cubic-fmpz-closure.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Ordinary exact coordinate enumeration and one-shot relation transcripts"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-cubic-resumable-ellipsoid.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.885,
+      "started_at": "2026-09-05T03:46:47.765Z",
+      "commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+      "workspace_fingerprint": "962eb0b37a6fc6e249745f7c9b352111660fbcd84fbc1d0a447f6f3fc4757209",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.575,
+      "started_at": "2026-09-05T03:50:21.109Z",
+      "commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+      "workspace_fingerprint": "962eb0b37a6fc6e249745f7c9b352111660fbcd84fbc1d0a447f6f3fc4757209",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented a private resumable ellipsoid proposal cursor with cumulative candidate accounting while preserving the production one-shot call. CPython pause-boundary tests and a same-collector dynamic/GMP/fmpz witness pass; the source-matched production build and all 10 focused cubic receipt/ledger/replay tests pass on Linux x64. Strict Python and merge checks pass.",
+    "risks": [
+      "This is an enumeration prerequisite, not a complete staged proof engine or a new PARI performance claim.",
+      "The independent control-flow tests use deterministic arithmetic doubles; production exact-certificate replay remains a separate required oracle.",
+      "Architecture checks reach the expected stale optimizer evidence manifest after this mathematical source change; integration must refresh and publish matching evidence.",
+      "Full native and cross-platform qualification remain pending. The frozen parent full native suite separately has a reproduced pre-existing dense rational cache-pressure performance failure."
+    ],
+    "next_steps": [
+      "Combine with the independently reviewed reconstructed-regulator fail-closed guard and root-owned prefix scratch in an integration lane without changing the frozen opt artifact.",
+      "Preserve the outer ideal/shell cursor and extract attempt-local proof state with explicit fatal versus recoverable exits.",
+      "Refresh optimizer evidence, run final current-workspace validation receipts and controlled end-to-end measurements before promotion."
+    ]
+  }
+}

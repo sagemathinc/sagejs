@@ -1809,6 +1809,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_ffiIntegerLogSqrtBallsPrefixResource",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_ffiNativeExactWorkspaceBorrowAddmul",
           "kind": "function"
         },
