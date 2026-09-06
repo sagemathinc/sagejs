@@ -1010,10 +1010,12 @@ def generate_code():
                     if is_node_type(scope, AST_Toplevel):
                         module_scope = scope
                     if is_node_type(scope, AST_Class) and (
-                        scope.parent is self or scope.bases.indexOf(self) is not -1
+                        scope.parent is stack[index + 1]
+                        or scope.bases.indexOf(stack[index + 1]) is not -1
                     ):
                         # Base expressions execute in the enclosing scope,
-                        # before the class namespace exists.
+                        # before the class namespace exists. Skip the whole
+                        # base subtree, including names inside calls/subscripts.
                         continue
                     if (
                         is_node_type(scope, AST_Class)
@@ -1057,15 +1059,15 @@ def generate_code():
                     )
                     break
             if (
-                output.options.reuse_main_module
+                (output.options.reuse_main_module or resolution is "module")
                 and self.python_identifier
                 and not assignment_target
             ):
-                # A later interactive cell has no lexical declaration for a
-                # name bound by an earlier cell.  Resolve such source names
-                # through the canonical module before considering builtins or
-                # host extensions; generated helper identifiers deliberately
-                # do not carry `python_identifier`.
+                # Dynamic namespace writes (including aliased exec and
+                # globals()) need not have a lexical declaration in this
+                # source file. Resolve those reads through the module, as
+                # with names introduced by earlier interactive cells.
+                # Compiler helper identifiers do not carry python_identifier.
                 if not python_binding:
                     check_unbound = True
                     module_name_fallback = True

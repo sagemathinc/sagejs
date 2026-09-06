@@ -294,6 +294,7 @@ export function generateRuntimeBootstrapSource(
     pool_numeric_literals: true,
     numeric_literal_pool_prefix: `rho_runtime_${mode}_`,
     module_registry: "",
+    standalone_builtins: false,
     baselib_plain: readBaselibSource(
       join(libraryPath, "baselib-plain-pretty.js"),
     ),
@@ -364,16 +365,19 @@ export function runRuntimeBootstrap(
   // ordinary name lookup.
   const moduleRegistry = Reflect.get(globalThis, "ρσ_modules");
   if (!Object.prototype.hasOwnProperty.call(moduleRegistry, "builtins")) {
-    const facadeNames = Reflect.get(globalThis, "__sagejs_baselib_facade_names__");
-    if (!Array.isArray(facadeNames)) {
+    const generatedFacadeNames = Reflect.get(globalThis, "__sagejs_baselib_facade_names__");
+    if (!Array.isArray(generatedFacadeNames)) {
       throw new Error("generated baselib facade inventory is unavailable");
     }
+    // Stage zero reserves `super`, so baselib publishes its public host
+    // property explicitly rather than declaring a Python source alias.
+    const facadeNames = [...generatedFacadeNames, "super"];
     const builtinNames = new Set<PropertyKey>([
       ...facadeNames,
       "__sagejs_native_resolve__",
       "__sagejs_native_fallback_policy__",
     ]);
-    const pythonBuiltinNames = new Set<PropertyKey>();
+    const pythonBuiltinNames = new Set<PropertyKey>(["super"]);
     const baselibRegistry = Reflect.get(
       globalThis,
       "__sagejs_baselib_modules__",

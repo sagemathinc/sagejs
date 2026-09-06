@@ -28,7 +28,7 @@ assert.equal(manifest.arch, process.arch);
 // once for compilation and once for evaluation. Keep this structural startup
 // invariant independent of noisy wall-clock measurements.
 assert.ok(
-  compilerSource.byteLength <= 4 * 1024 * 1024 + 166 * 1024,
+  compilerSource.byteLength <= 4 * 1024 * 1024 + 172 * 1024,
   `compiler bootstrap grew to ${compilerSource.byteLength} bytes`,
 );
 assert.ok(

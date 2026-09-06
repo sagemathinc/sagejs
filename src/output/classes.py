@@ -31,6 +31,12 @@ def print_class(output):
     self.bases = self.bases or []
     self.metaclass = self.metaclass or None
     self.namedtuple_fields = self.namedtuple_fields or []
+    class_definition = self.name.definition()
+    class_binding_name = (
+        (class_definition.mangled_name or class_definition.name)
+        if class_definition
+        else self.name.name
+    )
     compiling_baselib = (
         output.options.omit_baselib
         and not output.options.private_scope
@@ -157,9 +163,9 @@ def print_class(output):
                 output.end_statement()
                 fname = (
                     (
-                        output.make_python_name(self.name.name)
+                        output.make_python_name(class_binding_name)
                         if self.name.python_identifier
-                        else output.make_name(self.name.name)
+                        else output.make_name(class_binding_name)
                     )
                     + ("." if is_static else ".prototype.")
                     + name
@@ -896,7 +902,10 @@ def print_class(output):
                 output.end_statement()
 
         elif is_node_type(stmt, AST_Class):
-            stmt.print(output)
+            # Nested bases execute in the surrounding class namespace, just
+            # like other class-body expressions. Preserve the scoped flag
+            # while rendering the nested definition, then restore it.
+            print_class_statement(stmt)
             if stmt.name.name not in self.nonlocal_names:
                 class_def(JSON.stringify(stmt.name.name), True)
                 stmt.name.print(output)

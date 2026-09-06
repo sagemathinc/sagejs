@@ -4963,12 +4963,18 @@ class SageProperty:
             runtime.reflect.apply(self.fdel, runtime.undefined, [instance])
 
     def getter(self, target_function: Any) -> SageProperty:
+        if target_function is None:
+            target_function = self.fget
         return SageProperty(target_function, self.fset, self.fdel, self.__doc__)
 
     def setter(self, target_function: Any) -> SageProperty:
+        if target_function is None:
+            target_function = self.fset
         return SageProperty(self.fget, target_function, self.fdel, self.__doc__)
 
     def deleter(self, target_function: Any) -> SageProperty:
+        if target_function is None:
+            target_function = self.fdel
         return SageProperty(self.fget, self.fset, target_function, self.__doc__)
 
 
@@ -5648,6 +5654,10 @@ def ρσ_resolve_module_name(
         # ``len = len([1])`` and Sage's ``i = CC(i)`` valid at top level.
     if value is not runtime.undefined and value is not cleared_exception:
         return value
+    if not was_cleared_exception and _builtins_has_member(module_builtins, name):
+        builtin_value = _builtins_get_member(module_builtins, name)
+        if builtin_value is not runtime.undefined:
+            return builtin_value
     # The public Sage facade deliberately contains both Python builtins and
     # mathematical globals such as ``e``.  Consult the authoritative baselib
     # namespaces when deciding whether a cleared exception target may fall
@@ -5930,6 +5940,11 @@ def _builtins_dynamic_namespaces(
         local_namespace = default_locals
     if not isinstance(local_namespace, dict):
         raise TypeError("locals must be a mapping")
+    if "__builtins__" not in global_namespace:
+        global_namespace.__setitem__(
+            "__builtins__",
+            ρσ_live_scope_dict(_builtins_default_import("builtins")),  # type: ignore[name-defined]  # noqa: F821
+        )
     return runtime.math_tuple([global_namespace, local_namespace])
 
 
@@ -9488,7 +9503,20 @@ runtime.reflect.set(
 runtime.reflect.set(tuple, "count", _builtins_tuple_count)
 runtime.reflect.set(tuple, "index", _builtins_tuple_index)
 issubclass = ρσ_issubclass
-isinstance = ρσ_instanceof  # type: ignore[name-defined]  # noqa: F821
+# `super` is a Python builtin but a reserved JavaScript identifier. Publish
+# the public spelling as an actual namespace member, not a resolver rewrite.
+# Keep the source parseable by stage zero, which reserves this spelling.
+# Public writes/deletion belong to a separate configurable host property.
+runtime.reflect.set(runtime.global_object, "super", ρσ_py_super)
+
+
+def isinstance(value: Any, classinfo: Any) -> _Bool:
+    # The internal module is initialized after builtins. Resolve its helper
+    # when called, rather than capturing an undefined bootstrap-time alias.
+    return ρσ_instanceof_one(value, classinfo)  # type: ignore[name-defined]  # noqa: F821
+
+
+runtime.reflect.set(isinstance, "__positional_only__", 2)
 iter = ρσ_iter
 next = ρσ_next
 reversed = ρσ_reversed
