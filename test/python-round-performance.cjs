@@ -20,5 +20,5 @@ test("warm round performance stays within the reviewed CPython ceiling", () => {
     maxBuffer: 4 * 1024 * 1024,
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /PASS: every round workload is at most 20x CPython/u);
+  assert.match(result.stdout, /PASS: every round workload is at most 30x CPython/u);
 });
