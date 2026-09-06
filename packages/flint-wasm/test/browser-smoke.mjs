@@ -428,13 +428,10 @@ print(
       "1 True\nTrue",
     );
     await runSource(
-      "try:\n    AffineSpace(GF(4, 'a'), 2)\n" +
-        "except NotImplementedError as error:\n" +
-        "    assert 'operation=geometry' in str(error)\n" +
-        "    assert 'target=wasm' in str(error)\n" +
-        "    print('extension geometry is explicitly gated')\n" +
-        "else:\n    raise AssertionError('extension geometry gate was bypassed')",
-      "extension geometry is explicitly gated\n",
+      "K = GF(4, 'a')\nA = AffineSpace(K, 2, names=('x', 'y'))\n" +
+        "x, y = A.gens()\nX = A.subscheme([y-x^2-K.gen()])\n" +
+        "print(len(X.rational_points()), X.is_smooth())",
+      "4 True\n",
     );
     await runSource(
       "R.<x> = QQ[]\nx^2 - 2*x + 1",

@@ -26,5 +26,12 @@ for case in _extension_field_cases:
     assert list(I.groebner_basis(proof=True)) == expected, case["id"]
     assert all(I.normal_form(f, proof=True) == 0 for f in generators), case["id"]
     assert I.is_equal(R.ideal(expected), proof=True), case["id"]
+    assert I.dimension(proof=True) == case["dimension"], case["id"]
+    if case.get("quotient_dimension") is not None:
+        assert I.vector_space_dimension(proof=True) == case["quotient_dimension"], case[
+            "id"
+        ]
+        actual_exponents = [list(f.terms()[0][1]) for f in I.normal_basis(proof=True)]
+        assert sorted(actual_exponents) == case["normal_basis_exponents"], case["id"]
 
 print("public extension ideals match independent Sage fixtures")

@@ -37,6 +37,20 @@ try:
             assert list(R.ideal(0).groebner_basis()) == []
             assert list(R.ideal(1).groebner_basis()) == [R(1)]
             assert I.vector_space_dimension() == 2
+            monomials = list(I.normal_basis())
+            assert len(monomials) == 2
+            matrix_x = I.multiplication_matrix(x)
+            assert matrix_x.base_ring() is K
+            for column, monomial in enumerate(monomials):
+                coordinates = I.quotient_coordinates(x * monomial)
+                assert all(
+                    matrix_x[row, column] == coordinates[row] for row in range(2)
+                )
+            Q = I.quotient_ring()
+            assert Q(x) ** 2 == Q(a) and Q(x) == Q(y)
+            minimum = Q.minimal_polynomial(Q(x), "z")
+            z = minimum.parent().gen()
+            assert minimum == z**2 - a
             lex = I.fglm()
             L = lex.universe()
             xx, yy = L.gens()

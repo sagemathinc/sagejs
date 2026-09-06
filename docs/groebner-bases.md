@@ -348,14 +348,16 @@ F.ideal([a^2 + 2*b, a*b + 1]).groebner_basis()
 | `QQ`, proof disabled | global `degrevlex` | msolve modular F4 | probabilistic stopping test |
 | `QQ`, proof disabled | another supported global order | FLINT | exact fallback |
 | `QQ` with `algorithm="buchberger"` | `lex`, `deglex`, or `degrevlex` | exact portable Buchberger | deterministic with verified transformation certificate |
+| Supported `GF(p^d)` | `lex`, `deglex`, or `degrevlex` | exact portable Buchberger | deterministic with verified transformation certificate |
 
 The msolve paths return full reduced bases and support exact normal forms,
 leading ideals, and ideal membership. Unsupported coefficient domains, term
 orders, characteristics, and proof requests fail explicitly instead of being
 silently relabeled or sent to an inapplicable algorithm.
 
-The current port does not yet provide finite extension fields, algebraic-
-closure solving, modules, syzygies, resolutions, local standard bases, or
+The msolve port does not accept extension coefficients; these use the exact
+path described above. Sage.js does not yet provide general algebraic-closure
+solving, modules, syzygies, resolutions, local standard bases, or
 Singular's wider commutative-algebra operations.
 
 ## Portability and safety

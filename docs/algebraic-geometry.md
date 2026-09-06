@@ -221,6 +221,27 @@ assert I.radical(proof=True).is_equal(A.coordinate_ring().ideal(x - a**3, y))
 assert not I.is_radical()
 ```
 
+Projective and decomposition operations keep the same field parent:
+
+```sage test
+K = GF(9, "a")
+a = K.gen()
+P2 = ProjectiveSpace(K, 2, names=("r", "s", "t"))
+r, s, t = P2.gens()
+C = Curve(r*t - a*s**2)
+assert C.arithmetic_genus() == 0
+assert C.tangent_space(C(1, 0, 0)).dimension() == 1
+assert C.tangent_line(C(1, 0, 0)).defining_ideal().is_equal(P2.coordinate_ring().ideal(t))
+
+R = PolynomialRing(K, ["x", "y"])
+x, y = R.gens()
+I = R.ideal((x-a)**2*(x-a-1), y)
+components = I.primary_decomposition(proof=True)
+assert len(components) == 2
+assert components[0].intersection(components[1]).is_equal(I)
+assert len(I.variety(proof=True)) == 2
+```
+
 Current extension storage admits prime characteristic at most `4294967295`,
 degree `2..1024`, at most 64 polynomial variables, 4096 terms per stored
 polynomial, exponents at most 1048576, and a 16 MiB encoding limit. Exact

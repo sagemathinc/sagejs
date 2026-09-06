@@ -37,16 +37,9 @@ sample_ideal = R.ideal((u-1)^2*(u+1), v)
       );
     }
 
-    await assert.rejects(
-      sage.evaluate("AffineSpace(GF(4, 'a'), 2)"),
-      (error) => {
-        assert.equal(error.name, "NotImplementedError");
-        assert.match(error.message, /extension domains await/);
-        assert.match(error.message, /operation=geometry/);
-        assert.match(error.message, /target=wasm/);
-        return true;
-      },
-    );
+    assert.equal((await sage.evaluate(
+      "len(AffineSpace(GF(4, 'a'), 2).rational_points())",
+    )).repr, "16");
   } finally {
     await sage.close();
   }
