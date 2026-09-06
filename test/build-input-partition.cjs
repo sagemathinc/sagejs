@@ -11,7 +11,17 @@ const { artifactInputsFingerprint, workspaceFingerprint, currentBuildIdentity,
   inspectBuildReceipt, refreshBuildReceiptAfterNative, writeBuildReceipt } = require("../scripts/build-receipt.cjs");
 const { requireUnchangedWorkspace } = require("../scripts/run-python-conformance.cjs");
 
+const pythonConformanceValidationPaths = [
+  "scripts/run-python-conformance.cjs",
+  "scripts/run-python-compat.cjs",
+  "tools/python-compat/evidence.cjs",
+  "tools/python-compat/manifest.cjs",
+  "tools/python-compat/assertion-runner.cjs",
+  "tools/python-compat/output-baseline.cjs",
+];
+
 const packageAndBenchmarkValidationPaths = [
+  ...pythonConformanceValidationPaths,
   "upstream-tests/python-packages/manifest.json",
   "scripts/run-pure-python-packages.cjs",
   "scripts/python-package-phases.cjs",
@@ -58,9 +68,9 @@ for (const git of [false, true]) {
     }
   });
 
-  test(`derived validation edits and removal preserve artifacts (${git ? "Git" : "archive"})`, (context) => {
+  test(`validation-only edits and removal preserve artifacts (${git ? "Git" : "archive"})`, (context) => {
     const { root, write } = fixture(context, git);
-    for (const name of derivedValidationArtifactPaths) {
+    for (const name of [...derivedValidationArtifactPaths, ...pythonConformanceValidationPaths]) {
       write(name);
       const artifact = artifactInputsFingerprint(root);
       const workspace = workspaceFingerprint(root);
@@ -77,7 +87,9 @@ for (const git of [false, true]) {
 
   test(`real build inputs remain conservative (${git ? "Git" : "archive"})`, (context) => {
     const { root, write } = fixture(context, git);
-    for (const name of ["src/baselib/builtins.py", "bin/sagejs-source.cjs", "sagejs-version.json",
+    for (const name of [...pythonConformanceValidationPaths.flatMap((name) =>
+      [name + ".in", name.replace(/\.cjs$/, "-extra.cjs")]),
+      "src/baselib/builtins.py", "bin/sagejs-source.cjs", "sagejs-version.json",
       "pnpm-lock.yaml", "tsconfig.json", "scripts/build.cjs", "architecture/native-kernels.json",
       "bench/numerical-p3-nlopt/corpus.json",
       "scripts/build-receipt.cjs", "scripts/precompiled-python-packages.json",
@@ -139,7 +151,7 @@ test("artifact reuse preserves the original build provenance and output checks",
   writeBuildReceipt({ root, durationMilliseconds: 1, identity: original });
   const receipt = readFileSync(join(root, "dist/build-receipt.json"));
   write("test/new-case.cjs");
-  for (const name of derivedValidationArtifactPaths) write(name);
+  for (const name of [...derivedValidationArtifactPaths, ...pythonConformanceValidationPaths]) write(name);
   const status = inspectBuildReceipt(root);
   assert.equal(status.current, true);
   assert.equal(status.buildWorkspaceSha256, original.workspaceSha256);
