@@ -38,7 +38,6 @@ existing synchronous buffer-borrow ABI. A workspace is deliberately different:
 it groups live arena/FFI owners without creating a value layout or public ABI.
 Keeping these contracts separate avoids making an owned resource silently
 copyable merely because it appears inside a record.
-
 ```python
 class ProofScratch(NativeWorkspace):
     relations: FmpzMatrix

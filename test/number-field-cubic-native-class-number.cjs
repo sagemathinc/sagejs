@@ -149,6 +149,10 @@ assert certified_complex_cubic_class_number(declined) is None
 cases = (
     ((-55, 9, 0, 1), 5, (5,)),
     ((-4, 3, -1, 1), 2, (2,)),
+    # Previously exposed corpus fields needing a second exact proof attempt
+    # in the bounded effort-five driver; not benchmark-heldout neighbors.
+    ((-92, -32, 0, 1), 3, (3,)),
+    ((-48, 30, 0, 1), 5, (5,)),
     # LMFDB 3.1.685935.1 has regulator about 358.15. The orientation selected
     # by this native reconstruction has 519-bit integral-basis coordinates,
     # exercising the bounded large-unit regime rather than the former decline.
@@ -165,7 +169,7 @@ for index, (coefficients, order, invariants) in enumerate(cases):
     assert receipt.class_number == order
     assert receipt.invariants == invariants
     assert receipt.proof_status == "exact-relations-conditional-grh"
-    if coefficients in ((-55, 9, 0, 1), (-644, 243, 0, 1), (-5570, 0, 0, 1)):
+    if coefficients in ((-55, 9, 0, 1), (-92, -32, 0, 1), (-48, 30, 0, 1), (-644, 243, 0, 1), (-5570, 0, 0, 1)):
         assert receipt.theorem == (
             "belabas-diaz-y-diaz-friedman-generators-plus-"
             "belabas-friedman-index-one"
@@ -180,6 +184,9 @@ for index, (coefficients, order, invariants) in enumerate(cases):
             "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
         )
     assert receipt.matches(K)
+    if coefficients in ((-92, -32, 0, 1), (-48, 30, 0, 1)):
+        assert receipt.relation_effort == 5
+        assert receipt.verify_conditional_grh()
     if coefficients == (-644, 243, 0, 1):
         assert max(abs(value).bit_length() for value in receipt.unit_coordinates) == 519
     if coefficients == (-55, 9, 0, 1):
@@ -525,7 +532,8 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.104072.1":
         assert receipt.generator_bound == 18, label
         assert receipt.factor_base_size == 11, label
-        assert receipt.relation_count == 17, label
+        assert receipt.relation_count == 15, label
+        assert receipt.verify_conditional_grh(), label
     if label == "3.1.26412.1":
         assert receipt.generator_bound == 15, label
         assert receipt.factor_base_size == 6, label
@@ -566,7 +574,10 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.588.1":
         assert receipt.generator_bound == 8, label
         assert receipt.factor_base_size == 5, label
-        assert receipt.relation_count == 12, label
+        # The first staged prefix certifies with factor_count + 6 rows;
+        # retaining the former twelfth row is no longer necessary.
+        assert receipt.relation_count == 11, label
+        assert receipt.verify_conditional_grh(), label
         assert receipt.proof_status == "exact-relations-conditional-grh", label
         assert receipt.assumptions == (
             "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
@@ -600,9 +611,11 @@ for index, (label, coefficients, expected_order, expected_invariants, expected_p
     if label == "3.1.24843.1":
         assert receipt.generator_bound == 13, label
         assert receipt.factor_base_size == 8, label
-        assert receipt.relation_count == 16, label
+        assert receipt.relation_count == 14, label
+        assert receipt.verify_conditional_grh(), label
     if label == "3.1.49096.1":
-        assert receipt.relation_count == 15, label
+        assert receipt.relation_count == 13, label
+        assert receipt.verify_conditional_grh(), label
     if label == "3.1.1802479.1":
         assert receipt.generator_bound == 41, label
         assert receipt.factor_base_size == 16, label
@@ -702,7 +715,7 @@ for label, coefficients, class_number, invariants in cases:
     polynomial = sum(coefficient * x**exponent for exponent, coefficient in enumerate(coefficients))
     K = NumberField(polynomial, "large_" + label.replace(".", "_"))
     receipt = certified_complex_cubic_class_number(K)
-    assert receipt is not None
+    assert receipt is not None, label
     assert receipt.class_number == class_number
     assert receipt.invariants == invariants
     basis = K.maximal_order().basis()
