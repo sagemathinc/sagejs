@@ -24,8 +24,9 @@ const {
   finalizeFunctionProvenance,
 } = require("./provenance.cjs");
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
+const { isBundleClass, prepareWorkspaceBundles } = require("./workspace-bundles.cjs");
 
-const IR_VERSION = 38;
+const IR_VERSION = 39;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -717,6 +718,7 @@ function supportedModulePreamble(statement) {
   if (isEmptyDecoratorStatement(statement) ||
       nodeType(statement) === "AST_EmptyStatement") return true;
   if (isNativeRecordClass(statement)) return true;
+  if (isBundleClass(statement)) return true;
   if (nodeType(statement) !== "AST_Imports") return false;
   return array(statement.imports).every((item) => {
     const moduleName = item.module?.name;
@@ -767,10 +769,41 @@ function foreignDescriptor(
   });
 }
 
+function foreignResourceDescriptor(library, resource, moduleName, localName) {
+  const operations = {};
+  for (const [member, method] of [
+    ["item_get", "__getitem__"],
+    ["item_set", "__setitem__"],
+  ]) {
+    if (resource[member] === undefined) continue;
+    const declaration = library.byPythonName.get(resource[member]);
+    expect(declaration !== undefined,
+      `${moduleName}.${resource.python_name}.${member} names an undeclared operation`);
+    operations[member] = foreignDescriptor(
+      library,
+      declaration,
+      moduleName,
+      declaration.python_name,
+      `${localName}.${method}`,
+    );
+  }
+  return Object.freeze({
+    ...resource,
+    ...operations,
+    compiler_type: localName,
+    declaration_identity: library.identity,
+    library: library.library,
+  });
+}
+
 function ffiImports(topLevel, filename) {
   const registry = loadFfiRegistry();
   const functions = new Map();
   const resources = new Map();
+  // Constructors infer their declared canonical result type without importing
+  // that type's Python name. Resolve its operations just as for an explicit
+  // resource import, while keeping annotation visibility in `resources`.
+  const canonicalResources = new Map();
   for (const statement of topLevel) {
     if (nodeType(statement) !== "AST_Imports") continue;
     for (const item of array(statement.imports)) {
@@ -783,6 +816,11 @@ function ffiImports(topLevel, filename) {
         `${filename} imports undeclared FFI module ${moduleName}`,
       );
       expect(!item.star, "native FFI imports may not use star imports");
+      for (const resource of library.resources || []) {
+        canonicalResources.set(resource.python_name, foreignResourceDescriptor(
+          library, resource, moduleName, resource.python_name,
+        ));
+      }
       for (const imported of array(item.argnames)) {
         const localName = imported.alias?.name || imported.name;
         const resource = library.byResourceType.get(imported.name);
@@ -791,40 +829,9 @@ function ffiImports(topLevel, filename) {
             !resources.has(localName) && !functions.has(localName),
             `duplicate native FFI import name ${localName}`,
           );
-          const itemGetDeclaration = resource.item_get === undefined
-            ? undefined
-            : library.byPythonName.get(resource.item_get);
-          const itemSetDeclaration = resource.item_set === undefined
-            ? undefined
-            : library.byPythonName.get(resource.item_set);
-          resources.set(localName, Object.freeze({
-            ...resource,
-            ...(itemGetDeclaration === undefined
-              ? {}
-              : {
-                  item_get: foreignDescriptor(
-                    library,
-                    itemGetDeclaration,
-                    moduleName,
-                    itemGetDeclaration.python_name,
-                    `${localName}.__getitem__`,
-                  ),
-                }),
-            ...(itemSetDeclaration === undefined
-              ? {}
-              : {
-                  item_set: foreignDescriptor(
-                    library,
-                    itemSetDeclaration,
-                    moduleName,
-                    itemSetDeclaration.python_name,
-                    `${localName}.__setitem__`,
-                  ),
-                }),
-            compiler_type: localName,
-            declaration_identity: library.identity,
-            library: library.library,
-          }));
+          resources.set(localName, foreignResourceDescriptor(
+            library, resource, moduleName, localName,
+          ));
           continue;
         }
         const declaration = library.byPythonName.get(imported.name);
@@ -846,7 +853,65 @@ function ffiImports(topLevel, filename) {
       }
     }
   }
-  return { functions, resources };
+  return { functions, resources, canonicalResources };
+}
+
+function rejectNestedArenaCalls(functions, filename) {
+  function walk(statements, insideArena, visit) {
+    for (const statement of statements || []) {
+      visit(statement, insideArena);
+      walk(statement.setup, insideArena, visit);
+      walk(statement.condition?.operations, insideArena, visit);
+      walk(
+        statement.body,
+        insideArena || statement.kind === "integer.arena.scope",
+        visit,
+      );
+      walk(statement.alternative, insideArena, visit);
+      walk(statement.right?.operations, insideArena, visit);
+    }
+  }
+
+  // A callee may hide its arena behind any number of ordinary native helpers
+  // (including imported helpers). Track that effect to a fixed point, rather
+  // than relying on the per-function lexical nesting check or fmpz eligibility.
+  const entersArena = new Map();
+  for (const fn of functions) {
+    walk(fn.body, false, (statement) => {
+      if (statement.kind === "integer.arena.scope") {
+        entersArena.set(fn.name, [fn.name]);
+      }
+    });
+  }
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const fn of functions) {
+      if (entersArena.has(fn.name)) continue;
+      const dependency = (fn.dependencies || []).find(
+        (name) => entersArena.has(name),
+      );
+      if (dependency !== undefined) {
+        entersArena.set(fn.name, [fn.name, ...entersArena.get(dependency)]);
+        changed = true;
+      }
+    }
+  }
+  for (const fn of functions) {
+    walk(fn.body, false, (statement, insideArena) => {
+      if (
+        insideArena && statement.kind === "native.call" &&
+        entersArena.has(statement.function)
+      ) {
+        const path = [fn.name, ...entersArena.get(statement.function)];
+        fail(
+          `${filename}: ${fn.name}: nested NativeExactArena scopes through ` +
+          `native calls are not supported (${path.join(" -> ")}); ` +
+          "an independent checkpoint may invalidate borrowed exact storage",
+        );
+      }
+    });
+  }
 }
 
 async function lowerSource(source, filename, options = {}) {
@@ -907,6 +972,7 @@ async function lowerSource(source, filename, options = {}) {
   const foreignImports = ffiImports(topLevel, filename);
   const foreignFunctions = foreignImports.functions;
   const foreignResources = foreignImports.resources;
+  const workspaces = prepareWorkspaceBundles(topLevel, compiler, foreignResources, filename);
   const definitions = topLevel.filter(
     (statement) => nodeType(statement) === "AST_Function",
   );
@@ -923,6 +989,10 @@ async function lowerSource(source, filename, options = {}) {
       missing.length === 0,
       `requested native functions are not defined: ${missing.join(", ")}`,
     );
+    for (const fn of selectedDefinitions) {
+      expect(!workspaces.contracts.get(fn.name.name)?.some(param => param.schema),
+        `${fn.name.name}: workspace bundle parameters have no public host ABI; select a closed caller`);
+    }
   } else if (decorated.length > 0) {
     selectedDefinitions = decorated;
   } else {
@@ -952,12 +1022,13 @@ async function lowerSource(source, filename, options = {}) {
   // be compiled into the same native dependency graph rather than becoming
   // an unresolved call or a name-based intrinsic.
   for (const fn of definitions) {
+    const expandedFn = workspaces.lower(fn).fn;
     const returnType = canonicalType(
-      fn.return_annotation,
+      expandedFn.return_annotation,
       records,
       foreignResources,
     );
-    const paramTypes = array(fn.argnames).map((arg) =>
+    const paramTypes = array(expandedFn.argnames).map((arg) =>
       canonicalType(arg.annotation, records, foreignResources)
     );
     const legacyFieldSignature = [
@@ -983,7 +1054,7 @@ async function lowerSource(source, filename, options = {}) {
     );
     if (completeSignature || partiallyTypedSelected) {
       const signature = signatureFromFunction(
-        fn,
+        expandedFn,
         filename,
         records,
         foreignResources,
@@ -1022,8 +1093,10 @@ async function lowerSource(source, filename, options = {}) {
     );
   }
   function lowerDefinition(fn) {
+    const expanded = workspaces.lower(fn);
+    fn = expanded.fn;
     const signature = signatures.get(fn.name.name);
-    return signature === undefined
+    const result = signature === undefined
       ? lowerLegacyFunction(fn, decoratedMode)
       : isFloat64Signature(signature)
         ? lowerFloat64Function(
@@ -1058,7 +1131,13 @@ async function lowerSource(source, filename, options = {}) {
             filename,
             decoratedMode,
             integerConstants,
+            foreignImports.canonicalResources,
           );
+    if (expanded.metadata.length) {
+      result.workspaceBundles = expanded.metadata;
+      if (expanded.metadata.some(item => item.kind === "parameter")) result.hostCallable = false;
+    }
+    return result;
   }
   const loweredDefinitions = [...selectedDefinitions];
   const lowered = [];
@@ -1076,6 +1155,14 @@ async function lowerSource(source, filename, options = {}) {
     // discovery uses this per-definition provenance to distinguish intentional
     // private native entry points from ordinary undecorated helpers.
     result.lexicallyNative = nativeDecorator(definition);
+    // Dependency closure is not an implicit request for additional host APIs.
+    // Explicit roots and lexical native entries keep their existing safety
+    // restrictions; an ordinary source helper stays private regardless of
+    // whether its parameters happen to be scalars or resident aggregates.
+    if (result.kernelKind === "integer" &&
+        !initiallySelected.has(result.name) && !result.lexicallyNative) {
+      result.hostCallable = false;
+    }
     lowered.push(result);
     for (const dependency of result.dependencies || []) {
       if (included.has(dependency)) continue;
@@ -1106,7 +1193,10 @@ async function lowerSource(source, filename, options = {}) {
         `${filename}: imported native function conflicts with ${fn.name}`,
       );
       combinedNames.add(fn.name);
-      importedLowered.push(fn);
+      importedLowered.push(fn.kernelKind !== "integer" || fn.lexicallyNative ? fn : {
+        ...fn,
+        hostCallable: false,
+      });
     }
     importedRecords.push(...(imported.ir.records || []));
     importedLibraries.push(...(imported.ir.foreignLibraries || []));
@@ -1119,7 +1209,9 @@ async function lowerSource(source, filename, options = {}) {
       ...(imported.ir.nativeSourceDependencies || []),
     );
   }
-  const selected = analyzeExactModule([...lowered, ...importedLowered]).map(
+  const combined = [...lowered, ...importedLowered];
+  rejectNestedArenaCalls(combined, filename);
+  const selected = analyzeExactModule(combined).map(
     (fn, index) => index < lowered.length
       ? finalizeFunctionProvenance(
           fn,

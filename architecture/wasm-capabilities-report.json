@@ -1,11 +1,11 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "db55e7361b2a4cb8a5a228f5e067323f93930656ed9baf1444b775173cb5ce35",
+  "source_sha256": "3b9109a088d33603e130f2c111a7edd8b6d4202ff1914b1891654389a68bf840",
   "counts": {
-    "total": 1051,
+    "total": 1052,
     "by_kind": {
-      "declared-ffi-function": 466,
+      "declared-ffi-function": 467,
       "declared-ffi-resource": 34,
       "napi-export": 325,
       "production-kernel": 53,
@@ -15,12 +15,12 @@
     "by_disposition": {
       "compiled-source": 53,
       "desktop-only": 47,
-      "generated-wasm": 341,
+      "generated-wasm": 342,
       "portable-fallback": 565,
       "shared-core": 45
     },
     "by_status": {
-      "available": 579,
+      "available": 580,
       "desktop-only": 47,
       "fallback": 425
     }
@@ -4772,6 +4772,18 @@
         "sagejs.ffi.flint"
       ],
       "explanation": "Rigorous packed logarithm and square-root endpoints are available in the receipt-authenticated production WebAssembly artifact, with the same-source exact fallback retained."
+    },
+    {
+      "id": "ffi:flint:integer_log_sqrt_balls_prefix_resource",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "The resident logical-prefix logarithm and square-root operation is included in the receipt-authenticated production WebAssembly artifact, with exact endpoint and inactive-tail tests plus a public Chromium FFI witness."
     },
     {
       "id": "ffi:flint:integer_log_sqrt_balls_resource",

@@ -89,6 +89,14 @@
           "test/native-reusable-exact-workspace.cjs"
         ]
       },
+      "integer-log-sqrt-prefix-differential": {
+        "differential": true,
+        "paths": [
+          "test/integer-log-sqrt-prefix-resource.cjs",
+          "test/fixtures/integer-log-sqrt-prefix-resource.py",
+          "packages/flint-wasm/test/integer-log-sqrt-prefix.test.mjs"
+        ]
+      },
       "partition-count-wasm-differential": {
         "differential": true,
         "paths": [
@@ -4599,6 +4607,30 @@
         "status": "included"
       },
       "public_explanation": "Rigorous packed logarithm and square-root endpoints are available in the receipt-authenticated production WebAssembly artifact, with the same-source exact fallback retained."
+    },
+    {
+      "id": "ffi:flint:integer_log_sqrt_balls_prefix_resource",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "integer-log-sqrt-prefix-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The borrowed-prefix adapter reuses the shared Arb endpoint implementation. Native differential and checkpoint sanitizer tests cover the prefix contract. The production Wasm regression checks exact endpoints, poisoned inactive tails, active-input rejection without mutation and resource cleanup; the public Chromium FFI witness executes the same logical-prefix operation.",
+      "wasm_declared": true,
+      "wasm_closure": {
+        "status": "included",
+        "explanation": "The generated prefix adapter is included in the reviewed ABI and production capability ledgers and executes in the production Wasm and public Chromium witnesses."
+      },
+      "public_explanation": "The resident logical-prefix logarithm and square-root operation is included in the receipt-authenticated production WebAssembly artifact, with exact endpoint and inactive-tail tests plus a public Chromium FFI witness."
     },
     {
       "id": "ffi:flint:integer_log_sqrt_balls_resource",

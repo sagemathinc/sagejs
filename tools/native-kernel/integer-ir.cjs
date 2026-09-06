@@ -359,16 +359,12 @@ function createContext(
   filename,
   decorated,
   integerConstants = new Map(),
+  canonicalForeignResources = new Map(),
 ) {
   const variables = new Map(
     signature.params.map((param) => [param.name, param.type]),
   );
-  const foreignResources = new Map();
-  for (const foreign of foreignFunctions.values()) {
-    for (const resource of foreign.resources || []) {
-      foreignResources.set(resource.python_name, resource);
-    }
-  }
+  const foreignResources = new Map(canonicalForeignResources);
   for (const [name, resource] of importedForeignResources) {
     foreignResources.set(name, resource);
   }
@@ -392,6 +388,8 @@ function createContext(
     integerConstants,
     controlDepth: 0,
     loopDepth: 0,
+    loopTargets: [],
+    resourceScopeDepth: 0,
     locals: new Map(),
     nextTemporary: 0,
     params: signature.params,
@@ -1816,7 +1814,9 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       return { name: target, type: vector.record.type };
     }
     const foreignResource = context.foreignResources.get(liveOwnerType);
-    if (foreignResource?.item_get !== undefined) {
+    if (foreignResource !== undefined) {
+      expect(context, node, foreignResource.item_get?.function?.signature !== undefined,
+        `${liveOwnerType} does not declare a qualified native indexed read`);
       const indices = sequenceElements(node.property) || [node.property];
       const dimensions =
         foreignResource.item_get.function.signature.parameters.length - 1;
@@ -2157,12 +2157,25 @@ function assignScalar(targetNode, value, context, operations) {
 }
 
 function lowerBufferAssignment(item, right, operator, context) {
+  if (nodeType(item.property) === "AST_New" &&
+      item.property.expression?.name === "slice") {
+    expect(context, item, !context.variables.has("slice"),
+      "native fixed slices require the unshadowed built-in slice");
+    const bounds = array(item.property.args);
+    expect(context, item, operator === "=" && bounds.length === 3 &&
+      nodeType(bounds[2]) === "AST_Null",
+      "native fixed slices require contiguous assignment without a step");
+    return lowerFixedVectorSlice({ ...item, property: bounds[0],
+      property2: bounds[1], assignment: right }, context);
+  }
   const operations = [];
   const liveOwnerType = nodeType(item.expression) === "AST_SymbolRef"
     ? context.variables.get(item.expression.name)
     : undefined;
   const foreignResource = context.foreignResources.get(liveOwnerType);
-  if (foreignResource?.item_set !== undefined) {
+  if (foreignResource !== undefined) {
+    expect(context, item, foreignResource.item_set?.function?.signature !== undefined,
+      `${liveOwnerType} does not declare a qualified native indexed assignment`);
     expect(
       context,
       item,
@@ -2729,9 +2742,75 @@ function lowerArenaAllocation(statement, context) {
   return operations;
 }
 
+function lowerFixedVectorSlice(assign, context) {
+  expect(context, assign, nodeType(assign.expression) === "AST_SymbolRef" &&
+    context.variables.get(assign.expression.name) === LIVE_INTEGER_VECTOR_TYPE,
+    "native fixed slices require NativeIntegerVector storage");
+  expect(context, assign, assign.property && assign.property2,
+    "native fixed slices require explicit bounds");
+  const rhs = assign.assignment;
+  expect(context, rhs, nodeType(rhs) === "AST_Array" && rhs.is_tuple,
+    "native fixed slices require a literal tuple");
+  const operations = [];
+  // Snapshot every RHS before evaluating the target bounds or publishing a
+  // store. In particular, a tuple that permutes vector entries must not borrow
+  // references which subsequent stores can overwrite.
+  const values = array(rhs.elements).map((element) => {
+    // Literal values have no evaluation effects and cannot be invalid RHS
+    // types. Materialize them at their store, avoiding an unnecessarily live
+    // array of GMP temporaries. Allocation failure retains scalar-store
+    // semantics (the slice does not promise transactional limb allocation).
+    const literal = integerLiteral(element);
+    if (literal !== undefined) return { literal, element };
+    const value = coerceInteger(lowerExpression(element, context, operations),
+      context, element, operations);
+    // Scalar locals and literals cannot be changed by stores to this vector.
+    // Their value is already stable; copying them again only adds exact limb
+    // traffic. Keep explicit snapshots for reads/calls with possible aliases.
+    if (nodeType(element) === "AST_SymbolRef") {
+      return { name: value.name };
+    }
+    const target = temporary(context, element, "Integer");
+    operations.push({ kind: "integer.copy", target, source: value.name });
+    return { name: target };
+  });
+  const vector = liveIntegerVectorName(assign.expression, context);
+  const start = lowerUint64Operand(assign.property, context, operations);
+  const stop = lowerUint64Operand(assign.property2, context, operations);
+  expect(context, assign, start.type === "uint64" && stop.type === "uint64",
+    "native fixed slice bounds currently require uint64 expressions");
+  const length = temporary(context, assign, "uint64");
+  operations.push({ kind: "integer.vector.length", target: length, vector });
+  const guard = (operation, left, right, exception, message) => {
+    const condition = temporary(context, assign, "bool");
+    operations.push({ kind: "uint64.compare", operation, target: condition, left, right });
+    operations.push({ kind: "if", condition: { operations: [], value: condition },
+      body: [{ kind: "raise", exception, message }], alternative: [] });
+  };
+  guard("lt", stop.name, start.name, "IndexError", "NativeIntegerVector slice out of range");
+  guard("gt", stop.name, length, "IndexError", "NativeIntegerVector slice out of range");
+  const width = temporary(context, assign, "uint64");
+  operations.push({ kind: "uint64.binary", operation: "sub", target: width,
+    left: stop.name, right: start.name });
+  const count = emitUint64Constant(context, assign, operations, BigInt(values.length));
+  guard("ne", width, count.name, "ValueError", "NativeIntegerVector slice cannot resize storage");
+  values.forEach((value, offset) => {
+    const delta = emitUint64Constant(context, assign, operations, BigInt(offset));
+    const index = temporary(context, assign, "uint64");
+    operations.push({ kind: "uint64.binary", operation: "add", target: index,
+      left: start.name, right: delta.name });
+    const stored = value.name ?? emitConstant(context, value.element, operations, value.literal).name;
+    operations.push({ kind: "integer.vector.set", vector, index, indexType: "uint64", value: stored });
+  });
+  return operations;
+}
+
 function lowerAssignment(statement, context) {
   context.scalarCoercions = new Map();
   const assign = statement.body;
+  if (nodeType(assign) === "AST_Splice" && assign.assignment !== undefined) {
+    return lowerFixedVectorSlice(assign, context);
+  }
   if (nodeType(assign) === "AST_AnnotatedAssignment") {
     expect(
       context,
@@ -3071,6 +3150,17 @@ function lowerRange(node, context, targetName = undefined) {
 function lowerStatements(statements, context) {
   const result = [];
   for (const statement of statements) {
+    if (nodeType(statement) === "AST_WorkspaceBind") {
+      const operations = [];
+      for (const member of statement.members) {
+        const value = lowerExpression(member.expression, context, operations, member.type);
+        expect(context, statement, value.type === member.type,
+          `workspace member requires ${member.type}, got ${value.type}`);
+      }
+      annotateOperations(operations, sourceSpan(statement, context.filename));
+      result.push(...operations);
+      continue;
+    }
     if (nodeType(statement) === "AST_SimpleStatement") {
       const arenaAllocation = lowerArenaAllocation(statement, context);
       if (arenaAllocation !== undefined) {
@@ -3199,7 +3289,9 @@ function lowerStatements(statements, context) {
           loopDepth: context.loopDepth,
         };
         context.activeExactArenas.set(owner, arenaState);
+        context.resourceScopeDepth += 1;
         const body = lowerBlock(statement.body, context);
+        context.resourceScopeDepth -= 1;
         expect(
           context,
           statement,
@@ -3267,7 +3359,9 @@ function lowerStatements(statements, context) {
         ? context.activeIntegerMatrices
         : context.activeIntegerVectors;
       activeOwners.add(owner);
+      context.resourceScopeDepth += 1;
       const body = lowerBlock(statement.body, context);
+      context.resourceScopeDepth -= 1;
       activeOwners.delete(owner);
       context.initialized.delete(owner);
       const operation = ownerType === LIVE_INTEGER_MATRIX_TYPE
@@ -3370,6 +3464,27 @@ function lowerStatements(statements, context) {
       result.push(operation);
       continue;
     }
+    if (nodeType(statement) === "AST_Break" ||
+        nodeType(statement) === "AST_Continue") {
+      const kind = nodeType(statement) === "AST_Break" ? "break" : "continue";
+      const target = context.loopTargets.at(-1);
+      expect(context, statement, target !== undefined,
+        `native ${kind} requires an enclosing while loop`);
+      expect(context, statement, target.kind === "while",
+        `native ${kind} currently supports while-loop targets, not range loops`);
+      // A C transfer would bypass lexical owner cleanup when a scope was
+      // entered after the target loop. Loops entirely inside an existing owner
+      // do not end its lifetime and require no cleanup at the transfer site.
+      expect(context, statement,
+        target.resourceScopeDepth === context.resourceScopeDepth,
+        `native ${kind} cannot exit a live exact resource scope; ` +
+          "cross-scope loop cleanup is not yet supported");
+      context.scalarCoercions = new Map();
+      const operation = { kind: `loop.${kind}` };
+      annotateOperations([operation], sourceSpan(statement, context.filename));
+      result.push(operation);
+      continue;
+    }
     if (nodeType(statement) === "AST_While") {
       context.scalarCoercions = new Map();
       expect(
@@ -3388,7 +3503,10 @@ function lowerStatements(statements, context) {
       context.initialized = new Set(before);
       context.controlDepth += 1;
       context.loopDepth += 1;
+      context.loopTargets.push({ kind: "while",
+        resourceScopeDepth: context.resourceScopeDepth });
       const body = lowerBlock(statement.body, context);
+      context.loopTargets.pop();
       context.loopDepth -= 1;
       context.controlDepth -= 1;
       context.initialized = before;
@@ -3416,7 +3534,10 @@ function lowerStatements(statements, context) {
       context.initialized.add(index);
       context.controlDepth += 1;
       context.loopDepth += 1;
+      context.loopTargets.push({ kind: "range",
+        resourceScopeDepth: context.resourceScopeDepth });
       const body = lowerBlock(statement.body, context);
+      context.loopTargets.pop();
       context.loopDepth -= 1;
       context.controlDepth -= 1;
       context.initialized = before;
@@ -3497,6 +3618,7 @@ function lowerIntegerFunction(
   filename,
   decorated,
   integerConstants = new Map(),
+  canonicalForeignResources = new Map(),
 ) {
   const context = createContext(
     fn,
@@ -3508,6 +3630,7 @@ function lowerIntegerFunction(
     filename,
     decorated,
     integerConstants,
+    canonicalForeignResources,
   );
   const body = lowerStatements(array(fn.body), context);
   expect(context, fn, containsReturn(body), "function has no return");
@@ -3542,6 +3665,7 @@ function lowerIntegerFunction(
 module.exports = {
   canonicalType,
   isIntegerSignature,
+  isLiveExactOwnerType,
   isTupleType,
   lowerIntegerFunction,
   signatureFromFunction,

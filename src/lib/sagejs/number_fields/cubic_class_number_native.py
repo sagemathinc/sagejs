@@ -3026,15 +3026,30 @@ def _cubic_append_reduced_ideal_ellipsoid(
     online_membership_coordinates: FmpzMatrix,
     online_relation_count: uint64,
     online_relation_status: int,
-) -> tuple[uint64, uint64, uint64, int]:
-    """Admit bounded ellipsoid candidates until an exact quotient closes."""
+    coefficient_zero: int,
+    coefficient_one: int,
+    coefficient_two: int,
+    candidate_count: uint64,
+    proposal_budget: uint64,
+) -> tuple[uint64, uint64, uint64, int, int, int, int]:
+    """Admit a resumable prefix of the lexicographic ellipsoid proposals.
+
+    The returned coefficients identify the next unexamined proposal, including
+    when the last proposal was rejected or duplicated an existing relation.
+    `candidate_count` is cumulative for this ellipsoid, not this invocation;
+    pausing must not reset its candidate limit. Callers retain the relation and
+    online-lattice workspaces alongside this cursor, with the prepared basis,
+    ellipsoid and factor base unchanged. A zero budget is a no-op. Exhaustion
+    is represented by `coefficient_two > limit_two`. Capacity overflow and
+    negative online status are fatal: their cursors must not be resumed.
+    """
     limit_zero = parameters[parameter_row, 7]
     limit_one = parameters[parameter_row, 8]
     limit_two = parameters[parameter_row, 9]
-    candidate_count: uint64 = 0
-    coefficient_two = -limit_two
+    proposal_count: uint64 = 0
     while (
         coefficient_two <= limit_two
+        and proposal_count < proposal_budget
         and online_relation_status != 2
         and not (
             streaming_relation_collection
@@ -3046,106 +3061,93 @@ def _cubic_append_reduced_ideal_ellipsoid(
             )
         )
     ):
-        coefficient_one = -limit_one
-        while (
-            coefficient_one <= limit_one
-            and online_relation_status != 2
-            and not (
-                streaming_relation_collection
-                and _cubic_modular_relation_collection_complete(
-                    modular_workspace,
+        status, coordinate_zero, coordinate_one, coordinate_two = (
+            _cubic_reduced_ellipsoid_candidate(
+                workspace,
+                basis_offset,
+                transforms,
+                transform_row_offset,
+                parameters,
+                parameter_row,
+                coefficient_zero,
+                coefficient_one,
+                coefficient_two,
+            )
+        )
+        # Advance after every examined proposal, before any early return.
+        proposal_count += 1
+        coefficient_zero += 1
+        if coefficient_zero > limit_zero:
+            coefficient_zero = -limit_zero
+            coefficient_one += 1
+            if coefficient_one > limit_one:
+                coefficient_one = -limit_one
+                coefficient_two += 1
+        if status == 1:
+            candidate_count += 1
+            if candidate_count > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES:
+                overflow_relation_count: uint64 = relation_capacity
+                overflow_relation_count += 1
+                return (
+                    overflow_relation_count,
+                    candidate_count,
+                    online_relation_count,
+                    online_relation_status,
+                    coefficient_zero,
+                    coefficient_one,
+                    coefficient_two,
+                )
+            relation_count = _cubic_append_smooth_principal_relation(
+                workspace,
+                modular_workspace,
+                relation_matrix,
+                relation_elements,
+                relation_count,
+                relation_capacity,
+                factor_count,
+                group_count,
+                coordinate_zero,
+                coordinate_one,
+                coordinate_two,
+                hnf_source,
+                hnf_result,
+                streaming_relation_collection,
+                relation_target,
+            )
+            if relation_count > relation_capacity:
+                return (
                     relation_count,
-                    relation_target,
+                    candidate_count,
+                    online_relation_count,
+                    online_relation_status,
+                    coefficient_zero,
+                    coefficient_one,
+                    coefficient_two,
+                )
+            while (
+                online_relation_quotient_enabled
+                and online_relation_count < relation_count
+                and online_relation_status != 2
+            ):
+                online_relation_status = _cubic_online_relation_lattice_update(
+                    online_relation_basis,
+                    online_relation_source,
+                    online_relation_hnf,
+                    online_relation_support,
+                    online_membership_coordinates,
+                    relation_matrix,
+                    online_relation_count,
                     factor_count,
                 )
-            )
-        ):
-            coefficient_zero = -limit_zero
-            while (
-                coefficient_zero <= limit_zero
-                and online_relation_status != 2
-                and not (
-                    streaming_relation_collection
-                    and _cubic_modular_relation_collection_complete(
-                        modular_workspace,
-                        relation_count,
-                        relation_target,
-                        factor_count,
-                    )
-                )
-            ):
-                status, coordinate_zero, coordinate_one, coordinate_two = (
-                    _cubic_reduced_ellipsoid_candidate(
-                        workspace,
-                        basis_offset,
-                        transforms,
-                        transform_row_offset,
-                        parameters,
-                        parameter_row,
-                        coefficient_zero,
-                        coefficient_one,
-                        coefficient_two,
-                    )
-                )
-                if status == 1:
-                    candidate_count += 1
-                    if candidate_count > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES:
-                        overflow_relation_count: uint64 = relation_capacity
-                        overflow_relation_count += 1
-                        return (
-                            overflow_relation_count,
-                            candidate_count,
-                            online_relation_count,
-                            online_relation_status,
-                        )
-                    relation_count = _cubic_append_smooth_principal_relation(
-                        workspace,
-                        modular_workspace,
-                        relation_matrix,
-                        relation_elements,
-                        relation_count,
-                        relation_capacity,
-                        factor_count,
-                        group_count,
-                        coordinate_zero,
-                        coordinate_one,
-                        coordinate_two,
-                        hnf_source,
-                        hnf_result,
-                        streaming_relation_collection,
-                        relation_target,
-                    )
-                    if relation_count > relation_capacity:
-                        return (
-                            relation_count,
-                            candidate_count,
-                            online_relation_count,
-                            online_relation_status,
-                        )
-                    while (
-                        online_relation_quotient_enabled
-                        and online_relation_count < relation_count
-                        and online_relation_status != 2
-                    ):
-                        online_relation_status = _cubic_online_relation_lattice_update(
-                            online_relation_basis,
-                            online_relation_source,
-                            online_relation_hnf,
-                            online_relation_support,
-                            online_membership_coordinates,
-                            relation_matrix,
-                            online_relation_count,
-                            factor_count,
-                        )
-                        online_relation_count += 1
-                coefficient_zero += 1
-            coefficient_one += 1
-        coefficient_two += 1
+                online_relation_count += 1
     return (
         relation_count,
         candidate_count,
         online_relation_count,
         online_relation_status,
+        coefficient_zero,
+        coefficient_one,
+        coefficient_two,
     )
 
 
@@ -5914,10 +5916,12 @@ def _cubic_complementary_prime_basis(
         entry += 1
     workspace[_HNF_SCRATCH_OFFSET] = prime
     workspace[_HNF_SCRATCH_OFFSET + 4] = prime
-    workspace[_HNF_SCRATCH_OFFSET + 8] = prime
-    workspace[_HNF_SCRATCH_OFFSET + 9] = idempotent_zero
-    workspace[_HNF_SCRATCH_OFFSET + 10] = idempotent_one
-    workspace[_HNF_SCRATCH_OFFSET + 11] = idempotent_two
+    workspace[_HNF_SCRATCH_OFFSET + 8 : _HNF_SCRATCH_OFFSET + 12] = (
+        prime,
+        idempotent_zero,
+        idempotent_one,
+        idempotent_two,
+    )
     if not _cubic_workspace_hnf3(
         workspace,
         _HNF_SCRATCH_OFFSET,
@@ -6304,10 +6308,12 @@ def certified_complex_cubic_class_group_v1(
                 coordinate_two = remaining_two // basis_two_two
                 if coordinate_two * basis_two_two != remaining_two:
                     return False
-                table_offset = (left_basis * 3 + right_basis) * 3
-                workspace[table_offset] = coordinate_zero
-                workspace[table_offset + 1] = coordinate_one
-                workspace[table_offset + 2] = coordinate_two
+                table_offset: uint64 = (left_basis * 3 + right_basis) * 3
+                workspace[table_offset : table_offset + 3] = (
+                    coordinate_zero,
+                    coordinate_one,
+                    coordinate_two,
+                )
                 right_basis += 1
             left_basis += 1
 
@@ -6330,9 +6336,11 @@ def certified_complex_cubic_class_group_v1(
             != 0
         ):
             return False
-        workspace[_IDENTITY_OFFSET] = identity_zero
-        workspace[_IDENTITY_OFFSET + 1] = identity_one
-        workspace[_IDENTITY_OFFSET + 2] = identity_two
+        workspace[_IDENTITY_OFFSET : _IDENTITY_OFFSET + 3] = (
+            identity_zero,
+            identity_one,
+            identity_two,
+        )
         basis_index: uint64 = 0
         while basis_index < 3:
             basis_coordinate_zero = 0
@@ -6388,15 +6396,17 @@ def certified_complex_cubic_class_group_v1(
             or one_two_two_numerator % 2 != 0
         ):
             return False
-        workspace[_NORM_FORM_OFFSET] = norm_zero
-        workspace[_NORM_FORM_OFFSET + 1] = zero_zero_one_numerator // 2 - norm_one
-        workspace[_NORM_FORM_OFFSET + 2] = zero_one_one_numerator // 2 - norm_zero
-        workspace[_NORM_FORM_OFFSET + 3] = norm_one
-        workspace[_NORM_FORM_OFFSET + 4] = zero_zero_two_numerator // 2 - norm_two
-        workspace[_NORM_FORM_OFFSET + 5] = zero_two_two_numerator // 2 - norm_zero
-        workspace[_NORM_FORM_OFFSET + 6] = norm_two
-        workspace[_NORM_FORM_OFFSET + 7] = one_one_two_numerator // 2 - norm_two
-        workspace[_NORM_FORM_OFFSET + 8] = one_two_two_numerator // 2 - norm_one
+        workspace[_NORM_FORM_OFFSET : _NORM_FORM_OFFSET + 9] = (
+            norm_zero,
+            zero_zero_one_numerator // 2 - norm_one,
+            zero_one_one_numerator // 2 - norm_zero,
+            norm_one,
+            zero_zero_two_numerator // 2 - norm_two,
+            zero_two_two_numerator // 2 - norm_zero,
+            norm_two,
+            one_one_two_numerator // 2 - norm_two,
+            one_two_two_numerator // 2 - norm_one,
+        )
         norm_all_one = _cubic_coordinate_norm(workspace, 1, 1, 1)
         workspace[_NORM_FORM_OFFSET + 9] = norm_all_one
         norm_coefficient_index: uint64 = 0
@@ -6571,9 +6581,11 @@ def certified_complex_cubic_class_group_v1(
                             ):
                                 return False
                             map_base: uint64 = _MAP_SCRATCH_OFFSET + 3 * map_count
-                            workspace[map_base] = map_zero
-                            workspace[map_base + 1] = map_one
-                            workspace[map_base + 2] = map_two
+                            workspace[map_base : map_base + 3] = (
+                                map_zero,
+                                map_one,
+                                map_two,
+                            )
                             map_count += 1
                         root += 1
                 else:
@@ -6649,9 +6661,11 @@ def certified_complex_cubic_class_group_v1(
                                 if map_count >= 3:
                                     return False
                                 map_base = _MAP_SCRATCH_OFFSET + 3 * map_count
-                                workspace[map_base] = map_zero
-                                workspace[map_base + 1] = map_one
-                                workspace[map_base + 2] = map_two
+                                workspace[map_base : map_base + 3] = (
+                                    map_zero,
+                                    map_one,
+                                    map_two,
+                                )
                                 map_count += 1
                             second_value += 1
                         first_value += 1
@@ -6675,16 +6689,18 @@ def certified_complex_cubic_class_group_v1(
                             ramification = 3
                         elif map_count == 2:
                             ramification = 0
-                        workspace[factor_base] = prime
-                        workspace[factor_base + 1] = ramification
-                        workspace[factor_base + 2] = 1
-                        workspace[factor_base + 3] = workspace[map_base]
-                        workspace[factor_base + 4] = workspace[map_base + 1]
-                        workspace[factor_base + 5] = workspace[map_base + 2]
-                        workspace[factor_base + 6] = 1
-                        workspace[factor_base + 7] = group_count
-                        workspace[factor_base + 8] = 0
-                        workspace[factor_base + 9] = 0
+                        workspace[factor_base : factor_base + 10] = (
+                            prime,
+                            ramification,
+                            1,
+                            workspace[map_base],
+                            workspace[map_base + 1],
+                            workspace[map_base + 2],
+                            1,
+                            group_count,
+                            0,
+                            0,
+                        )
                         power_base: uint64 = (
                             _POWER_OFFSET + factor_count * _CUBIC_MAX_POWERS * 9
                         )
@@ -6707,16 +6723,18 @@ def certified_complex_cubic_class_group_v1(
                         and prime * prime <= factor_search_bound
                     ):
                         factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * factor_count
-                        workspace[factor_base] = prime
-                        workspace[factor_base + 1] = 1
-                        workspace[factor_base + 2] = 2
-                        workspace[factor_base + 3] = 0
-                        workspace[factor_base + 4] = 0
-                        workspace[factor_base + 5] = 0
-                        workspace[factor_base + 6] = 0
-                        workspace[factor_base + 7] = group_count
-                        workspace[factor_base + 8] = 1
-                        workspace[factor_base + 9] = 0
+                        workspace[factor_base : factor_base + 10] = (
+                            prime,
+                            1,
+                            2,
+                            0,
+                            0,
+                            0,
+                            0,
+                            group_count,
+                            1,
+                            0,
+                        )
                         power_base: uint64 = (
                             _POWER_OFFSET + factor_count * _CUBIC_MAX_POWERS * 9
                         )
@@ -6739,10 +6757,12 @@ def certified_complex_cubic_class_group_v1(
                         workspace[factor_base + 6] = 1
                         factor_count += 1
                     group_factor_count = factor_count - group_factor_start
-                    workspace[group_base] = prime
-                    workspace[group_base + 1] = group_factor_start
-                    workspace[group_base + 2] = group_factor_count
-                    workspace[group_base + 3] = 0
+                    workspace[group_base : group_base + 4] = (
+                        prime,
+                        group_factor_start,
+                        group_factor_count,
+                        0,
+                    )
 
                     # A two-map ramified cubic has local type (2,1),(1,1).
                     # Determine which kernel has e=2 from exact P^2 membership.
@@ -7750,11 +7770,17 @@ def certified_complex_cubic_class_group_v1(
                     active_relation_target: uint64 = relation_capacity
                     if streaming_relation_collection:
                         active_relation_target = relation_collection_target
+                    initial_ellipsoid_count: uint64 = 0
+                    # Preparation bounds each coordinate by 64: (2 * 64 + 1)^3.
+                    complete_ellipsoid_budget: uint64 = 2146689
                     (
                         next_relation_count,
                         admitted_ellipsoid_count,
                         online_relation_count,
                         online_relation_status,
+                        next_ellipsoid_zero,
+                        next_ellipsoid_one,
+                        next_ellipsoid_two,
                     ) = _cubic_append_reduced_ideal_ellipsoid(
                         workspace,
                         modular_workspace,
@@ -7781,6 +7807,11 @@ def certified_complex_cubic_class_group_v1(
                         online_membership_coordinates,
                         online_relation_count,
                         online_relation_status,
+                        -adjacent_ellipsoid_parameters[adjacent_factor_index, 7],
+                        -adjacent_ellipsoid_parameters[adjacent_factor_index, 8],
+                        -adjacent_ellipsoid_parameters[adjacent_factor_index, 9],
+                        initial_ellipsoid_count,
+                        complete_ellipsoid_budget,
                     )
                     if (
                         online_relation_status < 0
@@ -9051,6 +9082,12 @@ def certified_complex_cubic_class_group_v1(
                     regulator_upper = reconstructed_regulator_upper
                     regulator_at_dependency_scale = False
                     dependency_materialization_active = False
+                else:
+                    # Exact reconstruction alone does not authenticate the
+                    # retained logarithmic unit evidence. Never publish stale
+                    # coordinates after a failed regulator comparison.
+                    output[59] = 44
+                    return False
 
             if dependency_materialization_active:
                 output[59] = 436
