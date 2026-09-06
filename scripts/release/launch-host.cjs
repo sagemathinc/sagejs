@@ -8,7 +8,9 @@ const configuration = JSON.parse(Buffer.from(process.argv[2], "base64").toString
 if (targetForHost() !== configuration.target) throw new Error("wrong host target");
 if (path.resolve(__dirname, "../..") !== path.resolve(configuration.root)) throw new Error("wrong host checkout");
 if (!/^[0-9a-f]{40}$/.test(configuration.candidate)) throw new Error("invalid candidate");
-const args = ["exec", "node", "scripts/release/runner.cjs", "--candidate", configuration.candidate];
+// Running a package script supplies npm_execpath, which the cross-platform
+// pnpm helper needs; `pnpm exec node` does not supply it on Windows.
+const args = ["release:run", "--candidate", configuration.candidate];
 if (configuration.stage) {
   if (!/^[a-z,-]+$/.test(configuration.stage)) throw new Error("invalid stages");
   args.push("--stage", configuration.stage);
