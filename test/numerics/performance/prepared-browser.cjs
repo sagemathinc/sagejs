@@ -150,7 +150,7 @@ test("public prepared numerical APIs use the optional pack in real browser sessi
               return { stdout: outputs.join("\n"), recovery: recovery.stdout, measured };
             } finally { sage.close(); }
           }, { origin, route, expected, sources, start, benchmark, evaluators });
-          assert.equal(observation.stdout.trim(), evaluators ? "prepared functions passed\nprepared root API passed\nvalidation overflow guards passed\nvalidation access passed" : "prepared statistics passed", engine + ":" + route);
+          assert.equal(observation.stdout.trim(), evaluators ? "prepared functions passed\nprepared root API passed\nvalidation overflow guards passed\nvalidation access passed\nfactorization record passed" : "prepared statistics passed", engine + ":" + route);
           assert.equal(observation.recovery.trim(), "42");
           if (observation.measured) {
             measurements.push({ engine, version: browser.version(), ...observation.measured });

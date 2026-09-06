@@ -206,5 +206,7 @@ tests mutate the source record and both exported representations. The
 [diagnostic report](../bench/numerics/performance/results/n3-factorization-record-2026-09-06/README.md)
 records a 97.9 ms 32-square result phase versus 115.8 ms in the preceding
 separate run. This is not paired performance qualification. Validation remains
-the main cost; browser and persistent-host qualification of this follow-up
-remain open.
+the main cost. All twelve source-browser routes now pass with the rebuilt lazy
+bundle, including LU/QR/Cholesky single-presentation and nested ownership
+checks. Node 22, strict Python and architecture pass. Persistent-host and
+npm/SEA qualification remain open; neither #187 nor #188 completes N3.

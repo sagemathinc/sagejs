@@ -409,9 +409,9 @@ remaining public costs, not LU arithmetic alone.
 
 The [single-presentation follow-up](../bench/numerics/performance/results/n3-factorization-record-2026-09-06/README.md)
 removes repeated LU/QR/Cholesky presentation construction while keeping both
-result records independently detached. Source ownership regressions pass;
-the local result-phase diagnostic improves, but paired performance, browser
-and four-platform qualification of this follow-up remain open.
+result records independently detached. Source ownership regressions and all
+twelve source-browser routes pass; the local result-phase diagnostic improves,
+but paired performance and four-platform/npm/SEA qualification remain open.
 
 Audit already linked numerical dependencies and reuse a suitable validated
 prefix. Compare typed-source small-matrix kernels with a narrow mature-library
