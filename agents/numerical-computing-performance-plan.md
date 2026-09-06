@@ -413,6 +413,15 @@ result records independently detached. Source ownership regressions and all
 twelve source-browser routes pass; the local result-phase diagnostic improves,
 but paired performance and four-platform/npm/SEA qualification remain open.
 
+The [fused LU validation candidate](../bench/numerics/performance/results/n3-lu-validation-core-2026-09-07/README.md)
+now independently reconstructs packed LU and computes both infinity norms in
+one bounded typed region. Its 18-case source/native/JavaScript/Wasm/browser
+corpus passes; local reused-buffer size-32 medians are 0.435 ms native and
+28.3 ms generated JavaScript. Public ownership/cancellation integration and
+end-to-end measurements remain required. Separately, full-artifact CI for
+#187/#188 exposes a FLINT production-Wasm ABI mismatch; passing source-browser
+tests are not a substitute for repairing and qualifying that artifact.
+
 Audit already linked numerical dependencies and reuse a suitable validated
 prefix. Compare typed-source small-matrix kernels with a narrow mature-library
 adapter for LU/Cholesky/QR, then eigen/SVD. Use independent backward-error,
