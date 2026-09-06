@@ -18,7 +18,10 @@ function plan(profile = "native", selected) {
       ["node", "scripts/numerical-product.cjs", "publish", "--output", "build/authenticated-numerical-product"],
       ["node", "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs", "--require-qualified"],
     ], { inputs: [], outputs: ["build/authenticated-numerical-product"] }),
-    stage("public-runtime", "build", [["pnpm", "build"]],
+    // Browser assembly consumes the full lazy cache, not just the smaller
+    // startup cache produced by build. Complete that output before freezing
+    // dist as the browser stage's input.
+    stage("public-runtime", "build", [["pnpm", "build"], ["pnpm", "python:precompile:run"]],
       { inputs: ["build/authenticated-numerical-product"], outputs: ["dist"] }),
     stage("public-build", "build", [["pnpm", "--dir", "packages/flint-wasm", "build"],
       ["node", "scripts/numerical-product.cjs", "validate-installed"],

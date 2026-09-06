@@ -74,7 +74,9 @@ Produce that canonical handoff on Linux with
 `pnpm release:run --candidate FULL_SHA --profile canonical`. It checkpoints the
 authenticated numerical build, browser/runtime build, and one public root pack
 separately. Its outputs are the numerical product directory, browser `dist`,
-and root tarball described above. Copy those exact outputs, not independently
+and root tarball described above. Runtime preparation includes the full lazy
+module cache before browser assembly freezes `dist` as an input; the smaller
+startup cache alone is insufficient. Copy those exact outputs, not independently
 packed roots, to the native consumers. Existing Wasm source/toolchain caches
 are used; source-current verification remains mandatory.
 

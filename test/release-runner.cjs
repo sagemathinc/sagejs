@@ -111,3 +111,12 @@ test("native profile performs installation before long tests and retains numeric
   else assert.ok(!ids.includes("integration"), "ARM64 matches its portable/native CI inventory");
   assert.equal(new Set(ids).size, ids.length);
 });
+test("canonical runtime completes the lazy cache before browser inputs are frozen", () => {
+  const stages = require("../scripts/release/stages.cjs").plan("canonical");
+  const runtime = stages.find((stage) => stage.id === "public-runtime");
+  const browser = stages.find((stage) => stage.id === "public-build");
+  assert.deepEqual(runtime.commands, [["pnpm", "build"], ["pnpm", "python:precompile:run"]]);
+  assert.ok(runtime.outputs.includes("dist"));
+  assert.ok(browser.inputs.includes("dist"));
+  assert.ok(stages.indexOf(runtime) < stages.indexOf(browser));
+});
