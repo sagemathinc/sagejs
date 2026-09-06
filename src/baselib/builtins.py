@@ -3864,45 +3864,6 @@ def _builtins_indent_doc(doc: _Str, prefix: _Str) -> _Str:
     return str.join("\n", lines)
 
 
-def _builtins_doc_summary(doc: _Str) -> _Str:
-    for line in doc.split("\n"):
-        summary = line.strip()
-        if summary:
-            return summary
-    return ""
-
-
-def _builtins_doc_search_match(
-    query: _Str,
-    candidate: _Str,
-) -> _Bool:
-    lowered = runtime.reflect.apply(
-        runtime.string_class.prototype.normalize,
-        candidate.lower(),
-        ["NFD"],
-    ).replace(
-        runtime.regexp(r"[\u0300-\u036f]", "g"),
-        "",
-    )
-    query = runtime.reflect.apply(
-        runtime.string_class.prototype.normalize,
-        query,
-        ["NFD"],
-    ).replace(
-        runtime.regexp(r"[\u0300-\u036f]", "g"),
-        "",
-    )
-    if query in lowered:
-        return True
-    normalized_query = query.replace(runtime.regexp(r"[`_-]+", "g"), " ").replace(
-        runtime.regexp(r"\s+", "g"), " "
-    )
-    normalized_candidate = lowered.replace(runtime.regexp(r"[`_-]+", "g"), " ").replace(
-        runtime.regexp(r"\s+", "g"), " "
-    )
-    return normalized_query in normalized_candidate
-
-
 def _builtins_is_python_class(value: Any) -> _Bool:
     if not runtime.strict_equal(runtime.jstype(value), "function"):
         return False
@@ -4058,74 +4019,8 @@ def ρσ_search_doc(query: Any) -> None:
     not imply that every object documented by the full SageMath manual is
     implemented.
     """
-    text = str(query)
-    needle = text.lower()
-    if not needle:
-        raise ValueError("search_doc query must not be empty")
-
-    matches = []
-    seen = []
-    for registered_entry in runtime.documentation_registry():
-        registered_name = registered_entry[0]
-        registered_value = registered_entry[1]
-        if registered_name in seen:
-            continue
-        registered_doc = _builtins_doc(registered_value)
-        if _builtins_doc_search_match(needle, registered_name) or (
-            registered_doc and _builtins_doc_search_match(needle, registered_doc)
-        ):
-            matches.append(
-                registered_name + " -- " + _builtins_doc_summary(registered_doc)
-            )
-            seen.append(registered_name)
-
-    namespace = _builtins_get_member(runtime.modules, "__main__")
-    names = runtime.object.getOwnPropertyNames(namespace)
-    names.sort()
-    for name in names:
-        if (
-            runtime.string_find(name, "_") == 0
-            or runtime.string_find(name, "ρσ_") == 0
-            or name in seen
-        ):
-            continue
-        descriptor = runtime.object.getOwnPropertyDescriptor(namespace, name)
-        value = runtime.reflect.get(descriptor, "value")
-        if value is runtime.undefined:
-            continue
-        doc = _builtins_doc(value)
-        if _builtins_doc_search_match(needle, name) or (
-            doc and _builtins_doc_search_match(needle, doc)
-        ):
-            matches.append(name + " -- " + _builtins_doc_summary(doc))
-            seen.append(name)
-
-        if not _builtins_is_python_class(value):
-            continue
-        prototype = _builtins_get_member(value, "prototype")
-        for method_name in ρσ_dir(value):
-            if runtime.string_find(method_name, "_") == 0:
-                continue
-            method = _builtins_prototype_member(prototype, method_name)
-            if not runtime.strict_equal(runtime.jstype(method), "function"):
-                continue
-            qualified_name = name + "." + method_name
-            if qualified_name in seen:
-                continue
-            method_doc = _builtins_doc(method)
-            if _builtins_doc_search_match(needle, qualified_name) or (
-                method_doc and _builtins_doc_search_match(needle, method_doc)
-            ):
-                matches.append(
-                    qualified_name + " -- " + _builtins_doc_summary(method_doc)
-                )
-                seen.append(qualified_name)
-
-    matches.sort()
-    if len(matches) == 0:
-        ρσ_print("No documentation matching '" + text + "'.")
-        return
-    ρσ_print("Search results for '" + text + "':\n    " + str.join("\n    ", matches))
+    module = __import__("sagejs._documentation_search", fromlist=["_search_doc"])
+    module._search_doc(query)
 
 
 def ρσ_ord(value: Any) -> _Int:

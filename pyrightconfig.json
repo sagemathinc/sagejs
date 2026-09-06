@@ -42,6 +42,7 @@
     "src/baselib/symbolic.py",
     "src/baselib/zeta_data.py",
     "src/baselib/zz_introspection.py",
+    "src/lib/sagejs/_documentation_search.py",
     "src/lib/sagejs/number_fields/__init__.py",
     "src/lib/sagejs/number_fields/bl_composite_kernel.py",
     "src/lib/sagejs/number_fields/buchmann_lenstra.py",

@@ -1008,11 +1008,12 @@
         "http", "importlib", "io", "js", "json", "keyword", "math", "multiprocessing", "ntpath", "numbers",
         "operator", "os", "pathlib", "pdb", "pickle", "platform", "posixpath", "pprint", "pythonize", "random",
         "re", "reprlib", "sage", "sagejs_serialization", "shlex", "shutil", "socket", "string",
-        "sagejs.javascript", "sqlite3", "stat", "statistics", "struct", "subprocess", "sys", "tempfile", "textwrap", "threading", "time",
+        "sagejs.javascript", "sagejs._documentation_search", "sqlite3", "stat", "statistics", "struct", "subprocess", "sys", "tempfile", "textwrap", "threading", "time",
         "tokenize", "traceback", "types", "unicodedata", "unittest", "urllib", "uuid", "warnings", "weakref", "xml", "zlib"
       ],
       "files": [
         "src/lib/sagejs/javascript.py",
+        "src/lib/sagejs/_documentation_search.py",
         "src/lib/_dummy_thread.py", "src/lib/_thread.py", "src/lib/abc.py", "src/lib/aes.py", "src/lib/annotationlib.py", "src/lib/argparse.py", "src/lib/array.py", "src/lib/ast.py", "src/lib/atexit.py", "src/lib/base64.py", "src/lib/bdb.py", "src/lib/calendar.py", "src/lib/cmath.py", "src/lib/colorsys.py", "src/lib/copy.py", "src/lib/datetime.py", "src/lib/decimal.py", "src/lib/enum.py",
         "src/lib/codecs.py",
         "src/lib/bisect.py", "src/lib/collections.py", "src/lib/contextlib.py",
