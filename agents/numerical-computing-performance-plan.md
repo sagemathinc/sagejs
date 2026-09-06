@@ -396,6 +396,13 @@ owned/cancellation policy permits a larger atomic region. The release lane's
 persistent-host reservation defers remote qualification, not local correctness
 work; none of these draft prerequisites constitutes N3 completion.
 
+A subsequent [coordinate-row validation shortcut](../bench/numerics/performance/results/n3-coordinate-validation-2026-09-06/README.md)
+proves exact zero/one row structure from entries while retaining callback order
+and general-dot semantics. Paired local public 32-square LU improves from 964
+to 632 ms with identical results and validation; this remains far above target.
+Source correctness, strict Python and architecture pass. Browser packaging and
+four-platform qualification remain pending; there is no new compiled default.
+
 Audit already linked numerical dependencies and reuse a suitable validated
 prefix. Compare typed-source small-matrix kernels with a narrow mature-library
 adapter for LU/Cholesky/QR, then eigen/SVD. Use independent backward-error,

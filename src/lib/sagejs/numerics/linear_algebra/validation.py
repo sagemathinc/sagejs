@@ -65,8 +65,8 @@ def _independent_product(
         raise ValueError("matrix dimensions do not conform during validation")
     # DenseMatrix publishes immutable row-major entries. Validate the shape
     # once, then retain those snapshots instead of repeating checked scalar
-    # method calls in the cubic loop. Keep every product and fsum in its
-    # original order; this remains independent of factorization arithmetic.
+    # method calls in the cubic loop. General dots retain every product and
+    # fsum in source order, independent of factorization arithmetic.
     rows, inner, columns = left.nrows, left.ncols, right.ncols
     left_entries, right_entries = left.entries, right.entries
     entries: list[float] = []
@@ -74,9 +74,31 @@ def _independent_product(
         if check is not None:
             check()
         offset = row * inner
+        if columns == 0:
+            continue
+        # Prove a zero/coordinate row from the actual immutable entries, not
+        # from a factorization's claimed permutation. Finite storage makes
+        # multiplication by 0 or 1 exact; fsum of such a row is its selected
+        # entry (or positive zero). No tolerance or backend status is used.
+        coordinate: int | None = -1
+        for index in range(inner):
+            coefficient = left_entries[offset + index]
+            if coefficient == 1.0 and coordinate == -1:
+                coordinate = index
+            elif coefficient != 0.0:
+                coordinate = None
+                break
         for column in range(columns):
             if check is not None:
                 check()
+            if coordinate is not None:
+                value = (
+                    right_entries[coordinate * columns + column]
+                    if coordinate >= 0
+                    else 0.0
+                )
+                entries.append(value if value != 0.0 else 0.0)
+                continue
             terms = [
                 left_entries[offset + index] * right_entries[index * columns + column]
                 for index in range(inner)
