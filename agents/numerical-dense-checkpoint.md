@@ -165,3 +165,13 @@ unchanged. This is a source-manifest repair, not new modular-form platform
 evidence. The local lazy rebuild also exposed old standard-module metadata
 (`cf3205…`) against the converged compiler (`7b6309…`); the standard cache was
 rebuilt and its version checked before retrying lazy packaging.
+
+The complete portable run exposed an over-broad Wasm admission check from
+#179: nine established integer/resource functions were rejected because they
+lack separate dynamic Wasm wrappers, despite using the existing compiled C-ABI
+path. Restricting the new guard to floating kernels restores that closure and
+still rejects unsupported floating foreign calls. The full production closure,
+real FLINT Wasm resource lifecycle, focused floating witness, and all 116 local
+portable files now pass; architecture passes again. No integer/resource target
+contract was newly broadened. The lazy bundle rebuilt successfully (411 modules,
+eight dynamic programs); the final public browser-statistics rerun is underway.

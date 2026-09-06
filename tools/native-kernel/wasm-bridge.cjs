@@ -80,7 +80,11 @@ function classifyWasmFunction(fn, ir) {
     return unavailableForeign(current.body) || (current.dependencies || []).some(name =>
       unavailableClosure(ir?.functions.find(candidate => candidate.name === name)));
   }
-  if (unavailableClosure(fn)) {
+  // The new floating foreign-storage path has no generated Wasm adapter yet.
+  // Do not apply that admission rule to the established integer/resource
+  // lowering: its compiled C ABI closure can include declarations without a
+  // separate dynamic Wasm wrapper (for example byte-region operations).
+  if (fn.kernelKind === "float64" && unavailableClosure(fn)) {
     return { supported: false, reason: "foreign-function-not-declared-for-wasm" };
   }
   if (!["float64", "integer", "prime-field-source"].includes(fn.kernelKind)) {
