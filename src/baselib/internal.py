@@ -12,6 +12,80 @@ _INTERNAL_CALLABLE_ALLOCATION_KEY = runtime.reflect.apply(
     runtime.undefined,
     ["sagejs.python.callable-instance-allocation"],
 )
+_internal_keyword_constructor_prototypes = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakSet"), []
+)
+
+
+def ρσ_register_keyword_constructor(cls: Any) -> None:
+    """Brand the stable prototype shared by known class proxy adapters."""
+    _internal_keyword_constructor_prototypes.add(runtime.reflect.get(cls, "prototype"))
+
+
+def ρσ_live_initializer(cls: Any) -> Any:
+    """Resolve past generated forwarding initializers using the current MRO."""
+    original = _internal_get_member(runtime.reflect.get(cls, "prototype"), "__init__")
+    if _internal_get_member(original, "__sagejs_synthetic_init__") is not True:
+        return original
+    mro = _internal_get_member(cls, "__mro__")
+    if not runtime.array.isArray(mro):
+        return original
+    for owner in mro:
+        prototype = runtime.reflect.get(owner, "prototype")
+        if prototype is runtime.undefined:
+            continue
+        descriptor = runtime.object.getOwnPropertyDescriptor(prototype, "__init__")
+        if descriptor is runtime.undefined:
+            continue
+        initializer = runtime.reflect.get(descriptor, "value")
+        if (
+            initializer is not runtime.undefined
+            and _internal_get_member(initializer, "__sagejs_synthetic_init__")
+            is not True
+        ):
+            return initializer
+    return original
+
+
+def _internal_copy_constructor_arguments(supplied_args: Any) -> Any:
+    """Copy a marked call packet before a binding pass consumes its fields."""
+    call_args = runtime.reflect.apply(runtime.array.prototype.slice, supplied_args, [])
+    keyword_copy = runtime.object.assign(
+        runtime.object.create(None), call_args[call_args.length - 1]
+    )
+    runtime.reflect.set(keyword_copy, runtime.kwargs_symbol, True)
+    call_args[call_args.length - 1] = keyword_copy
+    return call_args
+
+
+def ρσ_call_keyword_allocator(allocator: Any, cls: Any, supplied_args: Any) -> Any:
+    call_args = _internal_copy_constructor_arguments(supplied_args)
+    call_args.unshift(cls)
+    return ρσ_interpolate_kwargs(runtime.undefined, allocator, call_args)
+
+
+def _internal_initializer_needs_self(initializer: Any) -> bool:
+    return (
+        _internal_get_member(initializer, "__python_descriptor__") is True
+        and _internal_get_member(initializer, "__self__") is runtime.undefined
+        and _internal_get_member(initializer, "__staticmethod__") is not True
+        and _internal_get_member(initializer, "__sagejs_native_method__") is not True
+        and _internal_get_member(
+            initializer, "__sagejs_method_signature_excludes_self__"
+        )
+        is not True
+    )
+
+
+def ρσ_call_keyword_initializer(
+    initializer: Any, instance: Any, supplied_args: Any
+) -> Any:
+    call_args = _internal_copy_constructor_arguments(supplied_args)
+    receiver = instance
+    if _internal_initializer_needs_self(initializer):
+        call_args.unshift(instance)
+        receiver = runtime.undefined
+    return ρσ_interpolate_kwargs(receiver, initializer, call_args)
 
 
 def _internal_type_is(actual: Any, expected: str) -> bool:
@@ -109,6 +183,34 @@ def _internal_call_member(
         explicit_args.unshift(value)
         return runtime.reflect.apply(method, runtime.undefined, explicit_args)
     return runtime.reflect.apply(method, value, call_args)
+
+
+def ρσ_call_assigned_initializer(
+    initializer: Any,
+    instance: Any,
+    supplied_args: Any,
+) -> Any:
+    """Call an assigned Python initializer without losing its explicit self.
+
+    The compiler keeps receiver-style methods on its direct apply fast path.
+    Only a marked function descriptor enters this adapter. Constructor
+    signature selection remains separate from invocation.
+    """
+    if not _internal_initializer_needs_self(initializer):
+        return runtime.reflect.apply(initializer, instance, supplied_args)
+    explicit_args = runtime.reflect.apply(
+        runtime.array.prototype.slice, supplied_args, []
+    )
+    explicit_args.unshift(instance)
+    final_argument = explicit_args[explicit_args.length - 1]
+    if (
+        supplied_args.length
+        and final_argument is not None
+        and _internal_type_is(runtime.jstype(final_argument), "object")
+        and runtime.reflect.get(final_argument, runtime.kwargs_symbol) is True
+    ):
+        return ρσ_interpolate_kwargs(runtime.undefined, initializer, explicit_args)
+    return runtime.reflect.apply(initializer, runtime.undefined, explicit_args)
 
 
 def _internal_is_native_map(value: Any) -> bool:
@@ -890,6 +992,14 @@ def ρσ_interpolate_kwargs(
         # relies on this when an Instance trait calls ``self.klass(*args,
         # **kwargs)`` to construct a dynamic default.
         receiver = runtime.undefined
+        if _internal_keyword_constructor_prototypes.has(
+            runtime.reflect.get(target_function, "prototype")
+        ):
+            # Bind independently at the allocator and actual initializer,
+            # not against definition-time copies of a class signature.
+            return runtime.reflect.apply(
+                target_function, runtime.undefined, supplied_args
+            )
     elif (
         not _internal_get_member(target_function, "__argnames__")
         and not _internal_get_member(target_function, "__kwonly__")

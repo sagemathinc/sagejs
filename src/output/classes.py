@@ -60,6 +60,12 @@ def print_class(output):
             native_storage_parent = base.name
             break
 
+    live_keyword_constructor = (
+        output.options.python_attributes
+        and not compiling_baselib
+        and not native_storage_parent
+    )
+
     def class_def(method, is_var):
         output.indent()
         self.name.print(output)
@@ -288,6 +294,14 @@ def print_class(output):
                 output.end_statement()
 
             output.with_block(call_without_new)
+            if live_keyword_constructor:
+                output.indent()
+                output.print(
+                    "var ρσ_keyword_call = arguments.length > 0"
+                    " && arguments[arguments.length - 1] != null"
+                    " && arguments[arguments.length - 1][ρσ_kwargs_symbol] === true"
+                )
+                output.end_statement()
             # A user-defined ``__new__`` owns allocation.  In particular, it
             # may deliberately return an instance of a different subclass,
             # as pytz.LazyList does.  Preallocating native storage here would
@@ -367,6 +381,14 @@ def print_class(output):
             if uses_python_new:
                 output.indent()
                 output.print("var " + instance_name + " = ")
+                if live_keyword_constructor:
+                    output.print("ρσ_keyword_call ? ρσ_call_keyword_allocator(")
+                    self.name.print(output)
+                    output.print(".__new__")
+                    output.comma()
+                    self.name.print(output)
+                    output.comma()
+                    output.print("arguments) : ")
                 self.name.print(output)
                 output.print(".__new__.apply(undefined, [")
                 self.name.print(output)
@@ -413,17 +435,64 @@ def print_class(output):
                 self.name.print(output)
                 output.print(".prototype.__bind_methods__.call(" + instance_name + ")")
                 output.end_statement()
+            if live_keyword_constructor:
+                output.indent()
+                output.print("var ρσ_initializer = ")
+                self.name.print(output)
+                output.print(".prototype.__init__")
+                output.end_statement()
+                output.indent()
+                output.print(
+                    "if (ρσ_initializer.__sagejs_synthetic_init__ === true)"
+                    " ρσ_initializer = ρσ_live_initializer("
+                )
+                self.name.print(output)
+                output.print(")")
+                output.end_statement()
             output.indent()
             output.print("var ρσ_init_result = ")
             if output.options.python_attributes:
                 output.print("ρσ_skip_init_for_custom_new(")
                 self.name.print(output)
                 output.comma()
+                if live_keyword_constructor:
+                    output.print("ρσ_initializer")
+                else:
+                    self.name.print(output)
+                    output.print(".prototype.__init__")
+                output.print(") ? undefined : ")
+            if live_keyword_constructor:
+                output.print(
+                    "ρσ_keyword_call ? ρσ_call_keyword_initializer(ρσ_initializer"
+                )
+                output.comma()
+                output.print(instance_name)
+                output.comma()
+                output.print("arguments) : ")
+            if output.options.python_attributes:
+                if live_keyword_constructor:
+                    output.print("ρσ_initializer")
+                else:
+                    self.name.print(output)
+                    output.print(".prototype.__init__")
+                output.print(".__python_descriptor__ === true ? ")
+                output.print("ρσ_call_assigned_initializer(")
+                if live_keyword_constructor:
+                    output.print("ρσ_initializer")
+                else:
+                    self.name.print(output)
+                    output.print(".prototype.__init__")
+                output.comma()
+                output.print(instance_name)
+                output.comma()
+                output.print("arguments) : ")
+            if live_keyword_constructor:
+                output.print("ρσ_initializer")
+            else:
                 self.name.print(output)
-                output.print(".prototype.__init__) ? undefined : ")
-            self.name.print(output)
+                output.print(".prototype.__init__")
             (
-                output.print(".prototype.__init__.apply(" + instance_name),
+                output.print(".apply(" + instance_name),
                 output.comma(),
                 output.print("arguments)"),
             )
@@ -538,6 +607,13 @@ def print_class(output):
             self.parent.print(output)
 
         output.with_parens(f_extends)
+        output.end_statement()
+
+    if live_keyword_constructor:
+        output.indent()
+        output.print("ρσ_register_keyword_constructor(")
+        self.name.print(output)
+        output.print(")")
         output.end_statement()
 
     # method binding
@@ -765,9 +841,23 @@ def print_class(output):
         # Create a default __init__ method
         def f_default():
             if self.parent:
+                if output.options.python_attributes:
+                    output.print("return ")
                 self.parent.print(output)
                 output.spaced(".prototype.__init__", "&&")
                 if output.options.python_attributes:
+                    output.print("(")
+                    self.parent.print(output)
+                    output.print(
+                        ".prototype.__init__.__python_descriptor__ === true ? "
+                    )
+                    output.print("ρσ_call_assigned_initializer(")
+                    self.parent.print(output)
+                    output.print(".prototype.__init__")
+                    output.comma()
+                    output.print("this")
+                    output.comma()
+                    output.print("arguments) : ")
                     output.print("\u03c1\u03c3_forward_kwargs(")
                     output.print("this")
                     output.comma()
@@ -775,7 +865,7 @@ def print_class(output):
                     output.print(".prototype.__init__")
                     output.comma()
                     output.print("Array.from(arguments)")
-                    output.print(")")
+                    output.print("))")
                 else:
                     # The compiler's immutable stage-zero AST constructors
                     # intentionally pass a JavaScript initializer object
