@@ -5402,6 +5402,10 @@ def ρσ_getattr_internal(
                     else class_member
                 )
             elif (
+                _builtins_get_member(class_member, "__sagejs_synthetic_init__") is True
+            ):
+                return runtime.unbound_method_adapter(class_member)
+            elif (
                 _builtins_is_python_class(class_member)
                 or ρσ_is_bound_method(class_member)
                 or (

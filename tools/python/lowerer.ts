@@ -3756,7 +3756,14 @@ export class PythonCstLowerer {
             args,
           });
         }
-        if (!staticMethod && !classvar && hasKeywordArguments) {
+        // A starred argument list can itself contain the explicit receiver.
+        // The legacy prototype-call emitter drops it and uses ambient `this`;
+        // ordinary Python attribute lookup supplies the unbound adapter and
+        // lets argument expansion happen without guessing a receiver. Keep
+        // the low-level compiler/bootstrap host-call convention separate.
+        const pythonStarArguments = !this.options.compiler_bootstrap &&
+          (args as any).starargs;
+        if (!staticMethod && !classvar && (hasKeywordArguments || pythonStarArguments)) {
           return this.make("AST_Call", node, {
             expression: callable,
             args,

@@ -15,6 +15,8 @@ const packageAndBenchmarkValidationPaths = [
   "upstream-tests/python-packages/manifest.json",
   "scripts/run-pure-python-packages.cjs",
   "scripts/python-package-phases.cjs",
+  "scripts/python-package-suites.cjs",
+  "tools/python-compat/drivers/tomli-errors.py",
   "bench/cowasm/run.cjs",
   "bench/python-compat/qualification.cjs",
 ];
@@ -93,6 +95,7 @@ for (const git of [false, true]) {
       "bench/modular/qexp-correctness/source-freeze.json.in",
       "bench/modular/qexp-correctness/source-freeze.schema.json",
       "scripts/run-pure-python-packages-generator.cjs", "scripts/python-package-phases-extra.cjs",
+      "scripts/python-package-suites-extra.cjs", "tools/python-compat/drivers/unknown.py",
       "bench/cowasm/run.cjs.in", "bench/python-compat/qualification-schema.json",
       "upstream-tests/python-packages-generator/generator.cjs",
       "tools/nested/test/example.ts", "tools/grammar/README.md", "packages/math/input.py",

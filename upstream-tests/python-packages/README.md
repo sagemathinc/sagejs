@@ -35,6 +35,50 @@ available. Install/download time is diagnostic evidence, never a package timing.
 An installation/receipt error prevents qualification and does not establish a
 package behavioral failure.
 
+## Optional selected upstream suite
+
+`--upstream-suites` additionally runs every reviewed upstream selection associated
+with the selected packages. Currently this is all seven unchanged methods in
+Tomli 2.3.0's `tests.test_error.TestError` class:
+
+```sh
+node scripts/run-pure-python-packages.cjs --only tomli --upstream-suites --json /path/to/tomli-suite.json
+```
+
+The ordinary public workflow still runs, and `--timings` retains its existing
+workflow phase meaning. Suite results are separate under `upstreamSuites`; their
+process durations are diagnostic, not comparative timing qualification. A run
+with `--upstream-suites` and no reviewed selections is an error. `--list` includes
+the seven fully qualified test IDs when the flag is present.
+
+The suite pin is commit `3fccd16450d0f1d87c042473d95a07f60955206e`; its MIT license,
+original headers, file sizes and SHA-256 inventory accompany the unchanged test
+module and `tests/__init__.py` support fixture. The installed pure wheel and
+dependency tree are the same receipt-verified inputs used by the public workflow.
+No external pytest dependency, source rewriting, no-op warning assertion,
+capability skip, expected failure, or omitted method is accepted. The narrow
+driver uses genuine unittest discovery/suite/result APIs and requires exactly
+seven discovered and executed methods with no nonpass result buckets. The
+selection supplies the exact test IDs; the driver checks discovery and records
+each started test, and the outer runner checks those observed IDs and count as
+well as exact fixture/package origins. Transport normalization happens once;
+remaining carriage returns are rejected rather than normalized again.
+
+Fixture-origin comparison resolves absolute native paths, permitting native
+separators and temporary-directory aliases; all original output bytes remain in
+the report. Driver/selection/provenance/fixture hashes are verified before and
+after both runtimes and at the final gate. Source mutation, missing/added files,
+timeout, unexpected output, failure, or incomplete selection prevents qualification.
+Upstream test sources and caches remain outside shipped runtime payloads.
+
+This is a selected error-handling suite, not Tomli's whole test suite. Its
+`test_misc` and `test_data` modules are not adopted or counted as skips. This
+specific pinned class has no module/class/test setup or teardown overrides,
+custom construction, cleanup hooks, parametrization, subTests, or external data
+fixtures. The adapter makes no broader fixture-support claim; new source pins or
+selections need their own fixture review. Passing needs current-source receipts
+on the actual host and does not establish four-platform/SEA/browser support.
+
 ## Optional phase observations
 
 Only packaging, six, and tomli have reviewed import/setup/workload/verification

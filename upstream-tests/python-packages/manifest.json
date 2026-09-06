@@ -61,6 +61,10 @@
     {
       "name": "tomli",
       "version": "2.3.0",
+      "upstreamSuite": {
+        "path": "upstream-tests/python-packages/tomli-error-selection.json",
+        "sha256": "9cf64898d41bf13506761e0f0428d6f612f4ee00c7f2b7ee5fac9de54ad77341"
+      },
       "wheel": "tomli-2.3.0-py3-none-any.whl",
       "sha256": "e95b1af3c5b07d9e643909b5abbec77cd9f1217e6d0bca72b0234736b9fb1f1b",
       "source": "import tomli\ndata = tomli.loads('title = \"Sage.js\"\\n[owner]\\nname = \"Ada\"\\n')\nprint(data['title'])\nprint(data['owner']['name'])\n",
