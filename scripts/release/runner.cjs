@@ -107,6 +107,10 @@ async function run({ root, candidate, stages, environment = process.env, fresh =
     for (const [index, stage] of stages.entries()) {
       if (controller.signal.aborted) throw new Error("release run interrupted");
       identity(root, candidate);
+      if ((stage.inputs || []).includes("dist")) {
+        const readiness = require("../build-receipt.cjs").inspectBuildReceipt(root);
+        if (!readiness.current) throw new Error(`${stage.id}: stale runtime build: ${readiness.reason}`);
+      }
       const inputs = snapshot(root, stage.inputs || []);
       const key = digest(JSON.stringify({
         source, stage, node: process.version, platform: process.platform,

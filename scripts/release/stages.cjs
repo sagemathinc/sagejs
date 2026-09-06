@@ -38,6 +38,9 @@ function plan(profile = "native", selected) {
     stage("integration-performance", "performance", [["node", "scripts/run-test-tier.cjs", "integration", "--gate", "performance", "--concurrency", "1"]]),
     stage("native", "correctness", [["pnpm", "test:native:correctness:run"]]),
     stage("native-performance", "performance", [["pnpm", "test:native:performance:run"]]),
+    stage("eclib", "correctness", [["pnpm", "--dir", "packages/flint", "test:eclib:corpus"]]),
+    stage("reference", "correctness", [["pnpm", "docs:verify"], ["pnpm", "test:upstream:run"]]),
+    stage("jupyter", "installation", [["pnpm", "test:jupyter:sea"]], { inputs: [...runtime, "build/sea"] }),
     stage("sea", "packaging", [["pnpm", "test:sea:reuse"]], { outputs: ["build/sea"] }),
     stage("npm", "packaging", [["node", "scripts/build-npm-platform-package.cjs", target,
       `build/sea/sagejs${target === "windows-x64" ? ".exe" : ""}`,
@@ -56,6 +59,30 @@ function plan(profile = "native", selected) {
         outputs: [`build/numerical-qualification/platform/${target}/${target}-${subject}`,
           ...(subject === "node" ? [`build/numerical-qualification/platform/${target}/${target}-soak.evidence.json`] : [])],
       })),
+    stage("wasm-node", "correctness", [
+      ["node", "packages/flint-wasm/test/browser-wasm-node-parity.cjs", "--tier", "release", "--receipt", "build/wasm-node-oracle.json"],
+      ["node", "packages/flint-wasm/scripts/node-cli-parity.cjs", "--tier", "release", "--receipt", "build/wasm-node-cli-parity.json"],
+      ["pnpm", "wasm:workload-enforce"],
+    ], { inputs: [...runtime, "packages/flint-wasm/dist"], outputs: ["build/wasm-node-oracle.json", "build/wasm-node-cli-parity.json"] }),
+    ...["chromium", "firefox", "webkit"].map((engine) => stage(`wasm-${engine}`, "correctness",
+      [["node", "packages/flint-wasm/test/browser-wasm-parity.mjs", "--tier", "release", "--engines", engine,
+        "--require-engines", engine, "--receipt", `build/wasm-parity-${engine}.json`]],
+      { inputs: ["packages/flint-wasm/dist"], outputs: [`build/wasm-parity-${engine}.json`] })),
+    stage("wasm-security", "correctness", [
+      ["node", "--test", "packages/flint-wasm/test/browser-wasm-wasi-quota.test.mjs"],
+      ...["browser-wasm-serialization", "browser-wasm-security", "browser-wasm-offline-cache",
+        "browser-wasm-webkit-file-origin", "browser-wasm-webkit-memory"].map((name) => ["node", `packages/flint-wasm/test/${name}.mjs`]),
+      ["node", "website/live/test/browser-cache-integrity.mjs"],
+    ], { inputs: ["packages/flint-wasm/dist"] }),
+    stage("wasm-native-timings", "performance-report", [["node", "bench/browser-wasm-performance.mjs",
+      "--runtime", "node-native", "--samples", "7", "--budget", "bench/browser-wasm-budget.json",
+      "--require-baseline", "--report-regressions", "--output", "build/wasm-performance-node-native.json"]],
+    { inputs: runtime, outputs: ["build/wasm-performance-node-native.json"] }),
+    ...["chromium", "firefox", "webkit"].map((engine) => stage(`wasm-${engine}-timings`, "performance-report",
+      [["node", "bench/browser-wasm-performance.mjs", "--engine", engine, "--samples", "3",
+        "--native-reference", "build/wasm-performance-node-native.json", "--budget", "bench/browser-wasm-budget.json",
+        "--require-baseline", "--report-regressions", "--output", `build/wasm-performance-${engine}.json`]],
+      { inputs: ["packages/flint-wasm/dist", "build/wasm-performance-node-native.json"], outputs: [`build/wasm-performance-${engine}.json`] })),
   ];
   if (selected) {
     const ids = selected.split(",");
@@ -67,11 +94,14 @@ function plan(profile = "native", selected) {
     });
   }
   if (profile === "canonical") return ["numerical-product", "public-build", "public-pack"].map((id) => all.find((item) => item.id === id));
+  if (profile === "browser") return all.filter((item) => item.id.startsWith("wasm-"));
   if (profile !== "native") throw new Error(`unknown profile ${profile}`);
   // Package/install first: a broken consumer install must not wait for soaks.
   const order = ["metadata", "bootstrap", "sea", "npm", "package-install", "startup", "strict",
-    target === "linux-x64" ? "unit" : "portable", "integration", "native",
-    "integration-performance", "native-performance", "oracle", "numerical-npm", "numerical-sea", "numerical-node"];
+    target === "linux-x64" ? "unit" : "portable",
+    ...(target === "linux-arm64" ? [] : ["integration", "integration-performance"]), "native",
+    ...(target === "linux-x64" ? ["eclib", "reference", "jupyter"] : []),
+    "native-performance", "oracle", "numerical-npm", "numerical-sea", "numerical-node"];
   return order.map((id) => all.find((item) => item.id === id));
 }
 module.exports = { plan };

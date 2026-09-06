@@ -92,6 +92,10 @@ not successful evidence. A host lock prevents two runners from mutating the
 same checkout. Do not manually relabel receipts. Never restore a checkpoint
 from another machine as proof of local execution.
 
+Stages consuming the native/Node `dist` additionally require the existing
+source-current build receipt before running or reusing tests. Hashing an old
+runtime next to a new checkout is not qualification of that checkout.
+
 Gate classes are explicit in `scripts/release/stages.cjs`:
 
 - `build`, `integrity`, `installation`, `packaging`, `correctness`, and
@@ -104,6 +108,10 @@ Gate classes are explicit in `scripts/release/stages.cjs`:
 - Compiler/tutorial compatibility diagnostics and broad research campaigns
   retain their existing non-blocking/scheduled policy; they are not substituted
   for required mathematical evidence.
+- `performance-report` collects the existing Wasm/browser timing trend reports
+  with the same `--report-regressions` policy as release CI. Corpus, baseline
+  coverage, execution and numerical checks still must succeed; only timing
+  regressions are reports rather than mathematical failures.
 
 Package installation runs before long suites and numerical soaks. Numerical
 Node/npm/SEA subjects have independent checkpoints. Retrying one preserves
@@ -111,6 +119,17 @@ successful siblings and moves its previous output into runner history rather
 than deleting it. The existing final numerical gate still authenticates all
 16 product rows and supplemental evidence. Local checkpoints do not authorize
 publication or replace clean CI, macOS signing, or browser qualification.
+
+The native profile matches the platform test inventory: Linux x64 includes
+the eclib corpus, generated reference/upstream checks and SEA Jupyter; ARM64
+uses the existing portable/native inventory rather than silently adding a
+second full integration campaign. On a prepared Linux browser host, run
+`pnpm release:run --candidate FULL_SHA --profile browser` for Node/native and
+Node-Wasm parity, all three real browser engines, security/recovery tests,
+workload enforcement, and the existing timing reports. Install the matching
+Playwright engines and OS libraries beforehand. Numerical browser/supplemental
+collection and cross-host clean reproducibility remain the separately required
+commands below.
 
 To launch the four hosts together, use
 `pnpm release:coordinate --candidate FULL_SHA --hosts build/release-hosts.json`.

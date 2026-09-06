@@ -105,6 +105,9 @@ test("native profile performs installation before long tests and retains numeric
   const stages = require("../scripts/release/stages.cjs").plan();
   const ids = stages.map((stage) => stage.id);
   assert.ok(ids.indexOf("package-install") < ids.indexOf("integration"));
-  for (const id of ["numerical-node", "numerical-npm", "numerical-sea", "integration-performance", "native-performance"]) assert.ok(ids.includes(id));
+  for (const id of ["numerical-node", "numerical-npm", "numerical-sea", "native-performance"]) assert.ok(ids.includes(id));
+  const target = require("../scripts/package-qualification/runtime.cjs").targetForHost();
+  if (target !== "linux-arm64") assert.ok(ids.includes("integration-performance"));
+  else assert.ok(!ids.includes("integration"), "ARM64 matches its portable/native CI inventory");
   assert.equal(new Set(ids).size, ids.length);
 });
