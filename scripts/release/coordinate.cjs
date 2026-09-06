@@ -9,16 +9,9 @@ function quote(value, windows = false) {
 }
 function remoteCommand(host, candidate, stage) {
   const configuration = Buffer.from(JSON.stringify({ ...host, candidate, stage })).toString("base64");
-  const program = `const c=JSON.parse(Buffer.from("${configuration}","base64").toString());` +
-    `process.chdir(c.root);` +
-    `if(require(require("node:path").join(c.root,"scripts/package-qualification/runtime.cjs")).targetForHost()!==c.target)throw Error("wrong host target");` +
-    `const args=["exec","node","scripts/release/runner.cjs","--candidate",c.candidate];` +
-    `if(c.stage)args.push("--stage",c.stage);` +
-    `const r=require("node:child_process").spawnSync(process.platform==="win32"?"pnpm.cmd":"pnpm",args,` +
-    `{cwd:c.root,env:{...process.env,...c.env},stdio:"inherit",shell:process.platform==="win32"});` +
-    `if(r.error)throw r.error;process.exitCode=r.status===null?1:r.status;`;
   const windows = host.target === "windows-x64";
-  return `${windows ? "& " : ""}${quote(host.node || "node", windows)} -e ${quote(program, windows)}`;
+  const launcher = (windows ? path.win32 : path.posix).join(host.root, "scripts/release/launch-host.cjs");
+  return `${windows ? "& " : ""}${quote(host.node || "node", windows)} ${quote(launcher, windows)} ${quote(configuration, windows)}`;
 }
 async function main(argv) {
   const options = {};

@@ -95,10 +95,11 @@ test("coordinator quotes host launch commands without interpolating checkout or 
   const { remoteCommand } = require("../scripts/release/coordinate.cjs");
   const host = { root: "/path with spaces/and'quotes", target: "linux-x64", env: { EXAMPLE: "$not-a-shell-variable" } };
   const command = remoteCommand(host, "a".repeat(40));
-  assert.ok(command.startsWith("'node' -e '"));
-  assert.ok(!command.includes(host.root));
+  assert.ok(command.startsWith("'node' '"));
+  assert.ok(command.includes("scripts/release/launch-host.cjs"));
+  assert.ok(!command.includes(" -e "));
   assert.ok(!command.includes(host.env.EXAMPLE));
-  assert.ok(remoteCommand({ ...host, target: "windows-x64" }, "b".repeat(40)).startsWith("& 'node' -e '"));
+  assert.ok(remoteCommand({ ...host, target: "windows-x64" }, "b".repeat(40)).startsWith("& 'node' '"));
 });
 test("native profile performs installation before long tests and retains numerical gates", () => {
   const stages = require("../scripts/release/stages.cjs").plan();
