@@ -560,6 +560,16 @@ simpler and faster:
 - Cache gzip/Brotli payload reports by complete artifact, compression-tool and
   policy identities. Reproduction must still compare every payload byte/hash;
   identical payloads should not need repeated maximum-quality compression.
+- Remove duplicate full lazy precompilation through an authenticated preparation
+  boundary: bootstrap, the runner's bootstrap stage, SEA packaging and Wasm
+  assembly currently request overlapping work. On the persistent M1, one full
+  lazy-cache pass takes roughly 12 minutes. Do not skip it without validating
+  its source/compiler/input closure and complete outputs.
+- Separate volatile build-receipt metadata from execution artifact identity.
+  The receipt's `completedAt` timestamp currently participates in whole-`dist`
+  checkpoint hashes, so repairing an otherwise equivalent build can invalidate
+  every downstream test. Any normalization must keep source-current receipt
+  validation and all actual code/resource hashes mandatory.
 - Preserve dependency caches across candidates, while keeping the final
   GitHub build clean and authenticated. Key native artifacts by the actual
   lowered source, dependency lock, compiler, ABI, and target—not by an

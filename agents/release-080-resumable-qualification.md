@@ -22,8 +22,10 @@ Clean release.12 Wasm CI passed. Native CI exposed two harness problems:
 All four replacement native profiles and the complete browser profile passed.
 The full coordinator is being refreshed after an ARM oracle-directory retry.
 A macOS native refresh accidentally overlapped independent Wasm cache
-preparation; both were stopped, and the interrupted generated cache is being
-rebuilt before sequential revalidation/reproduction. This is an operational
+preparation; both were stopped, and the interrupted generated cache was rebuilt
+before sequential revalidation/reproduction. The repair, SEA/fresh-npm/startup,
+strict Python and 117-file portable suite passed; full integration revalidation
+is still in progress. This is an operational
 failure, not evidence that can be relabeled as a pass. Reproduction helpers must
 acquire the same checkout lock rather than merely observe it absent.
 
