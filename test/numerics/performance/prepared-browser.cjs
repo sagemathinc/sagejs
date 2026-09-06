@@ -99,7 +99,7 @@ test("public prepared numerical APIs use the optional pack in real browser sessi
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const origin = `http://127.0.0.1:${server.address().port}`;
     const sources = (evaluators
-      ? ["prepared-functions.py", "prepared-root-api.py", "../linear_algebra/validation-overflow.py", "../linear_algebra/validation-access.py"]
+      ? ["prepared-functions.py", "prepared-root-api.py", "../linear_algebra/validation-overflow.py", "../linear_algebra/validation-access.py", "../linear_algebra/factorization-record.py"]
       : ["prepared-statistics.py"]).map(name => ({name, source:fs.readFileSync(path.join(__dirname,name),"utf8")}));
     const benchmark = measurementPath ? fs.readFileSync(path.join(root,
       evaluators ? "bench/numerics/performance/prepared-root.py" : "bench/numerics/performance/prepared-statistics.py"), "utf8") : null;
@@ -174,6 +174,8 @@ test("public prepared numerical APIs use the optional pack in real browser sessi
         "test/numerics/performance/prepared-browser.cjs",
         ...(evaluators ? ["test/numerics/linear_algebra/validation-overflow.py",
           "test/numerics/linear_algebra/validation-access.py",
+          "test/numerics/linear_algebra/factorization-record.py",
+          "src/lib/sagejs/numerics/linear_algebra/operations.py",
           "src/lib/sagejs/numerics/linear_algebra/validation.py"] : [])];
       const report = {
         schema: evaluators ? "sagejs.prepared-root-browser-development/v1" : "sagejs.prepared-statistics-browser-development/v1",

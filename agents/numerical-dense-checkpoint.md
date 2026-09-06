@@ -196,3 +196,15 @@ qualification remain pending. No compiled default is promoted. A retained
 phase profile attributes most remaining 32-square LU time to independent
 validation (437 ms) and result construction (116 ms), rather than factorization
 (51 ms); these instrumented local medians are diagnostic, not qualification.
+
+## Single result presentation
+
+`perf/numerical-factorization-record` removes the duplicate factorization
+presentation from public LU/QR/Cholesky result construction. The two result
+records still undergo independent detached materialization; focused source
+tests mutate the source record and both exported representations. The
+[diagnostic report](../bench/numerics/performance/results/n3-factorization-record-2026-09-06/README.md)
+records a 97.9 ms 32-square result phase versus 115.8 ms in the preceding
+separate run. This is not paired performance qualification. Validation remains
+the main cost; browser and persistent-host qualification of this follow-up
+remain open.

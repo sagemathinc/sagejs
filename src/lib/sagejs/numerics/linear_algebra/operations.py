@@ -391,12 +391,15 @@ def _factorization_result(
         important=True,
         force=True,
     )
+    # Reconstruct presentation factors once. NumericalResult independently
+    # materializes value and domain payload, so they retain detached ownership.
+    factorization_record = factorization.to_dict()
     return LinearAlgebraResult(
         problem,
         plan,
         success=success,
         status="converged" if success else "validation_failed",
-        value=factorization.to_dict(),
+        value=factorization_record,
         validation=validation,
         diagnostics=result_diagnostics,
         elapsed_ms=(time.monotonic() - started) * 1000.0,
@@ -406,7 +409,7 @@ def _factorization_result(
             "implementation_kind": "ordinary_python",
             "source_transparent": True,
         },
-        domain_payload={"factorization": factorization.to_dict()},
+        domain_payload={"factorization": factorization_record},
         factorization=factorization,
     )
 
