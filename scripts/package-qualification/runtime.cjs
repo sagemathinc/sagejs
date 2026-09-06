@@ -22,7 +22,6 @@ const {
 const { tmpdir } = require("node:os");
 const { createRequire } = require("node:module");
 const { dirname, isAbsolute, join, relative, resolve } = require("node:path");
-const { pathToFileURL } = require("node:url");
 
 const { runPnpm } = require("../pnpm-invocation.cjs");
 
@@ -107,7 +106,10 @@ function resolveTarget(name, options = {}) {
 }
 
 function fileDependency(filename) {
-  return pathToFileURL(resolve(filename)).href;
+  // pnpm's file: dependency protocol takes a filesystem path, not a URL:
+  // percent escapes are treated literally (including Windows RUNNER~1 paths).
+  const absolute = resolve(filename);
+  return `file:${process.platform === "win32" ? absolute.replaceAll("\\", "/") : absolute}`;
 }
 
 function fileDigest(filename) {

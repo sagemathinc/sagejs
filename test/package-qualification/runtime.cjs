@@ -18,8 +18,8 @@ const {
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
-const { fileURLToPath } = require("node:url");
 const { gzipSync } = require("node:zlib");
+const { runPnpm } = require("../../scripts/pnpm-invocation.cjs");
 
 const {
   SUPPORTED_TARGETS,
@@ -196,10 +196,51 @@ test("release targets map to native Node identities and packages", () => {
   assert.throws(() => resolveTarget("plan9-x64"), /unsupported/);
 });
 
-test("package file dependencies use portable absolute file URLs", () => {
+test("package file dependencies preserve literal filesystem paths", () => {
   const value = fileDependency(join(tmpdir(), "archive with space.tgz"));
-  assert.match(value, /^file:\/\//);
-  assert.match(value, /archive%20with%20space\.tgz$/);
+  assert.match(value, /^file:/);
+  assert.match(value, /archive with space\.tgz$/);
+  const special = join(tmpdir(), "RUNNER~1", "literal%7E # archive.tgz");
+  const specialSpec = fileDependency(special);
+  assert.match(specialSpec, /RUNNER~1/);
+  assert.equal(
+    specialSpec.slice(5),
+    process.platform === "win32" ? special.replaceAll("\\", "/") : special,
+  );
+});
+
+test("pnpm installs a local archive through a tilde-containing file path", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-pnpm~path-"));
+  try {
+    const fixture = join(temporary, "fixture");
+    const consumer = join(temporary, "consumer");
+    mkdirSync(join(fixture, "package"), { recursive: true });
+    mkdirSync(consumer);
+    writeFileSync(
+      join(fixture, "package", "package.json"),
+      JSON.stringify({ name: "sagejs-local-url-fixture", version: "1.0.0" }),
+    );
+    const archive = join(temporary, "archive with space %7E #.tgz");
+    pack(fixture, archive);
+    writeFileSync(
+      join(consumer, "package.json"),
+      JSON.stringify({
+        private: true,
+        dependencies: { "sagejs-local-url-fixture": fileDependency(archive) },
+      }),
+    );
+    runPnpm(["install", "--offline", "--ignore-scripts"], {
+      cwd: consumer,
+      stdio: "inherit",
+    });
+    const installed = JSON.parse(readFileSync(
+      join(consumer, "node_modules", "sagejs-local-url-fixture", "package.json"),
+      "utf8",
+    ));
+    assert.equal(installed.version, "1.0.0");
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test("archive checks require the root platform edge and exact target metadata", () => {
@@ -306,9 +347,7 @@ test("fresh install rejects a same-user replacement of validated archive bytes",
             const manifest = JSON.parse(
               readFileSync(join(consumer, "package.json"), "utf8"),
             );
-            const privateRoot = fileURLToPath(
-              manifest.dependencies["@sagemath/sagejs"],
-            );
+            const privateRoot = manifest.dependencies["@sagemath/sagejs"].slice(5);
             chmodSync(privateRoot, 0o600);
             copyFileSync(replacement.rootArchive, privateRoot);
           },
