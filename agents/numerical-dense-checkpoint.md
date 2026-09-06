@@ -156,3 +156,12 @@ pack checks, strict Python (377 modules), and the complete architecture gate
 pass locally. The full lazy-module rebuild and public browser-statistics rerun
 are separate pending packaging checks; kernel browser witnesses are not used
 as substitutes for them.
+
+PR #180's first routine CI run stopped at the modular-qexp source-freeze
+fingerprint because it includes the shared package graph. An exact comparison
+found only that graph changed among its 31 inputs; refreshing its graph and
+bundle hashes leaves all mathematical/oracle sources and required checks
+unchanged. This is a source-manifest repair, not new modular-form platform
+evidence. The local lazy rebuild also exposed old standard-module metadata
+(`cf3205…`) against the converged compiler (`7b6309…`); the standard cache was
+rebuilt and its version checked before retrying lazy packaging.
