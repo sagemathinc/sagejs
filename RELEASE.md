@@ -9,6 +9,9 @@ This document complements [TESTING.md](TESTING.md) and
 [DISTRIBUTION.md](DISTRIBUTION.md). It is the release playbook for both people
 and coding agents.
 
+See the [0.8.0 resumable qualification record](agents/release-080-resumable-qualification.md)
+for a completed pre-tag campaign and its remaining optimization lessons.
+
 ## The three testing loops
 
 Keep these loops separate so ordinary development stays fast and release
@@ -50,8 +53,11 @@ when the fix is a one-line test-portability correction.
   npm token. macOS signing/notarization and optional Windows signing happen in
   the protected GitHub release environments.
 - Only a Sage.js product release tag such as `v0.4.1+release.23` may own
-  GitHub's **Latest** pointer. The public installer resolves its default archive
-  through `releases/latest`, so benchmark evidence, optimizer snapshots, and
+  GitHub's **Latest** pointer. Keep `website/published-release.json` pinned to
+  the last completely published product; never derive that pointer from the
+  development package version. The website installer is staged from that
+  published release. Also protect `releases/latest`, used by direct GitHub
+  installation paths: benchmark evidence, optimizer snapshots, and
   native dependency catalogs must be created with `--latest=false` (or as a
   prerelease). The release-event guard restores the highest published product
   version if an infrastructure release is accidentally made latest.
@@ -187,6 +193,23 @@ compiler changes also require `pnpm architecture:check`; migrated Python must
 keep `pnpm test:baselib:strict` at zero errors.
 
 ### 2. Qualify on persistent hosts
+
+Before long native integration tests, authenticate the complete browser
+handoff if the checkout contains a production Wasm artifact. Installing the
+eight-file numerical product alone does **not** refresh the browser manifest,
+build receipt, or other modules. A cached checkout can otherwise mix an old
+manifest with new numerical loaders and fail late in a Node-Wasm test.
+Preserve an old `packages/flint-wasm/dist` separately, restore the complete
+`package/packages/flint-wasm/dist` from the SHA-verified canonical public root
+tarball, then run:
+
+```sh
+node packages/flint-wasm/scripts/production-receipt.cjs validate
+node packages/flint-wasm/node-cli.mjs --verify-only
+```
+
+Do not regenerate receipts around stale or mixed bytes. This handoff check
+does not replace the later independent Wasm reproduction builds.
 
 Fetch the frozen SHA on all four hosts. Run the same build and test stages used
 by `.github/workflows/ci.yml`, with the host's existing dependency cache. Do
@@ -459,8 +482,8 @@ workspace resolution.
 pnpm view @sagemath/sagejs version dist-tags --json
 pnpm view @sagemath/sagejs-linux-x64 version --json
 pnpm view @sagemath/sagejs-linux-arm64 version --json
-pnpm view @sagemath/sagejs-macos-arm64 version --json
-pnpm view @sagemath/sagejs-windows-x64 version --json
+pnpm view @sagemath/sagejs-darwin-arm64 version --json
+pnpm view @sagemath/sagejs-win32-x64 version --json
 ```
 
 In fresh CommonJS and ESM projects, create an embedded kernel and evaluate at
@@ -507,12 +530,20 @@ budgets remain exclusive.
 The current workflows prove a great deal, but the release interface should be
 simpler and faster:
 
-- Add a coordinator which runs the four cached hosts concurrently, streams
-  stage progress, records durations, and emits one source-bound receipt.
+- Extend the existing `release:coordinate` / `release:run` checkpoints into a
+  single final campaign summary, including the numerical and reproduction
+  evidence collected by the existing specialized entry points.
 - Record native family and final-pack compile timings in the same learned timing
   store used by tests, so heterogeneous hosts can tune the two concurrency
   limits automatically without changing artifact identities.
 - Preflight Wasm/browser release workloads on a persistent browser host.
+- Separate browser memory sampling from repeated timing samples. In the 0.8.0
+  campaign Chromium timing took about 61 minutes while awaiting repeated
+  user-agent memory measurements; dedicated authenticated memory gates already
+  run separately. Preserve those gates when changing the timing collector.
+- Cache gzip/Brotli payload reports by complete artifact, compression-tool and
+  policy identities. Reproduction must still compare every payload byte/hash;
+  identical payloads should not need repeated maximum-quality compression.
 - Preserve dependency caches across candidates, while keeping the final
   GitHub build clean and authenticated. Key native artifacts by the actual
   lowered source, dependency lock, compiler, ABI, and target—not by an
