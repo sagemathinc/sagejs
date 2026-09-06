@@ -383,6 +383,22 @@ the remote hosts reserved; the standalone boundary jobs have all finished.
 
 ## Still required
 
+F1 native checkpoint: the public ideal gate now admits the common supported
+finite-extension domain and dispatches only to
+`python:groebner-exact-gf-extension-v1`. Both proof settings verify complete
+transformation certificates before caching a basis. FGLM verification uses
+generic-v2 coefficients, and leading-monomial extraction routes through the
+ring's backend instead of assuming a packed FLINT polynomial.
+
+The public API matches all 108 independent Sage fixtures. Focused tests cover
+proof metadata, detached certificate verification, normal forms, equality,
+zero/unit ideals, elimination, quotient dimension, and FGLM in all three
+orders. All 15 tested Gröbner documentation examples pass. Strict Python
+passes 387 modules with zero errors. The lazy polynomial source budget is
+318000 bytes for the added exact dispatch boundary. The new module is an
+explicit browser lazy root, but the source-current F1 public Wasm matrix
+still needs rebuilding and execution. Geometry remains gated until F2.
+
 Concrete dispatch audit after integrating the core plan:
 
 - `ideal.py` constructs packed-v1 coefficients both for Buchberger dispatch

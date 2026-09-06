@@ -339,6 +339,7 @@
     "src/lib/sagejs/polynomial_algorithms/generic_groebner.py",
     "src/lib/sagejs/polynomial_algorithms/generic_sparse_mpoly.py",
     "src/lib/sagejs/polynomial_algorithms/extension_mpoly_backend.py",
+    "src/lib/sagejs/polynomial_algorithms/extension_ideal.py",
     "src/lib/sagejs/polynomial_algorithms/fq_mpoly_transfer.py",
     "src/lib/sagejs/polynomial_algorithms/field_capabilities.py",
     "src/lib/sagejs/polynomial_algorithms/univariate_field.py",

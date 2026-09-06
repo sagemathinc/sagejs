@@ -113,6 +113,7 @@
     "sagejs.number_fields.zeta_coefficients",
     "sagejs.polynomial_algorithms.exact_field",
     "sagejs.polynomial_algorithms.extension_mpoly_backend",
+    "sagejs.polynomial_algorithms.extension_ideal",
     "sagejs.polynomial_algorithms.generic_groebner",
     "sagejs.polynomial_algorithms.field_capabilities",
     "sagejs.polynomial_algorithms.univariate_field",

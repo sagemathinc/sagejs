@@ -46,8 +46,8 @@ def field_capability(
     """Describe one implemented domain, without claiming platform receipts.
 
     Generic v2 is an internal exact reference operation. Its availability is
-    intentionally independent of the still-closed extension ideal/geometry
-    gates. Univariate entries describe existing primitives, not qualification
+    intentionally independent of the still-closed extension geometry gate.
+    Univariate entries describe existing primitives, not qualification
     of extension-field decomposition or the entire geometry milestone.
     """
     if operation not in _OPERATIONS:
@@ -80,6 +80,14 @@ def field_capability(
             if operation == "groebner.packed-v1":
                 reason = "packed Groebner v1 accepts only QQ and prime GF(p)"
                 resource_envelope = "specialized packed v1 ABI limits"
+            elif operation == "ideal" and field.family == "finite-extension":
+                supported = field.characteristic <= COMMON_FQ_CHARACTERISTIC_MAX
+                reason = "exact generic-v2 ideals over resident extension polynomials"
+                resource_envelope = (
+                    "bounded generic-v2 coefficient and monomial operations"
+                )
+                if not supported:
+                    reason = "extension multivariate storage requires characteristic <= 4294967295"
         else:
             supported = True
             reason = "implemented exact coefficient operation"

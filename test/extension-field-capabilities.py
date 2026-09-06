@@ -37,7 +37,7 @@ for K in [GF(4, "a"), GF(9, "b")]:
     record = field_capability(K, "groebner.generic-v2", "lex")
     assert record["supported"]
     assert record["base_field_descriptor"]["family"] == "finite-extension"
-    assert not field_capability(K, "ideal", "lex")["supported"]
+    assert field_capability(K, "ideal", "lex")["supported"]
     rejected(lambda: require_field_operation(K, "geometry"))
     rejected(lambda: AffineSpace(K, 2))
     rejected(lambda: packed_v1_characteristic(K, "lex"))
@@ -58,16 +58,14 @@ for K in [GF(4, "a"), GF(9, "b")]:
             return ring
 
         def terms(self):
-            raise AssertionError("coefficient export happened before domain validation")
+            return [(K.gen(), (1, 0))]
 
-    class GuardedIdeal:
-        _ring = ring
+    assert (
+        _groebner_contract_ring(ring).descriptor()["abi"] == "sagejs.groebner.sparse/v2"
+    )
+    assert _pack_groebner_polynomial(GuardedPolynomial())[0][0].parent() is K
 
-    rejected(lambda: _groebner_contract_ring(ring))
-    rejected(lambda: _pack_groebner_polynomial(GuardedPolynomial()))
-    rejected(lambda: groebner_basis(GuardedIdeal()))
-
-    # Existing univariate primitives remain available without enabling ideals.
+    # Univariate primitives and exact ideals are available; geometry is separate.
     assert field_capability(K, "univariate.euclidean")["supported"]
     assert field_capability(K, "univariate.factor")["supported"]
     R = PolynomialRing(K, "t")

@@ -42,6 +42,43 @@ The implementation returns a reduced basis and verifies its exact change-of-
 basis certificate before exposing the result. It supports `QQ` and prime
 fields with `lex`, `deglex`, and `degrevlex` order on native and Wasm builds.
 
+## Finite extension coefficients
+
+Finite extensions use a separate exact-field implementation: coefficients
+remain elements of the chosen field, not integers modulo its cardinality.
+The polynomial storage uses FLINT extension resources, while Gröbner bases
+use bounded exact Buchberger with a verified transformation certificate.
+
+```sage test
+K = GF(9, "a")
+a = K.gen()
+R = PolynomialRing(K, ["x", "y"], order="degrevlex")
+x, y = R.gens()
+I = R.ideal(x^2 - a, y - x)
+assert I.normal_form(x^3, proof=True) == a * I.normal_form(x, proof=True)
+assert I.vector_space_dimension(proof=True) == 2
+G = I.fglm(proof=True)
+L = G.universe()
+u, v = L.gens()
+assert list(G) == [u - v, v^2 - a]
+assert I.groebner_basis_metadata()["backend"] == "python:groebner-exact-gf-extension-v1"
+```
+
+`lex`, `deglex`, and `degrevlex` are supported. `algorithm="auto"` and
+`algorithm="buchberger"` select the exact path; `flint` and `msolve` are
+rejected for extension coefficients rather than invoking their QQ/prime-field
+Gröbner ABI. `proof.polynomial()` supplies the default proof requirement, but
+both settings currently produce fully certified results on this path.
+
+The common native/Wasm storage envelope is prime characteristic at most
+4294967295, extension degree 2–1024, at most 64 variables, and at most 4096
+terms per transferred polynomial. The exact Gröbner algorithm also bounds
+pairs, coefficient operations, elapsed time, exponents, and certificate size;
+exceeding a bound raises an error, never returns a partial basis. This is a
+correctness baseline, not an msolve-speed claim. Isomorphic fields with
+different presentations are not silently identified. Number-field polynomial
+ideals are a separate follow-up.
+
 ## Ideals and finite quotient rings
 
 Polynomial sequences can be turned back into ideals, and ideals support exact

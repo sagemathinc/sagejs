@@ -96,6 +96,10 @@ def _groebner_contract() -> Any:
 
 
 def _groebner_contract_ring(ring: Any) -> Any:
+    if ring.base_ring()._kind == "GF_EXTENSION":
+        from sagejs.polynomial_algorithms.extension_ideal import contract_ring
+
+        return contract_ring(ring)
     from sagejs.polynomial_algorithms.field_capabilities import packed_v1_characteristic
 
     characteristic = packed_v1_characteristic(ring.base_ring(), ring._order)
@@ -103,6 +107,10 @@ def _groebner_contract_ring(ring: Any) -> Any:
 
 
 def _pack_groebner_polynomial(polynomial: Any) -> Any:
+    if polynomial.parent().base_ring()._kind == "GF_EXTENSION":
+        from sagejs.polynomial_algorithms.extension_ideal import sparse_terms
+
+        return sparse_terms(polynomial)
     from sagejs.polynomial_algorithms.field_capabilities import packed_v1_characteristic
 
     base = polynomial.parent().base_ring()
@@ -279,6 +287,12 @@ def groebner_basis(
     from sagejs.polynomial_algorithms.field_capabilities import require_field_operation
 
     require_field_operation(base, "ideal", ring._order, proof_required)
+    if base._kind == "GF_EXTENSION":
+        from sagejs.polynomial_algorithms.extension_ideal import (
+            groebner_basis as extension_groebner_basis,
+        )
+
+        return extension_groebner_basis(ideal, algorithm, proof_required)
     if base._kind == "GF":
         if algorithm not in ["auto", "msolve", "buchberger"]:
             raise ValueError("unknown prime-field Gröbner basis algorithm")
@@ -443,7 +457,7 @@ def leading_exponents(
     for polynomial in basis:
         leading = _element(
             ideal._ring,
-            runtime.flint_backend().mpolyLeadingMonomial(polynomial._native),
+            ideal._ring._backend.mpolyLeadingMonomial(polynomial._native),
         )
         exponents.append(tuple(leading.degree(variable) for variable in generators))
     return exponents
