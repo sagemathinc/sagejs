@@ -97,6 +97,26 @@ test("workspace helper parameters cannot be selected as a public ABI", async () 
     /workspace bundle parameters have no public host ABI/);
 });
 
+test("workspace schema resolution rejects module-level rebinding", async () => {
+  for (const replacement of [
+    "class Scratch:\n    pass\n",
+    "for Scratch in range(1):\n    pass\n",
+    "if True:\n    Scratch = 1\n",
+    "import math as Scratch\n",
+    "from math import sqrt as Scratch\n",
+    "from math import sqrt as NativeWorkspace\n",
+  ]) {
+    await assert.rejects(() => lowerSource(prefix + replacement + `
+@native
+def witness(value: int) -> int:
+    with NativeExactArena(8192, 1048576) as arena:
+        vector = arena.integer_vector(2, 0)
+        scratch = Scratch(vector, vector)
+        return update(scratch, value)
+`, "workspace.py", { functions: ["witness"] }), /workspace.*shadow/i);
+  }
+});
+
 test("workspace calls reject named and expanded arguments before erasure", async () => {
   for (const [construction, call] of [
     ["Scratch(vector, vector, left=vector)", "update(scratch, value)"],

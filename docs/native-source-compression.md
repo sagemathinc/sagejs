@@ -65,7 +65,11 @@ are private to native calls, not a public host ABI.
 
 Returning/storing a bundle, rebinding a field or an owner while borrowed,
 using it outside its lexical binding, and passing an incompatible schema are
-compile-time errors. Existing owner checks still apply after projection.
+compile-time errors. Schema names cannot be rebound by assignments, loops,
+context-manager aliases, imports or replacement definitions. Constructors and
+bundle helper calls require positional arguments without `*`/`**` expansion;
+named arguments are rejected, never silently discarded by flattening.
+Existing owner checks still apply after projection.
 Fallback construction retains owners and checks liveness on access; retaining
 a Python bundle never reopens an expired arena.
 
@@ -245,3 +249,53 @@ the growth has not been causally attributed to source compression. No packaging
 limit is raised. Alongside the reproduced native QQ timing failures and pending
 native platform matrix, this leaves full release qualification open despite the
 passing feature, allocation, controlled timing and exact mathematical tests.
+
+#### Final semantics review and payload attribution (2026-09-06)
+
+The final review reproduced and closed three rejection gaps: loop/context
+bindings and module-level rebinding could shadow workspace schemas; call
+flattening could discard keyword metadata. Both are Python semantic errors,
+not optimization opportunities. The 19-test fixed-slice/workspace/resource/
+sanitizer/WASI suite passes with these guards. The strict Python check passes
+for all 247 selected modules. Re-lowering the full staged program with the
+`2dde994e` prepass and the final prepass gives identical executable IR across
+all 101 functions after removing provenance only, with SHA-256
+`1f6f6ea2854749156ebdbca72977a530943c30ffb4b54c6e8ad82e6ee20b425d`.
+This comparison retains call arguments, ownership operations and allocation
+operations; it does not normalize away mathematical or resource differences.
+
+For browser attribution, rebuild `scripts/build-module-cache.cjs` and
+`scripts/build-lazy-module-cache.cjs` in an isolated checkout of the immediate
+pre-feature commit `fdd7ae63420cc7664b440788598e76f5f86865ef`. The self-hosted
+compiler/runtime sources are unchanged across this comparison; module caches
+are rebuilt against each checkout's Python sources. Using gzip level 9 and
+Brotli quality 11/text mode on the resulting `dist/lazy-modules.json` gives:
+
+| Lazy bundle | Raw bytes | Gzip bytes | Brotli bytes |
+| --- | ---: | ---: | ---: |
+| Immediate parent | 46,513,997 | 4,229,200 | 2,511,883 |
+| Source-compression candidate | 46,539,295 | 4,231,713 | 2,513,447 |
+| Delta | +25,298 | +2,513 | +1,564 |
+
+There are no added/removed module entries; only `sagejs.native` changes.
+Parent bundle SHA-256:
+`6fe9f07ad6c87bcbe986b76749dc4caea3e2b9ee02636c3b552ec3de94a50a05`;
+candidate:
+`6258be7a1035fcf7b702f4d04dd9d8d0d99e6182a9250beecd94df1c1e91e928`.
+This is a component comparison, **not** an authenticated full parent Wasm build.
+It rules out this lazy-bundle feature delta as the explanation for the roughly
+515 KB combined gzip overrun, without assigning all other package growth.
+
+The release branch also predates reviewed mainline packaging policy:
+`5aaf6360` already sets eager-core limits to 15,300,000 gzip / 8,460,000 Brotli
+after the reviewed traitlets/IPython integration. The measured package fits
+those limits, but this task does not copy a newer budget into its branch or
+turn that observation into a passing branch release gate. Integration must
+reconcile the applicable reviewed policy explicitly.
+
+[Staged CI run 33992902179](https://github.com/sagemathinc/sagejs/actions/runs/33992902179)
+independently reproduced the payload failure after successfully building the
+artifact; its browser steps were skipped, not passed. Native jobs remained
+queued behind the routine runner at this audit. Shared-host qualification was
+requested on Discussion 104 without taking another lane's machines. Those
+platform and release blockers remain outside the passing focused evidence.

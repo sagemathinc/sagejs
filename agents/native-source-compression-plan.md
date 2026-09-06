@@ -22,6 +22,14 @@ exceeds its existing eager-core gzip/Brotli limits; attribution and release
 approval remain open, and those limits have not been raised.
 See `docs/native-source-compression.md` for the contract and evidence.
 
+Final semantics audit (2026-09-06): 19 focused feature/resource/sanitizer/WASI
+tests pass after rejecting schema rebinding in function and module scopes and
+named/expanded workspace arguments. All 101 staged functions retain identical
+executable IR after these validation fixes. The rebuilt immediate-parent lazy
+bundle differs only in `sagejs.native`: +2,513 gzip and +1,564 Brotli bytes.
+That component delta does not explain the combined browser gate failure.
+Native platform jobs remain queued; full release qualification is not complete.
+
 Goal: implement and qualify fixed-length slice assignment, then borrowed
 workspace bundles; migrate real mathematical source with no measured speed
 regression. These are reusable language features, not cubic-name intrinsics.

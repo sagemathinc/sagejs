@@ -53,15 +53,42 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
       else if (target[key]) checkShadow(target[key]);
     }
   };
-  if (schemas.size) {
-    for (const statement of topLevel) {
-      if (kind(statement) === "AST_SimpleStatement") {
-        const assignment = statement.body;
-        checkShadow(kind(assignment) === "AST_Assign" ? assignment.left : assignment?.target);
+  const checkBindings = node => {
+    if (kind(node) === "AST_Assign") checkShadow(node.left);
+    if (kind(node) === "AST_AnnotatedAssignment") checkShadow(node.target);
+    if (kind(node) === "AST_ForIn") checkShadow(node.init);
+    if (kind(node) === "AST_With") list(node.clauses).forEach(clause => checkShadow(clause.alias));
+    if (kind(node) === "AST_Import") {
+      checkShadow(node.alias);
+      for (const arg of list(node.argnames)) {
+        const binding = name(arg.alias) || name(arg);
+        const nativeBaseImport = node.key === "sagejs.native" && !node.level &&
+          name(arg) === "NativeWorkspace" && binding === "NativeWorkspace";
+        requireThat(nativeBaseImport || (!schemas.has(binding) && binding !== "NativeWorkspace"),
+          filename, "workspace schema names cannot be shadowed by imports");
       }
     }
-    for (const fn of functions) requireThat(!schemas.has(name(fn.name)), filename,
-      "workspace schema names cannot be shadowed by functions");
+  };
+  const visitChildren = (node, visit) => {
+    for (const [key, value] of Object.entries(node)) {
+      if (!["start", "end", "scope", "parent_scope", "thedef"].includes(key) && value && typeof value === "object") {
+        if (Array.isArray(value)) value.forEach(visit);
+        else if (kind(value)?.startsWith("AST_")) visit(value);
+      }
+    }
+  };
+  if (schemas.size) {
+    const visitModule = node => {
+      if (!node || typeof node !== "object") return;
+      if (["AST_Function", "AST_Class"].includes(kind(node))) {
+        requireThat(isBundleClass(node) || (!schemas.has(name(node.name)) && name(node.name) !== "NativeWorkspace"),
+          filename, "workspace schema names cannot be shadowed by definitions");
+        return; // Class/function bodies are separate Python binding scopes.
+      }
+      checkBindings(node);
+      visitChildren(node, visitModule);
+    };
+    topLevel.forEach(visitModule);
   }
   const contracts = new Map(functions.map(fn => [name(fn.name), list(fn.argnames).map(arg =>
     ({ arg, schema: schemas.get(name(arg.annotation)) }))]));
@@ -79,21 +106,13 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
     // Generated flattened names must not capture a user local or parameter.
     const visitNames = node => {
       if (!node || typeof node !== "object") return;
-      if (kind(node) === "AST_Assign") checkShadow(node.left);
-      if (kind(node) === "AST_AnnotatedAssignment") checkShadow(node.target);
       // Python loop indices and context-manager aliases are local bindings,
       // just like assignment targets. They must not turn a runtime value into
       // a compile-time schema merely because the spelling matches its name.
-      if (kind(node) === "AST_ForIn") checkShadow(node.init);
-      if (kind(node) === "AST_With") list(node.clauses).forEach(clause => checkShadow(clause.alias));
+      checkBindings(node);
       if (typeof node.name === "string") requireThat(!node.name.startsWith("sagejs_workspace_"),
         filename, "sagejs_workspace_ is reserved for flattened workspace bindings");
-      for (const [key, value] of Object.entries(node)) {
-        if (!["start", "end", "scope", "parent_scope", "thedef"].includes(key) && value && typeof value === "object") {
-          if (Array.isArray(value)) value.forEach(visitNames);
-          else if (kind(value)?.startsWith("AST_")) visitNames(value);
-        }
-      }
+      visitChildren(node, visitNames);
     };
     visitNames(fn);
     for (const { arg, schema } of contracts.get(name(fn.name))) {
