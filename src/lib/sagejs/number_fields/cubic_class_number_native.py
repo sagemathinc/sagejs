@@ -1439,19 +1439,24 @@ def _cubic_dyadic_divide_positive(
     denominator_upper: int,
     scale: int,
 ) -> tuple[int, int]:
+    """Enclose a quotient directly when the denominator interval is positive.
+
+    Inputs are ordered intervals at a positive common scale. The quotient is
+    increasing in its numerator; its denominator monotonicity depends on the
+    numerator's sign. Round the two exact extrema outward once, rather than
+    first rounding a reciprocal and then multiplying interval endpoints.
+    """
     if denominator_lower <= 0 or denominator_upper < denominator_lower:
         return (1, 0)
-    reciprocal_lower = (scale * scale) // denominator_upper
-    reciprocal_upper = _cubic_dyadic_ceiling_quotient(
-        scale * scale,
-        denominator_lower,
-    )
-    return _cubic_dyadic_multiply(
-        numerator_lower,
-        numerator_upper,
-        reciprocal_lower,
-        reciprocal_upper,
-        scale,
+    lower_denominator = denominator_upper
+    if numerator_lower < 0:
+        lower_denominator = denominator_lower
+    upper_denominator = denominator_lower
+    if numerator_upper < 0:
+        upper_denominator = denominator_upper
+    return (
+        (numerator_lower * scale) // lower_denominator,
+        _cubic_dyadic_ceiling_quotient(numerator_upper * scale, upper_denominator),
     )
 
 

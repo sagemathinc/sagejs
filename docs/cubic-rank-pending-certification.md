@@ -114,8 +114,21 @@ the pinned corpus, large-unit cases, closure/resource checks, and 2,492 exact
 root comparisons per backend and CPython. The complete production build,
 strict Python checks and architecture check pass. The parallel-workflow check
 still fails on the inherited 395-live-task registry ambiguity; no unrelated
-task contracts were modified. Controlled timings, the full current-source
-public corpus and newly registered unseen neighbors remain release gates.
+task contracts were modified.
+
+The additional local public replay at exact commit `0ad63e092` now passes all
+1,000 frozen tuning fields: every native receipt authenticates, every ordinary
+exact conditional-GRH replay succeeds, and all class numbers and invariants
+agree with LMFDB and the saved PARI census. The original driver and complete
+per-batch evidence are in the
+[immutable evidence release](https://github.com/sagemathinc/sagejs/releases/tag/cubic-public-replay-0ad63e092-20260906).
+Archive SHA-256:
+`027f80b1c3ec1e3dc2b40bcfece0e094219250d332c338a9427a38a232398025`;
+report SHA-256:
+`da4d0f05013894ebf5d3c0a26e7ce4420755245bd29595393041f01474e50610`.
+This is additional local correctness evidence, not an `opt` census/timing
+qualification. Controlled timings and newly registered unseen neighbors
+remain gates; later source changes require their own validation.
 
 ## Generated-code and resource comparison
 

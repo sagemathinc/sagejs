@@ -121,7 +121,10 @@ test("the complete cubic closure is one direct fmpz program", {
   // one private helper; proposal scaling adds one private implementation.
   // Every node remains reachable from the cubic root.
   assert.equal(functions.size, 106);
-  assert.equal(edges.length, 246);
+  // Direct quotient extrema remove the reciprocal/product helper edge.
+  assert.equal(edges.length, 245);
+  assert.deepEqual(ir.callGraph._cubic_dyadic_divide_positive,
+    ["_cubic_dyadic_ceiling_quotient"]);
   for (const caller of ["_cubic_complex_root_approximations", "_cubic_reconstruct_archimedean_unit_at_scale"]) {
     assert.ok(ir.callGraph[caller].includes("_cubic_real_root_interval"));
   }

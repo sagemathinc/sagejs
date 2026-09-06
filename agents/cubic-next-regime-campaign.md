@@ -68,6 +68,13 @@ review only with accurately scoped validation claims.
   exact discarded row that caused the earlier smaller-prefix experiment to
   lose a class-number-$40$ field. Fixed-effort prototype coverage improves from
   940/1012 to 948/1012 without lost acceptances; this is not a public census.
+  The integrated `0ad63e092` additionally passes all 1,000 local public
+  authenticated receipts and independent exact replays; immutable evidence is
+  linked from that argument. Controlled `opt` timing remains separate.
+- [Direct interval division](../docs/cubic-direct-interval-division.md) removes
+  reciprocal rounding while giving sharper exact bounds. Its diagnostic
+  survey preserves 948/1012 fixed-effort coverage; integrated qualification
+  is in progress. No current-source PARI win is established.
 - [Twenty fresh neighbors](../docs/cubic-rank-pending-neighbor-protocol.md)
   are selected and excluded from development execution. Freeze the candidate
   before running them; retain all outcomes. Selection alone is not validation.
