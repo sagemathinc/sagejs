@@ -62,17 +62,11 @@ def _require_supported_geometry_field(base: Any) -> Any:
     Geometry deliberately asks only public field questions. Extension-field
     representations and backend tags never enter this module.
     """
-    if base is sage.QQ:
-        return base
-    if hasattr(base, "is_field") and not bool(base.is_field()):
-        raise TypeError("the base ring of a scheme must be a field")
-    if hasattr(base, "is_prime_field") and bool(base.is_prime_field()):
-        return base
-    raise NotImplementedError(
-        "algebraic geometry currently supports QQ and prime GF(p); "
-        "finite extensions and number fields are planned in "
-        "agents/no-singular-extension-fields-plan.md"
+    capabilities = __import__(
+        "sagejs.polynomial_algorithms.field_capabilities",
+        fromlist=["require_field_operation"],
     )
+    return capabilities.require_field_operation(base, "geometry")
 
 
 def _construction_arguments(

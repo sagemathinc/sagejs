@@ -41,7 +41,9 @@ sample_ideal = R.ideal((u-1)^2*(u+1), v)
       sage.evaluate("AffineSpace(GF(4, 'a'), 2)"),
       (error) => {
         assert.equal(error.name, "NotImplementedError");
-        assert.match(error.message, /finite extensions and number fields/);
+        assert.match(error.message, /extension domains await/);
+        assert.match(error.message, /operation=geometry/);
+        assert.match(error.message, /target=wasm/);
         return true;
       },
     );
