@@ -70,6 +70,14 @@ Set `SAGEJS_NUMERICAL_PRODUCT_ROOT` to that product directory and
 `SAGEJS_NUMERICAL_RUNTIME_REQUIRED=1`; use the required native dependency
 catalog as in CI. This command is not a toolchain provisioning substitute.
 
+Produce that canonical handoff on Linux with
+`pnpm release:run --candidate FULL_SHA --profile canonical`. It checkpoints the
+authenticated numerical build, browser/runtime build, and one public root pack
+separately. Its outputs are the numerical product directory, browser `dist`,
+and root tarball described above. Copy those exact outputs, not independently
+packed roots, to the native consumers. Existing Wasm source/toolchain caches
+are used; source-current verification remains mandatory.
+
 Use `--list` to inspect commands and gate classes without running them, or
 `--stage integration,native` to diagnose selected stages. A partial run is
 **not** a complete release qualification. `--fresh` reruns selected stages.

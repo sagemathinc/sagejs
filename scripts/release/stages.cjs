@@ -11,6 +11,21 @@ function plan(profile = "native", selected) {
   const target = targetForHost();
   if (!target) throw new Error("unsupported release host");
   const all = [
+    stage("numerical-product", "integrity", [
+      ["node", "packages/wasm-toolchain/scripts/toolchain.cjs", "prepare"],
+      ["node", "packages/wasm-toolchain/scripts/probe.cjs"],
+      ["node", "packages/flint-wasm/numerical/scripts/build-all.cjs"],
+      ["node", "scripts/numerical-product.cjs", "publish", "--output", "build/authenticated-numerical-product"],
+      ["node", "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs", "--require-qualified"],
+    ], { inputs: [], outputs: ["build/authenticated-numerical-product"] }),
+    stage("public-build", "build", [["pnpm", "build"], ["pnpm", "--dir", "packages/flint-wasm", "build"],
+      ["node", "scripts/numerical-product.cjs", "validate-installed"],
+      ["node", "packages/flint-wasm/scripts/production-receipt.cjs", "validate"],
+      ["node", "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs", "--dist", "packages/flint-wasm/dist",
+        "--budget", "bench/browser-wasm-budget.json", "--require-baseline"]],
+    { inputs: ["build/authenticated-numerical-product"], outputs: ["packages/flint-wasm/dist", "dist"] }),
+    stage("public-pack", "packaging", [["node", "scripts/release/pack-root.cjs"]],
+      { inputs: ["dist", "packages/flint-wasm/dist"], outputs: ["build/release/npm/sagejs.tgz"] }),
     stage("metadata", "integrity", [["pnpm", "test:release"], ["pnpm", "test:installer"]], { inputs: [], timeoutSeconds: 300 }),
     stage("bootstrap", "build", [["pnpm", "bootstrap", "--without-sea"]],
       { inputs: ["build/authenticated-numerical-product"], outputs: runtime }),
@@ -50,6 +65,7 @@ function plan(profile = "native", selected) {
       return entry;
     });
   }
+  if (profile === "canonical") return ["numerical-product", "public-build", "public-pack"].map((id) => all.find((item) => item.id === id));
   if (profile !== "native") throw new Error(`unknown profile ${profile}`);
   // Package/install first: a broken consumer install must not wait for soaks.
   const order = ["metadata", "bootstrap", "sea", "npm", "package-install", "startup", "strict",
