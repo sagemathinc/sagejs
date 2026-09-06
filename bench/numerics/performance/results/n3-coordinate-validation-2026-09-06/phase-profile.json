@@ -1,0 +1,174 @@
+{
+  "classification": "instrumented-development-profile",
+  "records": [
+    {
+      "size": 16,
+      "samples_ms": [
+        {
+          "factorization": 9.438514709472656,
+          "validation": 76.33376121520996,
+          "result": 39.57080841064453,
+          "other": 12.101411819458008,
+          "total": 137.44449615478516
+        },
+        {
+          "factorization": 9.550094604492188,
+          "validation": 77.45933532714844,
+          "result": 39.85309600830078,
+          "other": 12.317180633544922,
+          "total": 139.17970657348633
+        },
+        {
+          "factorization": 8.863449096679688,
+          "validation": 75.042724609375,
+          "result": 38.03277015686035,
+          "other": 12.391328811645508,
+          "total": 134.33027267456055
+        },
+        {
+          "factorization": 8.85772705078125,
+          "validation": 75.06299018859863,
+          "result": 36.2238883972168,
+          "other": 11.339187622070312,
+          "total": 131.483793258667
+        },
+        {
+          "factorization": 10.92529296875,
+          "validation": 75.84261894226074,
+          "result": 41.49675369262695,
+          "other": 11.631488800048828,
+          "total": 139.89615440368652
+        },
+        {
+          "factorization": 10.093450546264648,
+          "validation": 76.09200477600098,
+          "result": 40.45820236206055,
+          "other": 12.84027099609375,
+          "total": 139.48392868041992
+        },
+        {
+          "factorization": 10.11800765991211,
+          "validation": 80.57641983032227,
+          "result": 36.032915115356445,
+          "other": 13.052225112915039,
+          "total": 139.77956771850586
+        }
+      ]
+    },
+    {
+      "size": 32,
+      "samples_ms": [
+        {
+          "factorization": 50.464630126953125,
+          "validation": 432.70206451416016,
+          "result": 119.27652359008789,
+          "other": 28.71561050415039,
+          "total": 631.1588287353516
+        },
+        {
+          "factorization": 52.867889404296875,
+          "validation": 445.2800750732422,
+          "result": 115.84019660949707,
+          "other": 29.189586639404297,
+          "total": 643.1777477264404
+        },
+        {
+          "factorization": 50.83799362182617,
+          "validation": 436.77759170532227,
+          "result": 115.12064933776855,
+          "other": 28.706073760986328,
+          "total": 631.4423084259033
+        },
+        {
+          "factorization": 51.12862586975098,
+          "validation": 436.70129776000977,
+          "result": 113.25597763061523,
+          "other": 28.432607650756836,
+          "total": 629.5185089111328
+        },
+        {
+          "factorization": 54.85796928405762,
+          "validation": 442.5773620605469,
+          "result": 118.74079704284668,
+          "other": 29.15167808532715,
+          "total": 645.3278064727783
+        },
+        {
+          "factorization": 59.647560119628906,
+          "validation": 436.30027770996094,
+          "result": 112.86640167236328,
+          "other": 28.432130813598633,
+          "total": 637.2463703155518
+        },
+        {
+          "factorization": 49.77917671203613,
+          "validation": 437.62946128845215,
+          "result": 117.85411834716797,
+          "other": 28.823375701904297,
+          "total": 634.0861320495605
+        }
+      ]
+    }
+  ],
+  "qualification": false,
+  "inputs": [
+    {
+      "path": "bench/numerics/performance/dense-phase-profile.py",
+      "sha256": "683efa83748aa3e00b2a0efceed9df6d530165d84ac767bf30fc5417b766de59"
+    },
+    {
+      "path": "bench/numerics/performance/dense-phase-profile.cjs",
+      "sha256": "5c7cbc0802d2b7e56164929575be551f556e6c5850f6cc3a3b04f58ae0fa2596"
+    },
+    {
+      "path": "dist/compiler/compiler.js",
+      "sha256": "8e0b8f08b6e9e835445fb40b6ec6bed143538b59f1c775abc5d5452dc2f7865b"
+    },
+    {
+      "path": "dist/compiler/baselib-plain-pretty.js",
+      "sha256": "161557ac886551f2b44921a71dfa1e72ffc9e3c5919eb79beea8f846fec7d006"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/linear_algebra/operations.py",
+      "sha256": "dc75c8e9767272c2d4901ae5d4145fa4e1aa200a8f0ed9c46d4c3fc63d12dfc1"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/linear_algebra/factorizations.py",
+      "sha256": "0d43e715ad8c126a6e5ce8fff45efa0f492478cc7be7e77818ceb367f87f5977"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/linear_algebra/validation.py",
+      "sha256": "1e457c507b8dd2071ff0dbd9f7c41feed1fdbbbfd4eb56e2aad028c8b8ac3658"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/linear_algebra/storage.py",
+      "sha256": "61f7852ed5061912c722e7f7f4bf80f347e9e52a577b16234df9fd0f40a07e78"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/model.py",
+      "sha256": "eba2fbcfb987463f420078af04141de3da67829b155e855846b865a43546b726"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/trace.py",
+      "sha256": "a8580beee935365c3ea2379f08118dbbdb5c0b5ab158c140226a460a3a7646af"
+    }
+  ],
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.8.1",
+    "cpu": "AMD EPYC 7B13"
+  },
+  "policy": {
+    "warmups": 3,
+    "samples": 7,
+    "trace": "none",
+    "runtime": "ordinary Sage.js",
+    "limitations": [
+      "instrumentation overhead",
+      "local diagnostic only",
+      "no startup, memory, browser or platform qualification"
+    ],
+    "other": "public-call time outside the three wrapped phases; excludes preconstructed matrix input"
+  }
+}

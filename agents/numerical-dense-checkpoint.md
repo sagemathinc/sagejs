@@ -179,3 +179,20 @@ twelve disabled/floating/stale/missing routes across Chromium, Firefox and
 WebKit; its source/pack hashes and query records are retained with the local
 reconstruction report. This closes the local packaging checks, not remote
 qualification, npm/SEA verification or public dense acceleration.
+
+## Exact coordinate-row validation shortcut
+
+`perf/numerical-permutation-validation` proves zero/coordinate rows directly
+from immutable finite entries before simplifying independent products. It keeps
+the original callback schedule and general-dot arithmetic, including positive
+zero normalization. The [paired public LU development report](../bench/numerics/performance/results/n3-coordinate-validation-2026-09-06/README.md)
+records 32-square ordinary Sage.js calls improving from 964 to 632 ms with
+identical factors, validation, status and counters. This is still a performance
+gap, not N3 acceptance. Focused adversarial/cancellation tests, source-level
+linear algebra, strict Python and architecture pass. The refreshed lazy bundle
+passes all twelve public source-browser routes across Chromium, Firefox and
+WebKit, including the coordinate/cancellation regressions. Remote and npm/SEA
+qualification remain pending. No compiled default is promoted. A retained
+phase profile attributes most remaining 32-square LU time to independent
+validation (437 ms) and result construction (116 ms), rather than factorization
+(51 ms); these instrumented local medians are diagnostic, not qualification.

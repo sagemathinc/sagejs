@@ -57,6 +57,51 @@ assert _independent_product(
     DenseMatrix(1, 1, [-0.0]), DenseMatrix(1, 1, [1.0])
 ).entries == (0.0,)
 
+# Exact coordinate/zero rows, repeated selections, and near misses. The
+# independent oracle still forms every rounded product and calls math.fsum.
+right = DenseMatrix(
+    3,
+    4,
+    [1e308, -0.0, 5e-324, -1e308, -1e308, 0.0, -5e-324, 1e308, 1.0, -0.0, 3.0, 0.0],
+)
+for values in (
+    [0.0, 0.0, 0.0],
+    [-0.0, 1.0, 0.0],
+    [1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0],
+    [1.0, 1.0, 0.0],
+    [-1.0, 0.0, 0.0],
+    [1.0 + 2.0**-52, 0.0, 0.0],
+    [1.0, 5e-324, 0.0],
+):
+    left = DenseMatrix(1, 3, values)
+    actual = _independent_product(left, right)
+    expected = reference(left, right)
+    assert actual.entries == expected.entries
+    assert [math.copysign(1.0, x) for x in actual.entries] == [
+        math.copysign(1.0, x) for x in expected.entries
+    ]
+
+selection = DenseMatrix(
+    4, 3, [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0]
+)
+for stop in range(1, 21):
+    for function in (reference, _independent_product):
+        calls = [0]
+
+        def cancel_selection():
+            calls[0] += 1
+            if calls[0] == stop:
+                raise RuntimeError("cancelled selection")
+
+        try:
+            function(selection, right, check=cancel_selection)
+        except RuntimeError as error:
+            assert str(error) == "cancelled selection"
+        else:
+            raise AssertionError("coordinate-row cancellation was ignored")
+        assert calls[0] == stop
+
 for stop in range(1, 9):
     for function in (reference, _independent_product):
         calls = [0]

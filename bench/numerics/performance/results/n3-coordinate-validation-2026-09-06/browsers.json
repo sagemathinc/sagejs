@@ -1,0 +1,410 @@
+{
+  "schema": "sagejs.prepared-root-browser-development/v1",
+  "classification": "source-integration-development-not-release-qualification",
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.8.1",
+    "cpu": "AMD EPYC 7B13",
+    "load_average": [
+      4.04,
+      3.24,
+      2.14
+    ]
+  },
+  "sources": [
+    {
+      "path": "dist/compiler/compiler.js",
+      "sha256": "8e0b8f08b6e9e835445fb40b6ec6bed143538b59f1c775abc5d5452dc2f7865b"
+    },
+    {
+      "path": "dist/compiler/baselib-plain-pretty.js",
+      "sha256": "161557ac886551f2b44921a71dfa1e72ffc9e3c5919eb79beea8f846fec7d006"
+    },
+    {
+      "path": "dist/lazy-modules.json",
+      "sha256": "0325c5d1644c1b4367e9a92e07006d6322bcbdb6945fe5efee7e350c63ffcd93"
+    },
+    {
+      "path": "packages/flint-wasm/evaluator.mjs",
+      "sha256": "710496bdd9f374d3237ae954103a8042f6d9389393113584f0d9b8d5ea392f36"
+    },
+    {
+      "path": "packages/flint-wasm/compiler-worker.mjs",
+      "sha256": "853add4c734a8020d87a28d44364f24d7a168776552188b373daeedb6d9ab4c0"
+    },
+    {
+      "path": "packages/flint-wasm/floating-kernels.mjs",
+      "sha256": "5b37d13f05395a36034aa55348f661233ee9ab65953bbdfbbf3945ab634d8baa"
+    },
+    {
+      "path": "packages/flint-wasm/dist/flint-factor.wasm",
+      "sha256": "5d412bb42a4f4b9d45f0ac1db2cc6d5043ea7840ad44e0ecca8ae5fb94354d56"
+    },
+    {
+      "path": "tools/native-kernel/wasm-pack-loader.mjs",
+      "sha256": "0e01eac8d0c2a53b3a01f4b441be31206969ed8845f230905f26e5b7c34c5a66"
+    },
+    {
+      "path": "test/numerics/performance/prepared-browser.cjs",
+      "sha256": "2d66efd0299cd8f4e1ff8a16a62c7a17bfc96c31490241e8265cfa7e40e89b54"
+    },
+    {
+      "path": "test/numerics/linear_algebra/validation-overflow.py",
+      "sha256": "5fab0de6b8de8ca6df5d464669a8e3ccc7710e57ce9c99117c92e84f965dd092"
+    },
+    {
+      "path": "test/numerics/linear_algebra/validation-access.py",
+      "sha256": "1f442d82a2eefac3541af375456c78d9e2e1c05693546f4bc942f238d9584ec0"
+    },
+    {
+      "path": "src/lib/sagejs/numerics/linear_algebra/validation.py",
+      "sha256": "1e457c507b8dd2071ff0dbd9f7c41feed1fdbbbfd4eb56e2aad028c8b8ac3658"
+    }
+  ],
+  "generated_resources": [
+    {
+      "path": "stdlib.json",
+      "sha256": "0c8bf438fbe434c0df06f627c5f5734ced71bec91ba3513851b160545b662532"
+    },
+    {
+      "path": "compiler-frontend.mjs",
+      "sha256": "178bd06ad870b5e5bb69e5a106732c1bf079cc6f652c097506159eb7293322d5"
+    },
+    {
+      "path": "floating/index.json",
+      "sha256": "2a1814d339609ee3411f471e500369c8c4e0a5747ebc1955509f0b49e5b35e86"
+    }
+  ],
+  "workload_sha256": "c637c61233c96c7f65b8d6b56676539ff1accf409ca2fe399836c8c7291818be",
+  "pack": {
+    "domain": "float64",
+    "packKey": "383ad94c1ee151dd2dac28ad7cb8ff5a84775f69d6519616f7168783f6bb6cc6",
+    "identity": {
+      "schema": "sagejs.native-wasm-pack-identity/v2",
+      "domain": "float64",
+      "modules": [
+        {
+          "logicalSource": "sagejs/numerics/_evaluation_core.py",
+          "sourceHash": "94cce18b09a7b6e7ad37ed84eb66a2d41e39e1e75001fbb6a76f6bb7684f2c06",
+          "sourceDependencies": [],
+          "abiHash": "e76e3283f7f992eeb2abb2635c14efedcf60ae070fe93c7efdc0bbe0c5dfecc1",
+          "coreHash": "95c6a13e509414f05ecee406275e961623787723b70f1e3df5a14c3c18f88869",
+          "oracleIdentity": "07090934c2145f3157fef593d8309b619b54d3980948d84f46fc4f0f82de5aef",
+          "identityHash": "840335ae89c021f3414345d21f00521a9ca6c8ba632b804e40ac5c41b1de7c1c",
+          "foreignDeclarations": [],
+          "functions": [
+            "evaluate_program"
+          ],
+          "automaticSelections": {}
+        },
+        {
+          "logicalSource": "sagejs/numerics/_evaluation_root.py",
+          "sourceHash": "fb61941b8a998718c0ce065efc38256d8c93c45c45d9f03fcb6671c86f93a0b1",
+          "sourceDependencies": [
+            {
+              "logicalSource": "sagejs/numerics/_evaluation_core.py",
+              "sourceHash": "94cce18b09a7b6e7ad37ed84eb66a2d41e39e1e75001fbb6a76f6bb7684f2c06"
+            }
+          ],
+          "abiHash": "9224d845d67764e3a1fc17ef96958df2d6254e532b0187b82dccbca4695d6517",
+          "coreHash": "0406587091d95a02755221920e9eacea0826d25ba70d4099e94947f911253b16",
+          "oracleIdentity": "dc419df511f082a93cc631b00632bf9bfc33b8eacf21eff817ab1ebc745b2377",
+          "identityHash": "5ee90e30a69aa3b4d817122f5286cab15d257adca82299084589a536140de85b",
+          "foreignDeclarations": [],
+          "functions": [
+            "bisect_program"
+          ],
+          "automaticSelections": {}
+        },
+        {
+          "logicalSource": "sagejs/numerics/_packed_sum.py",
+          "sourceHash": "a5e1d35d059af0c7f49e812ccfead7ab3f83fff784e6b836d5580fda8fcacdd7",
+          "sourceDependencies": [],
+          "abiHash": "b95ee086a9fa6edfa5bb662f8b8b0cce0cdfe6603b26e991a6d38b355363f3eb",
+          "coreHash": "cfdf55b21c45b96a8be99d19b3f52dd1c080610c286b37c5507bf64cdae6502f",
+          "oracleIdentity": "e7923c270965c89521fdb08334390d98efaef6ec744d2e1f198584454f1a77a9",
+          "identityHash": "42c57a25b7e947498a09fc2d7e17667dbd773f70292d04e5a6c90bd71174b030",
+          "foreignDeclarations": [],
+          "functions": [
+            "finite_sum"
+          ],
+          "automaticSelections": {}
+        },
+        {
+          "logicalSource": "sagejs/numerics/statistics/_packed_centered.py",
+          "sourceHash": "c7f9fb23ca0dc5839a3da27b5afc3b5f25d5e87006e6b13569f7bedd46a68f32",
+          "sourceDependencies": [],
+          "abiHash": "80c1dfe047928b327ef73d02f447a9e3c860d80d10fec1ad67e363ee71ea888f",
+          "coreHash": "25308db5e402520a4386414d8e674680ec28947fd416f1206f045e14f2692c2b",
+          "oracleIdentity": "777c7a196fe75d55f9d995a91571a44bfaf9c49534829a07f684aa544465a5b5",
+          "identityHash": "4d39cf6234b75a960ac9b6790cf08baf7ad15b4fb926f700e7a45238391bcdf6",
+          "foreignDeclarations": [],
+          "functions": [
+            "prepare_centered",
+            "prepare_products",
+            "prepare_summary_checks"
+          ],
+          "automaticSelections": {}
+        }
+      ],
+      "resourceAdapters": [],
+      "ownershipAdapter": null
+    },
+    "status": "built",
+    "modules": [
+      "840335ae89c021f3414345d21f00521a9ca6c8ba632b804e40ac5c41b1de7c1c",
+      "5ee90e30a69aa3b4d817122f5286cab15d257adca82299084589a536140de85b",
+      "42c57a25b7e947498a09fc2d7e17667dbd773f70292d04e5a6c90bd71174b030",
+      "4d39cf6234b75a960ac9b6790cf08baf7ad15b4fb926f700e7a45238391bcdf6"
+    ],
+    "requiredResourceAdapters": [],
+    "ownershipAdapter": null,
+    "asset": "packs/float64/383ad94c1ee151dd2dac28ad7cb8ff5a84775f69d6519616f7168783f6bb6cc6.wasm",
+    "bytes": 64122,
+    "sha256": "e90108db2a22f78e74d64ba477f1eb11de6a6dc07ee5bab2ff09d2d9c0aa2db1",
+    "exports": [
+      "sagejs_wasm_allocate_m_42c57a25b7e94749",
+      "sagejs_wasm_allocate_m_4d39cf6234b75a96",
+      "sagejs_wasm_allocate_m_5ee90e30a69aa3b4",
+      "sagejs_wasm_allocate_m_840335ae89c021f3",
+      "sagejs_wasm_call_m_42c57a25b7e94749_finite_sum",
+      "sagejs_wasm_call_m_4d39cf6234b75a96_prepare_centered",
+      "sagejs_wasm_call_m_4d39cf6234b75a96_prepare_products",
+      "sagejs_wasm_call_m_4d39cf6234b75a96_prepare_summary_checks",
+      "sagejs_wasm_call_m_5ee90e30a69aa3b4_bisect_program",
+      "sagejs_wasm_call_m_840335ae89c021f3_evaluate_program",
+      "sagejs_wasm_deallocate_m_42c57a25b7e94749",
+      "sagejs_wasm_deallocate_m_4d39cf6234b75a96",
+      "sagejs_wasm_deallocate_m_5ee90e30a69aa3b4",
+      "sagejs_wasm_deallocate_m_840335ae89c021f3",
+      "sagejs_wasm_last_message_m_42c57a25b7e94749",
+      "sagejs_wasm_last_message_m_4d39cf6234b75a96",
+      "sagejs_wasm_last_message_m_5ee90e30a69aa3b4",
+      "sagejs_wasm_last_message_m_840335ae89c021f3",
+      "sagejs_wasm_result_f64_at_m_42c57a25b7e94749",
+      "sagejs_wasm_result_f64_at_m_4d39cf6234b75a96",
+      "sagejs_wasm_result_f64_at_m_5ee90e30a69aa3b4",
+      "sagejs_wasm_result_f64_at_m_840335ae89c021f3",
+      "sagejs_wasm_result_length_m_42c57a25b7e94749",
+      "sagejs_wasm_result_length_m_4d39cf6234b75a96",
+      "sagejs_wasm_result_length_m_5ee90e30a69aa3b4",
+      "sagejs_wasm_result_length_m_840335ae89c021f3",
+      "sagejs_wasm_result_limbs_m_42c57a25b7e94749",
+      "sagejs_wasm_result_limbs_m_4d39cf6234b75a96",
+      "sagejs_wasm_result_limbs_m_5ee90e30a69aa3b4",
+      "sagejs_wasm_result_limbs_m_840335ae89c021f3",
+      "sagejs_wasm_result_sign_m_42c57a25b7e94749",
+      "sagejs_wasm_result_sign_m_4d39cf6234b75a96",
+      "sagejs_wasm_result_sign_m_5ee90e30a69aa3b4",
+      "sagejs_wasm_result_sign_m_840335ae89c021f3",
+      "sagejs_wasm_result_u64_at_m_42c57a25b7e94749",
+      "sagejs_wasm_result_u64_at_m_4d39cf6234b75a96",
+      "sagejs_wasm_result_u64_at_m_5ee90e30a69aa3b4",
+      "sagejs_wasm_result_u64_at_m_840335ae89c021f3"
+    ],
+    "toolchain": {
+      "clang": "/home/user/sagejs/.git/sagejs-wasm-toolchains/v2/241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973/sdk/bin/clang",
+      "clangVersion": "clang version 22.1.0-wasi-sdk (https://github.com/llvm/llvm-project 4434dabb69916856b824f68a64b029c67175e532)",
+      "target": "wasm32-wasip1",
+      "sysroot": "/home/user/sagejs/.git/sagejs-wasm-toolchains/v2/241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973/sdk/share/wasi-sysroot",
+      "archives": []
+    }
+  },
+  "policy": {
+    "warmups": 3,
+    "samples": 7,
+    "roots_per_batch": 20,
+    "included": [
+      "complete public solve",
+      "parameter packing",
+      "independent validation",
+      "result"
+    ],
+    "separate": [
+      "expression preparation"
+    ],
+    "unmeasured": [
+      "cold browser startup",
+      "peak memory",
+      "frozen paired qualification",
+      "npm/SEA"
+    ]
+  },
+  "measurements": [
+    {
+      "engine": "chromium",
+      "version": "151.0.7922.34",
+      "evaluate_wall_ms": 5456.635000020266,
+      "scope": "public-prepared-root-with-independent-validation",
+      "batch": 20,
+      "warmups": 3,
+      "samples_ms": {
+        "native": [
+          74.85008239746094,
+          69.90981101989746,
+          70.23501396179199,
+          69.82016563415527,
+          82.71002769470215,
+          69.3349838256836,
+          85.20984649658203
+        ],
+        "dynamic": [
+          342.97990798950195,
+          325.75511932373047,
+          318.310022354126,
+          327.81505584716797,
+          312.19482421875,
+          309.1299533843994,
+          332.81493186950684
+        ]
+      },
+      "preparation_ms": {
+        "native": [
+          21.179914474487305,
+          20.884990692138672,
+          20.95508575439453,
+          21.544933319091797,
+          21.00992202758789,
+          31.369924545288086,
+          20.64990997314453,
+          21.08025550842285,
+          35.92991828918457,
+          21.094799041748047
+        ],
+        "dynamic": [
+          26.404619216918945,
+          22.044897079467773,
+          22.715091705322266,
+          21.509885787963867,
+          20.62511444091797,
+          20.835161209106445,
+          20.39504051208496,
+          20.49994468688965,
+          20.740032196044922,
+          21.359920501708984
+        ]
+      },
+      "execution_targets": {
+        "dynamic": "dynamic",
+        "native": "wasm"
+      }
+    },
+    {
+      "engine": "firefox",
+      "version": "153.0",
+      "evaluate_wall_ms": 7285.7800000000025,
+      "scope": "public-prepared-root-with-independent-validation",
+      "batch": 20,
+      "warmups": 3,
+      "samples_ms": {
+        "native": [
+          116.60003662109375,
+          110.89968681335449,
+          111.1600399017334,
+          128.58009338378906,
+          113.23976516723633,
+          110.5799674987793,
+          107.10024833679199
+        ],
+        "dynamic": [
+          406.23998641967773,
+          405.22003173828125,
+          567.5199031829834,
+          420.9399223327637,
+          379.5599937438965,
+          390.8998966217041,
+          381.1602592468262
+        ]
+      },
+      "preparation_ms": {
+        "native": [
+          31.679868698120117,
+          31.240224838256836,
+          29.399871826171875,
+          28.73992919921875,
+          31.080245971679688,
+          30.43985366821289,
+          31.759977340698242,
+          29.580116271972656,
+          26.999950408935547,
+          30.43985366821289
+        ],
+        "dynamic": [
+          38.10000419616699,
+          29.700040817260742,
+          29.220104217529297,
+          29.980182647705078,
+          30.080080032348633,
+          28.380155563354492,
+          37.4600887298584,
+          26.580095291137695,
+          26.959896087646484,
+          26.399850845336914
+        ]
+      },
+      "execution_targets": {
+        "dynamic": "dynamic",
+        "native": "wasm"
+      }
+    },
+    {
+      "engine": "webkit",
+      "version": "26.5",
+      "evaluate_wall_ms": 7156.919999999998,
+      "scope": "public-prepared-root-with-independent-validation",
+      "batch": 20,
+      "warmups": 3,
+      "samples_ms": {
+        "native": [
+          109.69996452331543,
+          96.49991989135742,
+          97.45979309082031,
+          110.5201244354248,
+          109.92002487182617,
+          109.85994338989258,
+          106.7800521850586
+        ],
+        "dynamic": [
+          382.8601837158203,
+          344.40016746520996,
+          356.94003105163574,
+          358.8399887084961,
+          384.9000930786133,
+          389.77980613708496,
+          333.8799476623535
+        ]
+      },
+      "preparation_ms": {
+        "native": [
+          37.73999214172363,
+          35.56013107299805,
+          32.77993202209473,
+          28.079748153686523,
+          26.64017677307129,
+          25.860071182250977,
+          27.4198055267334,
+          27.00018882751465,
+          27.740001678466797,
+          28.19991111755371
+        ],
+        "dynamic": [
+          63.11988830566406,
+          34.040212631225586,
+          26.459932327270508,
+          26.720046997070312,
+          26.720285415649414,
+          27.559757232666016,
+          28.500080108642578,
+          27.07982063293457,
+          26.920318603515625,
+          48.219919204711914
+        ]
+      },
+      "execution_targets": {
+        "dynamic": "dynamic",
+        "native": "wasm"
+      }
+    }
+  ]
+}
