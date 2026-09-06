@@ -210,3 +210,26 @@ the main cost. All twelve source-browser routes now pass with the rebuilt lazy
 bundle, including LU/QR/Cholesky single-presentation and nested ownership
 checks. Node 22, strict Python and architecture pass. Persistent-host and
 npm/SEA qualification remain open; neither #187 nor #188 completes N3.
+
+## Fused independent LU validation candidate
+
+`perf/numerical-lu-validation-core` adds a bounded, source-transparent
+`lu_residual_norms` core for square sizes 1–128. It independently verifies the
+permutation bijection, reconstructs packed LU with separately rounded products
+and accurate sums, and computes both infinity norms. It publishes outputs only
+on success. This remains private: public cancellation, ownership, packing and
+result construction have not been replaced.
+
+The [local development evidence](../bench/numerics/performance/results/n3-lu-validation-core-2026-09-07/README.md)
+records 18 independent CPython/native/JavaScript/Node-Wasm and three-browser
+worker cases, including cancellation-prone sums, subnormals and an FMA-sensitive
+product. Native/JavaScript malformed-input tests, Node 22.22.2, strict Python
+and architecture pass. Local paired reused-buffer medians at size 32 are
+0.435 ms native versus 28.3 ms generated JavaScript. These exclude the public
+API and do not qualify any default or complete N3.
+
+The full-artifact Chromium CI jobs for #187/#188 fail the production Wasm ABI
+allowlist for `native-kernels/kernel-flint.wasm`. Their earlier passing
+source-browser checks do not supersede that failure. Inspect and qualify the
+actual changed artifact before refreshing its ABI inventory or making the
+dependent stack non-draft for the automatic merge manager.

@@ -1,0 +1,152 @@
+{
+  "schema": "sagejs.lu-validation-core-development/v1",
+  "qualification": false,
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.8.1",
+    "cpu": "AMD EPYC 7B13"
+  },
+  "sources": {
+    "src/lib/sagejs/numerics/linear_algebra/_packed_validation.py": "853bd06827ffe0a2ccb0b662f668312970b094ed84baed037826badc692960dd",
+    "src/lib/sagejs/numerics/_packed_sum.py": "a5e1d35d059af0c7f49e812ccfead7ab3f83fff784e6b836d5580fda8fcacdd7"
+  },
+  "benchmark_sha256": "7e5d58686d98d715dbd862a412fc681100e584bd35d8e4e971add1aa57c5f7f8",
+  "artifact": {
+    "cache_key": "19c999cc91c6605cac3a600a2699e3c978fbf72d8138b5d3902a736fcd810fed",
+    "native_abi": 23,
+    "core_sha256": "948cc8c960a4b3373de239610af6c4ed64877903930c10c22f2bf624a113f02e",
+    "addon_sha256": "7ecd0071d14de84379c7d62d0d6b8be04dfc30bed96b7ca0730c7b9e01b36f18"
+  },
+  "policy": {
+    "warmups": 3,
+    "blocks": 7,
+    "order": "alternating",
+    "storage": "reused disjoint Float64Array buffers; normal wrapper marshalling included",
+    "included": [
+      "permutation proof",
+      "reconstruction residual norm",
+      "input infinity norm"
+    ],
+    "excluded": [
+      "packing/allocation",
+      "public factorization",
+      "public validation contract",
+      "result construction",
+      "callback checks",
+      "startup",
+      "memory qualification",
+      "four-platform and browser timing"
+    ]
+  },
+  "records": [
+    {
+      "size": 16,
+      "samples_ms": {
+        "native": [
+          0.07677000000012413,
+          0.08098000000018146,
+          0.07067999999981112,
+          0.07077000000003864,
+          0.0666599999999562,
+          0.07783999999992375,
+          0.058959999999842694
+        ],
+        "javascript": [
+          4.309038999999984,
+          4.590050000000019,
+          4.100979999999936,
+          3.9838689999999133,
+          3.9504900000001726,
+          3.7154199999999946,
+          3.6907990000001973
+        ]
+      },
+      "norms": [
+        79.85950413223141,
+        40.142857142857146
+      ]
+    },
+    {
+      "size": 32,
+      "samples_ms": {
+        "native": [
+          0.434880000000021,
+          0.4549500000000535,
+          0.42804000000000997,
+          0.43744999999989886,
+          0.43029999999998836,
+          0.45323000000007596,
+          0.4295199999999113
+        ],
+        "javascript": [
+          28.013778000000002,
+          28.0444779999998,
+          28.289447999999993,
+          28.29315799999995,
+          28.494037000000162,
+          28.375737999999956,
+          28.400577999999996
+        ]
+      },
+      "norms": [
+        131.61629279811098,
+        79.71428571428571
+      ]
+    },
+    {
+      "size": 64,
+      "samples_ms": {
+        "native": [
+          3.1361799999999675,
+          3.157839999999851,
+          3.124249999999847,
+          3.148869999999988,
+          3.115810000000238,
+          3.1872400000002017,
+          3.125659999999698
+        ],
+        "javascript": [
+          220.02128200000016,
+          220.59476199999972,
+          219.8256919999999,
+          220.48097199999984,
+          220.94111199999998,
+          223.47614199999998,
+          223.33083199999965
+        ]
+      },
+      "norms": [
+        339.01180637544275,
+        159
+      ]
+    },
+    {
+      "size": 128,
+      "samples_ms": {
+        "native": [
+          22.039638999998715,
+          22.054787999999462,
+          22.042609000000084,
+          22.235147999999754,
+          22.117568000001484,
+          22.05376900000192,
+          22.006257999997615
+        ],
+        "javascript": [
+          1820.9270529999994,
+          1804.9705730000005,
+          1798.7212849999996,
+          1805.369573,
+          1828.7319119999993,
+          1827.0769519999994,
+          1828.4255709999998
+        ]
+      },
+      "norms": [
+        896.5867768595042,
+        315.2857142857143
+      ]
+    }
+  ]
+}
