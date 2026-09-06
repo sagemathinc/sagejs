@@ -18,6 +18,9 @@ const pythonConformanceValidationPaths = [
   "tools/python-compat/manifest.cjs",
   "tools/python-compat/assertion-runner.cjs",
   "tools/python-compat/output-baseline.cjs",
+  "tools/python-compat/legacy-output-manifest.cjs",
+  "tools/python-compat/legacy-output-runner.cjs",
+  "tools/python-compat/output-suite.cjs",
 ];
 
 const packageAndBenchmarkValidationPaths = [
