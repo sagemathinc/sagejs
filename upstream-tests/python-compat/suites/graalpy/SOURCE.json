@@ -1,0 +1,224 @@
+{
+  "schema": "sagejs.python-suite-source/v1",
+  "repository": "https://github.com/oracle/graalpython",
+  "revision": "992e0053563c2f73876c0e47d2cc7d14b0505699",
+  "license": "UPL-1.0",
+  "selection": "Five reviewed pure-Python public-language tests. Every retained per-file license header, helper and test function is copied as a byte-identical pinned span; only the explicitly identified invocation suffix is local. These are not unchanged whole upstream programs.",
+  "licenseReview": "Both selected source files explicitly carry complete Oracle UPL 1.0 copyright/license headers, retained byte-for-byte per program (test_functions.py: 2018,2026; test_formatting.py: 2020,2026). Root LICENSE.txt also retained in full. Git tree inspection found no LICENSE/COPYING/NOTICE/lrgrwrks override in graalpython/, com.oracle.graal.python.test/, src/, or tests/. Root THIRD_PARTY_LICENSE.txt has no override identifying these two files or the tests directory; no third-party, JVM, cpyext or vendored-lib-python span is selected.",
+  "files": [
+    {
+      "upstreamPath": "graalpython/com.oracle.graal.python.test/src/tests/test_functions.py",
+      "path": "selected/test_function_changes_defaults.py",
+      "bytes": 2547,
+      "sha256": "efeddf57f3a72cd5cc8971bafdba34aeec2e2ad6887edbe9d18e9498e69245d6",
+      "upstreamFileSha256": "912b2596a680353a7adee9dc395dab628e394eb4b449e5328fd58e9eb2d4cdde",
+      "license": "UPL-1.0",
+      "selection": {
+        "kind": "unchanged-upstream-spans",
+        "test": "test_function_changes_defaults",
+        "segments": [
+          {
+            "role": "unchanged-license-header",
+            "byteStart": 0,
+            "byteEndExclusive": 2000,
+            "startLine": 1,
+            "endLineInclusive": 40,
+            "bytes": 2000,
+            "sha256": "1f9488504bec3390eafbafe42dc463b377300ad7b999e3986e16fcb57a133c1f"
+          },
+          {
+            "role": "unchanged-assertion-helper",
+            "byteStart": 2000,
+            "byteEndExclusive": 2159,
+            "startLine": 41,
+            "endLineInclusive": 49,
+            "bytes": 159,
+            "sha256": "b8b5f7c214ef0bb6990978cca68ed1f3cffbac4af9d70f97c8de63bf0eef2aba"
+          },
+          {
+            "role": "unchanged-test-function",
+            "byteStart": 4750,
+            "byteEndExclusive": 5104,
+            "startLine": 162,
+            "endLineInclusive": 179,
+            "bytes": 354,
+            "sha256": "28930e4c954db769ba45079c3cd2129c602f7bba0667e72f5af59b3c61835636"
+          }
+        ]
+      },
+      "adapter": {
+        "origin": "Sage.js local invocation-only suffix; not upstream test text",
+        "source": "\ntest_function_changes_defaults()\n",
+        "bytes": 34,
+        "sha256": "154ca2da84d61d118afcb3aaae5c6f3a6c3d181e6e43a064c49cf287e46b8834"
+      }
+    },
+    {
+      "upstreamPath": "graalpython/com.oracle.graal.python.test/src/tests/test_functions.py",
+      "path": "selected/test_function_kwdefaults_dict_is_live.py",
+      "bytes": 2919,
+      "sha256": "58dd4056e7a0309ac8172e1c6992fe6e626df6383f16f706bb9e8a2243fd7846",
+      "upstreamFileSha256": "912b2596a680353a7adee9dc395dab628e394eb4b449e5328fd58e9eb2d4cdde",
+      "license": "UPL-1.0",
+      "selection": {
+        "kind": "unchanged-upstream-spans",
+        "test": "test_function_kwdefaults_dict_is_live",
+        "segments": [
+          {
+            "role": "unchanged-license-header",
+            "byteStart": 0,
+            "byteEndExclusive": 2000,
+            "startLine": 1,
+            "endLineInclusive": 40,
+            "bytes": 2000,
+            "sha256": "1f9488504bec3390eafbafe42dc463b377300ad7b999e3986e16fcb57a133c1f"
+          },
+          {
+            "role": "unchanged-assertion-helper",
+            "byteStart": 2000,
+            "byteEndExclusive": 2159,
+            "startLine": 41,
+            "endLineInclusive": 49,
+            "bytes": 159,
+            "sha256": "b8b5f7c214ef0bb6990978cca68ed1f3cffbac4af9d70f97c8de63bf0eef2aba"
+          },
+          {
+            "role": "unchanged-test-function",
+            "byteStart": 5413,
+            "byteEndExclusive": 6132,
+            "startLine": 195,
+            "endLineInclusive": 221,
+            "bytes": 719,
+            "sha256": "f22f9bd7e851cdd39b50676a37e31f06a88fd18c5baf868824c177e9e8c0feea"
+          }
+        ]
+      },
+      "adapter": {
+        "origin": "Sage.js local invocation-only suffix; not upstream test text",
+        "source": "\ntest_function_kwdefaults_dict_is_live()\n",
+        "bytes": 41,
+        "sha256": "05a75566816f04868331f221b05bb11285cd23c5c5357f6b54bb86f31e49c000"
+      }
+    },
+    {
+      "upstreamPath": "graalpython/com.oracle.graal.python.test/src/tests/test_functions.py",
+      "path": "selected/test_mangled_kwonly_kwdefaults_dict_is_live.py",
+      "bytes": 2560,
+      "sha256": "6f9177f5af70aefc1f3bc3538fbf10d6f4f6ee5873e252a2356088b63b8204a9",
+      "upstreamFileSha256": "912b2596a680353a7adee9dc395dab628e394eb4b449e5328fd58e9eb2d4cdde",
+      "license": "UPL-1.0",
+      "selection": {
+        "kind": "unchanged-upstream-spans",
+        "test": "test_mangled_kwonly_kwdefaults_dict_is_live",
+        "segments": [
+          {
+            "role": "unchanged-license-header",
+            "byteStart": 0,
+            "byteEndExclusive": 2000,
+            "startLine": 1,
+            "endLineInclusive": 40,
+            "bytes": 2000,
+            "sha256": "1f9488504bec3390eafbafe42dc463b377300ad7b999e3986e16fcb57a133c1f"
+          },
+          {
+            "role": "unchanged-test-function",
+            "byteStart": 6132,
+            "byteEndExclusive": 6645,
+            "startLine": 222,
+            "endLineInclusive": 237,
+            "bytes": 513,
+            "sha256": "3d2b1e764b311c796c05d31de7dc499c3ee143f2830de3d6999b42cb272b575c"
+          }
+        ]
+      },
+      "adapter": {
+        "origin": "Sage.js local invocation-only suffix; not upstream test text",
+        "source": "\ntest_mangled_kwonly_kwdefaults_dict_is_live()\n",
+        "bytes": 47,
+        "sha256": "c72fb184b0c21be60cffd860d683bb56b63ba5886f7e7ad943fcd03446c7f282"
+      }
+    },
+    {
+      "upstreamPath": "graalpython/com.oracle.graal.python.test/src/tests/test_functions.py",
+      "path": "selected/test_method_kwdefaults_dict_is_live.py",
+      "bytes": 2312,
+      "sha256": "2fa56ccbc68135ed0aeafbfd0ef826148a4295a5ed5e234e5c6bce70fb3ebd79",
+      "upstreamFileSha256": "912b2596a680353a7adee9dc395dab628e394eb4b449e5328fd58e9eb2d4cdde",
+      "license": "UPL-1.0",
+      "selection": {
+        "kind": "unchanged-upstream-spans",
+        "test": "test_method_kwdefaults_dict_is_live",
+        "segments": [
+          {
+            "role": "unchanged-license-header",
+            "byteStart": 0,
+            "byteEndExclusive": 2000,
+            "startLine": 1,
+            "endLineInclusive": 40,
+            "bytes": 2000,
+            "sha256": "1f9488504bec3390eafbafe42dc463b377300ad7b999e3986e16fcb57a133c1f"
+          },
+          {
+            "role": "unchanged-test-function",
+            "byteStart": 6645,
+            "byteEndExclusive": 6918,
+            "startLine": 238,
+            "endLineInclusive": 249,
+            "bytes": 273,
+            "sha256": "eb450f481362643884835e55a457728f70d2b0a7cda1d5921c4ddf008a268982"
+          }
+        ]
+      },
+      "adapter": {
+        "origin": "Sage.js local invocation-only suffix; not upstream test text",
+        "source": "\ntest_method_kwdefaults_dict_is_live()\n",
+        "bytes": 39,
+        "sha256": "1563f74289af12238ce0a8c35305ef8c0f52a5a61bca949aca32469e1decb454"
+      }
+    },
+    {
+      "upstreamPath": "graalpython/com.oracle.graal.python.test/src/tests/test_formatting.py",
+      "path": "selected/test_int_format.py",
+      "bytes": 2176,
+      "sha256": "83768bc0948df773abba176c21a579c071c528e0b46edb85fcb88e33107e6f86",
+      "upstreamFileSha256": "a9e8a2b65c0ee79ccea6bba9fa805273d445ce3ebfc0678512b401d375e4c156",
+      "license": "UPL-1.0",
+      "selection": {
+        "kind": "unchanged-upstream-spans",
+        "test": "test_int_format",
+        "segments": [
+          {
+            "role": "unchanged-license-header",
+            "byteStart": 0,
+            "byteEndExclusive": 1999,
+            "startLine": 1,
+            "endLineInclusive": 39,
+            "bytes": 1999,
+            "sha256": "5e094ba71369156f0635e83ef78b070b4210f9d5404827ccfe3bef6150697ac3"
+          },
+          {
+            "role": "unchanged-test-function",
+            "byteStart": 3423,
+            "byteEndExclusive": 3581,
+            "startLine": 91,
+            "endLineInclusive": 98,
+            "bytes": 158,
+            "sha256": "eb684a233d13c0d7b2ff01e0e07755ecc9b34d23fcdf4aff3fdd9390ef903ac8"
+          }
+        ]
+      },
+      "adapter": {
+        "origin": "Sage.js local invocation-only suffix; not upstream test text",
+        "source": "\ntest_int_format()\n",
+        "bytes": 19,
+        "sha256": "fdd5c3beb0629cdc4bebaf7c5eaf836c510380a78fc8bb5373c56ab8ff561b99"
+      }
+    },
+    {
+      "upstreamPath": "LICENSE.txt",
+      "path": "LICENSE",
+      "bytes": 3909,
+      "sha256": "7bf3a4db4921ae0180f6a64fc0e4a81862d3dad4bbc286dde2f6b0d6c9ced1e1"
+    }
+  ]
+}
