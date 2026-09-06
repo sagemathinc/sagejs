@@ -2625,6 +2625,9 @@ def ρσ_bool(value: Any) -> _Bool:
     if value is None or value is runtime.undefined:
         return False
     value_type = runtime.jstype(value)
+    if runtime.strict_equal(value_type, "number"):
+        # Python numeric truth is nonzero, including NaN (unlike host !!NaN).
+        return not runtime.strict_equal(value, 0)
     if not runtime.strict_equal(value_type, "object") and not runtime.strict_equal(
         value_type, "function"
     ):
@@ -2639,26 +2642,21 @@ def ρσ_bool(value: Any) -> _Bool:
     # tuple has not inherited a Python ``__len__`` descriptor.
     if runtime.array.isArray(value):
         return value.length != 0
-    if runtime.strict_equal(value_type, "object") or runtime.strict_equal(
-        value_type, "function"
+    if runtime.strict_equal(
+        runtime.reflect.apply(runtime.object.prototype.toString, value, []),
+        "[object Number]",
     ):
-        if runtime.strict_equal(
-            runtime.reflect.apply(runtime.object.prototype.toString, value, []),
-            "[object Number]",
-        ):
-            return (
-                runtime.reflect.apply(runtime.number.prototype.valueOf, value, []) != 0
-            )
-        if _builtins_member_is_function(value, "__bool__"):
-            answer = _builtins_call_member(value, "__bool__", [])
-            if answer is not True and answer is not False:
-                raise TypeError("__bool__ should return bool")
-            return answer
-        if _builtins_member_is_function(value, "__len__"):
-            length = _builtins_call_member(value, "__len__", [])
-            if length < 0:
-                raise ValueError("__len__() should return >= 0")
-            return length != 0
+        return runtime.reflect.apply(runtime.number.prototype.valueOf, value, []) != 0
+    if _builtins_member_is_function(value, "__bool__"):
+        answer = _builtins_call_member(value, "__bool__", [])
+        if answer is not True and answer is not False:
+            raise TypeError("__bool__ should return bool")
+        return answer
+    if _builtins_member_is_function(value, "__len__"):
+        length = _builtins_call_member(value, "__len__", [])
+        if length < 0:
+            raise ValueError("__len__() should return >= 0")
+        return length != 0
     return True
 
 
