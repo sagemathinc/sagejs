@@ -1605,6 +1605,21 @@ def _cubic_arctan_reciprocal_bounds(
     sign = 1
     while index < 80:
         term_denominator = (2 * index + 1) * power
+        if term_denominator > scale:
+            # Every remaining positive term rounds to [0, 1] and every
+            # negative term to [-1, 0]. Their denominators increase strictly.
+            # Count those intervals without constructing the large powers;
+            # preserve the original 80-term enclosure, including its positive
+            # next-term remainder [0, 1], exactly.
+            remaining: uint64 = 80 - index
+            positive_terms: uint64 = remaining // 2
+            negative_terms: uint64 = remaining // 2
+            if remaining % 2 != 0:
+                if sign > 0:
+                    positive_terms += 1
+                else:
+                    negative_terms += 1
+            return (lower - negative_terms, upper + positive_terms + 1)
         floor_term = scale // term_denominator
         ceiling_term = _cubic_dyadic_ceiling_quotient(
             scale,
@@ -1871,29 +1886,15 @@ def _cubic_grh_prime_degree_contribution(
     return (sa_lower, sb_upper)
 
 
-def _cubic_grh_generator_bound_is_certified(
+def _cubic_grh_generator_constants(
     log_numerators: FmpzMatrix,
     log_denominators: FmpzMatrix,
     log_endpoints: FmpzMatrix,
     transcendental_endpoints: FmpzMatrix,
-    splitting_plan: FmpzMatrix,
-    workspace: NativeIntegerVector,
-    coefficients: IntegerBuffer,
-    equation_order_index: int,
-    identity_zero: int,
-    identity_one: int,
-    identity_two: int,
-    absolute_discriminant: int,
-    bound: int,
     scale: int,
     precision: uint64,
-) -> bool:
-    """Certify the explicit GRH class-group generator inequality."""
-    if bound < 2 or absolute_discriminant < 2 or scale <= 0:
-        return False
-    bound_offset: uint64 = checked_uint64(4 * bound)
-    log_bound_lower = transcendental_endpoints[bound_offset, 0]
-    log_bound_upper = transcendental_endpoints[bound_offset + 1, 0]
+) -> tuple[bool, int, int]:
+    """Enclose the bound-independent constants once per generator search."""
     log_discriminant_lower = transcendental_endpoints[0, 0]
     log_discriminant_upper = transcendental_endpoints[1, 0]
     atan_five_lower, atan_five_upper = _cubic_arctan_reciprocal_bounds(
@@ -1916,12 +1917,11 @@ def _cubic_grh_generator_bound_is_certified(
         precision,
     )
     if (
-        log_bound_upper < log_bound_lower
-        or log_discriminant_upper < log_discriminant_lower
+        log_discriminant_upper < log_discriminant_lower
         or pi_upper < pi_lower
         or log_eight_pi_upper < log_eight_pi_lower
     ):
-        return False
+        return (False, 0, 0)
 
     # In signature `(1,1)`, the explicit inequality uses
     #
@@ -1972,7 +1972,7 @@ def _cubic_grh_generator_bound_is_certified(
         or log_thirty_two_upper < log_thirty_two_lower
         or gamma_lower <= 0
     ):
-        return False
+        return (False, 0, 0)
     pi_square_lower, pi_square_upper = _cubic_dyadic_multiply(
         pi_lower,
         pi_upper,
@@ -1986,6 +1986,32 @@ def _cubic_grh_generator_bound_is_certified(
     )
     c_three_lower = gamma_lower + log_eight_pi_lower
     c_d_upper = log_discriminant_upper - 3 * c_three_lower - pi_lower // 2
+    return (True, c_n_upper, c_d_upper)
+
+
+def _cubic_grh_generator_bound_is_certified(
+    transcendental_endpoints: FmpzMatrix,
+    splitting_plan: FmpzMatrix,
+    workspace: NativeIntegerVector,
+    coefficients: IntegerBuffer,
+    equation_order_index: int,
+    identity_zero: int,
+    identity_one: int,
+    identity_two: int,
+    absolute_discriminant: int,
+    bound: int,
+    scale: int,
+    c_n_upper: int,
+    c_d_upper: int,
+) -> bool:
+    """Test one bound using this search's authenticated constant endpoints."""
+    if bound < 2 or absolute_discriminant < 2 or scale <= 0:
+        return False
+    bound_offset: uint64 = checked_uint64(4 * bound)
+    log_bound_lower = transcendental_endpoints[bound_offset, 0]
+    log_bound_upper = transcendental_endpoints[bound_offset + 1, 0]
+    if log_bound_upper < log_bound_lower:
+        return False
 
     sa_lower = 0
     sb_upper = 0
@@ -2090,12 +2116,21 @@ def _cubic_grh_generator_bound(
     """Return a certified GRH cutoff no larger than the fallback bound."""
     if unconditional_bound <= 2:
         return unconditional_bound
-    low = 1
-    high = 2
-    while high < unconditional_bound and not _cubic_grh_generator_bound_is_certified(
+    if absolute_discriminant < 2 or scale <= 0:
+        return 0
+    constants_ready, c_n_upper, c_d_upper = _cubic_grh_generator_constants(
         log_numerators,
         log_denominators,
         log_endpoints,
+        transcendental_endpoints,
+        scale,
+        precision,
+    )
+    if not constants_ready:
+        return 0
+    low = 1
+    high = 2
+    while high < unconditional_bound and not _cubic_grh_generator_bound_is_certified(
         transcendental_endpoints,
         splitting_plan,
         workspace,
@@ -2107,16 +2142,14 @@ def _cubic_grh_generator_bound(
         absolute_discriminant,
         high,
         scale,
-        precision,
+        c_n_upper,
+        c_d_upper,
     ):
         low = high
         high *= 2
         if high > unconditional_bound:
             high = unconditional_bound
     if not _cubic_grh_generator_bound_is_certified(
-        log_numerators,
-        log_denominators,
-        log_endpoints,
         transcendental_endpoints,
         splitting_plan,
         workspace,
@@ -2128,15 +2161,13 @@ def _cubic_grh_generator_bound(
         absolute_discriminant,
         high,
         scale,
-        precision,
+        c_n_upper,
+        c_d_upper,
     ):
         return 0
     while high - low > 1:
         middle = (low + high) // 2
         if _cubic_grh_generator_bound_is_certified(
-            log_numerators,
-            log_denominators,
-            log_endpoints,
             transcendental_endpoints,
             splitting_plan,
             workspace,
@@ -2148,7 +2179,8 @@ def _cubic_grh_generator_bound(
             absolute_discriminant,
             middle,
             scale,
-            precision,
+            c_n_upper,
+            c_d_upper,
         ):
             high = middle
         else:

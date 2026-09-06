@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `3491dea0d5e27c59ee7857a8a8897454ba77da5589fbb5ab2388bb58aa15eec4` (718 files, 14683994 bytes).
-Analyzed source bundle: `sha256:8beaf98810f6a52d5d2121d3a2233b219cefd923c82e0a1b7cf645568d54508d`; compiler identity: `sha256:c51acaee653415d6abdb5be6b71bd5a6c68e37076568b0909a9b656529ca4f10`.
+Input identity: `938b1309d9e0c32f19776abe2d4f4ca03950e96e03b748c4f302312dea58e705` (718 files, 14685257 bytes).
+Analyzed source bundle: `sha256:b0857d49c19fda0932af3b42a0e6d96396ca3d2386c1fe58643c13f80d143abb`; compiler identity: `sha256:c51acaee653415d6abdb5be6b71bd5a6c68e37076568b0909a9b656529ca4f10`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -35,8 +35,8 @@ pnpm optimizer:opportunities:query -- sha256:<digest>
 | Source modules compiled | 635 / 635 |
 | Library modules compiled | 622 / 622 |
 | Explicit control sources compiled | 13 / 13 |
-| Functions and methods compiled | 16551 |
-| Loop-bearing functions and methods | 5225 |
+| Functions and methods compiled | 16552 |
+| Loop-bearing functions and methods | 5226 |
 | Loops in functions | 14477 |
 | Selected optimized loops | 56 |
 | Compiler-rejected loops | 3524 |
@@ -49,11 +49,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 96616
-- Collection-allocation sites: 11689
-- Known coercion sites: 20175
+- Potential object-result sites: 96636
+- Collection-allocation sites: 11690
+- Known coercion sites: 20184
 - Potential boundary-call sites: 105
-- Unresolved call sites: 49627
+- Unresolved call sites: 49636
 - Selected-target allocations: 3 known; 52 runtime-dependent
 - Selected-target representation conversions: 3 known; 54 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -136,7 +136,7 @@ convenience, not a performance ranking.
 | `bounded-integer.unsupported-control-flow` | 1139 | Restructure the loop into supported transactional branches or add a verified control-flow lowering. |
 | `bounded-integer.unsupported-operation:+=` | 1079 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `dashboard.unsupported-while-loop` | 861 | Prove a finite progress measure and transactional exits before lowering a `while` loop. |
-| `bounded-integer.unsupported-operation:%` | 826 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:%` | 827 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:<` | 550 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation://` | 362 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:>` | 347 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |

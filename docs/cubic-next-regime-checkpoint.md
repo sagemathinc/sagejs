@@ -124,14 +124,62 @@ two warmup batches, serialized and CPU-pinned on `opt`. PARI uses version
 the fresh cell. The copied build was not freshly requalified on `opt`; a
 clean-build, common frozen timing protocol is still required.
 
-A source-resolved native diagnostic profile on the selected field now points
-to modular arithmetic: about 36.5% of sampled self time is in cubic modular
-multiplication, 9.8% in the root-count routine and 8.6% in modular powering.
-The emitted code confirms these are word operations, not GMP temporaries.
-Investigate precomputed reciprocal reduction with proved word bounds, as
-well as the separate public field-construction cost, before pursuing more
-small root-isolation or table-lookup changes. Sampling is diagnostic, not a
-conserved public-call phase ledger.
+The public pilot and original profile are preserved in the
+[public-pilot diagnostic release](https://github.com/sagemathinc/sagejs/releases/tag/cubic-frontier-public-pilot-042cf6261-20260906).
+A subsequent full clean build on `opt` completed with all 42 production
+families rebuilt. Repeating the three-field preflight again produced native
+authenticated receipts and independent replay; public pilot times remained
+similar. The common frozen timing protocol is still outstanding.
+
+### Sampling correction and exact constant work
+
+The first 499 Hz profile attributed 36.5% of self time to modular cubic
+multiplication. That attribution is **not stable**: even with randomized
+inter-call spacing, a 499 Hz stack profile overweights this region. At
+1,999 Hz, both flat and stack profiles instead expose substantial exact
+integer management throughout the computation. Treat the earlier percentages
+as sampling-biased diagnostics, not a phase ledger or an optimization ranking.
+The profiling driver adds seeded 0--1 ms busy waits between calls solely to
+vary sampling phase; those runs are not timing claims. The high-rate stack
+profile places generator-bound search, relation collection, root isolation,
+and analytic evaluation among the remaining contributors. Inclusive percentages
+overlap and must not be added.
+
+A reciprocal-reduction experiment replaced bounded word divisions in the
+splitting helper. It passed 589,806 reduction boundaries per generated backend
+and 4,667 polynomial cases, then all 1,012 native comparisons. Nevertheless,
+whole-program gains were only about 1--3%, so it remains outside the branch.
+
+The next retained mechanism is
+[exact rounded-tail compression and search-local constants](cubic-arctan-tail-compression.md).
+It skips arctangent-series terms only when their exact rounded contributions
+can be counted, preserving the old endpoints. It also computes the generator
+inequality's bound-independent constants once per search. No precision,
+analytic cutoff, proof assumption, stopping inequality or capacity changes.
+The combined source SHA-256 is
+`f789bc988496c2766f9b29230dcf1e26c2fce4cf7a674e79f05e8240715cd3b0`;
+its diagnostic artifact is
+`c3daece08992153f455d191b2a12ced0e93806e59aa915300ac42b09c1fa5d72`.
+
+On the selected field, tail compression reduced the native diagnostic median
+from 3.137 to 2.845 ms; the separate subsequent comparison of constant hoisting
+measured 2.847 to 2.790 ms. On the headline class-number-five field, the latter
+comparison measured 2.528 to 2.475 ms. These are successive diagnostic
+comparisons, **not one paired end-to-end speedup or a PARI win**.
+All 940 accepted frozen-population cases retained identical 64-slot outputs;
+all 72 fixed-effort declines matched, with zero errors.
+
+The closure now has 105 functions, 244 edges and 22 host entries: one new
+private helper, with no new external boundary or owner. Relative to the
+Frobenius candidate, generated core C grows from 17,306,351 to 17,399,276 bytes;
+the Linux addon grows from 20,370,192 to 20,382,480 bytes. Header and host adapter
+sizes are unchanged. This is not four-platform resource qualification.
+
+| New diagnostic file | SHA-256 |
+| --- | --- |
+| `arctan-diagnostic.json` | `a8085c8a00b14f33ce02f9269dd025957dc5c8ca5dd2d52f692e955379a176e3` |
+| `constants-target-diagnostic.json` | `2ff4e4bb0d11b3f78c6186a4c9f5ae036e356ed0607747c24f550a706fb495e9` |
+| `constants-equivalence.json` | `a07023e6b3e3c1cfbb13e317afd66db6b04c8832c8ae744a69e6c23cf5bebb64` |
 
 Neither smaller kernel timings nor old pre-staging frontier timings establish
 a current public PARI comparison. The next gate is a clean, authenticated
