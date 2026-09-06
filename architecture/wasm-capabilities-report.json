@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "e566b3de97c26ab67dc8ec41bf77282fc68b913e461873d2c00da68b3d0e31b9",
+  "source_sha256": "948889830dc39641bc5c9606ed5170c5c7492ef5223940f6864e12c5eeba24e8",
   "counts": {
-    "total": 1091,
+    "total": 1092,
     "by_kind": {
       "declared-ffi-function": 469,
       "declared-ffi-resource": 34,
       "napi-export": 357,
-      "production-kernel": 55,
+      "production-kernel": 56,
       "runtime-intrinsic": 148,
       "specialist-capability": 28
     },
     "by_disposition": {
-      "compiled-source": 55,
+      "compiled-source": 56,
       "desktop-only": 47,
       "generated-wasm": 364,
       "portable-fallback": 575,
       "shared-core": 50
     },
     "by_status": {
-      "available": 610,
+      "available": 611,
       "desktop-only": 47,
       "fallback": 434
     }
@@ -6490,6 +6490,18 @@
         "number-field-cubic-class-number"
       ],
       "explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 functions."
+    },
+    {
+      "id": "kernel:cubic-prime-splitting-production",
+      "family": "cubic-prime-splitting",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "number-field-cubic-class-number"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-binary-m4ri-optional",

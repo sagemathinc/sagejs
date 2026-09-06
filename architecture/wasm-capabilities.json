@@ -193,6 +193,13 @@
           "test/native-kernel.cjs"
         ]
       },
+      "cubic-prime-splitting-differential": {
+        "differential": true,
+        "paths": [
+          "test/number-field-cubic-prime-splitting.cjs",
+          "test/number-field-cubic-native-class-number.cjs"
+        ]
+      },
       "class-group-resident-hnf-differential": {
         "differential": true,
         "paths": [
@@ -11177,6 +11184,33 @@
         "compiled_functions": 4,
         "fallback_functions": 0,
         "total_functions": 4,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:cubic-prime-splitting-production",
+      "kind": "production-kernel",
+      "family": "cubic-prime-splitting",
+      "source": "src/lib/sagejs/kernels/polynomial/cubic_splitting.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "number-field-cubic-class-number"
+      ],
+      "tests": [
+        "production-kernel-differential",
+        "cubic-prime-splitting-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
         "production_pack": true,
         "fallback_reasons": []
       }
