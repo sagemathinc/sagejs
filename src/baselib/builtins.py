@@ -6891,7 +6891,12 @@ def ρσ_issubclass(cls: Any, candidates: Any) -> _Bool:
     # class, are subclasses of `object`.
     if candidates is object:
         return True
-    registry = _builtins_get_member(candidates, "_abc_registry")
+    registration = runtime.object.getOwnPropertyDescriptor(candidates, "_abc_registry")
+    registry = (
+        runtime.undefined
+        if registration is runtime.undefined
+        else runtime.reflect.get(registration, "value")
+    )
     if runtime.array.isArray(registry):
         for registered_class in registry:
             if ρσ_issubclass(cls, registered_class):
