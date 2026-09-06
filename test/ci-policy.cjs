@@ -78,15 +78,23 @@ test("routine gate does not build native dependencies or SEA executables", () =>
 });
 
 test("release jobs reuse one required native bootstrap", () => {
+  const stages = require("../scripts/release/stages.cjs").plan("native", "bootstrap,native,native-performance,sea");
+  assert.deepEqual(stages.map((stage) => stage.commands), [
+    [["pnpm", "bootstrap", "--without-sea"]],
+    [["pnpm", "test:native:correctness:run"]],
+    [["pnpm", "test:native:performance:run"]],
+    [["pnpm", "test:sea:reuse"]],
+  ]);
   for (const job of ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]) {
     const start = workflow.indexOf(`  ${job}:`);
     const nextJob = workflow.slice(start + 3).search(/^  [a-z][a-z0-9-]*:/m);
     const end = nextJob === -1 ? workflow.length : start + 3 + nextJob;
     const section = workflow.slice(start, end);
     assert.match(section, /SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"/);
-    assert.match(section, /pnpm bootstrap/);
-    assert.match(section, /pnpm test:native:run/);
-    assert.match(section, /pnpm test:sea:reuse/);
+    for (const stage of ["bootstrap", "native,native-performance", "sea"]) {
+      const command = 'pnpm release:run --candidate "${{ github.sha }}" --stage ' + stage;
+      assert.equal(section.split(command).length - 1, 1, `${job} runs ${stage} once through the shared runner`);
+    }
     assert.doesNotMatch(section, /run: pnpm test:native\s*$/m);
     assert.doesNotMatch(section, /run: pnpm test:sea\s*$/m);
   }
