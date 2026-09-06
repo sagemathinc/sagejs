@@ -2,6 +2,13 @@
   "schema": "sagejs.wasm-production-layout/v1",
   "modules": [
     {
+      "id": "flint-extension-multivariate",
+      "ownershipDomain": "flint-extension-multivariate",
+      "artifact": "flint-extension-multivariate.wasm",
+      "eager": false,
+      "memory": {"pageBytes": 65536, "initialPages": 256, "maximumPages": 8192}
+    },
+    {
       "id": "flint",
       "ownershipDomain": "flint-gmp-mpfr-mpc-arb",
       "artifact": "flint-factor.wasm",
@@ -83,10 +90,29 @@
     "schema": "sagejs.wasm-artifact-topology/v1",
     "groups": [
       {
+        "id": "extension-multivariate",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": [
+          "flint-extension-multivariate.wasm"
+        ],
+        "maximumCompressedDelta": {"gzipBytes": 2300000, "brotliBytes": 1900000}
+      },
+      {
+        "id": "extension-multivariate-source",
+        "kind": "support",
+        "dependencies": [],
+        "assets": ["extension-resource-adapter.c"],
+        "maximumCompressedDelta": {"gzipBytes": 16000, "brotliBytes": 14000}
+      },
+      {
         "id": "eager-core",
         "kind": "eager",
         "dependencies": [],
         "assets": [
+          "extension-resource-backend.mjs", "extension-resource-manifest.json",
+          "extension-resource-receipt.json", "runtime/extension-multivariate.mjs",
+          "runtime/specialist-bytes.mjs", "runtime/specialist-bytes-worker.mjs",
           "baselib.js",
           "compiler-frontend.mjs",
           "compiler.js",

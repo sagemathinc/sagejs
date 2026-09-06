@@ -119,8 +119,11 @@ test("production closure includes every currently declared Wasm FFI function", (
   assert.equal(first.manifest.hash, second.manifest.hash);
   assert.match(first.manifest.hash, /^[a-f0-9]{64}$/);
   const declarations = registry();
-  const productionInputs = JSON.parse(readFileSync(join(root,
-    "packages/flint-wasm/release/adapter-inputs.json"), "utf8"));
+  const productionInputs = {schema: "sagejs.wasm-adapter-inputs/v2",
+    policy: "all-declared-wasm", modules: {
+      flint: {declaration: "flint", ownershipDomain: "flint"},
+      m4ri: {declaration: "m4ri", ownershipDomain: "m4ri"},
+    }};
   const fromV2 = generatedWasmClosure(declarations, {
     adapterInputs: productionInputs, strict: true,
   });

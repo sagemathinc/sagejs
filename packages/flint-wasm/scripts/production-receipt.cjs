@@ -221,6 +221,10 @@ function artifactFiles(layout) {
     "m4ri-resource-adapter.c",
     "m4ri-resource-backend.mjs",
     "m4ri-resource-manifest.json",
+    "extension-resource-adapter.c",
+    "extension-resource-backend.mjs",
+    "extension-resource-manifest.json",
+    "extension-resource-receipt.json",
     "plotly.min.js",
   ]) files.add(name);
   return [...files].sort();

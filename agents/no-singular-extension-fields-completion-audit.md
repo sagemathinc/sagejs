@@ -331,6 +331,29 @@ Independent specialist delivery, authentication, compressed-size review,
 public Node-Wasm/Chromium tests, and the other native platforms remain open.
 Public ideals and geometry still reject extension coefficients until F1/F2.
 
+## F0 specialist integration candidate (not production-qualified)
+
+The Wasm build now partitions the FLINT declaration into the core and a
+separately owned `flint-extension-multivariate` reactor. Its byte transport
+checks an exact bounded length and SHA-256, fetches on first use in isolated
+workers, and preloads before evaluation where synchronous transport is absent.
+No user program is replayed. Small adapter/receipt/transport files are counted
+as eager assets; the mathematical binary is a specialist asset.
+
+Transport and generated-adapter tests pass 13/13, including a real worker,
+corruption, oversize, timeout, and close behavior. Evaluator-host tests pass
+10/10, including late specialist initialization after core failure. The C
+boundary witness also passes on macOS ARM64 and Linux ARM64 using their native
+dependency prefixes. These are boundary checks, not full public-platform
+qualification.
+
+The production build requires committed source because the existing numerical
+manifest binds evaluator semantics to a Git candidate. Its source fingerprint
+is refreshed while retaining `pending_source_current_requalification`; no
+historical numerical receipt is promoted. Production linking, public Wasm
+execution, compressed-size/ABI review, and complete platform qualification
+remain open. The fourteen extension capabilities therefore remain planned.
+
 ## Still required
 
 - Finish E0 fixtures, capability routing, generic v2 contracts/certificates,
