@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `a0c4a215bccd8773ba591cdac4ad68ed6d46acb4117dba7d4627b48fff1c65b0` (656 files, 13548542 bytes).
-Analyzed source bundle: `sha256:c959d9a2bd9168fe0e9987b30eb748d6f4654c2387fef8ec1379e311fd1567ae`; compiler identity: `sha256:0bbe7b801e50c8b3f1766f45eb0bd8612c90dc8dbfadd64bbdbe1c553c0b2111`.
+Input identity: `997322732c6b5afeb1805fc3e4077dbe424ac59e29d1994c762a37f16d7734dd` (656 files, 13550103 bytes).
+Analyzed source bundle: `sha256:1a22a0c225ceacd2cdd2b64572a0ab369d59e3b3a9cb7361b1c9353bdc49b29e`; compiler identity: `sha256:47f55ff83c9682848ed2d1bad40977f1ca3762f16bb871b76fc490cdd2bd43ef`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -35,12 +35,12 @@ pnpm optimizer:opportunities:query -- sha256:<digest>
 | Source modules compiled | 573 / 573 |
 | Library modules compiled | 560 / 560 |
 | Explicit control sources compiled | 13 / 13 |
-| Functions and methods compiled | 15476 |
-| Loop-bearing functions and methods | 4901 |
-| Loops in functions | 13495 |
+| Functions and methods compiled | 15477 |
+| Loop-bearing functions and methods | 4902 |
+| Loops in functions | 13497 |
 | Selected optimized loops | 54 |
 | Compiler-rejected loops | 3121 |
-| Unrecognized loops | 10320 |
+| Unrecognized loops | 10322 |
 | One-reason compiler near-misses | 266 |
 
 A rejected loop has a stable reason from a domain pass. An unrecognized loop was compiled
@@ -49,11 +49,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 88605
-- Collection-allocation sites: 10892
-- Known coercion sites: 17605
+- Potential object-result sites: 88612
+- Collection-allocation sites: 10894
+- Known coercion sites: 17608
 - Potential boundary-call sites: 86
-- Unresolved call sites: 45127
+- Unresolved call sites: 45131
 - Selected-target allocations: 3 known; 50 runtime-dependent
 - Selected-target representation conversions: 3 known; 52 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -122,11 +122,11 @@ convenience, not a performance ranking.
 
 | Stable reason | Loops | Remediation |
 | --- | ---: | --- |
-| `dashboard.no-current-pass-claimed` | 10320 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
-| `dashboard.dynamic-call-sites` | 9224 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
-| `dashboard.no-mathematical-domain-evidence` | 8802 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
-| `dashboard.comprehension-loop` | 5046 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
-| `dashboard.indexed-access-sites` | 3705 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
+| `dashboard.no-current-pass-claimed` | 10322 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
+| `dashboard.dynamic-call-sites` | 9226 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
+| `dashboard.no-mathematical-domain-evidence` | 8804 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
+| `dashboard.comprehension-loop` | 5048 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
+| `dashboard.indexed-access-sites` | 3706 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
 | `bounded-integer.dynamic-call` | 2500 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | `dashboard.control-flow-sites` | 2471 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
 | `dashboard.nested-loop-sites` | 1975 | Consider a fused multidimensional region with explicit shape and work bounds. |

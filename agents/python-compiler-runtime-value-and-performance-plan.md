@@ -179,6 +179,21 @@ milestones, not a claim that every PR is merged or the program is complete.
   Old receipts still require a genuine build. This is narrower invalidation,
   not a claim to bind every installed dependency or source-symlink referent,
   detect mid-build edits, or safely publish concurrent build generations.
+- PR [#153](https://github.com/sagemathinc/sagejs/pull/153) separates the
+  `sagejs` implementation/product identity from the Python 3.14.4 language
+  target. Its rebuilt MicroPython baseline is 505 exact comparisons and three
+  fingerprinted differences: the previous two GC reviews and the upstream
+  CPython/MicroPython implementation-name whitelist. This is an intentional
+  identity correction, not a waived semantic failure or complete package claim.
+- Broader package checks remain important even when the language corpus passes:
+  they exposed a native class-method receiver defect in `list.extend(xs, ys)`.
+  Keep direct, saved, subclass and bound method regressions together; repair
+  the shared adapter rather than special-casing an affected package.
+- The diagnostics slice must distinguish transport from language semantics.
+  Current lowering discards the explicit cause in `raise ... from cause`;
+  preserving manually populated exception fields is not proof of Python
+  exception chaining. Implement explicit causes and dynamically scoped implicit
+  context with focused regressions before claiming that support.
 
 Use this checkpoint to guide sequencing, not as a permanent status dashboard.
 Current claims must link the exact revisions and receipts; consult
@@ -253,7 +268,11 @@ version/implementation disposition before Sage.js is judged against it.
 
 ### PyPy
 
-Prioritize the 32 `apptest_*.py` files concerned with classes, descriptors,
+The pinned Python 3 release contains 92 `apptest_*.py` files, not the 32
+previously counted from a different checkout. Inventory and select by pinned
+Git objects; the local checkout may instead be a Python 2 branch. Candidate
+triage is not execution or whole-file adoption. Prioritize cases concerned with
+classes, descriptors,
 binary-operation dispatch, strings/bytes, iteration, frames, scopes, generators,
 exceptions, compilation, and ordinary collection types. These are valuable
 because an independent mature runtime has already isolated semantic corners
@@ -265,6 +284,11 @@ free-threading, and platform internals unless Sage.js deliberately implements
 the corresponding public capability. Re-express PyPy's application-level test
 selection through a small pytest/unittest adapter; never add a fake PyPy object
 space just to run a test.
+
+Preserve per-file license provenance: vendored HPy tests need their own notice,
+and tracing tests derived from `lib-python` require the applicable PSF/history
+notices before vendoring. Duplicate test names, docstring-only tests, skipped
+assertions and print-only disassembly are not independent passing coverage.
 
 ### CPython 3.14
 
@@ -1208,7 +1232,7 @@ Acceptance:
 
 ### Phase 3 — Add independent-runtime adversarial cases
 
-1. Inventory the 32 application-level files and portable public-behavior
+1. Inventory the 92 pinned application-level files and portable public-behavior
    `extra_tests` cases from PyPy.
 2. Select descriptors, operators, classes/MRO, scopes, generators, exceptions,
    strings/bytes, buffers, and container behavior first.
