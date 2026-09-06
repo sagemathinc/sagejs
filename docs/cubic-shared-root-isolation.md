@@ -77,10 +77,13 @@ edges. Source text changes from 433,750 to 434,340 bytes. The shorter temporary
 experiment path produces a much smaller C file merely because diagnostic
 paths appear thousands of times; it is not a code-size improvement.
 
-Local alternating whole-native diagnostics suggest 5--7% improvement on the
-target/headline examples and 14--15% on two resumed-certification examples.
-Those runs are explicitly uncontrolled local diagnostics, not retained `opt`
-timings, public-call timings, or a PARI win. The separate public census on
-`opt` is pinned to the earlier constant-compression commit and does not
-qualify this follow-up candidate. Controlled timing and full public census
-qualification remain required.
+Serialized, CPU-pinned alternating whole-native diagnostics on `opt` measured
+2.787 to 2.647 ms on the selected target (about 5% improvement), and about
+15% improvement on two resumed-certification examples. Four warmup rounds
+were discarded, followed by fifteen alternating rounds of ten calls. All
+64 output slots agreed. These are native diagnostics, not retained public-call
+timings or a PARI win. Raw results are in the
+[census and follow-up diagnostic release](https://github.com/sagemathinc/sagejs/releases/tag/cubic-frontier-census-bbe1d2ca3-20260906).
+The successful 1,000-field public census is pinned to the earlier
+constant-compression commit and does not qualify this follow-up candidate.
+Full public census and retained timing qualification remain required.

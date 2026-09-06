@@ -3910,6 +3910,48 @@ def _cubic_reconstruct_archimedean_unit(
     analytic_scale: int,
     dependency_log_scale: int,
 ) -> tuple[int, int, int, int]:
+    """Retain the full-precision unit proposal for existing callers."""
+    reconstruction_scale = analytic_scale * analytic_scale * analytic_scale
+    if dependency_log_scale > reconstruction_scale:
+        reconstruction_scale = dependency_log_scale
+    return _cubic_reconstruct_archimedean_unit_at_scale(
+        workspace,
+        coefficients,
+        denominator,
+        basis_zero_zero,
+        basis_zero_one,
+        basis_zero_two,
+        basis_one_one,
+        basis_one_two,
+        basis_two_two,
+        relation_elements,
+        unit_combinations,
+        relation_count,
+        regulator_lower,
+        regulator_upper,
+        reconstruction_scale,
+        dependency_log_scale,
+    )
+
+
+def _cubic_reconstruct_archimedean_unit_at_scale(
+    workspace: NativeIntegerVector,
+    coefficients: IntegerBuffer,
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    relation_elements: FmpzMatrix,
+    unit_combinations: FmpzMatrix,
+    relation_count: uint64,
+    regulator_lower: int,
+    regulator_upper: int,
+    reconstruction_scale: int,
+    dependency_log_scale: int,
+) -> tuple[int, int, int, int]:
     """Recover a compact exact unit from a reduced archimedean relation.
 
     This is the rank-one complex-cubic analogue of PARI's `getfu`: retain the
@@ -3917,10 +3959,6 @@ def _cubic_reconstruct_archimedean_unit(
     embeddings, solve the real embedding matrix, round once, and authenticate
     the resulting order coordinates exactly.
     """
-    reconstruction_scale = analytic_scale * analytic_scale * analytic_scale
-    if dependency_log_scale > reconstruction_scale:
-        reconstruction_scale = dependency_log_scale
-
     root_bound = 1
     coefficient_index: uint64 = 0
     while coefficient_index < 3:
@@ -8356,8 +8394,10 @@ def _cubic_materialize_dependency_unit(
 ) -> tuple[bool, int, int, int, int, int]:
     """Authenticate or exactly materialize a dependency unit in borrowed scratch.
 
-    Every failure is fatal for this attempt, not evidence requesting relations.
-    The existing bounded product fallback and regulator-overlap test are kept.
+    Try a cheap numerical proposal before the full-precision proposal. Neither
+    is evidence until exact norm and full-precision regulator checks succeed.
+    A rejected cheap proposal requests more reconstruction precision, never
+    more relations. The bounded product fallback and fatal checks are kept.
     No owner is allocated and no discovery or relation state is modified.
     """
     if (
@@ -8369,44 +8409,21 @@ def _cubic_materialize_dependency_unit(
     relation_index: uint64 = 0
     dependency_scale_quotient = dependency_log_scale // analytic_scale
     regulator_at_dependency_scale = True
-    (
-        reconstruction_status,
-        reconstructed_zero,
-        reconstructed_one,
-        reconstructed_two,
-    ) = _cubic_reconstruct_archimedean_unit(
-        workspace,
-        coefficients,
-        denominator,
-        basis_zero_zero,
-        basis_zero_one,
-        basis_zero_two,
-        basis_one_one,
-        basis_one_two,
-        basis_two_two,
-        dependency_relation_elements,
-        unit_combinations,
-        proof_relation_count,
-        proof_regulator_lower,
-        proof_regulator_upper,
-        analytic_scale,
-        dependency_log_scale,
-    )
-    output[59] = 435
-    output[62] = reconstruction_status
-    if reconstruction_status == 2:
-        output[56] = reconstructed_zero
-        output[57] = reconstructed_one
-        output[58] = reconstructed_two
-    dependency_materialization_active = reconstruction_status != 1
-    if reconstruction_status == 1:
+    dependency_materialization_active = True
+    reconstruction_attempt: uint64 = 0
+    while reconstruction_attempt < 2 and dependency_materialization_active:
+        proposal_scale = analytic_scale
+        if reconstruction_attempt == 1:
+            proposal_scale = analytic_scale * analytic_scale * analytic_scale
+            if dependency_log_scale > proposal_scale:
+                proposal_scale = dependency_log_scale
         (
-            reconstructed_regulator_lower,
-            reconstructed_regulator_upper,
-        ) = _cubic_regulator_bounds(
-            log_numerators,
-            log_denominators,
-            log_endpoints,
+            reconstruction_status,
+            reconstructed_zero,
+            reconstructed_one,
+            reconstructed_two,
+        ) = _cubic_reconstruct_archimedean_unit_at_scale(
+            workspace,
             coefficients,
             denominator,
             basis_zero_zero,
@@ -8415,33 +8432,64 @@ def _cubic_materialize_dependency_unit(
             basis_one_one,
             basis_one_two,
             basis_two_two,
-            reconstructed_zero,
-            reconstructed_one,
-            reconstructed_two,
-            analytic_scale,
-            _CUBIC_ANALYTIC_PRECISION,
+            dependency_relation_elements,
+            unit_combinations,
+            proof_relation_count,
+            proof_regulator_lower,
+            proof_regulator_upper,
+            proposal_scale,
+            dependency_log_scale,
         )
-        if (
-            reconstructed_regulator_lower > 0
-            and reconstructed_regulator_upper >= reconstructed_regulator_lower
-            and reconstructed_regulator_lower * dependency_scale_quotient
-            <= proof_regulator_upper
-            and proof_regulator_lower
-            <= reconstructed_regulator_upper * dependency_scale_quotient
-        ):
-            proof_unit_zero = reconstructed_zero
-            proof_unit_one = reconstructed_one
-            proof_unit_two = reconstructed_two
-            proof_regulator_lower = reconstructed_regulator_lower
-            proof_regulator_upper = reconstructed_regulator_upper
-            regulator_at_dependency_scale = False
-            dependency_materialization_active = False
-        else:
-            # Exact reconstruction alone does not authenticate the
-            # retained logarithmic unit evidence. Never publish stale
-            # coordinates after a failed regulator comparison.
-            output[59] = 44
-            return (False, 0, 0, 0, 0, 0)
+        output[59] = 435
+        output[62] = reconstruction_status
+        if reconstruction_status == 2:
+            output[56] = reconstructed_zero
+            output[57] = reconstructed_one
+            output[58] = reconstructed_two
+        if reconstruction_status == 1:
+            (
+                reconstructed_regulator_lower,
+                reconstructed_regulator_upper,
+            ) = _cubic_regulator_bounds(
+                log_numerators,
+                log_denominators,
+                log_endpoints,
+                coefficients,
+                denominator,
+                basis_zero_zero,
+                basis_zero_one,
+                basis_zero_two,
+                basis_one_one,
+                basis_one_two,
+                basis_two_two,
+                reconstructed_zero,
+                reconstructed_one,
+                reconstructed_two,
+                analytic_scale,
+                _CUBIC_ANALYTIC_PRECISION,
+            )
+            if (
+                reconstructed_regulator_lower > 0
+                and reconstructed_regulator_upper >= reconstructed_regulator_lower
+                and reconstructed_regulator_lower * dependency_scale_quotient
+                <= proof_regulator_upper
+                and proof_regulator_lower
+                <= reconstructed_regulator_upper * dependency_scale_quotient
+            ):
+                proof_unit_zero = reconstructed_zero
+                proof_unit_one = reconstructed_one
+                proof_unit_two = reconstructed_two
+                proof_regulator_lower = reconstructed_regulator_lower
+                proof_regulator_upper = reconstructed_regulator_upper
+                regulator_at_dependency_scale = False
+                dependency_materialization_active = False
+            elif reconstruction_attempt == 1:
+                # Exact reconstruction alone does not authenticate the
+                # retained logarithmic unit evidence. Never publish stale
+                # coordinates after a failed regulator comparison.
+                output[59] = 44
+                return (False, 0, 0, 0, 0, 0)
+        reconstruction_attempt += 1
 
     if dependency_materialization_active:
         output[59] = 436

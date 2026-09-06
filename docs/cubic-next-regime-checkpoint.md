@@ -215,8 +215,8 @@ These files, the combined candidate source, profiling driver/reports, and
 rejected experiments are in the
 [constant-compression evidence release](https://github.com/sagemathinc/sagejs/releases/tag/cubic-frontier-constants-bbe1d2ca3-20260906).
 Commit `bbe1d2ca3` passed all nine focused public/native tests, strict Python,
-and the architecture gate. The clean-build full public census on `opt` is
-the next qualification step. The separately archived single-field 32-bit
+and the architecture gate. Its clean-build full public census on `opt` has
+now passed, as recorded below. The separately archived single-field 32-bit
 precision probe is exploratory, not integrated or independently certified.
 
 Neither smaller kernel timings nor old pre-staging frontier timings establish
@@ -225,3 +225,37 @@ current-source public baseline on `opt`, followed by attribution of the
 remaining cost. Do not tune the frozen holdout yet. Full survey replay,
 twenty predecessor-sealed unseen neighbors, platform/resource qualification,
 reviewed PR and a genuine PARI win remain open.
+
+### Completed public census and follow-up diagnostics
+
+The full clean-build public census at
+`bbe1d2ca347942a96835ade8611d28ba0c54f782` passed all **1,000 fields**:
+exact discriminant, class-number and invariant-factor agreement with PARI and
+LMFDB, authenticated native receipts, and successful independent ordinary-object
+exact replay on every record. There were no declines or coverage failures.
+This qualifies the constant-compression candidate, not later follow-ups.
+
+The [immutable census and diagnostic release](https://github.com/sagemathinc/sagejs/releases/tag/cubic-frontier-census-bbe1d2ca3-20260906)
+contains the raw report, whose SHA-256 is
+`87b959e63d157d9590f53e2a403932d62ccd2e8cb65df20237fbe2e8b4cf1fc9`.
+Its clean source tree is `ed5b71edb793c9570f550d61f2f048ca0c93f90d` and
+runtime closure SHA-256 is
+`13007d990bac02129ebe1d46877d86b667a1906c2c16dd4f7376736e9e3cb133`.
+The common retained timing protocol has started on that unchanged checkout;
+it repeats the required warmup/replay gates before collecting timing rounds.
+
+The same release separately records controlled native diagnostics for the
+shared-root follow-up `b8698266a`. On the target, the paired medians are
+2.787 to 2.647 ms (ratio 0.950); two resumed examples improve by about 15%.
+Those experiments compare all 64 publication slots but do not constitute
+a full public census or a PARI win.
+
+A subsequent [cheap unit proposal](cubic-unit-proposal-precision.md) experiment
+retains the full certificate precision and retries the original reconstruction
+precision when necessary. Its controlled target medians are 2.758 to 2.562 ms
+(ratio 0.929), compared within that separate run. Do not combine absolute
+times across successive experiments as one paired end-to-end measurement.
+Its 1,012-record fixed-effort differential survey has 940 identical successes,
+72 identical declines, and zero exceptions; full public qualification remains
+open. Two tiny trivial-group examples show approximately 1% slower diagnostic
+medians, so no universal non-regression claim is made.

@@ -25,7 +25,7 @@ const rootFunction = "certified_complex_cubic_class_group_v1";
 const publicArenaMemoryLimit = 1_048_576;
 const publicArenaCheckpointLimit = 3_145_728;
 const expectedNameDigest =
-  "d1cc029a63125e16ee0f077ffa4d997e0cf774964596fb43ca406d476b6a51a3";
+  "1ae4388f13b217c7a7a5aaf26265addfe90888b4ff6f9db0366f1054194ad3b4";
 const expectedHostFunctions = Object.freeze([
   "_cubic_arctan_reciprocal_bounds",
   "_cubic_atanh_log_bounds",
@@ -118,10 +118,11 @@ test("the complete cubic closure is one direct fmpz program", {
 
   assert.equal(ir.version, 39);
   // Splitting adds three nodes; hoisting bound-independent constants adds
-  // one private helper. Every node remains reachable from the cubic root.
-  assert.equal(functions.size, 105);
-  assert.equal(edges.length, 245);
-  for (const caller of ["_cubic_complex_root_approximations", "_cubic_reconstruct_archimedean_unit"]) {
+  // one private helper; proposal scaling adds one private implementation.
+  // Every node remains reachable from the cubic root.
+  assert.equal(functions.size, 106);
+  assert.equal(edges.length, 246);
+  for (const caller of ["_cubic_complex_root_approximations", "_cubic_reconstruct_archimedean_unit_at_scale"]) {
     assert.ok(ir.callGraph[caller].includes("_cubic_real_root_interval"));
   }
   assert.equal(
@@ -162,7 +163,7 @@ test("the complete cubic closure is one direct fmpz program", {
   );
   assert.deepEqual(hostFunctions, expectedHostFunctions);
   assert.equal(hostFunctions.length, 22);
-  assert.equal(privateFunctions.length, 83);
+  assert.equal(privateFunctions.length, 84);
   assert.equal(functions.get(rootFunction).hostCallable, true);
   assert.equal((header.match(/\bint sagejs_kernel_/g) || []).length, 22);
   assert.equal((core.match(/\nint sagejs_kernel_/g) || []).length, 22);
@@ -252,7 +253,7 @@ test("one unsupported operation atomically removes fmpz from the closure", {
   assert.notEqual(unsupported, withImport);
 
   const ir = await lowerClosure(unsupported);
-  assert.equal(ir.functions.length, 105);
+  assert.equal(ir.functions.length, 106);
   assert.deepEqual(
     ir.functions.filter((fn) => fn.analysis.backend.kind === "fmpz"),
     [],
