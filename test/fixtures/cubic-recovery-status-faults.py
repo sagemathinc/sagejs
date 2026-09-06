@@ -242,7 +242,6 @@ def caller_cases(tree, runtime_tree):
         node.test
         for node in ast.walk(runtime_tree)
         if isinstance(node, ast.If)
-        and isinstance(node.test, ast.Compare)
         and any(
             isinstance(item, ast.Name) and item.id == "failed_values"
             for item in ast.walk(node.test)
@@ -250,6 +249,14 @@ def caller_cases(tree, runtime_tree):
     ]
     assert len(retry_gates) == 1
     host_break = compile(ast.Expression(retry_gates[0]), "<actual-host-gate>", "eval")
+    retry_node = next(
+        node
+        for node in runtime_tree.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "_retryable_native_decline"
+    )
+    retry, retry_namespace = compile_function(retry_node)
+    retry_namespace["_CUBIC_OUTPUT_LENGTH"] = 64
     for status in (1, 0, 2, -1, -2, -3, 99):
         output = [-991] * 64
         result = Matrix()
@@ -273,9 +280,14 @@ def caller_cases(tree, runtime_tree):
             assert output[63] == (43 if status == 0 else 44), output
             if status != 0:
                 assert output[62] == status
-            assert eval(host_break, {"failed_values": output, "int": int}) is (
-                status != 0
-            )
+            assert eval(
+                host_break,
+                {
+                    "failed_values": output,
+                    "int": int,
+                    "_retryable_native_decline": retry,
+                },
+            ) is (status != 0)
 
 
 def main():

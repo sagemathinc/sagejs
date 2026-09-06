@@ -69,3 +69,29 @@ Before promoting this allowance:
 
 If those checks do not justify the growth, simplify the implementation or
 reconsider the allowance. Passing the source-byte gate alone is insufficient.
+
+## Main integration review, 2026-09-06
+
+The controlled integration comparison uses the same current compiler, imported
+field-analysis source and absolute source path for pre-staging `09dfbc88c` and
+the merged staged source. It produces 15,282,568 versus 16,740,262 generated C
+bytes (9.54% growth), 84 versus 101 functions, and identical 6,900-byte headers.
+This supersedes the mixed-toolchain comparison above for generated-code growth;
+it is not a timing or standalone binary-size comparison.
+
+The merged source family is 480,222 bytes. Its 17 additional helpers implement
+isolated two-attempt certification, while leaving the ordinary one-shot path
+lazy and the 3 MiB checkpoint limit unchanged. Current integration tests pass
+real resumed receipts and independent exact replay, including the exposed
+class-number-3 and class-number-5 witnesses. Exhaustion/sanitizer checks pass;
+the proof-support schedule measures 200,576 fmpz and 217,632 GMP checkpoint
+bytes. Complete production rebuild, strict Python, architecture, routine tests
+and the unchanged rational-matrix performance gate pass.
+
+Together with the recorded same-toolchain slice/bundle IR and paired execution
+evidence in `native-source-compression.md`, this supports the narrow 485,000-byte
+source allowance for integration. It does not establish a new PARI performance
+win, promote historical timings to current-source evidence, or grant release
+approval. Four-platform release qualification and broader staged frontier
+performance work remain separate requirements. Do not raise the allowance or
+the checkpoint bound automatically as those follow-up efforts evolve.

@@ -127,6 +127,7 @@
     "sagejs.quaternion_algebras.class_set",
     "sagejs.quaternion_algebras.ideals",
     "traceback",
+    "unittest",
     "unicodedata"
   ],
   "dynamicWarmups": [

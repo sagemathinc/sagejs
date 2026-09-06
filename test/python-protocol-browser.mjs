@@ -21,6 +21,7 @@ try {
     "python-nested-class-bases.py", "python-public-super.py",
     "python-abc-registry-isolation.py",
     "python-callable-instance-metadata.py",
+    "unittest-warnings-runtime.py",
   ]) {
     await page.goto(`${server.origin}/browser-wasm-harness.html`);
     await page.waitForFunction(() => window.__sagejsReady !== undefined);

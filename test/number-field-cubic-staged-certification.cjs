@@ -28,7 +28,7 @@ function expandedFixture() {
     const start = production.indexOf(`\ndef ${name}(`) + 1;
     assert.ok(start > 0, name);
     const remaining = production.slice(start + 1);
-    const next = remaining.search(/\n(?:@native\n)?def /);
+    const next = remaining.search(/\n(?:@native\n)?(?:def |class )/);
     assert.ok(next > 0, name);
     return production.slice(start, start + 1 + next);
   }).join("\n\n");
