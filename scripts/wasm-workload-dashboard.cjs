@@ -882,6 +882,10 @@ function main(argv = process.argv.slice(2)) {
   const receiptPaths = argumentValues(argv, "--receipt").map((item) => path.resolve(item));
   const directoryValues = argumentValues(argv, "--receipts-dir");
   const options = { root, receiptPaths };
+  if (argv.includes("--explicit-receipts-only")) {
+    if (directoryValues.length) throw new Error("explicit receipts cannot include receipt directories");
+    options.receiptDirectories = [];
+  }
   if (directoryValues.length) {
     options.receiptDirectories = directoryValues.map((item) => path.resolve(item));
   }

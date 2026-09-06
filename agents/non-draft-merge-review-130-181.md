@@ -39,6 +39,116 @@ fixtures. Core size is 889693/890000 bytes. Optimizer census compiles 16529
 functions with no failures. This is local integration evidence, not release
 qualification on four platforms.
 
+## Combined cubic integration findings
+
+The owner explicitly permits ready cubic work even if a component PR remains
+draft. Other draft families are not in scope. The reviewed aggregate heads
+remain pinned above; no inline review comments were present on either
+aggregate or its cubic component PRs at the final inspection.
+
+The review reproduced a compiler correctness defect: a Python parameter named
+like a workspace helper could shadow that helper, but bundle erasure still
+called the original function. Native workspace lowering now rejects parameter,
+local, module, import, class, duplicate-definition and loop-target shadowing.
+It also requires an actual imported `NativeWorkspace` base binding instead of
+accepting an otherwise undefined name. The focused suite passes 13 tests across
+CPython, JavaScript and the native exact backends.
+
+Integration preserves main's stronger nested-arena rule for borrowed external
+resources and removes an accidentally duplicated older guard. It preserves
+main's browser/core budgets and admits precisely the new logical-prefix Arb
+boundary. The core remains 889693/890000 bytes; the combined cubic source is
+480222/485000 bytes. This size result alone does not qualify the allowance.
+
+Two tests needed fixture corrections, not weakened mathematical assertions:
+the extracted proof helper must stop before the following workspace class;
+the recovery fault fixture must execute the actual delegated decline classifier.
+Real repeated proof attempts, discovery-state isolation and bounded exhaustion
+pass, including sanitizer high-water measurements of 200576 fmpz and 217632 GMP
+checkpoint bytes.
+
+The complete eight-stage build passes in 15m52s, rebuilding all 41 production
+families into one 27.13 MiB native pack. Strict Python passes 381 modules.
+The 41 compiler guard tests, 53 deeper cubic/resource tests and 17 additional
+proof/holdout tests pass with no skips. These include public authenticated
+receipts, independent exact replay, resumed certification, real unit recovery,
+poisoned grow/shrink prefixes and sanitizer exhaustion. Architecture and routine
+validation pass; the latter completes in 1m37s. The retained f7 evidence verifier
+and its corruption probes pass against downloaded assets (historical evidence,
+not a new current-source performance claim).
+
+The unchanged rational-matrix performance gate passes, including negation at
+4.14/15 ms and transpose at 3.49/15 ms. Fresh Wasm/browser qualification remains
+pending. These local checkpoints are not four-platform release qualification.
+
+Using the same integrated compiler, unchanged imported field-analysis source,
+and identical absolute source-path configuration, the pre-merge cubic root at
+`09dfbc88c` lowers to 84 functions and 15282568 generated C bytes; the candidate
+lowers to 101 functions and 16740262 bytes (9.54% growth). Both generated headers
+are 6900 bytes. This controlled code-generation comparison does not measure
+execution speed or independently justify the source allowance. The additional
+17 helpers implement isolated, bounded proof resumption rather than broadening
+acceptance without proof; the public replay and exhaustion tests qualify that
+behavior separately.
+
+## Browser follow-up discovered during final qualification
+
+The refreshed cubic Wasm artifact passes the exact 15-module ABI inventory,
+routine Chromium parity, prefix-Arb Node-Wasm/browser tests and unchanged
+compressed payload/topology budgets. Apart from the prefix-Arb boundary,
+generated kernel ABI changes are content-hash prefixes only: normalized names,
+kinds and multiplicities are identical.
+
+Adding the previously absent lazy `unittest` module exposed a separate emitter
+bug in direct browser use of `warnings.catch_warnings()`. Python attribute
+lookup lowers to a getter call, but `AST_New` only parenthesized explicit AST
+calls, generating `new getter(...)` instead of `new (getter(...))`. Zero-argument
+construction returned the class; argument-bearing construction was also
+incorrect. Keyword construction and Node's other call path hid the defect.
+
+Parenthesize Python property-access constructor targets. A focused emitter
+regression demonstrates both failures with the old compiler, and checks the
+retrieved class is constructed, the getter is not constructed, and lookup
+occurs exactly once. The full warning browser fixture remains a required
+regression. All four focused tests pass with the corrected compiler. A diagnostic
+Chromium run serving that compiler to the previous local artifact also passes
+the complete warning fixture; this is diagnosis, not final artifact qualification.
+The refreshed census again compiles 16553 functions with zero failures.
+A fresh complete build and packaged browser check remain required after this
+correction; the earlier artifact qualification does not cover it yet.
+
+## Final constructor-fix qualification
+
+The complete build passes in 10m18s. All 41 native families are reused, and an
+independent emit-only comparison confirms identical core hashes and foreign
+declarations for all 47 Wasm source modules. The final browser artifact is
+`sha256:a1f0a9cd5954acde61e6c0fee895c7eb44536e147f4548a62d058b8bed0a349a`.
+It passes the exact ABI inventory, both prefix-Arb tests, routine Chromium parity
+and all nine Python browser fixtures, including the previously failing warning
+fixture through the ordinary, unmodified harness.
+The final artifact also passes the unchanged compressed payload and pack-topology
+budgets with the required baseline; no budget was raised for browser packaging.
+
+Architecture passes. Post-fix public cubic replay/closure and constructor tests
+pass 11/11. Routine validation passes in 1m34s. CPython 3.14.4 conformance has
+505 passes, three unchanged declared incompatibilities and the existing 68
+exclusions. A first routine attempt encountered a late cache-cleanup file while
+removing a test directory; bounded filesystem-removal retries address that
+cleanup race without retrying or weakening assertions. Conformance was rerun
+after routine tests to avoid a transient concurrent build-freshness observation.
+
+The cubic checkpoint `7b4e39cc2` passes GitHub run `34013267770`, including Linux
+x64 routine and Linux ARM64, macOS ARM64 and Windows x64 native smoke builds.
+That run precedes the small constructor fix; do not label it CI evidence for a
+later main commit. Publication to main will trigger that commit's own CI.
+
+Disposition: integrate #130 and #134 with the corrections above. Their copied
+cubic components (#126, #128, #129, #131, #135, #138, #142, #144, #150, #151,
+#152) are subsumed by the reviewed aggregates, not separately merged head
+ancestries. Preserve that distinction when closing duplicate PRs. Numerical
+and finite-extension geometry drafts remain excluded. No product release or
+deployment is part of this integration.
+
 ## #130 and #134: aggregate review authorized
 
 Reviewed scope at #130 `3a694809b95e7e08f1b12adee78121b96f4eed69`

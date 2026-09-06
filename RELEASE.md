@@ -9,6 +9,9 @@ This document complements [TESTING.md](TESTING.md) and
 [DISTRIBUTION.md](DISTRIBUTION.md). It is the release playbook for both people
 and coding agents.
 
+See the [0.8.0 resumable qualification record](agents/release-080-resumable-qualification.md)
+for a completed pre-tag campaign and its remaining optimization lessons.
+
 ## The three testing loops
 
 Keep these loops separate so ordinary development stays fast and release
@@ -50,8 +53,11 @@ when the fix is a one-line test-portability correction.
   npm token. macOS signing/notarization and optional Windows signing happen in
   the protected GitHub release environments.
 - Only a Sage.js product release tag such as `v0.4.1+release.23` may own
-  GitHub's **Latest** pointer. The public installer resolves its default archive
-  through `releases/latest`, so benchmark evidence, optimizer snapshots, and
+  GitHub's **Latest** pointer. Keep `website/published-release.json` pinned to
+  the last completely published product; never derive that pointer from the
+  development package version. The website installer is staged from that
+  published release. Also protect `releases/latest`, used by direct GitHub
+  installation paths: benchmark evidence, optimizer snapshots, and
   native dependency catalogs must be created with `--latest=false` (or as a
   prerelease). The release-event guard restores the highest published product
   version if an infrastructure release is accidentally made latest.
@@ -59,6 +65,116 @@ when the fix is a one-line test-portability correction.
   on an older commit.
 
 ## Recommended release sequence
+
+### Resumable execution (required before tagging)
+
+`pnpm release:run --candidate FULL_SHA` executes the native-host plan. First
+install the pinned JavaScript dependencies and place the **same candidate's**
+canonical numerical product at `build/authenticated-numerical-product` and
+canonical public root archive at `build/release/npm/sagejs.tgz` on each host.
+Set `SAGEJS_NUMERICAL_PRODUCT_ROOT` to that product directory and
+`SAGEJS_NUMERICAL_RUNTIME_REQUIRED=1`; use the required native dependency
+catalog as in CI. This command is not a toolchain provisioning substitute.
+
+Produce that canonical handoff on Linux with
+`pnpm release:run --candidate FULL_SHA --profile canonical`. It checkpoints the
+authenticated numerical build, browser/runtime build, and one public root pack
+separately. Its outputs are the numerical product directory, browser `dist`,
+and root tarball described above. Runtime preparation includes the full lazy
+module cache before browser assembly freezes `dist` as an input; the smaller
+startup cache alone is insufficient. Copy those exact outputs, not independently
+packed roots, to the native consumers. Existing Wasm source/toolchain caches
+are used; source-current verification remains mandatory.
+
+Use `--list` to inspect commands and gate classes without running them, or
+`--stage integration,native` to diagnose selected stages. A partial run is
+**not** a complete release qualification. `--fresh` reruns selected stages.
+GitHub's native build, integration, native tests, and SEA steps use this same
+runner; CI still independently collects and authenticates publication evidence.
+
+Checkpoints and separate attempt logs live in
+`build/release-runner/FULL_SHA/`. A successful checkpoint is reusable only for
+the same clean source, runner, command, host, Node version, relevant environment,
+input content, and output content. Interrupted/failed/corrupt checkpoints are
+not successful evidence. A host lock prevents two runners from mutating the
+same checkout. Do not manually relabel receipts. Never restore a checkpoint
+from another machine as proof of local execution.
+
+Stages consuming the native/Node `dist` additionally require the existing
+source-current build receipt before running or reusing tests. Hashing an old
+runtime next to a new checkout is not qualification of that checkout.
+
+Native bootstrap also completes the full lazy cache and initializes the existing
+cubic-frontier harness's empty, validated history file before freezing `dist`.
+SEA packaging and tests must consume those completed inputs. On older candidates
+whose runner predates this preparation, explicitly run the full precompile and
+the harness's `prepareCandidateDirectEnvironment()` before qualification; never
+turn off the input mutation check to accommodate lazy preparation.
+
+Browser workload enforcement is an aggregate gate: it follows all three engine
+parity and timing stages and explicitly consumes their receipts. It is not a
+Node-only prerequisite. When qualifying an older frozen candidate, use explicit
+stage ordering and the same receipt handoff as the clean CI DAG rather than
+rebuilding the mathematical product merely to change the scheduler.
+
+Gate classes are explicit in `scripts/release/stages.cjs`:
+
+- `build`, `integrity`, `installation`, `packaging`, `correctness`, and
+  `numerical-evidence` are required; missing inputs fail closed.
+- `performance` is also required, but runs separately, after correctness,
+  without parallel sibling files. The explicit integration timing partition
+  currently covers the Python/CPython experiments; benchmark-policy regression
+  tests remain correctness tests. The unfiltered developer test command still
+  includes every file. No threshold is disabled by choosing a gate class.
+- Compiler/tutorial compatibility diagnostics and broad research campaigns
+  retain their existing non-blocking/scheduled policy; they are not substituted
+  for required mathematical evidence.
+- `performance-report` collects the existing Wasm/browser timing trend reports
+  with the same `--report-regressions` policy as release CI. Corpus, baseline
+  coverage, execution and numerical checks still must succeed; only timing
+  regressions are reports rather than mathematical failures.
+
+Package installation runs before long suites and numerical soaks. Numerical
+Node/npm/SEA subjects have independent checkpoints. Retrying one preserves
+successful siblings and moves its previous output into runner history rather
+than deleting it. The existing final numerical gate still authenticates all
+16 product rows and supplemental evidence. Local checkpoints do not authorize
+publication or replace clean CI, macOS signing, or browser qualification.
+
+The native profile matches the platform test inventory: Linux x64 includes
+the eclib corpus, generated reference/upstream checks and SEA Jupyter; ARM64
+uses the existing portable/native inventory rather than silently adding a
+second full integration campaign. On a prepared Linux browser host, run
+`pnpm release:run --candidate FULL_SHA --profile browser` for Node/native and
+Node-Wasm parity, all three real browser engines, security/recovery tests,
+workload enforcement, and the existing timing reports. Install the matching
+Playwright engines and OS libraries beforehand. Numerical browser/supplemental
+collection and cross-host clean reproducibility remain the separately required
+commands below.
+
+To launch the four hosts together, use
+`pnpm release:coordinate --candidate FULL_SHA --hosts build/release-hosts.json`.
+The ignored JSON file is an array of four objects with `host` (SSH config name),
+`target`, `root` (absolute checkout), optional `node` (absolute executable),
+and `env` (explicit release/build environment). Targets are exactly
+`linux-x64`, `linux-arm64`, `macos-arm64`, and `windows-x64`. Provision and
+check out the clean candidate beforehand; the coordinator will not reset a
+host's existing work. Do not place secrets in this configuration. Coordinate
+host occupancy in the public discussion before starting it.
+
+Coordinator logs are under `build/release-coordinator/FULL_SHA/`. It waits for
+all four independent hosts; a failing host stops its own stages without
+discarding successful work on the others. After a disconnected controller,
+inspect remote processes before restarting: the per-checkout lock prevents
+duplicate builds, and a stale lock requires orphan-process inspection rather
+than automatic deletion. A successful coordinator exit covers the native
+profile only, not signing, browser/reproducibility or final aggregation.
+
+Checkpoint reuse is intentionally limited to one exact candidate. Reuse of
+unchanged compiled components across candidates remains the build system's
+content-addressed cache responsibility; test evidence is always recollected
+for a new candidate. This distinction avoids claiming that a test on an old
+source commit qualified a new release.
 
 ### 1. Freeze and inspect
 
@@ -77,6 +193,23 @@ compiler changes also require `pnpm architecture:check`; migrated Python must
 keep `pnpm test:baselib:strict` at zero errors.
 
 ### 2. Qualify on persistent hosts
+
+Before long native integration tests, authenticate the complete browser
+handoff if the checkout contains a production Wasm artifact. Installing the
+eight-file numerical product alone does **not** refresh the browser manifest,
+build receipt, or other modules. A cached checkout can otherwise mix an old
+manifest with new numerical loaders and fail late in a Node-Wasm test.
+Preserve an old `packages/flint-wasm/dist` separately, restore the complete
+`package/packages/flint-wasm/dist` from the SHA-verified canonical public root
+tarball, then run:
+
+```sh
+node packages/flint-wasm/scripts/production-receipt.cjs validate
+node packages/flint-wasm/node-cli.mjs --verify-only
+```
+
+Do not regenerate receipts around stale or mixed bytes. This handoff check
+does not replace the later independent Wasm reproduction builds.
 
 Fetch the frozen SHA on all four hosts. Run the same build and test stages used
 by `.github/workflows/ci.yml`, with the host's existing dependency cache. Do
@@ -349,8 +482,8 @@ workspace resolution.
 pnpm view @sagemath/sagejs version dist-tags --json
 pnpm view @sagemath/sagejs-linux-x64 version --json
 pnpm view @sagemath/sagejs-linux-arm64 version --json
-pnpm view @sagemath/sagejs-macos-arm64 version --json
-pnpm view @sagemath/sagejs-windows-x64 version --json
+pnpm view @sagemath/sagejs-darwin-arm64 version --json
+pnpm view @sagemath/sagejs-win32-x64 version --json
 ```
 
 In fresh CommonJS and ESM projects, create an embedded kernel and evaluate at
@@ -397,12 +530,20 @@ budgets remain exclusive.
 The current workflows prove a great deal, but the release interface should be
 simpler and faster:
 
-- Add a coordinator which runs the four cached hosts concurrently, streams
-  stage progress, records durations, and emits one source-bound receipt.
+- Extend the existing `release:coordinate` / `release:run` checkpoints into a
+  single final campaign summary, including the numerical and reproduction
+  evidence collected by the existing specialized entry points.
 - Record native family and final-pack compile timings in the same learned timing
   store used by tests, so heterogeneous hosts can tune the two concurrency
   limits automatically without changing artifact identities.
 - Preflight Wasm/browser release workloads on a persistent browser host.
+- Separate browser memory sampling from repeated timing samples. In the 0.8.0
+  campaign Chromium timing took about 61 minutes while awaiting repeated
+  user-agent memory measurements; dedicated authenticated memory gates already
+  run separately. Preserve those gates when changing the timing collector.
+- Cache gzip/Brotli payload reports by complete artifact, compression-tool and
+  policy identities. Reproduction must still compare every payload byte/hash;
+  identical payloads should not need repeated maximum-quality compression.
 - Preserve dependency caches across candidates, while keeping the final
   GitHub build clean and authenticated. Key native artifacts by the actual
   lowered source, dependency lock, compiler, ABI, and target—not by an

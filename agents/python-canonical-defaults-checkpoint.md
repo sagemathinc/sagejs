@@ -56,6 +56,18 @@ Two emitted-code test helpers needed updating for delayed function publication.
 The truthiness checks and exact optimized-operation counts remain enforced.
 No four-platform, packaged-product, or real-browser qualification is claimed.
 
+### Main integration
+
+Merged `origin/main` at `ea2027439` after the initial defaults checkpoint.
+Implementation files merged without conflicts; the three conflicting generated
+evidence files were regenerated from the combined source, not selected from
+either parent. The combined full build passed in 14m 41s; 123 focused tests,
+architecture, routine validation (1m 35s), and all 21 enabled broader compiler
+fixtures passed. The 28 historical compiler exclusions remain unchanged.
+Fresh source-bound upstream results remain 17/28 with no status changes, and
+package workflows remain 8/11 plus seven passing Tomli upstream tests. These
+required upstream/package failures still prevent full-plan qualification.
+
 ## Local performance evidence and open cliff
 
 The `python-defaults-diagnostic-v1` suite uses equivalent ordinary Python work,

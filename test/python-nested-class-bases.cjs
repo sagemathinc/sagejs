@@ -55,6 +55,10 @@ for (const executionMode of ["script", "lazy-module"]) {
       assert.equal(result.status, 0, result.stderr);
       assert.equal(executionBytes(result, "stdout").length, 0, result.stdout);
       assert.equal(executionBytes(result, "stderr").length, 0, result.stderr);
-    } finally { rmSync(scratch, { recursive: true, force: true }); }
+    } finally {
+      // A late cache-cleanup receipt can race directory removal after the
+      // fixture exits. Retry removal briefly; do not retry its assertions.
+      rmSync(scratch, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
   });
 }

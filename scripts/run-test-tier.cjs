@@ -63,9 +63,13 @@ function parseRunnerOptions(rawArguments, defaults = {}) {
   const runnerArguments = [];
   let concurrency = defaults.concurrency ?? defaults.batchSize;
   let heartbeatSeconds = defaults.heartbeatSeconds;
+  let gate;
   for (let index = 0; index < rawArguments.length; index += 1) {
     const argument = rawArguments[index];
-    if (argument.startsWith("--concurrency=")) {
+    if (argument === "--gate") {
+      gate = rawArguments[++index];
+      if (!["correctness", "performance"].includes(gate)) throw new Error("invalid --gate");
+    } else if (argument.startsWith("--concurrency=")) {
       concurrency = positiveInteger(argument.slice(14), "--concurrency");
     } else if (argument === "--concurrency") {
       concurrency = positiveInteger(rawArguments[++index], "--concurrency");
@@ -87,7 +91,7 @@ function parseRunnerOptions(rawArguments, defaults = {}) {
       runnerArguments.push(argument);
     }
   }
-  return { concurrency, heartbeatSeconds, runnerArguments };
+  return { concurrency, heartbeatSeconds, runnerArguments, ...(gate ? { gate } : {}) };
 }
 
 function selectedByNamePattern(files, runnerArguments) {
@@ -379,7 +383,9 @@ async function main(arguments_ = process.argv.slice(2)) {
     heartbeatSeconds: Number(process.env.SAGEJS_TEST_HEARTBEAT_SECONDS || 20),
   });
   if (options.runnerArguments[0] === "--") options.runnerArguments.shift();
-  const selectedFiles = selectedByNamePattern(files, options.runnerArguments);
+  const selectedFiles = require("./release/test-gates.cjs").selectGate(
+    selectedByNamePattern(files, options.runnerArguments), options.gate,
+  );
   if (selectedFiles.length === 0) {
     console.error(`no ${tier} test file matches the requested pattern`);
     return 1;

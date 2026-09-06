@@ -234,6 +234,21 @@ Returning or retaining a borrowed record fails compilation. Nested or owned
 records remain unsupported until their construction, cleanup, and escape rules
 are specified here and enforced mechanically.
 
+`NativeWorkspace` schemas group borrowed exact owners without introducing a
+second resident representation. Compilation flattens private helper parameters
+and field projections while preserving each owner's identity and lifetime.
+Bundles cannot escape, become public host parameters, or rebind their members;
+schema and helper bindings must remain unambiguous. Ordinary Python retains
+the same owners and checks that they are still live on access. These are
+lexical compiler aliases, not general Python object optimization.
+
+Fixed-capacity `NativeIntegerVector` slice assignment supports explicit,
+contiguous bounds and tuple values without resizing. Native lowering checks
+the complete range and width and snapshots aliased RHS values before stores;
+limb-allocation exhaustion retains the documented scalar partial-write
+semantics. Unsupported forms fail compilation. This container contract does
+not alter ordinary Python list slicing.
+
 ## Compiled-kernel witnesses
 
 [`architecture/native-kernels.json`](architecture/native-kernels.json) lists

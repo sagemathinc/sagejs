@@ -631,6 +631,10 @@ function emitFmpzStatements(statements, context, indent) {
       }
       continue;
     }
+    if (statement.kind === "loop.break" || statement.kind === "loop.continue") {
+      lines.push(`${indent}${statement.kind.slice(5)};`);
+      continue;
+    }
     if (statement.kind === "while") {
       lines.push(
         `${indent}for (;;)`,

@@ -25,7 +25,7 @@ const rootFunction = "certified_complex_cubic_class_group_v1";
 const publicArenaMemoryLimit = 1_048_576;
 const publicArenaCheckpointLimit = 3_145_728;
 const expectedNameDigest =
-  "b3442051662cc70970c1f5c62c5da591cc02a4d51919144991df0acdccfef5c4";
+  "7c2b8bbbf472c62380f9ffcbfcff902ec3e1991c3165aa53e414cdfeba9114f4";
 const expectedHostFunctions = Object.freeze([
   "_cubic_arctan_reciprocal_bounds",
   "_cubic_atanh_log_bounds",
@@ -44,7 +44,6 @@ const expectedHostFunctions = Object.freeze([
   "_cubic_inverse_mod",
   "_cubic_nearest_quotient",
   "_cubic_positive_mod",
-  "_cubic_relation_rank_multiply",
   "_packed_miller_rabin_witness",
   "_packed_modular_power",
   "_packed_word_prime_is_proven",
@@ -116,9 +115,9 @@ test("the complete cubic closure is one direct fmpz program", {
     callees.map((callee) => [caller, callee])
   );
 
-  assert.equal(ir.version, 38);
-  assert.equal(functions.size, 84);
-  assert.equal(edges.length, 195);
+  assert.equal(ir.version, 39);
+  assert.equal(functions.size, 101);
+  assert.equal(edges.length, 240);
   assert.equal(
     createHash("sha256").update(names.join("\n")).digest("hex"),
     expectedNameDigest,
@@ -132,7 +131,10 @@ test("the complete cubic closure is one direct fmpz program", {
     false,
   );
   assert.ok(
-    ir.callGraph[rootFunction].includes("_cubic_plan_adjacent_ideal"),
+    ir.callGraph[rootFunction].includes("_cubic_collect_adjacent_relation_prefix"),
+  );
+  assert.ok(
+    ir.callGraph._cubic_collect_adjacent_relation_prefix.includes("_cubic_plan_adjacent_ideal"),
   );
   assert.ok(
     ir.callGraph[rootFunction].includes(
@@ -153,14 +155,15 @@ test("the complete cubic closure is one direct fmpz program", {
     (fn) => fn.hostCallable === false,
   );
   assert.deepEqual(hostFunctions, expectedHostFunctions);
-  assert.equal(hostFunctions.length, 22);
-  assert.equal(privateFunctions.length, 62);
+  assert.equal(hostFunctions.length, 21);
+  assert.equal(privateFunctions.length, 80);
   assert.equal(functions.get(rootFunction).hostCallable, true);
-  assert.equal((header.match(/\bint sagejs_kernel_/g) || []).length, 22);
-  assert.equal((core.match(/\nint sagejs_kernel_/g) || []).length, 22);
+  assert.equal((header.match(/\bint sagejs_kernel_/g) || []).length, 21);
+  assert.equal((core.match(/\nint sagejs_kernel_/g) || []).length, 21);
 
-  // Scalar helpers may retain an inspectable public bridge. Aggregate helpers
-  // remain private, so the direct call graph never invents a public ABI for a
+  // Lexically native scalar helpers may retain an inspectable public bridge.
+  // Undecorated dependencies and aggregate helpers remain private, so the
+  // direct call graph never invents a public ABI for a
   // borrowed vector, matrix, or packed buffer.
   const aggregateTypes = new Set([
     "FmpzMatrix",
@@ -172,8 +175,9 @@ test("the complete cubic closure is one direct fmpz program", {
   ]);
   for (const fn of privateFunctions) {
     assert.ok(
-      fn.params.some((parameter) => aggregateTypes.has(parameter.type)),
-      `${fn.name} is private without a borrowed aggregate parameter`,
+      fn.lexicallyNative === false ||
+        fn.params.some((parameter) => aggregateTypes.has(parameter.type)),
+      `${fn.name} is neither a private source helper nor a borrowed aggregate entry`,
     );
     assert.doesNotMatch(
       header,
@@ -242,7 +246,7 @@ test("one unsupported operation atomically removes fmpz from the closure", {
   assert.notEqual(unsupported, withImport);
 
   const ir = await lowerClosure(unsupported);
-  assert.equal(ir.functions.length, 84);
+  assert.equal(ir.functions.length, 101);
   assert.deepEqual(
     ir.functions.filter((fn) => fn.analysis.backend.kind === "fmpz"),
     [],
@@ -253,7 +257,7 @@ test("one unsupported operation atomically removes fmpz from the closure", {
   );
 });
 
-test("the authenticated production pack executes five cubic regimes in fmpz", {
+test("the authenticated production pack executes cubic regimes including resumed certification in fmpz", {
   timeout: 120_000,
 }, () => {
   const published = resolve(root, "dist/native-kernels");
@@ -294,6 +298,8 @@ test("the authenticated production pack executes five cubic regimes in fmpz", {
   const cases = [
     ["3.1.23.1", [1, 0, -1, 1], 1n, []],
     ["x^3+9*x-55", [-55, 9, 0, 1], 5n, [5n]],
+    ["x^3-32*x-92 (resumed certification)", [-92, -32, 0, 1], 3n, [3n]],
+    ["x^3+30*x-48 (resumed certification)", [-48, 30, 0, 1], 5n, [5n]],
     ["3.1.12763.1", [-22, 1, -1, 1], 8n, [2n, 4n]],
     ["3.1.93074700.2", [-5570, 0, 0, 1], 42n, [42n]],
     ["3.1.69305231.3", [48016, 134, -1, 1], 3n, [3n]],
