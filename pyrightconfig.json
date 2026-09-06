@@ -71,6 +71,7 @@
     "src/lib/sagejs/number_fields/prime_ideals.py",
     "src/lib/sagejs/number_fields/quadratic_characters.py",
     "src/lib/sagejs/number_fields/riemann_zeta.py",
+    "src/lib/sagejs/special_functions.py",
     "src/lib/sagejs/number_fields/round4.py",
     "src/lib/sagejs/number_fields/round4_state_kernel.py",
     "src/lib/sagejs/number_fields/maximal_order.py",

@@ -407,6 +407,16 @@
       "prefixes": []
     },
     {
+      "id": "analytic-special-functions",
+      "layer": 8,
+      "startup": "lazy",
+      "max_source_bytes": 10000,
+      "depends_on": ["core-runtime", "python-stdlib", "numeric-compat", "number-field-zeta-functions"],
+      "modules": ["sagejs.special_functions"],
+      "files": ["src/lib/sagejs/special_functions.py"],
+      "prefixes": []
+    },
+    {
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
