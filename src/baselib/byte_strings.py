@@ -1795,6 +1795,7 @@ runtime.reflect.set(
 def _publish_builtin_byte_type(
     _builtin_byte_type: Any, _builtin_byte_name: str
 ) -> None:
+    runtime.register_native_layout(_builtin_byte_type)
     runtime.object.defineProperty(
         _builtin_byte_type,
         "__python_type__",

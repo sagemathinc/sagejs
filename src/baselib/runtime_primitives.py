@@ -11,6 +11,32 @@ from typing import Any, Callable
 
 import sagejs.runtime as runtime
 
+_native_layout_roots = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakSet"), []
+)
+
+
+def ρσ_register_native_layout(cls: Any) -> None:
+    """Declare a representation-owning builtin independently of class metadata."""
+    _native_layout_roots.add(cls)
+
+
+def _collect_native_layouts(base: Any, layouts: Any, visited: Any) -> None:
+    for previous in visited:
+        if previous is base:
+            return
+    visited.push(base)
+    prototype = runtime.reflect.get(base, "prototype")
+    parents = runtime.reflect.get(prototype, "__bases__")
+    if _native_layout_roots.has(base) or parents is runtime.undefined:
+        for existing in layouts:
+            if existing is base:
+                return
+        layouts.push(base)
+        return
+    for parent in parents:
+        _collect_native_layouts(parent, layouts, visited)
+
 
 def ρσ_lightweight_math_class(cls: type[Any]) -> type[Any]:
     """Mark a class whose compiled instances need no generic identity slot."""
@@ -46,7 +72,8 @@ def ρσ_extends(child: Any, parent: Any) -> None:
 
 def ρσ_validate_class_bases(bases: Any) -> None:
     """Reject non-types and incompatible native instance layouts."""
-    native_layouts = 0
+    native_layouts = runtime.reflect.construct(runtime.array, [])
+    visited = runtime.reflect.construct(runtime.array, [])
     for index in range(len(bases)):
         base = bases[index]
         if (
@@ -60,9 +87,8 @@ def ρσ_validate_class_bases(bases: Any) -> None:
         prototype = runtime.reflect.get(base, "prototype")
         if prototype is runtime.undefined:
             raise TypeError("bases must be types")
-        if not runtime.reflect.has(prototype, "__bases__"):
-            native_layouts += 1
-    if native_layouts > 1:
+        _collect_native_layouts(base, native_layouts, visited)
+    if native_layouts.length > 1:
         raise TypeError("multiple bases have instance lay-out conflict")
 
 

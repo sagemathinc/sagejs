@@ -6915,6 +6915,7 @@ def ρσ_type(*values: Any) -> Any:
             raise TypeError("type() bases must be types")
         if not _builtins_member_is_function(namespace, "items"):
             raise TypeError("type() argument 3 must be dict")
+        runtime.validate_class_bases(bases)
         if not plain_type_new:
             inherited_metaclass = _builtins_inherited_metaclass(bases)
             if inherited_metaclass is not ρσ_type:
@@ -9412,6 +9413,8 @@ runtime.set_class_repr(ρσ_property, "<class 'property'>")
 runtime.set_class_repr(SageProperty, "<class 'property'>")
 _builtins_set_type_metadata(ρσ_tuple, "tuple")
 _builtins_set_type_metadata(ρσ_property, "property")
+for builtin_layout_type in (ρσ_int, ρσ_float, ρσ_type, ρσ_tuple, ρσ_property):
+    runtime.register_native_layout(builtin_layout_type)
 for builtin_factory_type in (ρσ_tuple, ρσ_property):
     # These Python-callable factories implement builtin classes.  Compiled
     # baselib functions receive lazy function metadata, so replace that marker
