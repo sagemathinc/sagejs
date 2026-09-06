@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import {extensionGeometryBatches} from "./extension-geometry-fixtures.mjs";
 import {createSage} from "../node-kernel.mjs";
 
-test("production Wasm exact extension ideals and geometry", {timeout: 1800000}, async () => {
+// Qualification contains 29 separately bounded evaluations; its aggregate
+// watchdog must not truncate otherwise valid individual operations.
+test("production Wasm exact extension ideals and geometry", {timeout: 3600000}, async () => {
   const sage = await createSage();
   try {
     for await (const batch of extensionGeometryBatches()) {

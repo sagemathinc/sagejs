@@ -4,7 +4,9 @@ import {extensionGeometryBatches} from "./extension-geometry-fixtures.mjs";
 import {chromium} from "playwright-core";
 import {createBrowserWasmServer, executablePathFor} from "./browser-wasm-support.mjs";
 
-test("production Chromium exact extension ideals and geometry", {timeout: 1800000}, async () => {
+// Qualification contains 29 separately bounded evaluations; its aggregate
+// watchdog must not truncate otherwise valid individual operations.
+test("production Chromium exact extension ideals and geometry", {timeout: 3600000}, async () => {
   const executablePath = executablePathFor("chromium", chromium);
   assert.ok(executablePath, "Chromium is required for extension-field qualification");
   const server = await createBrowserWasmServer();

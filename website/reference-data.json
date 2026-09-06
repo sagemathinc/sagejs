@@ -13469,16 +13469,16 @@
         "name": "AffineSpace",
         "qualified": "AffineSpace",
         "path": "src/baselib/schemes.py",
-        "line": 488,
+        "line": 477,
         "excerpt": {
-          "start_line": 476,
+          "start_line": 465,
           "text": "        if len(equations) == 0:\n            lines.append(\"  0\")\n        else:\n            for index, equation in enumerate(equations):\n                suffix = \",\" if index + 1 < len(equations) else \"\"\n                lines.append(\"  \" + repr(equation) + suffix)\n        return \"\\n\".join(lines)\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef AffineSpace(\n    first: Any,\n    second: Any,\n    names: Any = \"x\",\n) -> AffineSpaceParent:\n    \"\"\"Construct affine space in either Sage-compatible argument order.\n\n    ```sage\n    sage: A = AffineSpace(QQ, 2, names=(\"x\", \"y\"))\n    sage: A.dimension()\n    2\n    ```\n    \"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/schemes.py#e010c74c332f5782-e3b0c44298fc1c14",
-          "line": 496,
+          "line": 485,
           "source": "A = AffineSpace(QQ, 2, names=(\"x\", \"y\"))",
           "want": "",
           "tags": [],
@@ -13494,7 +13494,7 @@
         },
         {
           "id": "src/baselib/schemes.py#f4ed007692290f8a-d4735e3a265e16ee",
-          "line": 497,
+          "line": 486,
           "source": "A.dimension()",
           "want": "2\n",
           "tags": [],
@@ -14845,16 +14845,16 @@
         "name": "Curve",
         "qualified": "Curve",
         "path": "src/baselib/schemes.py",
-        "line": 1149,
+        "line": 1126,
         "excerpt": {
-          "start_line": 1137,
+          "start_line": 1114,
           "text": "    def __repr__(self) -> str:\n        return (\n            \"Projective Plane Curve over \"\n            + str(self.base_ring())\n            + \" defined by\\n   \"\n            + repr(self._polynomial)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef Curve(polynomial: Any) -> Any:\n    \"\"\"Construct an affine or projective plane curve from one polynomial.\n\n    ```sage\n    sage: R = PolynomialRing(QQ, names=(\"x\", \"y\"))\n    sage: x, y = R.gens()\n    sage: C = Curve(y^2 - x^3)\n    sage: C.degree()\n    3\n    ```\n    \"\"\"\n    if not hasattr(polynomial, \"parent\"):\n        raise TypeError(\"Curve needs a multivariate polynomial\")"
         }
       },
       "examples": [
         {
           "id": "src/baselib/schemes.py#fd76c7c26e088c48-e3b0c44298fc1c14",
-          "line": 1153,
+          "line": 1130,
           "source": "R = PolynomialRing(QQ, names=(\"x\", \"y\"))",
           "want": "",
           "tags": [],
@@ -14870,7 +14870,7 @@
         },
         {
           "id": "src/baselib/schemes.py#03ec444959c798d3-e3b0c44298fc1c14",
-          "line": 1154,
+          "line": 1131,
           "source": "x, y = R.gens()",
           "want": "",
           "tags": [],
@@ -14886,7 +14886,7 @@
         },
         {
           "id": "src/baselib/schemes.py#427af1e83a416cd4-e3b0c44298fc1c14",
-          "line": 1155,
+          "line": 1132,
           "source": "C = Curve(y^2 - x^3)",
           "want": "",
           "tags": [],
@@ -14902,7 +14902,7 @@
         },
         {
           "id": "src/baselib/schemes.py#ec0c4059d7824af6-4e07408562bedb8b",
-          "line": 1156,
+          "line": 1133,
           "source": "C.degree()",
           "want": "3\n",
           "tags": [],
@@ -35539,16 +35539,16 @@
         "name": "ProjectiveSpace",
         "qualified": "ProjectiveSpace",
         "path": "src/baselib/schemes.py",
-        "line": 937,
+        "line": 914,
         "excerpt": {
-          "start_line": 925,
+          "start_line": 902,
           "text": "        if len(self._equations) == 0:\n            lines.append(\"  0\")\n        else:\n            for index, equation in enumerate(self._equations):\n                suffix = \",\" if index + 1 < len(self._equations) else \"\"\n                lines.append(\"  \" + repr(equation) + suffix)\n        return \"\\n\".join(lines)\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ProjectiveSpace(\n    first: Any,\n    second: Any,\n    names: Any = \"x\",\n) -> ProjectiveSpaceParent:\n    \"\"\"Construct projective space in either Sage-compatible argument order.\n\n    ```sage\n    sage: P = ProjectiveSpace(QQ, 2, names=(\"x\", \"y\", \"z\"))\n    sage: P(2, 4, 6) == P(1, 2, 3)\n    True\n    ```\n    \"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/schemes.py#c4138a7a365c9405-e3b0c44298fc1c14",
-          "line": 945,
+          "line": 922,
           "source": "P = ProjectiveSpace(QQ, 2, names=(\"x\", \"y\", \"z\"))",
           "want": "",
           "tags": [],
@@ -35564,7 +35564,7 @@
         },
         {
           "id": "src/baselib/schemes.py#dad19399d23b4f16-3cbc87c7681f34db",
-          "line": 946,
+          "line": 923,
           "source": "P(2, 4, 6) == P(1, 2, 3)",
           "want": "True\n",
           "tags": [],

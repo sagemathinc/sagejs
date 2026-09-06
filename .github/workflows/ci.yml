@@ -618,6 +618,18 @@ jobs:
           pnpm test:portable
           pnpm test:native:run
 
+      # These public finite-extension fixtures require the installed native
+      # backend and therefore are not members of the addon-free portable tier.
+      # Keep this focused rather than reinstating the full host-integration tier.
+      - name: Qualify public finite-extension arithmetic and geometry
+        run: >-
+          node --test --test-concurrency=1
+          test/extension-field-coordinates.cjs
+          test/extension-multivariate.cjs
+          test/generic-groebner.cjs
+          test/extension-ideals.cjs
+          test/extension-geometry.cjs
+
       - name: Build and relocation-test both SEA executables
         env:
           SAGEJS_BUILD_JOBS: "8"

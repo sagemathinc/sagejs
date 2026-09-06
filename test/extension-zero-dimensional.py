@@ -11,6 +11,10 @@ assert globals().get("_extension_zero_stage") in (
     "nonsplit",
     "separator",
 )
+operation = globals().get("_extension_zero_operation")
+assert operation in (None, "radical", "is_radical", "primary", "associated")
+if operation is not None:
+    assert globals().get("_extension_zero_stage") in ("frobenius1", "frobenius2")
 
 t = PolynomialRing(GF(3), "t").gen()
 for q in [4, 9]:
@@ -30,12 +34,16 @@ for q in [4, 9]:
             root = root ** (q // p)
         fat = R.ideal(x ** (p**iterations) - a, y)
         expected = R.ideal(x - root, y)
-        assert fat.radical(proof=True).is_equal(expected)
-        assert not fat.is_radical()
-        fat_components = fat.primary_decomposition(proof=True)
-        assert len(fat_components) == 1
-        assert fat_components[0].is_equal(fat)
-        assert fat.associated_primes(proof=True)[0].is_equal(expected)
+        if operation in (None, "radical"):
+            assert fat.radical(proof=True).is_equal(expected)
+        if operation in (None, "is_radical"):
+            assert not fat.is_radical()
+        if operation in (None, "primary"):
+            fat_components = fat.primary_decomposition(proof=True)
+            assert len(fat_components) == 1
+            assert fat_components[0].is_equal(fat)
+        if operation in (None, "associated"):
+            assert fat.associated_primes(proof=True)[0].is_equal(expected)
     if stage in (None, "components"):
         left = R.ideal((x - a) ** 2, y)
         right = R.ideal(x - a - 1, y**2)

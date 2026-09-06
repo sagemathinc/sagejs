@@ -11,11 +11,18 @@ export async function* extensionGeometryBatches() {
     const source = await readFile(new URL(`../../../test/${name}.py`, import.meta.url), "utf8");
     for (const field of fields) {
       for (const stage of stages) {
-        yield {
-          label: `${name}/GF(${field})${stage ? `/${stage}` : ""}`,
-          source: `_extension_field_selection = ${field}\n` +
-            `_extension_zero_stage = ${stage ? JSON.stringify(stage) : "None"}\n` + source,
-        };
+        // Four individually bounded public calls exceed one worker evaluation
+        // when combined for the degree-nine nonreduced GF(9) quotient.
+        const operations = field === 9 && stage === "frobenius2"
+          ? ["radical", "is_radical", "primary", "associated"] : [null];
+        for (const operation of operations) {
+          yield {
+            label: `${name}/GF(${field})${stage ? `/${stage}` : ""}${operation ? `/${operation}` : ""}`,
+            source: `_extension_field_selection = ${field}\n` +
+              `_extension_zero_stage = ${stage ? JSON.stringify(stage) : "None"}\n` +
+              `_extension_zero_operation = ${operation ? JSON.stringify(operation) : "None"}\n` + source,
+          };
+        }
       }
     }
   }
@@ -23,10 +30,13 @@ export async function* extensionGeometryBatches() {
     "../../../test/fixtures/extension-geometry-sage-oracles-v1.json", import.meta.url), "utf8"));
   const source = await readFile(new URL("../../../test/extension-geometry-oracles.py", import.meta.url), "utf8");
   for (const fixture of fixtures.cases) {
-    yield {
-      label: `independent-Sage-geometry/GF(${fixture.characteristic**2})`,
-      source: "import json\n_extension_geometry_cases = json.loads(" +
-        JSON.stringify(JSON.stringify([fixture])) + ")\n" + source,
-    };
+    for (const stage of ["radical", "joined", "nonsplit", "points"]) {
+      yield {
+        label: `independent-Sage-geometry/GF(${fixture.characteristic**2})/${stage}`,
+        source: "import json\n_extension_geometry_cases = json.loads(" +
+          JSON.stringify(JSON.stringify([fixture])) + ")\n" +
+          `_extension_geometry_oracle_stage = ${JSON.stringify(stage)}\n` + source,
+      };
+    }
   }
 }
