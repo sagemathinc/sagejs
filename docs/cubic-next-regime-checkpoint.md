@@ -181,6 +181,14 @@ sizes are unchanged. This is not four-platform resource qualification.
 | `constants-target-diagnostic.json` | `2ff4e4bb0d11b3f78c6186a4c9f5ae036e356ed0607747c24f550a706fb495e9` |
 | `constants-equivalence.json` | `a07023e6b3e3c1cfbb13e317afd66db6b04c8832c8ae744a69e6c23cf5bebb64` |
 
+These files, the combined candidate source, profiling driver/reports, and
+rejected experiments are in the
+[constant-compression evidence release](https://github.com/sagemathinc/sagejs/releases/tag/cubic-frontier-constants-bbe1d2ca3-20260906).
+Commit `bbe1d2ca3` passed all nine focused public/native tests, strict Python,
+and the architecture gate. The clean-build full public census on `opt` is
+the next qualification step. The separately archived single-field 32-bit
+precision probe is exploratory, not integrated or independently certified.
+
 Neither smaller kernel timings nor old pre-staging frontier timings establish
 a current public PARI comparison. The next gate is a clean, authenticated
 current-source public baseline on `opt`, followed by attribution of the
