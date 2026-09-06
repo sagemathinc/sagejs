@@ -31,11 +31,38 @@ Focused source tests cover every coordinate position, duplicate ones, near-one
 and subnormal coefficients, negative and signed zeros, overflow, empty shapes,
 and cancellation at every callback of a rectangular selection product. The
 source-level public linear-algebra corpus, strict Python (377 modules), and
-architecture checks pass. Browser packaging and four-platform qualification of
-this change remain pending.
+architecture checks pass. The focused tests also pass on Node 22.22.2.
+
+The lazy bundle rebuilt from current source (411 modules, eight dynamic
+programs). `browsers.json` retains source/pack fingerprints for all twelve
+disabled/floating/stale/missing routes in Chromium, Firefox and WebKit. Each
+route passes the coordinate-row, cancellation, overflow and prepared-evaluator
+tests. Its timings concern the existing root workload, not dense LU. This is
+source browser integration, not a fresh complete product build, npm/SEA or
+four-platform qualification; those remain open.
 
 Reproduce without overwriting prior evidence:
 
 ```sh
 node bench/numerics/performance/permutation-validation.cjs NEW_RECEIPT.json
+```
+
+## Where the remaining time goes
+
+`phase-profile.json` retains a separate instrumented ordinary-Sage.js run after
+the bundle build finished. It wraps the existing operation phases, checks the
+same values/validation/status against an uninstrumented call, and excludes
+input construction. Seven measured calls follow three warmups. The 32-square
+phase medians are 51.1 ms factorization, 436.8 ms independent validation,
+115.8 ms result construction, and 28.7 ms other public overhead. Total-call
+median is 634.1 ms; phase medians need not sum to that median.
+
+These are local diagnostic timings, not a qualified speed comparison.
+Reconstruction and result materialization need attention before private LU
+kernel gains can deliver the public target. In particular, result construction
+currently calls `factorization.to_dict()` twice; removing redundant work must
+preserve detached result ownership, validation and content identities.
+
+```sh
+node bench/numerics/performance/dense-phase-profile.cjs NEW_RECEIPT.json
 ```

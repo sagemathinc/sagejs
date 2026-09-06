@@ -400,8 +400,12 @@ A subsequent [coordinate-row validation shortcut](../bench/numerics/performance/
 proves exact zero/one row structure from entries while retaining callback order
 and general-dot semantics. Paired local public 32-square LU improves from 964
 to 632 ms with identical results and validation; this remains far above target.
-Source correctness, strict Python and architecture pass. Browser packaging and
-four-platform qualification remain pending; there is no new compiled default.
+Source correctness, Node 22, strict Python and architecture pass. The rebuilt
+lazy bundle passes all twelve public source-browser routes, including the new
+coordinate/cancellation regressions. Four-platform and npm/SEA qualification
+remain pending; there is no new compiled default. The retained phase profile
+identifies independent validation and result materialization as the dominant
+remaining public costs, not LU arithmetic alone.
 
 Audit already linked numerical dependencies and reuse a suitable validated
 prefix. Compare typed-source small-matrix kernels with a narrow mature-library
