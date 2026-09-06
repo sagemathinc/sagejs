@@ -60,7 +60,7 @@ def main() -> None:
     root = Path(__file__).resolve().parents[3]
     sys.path.insert(0, str(root / "src/lib"))
     # Load only the private kernel, not the public statistics/import graph.
-    source = root / "src/lib/sagejs/numerics/statistics/_packed.py"
+    source = root / "src/lib/sagejs/numerics/_packed_sum.py"
     spec = importlib.util.spec_from_file_location("packed_sums_oracle", source)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

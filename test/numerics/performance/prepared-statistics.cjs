@@ -34,7 +34,7 @@ test("public prepared queries agree in dynamic and source-compiled Sage.js", { t
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-prepared-statistics-"));
   try {
     const cache = path.join(directory, "cache");
-    for (const file of ["_packed.py", "_packed_centered.py"]) {
+    for (const file of ["../_packed_sum.py", "_packed_centered.py"]) {
       await compileKernel({ sourcePath: path.join(root, "src/lib/sagejs/numerics/statistics", file), cacheRoot: cache });
     }
     const staleCache = path.join(directory, "stale-cache");

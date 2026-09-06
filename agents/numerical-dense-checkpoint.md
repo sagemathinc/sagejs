@@ -139,3 +139,43 @@ not this portable bundle. Local selected tests also pass from a fresh archive
 extraction with no inherited build tree. Future receipts must use fresh archive
 extractions: copying prior qualification trees retained extra files and changed
 the selected snapshot even though the four remote snapshots agreed.
+
+## Independent reconstruction arithmetic
+
+`perf/numerical-validation-products` adds a private bounded reconstruction-row
+kernel that imports the existing accurately rounded sum from numerical core.
+The [local comparison](../bench/numerics/performance/results/n3-validation-products-2026-09-06/README.md)
+measures a full 32-square product through native row calls at 0.681 ms versus
+39.2 ms for generated JS. It excludes public result construction and norms;
+public LU and its cancellation/check order are unchanged. The shared sum was
+moved out of statistics rather than adding a linear-algebra-to-statistics
+dependency. Source/native/JS/Wasm and three-browser corpus checks pass. Remote
+qualification waits for the release host reservation; this is not N3 acceptance.
+Node 22.22.2, 22 reduction/lazy-loading/row tests, three prepared-statistics and
+pack checks, strict Python (377 modules), and the complete architecture gate
+pass locally. The full lazy-module rebuild and public browser-statistics rerun
+are separate pending packaging checks; kernel browser witnesses are not used
+as substitutes for them.
+
+PR #180's first routine CI run stopped at the modular-qexp source-freeze
+fingerprint because it includes the shared package graph. An exact comparison
+found only that graph changed among its 31 inputs; refreshing its graph and
+bundle hashes leaves all mathematical/oracle sources and required checks
+unchanged. This is a source-manifest repair, not new modular-form platform
+evidence. The local lazy rebuild also exposed old standard-module metadata
+(`cf3205…`) against the converged compiler (`7b6309…`); the standard cache was
+rebuilt and its version checked before retrying lazy packaging.
+
+The complete portable run exposed an over-broad Wasm admission check from
+#179: nine established integer/resource functions were rejected because they
+lack separate dynamic Wasm wrappers, despite using the existing compiled C-ABI
+path. Restricting the new guard to floating kernels restores that closure and
+still rejects unsupported floating foreign calls. The full production closure,
+real FLINT Wasm resource lifecycle, focused floating witness, and all 116 local
+portable files now pass; architecture passes again. No integer/resource target
+contract was newly broadened. The lazy bundle rebuilt successfully (411 modules,
+eight dynamic programs). The final public browser-statistics rerun passes all
+twelve disabled/floating/stale/missing routes across Chromium, Firefox and
+WebKit; its source/pack hashes and query records are retained with the local
+reconstruction report. This closes the local packaging checks, not remote
+qualification, npm/SEA verification or public dense acceleration.

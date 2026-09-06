@@ -12,7 +12,7 @@ const { removeLoadedNativeCache } = require("../../../test/helpers/native-cache-
 const { repositoryIdentity, sha256 } = require("../../../scripts/numerical-computing/common.cjs");
 
 const root = path.resolve(__dirname, "../../..");
-const sourcePath = path.join(root, "src/lib/sagejs/numerics/statistics/_packed.py");
+const sourcePath = path.join(root, "src/lib/sagejs/numerics/_packed_sum.py");
 const sizes = [1000, 20000, 100000];
 
 function timed(call, expected) {

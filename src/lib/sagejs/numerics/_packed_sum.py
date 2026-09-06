@@ -1,4 +1,4 @@
-"""Private source-transparent binary64 reduction candidates.
+"""Shared private source-transparent binary64 finite summation.
 
 These kernels are not selected automatically by the public statistics API.
 The experimental prepared-data AOT opt-in may select source-verified artifacts;

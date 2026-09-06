@@ -16,7 +16,7 @@ const { closeSession } = require("../../../bench/numerics/performance/run.cjs");
 const { removeLoadedNativeCache } = require("../../helpers/native-cache-cleanup.cjs");
 
 const root = path.resolve(__dirname, "../../..");
-const sourcePath = path.join(root, "src/lib/sagejs/numerics/statistics/_packed.py");
+const sourcePath = path.join(root, "src/lib/sagejs/numerics/_packed_sum.py");
 
 function oracle() {
   const python = process.env.PYTHON || (process.platform === "win32" ? "python" : "python3");

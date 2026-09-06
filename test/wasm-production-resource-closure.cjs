@@ -184,8 +184,8 @@ test("production resource closure compiles every registered function", async () 
   );
   const functions = inventory.inventory.flatMap((kernel) => kernel.functions);
   assert.ok(functions.length > 0);
-  assert.ok(functions.every((fn) => fn.status === "compiled-source"));
   assert.deepEqual(unsupported, []);
+  assert.ok(functions.every((fn) => fn.status === "compiled-source"));
 });
 
 test("real FLINT Wasm adopts, borrows, grows memory, and closes resources", {

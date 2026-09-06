@@ -1,6 +1,6 @@
 # Numerical computing performance program
 
-Status: implementation in progress, 2026-09-05. The initial inspection starts at
+Status: implementation in progress, 2026-09-06. The initial inspection starts at
 `d520ed4df1b4afbea3199964ffd27fc57efdc1e0` on `origin/main`.
 
 ## Execution checkpoint: N0–N1
@@ -383,6 +383,18 @@ current tiny/medium LU measurements exclude public marshalling and independent
 validation; those remain dominant and must be accelerated without weakening
 their contracts. A generic floating-buffer foreign boundary and recoverable
 allocation/failure design precede production adoption.
+
+[Draft PR #179](https://github.com/sagemathinc/sagejs/pull/179) adds the generic
+transactional floating-buffer FFI boundary; its Windows addon witness and
+four-host rerun remain pending. [Draft PR #180](https://github.com/sagemathinc/sagejs/pull/180)
+addresses independent reconstruction separately, with a bounded typed row
+kernel reusing the accurate sum moved into numerical core. Its
+[local row-call comparison](../bench/numerics/performance/results/n3-validation-products-2026-09-06/README.md)
+and source/native/Wasm/browser corpus are promising but do not establish public
+LU latency. Preserve existing per-cell callback semantics until an explicit
+owned/cancellation policy permits a larger atomic region. The release lane's
+persistent-host reservation defers remote qualification, not local correctness
+work; none of these draft prerequisites constitutes N3 completion.
 
 Audit already linked numerical dependencies and reuse a suitable validated
 prefix. Compare typed-source small-matrix kernels with a narrow mature-library

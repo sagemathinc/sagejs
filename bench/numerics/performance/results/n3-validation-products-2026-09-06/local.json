@@ -1,0 +1,108 @@
+{
+  "schema": "sagejs.validation-product-timing/v1",
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.8.1",
+    "cpu": "AMD EPYC 7B13"
+  },
+  "sources": {
+    "src/lib/sagejs/numerics/linear_algebra/_packed_validation.py": "650a50691399f127ea93fdec5400a353041e50a3aaf9b0e60ee3facfee5e5c92",
+    "src/lib/sagejs/numerics/_packed_sum.py": "a5e1d35d059af0c7f49e812ccfead7ab3f83fff784e6b836d5580fda8fcacdd7"
+  },
+  "benchmark_sha256": "ca62b2040294d4f06f46c9fa2e392ce5246b27d08b882d6cbe841d676fd99943",
+  "artifact": {
+    "cache_key": "deedf1d4d2a3fc4bee5cfb801852e3765a116a92cb3c84371d01169a0f0cb4ed",
+    "native_abi": 23,
+    "core_sha256": "12fdefb7068e796ed7f391437f1eb1cca36273db8b019345faacc410a65b411d",
+    "addon_sha256": "c13f9f9ebd182d1d1be6a4656d65e6a7367ec2bdad38d7b13a18442d9b4012f8"
+  },
+  "policy": {
+    "warmups": 3,
+    "blocks": 7,
+    "order": "alternating",
+    "storage": "reused Float64Array arguments; normal wrapper marshalling included",
+    "unit": "one full product through bounded row calls"
+  },
+  "records": [
+    {
+      "size": 16,
+      "samples_ms": {
+        "native": [
+          0.18663100000003396,
+          0.1634599999999864,
+          0.17445000000020627,
+          0.1513199999999415,
+          0.13326000000006388,
+          0.17063000000007378,
+          0.13779999999997017
+        ],
+        "javascript": [
+          5.672219000000041,
+          6.027109999999993,
+          5.613949000000048,
+          5.594980000000078,
+          5.473330000000033,
+          5.596199999999953,
+          5.3215090000001055
+        ]
+      },
+      "output_sha256": "8a403754adf586e342a7de3639bd25a9de210f92d64963b9a9a938e06bbee403"
+    },
+    {
+      "size": 32,
+      "samples_ms": {
+        "native": [
+          0.6922700000000077,
+          0.6808200000000397,
+          0.6580300000000534,
+          0.7292200000001685,
+          0.6511110000001281,
+          0.6962300000000141,
+          0.6515300000000934
+        ],
+        "javascript": [
+          38.971798000000035,
+          39.16248799999994,
+          39.050308000000086,
+          39.16703800000005,
+          39.01164700000004,
+          39.51144799999997,
+          39.478008000000045
+        ]
+      },
+      "output_sha256": "7211f05d4d654d95edb74d49cca14c17f444d8037b5499c2a158acd0522ce3c8"
+    },
+    {
+      "size": 64,
+      "samples_ms": {
+        "native": [
+          4.675850000000082,
+          4.557959999999639,
+          4.483200000000124,
+          4.554949000000306,
+          4.489659999999276,
+          4.550438999999642,
+          4.4984800000002
+        ],
+        "javascript": [
+          347.3378309999998,
+          321.396432,
+          323.0823220000002,
+          322.43770300000006,
+          323.8623319999997,
+          321.65550299999995,
+          323.7807929999999
+        ]
+      },
+      "output_sha256": "e1b9052686463452b9e59a0052d7eb339b29e083e6e8c66b8a8fa7f2a7fc973a"
+    }
+  ],
+  "limitations": [
+    "local-development-only",
+    "not-public-validation-or-LU-call",
+    "excludes-allocation-of-initial-buffers",
+    "excludes-norms-and-result-construction",
+    "not-a-target-or-default-promotion"
+  ]
+}

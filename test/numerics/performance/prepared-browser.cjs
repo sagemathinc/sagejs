@@ -33,8 +33,8 @@ test("public prepared numerical APIs use the optional pack in real browser sessi
   try {
     const lazy = JSON.parse(fs.readFileSync(path.join(root, "dist/lazy-modules.json"), "utf8"));
     validateLazyModuleBundle(lazy, { repositoryRoot: root });
-    for (const name of ["_packed", "_packed_centered", "_prepared_native"]) {
-      assert.ok(lazy.modules[`sagejs.numerics.statistics.${name}`], `missing lazy ${name}`);
+    for (const name of ["_packed_sum", "statistics._packed_centered", "statistics._prepared_native"]) {
+      assert.ok(lazy.modules[`sagejs.numerics.${name}`], `missing lazy ${name}`);
     }
     buildBrowserStandardLibrary({
       sourceDirectory: path.join(root, "src/lib"), cacheDirectory: path.join(root, "dist/module-cache"),
@@ -135,7 +135,7 @@ test("public prepared numerical APIs use the optional pack in real browser sessi
               if (route === "floating") await sage.evaluate(
                 evaluators
                   ? 'from sagejs.numerics._evaluation_core import evaluate_program\nassert evaluate_program.executionTarget == "wasm"'
-                  : 'from sagejs.numerics.statistics._packed import finite_sum\nassert finite_sum.executionTarget == "wasm"',
+                  : 'from sagejs.numerics._packed_sum import finite_sum\nassert finite_sum.executionTarget == "wasm"',
                 { timeout: 120000 },
               );
               const recovery = await sage.evaluate("print(6 * 7)", { timeout: 120000 });
