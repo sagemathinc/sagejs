@@ -221,6 +221,7 @@
       "files": [
         "src/lib/sagejs/kernels/polynomial/__init__.py",
         "src/lib/sagejs/kernels/polynomial/arbitrary_prime_flint.py",
+        "src/lib/sagejs/kernels/polynomial/cubic_splitting.py",
         "src/lib/sagejs/kernels/polynomial/extension_flint.py",
         "src/lib/sagejs/kernels/polynomial/gf2_packed.py",
         "src/lib/sagejs/kernels/polynomial/packed_flint.py",
@@ -320,6 +321,7 @@
         "arithmetic",
         "linear-algebra",
         "number-field-algorithms",
+        "polynomial-native-kernels",
         "python-stdlib"
       ],
       "modules": [

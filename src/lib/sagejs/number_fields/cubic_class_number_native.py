@@ -48,6 +48,9 @@ from sagejs.number_fields.field_analysis_resource import (
     _packed_word_prime_is_proven,
     packed_field_analysis_fixed_points_are_valid,
 )
+from sagejs.kernels.polynomial.cubic_splitting import (
+    cubic_root_multiplicity_counts,
+)
 
 
 _CUBIC_WORKSPACE_LENGTH = 8192
@@ -5513,40 +5516,20 @@ def _cubic_prepare_bf_plan(
                 analytic_constant_mod: uint64 = constant % analytic_prime
                 analytic_linear_mod: uint64 = linear % analytic_prime
                 analytic_quadratic_mod: uint64 = quadratic % analytic_prime
-                analytic_root: uint64 = 0
-                analytic_multiplicity_sum: uint64 = 0
-                while analytic_root < analytic_prime:
-                    analytic_root_square: uint64 = (
-                        analytic_root * analytic_root
-                    ) % analytic_prime
-                    analytic_value: uint64 = (
-                        analytic_constant_mod
-                        + analytic_linear_mod * analytic_root
-                        + analytic_quadratic_mod * analytic_root_square
-                        + analytic_root_square * analytic_root
-                    ) % analytic_prime
-                    if analytic_value == 0:
-                        analytic_first_hasse: uint64 = (
-                            analytic_linear_mod
-                            + 2 * analytic_quadratic_mod * analytic_root
-                            + 3 * analytic_root_square
-                        ) % analytic_prime
-                        analytic_second_hasse: uint64 = (
-                            analytic_quadratic_mod + 3 * analytic_root
-                        ) % analytic_prime
-                        analytic_root_multiplicity: uint64 = 1
-                        if analytic_first_hasse == 0:
-                            analytic_root_multiplicity = 2
-                            if analytic_second_hasse == 0:
-                                analytic_root_multiplicity = 3
-                        analytic_multiplicity_sum += analytic_root_multiplicity
-                        analytic_local_degree += analytic_root_multiplicity
-                        analytic_workspace[
-                            _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime
-                        ] += 1
-                    analytic_root += 1
+                analytic_root_count, analytic_multiplicity_sum = (
+                    cubic_root_multiplicity_counts(
+                        analytic_constant_mod,
+                        analytic_linear_mod,
+                        analytic_quadratic_mod,
+                        analytic_prime,
+                    )
+                )
                 if analytic_multiplicity_sum > 3:
                     return (False, zero, zero)
+                analytic_local_degree += analytic_multiplicity_sum
+                analytic_workspace[
+                    _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime
+                ] += analytic_root_count
                 analytic_remaining_degree: uint64 = 3 - analytic_multiplicity_sum
                 if analytic_remaining_degree > 0:
                     analytic_norm = 1

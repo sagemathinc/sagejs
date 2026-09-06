@@ -51,7 +51,13 @@ test("closed native cubic receipts survive declines and authenticate targets", {
     .update(readFileSync(checkerPath))
     .digest("hex");
   assert.equal(compiled.ir.version, 39);
+  const splittingPath = resolve(root,
+    "src/lib/sagejs/kernels/polynomial/cubic_splitting.py");
   assert.deepEqual(compiled.ir.nativeSourceDependencies, [{
+    module: "sagejs.kernels.polynomial.cubic_splitting",
+    path: splittingPath,
+    sha256: createHash("sha256").update(readFileSync(splittingPath)).digest("hex"),
+  }, {
     module: "sagejs.number_fields.field_analysis_resource",
     path: checkerPath,
     sha256: checkerHash,

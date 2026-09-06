@@ -60,7 +60,8 @@ test("analytic extraction remains one direct source-transparent fmpz closure", {
     resolveNativeImport: createNativeImportResolver({root, lowerSource, initialSourcePath: sourcePath}),
   });
   for (const fn of ir.functions) assert.equal(fn.analysis.backend.kind, "fmpz", fn.name);
-  assert.equal(ir.functions.filter(fn => fn.hostCallable !== false).length, 21);
+  // The imported Frobenius splitting kernel adds one source-transparent entry.
+  assert.equal(ir.functions.filter(fn => fn.hostCallable !== false).length, 22);
   const generated = generateHostCore(ir);
   for (const name of helperNames) {
     const fn = ir.functions.find(fn => fn.name === name);

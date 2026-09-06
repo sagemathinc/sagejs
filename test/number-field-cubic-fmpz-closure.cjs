@@ -25,7 +25,7 @@ const rootFunction = "certified_complex_cubic_class_group_v1";
 const publicArenaMemoryLimit = 1_048_576;
 const publicArenaCheckpointLimit = 3_145_728;
 const expectedNameDigest =
-  "7c2b8bbbf472c62380f9ffcbfcff902ec3e1991c3165aa53e414cdfeba9114f4";
+  "ee7ed1e2f22f6c61e07c46b9c0b0bb8bed4da8f1e001c558771bbb9f5d3639c7";
 const expectedHostFunctions = Object.freeze([
   "_cubic_arctan_reciprocal_bounds",
   "_cubic_atanh_log_bounds",
@@ -47,6 +47,7 @@ const expectedHostFunctions = Object.freeze([
   "_packed_miller_rabin_witness",
   "_packed_modular_power",
   "_packed_word_prime_is_proven",
+  "cubic_root_multiplicity_counts",
   rootFunction,
 ].sort());
 
@@ -116,8 +117,10 @@ test("the complete cubic closure is one direct fmpz program", {
   );
 
   assert.equal(ir.version, 39);
-  assert.equal(functions.size, 101);
-  assert.equal(edges.length, 240);
+  // The imported splitting entry and its two scalar helpers add three nodes
+  // and three edges; every node must still be reachable from the cubic root.
+  assert.equal(functions.size, 104);
+  assert.equal(edges.length, 243);
   assert.equal(
     createHash("sha256").update(names.join("\n")).digest("hex"),
     expectedNameDigest,
@@ -155,11 +158,11 @@ test("the complete cubic closure is one direct fmpz program", {
     (fn) => fn.hostCallable === false,
   );
   assert.deepEqual(hostFunctions, expectedHostFunctions);
-  assert.equal(hostFunctions.length, 21);
-  assert.equal(privateFunctions.length, 80);
+  assert.equal(hostFunctions.length, 22);
+  assert.equal(privateFunctions.length, 82);
   assert.equal(functions.get(rootFunction).hostCallable, true);
-  assert.equal((header.match(/\bint sagejs_kernel_/g) || []).length, 21);
-  assert.equal((core.match(/\nint sagejs_kernel_/g) || []).length, 21);
+  assert.equal((header.match(/\bint sagejs_kernel_/g) || []).length, 22);
+  assert.equal((core.match(/\nint sagejs_kernel_/g) || []).length, 22);
 
   // Lexically native scalar helpers may retain an inspectable public bridge.
   // Undecorated dependencies and aggregate helpers remain private, so the
@@ -246,7 +249,7 @@ test("one unsupported operation atomically removes fmpz from the closure", {
   assert.notEqual(unsupported, withImport);
 
   const ir = await lowerClosure(unsupported);
-  assert.equal(ir.functions.length, 101);
+  assert.equal(ir.functions.length, 104);
   assert.deepEqual(
     ir.functions.filter((fn) => fn.analysis.backend.kind === "fmpz"),
     [],
