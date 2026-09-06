@@ -9489,13 +9489,18 @@ def _builtins_replace_instance_dict(instance: Any, namespace: Any) -> None:
     """Replace an instance namespace while preserving its host identity."""
     if not _builtins_member_is_function(namespace, "items"):
         raise TypeError("__dict__ must be set to a dictionary")
-    for key in list(runtime.object.keys(instance)):
-        runtime.reflect.deleteProperty(instance, key)
+    # Snapshot first: clearing fields also clears their live namespace view.
+    entries = []
     for pair in namespace.items():
         key = pair[0]
+        value = pair[1]
         if not runtime.strict_equal(runtime.jstype(key), "string"):
             raise TypeError("__dict__ keys must be strings")
-        runtime.reflect.set(instance, key, pair[1])
+        entries.append([key, value])
+    for key in list(runtime.object.keys(instance)):
+        runtime.reflect.deleteProperty(instance, key)
+    for key, value in entries:
+        runtime.reflect.set(instance, key, value)
 
 
 @runtime.native_method
