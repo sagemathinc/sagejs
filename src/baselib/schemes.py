@@ -243,19 +243,8 @@ class AffineSpaceParent(sage.Parent):
         return isinstance(value, AffinePoint) and value.ambient_space() is self
 
     def rational_points(self, max_points: int = 100000) -> list[AffinePoint]:
-        if not hasattr(self._base, "is_prime_field") or not bool(
-            self._base.is_prime_field()
-        ):
-            raise NotImplementedError(
-                "affine point enumeration requires a prime finite field"
-            )
-        count = int(self._base.cardinality()) ** self._dimension
-        if count > max_points:
-            raise OverflowError(
-                "affine point enumeration exceeds the "
-                + str(max_points)
-                + "-point limit"
-            )
+        enumeration = __import__("sagejs.schemes.enumeration", fromlist=["point_count"])
+        enumeration.point_count(self._base, self._dimension, False, max_points)
         return [self(*values) for values in _point_product(self._base, self._dimension)]
 
     points = rational_points
@@ -656,20 +645,8 @@ class ProjectiveSpaceParent(sage.Parent):
         return isinstance(value, ProjectivePoint) and value.ambient_space() is self
 
     def rational_points(self, max_points: int = 100000) -> list[ProjectivePoint]:
-        if not hasattr(self._base, "is_prime_field") or not bool(
-            self._base.is_prime_field()
-        ):
-            raise NotImplementedError(
-                "projective point enumeration requires a prime finite field"
-            )
-        order = int(self._base.cardinality())
-        count = (order ** (self._dimension + 1) - 1) // (order - 1)
-        if count > max_points:
-            raise OverflowError(
-                "projective point enumeration exceeds the "
-                + str(max_points)
-                + "-point limit"
-            )
+        enumeration = __import__("sagejs.schemes.enumeration", fromlist=["point_count"])
+        enumeration.point_count(self._base, self._dimension, True, max_points)
         answer = []
         zero = self._base(0)
         one = self._base(1)

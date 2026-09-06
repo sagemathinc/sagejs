@@ -1,7 +1,8 @@
 # Algebraic geometry without Singular
 
 Sage.js has an exact, portable core for embedded affine and projective
-schemes over `QQ` and prime fields `GF(p)`. It uses Sage.js polynomial rings,
+schemes over `QQ`, prime fields `GF(p)`, and supported finite extensions
+`GF(p^d)`. It uses Sage.js polynomial rings,
 Gröbner bases, quotient algebras, elimination, and exact linear algebra. It
 does not install, start, or ship Singular (or another external computer
 algebra system), so the same public computations run in the command-line
@@ -10,6 +11,11 @@ program, the npm package, Node WebAssembly, and a browser.
 This is an intentionally focused first layer. It preserves nilpotents and
 scheme structure, and it rejects computations whose hypotheses are not yet
 implemented instead of silently treating every scheme as a reduced variety.
+
+Finite-extension operations are implemented on the development branch;
+source-current platform qualification is tracked separately in the
+[extension-fields roadmap](../agents/no-singular-extension-fields-plan.md).
+This does not claim availability in an older published npm/browser release.
 
 ## Five-minute tour
 
@@ -181,25 +187,61 @@ global preference only for that call.
 | --- | --- | --- |
 | Polynomial calculus | simultaneous substitution, evaluation, derivatives, gradients, homogenization, dehomogenization | multivariate rings supported by the polynomial layer |
 | Quotients | canonical arithmetic, basis, coordinates, multiplication matrices, minimal polynomials, FGLM | finite-basis methods require dimension zero |
-| Ideals | sum, membership, containment/equality, elimination, intersection, colon, saturation | `QQ` and prime `GF(p)` for this geometry milestone |
+| Ideals | sum, membership, containment/equality, elimination, intersection, colon, saturation | `QQ`, prime `GF(p)`, supported `GF(p^d)` |
 | Graded invariants | Hilbert numerator/series/polynomial, h-vector, dimension, degree | homogeneous ideals in a standard grading |
-| Affine schemes | spaces, points, subschemes, coordinate rings, union/intersection, bounded finite-field points | `QQ`, prime `GF(p)` |
-| Projective schemes | normalized points, saturated equality/emptiness, patches, closure, Hilbert data, degree | homogeneous ideals over `QQ`, prime `GF(p)` |
+| Affine schemes | spaces, points, subschemes, coordinate rings, union/intersection, bounded finite-field points | `QQ`, prime `GF(p)`, supported `GF(p^d)` |
+| Projective schemes | normalized points, saturated equality/emptiness, patches, closure, Hilbert data, degree | homogeneous ideals over the supported exact fields |
 | Morphisms | polynomial maps, composition, graph, fiber, inverse image, image closure | everywhere-defined supported affine/projective maps |
 | Jacobian geometry | Jacobian matrix, tangent space, point smoothness, supported singular subscheme | hypersurfaces and certified complete intersections |
-| Plane curves | affine/projective constructors, degree, closure/patch, tangents, singular points, arithmetic genus | plane hypersurfaces over `QQ`, prime `GF(p)` |
-| Decomposition | radical, associated primes, primary decomposition | zero-dimensional ideals over `QQ`, prime `GF(p)` |
+| Plane curves | affine/projective constructors, degree, closure/patch, tangents, singular points, arithmetic genus | plane hypersurfaces over the supported exact fields |
+| Decomposition | radical, associated primes, primary decomposition | zero-dimensional ideals over the supported exact fields |
 
 The complete machine-readable routing and limitation table is
 [`architecture/algebraic-geometry-capabilities.json`](../architecture/algebraic-geometry-capabilities.json).
+
+## Geometry over finite extensions
+
+The same objects accept genuine extension coefficients, not just constants
+from the prime subfield:
+
+```sage test
+K = GF(9, "a")
+a = K.gen()
+A = AffineSpace(K, 2, names=("x", "y"))
+x, y = A.gens()
+X = A.subscheme([y - x**2 - a])
+assert X.is_smooth(X(a, a**2 + a))
+assert len(X.rational_points()) == 9
+assert len(ProjectiveSpace(K, 1).rational_points()) == 10
+
+# Nonreduced scheme structure survives. The radical needs inverse Frobenius
+# on the coefficient, not merely division of polynomial exponents by p.
+I = A.coordinate_ring().ideal(x**3 - a, y)
+assert I.radical(proof=True).is_equal(A.coordinate_ring().ideal(x - a**3, y))
+assert not I.is_radical()
+```
+
+Current extension storage admits prime characteristic at most `4294967295`,
+degree `2..1024`, at most 64 polynomial variables, 4096 terms per stored
+polynomial, exponents at most 1048576, and a 16 MiB encoding limit. Exact
+Gröbner and geometry algorithms impose additional operation budgets. A field
+being constructible does not imply that every large geometric computation
+fits those budgets. Ambient enumeration checks `q^n` or `1+q+...+q^n`
+against `max_points` before allocating the field-element list.
+
+Extension Gröbner operations use the certified exact Buchberger path;
+`proof.polynomial(False)` does not silently turn it into an unverified
+calculation. Factorization used by decomposition is reconstructed exactly
+and its factors checked for irreducibility. Nonsplit residue components are
+retained as ideals, not reported as rational points over the base field.
+Number fields and extension-field msolve acceleration remain separate work.
 
 ## Intentional limitations
 
 The following calls fail explicitly rather than selecting a semantically
 different algorithm:
 
-- finite extensions `GF(p^d)` with `d > 1` and number fields as scheme base
-  fields; their separate implementation plan is
+- number fields as scheme base fields; their separate implementation plan is
   [`agents/no-singular-extension-fields-plan.md`](../agents/no-singular-extension-fields-plan.md);
 - the degenerate affine ambient space `AffineSpace(K, 0)`, pending a genuine
   zero-variable polynomial-ring parent (projective dimension zero is

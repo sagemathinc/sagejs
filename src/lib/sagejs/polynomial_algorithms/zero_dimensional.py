@@ -27,15 +27,36 @@ def _require_zero_dimensional(ideal: Any, algorithm: str, proof: Any) -> int:
     if dimension != 0:
         raise NotImplementedError(
             "radical and primary decomposition currently support only "
-            "zero-dimensional ideals over QQ and prime GF(p)"
+            "zero-dimensional ideals over supported exact fields"
         )
     return int(ideal.vector_space_dimension(algorithm=algorithm, proof=proof))
 
 
-def _factor_records(polynomial: Any) -> list[Any]:
+def _factor_records(polynomial: Any, proof: Any = None) -> list[Any]:
+    from sagejs.polynomial_algorithms.field_capabilities import require_field_operation
+
+    require_field_operation(
+        polynomial.parent().base_ring(), "univariate.factor", proof=proof
+    )
+    if polynomial.is_zero():
+        raise ArithmeticError("zero is not a valid annihilating polynomial")
+    factorization = polynomial.factor()
+    product = polynomial.parent()(factorization.unit())
     records = []
-    for factor, multiplicity in polynomial.factor():
-        records.append((factor, int(multiplicity)))
+    degree = 0
+    for factor, multiplicity in factorization:
+        exponent = int(multiplicity)
+        if exponent < 1 or factor.degree() < 1:
+            raise ArithmeticError("invalid exact univariate factorization")
+        degree += factor.degree() * exponent
+        if degree > polynomial.degree() or not factor.is_irreducible():
+            raise ArithmeticError(
+                "univariate factor irreducibility verification failed"
+            )
+        product *= factor**exponent
+        records.append((factor, exponent))
+    if product != polynomial:
+        raise ArithmeticError("univariate factorization failed exact reconstruction")
     records.sort(key=_factor_key)
     return records
 
@@ -52,9 +73,9 @@ def _evaluate_univariate(polynomial: Any, value: Any) -> Any:
     return answer
 
 
-def _squarefree_annihilator(polynomial: Any, value: Any) -> Any:
+def _squarefree_annihilator(polynomial: Any, value: Any, proof: Any) -> Any:
     answer = value.parent()(1)
-    for factor, _multiplicity in _factor_records(polynomial):
+    for factor, _multiplicity in _factor_records(polynomial, proof):
         answer *= _evaluate_univariate(factor, value)
     return answer
 
@@ -75,7 +96,7 @@ def radical(
         minimum = quotient.minimal_polynomial(
             quotient(variable), "_sagejs_radical_t" + str(index)
         )
-        generators.append(_squarefree_annihilator(minimum, variable))
+        generators.append(_squarefree_annihilator(minimum, variable, proof))
     result = _canonical(ring.ideal(generators), algorithm, proof)
     if not ideal.is_subset(result, algorithm=algorithm, proof=proof):
         raise ArithmeticError("radical construction lost the input ideal")
@@ -123,10 +144,6 @@ def _finite_candidates(
     if field.characteristic() == 0:
         return
     order = int(field.cardinality())
-    if order != int(field.characteristic()):
-        raise NotImplementedError(
-            "finite separator enumeration currently supports only prime GF(p)"
-        )
     basis = list(ideal.normal_basis(algorithm=algorithm, proof=proof))
     count = 1
     for _basis_value in basis:
@@ -135,11 +152,14 @@ def _finite_candidates(
                 "exact separator search exceeds 65536 finite quotient elements"
             )
         count *= order
+    from sagejs.polynomial_algorithms.exact_field import ExactField
+
+    coefficients = list(ExactField(field).elements(_MAX_SEPARATOR_CANDIDATES))
     for encoded in range(1, count):
         value = encoded
         polynomial = ring(0)
         for basis_value in basis:
-            polynomial += field(value % order) * basis_value
+            polynomial += coefficients[value % order] * basis_value
             value //= order
         # Coordinate encoding in a quotient basis is injective: no quadratic
         # repr-based deduplication or eager list of every element is needed.
@@ -200,7 +220,7 @@ def _separator_status(
             minimum = quotient.minimal_polynomial(
                 quotient(candidate), "_sagejs_split_t"
             )
-            factors = _factor_records(minimum)
+            factors = _factor_records(minimum, proof)
             if len(factors) > 1:
                 return "split", candidate, factors
             if (

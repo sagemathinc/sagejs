@@ -240,15 +240,17 @@ def _specialize_univariate(
     return sage.PolynomialRing(base, "_solve")(coefficients)
 
 
-def _base_field_roots(polynomial: Any, field: Any) -> list[Any]:
+def _base_field_roots(polynomial: Any, field: Any, proof: Any = None) -> list[Any]:
     if polynomial.is_zero():
         raise ArithmeticError("the zero polynomial does not constrain a variable")
     if polynomial.degree() <= 0:
         return []
     if field._kind == "GF":
         return polynomial.roots(False)
+    from sagejs.polynomial_algorithms.zero_dimensional import _factor_records
+
     roots = []
-    for factor, _multiplicity in polynomial.factor():
+    for factor, _multiplicity in _factor_records(polynomial, proof):
         if factor.degree() == 1:
             coefficients = factor.coefficients()
             root = -coefficients[0] / coefficients[1]
@@ -740,7 +742,7 @@ def variety(
         for equation in equations[1:]:
             if equation.degree() < selected.degree():
                 selected = equation
-        for root in _base_field_roots(selected, field):
+        for root in _base_field_roots(selected, field, proof):
             if all(equation(root) == field(0) for equation in equations):
                 assignments[variable] = root
                 descend(variable - 1)

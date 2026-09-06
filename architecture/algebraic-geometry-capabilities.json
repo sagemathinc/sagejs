@@ -2,6 +2,7 @@
   "$schema": "./algebraic-geometry-capabilities.schema.json",
   "schema": "sagejs.algebraic-geometry-capabilities/v1",
   "scope": "exact embedded affine and projective schemes without Singular",
+  "qualification": "GF(p^d) operations implemented; full source-current platform qualification pending Milestone F4",
   "routing_key": [
     "operation",
     "base_field_descriptor",
@@ -18,13 +19,13 @@
     {
       "id": "GF(p)",
       "descriptor": { "family": "finite-field", "characteristic": "prime-p", "degree": 1 }
+    },
+    {
+      "id": "GF(p^d)",
+      "descriptor": { "family": "finite-extension", "characteristic": "prime-p <= 4294967295", "degree": "2..1024" }
     }
   ],
   "deferred_base_fields": [
-    {
-      "id": "GF(p^d), d > 1",
-      "plan": "agents/no-singular-extension-fields-plan.md"
-    },
     {
       "id": "absolute-number-field",
       "plan": "agents/no-singular-extension-fields-plan.md"
@@ -36,7 +37,7 @@
     {
       "id": "polynomial.evaluate",
       "phase": 1,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["all-supported-global"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -48,7 +49,7 @@
     {
       "id": "polynomial.substitute",
       "phase": 1,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["all-supported-global"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -60,7 +61,7 @@
     {
       "id": "polynomial.differentiate",
       "phase": 1,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["all-supported-global"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -72,7 +73,7 @@
     {
       "id": "polynomial.homogenize",
       "phase": 1,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["all-supported-global"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -84,7 +85,7 @@
     {
       "id": "quotient.canonical-arithmetic",
       "phase": 1,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["all-supported-global"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -96,7 +97,7 @@
     {
       "id": "quotient.linear-algebra",
       "phase": 1,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["all-supported-global"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -108,7 +109,7 @@
     {
       "id": "ideal.intersection",
       "phase": 2,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["all-supported-global"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -120,7 +121,7 @@
     {
       "id": "ideal.colon",
       "phase": 2,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["all-supported-global"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -132,7 +133,7 @@
     {
       "id": "ideal.saturation",
       "phase": 2,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["all-supported-global"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -144,7 +145,7 @@
     {
       "id": "ideal.hilbert-data",
       "phase": 3,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["all-supported-global"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -156,7 +157,7 @@
     {
       "id": "affine.space-point",
       "phase": 4,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["degrevlex-coordinate-ring"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -168,7 +169,7 @@
     {
       "id": "affine.scheme-basics",
       "phase": 4,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["degrevlex-coordinate-ring"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -192,7 +193,7 @@
     {
       "id": "projective.space-point",
       "phase": 5,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["degrevlex-coordinate-ring"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -204,7 +205,7 @@
     {
       "id": "projective.scheme-basics",
       "phase": 5,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["degrevlex-coordinate-ring"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -216,7 +217,7 @@
     {
       "id": "projective.patch-closure",
       "phase": 5,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["degrevlex-coordinate-ring"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -228,7 +229,7 @@
     {
       "id": "morphism.evaluate-compose",
       "phase": 6,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["degrevlex-coordinate-ring"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -240,7 +241,7 @@
     {
       "id": "morphism.graph-fiber-preimage",
       "phase": 6,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["lex-elimination"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -252,7 +253,7 @@
     {
       "id": "morphism.image-closure",
       "phase": 6,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["lex-elimination"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -264,7 +265,7 @@
     {
       "id": "jacobian.tangent-space",
       "phase": 7,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["degrevlex-coordinate-ring"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -276,7 +277,7 @@
     {
       "id": "jacobian.singular-subscheme",
       "phase": 7,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["degrevlex-coordinate-ring"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -288,7 +289,7 @@
     {
       "id": "curve.plane",
       "phase": 8,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["degrevlex-coordinate-ring"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -300,7 +301,7 @@
     {
       "id": "curve.arithmetic-genus",
       "phase": 8,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["degrevlex-coordinate-ring"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -312,7 +313,7 @@
     {
       "id": "zero-dimensional.radical",
       "phase": 9,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["all-supported-global"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -324,7 +325,7 @@
     {
       "id": "zero-dimensional.primary-decomposition",
       "phase": 9,
-      "domains": ["QQ", "GF(p)"],
+      "domains": ["QQ", "GF(p)", "GF(p^d)"],
       "orders": ["all-supported-global"],
       "proof_modes": ["required", "relaxed"],
       "platforms": ["all"],
@@ -336,9 +337,9 @@
   ],
   "explicit_rejections": [
     {
-      "id": "coefficient.extension-field",
+      "id": "coefficient.number-field",
       "exception": "NotImplementedError",
-      "message_contains": "finite extensions and number fields",
+      "message_contains": "no exact coefficient adapter",
       "plan": "agents/no-singular-extension-fields-plan.md"
     },
     {

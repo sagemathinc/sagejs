@@ -45,10 +45,9 @@ def field_capability(
 ) -> dict[str, Any]:
     """Describe one implemented domain, without claiming platform receipts.
 
-    Generic v2 is an internal exact reference operation. Its availability is
-    intentionally independent of the still-closed extension geometry gate.
-    Univariate entries describe existing primitives, not qualification
-    of extension-field decomposition or the entire geometry milestone.
+    Generic v2 and resident extension polynomials supply exact ideals and
+    geometry. Availability describes implemented operations, not completed
+    platform qualification of the entire extension-field milestone.
     """
     if operation not in _OPERATIONS:
         raise ValueError("unknown polynomial field operation: " + str(operation))
@@ -80,9 +79,12 @@ def field_capability(
             if operation == "groebner.packed-v1":
                 reason = "packed Groebner v1 accepts only QQ and prime GF(p)"
                 resource_envelope = "specialized packed v1 ABI limits"
-            elif operation == "ideal" and field.family == "finite-extension":
+            elif (
+                operation in ("ideal", "geometry")
+                and field.family == "finite-extension"
+            ):
                 supported = field.characteristic <= COMMON_FQ_CHARACTERISTIC_MAX
-                reason = "exact generic-v2 ideals over resident extension polynomials"
+                reason = "exact generic-v2 ideals and geometry over resident extension polynomials"
                 resource_envelope = (
                     "bounded generic-v2 coefficient and monomial operations"
                 )

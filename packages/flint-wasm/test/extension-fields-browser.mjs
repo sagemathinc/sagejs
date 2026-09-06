@@ -16,9 +16,13 @@ test("extension coefficient groundwork passes in production Chromium", { timeout
     const page = await browser.newPage();
     await page.goto(`${server.origin}/browser-wasm-harness.html`);
     await page.evaluate(() => window.__sagejsReady);
+    const affine = await page.evaluate(() => window.__sagejsTest.evaluate(
+      "AffineSpace(GF(4, 'a'), 2).dimension()", 10000,
+    ));
+    assert.equal(affine.repr, "2");
     await assert.rejects(page.evaluate(() => window.__sagejsTest.evaluate(
-      "AffineSpace(GF(4, 'a'), 2)", 10000,
-    )), /extension domains await/);
+      "PolynomialRing(GF(4, 'a'), ['x', 'y']).ideal(1).groebner_basis(algorithm='msolve')", 10000,
+    )), /does not support extension coefficients/);
     const recovered = await page.evaluate(() => window.__sagejsTest.evaluate("2+2", 10000));
     assert.equal(recovered.repr, "4", "a capability rejection must leave the worker usable");
     for (const name of ["extension-field-enumeration", "extension-field-coordinates", "exact-field-contract", "extension-field-capabilities"]) {

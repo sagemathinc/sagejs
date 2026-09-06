@@ -3069,7 +3069,6 @@
         "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
         "src/lib/sagejs/modular_forms/newforms.py",
         "src/lib/sagejs/number_fields/prime_ideals.py",
-        "src/lib/sagejs/polynomial_algorithms/ideal.py",
         "test/ffi.cjs"
       ],
       "declared_ffi": null

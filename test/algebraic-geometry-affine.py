@@ -56,11 +56,9 @@ assert len(B.rational_points()) == 9
 assert len(C.rational_points()) == 3
 assert all(point in C for point in C.rational_points())
 
-try:
-    AffineSpace(GF(4, "a"), 2)
-    raise AssertionError("extension fields are outside this milestone")
-except NotImplementedError as error:
-    assert "extension" in str(error)
+extension_space = AffineSpace(GF(4, "a"), 2)
+assert extension_space.dimension() == 2
+assert len(extension_space.rational_points()) == 16
 
 K = NumberField(PolynomialRing(QQ, "w").gen() ** 2 + 1, "i")
 try:

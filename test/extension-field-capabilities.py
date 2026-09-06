@@ -38,8 +38,8 @@ for K in [GF(4, "a"), GF(9, "b")]:
     assert record["supported"]
     assert record["base_field_descriptor"]["family"] == "finite-extension"
     assert field_capability(K, "ideal", "lex")["supported"]
-    rejected(lambda: require_field_operation(K, "geometry"))
-    rejected(lambda: AffineSpace(K, 2))
+    assert require_field_operation(K, "geometry") is K
+    assert AffineSpace(K, 2).base_ring() is K
     rejected(lambda: packed_v1_characteristic(K, "lex"))
 
     class GuardedRing:
@@ -65,7 +65,7 @@ for K in [GF(4, "a"), GF(9, "b")]:
     )
     assert _pack_groebner_polynomial(GuardedPolynomial())[0][0].parent() is K
 
-    # Univariate primitives and exact ideals are available; geometry is separate.
+    # Scalar, univariate, ideal, and geometry capabilities remain distinct.
     assert field_capability(K, "univariate.euclidean")["supported"]
     assert field_capability(K, "univariate.factor")["supported"]
     R = PolynomialRing(K, "t")

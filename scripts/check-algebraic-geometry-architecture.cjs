@@ -52,12 +52,12 @@ function checkCapabilities() {
   if (!sameMembers(data.routing_key, routing)) {
     throw new Error("algebraic-geometry routing key is incomplete");
   }
-  if (!sameMembers(data.supported_base_fields.map((value) => value.id), ["QQ", "GF(p)"])) {
-    throw new Error("this milestone must support exactly QQ and prime GF(p)");
+  if (!sameMembers(data.supported_base_fields.map((value) => value.id), ["QQ", "GF(p)", "GF(p^d)"])) {
+    throw new Error("this milestone must support QQ, prime GF(p), and bounded GF(p^d)");
   }
   const deferred = data.deferred_base_fields.map((value) => value.id);
-  if (!deferred.includes("GF(p^d), d > 1") || !deferred.includes("absolute-number-field")) {
-    throw new Error("extension fields and number fields must remain explicitly deferred");
+  if (!deferred.includes("absolute-number-field")) {
+    throw new Error("number fields must remain explicitly deferred until Milestone N");
   }
   for (const item of data.deferred_base_fields) {
     if (item.plan !== "agents/no-singular-extension-fields-plan.md") {
@@ -114,7 +114,7 @@ function checkCapabilities() {
         throw new Error(`${operation.id} has an empty ${name}`);
       }
     }
-    if (operation.domains.some((domain) => !["QQ", "GF(p)"].includes(domain))) {
+    if (operation.domains.some((domain) => !["QQ", "GF(p)", "GF(p^d)"].includes(domain))) {
       throw new Error(`${operation.id} claims an unsupported coefficient domain`);
     }
     if (!sameMembers(operation.proof_modes, ["required", "relaxed"])) {
@@ -128,7 +128,7 @@ function checkCapabilities() {
 
   const rejectionIds = uniqueIds(data.explicit_rejections, "explicit_rejections");
   for (const id of [
-    "coefficient.extension-field",
+    "coefficient.number-field",
     "decomposition.positive-dimensional",
     "curve.geometric-genus",
     "morphism.rational-map-base-locus",

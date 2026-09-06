@@ -378,56 +378,58 @@ sorting the asset inventory and adding the specialist capability mapping.
 This supersedes their earlier planned status above; it does **not** qualify
 the whole extension-fields milestone or imply a published release. Final
 source-current combined receipts, mobile checks, and public native tests on
-the other three platforms remain required. The release lane currently has
-the remote hosts reserved; the standalone boundary jobs have all finished.
+the other three platforms remain required. The release lane still has the
+remote hosts reserved; the standalone boundary jobs have all finished.
+
+## F1/F2 native implementation checkpoint
+
+The public ideal and geometry gates now admit the common supported
+finite-extension domain. Gröbner dispatch selects only
+`python:groebner-exact-gf-extension-v1`. Both proof settings verify complete
+transformation certificates before caching a basis. FGLM verification uses
+generic-v2 coefficients; the packed rational/prime-field ABI remains closed
+to extensions.
+
+The public ideal API matches all 108 independent Sage fixtures. Focused tests
+cover proof metadata, detached certificate verification, normal forms,
+equality, zero/unit ideals, elimination, quotient dimension, and FGLM in all
+three orders. All 15 tested Gröbner documentation examples pass.
+
+F2 removes the prime-only geometry gate and moves finite point-count
+preflight into a strict, explicitly precompiled exact-field helper. It bounds
+`q^n` or the projective geometric sum before allocating field elements.
+Separator enumeration uses canonical base-q coordinates rather than coercing
+integer indices into the prime subfield. Factorization consumed by solving
+and decomposition has an explicit capability check, exact reconstruction,
+and irreducibility verification even when the caller permits relaxed proof.
+
+Native Linux x64 checks in this checkpoint:
+
+- public affine/projective/morphism/curve/Jacobian fixtures: pass over GF(4),
+  GF(9), and GF(27), including non-prime coefficients and infeasible point
+  enumeration preflight;
+- radicals, primary components, inverse Frobenius (including repeated roots),
+  non-split residue fields, and exact recomposition: pass;
+- independently generated SageMath 10.9 geometry/decomposition fixtures over
+  explicit GF(4) and GF(9) presentations: pass;
+- existing nine-file QQ/prime-field algebraic-geometry regression: pass;
+- executable finite-extension geometry documentation example: pass;
+- strict Python: 388 modules, zero errors.
+
+These native fixture runs use the ordinary Python/JavaScript algorithms with
+the resident FLINT storage backend. They are not native-compiled algorithm
+or production-Wasm receipts. The F1/F2 public Node-Wasm and Chromium harnesses
+are added but still require the combined source-current production build.
+Earlier F0 browser evidence cannot qualify the new ideal and geometry code.
 
 ## Still required
 
-F1 native checkpoint: the public ideal gate now admits the common supported
-finite-extension domain and dispatches only to
-`python:groebner-exact-gf-extension-v1`. Both proof settings verify complete
-transformation certificates before caching a basis. FGLM verification uses
-generic-v2 coefficients, and leading-monomial extraction routes through the
-ring's backend instead of assuming a packed FLINT polynomial.
+- F4 source-current native four-platform public tests, production Node-Wasm,
+  Chromium and mobile qualification, and final capability/evidence records.
+- Complete the core operation-matrix coverage review, resource/failure tests,
+  and bounded F3 msolve investigation or evidence-backed deferral.
+- Merge Milestone F before beginning Milestone N.
+- Implement and qualify N, including exact number-field univariate
+  factorization and zero-dimensional decomposition, and its final audit.
 
-The public API matches all 108 independent Sage fixtures. Focused tests cover
-proof metadata, detached certificate verification, normal forms, equality,
-zero/unit ideals, elimination, quotient dimension, and FGLM in all three
-orders. All 15 tested Gröbner documentation examples pass. Strict Python
-passes 387 modules with zero errors. The lazy polynomial source budget is
-318000 bytes for the added exact dispatch boundary. The new module is an
-explicit browser lazy root, but the source-current F1 public Wasm matrix
-still needs rebuilding and execution. Geometry remains gated until F2.
-
-Concrete dispatch audit after integrating the core plan:
-
-- `ideal.py` constructs packed-v1 coefficients both for Buchberger dispatch
-  and for FGLM's final S-pair verification. Both must select generic v2 for
-  extension fields, including actual-field transformation certificates and
-  truthful algorithm/proof metadata.
-- `zero_dimensional.py` still rejects non-prime finite separator enumeration
-  and uses `field(integer)` as a prime-field coordinate decoder. Replace that
-  decoder with the exact-field canonical enumeration and retain the bound on
-  the full quotient cardinality.
-- Affine/projective point enumeration in `schemes.py` explicitly requires
-  prime fields. Use the field cardinality and canonical coefficient tuples,
-  never powers of a potentially nonprimitive defining generator.
-- The existing extension univariate squarefree factorization already applies
-  inverse Frobenius to coefficients. Preserve that operation and qualify it
-  through public radicals and decomposition rather than introducing a second
-  implementation.
-
-- Finish E0 fixtures, capability routing, generic v2 contracts/certificates,
-  and the remaining field-assumption audit.
-- F0 native sparse coefficient exchange and production-Wasm multivariate
-  extension contexts/operations; generic exact fallback.
-- F1/F2 exact Gröbner, ideal, quotient, decomposition, and geometry parity.
-- F4 native four-platform, Node-Wasm, Chromium, and mobile qualification,
-  independent mathematical fixtures, and executable documentation.
-- Bounded F3 msolve experiment or an evidence-backed deferral.
-- Merge Milestone F before beginning Milestone N; N must include exact
-  number-field factorization and zero-dimensional decomposition.
-
-The existing packed Gröbner v1 ABI and scheme rejection of extension fields
-remain unchanged at this stage. There is no claim yet that any public
-extension-field geometry operation has been enabled.
+No Milestone F completion or release is claimed at this checkpoint.
