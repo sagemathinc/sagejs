@@ -5842,6 +5842,13 @@ def ρσ_resolve_module_name(
     if declared_in_module:
         # Deleted Python bindings may use Python builtins, never JS globals.
         raise NameError("name '" + name + "' is not defined")
+    facade_names = runtime.native_get(
+        module_builtins, "__sagejs_builtin_facade_names__"
+    )
+    if facade_names is not runtime.undefined and facade_names.has(name):
+        # A deleted builtin must not reappear through the browser's original
+        # global alias. Real module/lexical bindings were already checked.
+        raise NameError("name '" + name + "' is not defined")
     if _builtins_has_member(runtime.global_object, name):
         global_value = _builtins_get_member(runtime.global_object, name)
         if global_value is not runtime.undefined:
