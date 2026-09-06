@@ -6,6 +6,7 @@ const { createHash } = require("node:crypto");
 const {
   mkdtempSync,
   linkSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
   realpathSync,
@@ -133,7 +134,14 @@ test("the numerical product handoff is exact, source-bound, and installable", (c
   rmSync(hardlink);
 
   for (const [, installedPath] of productFiles) rmSync(join(root, installedPath));
+  const linkedDestination = join(root, productFiles[0][1]);
+  const externalHardlink = join(root, "existing-installed-hardlink.cjs");
+  write(externalHardlink, "external content must not change");
+  linkSync(externalHardlink, linkedDestination);
   installNumericalProduct({ root, inputDirectory: output, expectedCommit: candidate });
+  assert.equal(readFileSync(externalHardlink, "utf8"),
+    "external content must not change");
+  assert.equal(lstatSync(linkedDestination).nlink, 1);
   assert.equal(readFileSync(join(root, "dist/numerical/cminpack.wasm"), "utf8"),
     "cminpack-production-wasm");
 

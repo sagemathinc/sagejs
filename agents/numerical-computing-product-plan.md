@@ -971,6 +971,16 @@ honestly absent until the frozen candidate is exercised on every declared
 runtime; catalog qualification is input/source closure, not a fabricated
 product receipt.
 
+Final-candidate qualification also established the native lifetime rule in
+[ADR 0005](../architecture/decisions/0005-linux-native-addon-process-lifetime.md).
+An ARM64 core showed OpenBLAS atfork-handler deregistration from a worker's
+concurrent addon unload racing glibc `fork()` in the main Node thread. Linux
+mathematical addons therefore remain mapped until process exit, while SEA
+workers share one atomically populated parent-owned extraction directory. The
+release smoke tier repeatedly alternates native pool teardown and child spawn;
+this is a product lifecycle invariant, not a timing retry in the qualification
+driver.
+
 ## The first three demonstrations I would build
 
 ### 1. Root-finding story

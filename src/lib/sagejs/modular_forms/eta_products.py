@@ -558,6 +558,77 @@ def registry_eta_product_candidates(
     )
 
 
+def registry_eta_product_candidate_upper_bound(
+    space: Any,
+    cutoff: Any = None,
+) -> int:
+    """Return a cheap upper bound for the registry's candidate count.
+
+    This follows the registry's bounded exponent-vector search and checks only
+    Newman--Ligozat certificates.  It deliberately does not expand or
+    deduplicate the eta products, so its answer can only overestimate the
+    number of formula directions.
+    """
+    level = _positive(space.level(), "eta registry level")
+    weight = _nonnegative(space.weight(), "eta registry weight")
+    divisors = [_positive(value, "level divisor") for value in sage.divisors(level)]
+    if (
+        level > ETA_REGISTRY_MAX_LEVEL
+        or weight > ETA_REGISTRY_MAX_WEIGHT
+        or len(divisors) > ETA_REGISTRY_MAX_DIVISORS
+    ):
+        return 0
+    stopping_count = (
+        ETA_REGISTRY_MAX_CANDIDATES
+        if cutoff is None
+        else min(ETA_REGISTRY_MAX_CANDIDATES, _positive(cutoff, "candidate cutoff"))
+    )
+    target_sum = 2 * weight
+    current = [0 for _ in divisors]
+    tested = 0
+    count = 0
+    stopped = False
+
+    def visit(index: int, remaining: int) -> None:
+        nonlocal tested, count, stopped
+        if stopped:
+            return
+        slots_after = len(divisors) - index - 1
+        if index == len(divisors) - 1:
+            if remaining < 0 or remaining > target_sum:
+                return
+            if tested >= ETA_REGISTRY_MAX_VECTORS:
+                stopped = True
+                return
+            tested += 1
+            current[index] = remaining
+            vector = tuple(
+                (divisor, current[position])
+                for position, divisor in enumerate(divisors)
+                if current[position]
+            )
+            certificate = EtaProductCertificate(level, vector)
+            if (
+                certificate.verify()
+                and certificate.is_cuspidal()
+                and certificate.character().is_trivial()
+            ):
+                count += 1
+                if count >= stopping_count:
+                    stopped = True
+            return
+        smallest = max(0, remaining - target_sum * slots_after)
+        largest = min(target_sum, remaining)
+        for value in range(smallest, largest + 1):
+            current[index] = value
+            visit(index + 1, remaining - value)
+            if stopped:
+                return
+
+    visit(0, target_sum)
+    return count
+
+
 __all__ = [
     "CertifiedEtaProduct",
     "ETA_REGISTRY_MAX_CANDIDATES",
@@ -569,5 +640,6 @@ __all__ = [
     "eta_product",
     "eta_product_candidates",
     "eta_product_certificate",
+    "registry_eta_product_candidate_upper_bound",
     "registry_eta_product_candidates",
 ]

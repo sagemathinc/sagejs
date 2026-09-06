@@ -1,0 +1,116 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fmpz-buffer-ingress",
+  "title": "Fmpz IntegerBuffer Boundary",
+  "lane": "native-compiler",
+  "status": "review",
+  "owner": "user",
+  "objective": "Add fail-closed resident-fmpz IntegerBuffer root ingress and publication views with ordinary GMP only at the public root ABI, proven by compiled/dynamic/GMP/fmpz differential and structural tests",
+  "base_commit": "8ed12770e40799686cf13c29b298c0c3d9e0cb56",
+  "claims": [
+    "tools/native-kernel/fmpz-backend.cjs",
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/compiler.cjs",
+    "tools/native-kernel/test/fmpz-buffer-ingress.cjs"
+  ],
+  "dependencies": [
+    "fmpz-exact-call-graph"
+  ],
+  "references": [
+    "ARCHITECTURE.md",
+    "architecture/decisions/0004-resident-exact-native-machine.md"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "dynamic JavaScript implementation",
+      "tagged exact backend",
+      "GMP exact backend"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test tools/native-kernel/test/fmpz-backend.cjs tools/native-kernel/test/fmpz-call-graph.cjs tools/native-kernel/test/exact-integer-buffer-specialization.cjs tools/native-kernel/test/fmpz-buffer-ingress.cjs",
+    "node test/native-kernel.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm merge:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/fmpz-backend.cjs tools/native-kernel/test/fmpz-call-graph.cjs tools/native-kernel/test/exact-integer-buffer-specialization.cjs tools/native-kernel/test/fmpz-buffer-ingress.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.137,
+      "started_at": "2026-09-04T08:30:21.330Z",
+      "commit": "8e28a4e6e466ce67205469ff82eb7c421c7cb664",
+      "workspace_fingerprint": "cb352b984b22d241109d8f9f09e04c14bc10617f73262808d14a94b0d98ddf35",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/native-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 68.283,
+      "started_at": "2026-09-04T08:30:29.864Z",
+      "commit": "8e28a4e6e466ce67205469ff82eb7c421c7cb664",
+      "workspace_fingerprint": "cb352b984b22d241109d8f9f09e04c14bc10617f73262808d14a94b0d98ddf35",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 45.688,
+      "started_at": "2026-09-04T08:31:42.178Z",
+      "commit": "8e28a4e6e466ce67205469ff82eb7c421c7cb664",
+      "workspace_fingerprint": "cb352b984b22d241109d8f9f09e04c14bc10617f73262808d14a94b0d98ddf35",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.167,
+      "started_at": "2026-09-04T08:33:24.508Z",
+      "commit": "8e28a4e6e466ce67205469ff82eb7c421c7cb664",
+      "workspace_fingerprint": "cb352b984b22d241109d8f9f09e04c14bc10617f73262808d14a94b0d98ddf35",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.783,
+      "started_at": "2026-09-04T08:33:30.703Z",
+      "commit": "8e28a4e6e466ce67205469ff82eb7c421c7cb664",
+      "workspace_fingerprint": "cb352b984b22d241109d8f9f09e04c14bc10617f73262808d14a94b0d98ddf35",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Closed resident-fmpz roots may now borrow packed IntegerBuffer parameters and use length, indexed ingress, and publication without converting through mpz_t inside the native program. The boundary helpers import unsigned sign-magnitude limbs directly into fmpz values and export positive or negative fmpz values directly back to caller-owned packed storage, including promoted 4095-bit values. Selection remains deliberately fail-closed for copied/local buffers and buffer-bearing helpers. A buffer-only fmpz program also now content-addresses and links FLINT itself instead of accidentally relying on an unrelated declared FFI import. Generated-C assertions prove the internal root and helper bodies contain no GMP conversion calls; compiled fmpz, tagged, GMP, and dynamic implementations agree across small, negative, promoted, aliased, capacity-failure, and recovery cases, with an independent ASan/UBSan/LSan harness covering lifecycle and failure reuse.",
+    "risks": [
+      "The certified cubic root remains on GMP. IntegerBuffer length/get/set are now qualified, but the root still uses UInt64Buffer length/set and uint64.from_integer_checked, NativeIntegerVector accesses with Integer indices, FmpzPolynomial and NumberFieldAnalysisResource arena owners, and unqualified HNF/LLL/SNF, polynomial, logarithm-ball, and number-field-analysis declarations.",
+      "Direct packed views require FLINT_BITS == 64 and fail at C compilation otherwise. This matches every currently supported native target, but only Linux x64 compilation and execution were exercised locally; Linux arm64, macOS arm64, and Windows x64 remain integration-lane validation.",
+      "architecture:check reaches the inherited stale architecture/optimizer-opportunities.manifest.json input hash (expected 9c902293, found 4f6cafa7) after all preceding FFI, package, native, Wasm, resource-lifetime, and CoWasm checks pass.",
+      "The broad test:native run was stopped during production-pack publication at integration's request so this completed intermediate compiler slice would release overlapping claims promptly. The focused compiler/differential/sanitizer suite, full native-kernel suite, strict baselib checks, and merge checks passed; integration will run the broader native matrix after composing the successor lanes."
+    ],
+    "next_steps": [
+      "Qualify borrowed NativeIntegerVector parameters and Integer indexing without changing ownership or admitting buffer-bearing helpers prematurely.",
+      "Add the cubic root's UInt64Buffer boundary views and checked Integer-to-uint64 conversion while keeping selection fail-closed.",
+      "Qualify FmpzPolynomial and NumberFieldAnalysisResource ownership plus their construction, sealing, logarithm-ball, analysis, and projection declarations.",
+      "Qualify the matrix HNF, LLL, and SNF declarations used by the cubic closure, then re-audit the entire 83-function program and assert that generated internal code has zero mpz conversions before selecting the root."
+    ]
+  }
+}

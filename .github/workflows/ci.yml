@@ -43,7 +43,7 @@ jobs:
   routine:
     name: Routine gate (Linux x64)
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.recovery_run_id == '' }}
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       CI: "true"
@@ -239,11 +239,11 @@ jobs:
       matrix:
         include:
           - target: linux-arm64
-            runner: blacksmith-8vcpu-ubuntu-2404-arm
+            runner: ubuntu-24.04-arm
           - target: macos-arm64
-            runner: blacksmith-6vcpu-macos-15
+            runner: macos-15
           - target: windows-x64
-            runner: blacksmith-8vcpu-windows-2025
+            runner: windows-2025
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
     env:
@@ -291,7 +291,7 @@ jobs:
     name: Linux x64 native, tests, and SEA
     needs: [routine, numerical-product, public-npm-root]
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'linux-x64'))) || github.event_name == 'schedule' }}
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     timeout-minutes: 150
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
@@ -525,7 +525,7 @@ jobs:
     name: Linux arm64 native, tests, and SEA
     needs: [routine, numerical-product, public-npm-root]
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'linux-arm64'))) || github.event_name == 'schedule' }}
-    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 150
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
@@ -692,7 +692,7 @@ jobs:
     name: Windows x64 native, tests, and SEA
     needs: [routine, numerical-product, public-npm-root]
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'windows-x64'))) || github.event_name == 'schedule' }}
-    runs-on: blacksmith-8vcpu-windows-2025
+    runs-on: windows-2025
     timeout-minutes: 240
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
@@ -949,7 +949,7 @@ jobs:
     name: macOS arm64 native, tests, and SEA
     needs: [routine, numerical-product]
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'macos-arm64'))) || github.event_name == 'schedule' }}
-    runs-on: blacksmith-6vcpu-macos-15
+    runs-on: macos-15
     timeout-minutes: 180
     env:
       SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
@@ -1109,8 +1109,7 @@ jobs:
     name: Sign and notarize macOS arm64 release
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [macos-arm64, public-npm-root]
-    # Blacksmith's macOS fleet is available in 6- and 12-vCPU sizes only.
-    runs-on: blacksmith-6vcpu-macos-15
+    runs-on: macos-15
     timeout-minutes: 120
     environment: sagejs-signing
 
@@ -1496,6 +1495,17 @@ jobs:
         with:
           node-version: 26.5.1
           registry-url: https://registry.npmjs.org
+
+      - name: Require successful same-tag WebAssembly release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          runs_file="$(mktemp)"
+          gh api --paginate \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/wasm-release.yml/runs?event=push&head_sha=${GITHUB_SHA}&per_page=100" \
+            | jq -s '.' > "$runs_file"
+          node scripts/release/require-wasm-release.cjs \
+            --sha "$GITHUB_SHA" --tag "$GITHUB_REF_NAME" < "$runs_file"
 
       - name: Restore the mandatory numerical release gate
         uses: actions/download-artifact@v8

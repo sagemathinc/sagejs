@@ -13,10 +13,13 @@ import sagejs.runtime as runtime
 
 _qexp_module_cache = runtime.undefined
 _qexp_algebra_module_cache = runtime.undefined
+_object_layer_module_cache = runtime.undefined
+_gamma1_module_cache = runtime.undefined
 _eta_products_module_cache = runtime.undefined
 _half_integral_module_cache = runtime.undefined
 _supersingular_module_cache = runtime.undefined
 _brandt_module_cache = runtime.undefined
+_modular_abelian_variety_module_cache = runtime.undefined
 
 
 def _qexp_module() -> Any:
@@ -39,6 +42,28 @@ def _qexp_algebra_module() -> Any:
             fromlist=["CertifiedModularForm"],
         )
     return _qexp_algebra_module_cache
+
+
+def _object_layer_module() -> Any:
+    """Load the parented classical modular-form object layer lazily."""
+    global _object_layer_module_cache
+    if _object_layer_module_cache is runtime.undefined:
+        _object_layer_module_cache = __import__(
+            "sagejs.modular_forms.object_layer",
+            fromlist=["ClassicalModularFormElement"],
+        )
+    return _object_layer_module_cache
+
+
+def _gamma1_module() -> Any:
+    """Load exact Gamma1 character-orbit descent lazily."""
+    global _gamma1_module_cache
+    if _gamma1_module_cache is runtime.undefined:
+        _gamma1_module_cache = __import__(
+            "sagejs.modular_forms.gamma1",
+            fromlist=["Gamma1DescentCertificate"],
+        )
+    return _gamma1_module_cache
 
 
 def _eta_products_module() -> Any:
@@ -83,6 +108,44 @@ def _brandt_module() -> Any:
             fromlist=["BrandtModule"],
         )
     return _brandt_module_cache
+
+
+def _modular_abelian_variety_module() -> Any:
+    """Load the weight-two modular-abelian-variety implementation lazily."""
+    global _modular_abelian_variety_module_cache
+    if _modular_abelian_variety_module_cache is runtime.undefined:
+        _modular_abelian_variety_module_cache = __import__(
+            "sagejs.modular_abelian_varieties",
+            fromlist=["AbelianVariety", "J0"],
+        )
+    return _modular_abelian_variety_module_cache
+
+
+def J0(N: Any) -> Any:
+    r"""Return the modular Jacobian $J_0(N)$ over $\mathbf Q$.
+
+    ```sage
+    sage: J = J0(37)
+    sage: (J.dimension(), J.integral_homology().rank())
+    (2, 4)
+    ```
+    """
+    return _modular_abelian_variety_module().J0(N)
+
+
+def AbelianVariety(X: Any) -> Any:
+    r"""Construct a weight-$2$ $\Gamma_0(N)$ modular abelian variety.
+
+    A level or `Gamma0` group constructs $J_0(N)$. A sign-zero cuspidal
+    modular-symbol subspace constructs its saturated embedded subvariety, and
+    a normalized newform constructs the connected quotient $A_f$.
+
+    ```sage
+    sage: AbelianVariety(11).dimension()
+    1
+    ```
+    """
+    return _modular_abelian_variety_module().AbelianVariety(X)
 
 
 def BrandtModule(
@@ -299,6 +362,15 @@ class CongruenceSubgroup:
 
     def dimension_modular_forms(self, weight: Any = 2) -> int:
         return dimension_modular_forms(self, weight)
+
+    def jacobian(self) -> Any:
+        r"""Return the modular Jacobian attached to this group.
+
+        The initial modular-abelian-variety slice supports only `Gamma0`.
+        """
+        return AbelianVariety(self)
+
+    abelian_variety = jacobian
 
     def __eq__(self, other: object) -> bool:
         return (
@@ -742,6 +814,10 @@ def eisenstein_series_qexp(
         raise ValueError("normalization must be 'linear', 'constant', or 'integral'")
     power_series_ring = runtime.reflect.get(runtime.global_object, "PowerSeriesRing")
     ring = power_series_ring(coefficient_ring, variable, default_prec=max(1, precision))
+    if runtime.jstype(runtime.flint_backend().qqEisensteinSeries) != "function":
+        return _qexp_module()._classical_eisenstein_qexp(
+            weight, precision, coefficient_ring, variable, normalization
+        )
     native_value = runtime.flint_backend().qqEisensteinSeries(
         weight, precision, normalization
     )
@@ -1196,132 +1272,146 @@ def _eisenstein_basis_qexp(
     return (linear - constant * oldform).add_bigoh(precision)
 
 
-class EisensteinSeriesElement(sage.Element):
-    r"""
-    An exact Eisenstein modular form represented by its parent and basis index.
+def _character_eisenstein_parameters(
+    character: Any,
+    weight: int,
+) -> list[tuple[Any, Any, int]]:
+    r"""Return deterministic standard parameters for $E_k(\chi,\psi)(q^t)$."""
+    level = runtime.number(character.modulus())
+    if character(-1) != character._parent._value_field(-1 if weight % 2 else 1):
+        return []
+    parameters = []
+    for left in character._parent:
+        left_order = runtime.number(left.order())
+        inverse = left ** (left_order - 1)
+        right = character * inverse
+        conductor_product = runtime.number(left.conductor()) * runtime.number(
+            right.conductor()
+        )
+        if level % conductor_product != 0:
+            continue
+        for inflation_value in sage.divisors(level // conductor_product):
+            inflation = runtime.number(inflation_value)
+            if (
+                weight == 2
+                and left.is_principal()
+                and right.is_principal()
+                and inflation == 1
+            ):
+                continue
+            parameters.append((left, right, inflation))
+    return parameters
 
-    The element retains its modular-form parent instead of becoming a bare
-    power series.  Its coefficients are generated on demand by the
-    FLINT-backed Eisenstein implementation.
-    """
 
-    def __init__(
-        self,
-        parent: EisensteinSubspace,
-        index: int,
-        precision: int,
-    ) -> None:
-        self._kind = "EisensteinSeriesElement"
-        self._parent = parent
-        self._index = index
-        self._display_precision = precision
-        runtime.object.freeze(self)
-
-    def q_expansion(self, prec: Any = None) -> Any:
-        r"""
-        Return the `q`-expansion to absolute precision `O(q^prec)`.
-
-        ### Parameters
-
-        - `prec` — nonnegative integer; when omitted, use the precision
-          requested when this basis element was constructed.
-
-        ### Examples
-
-        The level-389 weight-2 Eisenstein form can be displayed briefly and
-        then expanded farther without reconstructing its parent:
-
-        ```sage
-        sage: E = EisensteinForms(389, 2)
-        sage: b = E.basis(prec=8)[0]
-        sage: b.q_expansion(5)
-        1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)
-        ```
-
-        ### Implementation
-
-        Level-one divisor sums are generated in one native FLINT sieve.
-        Prime-level oldforms use the exact degeneracy map `q -> q^N`.
-        """
-        if prec is None:
-            precision = self._display_precision
-        else:
-            precision = _exact_nonnegative_integer(prec, "precision")
-        return self._parent._q_expansion(self._index, precision)
-
-    qexp = q_expansion
-
-    def prec(self) -> int:
-        """Return the default display precision of this element."""
-        return self._display_precision
-
-    def parent(self) -> EisensteinSubspace:
-        """Return the Eisenstein space containing this form."""
-        return self._parent
-
-    def base_ring(self) -> Any:
-        """Return the coefficient ring of this modular form."""
-        return self._parent.base_ring()
-
-    def level(self) -> int:
-        """Return the level of this modular form."""
-        return self._parent.level()
-
-    def weight(self) -> int:
-        """Return the weight of this modular form."""
-        return self._parent.weight()
-
-    def __getitem__(self, exponent: Any) -> Any:
-        """Return the coefficient of `q^exponent`."""
-        return self.q_expansion(
-            _exact_nonnegative_integer(exponent, "coefficient exponent") + 1
-        )[exponent]
-
-    def _exact_formula_element(self) -> Any:
-        converted = _qexp_module().coerce_level_one_form(self)
-        if converted is None:
-            raise NotImplementedError(
-                "exact modular-form arithmetic currently starts with the "
-                "level-one generators E4 and E6 and their one-dimensional "
-                "low-weight products"
+def _character_eisenstein_basis_qexp(
+    character: Any,
+    weight: int,
+    base_ring: Any,
+    dimension: int,
+    precision: int,
+    variable: str = "q",
+) -> list[Any]:
+    r"""Return the Sturm-certified echelon basis of $E_k(N,\varepsilon)$."""
+    if dimension == 0:
+        return []
+    proof_precision = max(
+        precision,
+        weight * Gamma0(character.modulus()).index() // 12 + 2,
+    )
+    # Even when the nebentypus itself is rational, its standard Eisenstein
+    # generators E_k(chi, psi) can involve a larger cyclotomic field.  Compute
+    # the complete Galois-stable family there and descend coefficientwise.
+    # This occurs already for quadratic nebentypus at level 25.
+    working_ring = base_ring
+    if base_ring is sage.QQ:
+        value_order = runtime.number(character._parent.zeta_order())
+        if value_order > 2:
+            working_ring = runtime.reflect.get(
+                runtime.global_object,
+                "CyclotomicField",
+            )(value_order)
+    rows = []
+    for left, right, inflation in _character_eisenstein_parameters(character, weight):
+        if weight == 2 and left.is_principal() and right.is_principal():
+            series = _eisenstein_basis_qexp(
+                inflation,
+                weight,
+                working_ring,
+                0,
+                proof_precision,
+                variable,
             )
-        return converted
+        else:
+            series = _qexp_module().character_eisenstein_series_qexp(
+                left,
+                right,
+                weight,
+                proof_precision,
+                inflation,
+                variable,
+                working_ring,
+                "linear",
+            )
+        rows.append([working_ring(series[index]) for index in range(proof_precision)])
+    matrix_constructor = runtime.reflect.get(runtime.global_object, "matrix")
+    if base_ring is sage.QQ and working_ring is not sage.QQ:
+        rational_rows = []
+        field_degree = runtime.number(working_ring.degree())
+        for row in rows:
+            split_rows = [
+                [sage.QQ(0) for _index in range(proof_precision)]
+                for _coordinate in range(field_degree)
+            ]
+            for index, value in enumerate(row):
+                coefficients = list(working_ring._serialization_coefficients(value))
+                for coordinate, coefficient in enumerate(coefficients):
+                    split_rows[coordinate][index] = sage.QQ(coefficient)
+            rational_rows.extend(split_rows)
+        candidate_matrix = (
+            matrix_constructor(sage.QQ, rational_rows)
+            if len(rational_rows)
+            else matrix_constructor(sage.QQ, 0, proof_precision)
+        )
+    else:
+        candidate_matrix = (
+            matrix_constructor(base_ring, rows)
+            if len(rows)
+            else matrix_constructor(base_ring, 0, proof_precision)
+        )
+    basis_matrix = _exact_row_space_basis(candidate_matrix)
+    if basis_matrix.nrows() != dimension:
+        raise ArithmeticError(
+            "the character Eisenstein formulas have rank "
+            + str(basis_matrix.nrows())
+            + " instead of the certified dimension "
+            + str(dimension)
+        )
+    power_series_ring = runtime.reflect.get(runtime.global_object, "PowerSeriesRing")
+    ring = power_series_ring(
+        base_ring,
+        variable,
+        default_prec=max(1, proof_precision),
+    )
+    answer = [
+        ring(row.list()).add_bigoh(proof_precision) for row in basis_matrix.rows()
+    ]
+    if precision < proof_precision:
+        return [series.add_bigoh(precision) for series in answer]
+    return answer
 
-    def __add__(self, other: Any) -> Any:
-        return self._exact_formula_element() + other
 
-    def __radd__(self, other: Any) -> Any:
-        return other + self._exact_formula_element()
+def _exact_row_space_basis(source: Any) -> Any:
+    r"""Return the canonical exact row-space basis of `source`.
 
-    def __sub__(self, other: Any) -> Any:
-        return self._exact_formula_element() - other
-
-    def __rsub__(self, other: Any) -> Any:
-        return other - self._exact_formula_element()
-
-    def __mul__(self, other: Any) -> Any:
-        return self._exact_formula_element() * other
-
-    def __rmul__(self, other: Any) -> Any:
-        return other * self._exact_formula_element()
-
-    def __truediv__(self, other: Any) -> Any:
-        return self._exact_formula_element() / other
-
-    def __pow__(self, exponent: Any) -> Any:
-        return self._exact_formula_element() ** exponent
-
-    def _sage_binop_(self, operator: str, other: Any, reflected: bool) -> Any:
-        element = self._exact_formula_element()
-        return element._sage_binop_(operator, other, reflected)
-
-    def __repr__(self) -> str:
-        return str(self.q_expansion())
-
-    __str__ = __repr__
-    toString = __repr__
+    The matrix layer selects the certified multimodular cyclotomic RREF for
+    higher-degree cyclotomic fields and the appropriate exact backend for all
+    other coefficient rings.  In particular, it does not recover a short row
+    basis by constructing the almost-square intermediate in `ker(ker(A))`.
+    """
+    return source.row_space().basis_matrix()
 
 
+@runtime.callable_instance_class
 class ModularFormsSubspace(sage.Parent):
     def __init__(
         self,
@@ -1334,6 +1424,8 @@ class ModularFormsSubspace(sage.Parent):
         self._subspace_kind = kind
         self._dimension = dimension
         self._modular_symbols_cusp_space_cache = None
+        self._classical_qexp_basis_cache = runtime.map()
+        self._classical_hecke_cache = runtime.map()
 
     def ambient_space(self) -> ModularFormsSpace:
         return self._ambient
@@ -1351,6 +1443,13 @@ class ModularFormsSubspace(sage.Parent):
 
     def group(self) -> CongruenceSubgroup:
         return self._ambient.group()
+
+    def character(self) -> Any:
+        return self._ambient.character()
+
+    def character_components(self) -> list[Any]:
+        r"""Return the exact character-orbit components for a $\Gamma_1$ space."""
+        return _gamma1_module().character_components(self)
 
     def base_ring(self) -> Any:
         return self._ambient.base_ring()
@@ -1379,13 +1478,18 @@ class ModularFormsSubspace(sage.Parent):
             raise NotImplementedError(
                 "modular-symbol q-expansions require a cuspidal or new subspace"
             )
-        if self.group()._family != "Gamma0" or self.base_ring() is not sage.QQ:
+        if self.group()._family != "Gamma0":
             raise NotImplementedError(
-                "modular-symbol q-expansions currently require Gamma0 over QQ"
+                "modular-symbol q-expansions currently require Gamma0"
             )
         if self._modular_symbols_cusp_space_cache is None:
+            defining_data = (
+                self.character()
+                if runtime.reflect.get(self._ambient, "_character") is not None
+                else self.level()
+            )
             self._modular_symbols_cusp_space_cache = ModularSymbols(
-                self.level(),
+                defining_data,
                 self.weight(),
                 1,
                 self.base_ring(),
@@ -1414,10 +1518,70 @@ class ModularFormsSubspace(sage.Parent):
         return self._ambient.basis_certificate(prec, cusp_only=True)
 
     def basis(self, prec: Any = None) -> list[Any]:
-        """Return an exact level-one cuspidal Victor Miller basis."""
-        return self.basis_certificate(prec).basis()
+        """Return the canonical exact parented basis of this subspace."""
+        return _object_layer_module().basis(self, prec)
 
     gens = basis
+
+    def __call__(self, value: Any = 0) -> Any:
+        """Construct an exact element of this modular-form subspace."""
+        return _object_layer_module().construct_element(self, value)
+
+    def coordinates(self, value: Any) -> Any:
+        """Return exact coordinates of `value` in the canonical basis."""
+        return _object_layer_module().coordinates(self, value)
+
+    def contains(self, value: Any) -> bool:
+        """Return whether `value` belongs to this subspace."""
+        return _object_layer_module().contains(self, value)
+
+    def __contains__(self, value: Any) -> bool:
+        return self.contains(value)
+
+    def zero(self) -> Any:
+        """Return the zero modular form in this subspace."""
+        return _object_layer_module().zero(self)
+
+    def _from_serialized_classical_element(
+        self,
+        coordinates: Any,
+        display_precision: Any,
+    ) -> Any:
+        return _object_layer_module().construct_element(
+            self,
+            coordinates,
+            display_precision,
+        )
+
+    def _from_serialized_newform(
+        self,
+        constituent: Any,
+        name: Any,
+    ) -> Any:
+        """Trusted deterministic constructor used by the SagePack codec."""
+        return _qexp_module().normalized_newform_from_data(
+            self,
+            constituent,
+            name,
+        )
+
+    def hecke_matrix(self, index: Any) -> Any:
+        """Return the exact matrix of `T_index` on the canonical basis."""
+        return _object_layer_module().hecke_matrix(self, index)
+
+    def diamond_bracket_matrix(self, value: Any) -> Any:
+        """Return the exact matrix of the diamond operator `<value>`."""
+        return _object_layer_module().diamond_bracket_matrix(self, value)
+
+    def diamond_bracket_operator(self, value: Any) -> Any:
+        """Return the exact parented diamond operator `<value>`."""
+        return _object_layer_module().diamond_bracket_operator(self, value)
+
+    def T(self, index: Any) -> Any:
+        """Return the exact Hecke operator `T_index` on this subspace."""
+        return _object_layer_module().hecke_operator(self, index)
+
+    hecke_operator = T
 
     def q_expansion_algorithm_receipt(
         self,
@@ -1465,7 +1629,24 @@ class ModularFormsSubspace(sage.Parent):
             variable = opts["var"]
         if "ρσ_py_var" in opts:
             variable = opts["ρσ_py_var"]
-        effective_precision = self.precision() if prec is None else prec
+        if self.group()._family == "Gamma1":
+            if algorithm not in ["default", "auto", "modular_symbols"]:
+                raise ValueError("Gamma1 q-expansions use character-orbit descent")
+            return _gamma1_module().q_expansion_basis(self, prec, variable)
+        effective_precision = (
+            self.precision()
+            if prec is None
+            else _exact_nonnegative_integer(prec, "precision")
+        )
+        proof_precision = max(1, self.sturm_bound() + 1)
+        if effective_precision < proof_precision:
+            certified_basis = self.q_expansion_basis(
+                proof_precision,
+                algorithm,
+                variable,
+                **opts,
+            )
+            return [series.add_bigoh(effective_precision) for series in certified_basis]
         receipt = self.q_expansion_algorithm_receipt(algorithm, effective_precision)
         algorithm = receipt.selected_algorithm()
         if algorithm == "formulas":
@@ -1535,6 +1716,9 @@ class ModularFormsSubspace(sage.Parent):
         algorithm: str = "default",
     ) -> Any:
         r"""Return a replayable formula or Hecke-dual basis certificate."""
+        if self.group()._family == "Gamma1":
+            del prec, algorithm
+            return _gamma1_module().descent_certificate(self)
         effective_precision = self.precision() if prec is None else prec
         receipt = self.q_expansion_algorithm_receipt(algorithm, effective_precision)
         algorithm = receipt.selected_algorithm()
@@ -1548,7 +1732,7 @@ class ModularFormsSubspace(sage.Parent):
         return self._modular_symbols_cusp_space().q_expansion_basis_certificate(prec)
 
     def gen(self, index: Any = 0) -> Any:
-        """Return the indexed exact cuspidal basis element."""
+        """Return the indexed exact parented basis element."""
         index = _exact_nonnegative_integer(index, "basis index")
         return self.basis()[index]
 
@@ -1579,47 +1763,29 @@ class EisensteinSubspace(ModularFormsSubspace):
     ) -> None:
         level = ambient.level()
         weight = ambient.weight()
-        dimension = dimension_eis(ambient.group(), weight)
+        defining_data = (
+            ambient.character()
+            if runtime.reflect.get(ambient, "_character") is not None
+            else ambient.group()
+        )
+        dimension = dimension_eis(defining_data, weight)
         ModularFormsSubspace.__init__(self, ambient, "Eisenstein", dimension)
         self._kind = "EisensteinSubspace"
         self._precision = precision
-        basis_supported = (
-            dimension == 0
+        basis_supported = runtime.reflect.get(ambient, "_character") is not None or (
+            ambient.group()._family == "Gamma1"
+            or dimension == 0
             or (level == 1 and weight >= 4 and weight % 2 == 0)
             or (sage.is_prime(level) and weight >= 2 and weight % 2 == 0)
         )
-        self._basis = None
-        if basis_supported:
-            self._basis = [
-                EisensteinSeriesElement(
-                    self,
-                    index,
-                    precision,
-                )
-                for index in range(dimension)
-            ]
+        self._basis_supported = basis_supported
 
-    def _require_basis(self) -> list[EisensteinSeriesElement]:
-        if self._basis is None:
+    def _require_basis(self) -> None:
+        if not self._basis_supported:
             raise NotImplementedError(
                 "q-expansion bases are currently implemented for "
                 "level one and prime Gamma0 level"
             )
-        return self._basis
-
-    def _from_serialized_element(
-        self,
-        index: Any,
-        display_precision: Any,
-    ) -> EisensteinSeriesElement:
-        index = _exact_nonnegative_integer(index, "basis index")
-        if index >= self._dimension:
-            raise IndexError("Eisenstein basis index out of range")
-        return EisensteinSeriesElement(
-            self,
-            index,
-            _exact_nonnegative_integer(display_precision, "display precision"),
-        )
 
     def precision(self) -> int:
         return self._precision
@@ -1628,15 +1794,15 @@ class EisensteinSubspace(ModularFormsSubspace):
         return self._dimension
 
     def __getitem__(self, index: int) -> Any:
-        return self._require_basis()[index]
+        return self.basis()[index]
 
     def gen(self, index: int = 0) -> Any:
-        return self._require_basis()[index]
+        return self.basis()[index]
 
     def _first_ngens(self, count: int) -> list[Any]:
         if count > self._dimension:
             raise ValueError("too many Eisenstein generators requested")
-        return self._require_basis()[:count]
+        return self.basis()[:count]
 
     def basis(self, prec: Any = None) -> list[Any]:
         r"""
@@ -1653,13 +1819,7 @@ class EisensteinSubspace(ModularFormsSubspace):
         `basis()` currently uses the space's default precision instead.
         """
         self._require_basis()
-        if prec is None:
-            return list(self._require_basis())
-        precision = _exact_nonnegative_integer(prec, "precision")
-        return [
-            EisensteinSeriesElement(self, index, precision)
-            for index in range(self._dimension)
-        ]
+        return _object_layer_module().basis(self, prec)
 
     gens = basis
 
@@ -1675,12 +1835,25 @@ class EisensteinSubspace(ModularFormsSubspace):
             variable = opts["var"]
         if "ρσ_py_var" in opts:
             variable = opts["ρσ_py_var"]
+        if self.group()._family == "Gamma1":
+            if algorithm not in ["default", "formulas"]:
+                raise ValueError("Gamma1 Eisenstein bases use character descent")
+            return _gamma1_module().q_expansion_basis(self, prec, variable)
         if algorithm not in ["default", "formulas"]:
             raise ValueError("only the exact Eisenstein formula is available")
         if prec is None:
             prec = self._precision
         precision = _exact_nonnegative_integer(prec, "precision")
         self._require_basis()
+        if runtime.reflect.get(self._ambient, "_character") is not None:
+            return _character_eisenstein_basis_qexp(
+                self.character(),
+                self.weight(),
+                self.base_ring(),
+                self.dimension(),
+                precision,
+                variable,
+            )
         return [
             _eisenstein_basis_qexp(
                 self.level(),
@@ -1703,6 +1876,7 @@ class EisensteinSubspace(ModularFormsSubspace):
         )
 
 
+@runtime.callable_instance_class
 class ModularFormsSpace(sage.Parent):
     def __init__(
         self,
@@ -1710,14 +1884,22 @@ class ModularFormsSpace(sage.Parent):
         weight: int,
         base_ring: Any,
         precision: int,
+        character: Any = None,
     ) -> None:
-        if group._family != "Gamma0":
-            raise NotImplementedError("ModularForms currently supports Gamma0")
+        if group._family not in ["Gamma0", "Gamma1"]:
+            raise NotImplementedError(
+                "ModularForms currently supports Gamma0 and Gamma1"
+            )
         self._kind = "ModularForms"
         self._group = group
         self._weight = weight
         self._base = base_ring
+        self._character = character
         self._precision = precision
+        self._classical_qexp_basis_cache = runtime.map()
+        self._classical_hecke_cache = runtime.map()
+        self._cuspidal_subspace_cache = None
+        self._eisenstein_subspace_cache = None
 
     def group(self) -> CongruenceSubgroup:
         return self._group
@@ -1730,6 +1912,28 @@ class ModularFormsSpace(sage.Parent):
 
     def base_ring(self) -> Any:
         return self._base
+
+    def character(self) -> Any:
+        """Return the Dirichlet character defining this space."""
+        if self._character is not None:
+            return self._character
+        if self._group._family == "Gamma1":
+            return None
+        return runtime.reflect.get(runtime.global_object, "DirichletGroup")(
+            self.level()
+        )(1)
+
+    def character_components(self) -> list[Any]:
+        r"""Return the exact character-orbit components for a $\Gamma_1$ space."""
+        return _gamma1_module().character_components(self)
+
+    def q_expansion_basis_certificate(self) -> Any:
+        r"""Return the exact $\Gamma_1$ Galois-descent certificate."""
+        if self._group._family != "Gamma1":
+            raise NotImplementedError(
+                "ambient q-expansion certificates currently require Gamma1"
+            )
+        return _gamma1_module().descent_certificate(self)
 
     def sturm_bound(self) -> int:
         r"""Return the q-expansion precision required by the Sturm bound.
@@ -1753,16 +1957,22 @@ class ModularFormsSpace(sage.Parent):
     prec = precision
 
     def dimension(self) -> int:
-        return dimension_modular_forms(self._group, self._weight)
+        defining_data = self._character if self._character is not None else self._group
+        return dimension_modular_forms(defining_data, self._weight)
 
     degree = dimension
 
     def cuspidal_subspace(self) -> ModularFormsSubspace:
-        return ModularFormsSubspace(
-            self,
-            "Cuspidal",
-            dimension_cusp_forms(self._group, self._weight),
-        )
+        if self._cuspidal_subspace_cache is None:
+            defining_data = (
+                self._character if self._character is not None else self._group
+            )
+            self._cuspidal_subspace_cache = ModularFormsSubspace(
+                self,
+                "Cuspidal",
+                dimension_cusp_forms(defining_data, self._weight),
+            )
+        return self._cuspidal_subspace_cache
 
     cusp_subspace = cuspidal_subspace
 
@@ -1783,7 +1993,12 @@ class ModularFormsSpace(sage.Parent):
         return self.cuspidal_subspace().newforms(names)
 
     def eisenstein_subspace(self) -> EisensteinSubspace:
-        return EisensteinSubspace(self, self._precision)
+        if self._eisenstein_subspace_cache is None:
+            self._eisenstein_subspace_cache = EisensteinSubspace(
+                self,
+                self._precision,
+            )
+        return self._eisenstein_subspace_cache
 
     def basis_certificate(
         self,
@@ -1798,14 +2013,51 @@ class ModularFormsSpace(sage.Parent):
         )
 
     def basis(self, prec: Any = None) -> list[Any]:
-        """Return an exact Victor Miller basis when this is level one."""
-        return self.basis_certificate(prec).basis()
+        """Return the canonical exact parented basis of this ambient space."""
+        return _object_layer_module().basis(self, prec)
 
     gens = basis
 
     def q_expansion_basis(self, prec: Any = None) -> list[Any]:
-        """Return the level-one Victor Miller basis as integral power series."""
-        return self.basis_certificate(prec).q_expansion_basis(prec)
+        """Return the canonical exact power-series basis of this space."""
+        return _object_layer_module().q_expansion_basis(self, prec)
+
+    def __call__(self, value: Any = 0) -> Any:
+        """Construct an exact element of this modular-form space."""
+        return _object_layer_module().construct_element(self, value)
+
+    def coordinates(self, value: Any) -> Any:
+        """Return exact coordinates of `value` in the canonical basis."""
+        return _object_layer_module().coordinates(self, value)
+
+    def contains(self, value: Any) -> bool:
+        """Return whether `value` belongs to this ambient space."""
+        return _object_layer_module().contains(self, value)
+
+    def __contains__(self, value: Any) -> bool:
+        return self.contains(value)
+
+    def zero(self) -> Any:
+        """Return the zero modular form in this ambient space."""
+        return _object_layer_module().zero(self)
+
+    def hecke_matrix(self, index: Any) -> Any:
+        """Return the exact matrix of `T_index` on the canonical basis."""
+        return _object_layer_module().hecke_matrix(self, index)
+
+    def diamond_bracket_matrix(self, value: Any) -> Any:
+        """Return the exact matrix of the diamond operator `<value>`."""
+        return _object_layer_module().diamond_bracket_matrix(self, value)
+
+    def diamond_bracket_operator(self, value: Any) -> Any:
+        """Return the exact parented diamond operator `<value>`."""
+        return _object_layer_module().diamond_bracket_operator(self, value)
+
+    def T(self, index: Any) -> Any:
+        """Return the exact Hecke operator `T_index` on this space."""
+        return _object_layer_module().hecke_operator(self, index)
+
+    hecke_operator = T
 
     def gen(self, index: Any = 0) -> Any:
         """Return the indexed exact Victor Miller basis element."""
@@ -1821,7 +2073,11 @@ class ModularFormsSpace(sage.Parent):
     def delta(self, prec: Any = None) -> Any:
         r"""Return $Δ$ in this space, which must be $M_{12}(\mathrm{SL}_2(\ZZ))$."""
         precision = self._precision if prec is None else prec
-        return _qexp_module().delta_form(self, precision)
+        return _object_layer_module().construct_element(
+            self,
+            _qexp_module().delta_form(self, precision),
+            precision,
+        )
 
     def _from_serialized_element(
         self,
@@ -1836,25 +2092,70 @@ class ModularFormsSpace(sage.Parent):
             provenance,
         )
 
+    def _from_serialized_classical_element(
+        self,
+        coordinates: Any,
+        display_precision: Any,
+    ) -> Any:
+        return _object_layer_module().construct_element(
+            self,
+            coordinates,
+            display_precision,
+        )
+
     def _from_serialized_subspace(
         self,
         kind: str,
         dimension: Any,
         precision: Any = None,
         eisenstein: Any = False,
+        new_prime: Any = None,
     ) -> ModularFormsSubspace:
         if bool(eisenstein):
             return EisensteinSubspace(
                 self,
                 _exact_nonnegative_integer(precision, "precision"),
             )
+        expected_dimension = _exact_nonnegative_integer(dimension, "dimension")
+        if kind == "Cuspidal":
+            answer = self.cuspidal_subspace()
+            if answer.dimension() != expected_dimension:
+                raise ValueError("serialized cuspidal dimension is inconsistent")
+            return answer
+        if kind == "New":
+            answer = self.cuspidal_subspace().new_subspace(new_prime)
+            if answer.dimension() != expected_dimension:
+                raise ValueError("serialized newspace dimension is inconsistent")
+            return answer
         return ModularFormsSubspace(
             self,
             kind,
-            _exact_nonnegative_integer(dimension, "dimension"),
+            expected_dimension,
         )
 
     def __repr__(self) -> str:
+        if self._character is not None:
+            values = []
+            for generator in self._character.parent().unit_gens():
+                value = self._character(generator)
+                if self._base is sage.QQ:
+                    if value.is_one():
+                        value = sage.QQ(1)
+                    elif (-value).is_one():
+                        value = sage.QQ(-1)
+                else:
+                    value = self._base(value)
+                values.append(value)
+            return (
+                "Modular Forms space of dimension "
+                + str(self.dimension())
+                + ", character "
+                + str(values)
+                + " and weight "
+                + str(self._weight)
+                + " over "
+                + str(self._base)
+            )
         return (
             "Modular Forms space of dimension "
             + str(self.dimension())
@@ -1880,9 +2181,10 @@ def ModularForms(
     r"""
     Construct the implemented ambient space of modular forms.
 
-    `group` is a level or congruence subgroup, `weight` is nonnegative,
-    and `prec` controls the default displayed q-expansion precision.
-    Initial ambient spaces are exact over `QQ`.
+    `group` is a level, congruence subgroup, or Dirichlet character; `weight`
+    is nonnegative, and `prec` controls the default displayed q-expansion
+    precision. Trivial and quadratic characters are exact over `QQ`, while
+    higher-order characters use their minimal exact cyclotomic value field.
 
     ### Examples
 
@@ -1894,24 +2196,52 @@ def ModularForms(
     1
     ```
 
-    This foundation currently provides exact dimensions, cusp/Eisenstein
-    subspaces, and Eisenstein q-expansions.  It is not yet SageMath's complete
-    Hecke-module implementation.
+    The returned cusp, Eisenstein, old, new, and ambient spaces share one
+    parented exact element contract, including exact Hecke action and
+    Sturm-certified coordinate recovery.
     """
     del use_cache
-    if runtime.is_exact_integer(group):
+    character = group if _is_dirichlet_character(group) else None
+    if character is not None:
+        if character.is_principal():
+            group = Gamma0(character.modulus())
+            character = None
+        else:
+            group = Gamma0(character.modulus())
+    elif runtime.is_exact_integer(group):
         group = Gamma0(group)
     if not isinstance(group, CongruenceSubgroup):
         raise TypeError("ModularForms requires a congruence subgroup")
     weight = _exact_nonnegative_integer(weight, "weight")
     precision = _exact_nonnegative_integer(prec, "precision")
+    if group._family == "Gamma1" and weight < 2:
+        raise NotImplementedError(
+            "Gamma1 modular-form spaces currently require weight at least 2"
+        )
+    if character is not None and weight < 2:
+        raise NotImplementedError(
+            "parented character spaces currently require weight at least 2"
+        )
     if base_ring is None:
-        base_ring = sage.QQ
-    if base_ring is not sage.QQ:
+        base_ring = (
+            sage.QQ
+            if character is None or character.order() <= 2
+            else character._minimal_base_ring()
+        )
+    base_kind = getattr(base_ring, "_kind", None)
+    if character is None and base_ring is not sage.QQ:
         raise NotImplementedError(
             "the initial modular-forms spaces are defined over QQ"
         )
-    return ModularFormsSpace(group, weight, base_ring, precision)
+    if character is not None:
+        if character.order() > 2 and base_ring is sage.QQ:
+            raise ValueError("the character values do not lie in Rational Field")
+        if base_ring is not sage.QQ and base_kind != "CyclotomicField":
+            raise NotImplementedError(
+                "character modular forms currently require QQ or an exact "
+                "cyclotomic field"
+            )
+    return ModularFormsSpace(group, weight, base_ring, precision, character)
 
 
 def EisensteinForms(
@@ -1969,7 +2299,7 @@ def Newforms(
     use_cache: bool = True,
     prec: Any = 6,
 ) -> list[Any]:
-    r"""Return normalized newform Galois packets for $\Gamma_0(N)$."""
+    r"""Return normalized newform Galois packets for $\Gamma_0(N)$ or $\Gamma_1(N)$."""
     return CuspForms(group, weight, base_ring, use_cache, prec).newforms(names)
 
 
@@ -3296,6 +3626,20 @@ class P1List:
             return cached
         presentation = self.character_presentation(weight, sign, character, base_ring)
         dimension = presentation.dimension()
+        backend = runtime.flint_backend()
+        if (
+            runtime.jstype(runtime.reflect.get(backend, "p1ListCharacterHeckeMatrix"))
+            != "function"
+        ):
+            portable = __import__(
+                "sagejs.modular_forms.character_hecke",
+                fromlist=["character_hecke_matrix"],
+            )
+            cached = portable.character_hecke_matrix(
+                self, weight, character, base_ring, prime, presentation
+            )
+            self._character_hecke_cache.set(key, cached)
+            return cached
         native = runtime.flint_backend().p1ListCharacterHeckeMatrix(
             self._native,
             weight,
@@ -3313,6 +3657,94 @@ class P1List:
         )
         self._character_hecke_cache.set(key, cached)
         return cached
+
+    def character_hecke_images(
+        self,
+        weight: Any,
+        sign: Any,
+        character: Any,
+        base_ring: Any,
+        basis: Any,
+        functional_index: Any,
+        precision: Any,
+    ) -> Any:
+        """Return direct $T_n$ images of one character-space functional."""
+        weight = _positive_integer(weight, "modular-symbol weight")
+        sign = _exact_integer(sign, "sign")
+        functional_index = _exact_nonnegative_integer(
+            functional_index, "functional index"
+        )
+        precision = _positive_integer(precision, "q-expansion precision")
+        presentation = self.character_presentation(weight, sign, character, base_ring)
+        native = runtime.flint_backend().p1ListCharacterHeckeImages(
+            self._native,
+            weight,
+            sign,
+            precision,
+            character._parent._native,
+            character._index,
+            presentation._native,
+            basis._native,
+            functional_index,
+        )
+        return Matrix(  # type: ignore[name-defined]  # noqa: F821
+            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                base_ring, basis.nrows(), precision - 1
+            ),
+            native,
+        )
+
+    def character_hecke_selected_rows(
+        self,
+        weight: Any,
+        sign: Any,
+        character: Any,
+        base_ring: Any,
+        source: Any,
+        indices: Any,
+    ) -> Any:
+        r"""Return selected exact rows of character Hecke operators.
+
+        This is an internal high-precision capability used by the Gamma1
+        character-descent path. A backend without the capability returns
+        `None`, leaving the direct fixed-character algorithm available.
+        """
+        weight = _positive_integer(weight, "modular-symbol weight")
+        sign = _exact_integer(sign, "sign")
+        source = _exact_nonnegative_integer(source, "Hecke source row")
+        hecke_indices = [
+            _positive_integer(index, "Hecke index") for index in list(indices)
+        ]
+        if character.order() <= 2:
+            return None
+        presentation = self.character_presentation(weight, sign, character, base_ring)
+        if source >= presentation.dimension():
+            raise IndexError("Hecke source row out of range")
+        backend = runtime.flint_backend()
+        method = runtime.reflect.get(backend, "p1ListCharacterHeckeSelectedRows")
+        if runtime.jstype(method) != "function":
+            return None
+        native = runtime.reflect.apply(
+            method,
+            backend,
+            [
+                self._native,
+                weight,
+                sign,
+                source,
+                hecke_indices,
+                character._parent._native,
+                character._index,
+                presentation._native,
+            ],
+        )
+        matrix_space = MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+            base_ring, 1, presentation.dimension()
+        )
+        return [
+            Matrix(matrix_space, native[position])  # type: ignore[name-defined]  # noqa: F821
+            for position in range(len(hecke_indices))
+        ]
 
     def _hecke_matrix(
         self,
@@ -3700,6 +4132,7 @@ class ModularSymbolsSpace(sage.Parent):
         self._q_expansion_signed_cusp_space_cache = None
         self._q_expansion_data_cache = runtime.map()
         self._q_expansion_basis_cache = runtime.map()
+        self._prefer_selected_character_hecke_rows = False
         if serialized_dimension is not None:
             self._dimension = _exact_nonnegative_integer(
                 serialized_dimension, "serialized dimension"
@@ -3871,6 +4304,10 @@ class ModularSymbolsSpace(sage.Parent):
     def base_ring(self) -> Any:
         return self._base
 
+    def abelian_variety(self) -> Any:
+        r"""Return the modular abelian variety defined by this symbol space."""
+        return AbelianVariety(self)
+
     def sturm_bound(self) -> int:
         r"""Return the Sturm bound for the associated cusp forms.
 
@@ -3883,6 +4320,414 @@ class ModularSymbolsSpace(sage.Parent):
         """
         numerator = self.weight() * self._group.index()
         return numerator // 12
+
+    def _q_expansion_signed_cusp_space(self) -> ModularSymbolsSpace:
+        """Return the signed symbol space used by Hecke-dual expansions."""
+        if not self.is_cuspidal():
+            raise ArithmeticError("space must be cuspidal")
+        if self.sign() != 0:
+            return self
+        cached = self._q_expansion_signed_cusp_space_cache
+        if cached is not None:
+            return cached
+        if self._character is not None:
+            signed_space = ModularSymbols(
+                self.character(), self.weight(), 1, self.base_ring()
+            ).cuspidal_submodule()
+        elif self.weight() == 2:
+            signed_space = self.plus_submodule()
+        else:
+            signed_space = ModularSymbols(
+                self.level(), self.weight(), 1, sage.QQ
+            ).cuspidal_submodule()
+            if self.dimension() != 2 * signed_space.dimension():
+                raise NotImplementedError(
+                    "higher-weight sign-zero q-expansions currently require the full "
+                    "cuspidal submodule"
+                )
+        self._q_expansion_signed_cusp_space_cache = signed_space
+        return signed_space
+
+    def _q_expansion_character_hecke_rows(
+        self,
+        functional_index: int,
+        precision: int,
+    ) -> list[Any]:
+        r"""Return one Hecke-dual coefficient block without composite matrices.
+
+        For a nonreal Dirichlet character, constructing every full $T_n$ and
+        multiplying cyclotomic matrices is much more expensive than applying
+        the prime matrices to one functional.  The multiplicativity and
+        prime-power recurrence for $T_n$ let us compute exactly the rows that
+        q-expansion reconstruction consumes.  This is the source-transparent
+        analogue of the direct Hecke-image strategy used by Sage's optimized
+        nonquadratic-character code.
+        """
+        if self._prefer_selected_character_hecke_rows:
+            selected = self._character_hecke_selected_rows(
+                functional_index, list(range(1, precision))
+            )
+            if selected is not None:
+                return selected
+
+        native_images = runtime.reflect.get(
+            runtime.flint_backend(), "p1ListCharacterHeckeImages"
+        )
+        if runtime.jstype(native_images) == "function":
+            ambient = self.ambient_module()
+            block = ambient.p1list().character_hecke_images(
+                ambient.weight(),
+                ambient.sign(),
+                ambient.character(),
+                ambient.base_ring(),
+                self.basis_matrix(),
+                functional_index,
+                precision,
+            )
+            return block.transpose().rows()
+
+        dimension = self.dimension()
+        coefficient_ring = self.base_ring()
+        unit = vector(  # type: ignore[name-defined]  # noqa: F821
+            coefficient_ring,
+            [1 if index == functional_index else 0 for index in range(dimension)],
+        )
+        prime_matrices = runtime.reflect.construct(runtime.map_class, [])
+        rows = []
+        for index in range(1, precision):
+            image = unit
+            for prime_value, exponent_value in sage.factor(index):
+                prime = runtime.number(prime_value)
+                exponent = runtime.number(exponent_value)
+                prime_matrix = prime_matrices.get(prime)
+                if prime_matrix is runtime.undefined:
+                    prime_matrix = self.hecke_matrix(prime)
+                    prime_matrices.set(prime, prime_matrix)
+                previous = image
+                current = image * prime_matrix
+                if self.level() % prime == 0:
+                    recurrence_coefficient = coefficient_ring(0)
+                else:
+                    recurrence_coefficient = coefficient_ring(
+                        self.character()(prime)
+                    ) * (sage.ZZ(prime) ** (self.weight() - 1))
+                for _power in range(2, exponent + 1):
+                    following = (
+                        current * prime_matrix - previous * recurrence_coefficient
+                    )
+                    previous = current
+                    current = following
+                image = current
+            rows.append(image)
+        return rows
+
+    def _character_hecke_selected_rows(
+        self,
+        functional_index: int,
+        indices: list[int],
+    ) -> list[Any] | None:
+        r"""Return selected rows of several $T_n$ using retained coordinates.
+
+        The low-level capability returns one ambient row for every requested
+        Hecke index.  At large Sturm precision, retaining all of those
+        algebraic matrices until a final stack creates an artificial memory
+        cliff.  Process a bounded block at a time, immediately restrict to
+        the cuspidal pivot columns, and retain only the rows that the
+        q-expansion reconstruction actually consumes.
+        """
+        ambient = self.ambient_module()
+        if not ambient._supports_native_character():
+            return None
+        basis = self.basis_matrix()
+        coefficients = basis.row(functional_index).list()
+        nonzero_sources = []
+        for source, coefficient in enumerate(coefficients):
+            if coefficient != 0:
+                nonzero_sources.append((source, coefficient))
+        answer_rows = []
+        pivot_columns = None if self.is_ambient() else list(basis.pivots())
+        block_size = 16
+        for start in range(0, len(indices), block_size):
+            selected_indices = indices[start : start + block_size]
+            answer = None
+            for source, coefficient in nonzero_sources:
+                images = ambient.p1list().character_hecke_selected_rows(
+                    ambient.weight(),
+                    ambient.sign(),
+                    ambient._character,
+                    ambient.base_ring(),
+                    source,
+                    selected_indices,
+                )
+                if images is None:
+                    return None
+                rows = images[0]
+                for image in images[1:]:
+                    rows = rows.stack(image)
+                if coefficient != 1:
+                    rows = rows * coefficient
+                answer = rows if answer is None else answer + rows
+            if answer is None:
+                answer = matrix(  # type: ignore[name-defined]  # noqa: F821
+                    ambient.base_ring(), len(selected_indices), ambient.dimension()
+                )
+            if pivot_columns is not None:
+                answer = answer.matrix_from_columns(pivot_columns)
+            answer_rows.extend(answer.rows())
+        return answer_rows
+
+    def _q_expansion_row_basis(self, rows: list[Any]) -> tuple[Any, Any]:
+        r"""Return the canonical row basis and its exact lift from `rows`.
+
+        In degree greater than two, the native cyclotomic row-space path uses
+        modular pivot discovery and an exactly certified RREF.  It returns
+        only the short row basis, rather than materializing the almost-square
+        first kernel in a `ker(ker(A))` reconstruction.  The character path
+        subsequently computes Hecke action directly from the canonical
+        coefficient pivots, so it deliberately avoids constructing a
+        potentially enormous change-of-basis lift.  The ordinary row-space
+        and solve path remains the portable fallback.
+        """
+        coefficient_ring = self.base_ring()
+        raw_matrix = matrix(coefficient_ring, rows)  # type: ignore[name-defined]  # noqa: F821
+        if (
+            self._character is not None
+            and not self.character().is_real()
+            and coefficient_ring.degree() > 2
+        ):
+            coefficient_basis = raw_matrix.row_space().basis_matrix()
+            lift_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
+                coefficient_ring, 0, raw_matrix.nrows()
+            )
+            return coefficient_basis, lift_matrix
+        coefficient_basis = raw_matrix.row_space().basis_matrix()
+        lift_matrix = raw_matrix.solve_left(coefficient_basis)
+        if lift_matrix * raw_matrix != coefficient_basis:
+            raise ArithmeticError(
+                "could not lift the canonical q-expansion basis to Hecke-dual rows"
+            )
+        return coefficient_basis, lift_matrix
+
+    def _q_expansion_data(
+        self,
+        precision: Any,
+        use_cache: bool = True,
+    ) -> tuple[Any, Any, Any, Any, Any]:
+        """Return the Hecke-dual basis and its exact modular-symbol lift."""
+        precision = _exact_nonnegative_integer(precision, "q-expansion precision")
+        if precision < 1:
+            raise ValueError("precision must be at least 1")
+        if use_cache:
+            cached = self._q_expansion_data_cache.get(precision)
+            if cached is not runtime.undefined:
+                return cached
+        signed_space = self._q_expansion_signed_cusp_space()
+        dimension = signed_space.dimension()
+        target_dimension = min(precision - 1, dimension)
+        if target_dimension == 0:
+            result = (
+                signed_space,
+                matrix(signed_space.base_ring(), 0, precision),  # type: ignore[name-defined]  # noqa: F821
+                runtime.math_tuple([]),
+                matrix(signed_space.base_ring(), 0, precision),  # type: ignore[name-defined]  # noqa: F821
+                matrix(signed_space.base_ring(), 0, 0),  # type: ignore[name-defined]  # noqa: F821
+            )
+            if use_cache:
+                self._q_expansion_data_cache.set(precision, result)
+            return result
+
+        direct_character_images = (
+            signed_space._character is not None
+            and not signed_space.character().is_real()
+        )
+        hecke_matrices = []
+        if not direct_character_images:
+            hecke_matrices = [
+                signed_space.hecke_matrix(index) for index in range(1, precision)
+            ]
+        accumulated_rows = []
+        functional_indices = []
+        coefficient_ring = signed_space.base_ring()
+        coefficient_basis = matrix(  # type: ignore[name-defined]  # noqa: F821
+            coefficient_ring, 0, precision - 1
+        )
+        lift_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
+            coefficient_ring, 0, 0
+        )
+        order = [0]
+        order.extend(range(dimension - 1, 0, -1))
+        for functional_index in order:
+            rows = [[] for _row in range(dimension)]
+            if direct_character_images:
+                hecke_rows = signed_space._q_expansion_character_hecke_rows(
+                    functional_index, precision
+                )
+            else:
+                hecke_rows = [
+                    operator.row(functional_index) for operator in hecke_matrices
+                ]
+            for values in hecke_rows:
+                for row_index in range(dimension):
+                    rows[row_index].append(values[row_index])
+            accumulated_rows.extend(rows)
+            functional_indices.append(functional_index)
+            coefficient_basis, lift_matrix = signed_space._q_expansion_row_basis(
+                accumulated_rows
+            )
+            if coefficient_basis.nrows() >= target_dimension:
+                break
+        if coefficient_basis.nrows() < target_dimension:
+            raise ArithmeticError(
+                "Hecke matrix coefficients did not span the expected cusp-form space"
+            )
+        coefficient_basis = coefficient_basis.matrix_from_prefix_rows(target_dimension)
+        coefficient_rows = []
+        for row in coefficient_basis.rows():
+            coefficient_rows.append([coefficient_ring(0)] + row.list())
+        coefficient_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
+            coefficient_ring, coefficient_rows
+        )
+        # The native cyclotomic row-space path has already produced this
+        # canonical RREF.  Record that exact certificate so pivot discovery
+        # and public row-space construction never repeat algebraic reduction.
+        coefficient_matrix._rref_cache = coefficient_matrix
+        coefficient_matrix._rank_cache = coefficient_matrix.nrows()
+        coefficient_matrix.set_immutable()
+        raw_rows = []
+        for row in accumulated_rows:
+            raw_rows.append([coefficient_ring(0)] + list(row))
+        raw_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
+            coefficient_ring, raw_rows
+        )
+        raw_matrix.set_immutable()
+        lift_matrix.set_immutable()
+        result = (
+            signed_space,
+            coefficient_matrix,
+            runtime.math_tuple(functional_indices),
+            raw_matrix,
+            lift_matrix,
+        )
+        if use_cache:
+            self._q_expansion_data_cache.set(precision, result)
+        return result
+
+    def _q_expansion_character_hecke_matrix(
+        self,
+        index: int,
+        coefficients: Any,
+    ) -> Any:
+        r"""Return $T_n$ from certified cyclotomic q-expansion coefficients.
+
+        The canonical coefficient matrix is in RREF, so coefficients at its
+        pivot exponents are coordinates.  The usual exact formula
+
+        $$
+        a_m(T_n f)=\sum_{d\mid(m,n)}\chi(d)d^{k-1}a_{mn/d^2}(f)
+        $$
+
+        therefore gives the Hecke matrix without transporting a full symbol
+        matrix through several generic algebraic solves.
+        """
+        pivots = list(coefficients.pivots())
+        if len(pivots) != coefficients.nrows():
+            raise ArithmeticError(
+                "the separating q-expansion prefix has incomplete dimension"
+            )
+        maximum_coefficient = 0
+        for exponent in pivots:
+            common = gcd(exponent, index)  # type: ignore[name-defined]  # noqa: F821
+            for divisor in sage.divisors(common):
+                source = exponent * index // (runtime.number(divisor) ** 2)
+                maximum_coefficient = max(maximum_coefficient, source)
+        _signed, extended, _indices, _raw, _lift = self._q_expansion_data(
+            maximum_coefficient + 1
+        )
+        if extended.nrows() != coefficients.nrows():
+            raise ArithmeticError(
+                "extended q-expansions changed the certified cusp dimension"
+            )
+        coefficient_ring = self.base_ring()
+        rows = []
+        for basis_index in range(extended.nrows()):
+            row = []
+            for exponent in pivots:
+                value = coefficient_ring(0)
+                common = gcd(  # type: ignore[name-defined]  # noqa: F821
+                    exponent, index
+                )
+                for divisor_value in sage.divisors(common):
+                    divisor = runtime.number(divisor_value)
+                    source = exponent * index // (divisor * divisor)
+                    value += (
+                        coefficient_ring(self.character()(divisor))
+                        * (sage.ZZ(divisor) ** (self.weight() - 1))
+                        * extended[basis_index, source]
+                    )
+                row.append(value)
+            rows.append(row)
+        return matrix(coefficient_ring, rows)  # type: ignore[name-defined]  # noqa: F821
+
+    def _q_expansion_hecke_matrix(
+        self,
+        index: Any,
+        maximum_precision: Any,
+    ) -> Any:
+        r"""Transport $T_n$ to the canonical Hecke-dual expansion basis."""
+        hecke_index = _positive_integer(index, "Hecke index")
+        maximum = _exact_nonnegative_integer(maximum_precision, "q-expansion precision")
+        if maximum < 1:
+            raise ValueError("precision must be at least 1")
+        signed_space = self._q_expansion_signed_cusp_space()
+        dimension = signed_space.dimension()
+        if dimension == 0:
+            return matrix(  # type: ignore[name-defined]  # noqa: F821
+                signed_space.base_ring(), 0, 0
+            )
+
+        precision = (
+            min(maximum, max(2, dimension + 1)) if self.weight() == 2 else maximum
+        )
+        try:
+            data = self._q_expansion_data(precision)
+        except ArithmeticError:
+            if precision == maximum:
+                raise
+            precision = maximum
+            data = self._q_expansion_data(precision)
+        signed_space, coefficients, indices, raw_matrix, lift_matrix = data
+        if coefficients.nrows() != dimension:
+            if precision == maximum:
+                raise ArithmeticError(
+                    "the separating q-expansion prefix has incomplete dimension"
+                )
+            signed_space, coefficients, indices, raw_matrix, lift_matrix = (
+                self._q_expansion_data(maximum)
+            )
+        if coefficients.nrows() != dimension:
+            raise ArithmeticError(
+                "the Sturm q-expansion prefix has incomplete dimension"
+            )
+
+        if self._character is not None and not self.character().is_real():
+            return self._q_expansion_character_hecke_matrix(hecke_index, coefficients)
+
+        symbol_matrix = signed_space.hecke_matrix(hecke_index)
+        image_rows = []
+        for block_index in range(len(indices)):
+            start = block_index * dimension
+            block = raw_matrix.matrix_from_rows(range(start, start + dimension))
+            image_rows.extend((symbol_matrix.transpose() * block).rows())
+        image_raw = matrix(  # type: ignore[name-defined]  # noqa: F821
+            signed_space.base_ring(), [row.list() for row in image_rows]
+        )
+        image_matrix = lift_matrix * image_raw
+        answer = coefficients.solve_left(image_matrix)
+        if answer * coefficients != image_matrix:
+            raise ArithmeticError(
+                "the modular-symbol Hecke action did not preserve the q-expansion span"
+            )
+        return answer
 
     def diamond_bracket_matrix(self, value: Any) -> Any:
         """Return the scalar matrix of the diamond operator `<value>`."""
@@ -4347,9 +5192,23 @@ class ModularSymbolsSpace(sage.Parent):
         basis_matrix: Any,
         kind: str,
         sign: Any = None,
+        serialized_is_cuspidal: Any = None,
     ) -> ModularSymbolsSpace:
         if sign is None:
             sign = self._sign
+        if serialized_is_cuspidal is not None:
+            return ModularSymbolsSpace(
+                self._group,
+                self._weight,
+                sign,
+                self._base,
+                self._character,
+                self.ambient_module(),
+                basis_matrix,
+                kind,
+                basis_matrix.nrows(),
+                serialized_is_cuspidal,
+            )
         return ModularSymbolsSpace(
             self._group,
             self._weight,
@@ -4482,6 +5341,11 @@ class ModularSymbolsSpace(sage.Parent):
         for prime in self._good_hecke_primes(decomposition_bound):
             remaining = []
             for space in active:
+                # A one-dimensional module is already simple. Do not require
+                # polynomial factorization merely to certify a linear factor.
+                if space.dimension() == 1:
+                    finished.append(space)
+                    continue
                 operator = space.hecke_matrix(prime)
                 factors = list(operator.charpoly().factor())
                 if len(factors) == 1 and factors[0][1] == 1:
@@ -4656,6 +5520,10 @@ class ModularSymbolsSpace(sage.Parent):
             )
         elif self._is_cuspidal:
             basis = ambient._star_submodule(sign).cuspidal_submodule().basis_matrix()
+            # Proper cuspidal constituents need their own sign space, not
+            # the entire ambient cuspidal eigenspace.
+            if self.dimension() < ambient.cuspidal_submodule().dimension():
+                basis = self._intersect_basis(basis)
         else:
             relation = (
                 ambient._full_star_matrix()
@@ -5146,10 +6014,10 @@ def ModularSymbols(
         base_kind = getattr(base_ring, "_kind", None)
         if character.order() > 2 and base_ring is sage.QQ:
             raise ValueError("the character values do not lie in Rational Field")
-        if base_ring is not sage.QQ and base_kind not in ["CyclotomicField", "QQBAR"]:
+        if base_ring is not sage.QQ and base_kind != "CyclotomicField":
             raise NotImplementedError(
-                "character modular symbols currently require QQ, QQbar, "
-                "or a cyclotomic field"
+                "character modular symbols currently require QQ or an exact "
+                "cyclotomic field"
             )
     native_signed = (
         character is None
@@ -5171,77 +6039,6 @@ def ModularSymbols(
     return result
 
 
-_eisenstein_element_prototype = runtime.reflect.get(
-    EisensteinSeriesElement, "prototype"
-)
-_eisenstein_q_expansion_method = runtime.reflect.get(
-    _eisenstein_element_prototype, "q_expansion"
-)
-runtime.reflect.set(
-    _eisenstein_q_expansion_method,
-    "__module__",
-    "sage.modular.modform.element",
-)
-runtime.register_doc(
-    "EisensteinSeriesElement.q_expansion",
-    _eisenstein_q_expansion_method,
-    {
-        "kind": "method",
-        "module": "sage.modular.modform.element",
-        "tags": [
-            "modular forms",
-            "Eisenstein series",
-            "q-expansions",
-            "power series",
-        ],
-        "backends": ["FLINT", "Sage.js native helpers"],
-        "sage_compatibility": {
-            "status": "compatible",
-            "notes": (
-                "Returns an exact power series with Sage-style absolute "
-                "precision notation."
-            ),
-        },
-        "provenance": [
-            {
-                "kind": "sage-derived",
-                "source": "SageMath modular-form element API",
-                "url": (
-                    "https://doc.sagemath.org/html/en/reference/"
-                    "modfrm/sage/modular/modform/element.html"
-                ),
-                "license": "GPL-2.0-or-later",
-            },
-            {
-                "kind": "library-backed",
-                "source": "FLINT exact arithmetic",
-                "url": "https://flintlib.org/",
-            },
-            {
-                "kind": "sagejs-original",
-                "source": "Native coefficient sieve and parent integration",
-            },
-        ],
-        "references": [
-            {
-                "id": "flint",
-                "type": "software",
-                "title": "FLINT: Fast Library for Number Theory",
-                "authors": ["The FLINT contributors"],
-                "url": "https://flintlib.org/",
-            },
-        ],
-        "implementation": {
-            "algorithm": ("Native exact divisor-sum sieve and degeneracy maps"),
-        },
-        "limitations": [
-            (
-                "The currently constructed Eisenstein spaces cover the "
-                "implemented congruence-subgroup cases."
-            ),
-        ],
-    },
-)
 runtime.register_doc(
     "EisensteinSubspace.basis",
     runtime.reflect.get(
@@ -6491,6 +7288,92 @@ runtime.register_doc(
                 "Full-Jacobian component groups are implemented; newform-quotient "
                 "groups await audited integral modular-degree maps."
             ),
+        ],
+    },
+)
+
+runtime.register_doc(
+    "J0",
+    J0,
+    {
+        "kind": "function",
+        "module": "sage.modular.abvar.constructor",
+        "tags": [
+            "modular abelian varieties",
+            "modular symbols",
+            "integral homology",
+            "Hecke operators",
+        ],
+        "backends": [
+            "Sage.js exact modular symbols",
+            "FLINT integer kernels and normal forms",
+        ],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "The weight-two Gamma0/Q object and integral-homology core "
+                "are implemented; general groups and arithmetic invariants "
+                "remain future slices."
+            ),
+        },
+        "provenance": [
+            {
+                "kind": "sage-derived",
+                "source": "SageMath modular abelian variety object model",
+                "url": ("https://doc.sagemath.org/html/en/reference/modabvar/"),
+                "license": "GPL-2.0-or-later",
+            },
+            {
+                "kind": "sagejs-original",
+                "source": (
+                    "Connected quotient lattice and construction-authenticated "
+                    "SagePack representation"
+                ),
+            },
+        ],
+        "limitations": [
+            "Only weight two, Gamma0, trivial character, and base field QQ are supported.",
+            "Period lattices, polarizations, modular degrees, and component groups are deferred.",
+        ],
+    },
+)
+
+runtime.register_doc(
+    "AbelianVariety",
+    AbelianVariety,
+    {
+        "kind": "function",
+        "module": "sage.modular.abvar.constructor",
+        "tags": [
+            "modular abelian varieties",
+            "newforms",
+            "quotients",
+            "integral homology",
+        ],
+        "backends": [
+            "Sage.js exact modular symbols",
+            "FLINT integer kernels, Hermite forms, and Smith forms",
+        ],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "Accepts Gamma0 levels/groups, sign-zero cuspidal modular "
+                "symbols, and weight-two normalized newforms. Newforms "
+                "construct connected quotients and also expose the embedded "
+                "isogenous subvariety."
+            ),
+        },
+        "provenance": [
+            {
+                "kind": "sage-derived",
+                "source": "SageMath modular abelian variety constructors",
+                "url": ("https://doc.sagemath.org/html/en/reference/modabvar/"),
+                "license": "GPL-2.0-or-later",
+            }
+        ],
+        "limitations": [
+            "Products and arbitrary Hecke-ideal quotients are not implemented.",
+            "Only weight-two Gamma0 spaces over QQ are accepted.",
         ],
     },
 )

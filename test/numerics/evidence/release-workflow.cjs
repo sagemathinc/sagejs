@@ -904,6 +904,9 @@ test("clean browser qualification builds source evidence before restoring the pr
 
 test("one trusted workflow publishes and recovery reruns its authenticated job", () => {
   assert.match(ci, /Numerical release qualification gate|numerical-release-gate/);
+  assert.match(ci, /Require successful same-tag WebAssembly release/);
+  assert.match(ci, /actions\/workflows\/wasm-release\.yml\/runs\?event=push&head_sha=\$\{GITHUB_SHA\}/);
+  assert.match(ci, /require-wasm-release\.cjs[\s\S]+--sha "\$GITHUB_SHA" --tag "\$GITHUB_REF_NAME"/);
   assert.match(ci, /id-token:\s*write/);
   assert.match(ci, /npm publish "\$archive"/);
   assert.doesNotMatch(ci, /secrets\.NPM_TOKEN|pnpm publish "\$archive"/);

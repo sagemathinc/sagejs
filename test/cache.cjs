@@ -640,18 +640,20 @@ test("cache prune exits cleanly when its stdout consumer closes early", async (t
   assert.equal(stderr, "");
 });
 
-test("the CLI output handler recognizes EPIPE deterministically", () => {
+test("the CLI output handler recognizes platform broken-pipe codes", () => {
   const { installCliOutputHandler } = require("../dist/tools/process-output.js");
-  const stream = new EventEmitter();
-  let exitCode;
-  installCliOutputHandler(stream, (code) => {
-    exitCode = code;
-  });
-  stream.emit(
-    "error",
-    Object.assign(new Error("broken pipe"), { code: "EPIPE" }),
-  );
-  assert.equal(exitCode, 0);
+  for (const errorCode of ["EPIPE", "ENOTCONN"]) {
+    const stream = new EventEmitter();
+    let exitCode;
+    installCliOutputHandler(stream, (code) => {
+      exitCode = code;
+    });
+    stream.emit(
+      "error",
+      Object.assign(new Error("broken pipe"), { code: errorCode }),
+    );
+    assert.equal(exitCode, 0);
+  }
 });
 
 test("the CLI output handler does not swallow non-EPIPE stream errors", () => {

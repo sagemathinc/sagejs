@@ -9,6 +9,11 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
+// macOS exposes /tmp as a symlink to /private/tmp. Promotion deliberately
+// rejects symlinked output ancestors, so tests which exercise the transaction
+// itself must create their fixture in the canonical temporary directory.
+const canonicalTemporaryRoot = fs.realpathSync(os.tmpdir());
+
 const {
   CASE_RECEIPT_SCHEMA,
   EVIDENCE_PROGRAMS,
@@ -18,6 +23,7 @@ const {
   buildQualification,
   canonicalJson,
   formattedJson,
+  portableBuildReportBinding,
   readJson,
   sha256,
   validateQualificationSummary,
@@ -85,6 +91,43 @@ const evidenceKinds = Object.keys(REQUIRED_CHECKS);
 function clone(value) {
   return structuredClone(value);
 }
+
+test("portable build-report binding excludes only host-builder provenance", () => {
+  const report = {
+    schema: "sagejs.numerical-nlopt-build/v1",
+    source: { revision: "1".repeat(40) },
+    source_closure: { sha256: digest("2") },
+    toolchain: {
+      identity: digest("3"),
+      builder: { identity: digest("4"), platform: "linux-x64" },
+      target: "wasm32-wasip1",
+      floating_point_contract: "off",
+    },
+    artifact: { sha256: digest("5"), bytes: 42 },
+    methods: ["nlopt-nelder-mead"],
+    selection: "explicit-only",
+  };
+  const expected = portableBuildReportBinding(report);
+  const otherBuilder = clone(report);
+  otherBuilder.toolchain.builder = {
+    identity: digest("6"), platform: "darwin-arm64",
+  };
+  assert.deepEqual(portableBuildReportBinding(otherBuilder), expected);
+
+  for (const mutate of [
+    (value) => { value.source.revision = "7".repeat(40); },
+    (value) => { value.source_closure.sha256 = digest("8"); },
+    (value) => { value.toolchain.identity = digest("9"); },
+    (value) => { value.artifact.sha256 = digest("a"); },
+  ]) {
+    const changed = clone(report);
+    mutate(changed);
+    assert.notDeepEqual(portableBuildReportBinding(changed), expected);
+  }
+  const malformed = clone(report);
+  malformed.toolchain.builder.extra = true;
+  assert.throws(() => portableBuildReportBinding(malformed), /missing or extra fields/);
+});
 
 function record(value) {
   const bytes = Buffer.from(formattedJson(value));
@@ -719,7 +762,9 @@ test("only the exact pending and qualified manifest states are recognized", () =
 });
 
 test("atomic promotion validates before touching outputs and leaves no temporary files", () => {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-nlopt-promote-test-"));
+  const temporary = fs.mkdtempSync(path.join(
+    canonicalTemporaryRoot, "sagejs-nlopt-promote-test-",
+  ));
   try {
     const summaryPath = path.join(temporary, "qualification-v1.json");
     const manifestPath = path.join(temporary, "production-manifest.json");
@@ -746,7 +791,9 @@ test("atomic promotion validates before touching outputs and leaves no temporary
 });
 
 test("symbolic-link output rejection happens before either release file changes", () => {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-nlopt-symlink-test-"));
+  const temporary = fs.mkdtempSync(path.join(
+    canonicalTemporaryRoot, "sagejs-nlopt-symlink-test-",
+  ));
   try {
     const target = path.join(temporary, "target");
     const summaryPath = path.join(temporary, "qualification-v1.json");

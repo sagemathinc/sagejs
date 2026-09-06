@@ -115,8 +115,10 @@ classical API.
 - [x] Dirichlet-character cusp spaces over their exact cyclotomic value
   fields, including full sign-zero and directly constructed signed spaces;
   arbitrary proper sign-zero subspaces remain excluded.
-- [ ] $\Gamma_1(N)$ via its exact character decomposition or an equally
-  audited direct construction.
+- [x] $\Gamma_1(N)$ via exact character-orbit decomposition and rational
+  Galois descent, with complete ambient/cusp/Eisenstein bases, old/new spaces,
+  exact Hecke and diamond action, normalized packets, and serialization in
+  integral weight $k\geq2$.
 - [ ] A declared bounded domain for weight $1$, or an explicit fail-closed
   exclusion until the weight-$1$ project is complete.
 
@@ -374,24 +376,56 @@ Linux arm64, macOS arm64, native Windows x64, and real-browser Chromium.
 
 ## P1: complete the classical modular-form object layer
 
-- [ ] General `ModularForms` spaces for $\Gamma_1(N)$ and $\Gamma_H(N)$.
-- [ ] General `ModularForms(chi,k)` spaces with nebentypus.
+- [x] General `ModularForms` spaces for $\Gamma_1(N)$ in integral weight
+  $k\geq2$, using exact cyclotomic character-orbit descent over $\QQ$.
+- [ ] General `ModularForms` spaces for $\Gamma_H(N)$.
+- [x] General `ModularForms(chi,k)` and `CuspForms(chi,k)` parents in the
+  integral-weight $k\geq2$ Dirichlet-character domain, over $\QQ$ for
+  quadratic characters and exact cyclotomic fields for higher order.
 - [ ] Base change to number fields, cyclotomic orders, finite fields, and
   supported $p$-adic rings.
-- [ ] First-class cusp, Eisenstein, oldform, newform, and ambient elements.
-- [ ] Complete Hecke-module methods on modular-form spaces and elements.
+- [x] First-class cusp, Eisenstein, oldform, newform, and ambient elements in
+  the integral-weight $\Gamma_0/\QQ$ domain and its fixed-character exact
+  cyclotomic extension.
+- [x] Exact good- and bad-prime Hecke-module methods on those
+  $\Gamma_0/\QQ$ spaces and elements.
+- [x] Extend the common element, membership, coordinate, product, and Hecke
+  contracts to Dirichlet characters over $\QQ$ and exact cyclotomic fields.
+- [x] Exact parented addition, scalar arithmetic, products, equality, and lazy
+  extendable $q$-expansions over $\QQ$ and supported cyclotomic character
+  fields.
 - [ ] Extend the P0B exact expansion algebra from certified basis construction
   into a complete parented modular-form ring interface.
 - [ ] Quotients when holomorphic, derivatives, and general twists beyond the
   P0B domain.
-- [ ] Membership and coordinate recovery from sufficiently precise
-  $q$-expansions.
+- [x] Sturm-certified membership and coordinate recovery from sufficiently
+  precise $q$-expansions over $\QQ$ and supported cyclotomic character fields.
 - [ ] Graded rings of classical modular forms.
 - [x] Victor Miller bases and efficient level-$1$ arithmetic.
 - [ ] Rankin--Cohen brackets.
 - [ ] CM detection and systematic twist recognition.
 - [ ] General Atkin--Lehner operators and eigenvalues.
 - [ ] Congruence modules and comparison of eigenforms modulo prime ideals.
+
+The first object-layer vertical slice is specified in
+`agents/classical-modular-form-object-layer-plan.md` and documented in
+`docs/classical-modular-form-elements.md`.  Its combined source-freeze bundle
+has SHA-256
+`c471ec32acab41cb5cd66f12b0beb732ea68bc9389b8c8636d820aa21802672b`.
+The fixed-character extension is specified in
+`agents/classical-modular-forms-character-object-layer-plan.md`. It deliberately
+reuses the same element hierarchy and covers quadratic characters over $\QQ$,
+higher-order characters over exact cyclotomic fields, imprimitive old/new
+decomposition, exact eigenpackets, and authenticated serialization.
+The full $\Gamma_1$ extension is specified in
+`agents/gamma1-modular-forms-plan.md` and documented in
+`docs/gamma1-modular-forms.md`; it descends one fast fixed-character space per
+Galois orbit to a canonical Sturm-certified rational basis.
+Higher-order-character $q$-expansion reconstruction now uses direct exact
+Hecke images in the cyclotomic power basis.  The reproducible scaling grid in
+`bench/modular/higher-character-qexp/` checks degrees $4$ and $8$ through a
+nontrivial exact coefficient; its 2026-09-04 levels $101$, $157$, $241$, and
+$401$ receipt ranges from $3\times$ to $10\times$ faster than SageMath.
 
 ## P1: analytic modular-form functionality
 

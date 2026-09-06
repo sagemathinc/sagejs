@@ -1,0 +1,65 @@
+{
+  "schema": "sagejs.modular-abelian-varieties.oracle-corpus.v1",
+  "generated": "2026-09-05",
+  "sources": {
+    "sage": {
+      "version": "10.9.post1",
+      "script": "bench/modular/abelian-varieties/sage-oracle.py"
+    },
+    "magma": {
+      "version": "2.18-5",
+      "script": "bench/modular/abelian-varieties/magma-oracle.m"
+    }
+  },
+  "meaning": "Sage and Magma independently agree on every pinned dimension and Hecke polynomial.",
+  "cases": [
+    {
+      "level": 11,
+      "dimension": 1,
+      "sage_decomposition_dimensions": [1],
+      "sagejs_hecke_isotypic_dimensions": [1],
+      "T2": "x + 2",
+      "T3": "x + 1"
+    },
+    {
+      "level": 33,
+      "dimension": 3,
+      "sage_decomposition_dimensions": [1, 1, 1],
+      "sagejs_hecke_isotypic_dimensions": [1, 2],
+      "T2": "x^3 + 3*x^2 - 4",
+      "T3": "x^3 + 2*x^2 + 4*x + 3"
+    },
+    {
+      "level": 37,
+      "dimension": 2,
+      "sage_decomposition_dimensions": [1, 1],
+      "sagejs_hecke_isotypic_dimensions": [1, 1],
+      "T2": "x^2 + 2*x",
+      "T3": "x^2 + 2*x - 3"
+    },
+    {
+      "level": 43,
+      "dimension": 3,
+      "sage_decomposition_dimensions": [1, 2],
+      "sagejs_hecke_isotypic_dimensions": [1, 2],
+      "T2": "x^3 + 2*x^2 - 2*x - 4",
+      "T3": "x^3 + 2*x^2 - 2*x - 4"
+    },
+    {
+      "level": 67,
+      "dimension": 5,
+      "sage_decomposition_dimensions": [1, 2, 2],
+      "sagejs_hecke_isotypic_dimensions": [1, 2, 2],
+      "T2": "x^5 + 2*x^4 - 5*x^3 - 8*x^2 + 3*x + 2",
+      "T3": "x^5 + 4*x^4 + x^3 - 10*x^2 - 9*x - 2"
+    },
+    {
+      "level": 97,
+      "dimension": 7,
+      "sage_decomposition_dimensions": [3, 4],
+      "sagejs_hecke_isotypic_dimensions": [3, 4],
+      "T2": "x^7 + x^6 - 10*x^5 - 8*x^4 + 23*x^3 + 15*x^2 - 9*x + 1",
+      "T3": "x^7 + 4*x^6 - 2*x^5 - 22*x^4 - 15*x^3 + 18*x^2 + 13*x - 4"
+    }
+  ]
+}

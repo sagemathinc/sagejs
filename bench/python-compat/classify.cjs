@@ -32,6 +32,9 @@ function validatePolicy(policy) {
     throw new Error("the initial Python performance policy must compare Sage.js with CPython");
   }
   positive(policy.minimumConfirmedSamples, "minimumConfirmedSamples");
+  if (!Number.isSafeInteger(policy.minimumConfirmedSamples)) {
+    throw new Error("minimumConfirmedSamples must be a positive safe integer");
+  }
   finiteNonnegative(policy.referenceNoiseFloorMs, "referenceNoiseFloorMs");
   if (!Array.isArray(policy.interactiveScopes) ||
       policy.interactiveScopes.some((scope) => typeof scope !== "string" || scope.length === 0)) {

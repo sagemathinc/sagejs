@@ -1446,8 +1446,12 @@ def _exact_unit(field: Any, order: Any, value: Any) -> bool:
         embedding_module = __import__(
             "sagejs.number_fields.embeddings", fromlist=["embeddings"]
         )
-        verified, _norm = embedding_module.exact_norm_is_unit(field, value)
-        return bool(verified and value in order)
+        verified, _norm = embedding_module.exact_norm_is_unit(
+            field,
+            value,
+            integral_order=order,
+        )
+        return bool(verified)
     except (TypeError, ValueError, ArithmeticError, ZeroDivisionError):
         return False
 
@@ -1882,6 +1886,30 @@ def _bounded_exact_pth_root(
                     _target_element(field, units, torsion_elements, exponents, torsion),
                 )
             )
+    cubic_norm_screen: tuple[Callable[..., Any], tuple[int, ...]] | None = None
+    if len(basis) == 3:
+        try:
+            cubic_module = __import__(
+                "sagejs.number_fields.cubic_class_number",
+                fromlist=["cubic_class_number"],
+            )
+            if int(field.degree()) == 3:
+                norm_value = cubic_module._cubic_norm_form_value
+                norm_coefficients = tuple(
+                    int(value)
+                    for value in cubic_module._order_cubic_norm_form_coefficients(order)
+                )
+                if callable(norm_value) and len(norm_coefficients) == 10:
+                    cubic_norm_screen = (norm_value, norm_coefficients)
+        except (
+            ImportError,
+            AttributeError,
+            ArithmeticError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ):
+            cubic_norm_screen = None
     coordinate_candidates = (
         _quartic_unit_coordinate_candidates(
             multiplication_table, coordinate_bound, cancelled
@@ -1892,6 +1920,18 @@ def _bounded_exact_pth_root(
     for coordinates in coordinate_candidates:
         if callable(cancelled) and cancelled():
             raise AnalyticResourceError("unit p-saturation was cancelled")
+        if cubic_norm_screen is not None:
+            norm_value, norm_coefficients = cubic_norm_screen
+            try:
+                candidate_norm = norm_value(norm_coefficients, *coordinates)
+            except (ArithmeticError, RuntimeError, TypeError, ValueError):
+                # A failed optional screen resumes the ordinary exact route at
+                # the current coordinate. It never turns an unevaluated
+                # candidate into negative evidence.
+                cubic_norm_screen = None
+            else:
+                if candidate_norm != 1 and candidate_norm != -1:
+                    continue
         root = field.zero()
         for coefficient, basis_element in zip(coordinates, basis, strict=True):
             if coefficient:

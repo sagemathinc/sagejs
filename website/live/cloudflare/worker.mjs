@@ -13,14 +13,48 @@ const SECURITY_HEADERS = Object.freeze({
 
 const RELEASE_PATTERN = /^[a-f0-9]{64}$/;
 const IMMUTABLE_ASSET_PATTERN = /^assets\/sha256-[a-f0-9]{64}\//;
+const EMBED_SUPPORT_MODULES = new Set([
+  "cell-controller.mjs",
+  "cell-session-pool.mjs",
+  "codemirror-editor.mjs",
+  "output-renderer.mjs",
+  "resource-policy.mjs",
+  "runtime-api.mjs",
+  "runtime-version.json",
+  "widget-manager.mjs",
+]);
+const EMBED_FRAME_PATH = "embed/v1/frame.html";
 // Increment this whenever the representation stored in Cache API changes.
 // Cache API entries survive Worker deployments, so a new Worker must never
 // inherit responses produced by an older encoding contract.
-const EDGE_CACHE_SCHEMA = "2";
+const EDGE_CACHE_SCHEMA = "3";
 
-function secureHeaders(headers = new Headers()) {
+export function isPublicEmbedResource(logicalPath) {
+  return (
+    IMMUTABLE_ASSET_PATTERN.test(logicalPath) ||
+    logicalPath.startsWith("embed/v1/") ||
+    logicalPath.startsWith("vendor/") ||
+    EMBED_SUPPORT_MODULES.has(logicalPath)
+  );
+}
+
+function secureHeaders(headers = new Headers(), logicalPath) {
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
     headers.set(name, value);
+  }
+  if (isPublicEmbedResource(logicalPath ?? "")) {
+    headers.set("Access-Control-Allow-Origin", "*");
+    headers.set("Cross-Origin-Resource-Policy", "cross-origin");
+  }
+  if (logicalPath === EMBED_FRAME_PATH) {
+    headers.set(
+      "Content-Security-Policy",
+      SECURITY_HEADERS["Content-Security-Policy"].replace(
+        "frame-ancestors 'none'",
+        "frame-ancestors *",
+      ),
+    );
+    headers.delete("X-Frame-Options");
   }
   return headers;
 }
@@ -103,7 +137,7 @@ function responseHeaders(object, logicalPath, release, encoding) {
   );
   if (encoding === "br") headers.set("Content-Encoding", "br");
   else headers.delete("Content-Encoding");
-  return secureHeaders(headers);
+  return secureHeaders(headers, logicalPath);
 }
 
 async function retrieveObject(bucket, logicalPath, release, preferredEncoding) {

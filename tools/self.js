@@ -50,6 +50,18 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
       compiler_only = false;
     }
   }
+  // Stage zero and older self-hosted compilers can omit a statement separator
+  // after a fragment with internal semicolons. Keep their bootstrap pass
+  // readable; the corrected compiler can compact its private support modules
+  // on the next pass without stripping names, docstrings or annotations.
+  let beautify = true;
+  if (compiler_only) {
+    const probe = new PyLang.OutputStream({ beautify: false });
+    probe.print("(() => { const value = 1; return value; })()");
+    probe.semicolon();
+    probe.print("next");
+    beautify = !probe.get().endsWith("();next");
+  }
   const { createPythonCompilerFrontend } = require("./python/compiler-frontend");
   const frontend = PyLang.AST_AnnotatedAssignment
     ? await createPythonCompilerFrontend(PyLang, "python")
@@ -176,7 +188,7 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
         "globalThis.__sagejs_baselib_modules__ = Object.create(null);\n";
       for (const module of modules) {
         const output = new PyLang.OutputStream({
-          beautify: true,
+          beautify,
           keep_docstrings: true,
           write_name: false,
           private_scope: false,
@@ -270,7 +282,7 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
 
     modules.forEach(function (module) {
       const outputOptions = {
-        beautify: true,
+        beautify,
         keep_docstrings: true,
         write_name: false,
         private_scope: false,

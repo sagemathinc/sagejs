@@ -5,6 +5,9 @@ const assert = require("node:assert/strict");
 const { existsSync, mkdirSync, readFileSync, writeFileSync } = require("node:fs");
 const { spawnSync } = require("node:child_process");
 const { join, resolve } = require("node:path");
+const {
+  assertEvidenceEquivalent,
+} = require("./evidence-equivalence.cjs");
 
 const root = resolve(__dirname, "../../..");
 const storyPath = join(
@@ -603,12 +606,11 @@ function main(argv = process.argv.slice(2)) {
     return story;
   }
   assert.ok(existsSync(storyPath), `${storyPath} does not exist; run with --write`);
-  assert.equal(
-    readFileSync(storyPath, "utf8"),
-    text,
-    `${storyPath} is stale; run node test/numerics/gallery/generate-root-story.cjs --write`,
-  );
-  return story;
+  const checkedText = readFileSync(storyPath, "utf8");
+  const checkedStory = JSON.parse(checkedText);
+  assert.equal(checkedText, stableJson(checkedStory), `${storyPath} is not canonical JSON`);
+  assertEvidenceEquivalent(story, checkedStory);
+  return checkedStory;
 }
 
 if (require.main === module) main();

@@ -185,6 +185,17 @@ function emitWordOperation(operation, context, indent) {
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
+  if (operation.kind === "range.validate_step") {
+    const step = value(operation.step);
+    return [
+      `${indent}if (${step} == 0)`,
+      `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `${cString("range() arg 3 must not be zero")});`,
+      `${indent}    ${context.failure}`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (["integer.copy", "bool.copy", "uint64.copy"].includes(operation.kind)) {
     return `${indent}${target} = ${value(operation.source)};`;
   }
@@ -381,6 +392,18 @@ function emitWordOperation(operation, context, indent) {
       `${indent}if (${source} > (uint64_t) INT64_MAX)`,
       promote(),
       `${indent}${target} = (int64_t) ${source};`,
+    ].join("\n");
+  }
+  if (operation.kind === "uint64.from_integer_checked") {
+    const source = value(operation.source);
+    return [
+      `${indent}if (${source} < 0)`,
+      `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"integer is outside unsigned 64-bit");`,
+      `${indent}    ${context.failure}`,
+      `${indent}}`,
+      `${indent}${target} = (uint64_t) ${source};`,
     ].join("\n");
   }
   if (operation.kind === "integer.neg" || operation.kind === "integer.abs") {
@@ -590,28 +613,47 @@ function emitWordStatements(statements, context, indent) {
     }
     if (statement.kind === "loop.range") {
       const index = context.value(statement.index);
-      const bound = context.value(statement.count);
-      const condition = statement.boundIsStop
-        ? `${index} < ${bound}`
-        : `(${index} - UINT64_C(${statement.start})) < ${bound}`;
+      const iterator = context.value(statement.iterator);
+      const start = context.value(statement.start);
+      const stop = context.value(statement.stop);
+      const step = context.value(statement.step);
       lines.push(
-        `${indent}for (${index} = UINT64_C(${statement.start}); ` +
-          `${condition}; ` +
-          `${index} += UINT64_C(${statement.step || 1}))`,
+        `${indent}${iterator} = ${start};`,
+        `${indent}while (${iterator} < ${stop})`,
         `${indent}{`,
+        `${indent}    ${index} = ${iterator};`,
+        `${indent}    (void) ${index};`,
         emitWordStatements(statement.body, context, `${indent}    `),
+        `${indent}    if (${step} >= ${stop} - ${iterator})`,
+        `${indent}        break;`,
+        `${indent}    ${iterator} += ${step};`,
         `${indent}}`,
       );
       continue;
     }
     if (statement.kind === "loop.range_exact") {
       const index = context.value(statement.index);
+      const iterator = context.value(statement.iterator);
+      const start = context.value(statement.start);
+      const stop = context.value(statement.stop);
+      const step = context.value(statement.step);
       lines.push(
-        `${indent}${index} = ${context.value(statement.start)};`,
-        `${indent}while (${index} < ${context.value(statement.stop)})`,
+        `${indent}${iterator} = ${start};`,
+        `${indent}for (;;)`,
         `${indent}{`,
+        `${indent}    if (${step} > 0)`,
+        `${indent}    {`,
+        `${indent}        if (${iterator} >= ${stop})`,
+        `${indent}            break;`,
+        `${indent}    }`,
+        `${indent}    else if (${iterator} <= ${stop})`,
+        `${indent}        break;`,
+        `${indent}    ${index} = ${iterator};`,
+        `${indent}    (void) ${index};`,
         emitWordStatements(statement.body, context, `${indent}    `),
-        `${indent}    ${index} += INT64_C(1);`,
+        `${indent}    if (!sagejs_word_add_int64(` +
+          `${iterator}, ${step}, &${iterator}))`,
+        `${indent}        break;`,
         `${indent}}`,
       );
       continue;

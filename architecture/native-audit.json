@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5347,
-      "bytes": 175207,
+      "lines": 5553,
+      "bytes": 183440,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -30,8 +30,8 @@
     },
     {
       "path": "packages/flint/src/cyclotomic_rref.c",
-      "lines": 1008,
-      "bytes": 33170,
+      "lines": 1015,
+      "bytes": 33554,
       "decision": "split-and-migrate",
       "priority": "medium",
       "responsibilities": [
@@ -79,16 +79,17 @@
     },
     {
       "path": "packages/flint/src/matrix.c",
-      "lines": 5851,
-      "bytes": 191200,
+      "lines": 6584,
+      "bytes": 218519,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
         "Node-API matrix representation",
         "FLINT dense and sparse matrix calls",
+        "coordinate-preserving cyclotomic representation primitives",
         "locally implemented matrix algorithms and conversion paths"
       ],
-      "rationale": "The largest mixed native source combines an essential packed FLINT boundary with Sage.js-owned algorithms. Retain mature FLINT calls, split the ABI by representation, and use existing prime-field typed witnesses to migrate local control flow where it is competitive.",
+      "rationale": "The largest mixed native source combines an essential packed FLINT boundary with Sage.js-owned algorithms. Retain mature FLINT calls and coordinate-preserving cyclotomic representation primitives, split the ABI by representation, and use existing prime-field typed witnesses to migrate local control flow where it is competitive.",
       "fallback": "Every matrix operation retains its tested Python/JavaScript implementation or an explicit native capability diagnostic.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Preserve the exact 50-export symbol ratchet, migrate the 22 thin operations through declarations, and replace the 12 documented source-owned exceptions one typed algorithm at a time."
@@ -127,8 +128,8 @@
     },
     {
       "path": "packages/flint/src/p1.c",
-      "lines": 4603,
-      "bytes": 161898,
+      "lines": 5273,
+      "bytes": 190508,
       "decision": "typed-remediation-pilot",
       "priority": "critical",
       "responsibilities": [
@@ -136,6 +137,7 @@
         "integer and rational sparse star eigenspaces",
         "higher-weight and character presentations",
         "Heilbronn representatives and Hecke assembly",
+        "bulk cyclotomic power-basis Hecke images for q-expansion reconstruction",
         "path reduction and result conversion"
       ],
       "rationale": "This file is the clearest architecture violation: an adapter contains several independent research algorithms and low-level exact-memory management. The continued-fraction Heilbronn enumeration and fused higher-weight Hecke traversal are now source-transparent typed-Python implementations; sparse exact elimination follows only after packed records and rational storage are compiler features.",
@@ -355,8 +357,8 @@
     },
     {
       "path": "packages/flint/include/sagejs/number_field_analysis_resource_ffi.h",
-      "lines": 1032,
-      "bytes": 40984,
+      "lines": 1310,
+      "bytes": 53292,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -413,8 +415,8 @@
     },
     {
       "path": "packages/flint-wasm/src/numeric.c",
-      "lines": 1708,
-      "bytes": 53768,
+      "lines": 2890,
+      "bytes": 92112,
       "decision": "retain-bridge",
       "priority": "high",
       "responsibilities": [

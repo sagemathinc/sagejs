@@ -25,6 +25,7 @@ const {
 const { generateJavaScript } = require("./js-backend.cjs");
 const { generateExceptionShims } = require("./ffi-codegen.cjs");
 const { declarationFiles } = require("../ffi/declarations.cjs");
+const { createNativeImportResolver } = require("./native-imports.cjs");
 const { macosDeploymentTarget } = require("../../scripts/darwin-native.cjs");
 const {
   normalizeAutomaticSelections,
@@ -308,6 +309,7 @@ function writeDiscoveryIndex(
     sourceHash,
     nativeAbi: compatibility.nativeAbi,
     foreignDeclarations: compatibility.foreignDeclarations,
+    privateFunctions: compatibility.privateFunctions,
   };
   index.sources[sourcePath] = record;
   if (sourceKey !== undefined) {
@@ -322,12 +324,22 @@ function writeDiscoveryIndex(
   writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`);
 }
 
-function nativeCompatibility(ir, foreignInputs) {
+function nativeCompatibility(ir, foreignInputs, sourcePath) {
   const inputsByLibrary = new Map(
     foreignInputs.map((input) => [input.id, input]),
   );
   return Object.freeze({
     nativeAbi: NATIVE_ABI_VERSION,
+    privateFunctions: Object.freeze(
+      ir.functions
+        .filter((fn) =>
+          fn.lexicallyNative === true &&
+          fn.hostCallable === false &&
+          fn.provenance?.file === sourcePath
+        )
+        .map((fn) => fn.name)
+        .sort(),
+    ),
     foreignDeclarations: Object.freeze(
       (ir.foreignLibraries || [])
         .map((library) => {
@@ -362,8 +374,10 @@ function backendFingerprint() {
       readFileSync(join(__dirname, "provenance.cjs")),
       readFileSync(join(__dirname, "word-backend.cjs")),
       readFileSync(join(__dirname, "tagged-backend.cjs")),
+      readFileSync(join(__dirname, "fmpz-backend.cjs")),
       readFileSync(join(__dirname, "core-abi.cjs")),
       readFileSync(join(__dirname, "exact-runtime.cjs")),
+      readFileSync(join(__dirname, "fmpz-runtime.cjs")),
       readFileSync(join(__dirname, "c-backend.cjs")),
       readFileSync(join(__dirname, "js-backend.cjs")),
       readFileSync(join(__dirname, "ffi-codegen.cjs")),
@@ -483,6 +497,14 @@ function foreignLinkedLibraries(library, platform = process.platform) {
   }));
 }
 
+function residentFmpzLinkedLibraries(platform = process.platform) {
+  // An implicit fmpz backend still links FLINT's complete platform closure.
+  // In particular, Windows FLINT's allocator requires pthreadVC3 even when
+  // the source has no explicit foreign call to introduce that dependency.
+  const { library } = JSON.parse(readFileSync(join(root, "ffi", "flint.ffi.json"), "utf8"));
+  return foreignLinkedLibraries(library, platform);
+}
+
 function resolveDeclaredHeader(
   library,
   name,
@@ -516,7 +538,7 @@ function resolveDeclaredHeader(
   );
 }
 
-function repositoryHeaderDependencies(headers, includeDirectories, digestStore) {
+function resolvedHeaderDependencies(headers, includeDirectories, digestStore) {
   const direct = new Set(headers.map((header) => header.resolvedPath));
   const visited = new Set();
   const pending = headers.map((header) => header.path);
@@ -553,13 +575,9 @@ function repositoryHeaderDependencies(headers, includeDirectories, digestStore) 
         }
       }
       if (resolvedHeader === null) continue;
+      // Reused dependency prefixes may live outside this checkout. Their
+      // inline definitions are compiler inputs just like repository headers.
       const repositoryRelative = relative(root, resolvedHeader);
-      if (
-        repositoryRelative === "" || repositoryRelative === ".." ||
-        repositoryRelative.startsWith(`..${sep}`)
-      ) {
-        continue;
-      }
       const identity = contentAddressedFile(
         resolvedHeader,
         `transitive native header ${name}`,
@@ -583,9 +601,7 @@ function repositoryHeaderDependencies(headers, includeDirectories, digestStore) 
 
 function resolveForeignCompilationInputs(ir, digestStore) {
   const includeDirectories = compilationIncludeDirectories(ir);
-  return Object.freeze(
-    (ir.foreignLibraries || [])
-      .map((library) => {
+  const inputs = (ir.foreignLibraries || []).map((library) => {
         const headers = Object.freeze(
           [...library.native.headers]
             .sort()
@@ -598,7 +614,7 @@ function resolveForeignCompilationInputs(ir, digestStore) {
               ),
             )),
         );
-        const transitiveHeaders = repositoryHeaderDependencies(
+        const transitiveHeaders = resolvedHeaderDependencies(
           headers,
           includeDirectories,
           digestStore,
@@ -626,9 +642,43 @@ function resolveForeignCompilationInputs(ir, digestStore) {
           ...value,
           fingerprint: sha256(JSON.stringify(value)),
         });
-      })
-      .sort((left, right) => left.id.localeCompare(right.id)),
-  );
+      });
+  if ((ir.functions || []).some(
+    (fn) => fn.analysis?.backend?.kind === "fmpz"
+  )) {
+    const headers = Object.freeze([
+      Object.freeze({
+        name: "flint/fmpz.h",
+        ...contentAddressedFile(
+          join(nativePrefix, "include", "flint", "fmpz.h"),
+          "resident fmpz backend header flint/fmpz.h",
+          digestStore,
+        ),
+      }),
+    ]);
+    const libraries = Object.freeze(residentFmpzLinkedLibraries().map(
+      ({ name, path }) => Object.freeze({
+        name,
+        ...contentAddressedFile(path, `resident fmpz backend library ${name}`, digestStore),
+      }),
+    ));
+    const value = {
+      id: "sagejs-resident-fmpz",
+      prefix: portablePath(nativePrefix),
+      includeOrder: Object.freeze(includeDirectories.map(portablePath)),
+      headers,
+      transitiveHeaders: resolvedHeaderDependencies(
+        headers, includeDirectories, digestStore,
+      ),
+      libraries,
+    };
+    inputs.push(Object.freeze({
+      ...value,
+      fingerprint: sha256(JSON.stringify(value)),
+    }));
+  }
+  inputs.sort((left, right) => left.id.localeCompare(right.id));
+  return Object.freeze(inputs);
 }
 
 function foreignCompilationInputs(ir, options = {}) {
@@ -645,6 +695,7 @@ function bindingGyp(
   sourceBoundsChecked,
   hasExceptionShims = false,
   platform = process.platform,
+  profileSymbols = false,
 ) {
   const usesPrimeField = ir.functions.some(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
@@ -659,6 +710,9 @@ function bindingGyp(
         record.fields.some((field) => field.type === "PrimeModulusValue")
       ))
   );
+  const usesResidentFmpz = ir.functions.some(
+    (fn) => fn.analysis?.backend?.kind === "fmpz",
+  );
   const matrixOnly = ir.functions.every(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
@@ -668,7 +722,11 @@ function bindingGyp(
       foreignLinkedLibraries(library, platform).map(({ path }) => path)
     ),
   ));
-  const usesForeignLibraries = foreignLibraries.length > 0;
+  const linkedForeignLibraries = Array.from(new Set([
+    ...foreignLibraries,
+    ...(usesResidentFmpz ? residentFmpzLinkedLibraries(platform).map(({ path }) => path) : []),
+  ]));
+  const usesForeignLibraries = linkedForeignLibraries.length > 0;
   const cxxLanguage = generatedCxxLanguageSettings(platform);
   const target = {
     target_name: "sagejs_native_kernel",
@@ -697,7 +755,7 @@ function bindingGyp(
   };
   if (platform === "win32") {
     target.libraries = [
-      ...foreignLibraries,
+      ...linkedForeignLibraries,
       ...(usesExplicitPrimeModulus ? [nativeFlintLibrary] : []),
       ...(!matrixOnly
         ? [
@@ -724,6 +782,7 @@ function bindingGyp(
     };
     target.msvs_settings = {
       VCCLCompilerTool: {
+        ...(profileSymbols ? { DebugInformationFormat: 3 } : {}),
         Optimization: 3,
         WarningLevel: 3,
         ...(hasExceptionShims
@@ -737,10 +796,13 @@ function bindingGyp(
           }
           : {}),
       },
+      ...(profileSymbols
+        ? { VCLinkerTool: { GenerateDebugInformation: "true" } }
+        : {}),
     };
   } else {
     target.libraries = [
-      ...foreignLibraries,
+      ...linkedForeignLibraries,
       ...(usesExplicitPrimeModulus ? [nativeFlintLibrary] : []),
       ...(!matrixOnly
         ? [
@@ -750,7 +812,7 @@ function bindingGyp(
         ]
         : []),
       "-lm",
-      ...((ir.foreignLibraries || []).length > 0 ? ["-lpthread"] : []),
+      ...(usesForeignLibraries ? ["-lpthread"] : []),
     ];
     target.cflags = [
       "-O3",
@@ -759,6 +821,7 @@ function bindingGyp(
       "-Wextra",
       "-ffunction-sections",
       "-fdata-sections",
+      ...(profileSymbols ? ["-g"] : []),
     ];
     if (hasExceptionShims) {
       target["cflags_cc!"] = ["-fno-exceptions", "-fno-rtti"];
@@ -772,6 +835,12 @@ function bindingGyp(
       target.xcode_settings = {
         GCC_OPTIMIZATION_LEVEL: "3",
         MACOSX_DEPLOYMENT_TARGET: macosDeploymentTarget(),
+        ...(profileSymbols
+          ? {
+            DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym",
+            GCC_GENERATE_DEBUGGING_SYMBOLS: "YES",
+          }
+          : {}),
         ...(hasExceptionShims
           ? {
             CLANG_CXX_LANGUAGE_STANDARD: cxxLanguage.xcode,
@@ -784,7 +853,12 @@ function bindingGyp(
       target.ldflags = [
         "-Wl,--gc-sections",
         "-Wl,--exclude-libs,ALL",
-        "-Wl,--strip-all",
+        ...(profileSymbols ? [] : ["-Wl,--strip-all"]),
+        // FLINT-family addons may embed OpenBLAS, whose process-wide atfork
+        // handlers cannot be deregistered safely while another Node thread is
+        // entering fork/uv_spawn. Worker isolates release DLibs asynchronously,
+        // so retain Linux ELF images until process exit.
+        ...(platform === "linux" ? ["-Wl,-z,nodelete"] : []),
       ];
     }
   }
@@ -803,20 +877,33 @@ async function compileKernel(options) {
   const sourcePath = realpathSync(resolve(options.sourcePath));
   const sourceKey = options.sourceKey;
   const source = readFileSync(sourcePath, "utf8");
+  if (
+    options.profileSymbols !== undefined &&
+    typeof options.profileSymbols !== "boolean"
+  ) {
+    throw new TypeError("profileSymbols must be a boolean when provided");
+  }
+  const profileSymbols = options.profileSymbols === true;
   const sourceHash = sha256(source);
   const cacheRoot = resolve(
     options.cacheRoot ||
       join(dirname(sourcePath), ".sagejs-native-kernels"),
   );
+  const resolveNativeImport = createNativeImportResolver({
+    root,
+    lowerSource,
+    initialSourcePath: sourcePath,
+  });
   const ir = await lowerSource(source, sourcePath, {
     functions: options.functions,
+    resolveNativeImport,
   });
   const automaticSelections = normalizeAutomaticSelections(
     options.automaticSelections ?? {},
     ir,
   );
   const foreignInputs = foreignCompilationInputs(ir, { cacheRoot });
-  const compatibility = nativeCompatibility(ir, foreignInputs);
+  const compatibility = nativeCompatibility(ir, foreignInputs, sourcePath);
   const usesSpecializedPrimeField = ir.functions.some(
     (fn) => fn.kernelKind === "prime-field-matrix",
   );
@@ -842,6 +929,7 @@ async function compileKernel(options) {
     foreignInputs,
     primeFieldTuning: tuning,
     sourceBoundsChecked,
+    profileSymbols,
     automaticSelections,
     mpfr: "4.2.2",
     mpc: mpcVersion,
@@ -900,6 +988,7 @@ async function compileKernel(options) {
       shimHeaderPath: exceptionShims === null ? null : shimHeaderPath,
       nativeAbi: compatibility.nativeAbi,
       foreignDeclarations: compatibility.foreignDeclarations,
+      privateFunctions: compatibility.privateFunctions,
       foreignInputs,
       automaticSelections,
       exceptionShields: exceptionShims === null ? [] :
@@ -932,7 +1021,11 @@ async function compileKernel(options) {
   writeFileSync(
     join(outputPath, "binding.gyp"),
     `${JSON.stringify(bindingGyp(
-      ir, sourceBoundsChecked, exceptionShims !== null,
+      ir,
+      sourceBoundsChecked,
+      exceptionShims !== null,
+      process.platform,
+      profileSymbols,
     ), null, 2)}\n`,
   );
   writeFileSync(
@@ -941,11 +1034,13 @@ async function compileKernel(options) {
       cacheKey,
       primeFieldTuning: tuning,
       sourceBoundsChecked,
+      profileSymbols,
       automaticSelections,
       sourceHash,
       sourcePath,
       nativeAbi: compatibility.nativeAbi,
       foreignDeclarations: compatibility.foreignDeclarations,
+      privateFunctions: compatibility.privateFunctions,
     }),
   );
   writeFileSync(
@@ -957,6 +1052,7 @@ async function compileKernel(options) {
         nativeAbi: NATIVE_ABI_VERSION,
         sourceHash,
         foreignDeclarations: compatibility.foreignDeclarations,
+        privateFunctions: compatibility.privateFunctions,
         foreignInputs,
         primeFieldTuning: tuning,
         sourceBoundsChecked,
@@ -1027,6 +1123,7 @@ async function compileKernel(options) {
     shimHeaderPath: exceptionShims === null ? null : shimHeaderPath,
     nativeAbi: compatibility.nativeAbi,
     foreignDeclarations: compatibility.foreignDeclarations,
+    privateFunctions: compatibility.privateFunctions,
     foreignInputs,
     automaticSelections,
     exceptionShields: exceptionShims === null ? [] :

@@ -94,7 +94,7 @@ else:
 test("record-vector IR retains its schema and lexical ownership", async () => {
   const source = readFileSync(sourcePath, "utf8");
   const ir = await lowerSource(source, sourcePath);
-  assert.equal(ir.version, 34);
+  assert.equal(ir.version, 38);
   assert.deepEqual(ir.records, [{
     name: "RelationMetadata",
     type: "Record:RelationMetadata",

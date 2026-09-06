@@ -66,6 +66,28 @@ test("optimized calls, equality, and indexing retain Python semantics", async (t
   ].join("\n"));
 });
 
+test("exception cleanup preserves monkey-patched builtins and validates flat tuples", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "import builtins",
+    "original_abs = builtins.abs",
+    "try:",
+    "    builtins.abs = lambda value: 77",
+    "    try: raise ValueError()",
+    "    except ValueError as abs: pass",
+    "    print(abs(-2))",
+    "finally:",
+    "    builtins.abs = original_abs",
+    "for handler in (((ValueError,),), (ValueError, (TypeError,))):",
+    "    try:",
+    "        try: raise ValueError()",
+    "        except handler: print('incorrectly-caught')",
+    "    except TypeError: print('nested tuple rejected')",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), "77\nnested tuple rejected\nnested tuple rejected");
+});
+
 test("class LOAD_NAME resolves a direct module import", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());

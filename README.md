@@ -570,7 +570,8 @@ Mestre q-expansion reconstruction, expander graph views, and checked Hilbert
 Brandt modules over $\mathbf Q(\sqrt5)$ and $\mathbf Q(\sqrt3)$. See
 [Brandt modules over the rational numbers](docs/brandt-modules.md) and
 [Mestre's method of graphs and sparse modular forms](docs/mestre-method-of-graphs.md),
-as well as [half-integral-weight modular forms](docs/half-integral-modular-forms.md).
+as well as [half-integral-weight modular forms](docs/half-integral-modular-forms.md)
+and [modular abelian varieties](docs/modular-abelian-varieties.md).
 
 ## Sage mode
 
@@ -789,6 +790,32 @@ sage: R(1.00000000000000000000000000000000000000000000000000001505) == \
 True
 ```
 
+`RealField` also supports Sage's five MPFR rounding modes (`RNDN`, `RNDU`,
+`RNDD`, `RNDZ`, and `RNDA`), adjacent representable values, exact dyadic
+reconstruction, and binary formatting. Certified real and complex intervals
+use Arb and Acb in both native builds and WebAssembly:
+
+```py
+sagejs: up = RealField(3, rnd="RNDU")
+sagejs: up(1/9).exact_rational()
+1/8
+sagejs: R = RealIntervalField(10)
+sagejs: a = R(1/9); a, 1/a
+(0.112?, 9.0?)
+sagejs: (1/a).str(style="brackets")
+'[8.9843 .. 9.0157]'
+sagejs: ComplexIntervalField(10)(a, a).sqrt()
+0.366? + 0.152?*I
+```
+
+Integer and rational inputs are enclosed from their exact values, and all
+arithmetic is outward-rounded. A backend without Arb/Acb support raises an
+explicit capability error instead of silently substituting ordinary floating
+point. The interval element implementation is loaded on first use, so merely
+starting Sage.js does not pay its code-loading cost. See
+[Certified interval arithmetic](docs/interval-arithmetic.md) for the supported
+API and guarantees.
+
 ## Parents, coercion, and native polynomials
 
 The mathematical object model implements singleton `ZZ` and `QQ` parents,
@@ -837,10 +864,11 @@ probabilistic `proof=False` computation. Backend choice and proof status are
 inspectable through `groebner_basis_metadata()`.
 
 See [Gröbner bases](docs/groebner-bases.md) for examples, exact capability and
-resource limits, and the operations that remain future work. Primary
-decomposition, associated primes, modules, local orders, comprehensive
-coefficient-domain support, and the broader algebraic-geometry layer are not
-silently presented as msolve capabilities.
+resource limits. The [algebraic-geometry guide](docs/algebraic-geometry.md)
+builds exact affine/projective schemes, morphisms, Hilbert data, Jacobian
+geometry, plane curves, and zero-dimensional decomposition on that interface,
+without making Singular a dependency. Modules, local orders, and general
+positive-dimensional decomposition remain explicit future work.
 
 Generator declarations are parsed contextually and lowered to ordinary
 assignment AST nodes. For example, `R.<x> = ZZ[]` constructs

@@ -26,6 +26,7 @@ const TYPE_ALIASES = new Map([
   ["PrimeFieldDecomposition", "PrimeFieldDecomposition"],
   ["PrimeFieldModulus", "PrimeModulusValue"],
   ["UInt64Buffer", "UInt64Buffer"],
+  ["NativeIntegerVector", "NativeIntegerVector"],
 ]);
 const INT64_BUFFER_TYPES = new Set(["Int64Buffer", "Int64Record"]);
 const EXACT_BUFFER_TYPES = new Set([...INT64_BUFFER_TYPES, "IntegerBuffer"]);
@@ -333,6 +334,7 @@ function isIntegerSignature(signature) {
     signature.params.some(
       (param) => param.type === "Integer" || param.type === "bool" ||
         param.type === "uint64" ||
+        param.type === LIVE_INTEGER_VECTOR_TYPE ||
         param.type === "UInt64Buffer" || EXACT_BUFFER_TYPES.has(param.type),
     )
   );
@@ -356,6 +358,7 @@ function createContext(
   records,
   filename,
   decorated,
+  integerConstants = new Map(),
 ) {
   const variables = new Map(
     signature.params.map((param) => [param.name, param.type]),
@@ -386,7 +389,9 @@ function createContext(
     filename,
     functionName: signature.name,
     initialized: new Set(signature.params.map((param) => param.name)),
+    integerConstants,
     controlDepth: 0,
+    loopDepth: 0,
     locals: new Map(),
     nextTemporary: 0,
     params: signature.params,
@@ -398,7 +403,11 @@ function createContext(
     symbolAliases: new Map(),
     usedForeignResources,
     variables,
-    activeIntegerVectors: new Set(),
+    activeIntegerVectors: new Set(
+      signature.params
+        .filter((param) => param.type === LIVE_INTEGER_VECTOR_TYPE)
+        .map((param) => param.name),
+    ),
     activeIntegerMatrices: new Set(),
     activeRecordVectors: new Map(),
     activeBoundedCollections: new Map(),
@@ -774,6 +783,19 @@ function lowerUint64Operand(node, context, operations) {
   return lowerExpression(node, context, operations, "uint64");
 }
 
+/* UInt64Buffer stores uint64 values, but its subscript still has ordinary
+ * Python sequence semantics.  Negative and oversized integer literals are
+ * exact indices rather than invalid uint64 literals, so they reach the
+ * runtime bounds check and raise IndexError.  In-range nonnegative literals,
+ * uint64 symbols, and contextual uint64 arithmetic retain compact word IR. */
+function lowerUInt64BufferIndex(node, context, operations) {
+  const literal = integerLiteral(node);
+  return literal !== undefined &&
+      (literal < 0n || literal > 18446744073709551615n)
+    ? lowerExpression(node, context, operations)
+    : lowerUint64Operand(node, context, operations);
+}
+
 /*
  * Python integer literals have no fixed-width type of their own.  Keep them
  * exact unless their enclosing native operation supplies a uint64 context.
@@ -875,6 +897,7 @@ function lowerExactSum(node, args, context, operations) {
     "native sum() accepts an exact comprehension and optional start",
   );
   const comprehension = args[0];
+  const eager = nodeType(comprehension) === "AST_ListComprehension";
   expect(
     context,
     comprehension,
@@ -905,15 +928,20 @@ function lowerExactSum(node, args, context, operations) {
   const range = lowerRange(iterable, context);
   operations.push(...range.operations);
   const initialOperations = [];
-  let initial = args.length === 2
-    ? lowerExpression(args[1], context, initialOperations)
-    : emitConstant(context, node, initialOperations, 0n);
-  initial = coerceInteger(
-    initial,
-    context,
-    args[1] || node,
-    initialOperations,
-  );
+  let initial;
+  if (eager) {
+    initial = emitConstant(context, node, initialOperations, 0n);
+  } else {
+    initial = args.length === 2
+      ? lowerExpression(args[1], context, initialOperations)
+      : emitConstant(context, node, initialOperations, 0n);
+    initial = coerceInteger(
+      initial,
+      context,
+      args[1] || node,
+      initialOperations,
+    );
+  }
   operations.push(...initialOperations);
   const accumulator = temporary(context, node, "Integer");
   operations.push({
@@ -923,6 +951,7 @@ function lowerExactSum(node, args, context, operations) {
   });
 
   const hiddenIndex = temporary(context, indexNode, range.indexType);
+  const hiddenIterator = temporary(context, indexNode, range.indexType);
   const sourceIndex = indexNode.name;
   const previousAlias = context.symbolAliases.get(sourceIndex);
   const initializedBefore = new Set(context.initialized);
@@ -987,16 +1016,37 @@ function lowerExactSum(node, args, context, operations) {
   operations.push(...hoisted, {
     kind: range.kind,
     index: hiddenIndex,
-    ...(range.kind === "loop.range"
-      ? {
-          start: range.start,
-          count: range.count,
-          step: range.step,
-          boundIsStop: range.boundIsStop,
-        }
-      : { start: range.start, stop: range.stop }),
+    iterator: hiddenIterator,
+    start: range.start,
+    stop: range.stop,
+    step: range.step,
     body,
   });
+  if (eager) {
+    // Exact Integer addition is associative and side-effect free, so the list
+    // need not be materialized merely to preserve Python's eager call order.
+    // Its producer is fully evaluated first; only then is sum's optional
+    // start expression evaluated and combined with the exact subtotal.
+    const eagerInitialOperations = [];
+    let eagerInitial = args.length === 2
+      ? lowerExpression(args[1], context, eagerInitialOperations)
+      : emitConstant(context, node, eagerInitialOperations, 0n);
+    eagerInitial = coerceInteger(
+      eagerInitial,
+      context,
+      args[1] || node,
+      eagerInitialOperations,
+    );
+    const result = temporary(context, node, "Integer");
+    operations.push(...eagerInitialOperations, {
+      kind: "integer.binary",
+      operation: "add",
+      target: result,
+      left: eagerInitial.name,
+      right: accumulator,
+    });
+    return { name: result, type: "Integer" };
+  }
   return { name: accumulator, type: "Integer" };
 }
 
@@ -1144,6 +1194,89 @@ function lowerSparseRowsCall(node, context, operations) {
   return { name: target, type: "Integer" };
 }
 
+function lowerForeignInvocation(
+  node,
+  foreign,
+  args,
+  context,
+  operations,
+  displayName,
+  evaluationOrder = undefined,
+) {
+  const signature = foreign.function.signature;
+  for (const type of [
+    signature.return_type,
+    ...signature.parameters.map((parameter) => parameter.type),
+  ]) {
+    const resource = context.foreignResources.get(type);
+    if (resource !== undefined) {
+      context.usedForeignResources.set(type, resource);
+    }
+  }
+  expect(
+    context,
+    node,
+    foreign.function.targets.native,
+    `${foreign.declarationId} is not available to native kernels`,
+  );
+  expect(
+    context,
+    node,
+    args.length === signature.parameters.length,
+    `${displayName} expects ${signature.parameters.length} arguments, got ` +
+      `${args.length}`,
+  );
+  const order = evaluationOrder || signature.parameters.map((_, index) => index);
+  expect(
+    context,
+    node,
+    order.length === args.length &&
+      new Set(order).size === args.length &&
+      order.every((index) => Number.isInteger(index) && index >= 0 && index < args.length),
+    `${displayName} has an invalid argument evaluation order`,
+  );
+  const lowered = new Array(args.length);
+  for (const index of order) {
+    const param = signature.parameters[index];
+    let value = lowerExpression(
+      args[index],
+      context,
+      operations,
+      param.type === "uint64" ? "uint64" : undefined,
+    );
+    if (param.type === "Integer") {
+      value = coerceInteger(value, context, args[index], operations);
+    }
+    expect(
+      context,
+      args[index],
+      value.type === param.type,
+      `${displayName} argument ${index + 1} expects ${param.type}, got ` +
+        `${value.type}`,
+    );
+    lowered[index] = value;
+  }
+  const target = temporary(context, node, signature.return_type);
+  if (context.foreignResources.has(signature.return_type)) {
+    expect(
+      context,
+      node,
+      context.controlDepth === 0 && context.activeExactArenas.size === 0,
+      "owned FFI resources must be created in the top-level native block " +
+        "or explicitly with NativeExactArena.foreign_resource()",
+    );
+  }
+  operations.push({
+    kind: "ffi.call",
+    target,
+    arguments: lowered,
+    returnType: signature.return_type,
+    foreign,
+  });
+  context.foreignDependencies.add(foreign.declarationIdentity);
+  return { name: target, type: signature.return_type };
+}
+
 function lowerCall(node, context, operations) {
   if (nodeType(node.expression) === "AST_Dot") {
     const owner = node.expression.expression;
@@ -1209,65 +1342,14 @@ function lowerCall(node, context, operations) {
   // local spelling, determines the native operation.
   const foreign = context.foreignFunctions.get(name);
   if (foreign !== undefined) {
-    const signature = foreign.function.signature;
-    for (const type of [
-      signature.return_type,
-      ...signature.parameters.map((parameter) => parameter.type),
-    ]) {
-      const resource = context.foreignResources.get(type);
-      if (resource !== undefined) {
-        context.usedForeignResources.set(type, resource);
-      }
-    }
-    expect(
-      context,
+    return lowerForeignInvocation(
       node,
-      foreign.function.targets.native,
-      `${foreign.declarationId} is not available to native kernels`,
-    );
-    expect(
-      context,
-      node,
-      args.length === signature.parameters.length,
-      `${name} expects ${signature.parameters.length} arguments, got ${args.length}`,
-    );
-    const lowered = signature.parameters.map((param, index) => {
-      let value = lowerExpression(
-        args[index],
-        context,
-        operations,
-        param.type === "uint64" ? "uint64" : undefined,
-      );
-      if (param.type === "Integer") {
-        value = coerceInteger(value, context, args[index], operations);
-      }
-      expect(
-        context,
-        args[index],
-        value.type === param.type,
-        `${name} argument ${index + 1} expects ${param.type}, got ${value.type}`,
-      );
-      return value;
-    });
-    const target = temporary(context, node, signature.return_type);
-    if (context.foreignResources.has(signature.return_type)) {
-      expect(
-        context,
-        node,
-        context.controlDepth === 0 && context.activeExactArenas.size === 0,
-        "owned FFI resources must be created in the top-level native block " +
-          "or explicitly with NativeExactArena.foreign_resource()",
-      );
-    }
-    operations.push({
-      kind: "ffi.call",
-      target,
-      arguments: lowered,
-      returnType: signature.return_type,
       foreign,
-    });
-    context.foreignDependencies.add(foreign.declarationIdentity);
-    return { name: target, type: signature.return_type };
+      args,
+      context,
+      operations,
+      name,
+    );
   }
 
   if (name === "sum" && !context.signatures.has(name)) {
@@ -1369,6 +1451,29 @@ function lowerCall(node, context, operations) {
       target,
       buffer: buffer.name,
       bufferType: buffer.type,
+    });
+    return { name: target, type: "uint64" };
+  }
+
+  if (name === "checked_uint64") {
+    expect(
+      context,
+      node,
+      args.length === 1 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "checked_uint64() requires one positional argument",
+    );
+    const source = coerceInteger(
+      lowerExpression(args[0], context, operations),
+      context,
+      args[0],
+      operations,
+    );
+    const target = temporary(context, node, "uint64");
+    operations.push({
+      kind: "uint64.from_integer_checked",
+      target,
+      source: source.name,
     });
     return { name: target, type: "uint64" };
   }
@@ -1521,7 +1626,9 @@ function lowerCall(node, context, operations) {
         arg,
         context,
         operations,
-        param.type === "uint64" ? "uint64" : undefined,
+        param.type === "uint64" || param.type === LIVE_INTEGER_VECTOR_TYPE
+          ? param.type
+          : undefined,
       );
     }
     const expectedType = signature.params[index].type;
@@ -1580,13 +1687,24 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
   if (nodeType(node) === "AST_SymbolRef") {
     const name = resolvedSymbol(context, node.name);
     const type = context.variables.get(name);
+    if (type === undefined && context.integerConstants.has(name)) {
+      const value = context.integerConstants.get(name);
+      return expectedType === "uint64"
+        ? emitUint64Constant(context, node, operations, value)
+        : emitConstant(context, node, operations, value);
+    }
     expect(context, node, type !== undefined, `unknown native value ${node.name}`);
-    expect(
-      context,
-      node,
-      !isLiveExactOwnerType(type),
-      "live exact owners cannot be copied, passed, or returned",
-    );
+    if (isLiveExactOwnerType(type)) {
+      expect(
+        context,
+        node,
+        type === LIVE_INTEGER_VECTOR_TYPE && expectedType === type,
+        "live exact owners cannot be copied, passed, or returned; " +
+          "they may only be borrowed by a matching native helper parameter",
+      );
+      liveIntegerVectorName(node, context);
+      return { name, type };
+    }
     expect(
       context,
       node,
@@ -1697,13 +1815,34 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       });
       return { name: target, type: vector.record.type };
     }
+    const foreignResource = context.foreignResources.get(liveOwnerType);
+    if (foreignResource?.item_get !== undefined) {
+      const indices = sequenceElements(node.property) || [node.property];
+      const dimensions =
+        foreignResource.item_get.function.signature.parameters.length - 1;
+      expect(
+        context,
+        node.property,
+        indices.length === dimensions,
+        `${liveOwnerType} indexing expects ${dimensions} indices, got ` +
+          `${indices.length}`,
+      );
+      return lowerForeignInvocation(
+        node,
+        foreignResource.item_get,
+        [node.expression, ...indices],
+        context,
+        operations,
+        `${liveOwnerType}.__getitem__`,
+      );
+    }
     const bufferType = nodeType(node.expression) === "AST_SymbolRef"
       ? context.variables.get(node.expression.name)
       : undefined;
     if (BORROWED_BUFFER_TYPES.has(bufferType)) {
       const buffer = lowerExpression(node.expression, context, operations);
       const loweredIndex = buffer.type === "UInt64Buffer"
-        ? lowerUint64Operand(node.property, context, operations)
+        ? lowerUInt64BufferIndex(node.property, context, operations)
         : lowerExpression(node.property, context, operations);
       const index = buffer.type === "UInt64Buffer"
         ? loweredIndex
@@ -1996,8 +2135,8 @@ function assignScalar(targetNode, value, context, operations) {
     expect(
       context,
       targetNode,
-      !context.activeArenaForeignResources.has(value.name),
-      "arena-owned FFI resources cannot escape through aliases",
+      context.controlDepth === 0,
+      "FFI resource aliases cannot depend on native control flow",
     );
     context.resourceAliases.set(
       targetNode.name,
@@ -2022,6 +2161,35 @@ function lowerBufferAssignment(item, right, operator, context) {
   const liveOwnerType = nodeType(item.expression) === "AST_SymbolRef"
     ? context.variables.get(item.expression.name)
     : undefined;
+  const foreignResource = context.foreignResources.get(liveOwnerType);
+  if (foreignResource?.item_set !== undefined) {
+    expect(
+      context,
+      item,
+      operator === "=",
+      `${liveOwnerType} does not support augmented indexed assignment`,
+    );
+    const indices = sequenceElements(item.property) || [item.property];
+    const dimensions =
+      foreignResource.item_set.function.signature.parameters.length - 2;
+    expect(
+      context,
+      item.property,
+      indices.length === dimensions,
+      `${liveOwnerType} indexing expects ${dimensions} indices, got ` +
+        `${indices.length}`,
+    );
+    lowerForeignInvocation(
+      item,
+      foreignResource.item_set,
+      [item.expression, ...indices, right],
+      context,
+      operations,
+      `${liveOwnerType}.__setitem__`,
+      [indices.length + 1, 0, ...indices.map((_, index) => index + 1)],
+    );
+    return operations;
+  }
   if (liveOwnerType === LIVE_INTEGER_VECTOR_TYPE) {
     const vector = liveIntegerVectorName(item.expression, context);
     const index = lowerLiveVectorIndex(item.property, context, operations);
@@ -2156,7 +2324,7 @@ function lowerBufferAssignment(item, right, operator, context) {
     "indexed exact assignment requires an exact integer or UInt64Buffer",
   );
   const loweredIndex = buffer.type === "UInt64Buffer"
-    ? lowerUint64Operand(item.property, context, operations)
+    ? lowerUInt64BufferIndex(item.property, context, operations)
     : lowerExpression(item.property, context, operations);
   const index = buffer.type === "UInt64Buffer"
     ? loweredIndex
@@ -2355,8 +2523,8 @@ function lowerArenaAllocation(statement, context) {
   expect(
     context,
     statement,
-    context.controlDepth === arenaState.controlDepth,
-    "NativeExactArena children must be allocated unconditionally in its lexical body",
+    context.loopDepth === arenaState.loopDepth,
+    "NativeExactArena children may be conditional but cannot be allocated repeatedly in a native loop",
   );
   const method = assign.right.expression.property;
   const foreignResource = lowerArenaForeignResourceAllocation(
@@ -2765,7 +2933,68 @@ function lowerBlock(block, context) {
   return lowerStatements([block], context);
 }
 
-function lowerRange(node, context) {
+function directUint64RangeArgument(node, context) {
+  const literal = integerLiteral(node);
+  if (literal !== undefined) {
+    return literal >= 0n && literal <= 18446744073709551615n;
+  }
+  if (nodeType(node) !== "AST_SymbolRef") return false;
+  const name = resolvedSymbol(context, node.name);
+  if (context.variables.get(name) === "uint64") return true;
+  const constant = context.integerConstants.get(name);
+  return constant !== undefined && constant >= 0n &&
+    constant <= 18446744073709551615n;
+}
+
+function directUint64RangeVariable(node, context) {
+  return nodeType(node) === "AST_SymbolRef" &&
+    context.variables.get(resolvedSymbol(context, node.name)) === "uint64";
+}
+
+function freezeRangeValue(value, node, context, operations, type) {
+  if (type === "Integer") {
+    value = coerceInteger(value, context, node, operations);
+  } else {
+    expect(
+      context,
+      node,
+      value.type === "uint64",
+      `native uint64 range argument has type ${value.type}`,
+    );
+  }
+  const target = temporary(context, node, type);
+  operations.push({
+    kind: type === "Integer" ? "integer.copy" : "uint64.copy",
+    target,
+    source: value.name,
+  });
+  return target;
+}
+
+function freezeRangeArgument(node, context, operations, type) {
+  let value = lowerExpression(
+    node,
+    context,
+    operations,
+    type === "uint64" ? "uint64" : undefined,
+  );
+  return freezeRangeValue(value, node, context, operations, type);
+}
+
+/*
+ * A range is an immutable value even though its source expressions need not
+ * be.  Evaluate and snapshot each supplied argument in Python's left-to-right
+ * order, before evaluating the next one.  The loop operation subsequently
+ * owns a separate hidden iterator and copies each yielded value into the
+ * visible target; assignments to that target therefore cannot perturb the
+ * sequence.
+ *
+ * The compact uint64 form is deliberately limited to direct nonnegative
+ * values.  More general expressions retain ordinary exact-Integer semantics
+ * instead of acquiring fixed-width overflow merely because they occur in a
+ * range call.
+ */
+function lowerRange(node, context, targetName = undefined) {
   expect(
     context,
     node,
@@ -2781,71 +3010,60 @@ function lowerRange(node, context) {
     args.length >= 1 && args.length <= 3,
     "native range currently accepts one through three arguments",
   );
-  const start = args.length === 1 ? 0n : integerLiteral(args[0]);
-  const countNode = args.length === 1 ? args[0] : args[1];
-  const step = args.length === 3 ? integerLiteral(args[2]) : 1n;
-  expect(
-    context,
-    args[2] || node,
-    step !== undefined && step > 0n &&
-      step <= BigInt(Number.MAX_SAFE_INTEGER),
-    "native range step must be a positive integer literal",
-  );
-  let countName;
-  let boundIsStop = false;
-  if (
-    start !== undefined && start >= 0n &&
-    start <= BigInt(Number.MAX_SAFE_INTEGER) &&
-    nodeType(countNode) === "AST_SymbolRef" &&
-    context.variables.get(resolvedSymbol(context, countNode.name)) === "uint64"
-  ) {
-    countName = resolvedSymbol(context, countNode.name);
-    boundIsStop = true;
-  } else if (
-    start !== undefined && start >= 0n &&
-    start <= BigInt(Number.MAX_SAFE_INTEGER) &&
-    nodeType(countNode) === "AST_Binary" &&
-    countNode.operator === "+" &&
-    nodeType(countNode.left) === "AST_SymbolRef" &&
-    context.variables.get(
-      resolvedSymbol(context, countNode.left.name),
-    ) === "uint64" &&
-    integerLiteral(countNode.right) === start
-  ) {
-    countName = resolvedSymbol(context, countNode.left.name);
-  }
-  if (countName !== undefined) {
-    return {
-      kind: "loop.range",
-      start: Number(start),
-      count: countName,
-      boundIsStop,
-      step: Number(step),
-      indexType: "uint64",
-      operations: [],
-    };
-  }
-
-  expect(
-    context,
-    args[2] || node,
-    step === 1n,
-    "native range step currently requires a uint64 stop",
-  );
-
   const operations = [];
   const startNode = args.length === 1 ? null : args[0];
-  let startValue = startNode === null
-    ? emitConstant(context, node, operations, 0n)
-    : lowerExpression(startNode, context, operations);
-  let stopValue = lowerExpression(countNode, context, operations);
-  startValue = coerceInteger(startValue, context, startNode || node, operations);
-  stopValue = coerceInteger(stopValue, context, countNode, operations);
+  const stopNode = args.length === 1 ? args[0] : args[1];
+  const stepNode = args.length === 3 ? args[2] : null;
+  const existingTargetType = targetName === undefined
+    ? undefined
+    : context.variables.get(targetName);
+  const supplied = args;
+  const useUint64 = existingTargetType !== "Integer" &&
+    (existingTargetType === "uint64" ||
+      supplied.some((argument) => directUint64RangeVariable(argument, context))) &&
+    supplied.every((argument) => directUint64RangeArgument(argument, context));
+  const type = useUint64 ? "uint64" : "Integer";
+
+  let start;
+  let stop;
+  let step;
+  if (args.length === 1) {
+    const zero = type === "uint64"
+      ? emitUint64Constant(context, node, operations, 0n)
+      : emitConstant(context, node, operations, 0n);
+    start = freezeRangeValue(zero, node, context, operations, type);
+    stop = freezeRangeArgument(stopNode, context, operations, type);
+  } else {
+    start = freezeRangeArgument(startNode, context, operations, type);
+    stop = freezeRangeArgument(stopNode, context, operations, type);
+  }
+  if (stepNode === null) {
+    const one = type === "uint64"
+      ? emitUint64Constant(context, node, operations, 1n)
+      : emitConstant(context, node, operations, 1n);
+    step = temporary(context, node, type);
+    operations.push({
+      kind: type === "Integer" ? "integer.copy" : "uint64.copy",
+      target: step,
+      source: one.name,
+    });
+  } else {
+    step = freezeRangeArgument(stepNode, context, operations, type);
+  }
+  const stepLiteral = stepNode === null ? 1n : integerLiteral(stepNode);
+  if (stepLiteral === undefined || stepLiteral === 0n) {
+    operations.push({
+      kind: "range.validate_step",
+      step,
+      stepType: type,
+    });
+  }
   return {
-    kind: "loop.range_exact",
-    start: startValue.name,
-    stop: stopValue.name,
-    indexType: "Integer",
+    kind: useUint64 ? "loop.range" : "loop.range_exact",
+    start,
+    stop,
+    step,
+    indexType: type,
     operations,
   };
 }
@@ -2978,6 +3196,7 @@ function lowerStatements(statements, context) {
         const arenaState = {
           children: [],
           controlDepth: context.controlDepth,
+          loopDepth: context.loopDepth,
         };
         context.activeExactArenas.set(owner, arenaState);
         const body = lowerBlock(statement.body, context);
@@ -3168,7 +3387,9 @@ function lowerStatements(statements, context) {
       const before = new Set(context.initialized);
       context.initialized = new Set(before);
       context.controlDepth += 1;
+      context.loopDepth += 1;
       const body = lowerBlock(statement.body, context);
+      context.loopDepth -= 1;
       context.controlDepth -= 1;
       context.initialized = before;
       const operation = {
@@ -3188,12 +3409,15 @@ function lowerStatements(statements, context) {
         "native range loop requires a local-name index",
       );
       const index = statement.init.name;
-      const range = lowerRange(statement.object, context);
+      const range = lowerRange(statement.object, context, index);
       ensureVariable(context, statement.init, index, range.indexType);
+      const iterator = temporary(context, statement.init, range.indexType);
       const before = new Set(context.initialized);
       context.initialized.add(index);
       context.controlDepth += 1;
+      context.loopDepth += 1;
       const body = lowerBlock(statement.body, context);
+      context.loopDepth -= 1;
       context.controlDepth -= 1;
       context.initialized = before;
       const hoisted = [];
@@ -3211,14 +3435,10 @@ function lowerStatements(statements, context) {
       const operations = [...range.operations, ...hoisted, {
         kind: range.kind,
         index,
-        ...(range.kind === "loop.range"
-          ? {
-              start: range.start,
-              count: range.count,
-              step: range.step,
-              boundIsStop: range.boundIsStop,
-            }
-          : { start: range.start, stop: range.stop }),
+        iterator,
+        start: range.start,
+        stop: range.stop,
+        step: range.step,
         body: loopBody,
       }];
       annotateOperations(operations, sourceSpan(statement, context.filename));
@@ -3276,6 +3496,7 @@ function lowerIntegerFunction(
   records,
   filename,
   decorated,
+  integerConstants = new Map(),
 ) {
   const context = createContext(
     fn,
@@ -3286,6 +3507,7 @@ function lowerIntegerFunction(
     records,
     filename,
     decorated,
+    integerConstants,
   );
   const body = lowerStatements(array(fn.body), context);
   expect(context, fn, containsReturn(body), "function has no return");
@@ -3300,6 +3522,9 @@ function lowerIntegerFunction(
   return {
     name: signature.name,
     decorated,
+    hostCallable: !signature.params.some(
+      (param) => isLiveExactOwnerType(param.type),
+    ),
     kernelKind: "integer",
     sourceTransparent: true,
     params: publicParams,

@@ -756,6 +756,26 @@ class SeriesRingParent(sage.Parent):
             target = self._laurent_ring()
         return SeriesElement(target, native_value, shift, precision)
 
+    def _from_rational_matrix_row(
+        self,
+        source: Any,
+        row: Any,
+        precision: Any,
+    ) -> SeriesElement:
+        """Publish one generated `QQ` matrix row as an exact series."""
+        if self._base is not sage.QQ:
+            raise TypeError("rational matrix-row publication requires QQ")
+        importer = runtime.reflect.get(runtime.flint_backend(), "qqPolyPacked")
+        if runtime.jstype(importer) != "function":
+            return self(source.row(row).list()).add_bigoh(precision)
+        packed = source._packed_rational_row(row)
+        native_value = runtime.reflect.apply(
+            importer,
+            runtime.flint_backend(),
+            [runtime.integer_bigint(source.ncols()), packed],
+        )
+        return self._from_native(native_value, 0, precision)
+
     def _serialization_coefficients(
         self,
         value: Any,

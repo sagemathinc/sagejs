@@ -17,6 +17,7 @@
         "src/elliptic_lfunction.c",
         "src/extension_field.c",
         "src/floating.c",
+        "src/intervals.c",
         "src/hyperelliptic/genus3_jacobian.c",
         "src/hyperelliptic/genus3_jacobian_addon.c",
         "src/hyperelliptic/period_quadrature.c",
@@ -138,7 +139,8 @@
           "ldflags": [
             "-Wl,--gc-sections",
             "-Wl,--exclude-libs,ALL",
-            "-Wl,--strip-all"
+            "-Wl,--strip-all",
+            "-Wl,-z,nodelete"
           ]
         }],
         ["OS=='linux' and target_arch=='arm64'", {
@@ -166,7 +168,8 @@
           "ldflags": [
             "-Wl,--gc-sections",
             "-Wl,--exclude-libs,ALL",
-            "-Wl,--strip-all"
+            "-Wl,--strip-all",
+            "-Wl,-z,nodelete"
           ]
         }],
         ["OS=='mac'", {

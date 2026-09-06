@@ -93,6 +93,7 @@ function verifyPublicJavaScriptApi(context) {
         '    console.log((await sage.evaluate("factor(370309)")).repr);',
         '    console.log((await sage.evaluate("version()")).repr);',
         '    console.log((await sage.evaluate("version(True)[\\"schema\\"]")).repr);',
+        '    console.log((await sage.evaluate("A=AffineSpace(QQ,2,names=(\\"x\\",\\"y\\")); x,y=A.gens(); X=A.subscheme([y-x^2]); (X.dimension(), A(3,9) in X)")).repr);',
         "  } finally {",
         "    await sage.close();",
         "  }",
@@ -108,6 +109,7 @@ function verifyPublicJavaScriptApi(context) {
       `'Sage.js v${expectedVersion} [${target.runtimeId}], Release Date: ` +
         `${require(join(root, "sagejs-version.json")).release_date}'`,
       "'sagejs.version/v1'",
+      "(1, True)",
     ].join("\n"),
   );
 

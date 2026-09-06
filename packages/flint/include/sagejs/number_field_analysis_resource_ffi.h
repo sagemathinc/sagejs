@@ -25,9 +25,10 @@
  * The input polynomial is already the normalized monic integral equation
  * polynomial; scale records the relation between its generator and the public
  * field generator.  This boundary computes the polynomial discriminant,
- * extracts cheap certified word-prime components, retains one exact lazy
- * residual component, and computes the canonical HNF order at every extracted
- * word prime with square discriminant support.  No field object, host callback,
+ * extracts cheap certified word-prime components, applies a bounded
+ * decomposition to a word-sized residual through FLINT, retains any exact
+ * unresolved residual component, and computes the canonical HNF order at
+ * every extracted word prime with square discriminant support.  No field object, host callback,
  * multiplication table, or cached cross-field result participates.
  *
  * The output is one copied byte payload.  It contains the source polynomial
@@ -116,6 +117,194 @@ static inline const unsigned char *sagejs_number_field_analysis_resource_data(
     const sagejs_number_field_analysis_resource_t resource)
 {
     return resource->data;
+}
+
+static inline uint64_t sagejs_nf_analysis_read_u64(
+    const unsigned char *data, size_t offset);
+static inline int sagejs_nf_analysis_read_fmpz(
+    fmpz_t result, const unsigned char *data, size_t length, size_t *offset);
+
+/*
+ * Project the fixed mathematical header, discriminant decomposition, and
+ * maximal-order basis from one completed analysis resource into caller-owned
+ * exact storage.
+ *
+ * This is deliberately only a representation adapter.  It does not make the
+ * packed resource a mathematical authority: source-transparent callers must
+ * still bind the projection to the input polynomial and independently replay
+ * the discriminant, index, canonical-HNF, and Round-2 fixed-point checks.  The
+ * operation exists so a coarse native program can keep the order data resident
+ * instead of copying the canonical byte stream through a host object graph.
+ *
+ * The row layout is the existing projection schema:
+ *
+ *   status, trial bound, resolved components, native primes,
+ *   scale, denominator, equation-order index, equation discriminant,
+ *   maximal-order discriminant, degree, component count,
+ *   component triples, canonical order-basis numerator.
+ */
+static inline int sagejs_number_field_analysis_resource_project(
+    fmpz_mat_t output,
+    const sagejs_number_field_analysis_resource_t resource)
+{
+    const unsigned char *data = resource->data;
+    const size_t length = resource->length;
+    if (data == NULL || length < 80 || fmpz_mat_ncols(output) != 1 ||
+        memcmp(data, "SJNFA\2\0\0", 8) != 0)
+        return 0;
+
+    const uint64_t degree = sagejs_nf_analysis_read_u64(data, 8);
+    const uint64_t status = sagejs_nf_analysis_read_u64(data, 16);
+    const uint64_t trial_bound = sagejs_nf_analysis_read_u64(data, 24);
+    const uint64_t component_count = sagejs_nf_analysis_read_u64(data, 32);
+    const uint64_t resolved_components =
+        sagejs_nf_analysis_read_u64(data, 40);
+    const uint64_t native_primes = sagejs_nf_analysis_read_u64(data, 48);
+    const uint64_t entry_count = sagejs_nf_analysis_read_u64(data, 56);
+    const uint64_t version = sagejs_nf_analysis_read_u64(data, 64);
+    const uint64_t witness_count = sagejs_nf_analysis_read_u64(data, 72);
+    if (degree < 1 || degree > (uint64_t) WORD_MAX ||
+        status != SAGEJS_NF_ANALYSIS_COMPLETE_CANDIDATE ||
+        version != SAGEJS_NF_ANALYSIS_RESOURCE_ABI_VERSION ||
+        degree > UINT64_MAX / degree ||
+        component_count > (UINT64_MAX - UINT64_C(11) - degree * degree) /
+            UINT64_C(3))
+        return 0;
+    const uint64_t expected_output =
+        UINT64_C(11) + UINT64_C(3) * component_count + degree * degree;
+    if ((uint64_t) fmpz_mat_nrows(output) < expected_output)
+        return 0;
+    fmpz_mat_zero(output);
+
+    fmpz_set_ui(fmpz_mat_entry(output, 0, 0), status);
+    fmpz_set_ui(fmpz_mat_entry(output, 1, 0), trial_bound);
+    fmpz_set_ui(fmpz_mat_entry(output, 2, 0), resolved_components);
+    fmpz_set_ui(fmpz_mat_entry(output, 3, 0), native_primes);
+    fmpz_set_ui(fmpz_mat_entry(output, 9, 0), degree);
+    fmpz_set_ui(fmpz_mat_entry(output, 10, 0), component_count);
+
+    size_t offset = 80;
+    /* scale, denominator, index, equation discriminant, order discriminant */
+    for (uint64_t entry = 0; entry < UINT64_C(5); entry++)
+        if (!sagejs_nf_analysis_read_fmpz(
+                fmpz_mat_entry(output, (slong) (4 + entry), 0),
+                data, length, &offset))
+            return 0;
+
+    fmpz_t discarded;
+    fmpz_init(discarded);
+    int valid = 1;
+    /* The source polynomial is already an authenticated input of the live
+     * resource constructor, so this adapter skips its duplicate packed copy. */
+    for (uint64_t coefficient = 0; coefficient <= degree && valid;
+         coefficient++)
+        valid = sagejs_nf_analysis_read_fmpz(
+            discarded, data, length, &offset);
+
+    const uint64_t component_start = UINT64_C(11);
+    for (uint64_t component = 0;
+         component < UINT64_C(3) * component_count && valid; component++)
+        valid = sagejs_nf_analysis_read_fmpz(
+            fmpz_mat_entry(output,
+                (slong) (component_start + component), 0),
+            data, length, &offset);
+
+    /* Witness rows remain private to the resource.  Read and structurally
+     * skip them here; the independent source verifier replays their fixed
+     * points on the ordinary proof path. */
+    for (uint64_t witness = 0; witness < witness_count && valid; witness++)
+    {
+        valid = sagejs_nf_analysis_read_fmpz(
+            discarded, data, length, &offset);
+        if (!valid) break;
+        valid = sagejs_nf_analysis_read_fmpz(
+            discarded, data, length, &offset);
+        if (!valid || !fmpz_fits_si(discarded))
+        {
+            valid = 0;
+            break;
+        }
+        const slong radical_dimension = fmpz_get_si(discarded);
+        if (radical_dimension < 0 || (uint64_t) radical_dimension > degree)
+        {
+            valid = 0;
+            break;
+        }
+        const uint64_t skipped =
+            (uint64_t) radical_dimension * degree + degree;
+        for (uint64_t entry = 0; entry < skipped && valid; entry++)
+            valid = sagejs_nf_analysis_read_fmpz(
+                discarded, data, length, &offset);
+    }
+
+    const uint64_t basis_start =
+        UINT64_C(11) + UINT64_C(3) * component_count;
+    for (uint64_t entry = 0; entry < degree * degree && valid; entry++)
+        valid = sagejs_nf_analysis_read_fmpz(
+            fmpz_mat_entry(output, (slong) (basis_start + entry), 0),
+            data, length, &offset);
+    fmpz_clear(discarded);
+    return valid && offset == length && entry_count >= degree * degree;
+}
+
+/*
+ * Copy the complete exact proof stream into caller-owned integer storage.
+ *
+ * This operation is deliberately a representation adapter, not a maximality
+ * oracle.  The first eight rows reproduce the fixed binary header
+ *
+ *   status, trial bound, degree, component count, resolved components,
+ *   native primes, exact entry count, fixed-point witness count,
+ *
+ * and the remaining rows are the canonical exact integers in their packed
+ * order.  A source-transparent caller must bind the polynomial and order,
+ * prove the discriminant factorization, and replay every Round-2 fixed point.
+ */
+static inline int sagejs_number_field_analysis_resource_project_proof(
+    fmpz_mat_t output,
+    const sagejs_number_field_analysis_resource_t resource)
+{
+    const unsigned char *data = resource->data;
+    const size_t length = resource->length;
+    if (data == NULL || length < 80 || fmpz_mat_ncols(output) != 1 ||
+        memcmp(data, "SJNFA\2\0\0", 8) != 0)
+        return 0;
+
+    const uint64_t degree = sagejs_nf_analysis_read_u64(data, 8);
+    const uint64_t status = sagejs_nf_analysis_read_u64(data, 16);
+    const uint64_t trial_bound = sagejs_nf_analysis_read_u64(data, 24);
+    const uint64_t component_count = sagejs_nf_analysis_read_u64(data, 32);
+    const uint64_t resolved_components =
+        sagejs_nf_analysis_read_u64(data, 40);
+    const uint64_t native_primes = sagejs_nf_analysis_read_u64(data, 48);
+    const uint64_t entry_count = sagejs_nf_analysis_read_u64(data, 56);
+    const uint64_t version = sagejs_nf_analysis_read_u64(data, 64);
+    const uint64_t witness_count = sagejs_nf_analysis_read_u64(data, 72);
+    if (degree < 1 || degree > (uint64_t) WORD_MAX ||
+        version != SAGEJS_NF_ANALYSIS_RESOURCE_ABI_VERSION ||
+        entry_count > UINT64_MAX - UINT64_C(8) ||
+        (uint64_t) fmpz_mat_nrows(output) < entry_count + UINT64_C(8))
+        return 0;
+
+    fmpz_mat_zero(output);
+    const uint64_t header[] = {
+        status, trial_bound, degree, component_count, resolved_components,
+        native_primes, entry_count, witness_count
+    };
+    for (uint64_t index = 0; index < UINT64_C(8); index++)
+        fmpz_set_ui(fmpz_mat_entry(output, (slong) index, 0), header[index]);
+
+    size_t offset = 80;
+    uint64_t entry = 0;
+    while (entry < entry_count)
+    {
+        if (!sagejs_nf_analysis_read_fmpz(
+                fmpz_mat_entry(output, (slong) (UINT64_C(8) + entry), 0),
+                data, length, &offset))
+            return 0;
+        entry++;
+    }
+    return offset == length;
 }
 
 static inline void sagejs_nf_analysis_clear_witnesses(
@@ -874,7 +1063,11 @@ static inline int sagejs_number_field_analyze_resource(
         goto invalid;
     fmpz_abs(remaining, equation_discriminant);
 
-    const uint64_t maximum_components = trial_bound / 2 + 2;
+    /* At most trial_bound / 2 + 1 components come from the explicit trial
+     * pass.  A residual machine word has at most
+     * FLINT_MAX_FACTORS_IN_LIMB distinct prime factors. */
+    const uint64_t maximum_components = trial_bound / 2 + UINT64_C(2) +
+        (uint64_t) FLINT_MAX_FACTORS_IN_LIMB;
     if (maximum_components > (uint64_t) WORD_MAX)
         goto invalid;
     fmpz_mat_t components;
@@ -902,24 +1095,109 @@ static inline int sagejs_number_field_analyze_resource(
     uint32_t status = SAGEJS_NF_ANALYSIS_COMPLETE_CANDIDATE;
     if (!fmpz_is_one(remaining))
     {
-        fmpz_set(fmpz_mat_entry(components, component_count, 0), remaining);
-        fmpz_one(fmpz_mat_entry(components, component_count, 1));
-        if (fmpz_abs_fits_ui(remaining) && n_is_prime(fmpz_get_ui(remaining)))
-            fmpz_set_ui(fmpz_mat_entry(components, component_count, 2),
-                SAGEJS_NF_ANALYSIS_COMPONENT_PROVEN_WORD_PRIME);
-        else if (!fmpz_abs_fits_ui(remaining) && fmpz_is_probabprime(remaining))
+        fmpz *residual_base =
+            fmpz_mat_entry(components, component_count, 0);
+        fmpz *residual_exponent =
+            fmpz_mat_entry(components, component_count, 1);
+        fmpz_set(residual_base, remaining);
+        fmpz_one(residual_exponent);
+
+        /* Trial division deliberately has a modest fixed cutoff.  A residual
+         * such as q^2 with q just beyond it is nevertheless completely
+         * certifiable: normalize the residual to a primitive perfect-power
+         * base before applying the existing deterministic word-prime test.
+         * FLINT does not promise that one extraction returns a primitive
+         * root, so repeat exactly as the public exact-vector primitive does. */
+        int residual_power = 0;
+        while ((residual_power =
+                fmpz_is_perfect_power(prime_value, residual_base)) != 0)
+        {
+            if (residual_power < 2 ||
+                fmpz_cmpabs(prime_value, residual_base) >= 0)
+            {
+                status = SAGEJS_NF_ANALYSIS_FALLBACK_UNRESOLVED;
+                break;
+            }
+            fmpz_set(residual_base, prime_value);
+            fmpz_mul_ui(
+                residual_exponent, residual_exponent, (ulong) residual_power);
+        }
+
+        if (status == SAGEJS_NF_ANALYSIS_COMPLETE_CANDIDATE &&
+            fmpz_abs_fits_ui(residual_base))
+        {
+            /* Continue trial division through FLINT's fixed 16-bit-prime
+             * table.  The machine-word trial loop is a bounded,
+             * allocation-free continuation of the cheap caller-selected pass
+             * and is complete for residuals below
+             * 65537^2.  It also handles larger words whenever the remaining
+             * cofactor becomes prime.  Unlike unrestricted n_factor, this
+             * path has no exceptional "factorization failed" exit that could
+             * terminate the host process. */
+            ulong cofactor = fmpz_get_ui(residual_base);
+            ulong candidate = prime;
+            fmpz_t residual_exponent_copy;
+            fmpz_init_set(residual_exponent_copy, residual_exponent);
+            while (cofactor > UWORD(1) &&
+                   candidate < FLINT_FACTOR_TRIAL_PRIMES_PRIME &&
+                   candidate <= cofactor / candidate)
+            {
+                const int exponent = n_remove(&cofactor, candidate);
+                if (exponent > 0)
+                {
+                    fmpz_set_ui(
+                        fmpz_mat_entry(components, component_count, 0),
+                        candidate);
+                    fmpz_mul_ui(
+                        fmpz_mat_entry(components, component_count, 1),
+                        residual_exponent_copy, (ulong) exponent);
+                    fmpz_set_ui(
+                        fmpz_mat_entry(components, component_count, 2),
+                        SAGEJS_NF_ANALYSIS_COMPONENT_PROVEN_WORD_PRIME);
+                    component_count++;
+                }
+                candidate = n_nextprime(candidate, 1);
+            }
+            if (cofactor > UWORD(1))
+            {
+                fmpz_set_ui(
+                    fmpz_mat_entry(components, component_count, 0), cofactor);
+                fmpz_set(
+                    fmpz_mat_entry(components, component_count, 1),
+                    residual_exponent_copy);
+                if (n_is_prime(cofactor))
+                {
+                    fmpz_set_ui(
+                        fmpz_mat_entry(components, component_count, 2),
+                        SAGEJS_NF_ANALYSIS_COMPONENT_PROVEN_WORD_PRIME);
+                }
+                else
+                {
+                    fmpz_set_ui(
+                        fmpz_mat_entry(components, component_count, 2),
+                        SAGEJS_NF_ANALYSIS_COMPONENT_UNRESOLVED);
+                    status = SAGEJS_NF_ANALYSIS_FALLBACK_UNRESOLVED;
+                }
+                component_count++;
+            }
+            fmpz_clear(residual_exponent_copy);
+        }
+        else if (status == SAGEJS_NF_ANALYSIS_COMPLETE_CANDIDATE &&
+            !fmpz_abs_fits_ui(residual_base) &&
+            fmpz_is_probabprime(residual_base))
         {
             fmpz_set_ui(fmpz_mat_entry(components, component_count, 2),
                 SAGEJS_NF_ANALYSIS_COMPONENT_ARBITRARY_PRIME);
             status = SAGEJS_NF_ANALYSIS_FALLBACK_ARBITRARY_PRIME;
+            component_count++;
         }
         else
         {
             fmpz_set_ui(fmpz_mat_entry(components, component_count, 2),
                 SAGEJS_NF_ANALYSIS_COMPONENT_UNRESOLVED);
             status = SAGEJS_NF_ANALYSIS_FALLBACK_UNRESOLVED;
+            component_count++;
         }
-        component_count++;
     }
 
     uint64_t proven_components = 0;

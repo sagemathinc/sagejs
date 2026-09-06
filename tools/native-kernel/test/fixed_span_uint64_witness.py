@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from sagejs.native import PrimeFieldModulus, UInt64Buffer, native, uint64
+from sagejs.native import (
+    PrimeFieldModulus,
+    UInt64Buffer,
+    checked_uint64,
+    native,
+    uint64,
+)
 
 
 def trim_span(
@@ -40,6 +46,24 @@ def promote_uint64_tuple(level: uint64) -> Tuple[bool, Integer]:
     """Keep an uncontextualized literal exact in a mixed tuple result."""
     exact_level = level + 0
     return True, exact_level
+
+
+@native
+def exact_to_uint64(value: int) -> uint64:
+    """Convert an exact dynamically computed value to a checked word."""
+    adjusted = value + 1
+    return checked_uint64(adjusted)
+
+
+@native
+def retained_exact_to_uint64(value: int) -> uint64:
+    """Keep the exact conversion source live across unrelated exact work."""
+    retained = value + 1
+    noise = (value + 2) * (value + 3)
+    converted = checked_uint64(retained)
+    if noise < 0:
+        return 0
+    return converted
 
 
 @native

@@ -17,6 +17,10 @@ _packed_polynomial_flint_module_cache = runtime.undefined
 _polynomial_structural_public_module_cache = runtime.undefined
 _arbitrary_prime_public_module_cache = runtime.undefined
 _polynomial_ideal_algorithms_module_cache = runtime.undefined
+_polynomial_ideal_operations_module_cache = runtime.undefined
+_polynomial_hilbert_module_cache = runtime.undefined
+_polynomial_zero_dimensional_module_cache = runtime.undefined
+_polynomial_quotient_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
 _generated_flint_resources_available_cache = runtime.undefined
 _generated_fmpz_polynomial_resources_available_cache = runtime.undefined
@@ -33,6 +37,50 @@ def _polynomial_ideal_algorithms() -> Any:
             fromlist=["groebner_basis"],
         )
     return _polynomial_ideal_algorithms_module_cache
+
+
+def _polynomial_quotient_module() -> Any:
+    """Load the small canonical polynomial quotient API lazily."""
+    global _polynomial_quotient_module_cache
+    if _polynomial_quotient_module_cache is runtime.undefined:
+        _polynomial_quotient_module_cache = __import__(
+            "sagejs._baselib.polynomial_quotient",
+            fromlist=["PolynomialQuotientRing"],
+        )
+    return _polynomial_quotient_module_cache
+
+
+def _polynomial_ideal_operations() -> Any:
+    """Load exact elimination-based ideal operations lazily."""
+    global _polynomial_ideal_operations_module_cache
+    if _polynomial_ideal_operations_module_cache is runtime.undefined:
+        _polynomial_ideal_operations_module_cache = __import__(
+            "sagejs.polynomial_algorithms.ideal_operations",
+            fromlist=["intersection"],
+        )
+    return _polynomial_ideal_operations_module_cache
+
+
+def _polynomial_hilbert() -> Any:
+    """Load exact monomial Hilbert combinatorics lazily."""
+    global _polynomial_hilbert_module_cache
+    if _polynomial_hilbert_module_cache is runtime.undefined:
+        _polynomial_hilbert_module_cache = __import__(
+            "sagejs.polynomial_algorithms.hilbert",
+            fromlist=["hilbert_series"],
+        )
+    return _polynomial_hilbert_module_cache
+
+
+def _polynomial_zero_dimensional() -> Any:
+    """Load exact zero-dimensional decomposition algorithms lazily."""
+    global _polynomial_zero_dimensional_module_cache
+    if _polynomial_zero_dimensional_module_cache is runtime.undefined:
+        _polynomial_zero_dimensional_module_cache = __import__(
+            "sagejs.polynomial_algorithms.zero_dimensional",
+            fromlist=["radical"],
+        )
+    return _polynomial_zero_dimensional_module_cache
 
 
 def _closed_field_horner(base: Any, coefficients: Any, value: Any) -> Any:
@@ -4136,6 +4184,226 @@ class MultivariatePolynomialElement(sage.Element):
         """Return the sparse coefficient dictionary keyed by exponents."""
         return {exponents: coefficient for coefficient, exponents in self.terms()}
 
+    def _substitution_pairs(self, mapping: Any) -> list[Any]:
+        """Normalize a public substitution mapping without hashing generators."""
+        if not hasattr(mapping, "items"):
+            raise TypeError("polynomial substitution needs a mapping")
+        pairs = []
+        for key, value in mapping.items():
+            index = self._parent._generator_index(key)
+            for previous_index, _previous_value in pairs:
+                if previous_index == index:
+                    raise ValueError("a polynomial generator was substituted twice")
+            pairs.append(runtime.math_tuple([index, value]))
+        return pairs
+
+    def subs(self, mapping: Any = None, **kwds: Any) -> Any:
+        """Return an exact simultaneous substitution.
+
+        Keys may be ring generators or their names. Unspecified generators
+        remain unchanged. All replacements are interpreted simultaneously,
+        so `f.subs({x: y, y: x})` really swaps `x` and `y`.
+        """
+        pairs = []
+        if mapping is not None:
+            pairs.extend(self._substitution_pairs(mapping))
+        for name in runtime.object.keys(kwds):
+            index = self._parent._generator_index(name)
+            if any(previous_index == index for previous_index, _value in pairs):
+                raise ValueError("a polynomial generator was substituted twice")
+            pairs.append(runtime.math_tuple([index, runtime.reflect.get(kwds, name)]))
+        return self._substitute_pairs(pairs)
+
+    def _substitute_pairs(self, pairs: list[Any]) -> Any:
+        """Evaluate normalized simultaneous `(generator_index, value)` pairs."""
+        replacements = list(self._parent.gens())
+        for index, value in pairs:
+            replacements[index] = value
+
+        target = None
+        for value in replacements:
+            if isinstance(value, MultivariatePolynomialElement):
+                if target is None:
+                    target = value._parent
+                elif value._parent is not target:
+                    raise TypeError(
+                        "all polynomial substitutions must have the same parent"
+                    )
+        if target is None:
+            base = self._parent.base_ring()
+            scalars = [base(value) for value in replacements]
+            answer = base(0)
+            for coefficient, exponents in self.terms():
+                term = coefficient
+                for index in range(len(exponents)):
+                    if exponents[index]:
+                        term *= scalars[index] ** exponents[index]
+                answer += term
+            return answer
+
+        polynomial_values = [target(value) for value in replacements]
+        answer = target(0)
+        for coefficient, exponents in self.terms():
+            term = target(coefficient)
+            for index in range(len(exponents)):
+                if exponents[index]:
+                    term *= polynomial_values[index] ** exponents[index]
+            answer += term
+        return answer
+
+    substitute = subs
+
+    def __call__(self, *values: Any, **kwds: Any) -> Any:
+        """Evaluate at one value per generator, or use named values."""
+        if len(values) == 1 and isinstance(values[0], (list, tuple)):
+            values = tuple(values[0])
+        if len(runtime.object.keys(kwds)):
+            if len(values):
+                raise TypeError(
+                    "polynomial evaluation cannot mix positional and named values"
+                )
+            if len(runtime.object.keys(kwds)) != self._parent.ngens():
+                raise TypeError("polynomial evaluation needs one value per generator")
+            return self.subs(**kwds)
+        if len(values) != self._parent.ngens():
+            raise TypeError("polynomial evaluation needs one value per generator")
+        pairs = []
+        for index in range(len(values)):
+            pairs.append(runtime.math_tuple([index, values[index]]))
+        return self._substitute_pairs(pairs)
+
+    def derivative(
+        self,
+        variable: Any,
+        count: int = 1,
+    ) -> MultivariatePolynomialElement:
+        """Return an exact formal partial derivative."""
+        index = self._parent._generator_index(variable)
+        if not runtime.is_exact_integer(count):
+            raise TypeError("derivative order must be an integer")
+        count = int(count)
+        if count < 0:
+            raise ValueError("derivative order must be nonnegative")
+        answer = self
+        for _iteration in range(count):
+            terms = []
+            for coefficient, exponents_value in answer.terms():
+                exponents = list(exponents_value)
+                power = exponents[index]
+                if power == 0:
+                    continue
+                exponents[index] -= 1
+                terms.append(
+                    runtime.math_tuple(
+                        [coefficient * power, runtime.math_tuple(exponents)]
+                    )
+                )
+            answer = self._parent._from_sparse_terms(terms)
+            if not terms:
+                break
+        return answer
+
+    diff = derivative
+    differentiate = derivative
+
+    def gradient(self, variables: Any = None) -> Any:
+        """Return the tuple of formal partial derivatives."""
+        if variables is None:
+            variables = self._parent.gens()
+        return runtime.math_tuple([self.derivative(variable) for variable in variables])
+
+    def is_homogeneous(self) -> bool:
+        """Return whether all nonzero terms have the same total degree."""
+        selected = None
+        for _coefficient, exponents in self.terms():
+            degree = sum(exponents)
+            if selected is None:
+                selected = degree
+            elif degree != selected:
+                return False
+        return True
+
+    def homogenize(
+        self,
+        variable: Any = "h",
+        target: Any = None,
+    ) -> MultivariatePolynomialElement:
+        """Homogenize using one explicit new coordinate."""
+        source_names = list(self._parent.variable_names())
+        if target is None:
+            if not isinstance(variable, str):
+                raise TypeError(
+                    "homogenization without a target needs a new variable name"
+                )
+            if variable in source_names:
+                raise ValueError("homogenizing variable collides with the source ring")
+            target = PolynomialRing(
+                self._parent.base_ring(),
+                len(source_names) + 1,
+                names=source_names + [variable],
+                order=self._parent._order,
+            )
+        if target.base_ring() is not self._parent.base_ring():
+            raise TypeError("homogenization target has a different base field")
+        homogenizing_index = target._generator_index(variable)
+        source_to_target = []
+        target_names = list(target.variable_names())
+        for name in source_names:
+            if name not in target_names:
+                raise ValueError("homogenization target is missing a source variable")
+            source_to_target.append(target_names.index(name))
+        if len(set(source_to_target + [homogenizing_index])) != len(source_names) + 1:
+            raise ValueError("homogenizing coordinate must be new")
+        if target.ngens() != self._parent.ngens() + 1:
+            raise ValueError("homogenization target must have exactly one new variable")
+        degree = self.total_degree()
+        if degree < 0:
+            return target(0)
+        terms = []
+        for coefficient, source_exponents in self.terms():
+            target_exponents = [0] * target.ngens()
+            term_degree = 0
+            for source_index in range(len(source_exponents)):
+                exponent = source_exponents[source_index]
+                target_exponents[source_to_target[source_index]] = exponent
+                term_degree += exponent
+            target_exponents[homogenizing_index] = degree - term_degree
+            terms.append(
+                runtime.math_tuple([coefficient, runtime.math_tuple(target_exponents)])
+            )
+        return target._from_sparse_terms(terms)
+
+    def dehomogenize(
+        self,
+        variable: Any,
+        target: Any = None,
+    ) -> Any:
+        """Set one coordinate equal to one, optionally in a smaller target."""
+        index = self._parent._generator_index(variable)
+        source_names = list(self._parent.variable_names())
+        remaining_names = source_names[:index] + source_names[index + 1 :]
+        if target is None:
+            target = PolynomialRing(
+                self._parent.base_ring(),
+                len(remaining_names),
+                names=remaining_names,
+                order=self._parent._order,
+            )
+        if target.base_ring() is not self._parent.base_ring():
+            raise TypeError("dehomogenization target has a different base field")
+        if list(target.variable_names()) != remaining_names:
+            raise ValueError(
+                "dehomogenization target names must be the remaining coordinates"
+            )
+        terms = []
+        for coefficient, source_exponents in self.terms():
+            exponents = list(source_exponents)
+            del exponents[index]
+            terms.append(
+                runtime.math_tuple([coefficient, runtime.math_tuple(exponents)])
+            )
+        return target._from_sparse_terms(terms)
+
     def univariate_polynomial(
         self,
         variable: Any = None,
@@ -4428,6 +4696,18 @@ class MultivariatePolynomialRingParent(sage.Parent):
     def ideal(self, *generators: Any) -> PolynomialIdeal:
         selected = _ideal_generators(generators)
         return PolynomialIdeal(self, selected)
+
+    def quotient(self, defining_ideal: Any, **options: Any) -> Any:
+        """Return this ring modulo an ideal with canonical normal forms."""
+        if not isinstance(defining_ideal, PolynomialIdeal):
+            defining_ideal = self.ideal(defining_ideal)
+        if defining_ideal.ring() is not self:
+            raise TypeError("quotient ideal belongs to a different polynomial ring")
+        return _polynomial_quotient_module().PolynomialQuotientRing(
+            self, defining_ideal, **options
+        )
+
+    quotient_ring = quotient
 
     def __rmul__(self, generators: Any) -> PolynomialIdeal:
         if not isinstance(generators, (list, tuple)):
@@ -4989,7 +5269,7 @@ class PolynomialIdeal:
         proof: Any = None,
     ) -> bool:
         """Return whether this is the unit ideal."""
-        return self.normal_form(1, algorithm=algorithm, proof=proof) == 0
+        return self.normal_form(1, algorithm=algorithm, proof=proof) == self._ring(0)
 
     def _require_same_ring(self, other: Any) -> PolynomialIdeal:
         if not isinstance(other, PolynomialIdeal) or other._ring is not self._ring:
@@ -5046,6 +5326,47 @@ class PolynomialIdeal:
             for right in other._generators:
                 generators.append(left * right)
         return self._ring.ideal(generators)
+
+    def intersection(
+        self,
+        other: Any,
+        algorithm: str = "buchberger",
+        proof: Any = None,
+    ) -> PolynomialIdeal:
+        """Return the exact intersection with another ideal."""
+        other = self._require_same_ring(other)
+        return _polynomial_ideal_operations().intersection(
+            self, other, algorithm, proof
+        )
+
+    intersect = intersection
+
+    def colon(
+        self,
+        other: Any,
+        algorithm: str = "buchberger",
+        proof: Any = None,
+    ) -> PolynomialIdeal:
+        """Return the exact ideal quotient `(self : other)`."""
+        other = self._require_same_ring(other)
+        return _polynomial_ideal_operations().colon(self, other, algorithm, proof)
+
+    ideal_quotient = colon
+
+    def saturation(
+        self,
+        other: Any,
+        algorithm: str = "buchberger",
+        proof: Any = None,
+        max_steps: int = 32,
+    ) -> PolynomialIdeal:
+        """Return the exact saturation `(self : other^infinity)`."""
+        other = self._require_same_ring(other)
+        return _polynomial_ideal_operations().saturation(
+            self, other, algorithm, proof, max_steps
+        )
+
+    saturate = saturation
 
     def groebner_basis(
         self,
@@ -5120,6 +5441,42 @@ class PolynomialIdeal:
     ) -> int:
         """Return the Krull dimension using the leading monomial ideal."""
         return _polynomial_ideal_algorithms().dimension(self, algorithm, proof)
+
+    def hilbert_series(
+        self,
+        variable: str = "t",
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return the normalized Hilbert series of a homogeneous ideal."""
+        return _polynomial_hilbert().hilbert_series(self, variable, algorithm, proof)
+
+    def hilbert_polynomial(
+        self,
+        variable: str = "t",
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return the exact eventual Hilbert polynomial."""
+        return _polynomial_hilbert().hilbert_polynomial(
+            self, variable, algorithm, proof
+        )
+
+    def h_vector(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return the numerator coefficients of the reduced Hilbert series."""
+        return _polynomial_hilbert().h_vector(self, algorithm, proof)
+
+    def hilbert_data(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> dict[str, Any]:
+        """Return exact normalized Hilbert metadata."""
+        return _polynomial_hilbert().data(self, algorithm, proof)
 
     def is_zero_dimensional(
         self,
@@ -5220,11 +5577,22 @@ class PolynomialIdeal:
         proof: Any = None,
     ) -> int:
         """Return the degree of a zero-dimensional ideal."""
-        return _polynomial_ideal_algorithms().degree(self, algorithm, proof)
+        dimension = self.dimension(algorithm, proof)
+        if dimension <= 0:
+            return _polynomial_ideal_algorithms().degree(self, algorithm, proof)
+        if all(generator.is_homogeneous() for generator in self._generators):
+            return _polynomial_hilbert().degree(self, algorithm, proof)
+        raise NotImplementedError(
+            "positive-dimensional degree requires a homogeneous ideal"
+        )
 
     def groebner_fan(self) -> GroebnerFan:
         """Return the Gröbner-fan computation attached to this ideal."""
         return GroebnerFan(self)
+
+    def quotient_ring(self, **options: Any) -> Any:
+        """Return the canonical quotient of the ambient ring by this ideal."""
+        return self._ring.quotient(self, **options)
 
     def _two_generator_monomial_staircase(self) -> Any:
         ring = self._ring
@@ -5253,18 +5621,38 @@ class PolynomialIdeal:
                 return [1, pure[1], mixed[1], mixed[0]]
         return runtime.undefined
 
-    def primary_decomposition(self) -> list[PolynomialIdeal]:
-        """
-        Return the primary components of a two-variable monomial staircase.
+    def radical(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> PolynomialIdeal:
+        """Return the exact radical in the supported zero-dimensional scope."""
+        return _polynomial_zero_dimensional().radical(self, algorithm, proof)
 
-        For `I=(x^a,x^b*y^c)` with `0 < b < a`, this uses the exact
-        identity `I=(x^b) intersection (x^a,y^c)`.
+    def is_radical(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> bool:
+        """Return whether a supported zero-dimensional ideal is radical."""
+        return _polynomial_zero_dimensional().is_radical(self, algorithm, proof)
+
+    def primary_decomposition(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> list[PolynomialIdeal]:
+        """Return primary components in the supported exact scope.
+
+        Zero-dimensional ideals over `QQ` and prime fields use quotient-
+        algebra splitting with exact recomposition. The historical exact
+        two-variable monomial-staircase case remains available in positive
+        dimension. Other positive-dimensional ideals are rejected.
         """
         data = self._two_generator_monomial_staircase()
         if data is runtime.undefined:
-            raise NotImplementedError(
-                "primary decomposition currently supports two-generator "
-                "monomial staircases in two variables"
+            return _polynomial_zero_dimensional().primary_decomposition(
+                self, algorithm, proof
             )
         pure_index, pure_power, shared_power, other_power = data
         other_index = 1 - pure_index
@@ -5278,13 +5666,16 @@ class PolynomialIdeal:
             ),
         ]
 
-    def associated_primes(self) -> list[PolynomialIdeal]:
-        """Return radicals of the supported monomial primary components."""
+    def associated_primes(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> list[PolynomialIdeal]:
+        """Return the associated primes in the supported exact scope."""
         data = self._two_generator_monomial_staircase()
         if data is runtime.undefined:
-            raise NotImplementedError(
-                "associated primes currently support two-generator "
-                "monomial staircases in two variables"
+            return _polynomial_zero_dimensional().associated_primes(
+                self, algorithm, proof
             )
         pure_index = data[0]
         other_index = 1 - pure_index
@@ -5461,231 +5852,6 @@ def ideal(*generators: Any) -> PolynomialIdeal:
     if not isinstance(first, MultivariatePolynomialElement):
         raise TypeError("the prototype ideal constructor needs polynomial generators")
     return first._parent.ideal(selected)
-
-
-@runtime.callable_instance_class
-class AffineSpaceParent(sage.Parent):
-    def __init__(
-        self,
-        dimension: int,
-        base: sage.Parent,
-        names: Any = "x",
-    ) -> None:
-        if not runtime.is_exact_integer(dimension):
-            raise TypeError("affine-space dimension must be an integer")
-        dimension = int(dimension)
-        if dimension < 0:
-            raise ValueError("affine-space dimension must be nonnegative")
-        self._dimension = dimension
-        self._base = base
-        self._coordinate_ring = PolynomialRing(base, dimension, names=names)
-
-    def dimension(self) -> int:
-        return self._dimension
-
-    def base_ring(self) -> sage.Parent:
-        return self._base
-
-    def coordinate_ring(self) -> Any:
-        return self._coordinate_ring
-
-    def gens(self) -> Any:
-        return self._coordinate_ring.gens()
-
-    def __repr__(self) -> str:
-        return (
-            "Affine Space of dimension "
-            + str(self._dimension)
-            + " over "
-            + str(self._base)
-        )
-
-    __str__ = __repr__
-    toString = __repr__
-
-
-def AffineSpace(
-    dimension: int,
-    base: sage.Parent,
-    names: Any = "x",
-) -> AffineSpaceParent:
-    """
-    Construct affine space with the requested coordinate names.
-
-    ### Example
-
-    ```sage
-    sage: A = AffineSpace(2, QQ, 'xy')
-    sage: A
-    Affine Space of dimension 2 over Rational Field
-    sage: A.gens()
-    (x, y)
-    ```
-
-    The coordinate ring is a FLINT-backed multivariate polynomial ring.
-    """
-    return AffineSpaceParent(dimension, base, names)
-
-
-@runtime.callable_instance_class
-class ClosedSubscheme:
-    def __init__(
-        self,
-        ambient: AffineSpaceParent,
-        equations: Any,
-    ) -> None:
-        self._ambient = ambient
-        ring = ambient.coordinate_ring()
-        self._equations = runtime.math_tuple([ring(equation) for equation in equations])
-
-    def ambient_space(self) -> AffineSpaceParent:
-        return self._ambient
-
-    def defining_polynomials(self) -> Any:
-        return self._equations
-
-    def irreducible_components(self) -> list[ClosedSubscheme]:
-        ring = self._ambient.coordinate_ring()
-        if (
-            len(self._equations) != 2
-            or ring.ngens() != 2
-            or ring.base_ring() is not sage.QQ
-        ):
-            raise NotImplementedError(
-                "irreducible components of general closed subschemes "
-                "require primary decomposition"
-            )
-        first = self._equations[0]
-        second = self._equations[1]
-        elimination = first.resultant(second, ring.gen(0))
-        factors = elimination.irreducible_factors()
-        ordered = []
-        for factor_value in factors:
-            insert_at = len(ordered)
-            for index in range(len(ordered)):
-                if factor_value.total_degree() < ordered[index].total_degree() or (
-                    factor_value.total_degree() == ordered[index].total_degree()
-                    and repr(factor_value) > repr(ordered[index])
-                ):
-                    insert_at = index
-                    break
-            ordered.insert(insert_at, factor_value)
-        answer = []
-        for factor_value in ordered:
-            basis = ring.ideal(first, second, factor_value).groebner_basis()
-            squarefree_basis = []
-            for polynomial in basis:
-                product = ring(1)
-                for irreducible in polynomial.irreducible_factors():
-                    product = product * irreducible
-                squarefree_basis.append(product)
-            answer.append(ClosedSubscheme(self._ambient, squarefree_basis))
-        return answer
-
-    def __repr__(self) -> str:
-        lines = ["Closed subscheme of " + str(self._ambient) + " defined by:"]
-        equations = list(self._equations)
-        if (
-            len(equations) == 2
-            and equations[0].total_degree() == 1
-            and equations[1].total_degree() == 1
-        ):
-            equations.reverse()
-        for index in range(len(equations)):
-            suffix = "," if index + 1 < len(self._equations) else ""
-            lines.append("  " + repr(equations[index]) + suffix)
-        return "\n".join(lines)
-
-    __str__ = __repr__
-    toString = __repr__
-
-
-@runtime.callable_instance_class
-class AffinePlaneCurve:
-    def __init__(self, polynomial: MultivariatePolynomialElement) -> None:
-        ring = polynomial._parent
-        if ring.ngens() != 2:
-            raise ValueError(
-                "an affine plane curve needs a polynomial in two variables"
-            )
-        self._polynomial = polynomial
-        self._ambient = AffineSpaceParent(2, ring.base_ring(), ring.variable_names())
-
-    def defining_polynomial(self) -> MultivariatePolynomialElement:
-        return self._polynomial
-
-    def ambient_space(self) -> AffineSpaceParent:
-        return self._ambient
-
-    def __add__(self, other: object) -> AffinePlaneCurve:
-        if not isinstance(other, AffinePlaneCurve):
-            raise TypeError("curves can only be added to curves")
-        if self._polynomial._parent is not other._polynomial._parent:
-            raise TypeError("curves have different ambient spaces")
-        return AffinePlaneCurve(self._polynomial * other._polynomial)
-
-    def intersection(self, other: object) -> ClosedSubscheme:
-        if not isinstance(other, AffinePlaneCurve):
-            raise TypeError("curve intersection needs another curve")
-        if self._polynomial._parent is not other._polynomial._parent:
-            raise TypeError("curves have different ambient spaces")
-        return ClosedSubscheme(
-            self._ambient,
-            [self._polynomial, other._polynomial],
-        )
-
-    def irreducible_components(self) -> list[ClosedSubscheme]:
-        factors = self._polynomial.irreducible_factors()
-        ordered = []
-        for factor_value in factors:
-            insert_at = len(ordered)
-            for index in range(len(ordered)):
-                if factor_value.total_degree() < ordered[index].total_degree() or (
-                    factor_value.total_degree() == ordered[index].total_degree()
-                    and repr(factor_value) < repr(ordered[index])
-                ):
-                    insert_at = index
-                    break
-            ordered.insert(insert_at, factor_value)
-        answer = []
-        for factor_value in ordered:
-            answer.append(ClosedSubscheme(self._ambient, [factor_value]))
-        return answer
-
-    def __repr__(self) -> str:
-        return (
-            "Affine Plane Curve over "
-            + str(self._polynomial._parent.base_ring())
-            + " defined by\n   "
-            + repr(self._polynomial)
-        )
-
-    __str__ = __repr__
-    toString = __repr__
-
-
-def Curve(polynomial: Any) -> AffinePlaneCurve:
-    """
-    Construct an affine plane curve from a multivariate polynomial.
-
-    ### Example
-
-    ```sage
-    sage: x, y = AffineSpace(2, QQ, 'xy').gens()
-    sage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))
-    sage: C.irreducible_components()
-    [Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
-      x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
-      x^3 + y^3 - 1]
-    ```
-
-    Hypersurface components use FLINT multivariate factorization. Plane-curve
-    intersections over `QQ` use a resultant followed by factorization and
-    Gröbner bases. General primary decomposition is not yet implemented.
-    """
-    if not isinstance(polynomial, MultivariatePolynomialElement):
-        raise TypeError("the current Curve constructor needs a multivariate polynomial")
-    return AffinePlaneCurve(polynomial)
 
 
 @runtime.callable_instance_class
@@ -6204,52 +6370,3 @@ runtime.register_doc(
         ],
     },
 )
-
-for _geometry_name, _geometry_value in [
-    ("AffineSpace", AffineSpace),
-    ("Curve", Curve),
-]:
-    runtime.register_doc(
-        _geometry_name,
-        _geometry_value,
-        {
-            "kind": "function",
-            "module": "sage.schemes",
-            "tags": [
-                "algebraic geometry",
-                "affine schemes",
-                "curves",
-                "multivariate polynomials",
-            ],
-            "backends": ["FLINT", "Sage.js algebraic geometry layer"],
-            "sage_compatibility": {
-                "status": "partial",
-                "notes": (
-                    "Affine plane curves, hypersurface components, and "
-                    "rational plane-curve intersections are supported. "
-                    "General schemes and primary decomposition remain "
-                    "outside the current implementation."
-                ),
-            },
-            "provenance": [
-                {
-                    "kind": "sage-derived",
-                    "source": "SageMath schemes and plane curves API",
-                    "url": ("https://doc.sagemath.org/html/en/reference/curves/"),
-                    "license": "GPL-2.0-or-later",
-                },
-                {
-                    "kind": "library-backed",
-                    "source": "FLINT multivariate polynomial arithmetic",
-                    "url": "https://flintlib.org/doc/",
-                },
-            ],
-            "limitations": [
-                (
-                    "General primary decomposition is not implemented, and "
-                    "complete Gröbner-fan enumeration currently covers the "
-                    "twisted-cubic determinantal ideal."
-                ),
-            ],
-        },
-    )

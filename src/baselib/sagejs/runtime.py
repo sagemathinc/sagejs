@@ -609,9 +609,12 @@ def ρσ_dynamic_eval(
     module_id,
 ):
     return r"""%js (() => {
-        const ρσ_dynamic_modules = {
-            [module_id]: Object.assign({}, input_namespace)
-        };
+        // Baselib's lexical registry is a prototype view with a private
+        // __main__. Imports belong to the canonical interpreter registry.
+        // Copy descriptors, not values, so lazy entries stay lazy.
+        const ρσ_dynamic_modules = Object.create(null,
+            Object.getOwnPropertyDescriptors(globalThis.ρσ_modules || ρσ_modules));
+        ρσ_dynamic_modules[module_id] = Object.assign({}, input_namespace);
         const __sagejs_input_namespace__ = input_namespace;
         const evaluate = new Function(
             "ρσ_modules",

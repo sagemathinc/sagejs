@@ -165,7 +165,7 @@
   "matrix_remediation": {
     "scope": "packages/flint/src/matrix.c",
     "status": "compliant-and-frozen",
-    "registered_exports": 50,
+    "registered_exports": 51,
     "policy": "Every registered export is assigned exactly once below. Representation boundaries are retained, thin or mature-library operations move behind declarations, and Sage.js-owned control flow is an explicit typed-Python migration exception.",
     "declared_foreign_contracts": [
       "flint:nmod_mat_rank",
@@ -235,6 +235,7 @@
         "exports": [
           "cyclotomicMatrixPolyEvaluate",
           "cyclotomicMatrixRightKernel",
+          "cyclotomicMatrixRowBasis",
           "matrixApproxEigensystem",
           "matrixCharpoly",
           "matrixExactEigenvalues",
@@ -351,6 +352,51 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalBinary",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalFromParts",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPart",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPowInt",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPrecision",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRelation",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRound",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalToString",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalUnary",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:complexMul",
       "family": "numerical",
       "decision": "migrate-to-declared-ffi"
@@ -401,12 +447,22 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicElementsFromIntegralCoordinates",
+      "family": "algebraic",
+      "decision": "retain-representation-primitive"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixPolyEvaluate",
       "family": "dense-matrix-algorithms",
       "decision": "migrate-to-typed-python"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRightKernel",
+      "family": "dense-matrix-algorithms",
+      "decision": "migrate-to-typed-python"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRowBasis",
       "family": "dense-matrix-algorithms",
       "decision": "migrate-to-typed-python"
     },
@@ -1251,6 +1307,16 @@
       "decision": "migrate-to-typed-python"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
+      "family": "modular-symbols",
+      "decision": "migrate-to-typed-python"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeSelectedRows",
+      "family": "modular-symbols",
+      "decision": "migrate-to-typed-python"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeMatrix",
       "family": "modular-symbols",
       "decision": "migrate-to-typed-python"
@@ -1637,6 +1703,12 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyPacked",
+      "family": "polynomials",
+      "decision": "retain-representation-primitive",
+      "note": "This bounded transitional adapter imports an existing canonical packed rational row directly into the legacy series polynomial owner, avoiding a host BigInt decode-and-repack cycle."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:qqPolyToZZExact",
       "family": "polynomials",
       "decision": "retain-representation-primitive"
@@ -1682,12 +1754,72 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalBinary",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromBounds",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromRational",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPart",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPowInt",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPrecision",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRelation",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRound",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalToString",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalUnary",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:realMul",
       "family": "numerical",
       "decision": "migrate-to-declared-ffi"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realNeg",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realNext",
+      "family": "numerical",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realParts",
       "family": "numerical",
       "decision": "migrate-to-declared-ffi"
     },

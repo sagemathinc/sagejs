@@ -11,11 +11,21 @@ const test = require("node:test");
 
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
 const kernelSource = join(
   root,
   "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
+);
+const crashFixture = JSON.parse(
+  readFileSync(
+    join(
+      root,
+      "test/fixtures/number-field-class-group-stable-hnf-37x8.json",
+    ),
+    "utf8",
+  ),
 );
 
 const fixtures = [
@@ -114,8 +124,56 @@ const fixtures = [
 
 test("the cubic HNF region owns one resident exact resource graph", async () => {
   const ir = await lowerSource(readFileSync(kernelSource, "utf8"), kernelSource);
+  const cubicShell = ir.functions.find(
+    (candidate) =>
+      candidate.name === "cubic_reduced_shell_relation_hnf_v1",
+  );
+  const stable = ir.functions.find(
+    (candidate) => candidate.name === "stable_exact_relation_hnf_select_v1",
+  );
   const fn = ir.functions.find(
     (candidate) => candidate.name === "resident_exact_relation_hnf_select_v2",
+  );
+  assert.ok(cubicShell);
+  assert.equal(cubicShell.analysis.backend.kind, "gmp");
+  assert.equal(cubicShell.analysis.liveExactWorkspace.count, 1);
+  assert.deepEqual(
+    cubicShell.analysis.liveExactWorkspace.scopes[0].children.map((child) => ({
+      owner: child.owner,
+      storage: child.storage,
+    })),
+    [
+      ["coordinates", "row-major-mpz-matrix"],
+      ["norms", "mpz-vector"],
+      ["relations", "row-major-mpz-matrix"],
+      ["exact_coordinates", "mpz-vector"],
+      ["containment", "mpz-vector"],
+      ["candidates", "fixed-schema-record-vector"],
+      ["source_matrix", "declared-owned-ffi-resource"],
+      ["basis_matrix", "declared-owned-ffi-resource"],
+      ["trial_source_matrix", "declared-owned-ffi-resource"],
+      ["trial_hnf_matrix", "declared-owned-ffi-resource"],
+    ].map(([owner, storage]) => ({ owner, storage })),
+  );
+  assert.ok(stable);
+  assert.equal(stable.analysis.backend.kind, "gmp");
+  assert.equal(stable.analysis.liveExactWorkspace.count, 1);
+  assert.deepEqual(
+    stable.analysis.liveExactWorkspace.scopes[0].children.map((child) => ({
+      owner: child.owner,
+      storage: child.storage,
+      resource: child.resourceId,
+    })),
+    [
+      "source_matrix",
+      "basis_matrix",
+      "trial_source_matrix",
+      "trial_hnf_matrix",
+    ].map((owner) => ({
+      owner,
+      storage: "declared-owned-ffi-resource",
+      resource: "fmpz_matrix",
+    })),
   );
   assert.ok(fn);
   assert.equal(fn.analysis.backend.kind, "gmp");
@@ -141,6 +199,20 @@ test("the cubic HNF region owns one resident exact resource graph", async () => 
   );
 
   const core = generateHostCore(ir).source;
+  const stableStart = core.lastIndexOf(
+    "static int native_stable_exact_relation_hnf_select_v1(",
+  );
+  const stableEnd = core.indexOf(
+    "static int native_resident_exact_relation_hnf_select_v2(",
+    stableStart,
+  );
+  const stableRegion = core.slice(stableStart, stableEnd);
+  assert.ok(stableStart >= 0 && stableEnd > stableStart);
+  assert.match(stableRegion, /sagejs_fmpz_matrix_hnf_into/);
+  assert.doesNotMatch(
+    stableRegion,
+    /hnf_transform|transform_matrix|fmpz_matrix_det|replay_value/,
+  );
   const start = core.lastIndexOf(
     "static int native_resident_exact_relation_hnf_select_v2(",
   );
@@ -212,17 +284,62 @@ for fixture in fixtures:
     triples = tuple(
         (row, (index,), 1) for index, row in enumerate(candidates)
     )
-    legacy, legacy_rank = cubic._select_cubic_relation_candidates(
-        matrix, initial, triples, columns
-    )
-    assert legacy is not None
-    legacy_indices = tuple(entry[1][0] for entry in legacy)
     basis, support = matrix.exact_relation_hnf_support(
         initial + candidates, columns
     )
-    assert legacy_rank == fixture['rank']
     assert support == tuple(fixture['support'])
-    assert legacy_indices == tuple(fixture['selected'])
+
+    stable = matrix.stable_exact_relation_hnf_selection(
+        initial, candidates, columns
+    )
+    stable_rows = initial + tuple(
+        candidates[index] for index in stable.selected_candidate_indices
+    )
+    assert stable.basis == basis
+    assert stable.rank == fixture['rank']
+    assert stable.deletion_complete
+    assert stable.hnf_calls == stable.deletion_trials + 1
+    assert stable.boundary_calls == 1
+    assert stable.library_boundary_calls == 0
+    assert stable.backend == 'stable-native-basis-deletions'
+    assert matrix.exact_relation_hnf_basis(stable_rows, columns) == basis
+    for selected_index in stable.selected_candidate_indices:
+        without = initial + tuple(
+            candidates[index]
+            for index in stable.selected_candidate_indices
+            if index != selected_index
+        )
+        assert matrix.exact_relation_hnf_basis(without, columns) != basis
+
+    selected, selected_rank = cubic._select_cubic_relation_candidates(
+        matrix, initial, triples, columns
+    )
+    assert selected is not None
+    selected_indices = tuple(entry[1][0] for entry in selected)
+    assert selected_rank == stable.rank
+    reverse_stable = matrix.stable_exact_relation_hnf_selection(
+        initial, reversed(candidates), columns
+    )
+    assert reverse_stable.basis == stable.basis
+    assert reverse_stable.rank == stable.rank
+    reverse_indices = tuple(sorted(
+        len(candidates) - 1 - index
+        for index in reverse_stable.selected_candidate_indices
+    ))
+    early_bits = sum(
+        abs(int(triples[index][2])).bit_length()
+        for index in stable.selected_candidate_indices
+    )
+    late_bits = sum(
+        abs(int(triples[index][2])).bit_length()
+        for index in reverse_indices
+    )
+    expected_indices = (
+        stable.selected_candidate_indices
+        if 20 * early_bits <= 17 * late_bits
+        else reverse_indices
+    )
+    assert selected_indices == expected_indices
 
     for backend in ('native', 'javascript'):
         answer = matrix.resident_exact_relation_hnf_selection(
@@ -230,8 +347,8 @@ for fixture in fixtures:
         )
         assert answer.basis == basis
         assert answer.source_support == support
-        assert answer.selected_candidate_indices == legacy_indices
-        assert answer.rank == legacy_rank
+        assert answer.selected_candidate_indices == tuple(fixture['selected'])
+        assert answer.rank == fixture['rank']
         assert answer.deletion_trials == fixture['trials']
         assert answer.hnf_calls == answer.deletion_trials + 1
         assert answer.deletion_complete
@@ -243,17 +360,94 @@ for fixture in fixtures:
     oracle = matrix.resident_exact_relation_hnf_selection(
         initial, candidates, columns, backend='python'
     )
-    assert oracle.basis == basis and oracle.rank == legacy_rank
+    assert oracle.basis == basis and oracle.rank == fixture['rank']
     oracle_rows = initial + tuple(
         candidates[index] for index in oracle.selected_candidate_indices
     )
     assert matrix.exact_relation_hnf_basis(oracle_rows, columns) == basis
     reports.append({
         'name': fixture['name'],
-        'rank': legacy_rank,
-        'selected': len(legacy_indices),
+        'rank': fixture['rank'],
+        'selected': len(stable.selected_candidate_indices),
         'trials': fixture['trials'],
     })
+
+# This is the exact 37-by-8 relation workspace that deterministically crashed
+# the older transform-based resident selector.  The new basis-only kernel is a
+# separate route and must execute this real source matrix, not merely a matrix
+# with the same dimensions.
+crash = json.loads(${JSON.stringify(JSON.stringify(crashFixture))})
+crash_initial = tuple(tuple(row) for row in crash['initial'])
+crash_candidates = tuple(tuple(row) for row in crash['candidates'])
+crash_expected = crash['expected']
+crash_native = matrix.stable_exact_relation_hnf_selection(
+    crash_initial, crash_candidates, crash['columns']
+)
+assert crash_native.basis == tuple(tuple(row) for row in crash_expected['basis'])
+assert crash_native.selected_candidate_indices == tuple(
+    crash_expected['selected_candidate_indices']
+)
+assert crash_native.rank == crash_expected['rank']
+assert crash_native.deletion_trials == crash_expected['deletion_trials']
+assert crash_native.hnf_calls == crash_expected['hnf_calls']
+assert crash_native.backend == 'stable-native-basis-deletions'
+assert crash_native.boundary_calls == 1
+assert crash_native.library_boundary_calls == 0
+crash_oracle = matrix.stable_exact_relation_hnf_selection(
+    crash_initial,
+    crash_candidates,
+    crash['columns'],
+    cancelled=lambda: False,
+)
+assert crash_native == crash_oracle
+assert crash_oracle.backend == 'stable-flint-basis-deletions'
+assert crash_oracle.boundary_calls == 0
+assert crash_oracle.library_boundary_calls == crash_oracle.hnf_calls
+
+# Exercise every dimension in the separately qualified native envelope.  The
+# entries cover the complete accepted signed four-bit range.  One deletion
+# trial exercises allocation, ingress, both HNF destinations, mutation or
+# restoration, publication, and cleanup for all 640 shapes.  Each native
+# result is checked against the mature FLINT route rather than against another
+# compiled implementation.  The two real cubic fixtures below exercise long
+# deletion sequences.
+qualified_shape_cases = 0
+for qualified_rows in range(1, matrix.MAX_STABLE_HNF_NATIVE_ROWS + 1):
+    for qualified_columns in range(1, matrix.MAX_STABLE_HNF_NATIVE_COLUMNS + 1):
+        qualified_source = tuple(
+            tuple(
+                ((17 * row + 11 * column + 3) % 31) - 15
+                for column in range(qualified_columns)
+            )
+            for row in range(qualified_rows)
+        )
+        qualified_native = matrix.stable_exact_relation_hnf_selection(
+            (),
+            qualified_source,
+            qualified_columns,
+            maximum_deletion_trials=1,
+        )
+        qualified_oracle = matrix.stable_exact_relation_hnf_selection(
+            (),
+            qualified_source,
+            qualified_columns,
+            maximum_deletion_trials=1,
+            cancelled=lambda: False,
+        )
+        assert qualified_native.basis == qualified_oracle.basis
+        assert qualified_native.source_support == qualified_oracle.source_support
+        assert qualified_native.selected_candidate_indices == qualified_oracle.selected_candidate_indices
+        assert qualified_native.rank == qualified_oracle.rank
+        assert qualified_native.hnf_calls == qualified_oracle.hnf_calls
+        assert 1 <= qualified_native.hnf_calls <= 2
+        assert qualified_native.deletion_trials == qualified_oracle.deletion_trials
+        assert 0 <= qualified_native.deletion_trials <= 1
+        assert qualified_native.backend == 'stable-native-basis-deletions'
+        assert qualified_oracle.backend == 'stable-flint-basis-deletions'
+        qualified_shape_cases += 1
+assert qualified_shape_cases == (
+    matrix.MAX_STABLE_HNF_NATIVE_ROWS * matrix.MAX_STABLE_HNF_NATIVE_COLUMNS
+)
 
 hard = fixtures[0]
 initial = tuple(tuple(row) for row in hard['initial'])
@@ -282,6 +476,19 @@ except RuntimeError as error:
     assert str(error) == 'class/unit computation cancelled'
 else:
     raise AssertionError('resident HNF cancellation was ignored')
+
+stable_checks = [0]
+def stable_cancelled():
+    stable_checks[0] += 1
+    return stable_checks[0] >= 2
+try:
+    matrix.stable_exact_relation_hnf_selection(
+        initial, candidates, hard['columns'], cancelled=stable_cancelled
+    )
+except RuntimeError as error:
+    assert str(error) == 'class/unit computation cancelled'
+else:
+    raise AssertionError('stable HNF cancellation was ignored')
 
 for arguments, fragment in (
     (((0,) * (matrix.MAX_RESIDENT_HNF_COLUMNS + 1),), 'column count'),
@@ -326,8 +533,8 @@ finally:
     matrix._resident_hnf_kernel_override = saved_override
 
 # Automatic native dispatch is deliberately limited to the largest authentic
-# shape in this release's differential corpus. Larger exact workspaces must
-# fail closed to the ordinary implementation without entering native code.
+# shape and entry bit width in this release's differential corpus.  Larger
+# exact workspaces must fail closed without entering native code.
 wide_initial = ((1, 0),)
 wide_candidates = tuple(
     (index + 2, 1) for index in range(matrix.MAX_RESIDENT_HNF_NATIVE_ROWS)
@@ -346,6 +553,11 @@ try:
     )
     assert fallback.basis == oracle.basis
     assert fallback.selected_candidate_indices == oracle.selected_candidate_indices
+    assert fallback.backend in (
+        'python+flint-basis-deletions',
+        'python',
+    )
+    assert oracle.backend == 'python'
     assert native_calls[0] == 0
     try:
         matrix.resident_exact_relation_hnf_selection(
@@ -357,6 +569,67 @@ try:
         raise AssertionError('an unqualified explicit native shape was accepted')
 finally:
     matrix._resident_hnf_kernel_override = saved_override
+
+# If the mature basis-only route is unavailable, automatic selection remains
+# exact and reports the ordinary Python deletion route.  This is independent
+# of the custom resident-kernel guard exercised above.
+saved_basis_route = matrix._exact_relation_hnf_basis_from_source
+def forced_python_basis(source, columns):
+    hnf, _left = matrix._python_hnf_transform(
+        [list(row) for row in source], columns
+    )
+    return tuple(tuple(row) for row in hnf if any(row)), 'python'
+matrix._exact_relation_hnf_basis_from_source = forced_python_basis
+try:
+    fallback = matrix.resident_exact_relation_hnf_selection(
+        wide_initial, wide_candidates, 2, backend='auto'
+    )
+    oracle = matrix.resident_exact_relation_hnf_selection(
+        wide_initial, wide_candidates, 2, backend='python'
+    )
+    assert fallback == oracle
+    assert fallback.backend == 'python'
+finally:
+    matrix._exact_relation_hnf_basis_from_source = saved_basis_route
+
+stable_library = matrix.stable_exact_relation_hnf_selection(
+    wide_initial, wide_candidates, 2, cancelled=lambda: False
+)
+matrix._exact_relation_hnf_basis_from_source = forced_python_basis
+try:
+    stable_python = matrix.stable_exact_relation_hnf_selection(
+        wide_initial, wide_candidates, 2, cancelled=lambda: False
+    )
+    assert stable_python == stable_library
+    assert stable_python.backend == 'stable-python-basis-deletions'
+    assert stable_python.library_boundary_calls == 0
+finally:
+    matrix._exact_relation_hnf_basis_from_source = saved_basis_route
+
+for arguments, columns, fragment in (
+    (
+        tuple((0,) for _index in range(matrix.MAX_STABLE_HNF_ROWS + 1)),
+        1,
+        'shape bound',
+    ),
+    (((0,) * (matrix.MAX_STABLE_HNF_COLUMNS + 1),),
+        matrix.MAX_STABLE_HNF_COLUMNS + 1, 'column count'),
+    (((1 << matrix.MAX_STABLE_HNF_ENTRY_BITS,),), 1, 'entry'),
+):
+    try:
+        matrix.stable_exact_relation_hnf_selection((), arguments, columns)
+    except matrix.RelationMatrixError as error:
+        assert fragment in str(error)
+    else:
+        raise AssertionError('stable HNF resource bound was ignored')
+try:
+    matrix.stable_exact_relation_hnf_selection(
+        wide_initial, wide_candidates, 2, work_limit=1
+    )
+except matrix.RelationMatrixError as error:
+    assert 'work limit' in str(error)
+else:
+    raise AssertionError('stable HNF work bound was ignored')
 
 saved_override = matrix._resident_hnf_kernel_override
 bit_calls = [0]
@@ -385,14 +658,69 @@ try:
 finally:
     matrix._resident_hnf_kernel_override = saved_override
 
+# The new basis-only selector has its own independent release envelope.  A
+# first-outside row shape and bit width must not enter it, even when a callable
+# override is installed before any buffer allocation.
+saved_stable_override = matrix._stable_hnf_kernel_override
+stable_native_calls = [0]
+def unqualified_stable_native(*_arguments):
+    stable_native_calls[0] += 1
+    raise AssertionError('an unqualified stable HNF shape entered native code')
+matrix._stable_hnf_kernel_override = unqualified_stable_native
+try:
+    outside_candidates = tuple(
+        (index + 2, 1) for index in range(matrix.MAX_STABLE_HNF_NATIVE_ROWS)
+    )
+    outside_shape = matrix.stable_exact_relation_hnf_selection(
+        ((1, 0),),
+        outside_candidates,
+        2,
+        maximum_deletion_trials=0,
+    )
+    outside_bits = matrix.stable_exact_relation_hnf_selection(
+        (),
+        ((1 << matrix.MAX_STABLE_HNF_NATIVE_ENTRY_BITS,),),
+        1,
+        maximum_deletion_trials=0,
+    )
+    assert stable_native_calls == [0]
+    assert outside_shape.boundary_calls == 0
+    assert outside_bits.boundary_calls == 0
+finally:
+    matrix._stable_hnf_kernel_override = saved_stable_override
+
+# A native decline is private and restarts through the unchanged mature exact
+# route.  No partial native output is published.
+stable_declines = [0]
+def declined_stable_native(*_arguments):
+    stable_declines[0] += 1
+    return -1
+matrix._stable_hnf_kernel_override = declined_stable_native
+try:
+    declined = matrix.stable_exact_relation_hnf_selection(
+        crash_initial, crash_candidates, crash['columns']
+    )
+    assert stable_declines == [1]
+    assert declined == crash_oracle
+    assert declined.backend == 'stable-flint-basis-deletions'
+    assert declined.boundary_calls == 0
+finally:
+    matrix._stable_hnf_kernel_override = saved_stable_override
+
 from sagejs.kernels.matrix.class_group_hnf import (
+    cubic_reduced_shell_relation_hnf_v1,
     resident_exact_relation_hnf_select,
     resident_exact_relation_hnf_select_v2,
+    stable_exact_relation_hnf_select_v1,
 )
+assert is_compiled(cubic_reduced_shell_relation_hnf_v1)
+assert cubic_reduced_shell_relation_hnf_v1.nativeAvailable
 assert is_compiled(resident_exact_relation_hnf_select)
 assert resident_exact_relation_hnf_select.nativeAvailable
 assert is_compiled(resident_exact_relation_hnf_select_v2)
 assert resident_exact_relation_hnf_select_v2.nativeAvailable
+assert is_compiled(stable_exact_relation_hnf_select_v1)
+assert stable_exact_relation_hnf_select_v1.nativeAvailable
 print(json.dumps({'status': 'resident-hnf-ok', 'reports': reports}, sort_keys=True))
 `;
     const result = runSage(cache, program);
@@ -407,10 +735,8 @@ print(json.dumps({'status': 'resident-hnf-ok', 'reports': reports}, sort_keys=Tr
 });
 
 test("the ordinary CPython oracle retains the same canonical lattices", () => {
-  const pythonExecutable =
-    process.env.PYTHON || (process.platform === "win32" ? "python" : "python3");
   const python = spawnSync(
-    pythonExecutable,
+    pythonExecutable(),
     [
       "-c",
       [
@@ -425,6 +751,13 @@ test("the ordinary CPython oracle retains the same canonical lattices", () => {
         "    retained = initial + tuple(candidates[index] for index in answer.selected_candidate_indices)",
         "    assert answer.rank == fixture['rank']",
         "    assert matrix.exact_relation_hnf_basis(retained, fixture['columns']) == answer.basis",
+        "    stable = matrix.stable_exact_relation_hnf_selection(initial, candidates, fixture['columns'])",
+        "    stable_retained = initial + tuple(candidates[index] for index in stable.selected_candidate_indices)",
+        "    assert stable.rank == fixture['rank'] and stable.deletion_complete",
+        "    assert matrix.exact_relation_hnf_basis(stable_retained, fixture['columns']) == stable.basis",
+        "    for selected_index in stable.selected_candidate_indices:",
+        "        without = initial + tuple(candidates[index] for index in stable.selected_candidate_indices if index != selected_index)",
+        "        assert matrix.exact_relation_hnf_basis(without, fixture['columns']) != stable.basis",
         "print(json.dumps({'status': 'cpython-resident-hnf-ok'}))",
       ].join("\n"),
     ],
@@ -433,7 +766,10 @@ test("the ordinary CPython oracle retains the same canonical lattices", () => {
   assert.equal(
     python.status,
     0,
-    python.stderr || python.stdout || python.error?.message || "CPython oracle failed",
+    python.error?.message ||
+      python.stderr ||
+      python.stdout ||
+      "CPython oracle exited without diagnostics",
   );
   assert.deepEqual(JSON.parse(python.stdout), {
     status: "cpython-resident-hnf-ok",

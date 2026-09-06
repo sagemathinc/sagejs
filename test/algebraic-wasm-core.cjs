@@ -83,6 +83,53 @@ int main(void) {
     assert(value == 1);
     assert(sagejs_algebraic_close(context, restored) == 0);
 
+    assert(sagejs_algebraic_cyclotomic_coefficients(
+        context, handle_i, 4, output, sizeof(output), &output_length) == 0);
+    uint32_t coordinate_offset = 4;
+    assert(get_u32(output) == 3);
+    assert(unpack_small(output, output_length, &coordinate_offset) == 1);
+    assert(unpack_small(output, output_length, &coordinate_offset) == 0);
+    assert(unpack_small(output, output_length, &coordinate_offset) == 1);
+    assert(sagejs_algebraic_cyclotomic_coefficients(
+        context, handle_i, 4, output, 10, &output_length) == SAGEJS_ALGEBRAIC_BUFFER_TOO_SMALL);
+    assert(sagejs_algebraic_cyclotomic_coefficients(
+        context, handle_i, 4096, output, sizeof(output), &output_length) == SAGEJS_ALGEBRAIC_RESOURCE_LIMIT);
+
+    uint32_t entries[] = {handle_two, handle_two, handle_two, handle_two, handle_two, handle_two};
+    uint32_t matrix, kernel, transposed, annihilator, selected, stacked, nullity;
+    uint32_t indices[] = {2, 0};
+    assert(sagejs_algebraic_matrix_create(context, 2, 3, entries, 6, 1, &matrix) == 0);
+    assert(sagejs_algebraic_matrix_right_kernel(context, matrix, &kernel, &nullity) == 0);
+    uint32_t pivot_columns[128], pivot_count;
+    assert(sagejs_algebraic_matrix_pivots(context, kernel, pivot_columns, 128, &pivot_count) == 0);
+    assert(pivot_count == nullity);
+    for (uint32_t i = 1; i < pivot_count; i++) assert(pivot_columns[i-1] < pivot_columns[i]);
+    assert(sagejs_algebraic_matrix_pivots(context, matrix, pivot_columns, 0, &pivot_count) == SAGEJS_ALGEBRAIC_RESOURCE_LIMIT);
+    assert(pivot_count == 0);
+    assert(sagejs_algebraic_matrix_pivots(context, matrix, NULL, 128, &pivot_count) == SAGEJS_ALGEBRAIC_RESOURCE_LIMIT);
+    assert(sagejs_algebraic_matrix_pivots(context, matrix, pivot_columns, 128, NULL) == SAGEJS_ALGEBRAIC_INVALID_ARGUMENT);
+    assert(nullity == 2);
+    assert(sagejs_algebraic_matrix_unary(context, SAGEJS_ALGEBRAIC_MATRIX_TRANSPOSE, kernel, &transposed) == 0);
+    assert(sagejs_algebraic_matrix_binary(context, SAGEJS_ALGEBRAIC_MATRIX_MUL, matrix, transposed, &annihilator) == 0);
+    assert(sagejs_algebraic_matrix_rank(context, annihilator, &value) == 0 && value == 0);
+    assert(sagejs_algebraic_matrix_select(context, matrix, indices, 2, 1, &selected) == 0);
+    assert(sagejs_algebraic_matrix_rank(context, selected, &value) == 0 && value == 1);
+    assert(sagejs_algebraic_matrix_binary(context, SAGEJS_ALGEBRAIC_MATRIX_STACK, matrix, matrix, &stacked) == 0);
+    assert(sagejs_algebraic_matrix_rank(context, stacked, &value) == 0 && value == 1);
+    indices[0] = 3;
+    assert(sagejs_algebraic_matrix_select(context, matrix, indices, 1, 1, &rejected) == SAGEJS_ALGEBRAIC_INVALID_ARGUMENT);
+    assert(sagejs_algebraic_matrix_select(context, matrix, indices, 129, 1, &rejected) == SAGEJS_ALGEBRAIC_RESOURCE_LIMIT);
+    assert(sagejs_algebraic_matrix_select(context, matrix, NULL, 1, 1, &rejected) == SAGEJS_ALGEBRAIC_INVALID_ARGUMENT);
+    assert(sagejs_algebraic_matrix_right_kernel(context, matrix, &rejected, NULL) == SAGEJS_ALGEBRAIC_INVALID_ARGUMENT);
+    assert(sagejs_algebraic_matrix_live_count(context) == 6);
+    assert(sagejs_algebraic_matrix_close(context, matrix) == 0);
+    assert(sagejs_algebraic_matrix_close(context, kernel) == 0);
+    assert(sagejs_algebraic_matrix_close(context, transposed) == 0);
+    assert(sagejs_algebraic_matrix_close(context, annihilator) == 0);
+    assert(sagejs_algebraic_matrix_close(context, selected) == 0);
+    assert(sagejs_algebraic_matrix_close(context, stacked) == 0);
+    assert(sagejs_algebraic_matrix_live_count(context) == 0);
+
     assert(sagejs_algebraic_minpoly(context, handle_sqrt, output, sizeof(output), &output_length) == 0);
     assert(get_u32(output) == 3);
     uint32_t offset = 4;
@@ -164,6 +211,8 @@ test("host-neutral algebraic core is exact, bounded, serializable, and lifecycle
       "-O2",
       "-Wall",
       "-Wextra",
+      ...(process.env.SAGEJS_ALGEBRAIC_CORE_SANITIZE === "1"
+        ? ["-fsanitize=address,undefined", "-fno-omit-frame-pointer"] : []),
       `-I${path.join(prefix, "include")}`,
       `-I${path.join(root, "packages", "flint", "src")}`,
       source,

@@ -1,0 +1,184 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-online-trivial-quotient",
+  "title": "Online trivial cubic quotient",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a general source-transparent native early exit for theorem-complete complex cubic factor bases by collecting useful adjacent relations incrementally, updating the exact relation lattice online, and publishing a replay-authenticated trivial class group immediately when the quotient has index one, while preserving all nontrivial and exact fallback paths",
+  "base_commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+    "test/number-field-cubic-online-trivial-quotient.cjs",
+    "test/number-field-cubic-fmpz-closure.cjs",
+    "test/number-field-cubic-native-class-number.cjs",
+    "test/production-native-kernels.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "docs/complex-cubic-native-class-group-proof.md",
+    "PARI 2.17.4 src/basemath/buch2.c"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "authenticated Sage.js transcript and independent exact replay",
+      "PARI bnfinit(P,0) class-group invariants under matching GRH assumptions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "node --test test/number-field-cubic-online-trivial-quotient.cjs test/number-field-cubic-fmpz-closure.cjs test/number-field-cubic-native-class-number.cjs",
+    "pnpm merge:check",
+    "pnpm architecture:native",
+    "pnpm architecture:optimization-engine",
+    "node --test test/production-native-kernels.cjs",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-cubic-online-trivial-quotient.cjs test/number-field-cubic-fmpz-closure.cjs test/number-field-cubic-native-class-number.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 74.202,
+      "started_at": "2026-09-04T16:18:51.226Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "0d898b386cd67f997f8622a819000885d5fce40946231876027909dac1bf1938",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 43.918,
+      "started_at": "2026-09-04T16:21:09.914Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "0d898b386cd67f997f8622a819000885d5fce40946231876027909dac1bf1938",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.17,
+      "started_at": "2026-09-04T16:21:57.791Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "0d898b386cd67f997f8622a819000885d5fce40946231876027909dac1bf1938",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.59,
+      "started_at": "2026-09-04T16:22:05.417Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "0d898b386cd67f997f8622a819000885d5fce40946231876027909dac1bf1938",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:optimization-engine",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.774,
+      "started_at": "2026-09-04T16:22:13.253Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "0d898b386cd67f997f8622a819000885d5fce40946231876027909dac1bf1938",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 859.618,
+      "started_at": "2026-09-04T16:23:03.129Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "0d898b386cd67f997f8622a819000885d5fce40946231876027909dac1bf1938",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/production-native-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.647,
+      "started_at": "2026-09-04T16:43:30.185Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "ba397c83c03d5dfc3a6761dc0ddf06ea527af17c63c3318617140105a8676169",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-cubic-online-trivial-quotient.cjs test/number-field-cubic-fmpz-closure.cjs test/number-field-cubic-native-class-number.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 108.789,
+      "started_at": "2026-09-04T16:43:53.192Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "ba397c83c03d5dfc3a6761dc0ddf06ea527af17c63c3318617140105a8676169",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 43.182,
+      "started_at": "2026-09-04T16:45:46.206Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "ba397c83c03d5dfc3a6761dc0ddf06ea527af17c63c3318617140105a8676169",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.164,
+      "started_at": "2026-09-04T16:46:34.630Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "ba397c83c03d5dfc3a6761dc0ddf06ea527af17c63c3318617140105a8676169",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.581,
+      "started_at": "2026-09-04T16:46:42.214Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "ba397c83c03d5dfc3a6761dc0ddf06ea527af17c63c3318617140105a8676169",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:optimization-engine",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.793,
+      "started_at": "2026-09-04T16:46:49.409Z",
+      "commit": "cf1307beb646e0a8cd4c7071fc512f7992c2bf05",
+      "workspace_fingerprint": "ba397c83c03d5dfc3a6761dc0ddf06ea527af17c63c3318617140105a8676169",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The closed source-transparent cubic program now preserves PARI's useful-ideal permutation and visits it backward, constructs reduced adjacent-ideal plans just in time, admits exact principal relations incrementally, and maintains an exact resident row-HNF until it proves the theorem-complete quotient is Z^n. It then publishes a trivial presentation without unit reconstruction or analytic certification; final HNF/SNF publication and independent ordinary-object transcript replay remain authoritative. LMFDB 3.1.10636.1 shrinks from the frozen 32-row/all-seven-plan transcript to 11 rows after planning two ideals and enumerating 17 candidates. Three permanent frozen holdouts, a separate 25-field holdout sweep (10 trivial and 15 nontrivial), nontrivial controls, and an effort-7 C42 path all agree exactly and replay.",
+    "risks": [
+      "The complete architecture:check and test:changed runners stop at the integration-owned optimizer-opportunity manifest because this mathematical source change invalidates its recorded input digest; all preceding architecture checks and the full inherited build pass, and this lane intentionally does not claim or regenerate the shared evidence artifact.",
+      "The complete test:native run reached its final combined group with 79 passes, one skip, and two failures caused by the now-removed dead helper and its stale production inventory expectation. The focused production-pack test is rerun after that fix; the entire 14-minute umbrella command is left as a failed historical receipt rather than repeated.",
+      "Only linux-x64 was executable in this lane; the source-transparent closure has no architecture-specific branch, but the required Linux arm64, macOS arm64, and Windows x64 gates remain release/integration responsibilities."
+    ],
+    "next_steps": [
+      "Regenerate the shared optimizer-opportunity artifacts after integration and rerun the complete architecture:check/test:changed chain.",
+      "Measure the integrated target and expanded trivial corpus on the reserved opt timing VM; this lane deliberately did not use opt.",
+      "Use the authenticated planned/enumerated/retained diagnostics to select the next slow structural cubic regime rather than tuning the exact fallback."
+    ]
+  }
+}

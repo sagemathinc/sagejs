@@ -127,7 +127,9 @@ def ρσ_exact_integer_range_iterator(start, step, length):
 
 def ρσ_dynamic_eval(javascript, input_namespace, module_id):
     return r"""%js (() => {
-        const dynamicModules = {[module_id]: Object.assign({}, input_namespace)};
+        const dynamicModules = Object.create(null,
+            Object.getOwnPropertyDescriptors(globalThis.ρσ_modules || ρσ_modules));
+        dynamicModules[module_id] = Object.assign({}, input_namespace);
         const inputNamespace = input_namespace;
         const evaluate = new Function(
             "ρσ_modules", "__sagejs_input_namespace__", "javascript",

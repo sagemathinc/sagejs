@@ -17,6 +17,8 @@
 #include <flint/nmod_poly_factor.h>
 #include <flint/ulong_extras.h>
 
+#include "sagejs/fmpz_matrix_ffi.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -1718,6 +1720,123 @@ failure:
     arb_clear(square_root);
     arb_clear(logarithm);
     return 0;
+}
+
+/* Resident-resource form of the same Arb batch.  Native exact programs use
+ * this adapter when both matrices already belong to their lexical arena, so
+ * no public IntegerBuffer conversion or object-at-a-time boundary is needed.
+ */
+static inline int sagejs_flint_integer_log_sqrt_balls_resource(
+    sagejs_fmpz_matrix_t output,
+    const sagejs_fmpz_matrix_t source,
+    uint64_t precision)
+{
+    const int success = sagejs_flint_integer_log_sqrt_balls_packed(
+        output->value, source->value, precision);
+    if (success)
+        sagejs_fmpz_matrix_recompute_allocated_bytes(output);
+    return success;
+}
+
+/* Batch rigorous log(numerator / denominator) endpoint construction through
+ * Arb.  Native exact programs retain the positive rational inputs and the
+ * returned dyadic mantissas in arena-owned fmpz matrices; no Arb value or
+ * host object crosses the declared boundary.  Only the requested prefix is
+ * read or written so one fixed-capacity scratch family can serve repeated
+ * source-level ball operations.
+ */
+static inline int sagejs_flint_positive_rational_log_balls_resource(
+    sagejs_fmpz_matrix_t output,
+    const sagejs_fmpz_matrix_t numerators,
+    const sagejs_fmpz_matrix_t denominators,
+    uint64_t count_requested,
+    uint64_t precision_requested)
+{
+    const uint64_t maximum_count = UINT64_C(1000000);
+    const uint64_t maximum_precision = UINT64_C(4096);
+    const slong numerator_rows = fmpz_mat_nrows(numerators->value);
+    const slong denominator_rows = fmpz_mat_nrows(denominators->value);
+    const slong output_rows = fmpz_mat_nrows(output->value);
+    arb_t value, logarithm;
+    arf_t lower, upper;
+    slong count, precision;
+
+    if (output == numerators || output == denominators ||
+        fmpz_mat_ncols(numerators->value) != 1 ||
+        fmpz_mat_ncols(denominators->value) != 1 ||
+        fmpz_mat_ncols(output->value) != 1 ||
+        count_requested == 0 || count_requested > maximum_count ||
+        count_requested > (uint64_t) WORD_MAX ||
+        precision_requested < 16 ||
+        precision_requested > maximum_precision ||
+        precision_requested > (uint64_t) (WORD_MAX - 32))
+        return 0;
+    count = (slong) count_requested;
+    precision = (slong) precision_requested;
+    if (numerator_rows < count || denominator_rows < count ||
+        output_rows < 2 * count)
+        return 0;
+
+    arb_init(value);
+    arb_init(logarithm);
+    arf_init(lower);
+    arf_init(upper);
+    for (slong index = 0; index < count; index++)
+    {
+        const fmpz *numerator =
+            fmpz_mat_entry(numerators->value, index, 0);
+        const fmpz *denominator =
+            fmpz_mat_entry(denominators->value, index, 0);
+        const slong offset = 2 * index;
+        if (fmpz_sgn(numerator) <= 0 || fmpz_sgn(denominator) <= 0)
+            goto failure;
+        arb_set_fmpz(value, numerator);
+        arb_div_fmpz(value, value, denominator, precision + 32);
+        if (!arb_is_positive(value))
+            goto failure;
+        arb_log(logarithm, value, precision + 32);
+        if (!arb_is_finite(logarithm))
+            goto failure;
+        arb_get_interval_arf(lower, upper, logarithm, precision + 32);
+        if (!arf_is_finite(lower) || !arf_is_finite(upper) ||
+            arf_cmp(lower, upper) > 0)
+            goto failure;
+        arf_mul_2exp_si(lower, lower, precision);
+        arf_mul_2exp_si(upper, upper, precision);
+        arf_get_fmpz(
+            fmpz_mat_entry(output->value, offset, 0), lower, ARF_RND_FLOOR);
+        arf_get_fmpz(
+            fmpz_mat_entry(output->value, offset + 1, 0), upper, ARF_RND_CEIL);
+        if (fmpz_cmp(
+                fmpz_mat_entry(output->value, offset, 0),
+                fmpz_mat_entry(output->value, offset + 1, 0)) > 0)
+            goto failure;
+    }
+    arf_clear(upper);
+    arf_clear(lower);
+    arb_clear(logarithm);
+    arb_clear(value);
+    sagejs_fmpz_matrix_recompute_allocated_bytes(output);
+    return 1;
+
+failure:
+    arf_clear(upper);
+    arf_clear(lower);
+    arb_clear(logarithm);
+    arb_clear(value);
+    sagejs_fmpz_matrix_recompute_allocated_bytes(output);
+    return 0;
+}
+
+/* Drain thread-local FLINT, Arb/MPFR, and fmpz caches before a native exact
+ * checkpoint releases the GMP limb slab from which those caches may have
+ * borrowed storage.  FLINT deliberately recycles promoted fmpz objects; the
+ * public cleanup protocol is therefore an ownership boundary, not merely a
+ * process-exit convenience, when GMP allocations come from a lexical arena.
+ */
+static inline void sagejs_flint_exact_checkpoint_cleanup(void)
+{
+    flint_cleanup();
 }
 
 #ifdef __cplusplus

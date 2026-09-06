@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-reconstructed-regulator-guard",
+  "title": "Cubic Reconstructed Regulator Guard",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reject unauthenticated reconstructed units before cubic native publication",
+  "base_commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+    "test/number-field-cubic-reconstructed-regulator-guard.cjs",
+    "test/fixtures/cubic-reconstructed-regulator-guard.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Unchanged source-extracted suffix with synthetic helper contract faults"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-cubic-reconstructed-regulator-guard.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-cubic-reconstructed-regulator-guard.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.212,
+      "started_at": "2026-09-05T03:48:53.714Z",
+      "commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+      "workspace_fingerprint": "2e1f27f2f1571e17652c011a9dad7fd725c7fd003145b1a0fda39be770d3eb55",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.532,
+      "started_at": "2026-09-05T03:48:54.569Z",
+      "commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+      "workspace_fingerprint": "2e1f27f2f1571e17652c011a9dad7fd725c7fd003145b1a0fda39be770d3eb55",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Fail closed with existing bad-regulator phase 44 when a status-1 reconstructed unit fails positive, ordered, overlapping regulator authentication. A source-extracted CPython suffix test admits five synthetic valid overlaps and rejects seven malformed or disjoint cases before analytic work/publication; the identical regression fails on frozen f7f00552 by publishing stale identity coordinates. No ordinary-field trigger is claimed.",
+    "risks": [
+      "Fault-injection evidence exercises unchanged source statements with synthetic helper results, not a native execution or a complete mathematical witness.",
+      "Full production native, JavaScript fallback, sanitizer, Windows and Wasm validation remains pending integration; this draft deliberately does not rebuild root or use opt.",
+      "architecture:check passes through native/FFI/Wasm policy but fails on stale optimizer opportunity manifest input digest; refreshing shared generated evidence is integration-owned."
+    ],
+    "next_steps": [
+      "Integrate the disjoint suffix hunk with the paused-collection cursor work and run complete native production replay before merge.",
+      "Refresh optimizer evidence manifests in integration and run the remaining declared native/platform checks.",
+      "Keep failed reconstruction-regulator authentication fatal, not a materialization fallback or staged recovery status."
+    ]
+  }
+}

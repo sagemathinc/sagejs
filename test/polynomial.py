@@ -145,16 +145,16 @@ assert V.defining_polynomials() == (
 assert repr(V.irreducible_components()) == (
     "[Closed subscheme of Affine Space of dimension 2 over Rational Field "
     "defined by:\n"
-    "  y - 1,\n"
-    "  x, "
+    "  x,\n"
+    "  y - 1, "
     "Closed subscheme of Affine Space of dimension 2 over Rational Field "
     "defined by:\n"
-    "  x - 1,\n"
-    "  y, "
+    "  y^2 + 2*y + 3/2,\n"
+    "  x + y + 2, "
     "Closed subscheme of Affine Space of dimension 2 over Rational Field "
     "defined by:\n"
-    "  2*y^2 + 4*y + 3,\n"
-    "  x + y + 2]"
+    "  y,\n"
+    "  x - 1]"
 )
 
 # The generated-resource representation of extension-field polynomials uses

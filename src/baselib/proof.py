@@ -99,3 +99,12 @@ class _ProofPreferences:
 
 
 proof = _ProofPreferences(True)
+
+
+def resolve_polynomial_proof(value: Any = None) -> bool:
+    """Resolve a local polynomial proof request against the global policy."""
+    if value is None:
+        return bool(proof.polynomial())
+    if not isinstance(value, bool):
+        raise TypeError("polynomial proof flag must be a boolean or None")
+    return value

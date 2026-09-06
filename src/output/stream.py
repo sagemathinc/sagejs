@@ -227,7 +227,10 @@ class OutputStream:
         str_ = String(str_)
         ch = str_.charAt(0)
         if self.might_need_semicolon:
-            if (not ch or ";}".indexOf(ch) < 0) and not RegExp(r"[;]").test(self._last):
+            # A printed fragment may contain internal semicolons (for example
+            # a verbatim IIFE). Only its final character can terminate the
+            # previous statement when whitespace is compacted.
+            if (not ch or ";}".indexOf(ch) < 0) and self.last_char() != ";":
                 if self.options.semicolons or require_semi_colon_chars[ch]:
                     self.OUTPUT += ";"
                     self.current_col += 1

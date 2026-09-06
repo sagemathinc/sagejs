@@ -19,8 +19,7 @@ const allowed = [
   /^agents\/webassembly-production-parity-and-apps-plan\.md$/,
   /^architecture\/(?:native-boundaries|native-code|native-kernels|wasm-capabilities)\.json$/,
   /^bench\/cowasm\//,
-  // This laboratory reuses only the licensed Python benchmark corpus, not
-  // the retired compiler/runtime dependency.
+  // Benchmark provenance only; neither file imports the retired toolchain.
   /^bench\/python-compat\/README\.md$/,
   /^test\/python-performance-runner\.cjs$/,
   // Build freshness classifies the retained benchmark runner as validation

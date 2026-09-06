@@ -1189,6 +1189,42 @@ class SageMemoryView:
         return self._itemsize
 
     @property
+    def nbytes(self) -> _Int:
+        return len(self._bytes_values())
+
+    @property
+    def ndim(self) -> _Int:
+        return 1
+
+    @property
+    def shape(self) -> Any:
+        return runtime.math_tuple([self._length])
+
+    @property
+    def strides(self) -> Any:
+        return runtime.math_tuple([self._itemsize])
+
+    @property
+    def suboffsets(self) -> Any:
+        return runtime.math_tuple([])
+
+    @property
+    def c_contiguous(self) -> _Bool:
+        return True
+
+    @property
+    def f_contiguous(self) -> _Bool:
+        return True
+
+    @property
+    def contiguous(self) -> _Bool:
+        return True
+
+    @property
+    def obj(self) -> Any:
+        return self._source
+
+    @property
     def readonly(self) -> _Bool:
         return self._readonly
 
@@ -1327,6 +1363,33 @@ class SageMemoryView:
         bytes_per_separator: Any = 1,
     ) -> _Str:
         return SageBytes(self._bytes_values()).hex(separator, bytes_per_separator)
+
+    def tobytes(self, order: _Str = "C") -> SageBytes:
+        if order not in ("C", "A", "F"):
+            raise ValueError("order must be 'C', 'F' or 'A'")
+        return SageBytes(self._bytes_values())
+
+    def tolist(self) -> list[_Int]:
+        return self._values()[:]
+
+    def cast(
+        self,
+        format: _Str,
+        shape: Any = runtime.undefined,
+    ) -> SageMemoryView:
+        if not runtime.strict_equal(runtime.jstype(format), "string"):
+            raise TypeError("memoryview: format argument must be a string")
+        if shape is not runtime.undefined and shape is not None:
+            dimensions = list(shape)
+            if len(dimensions) != 1 or _coerce_index(dimensions[0]) != len(
+                self._bytes_values()
+            ):
+                raise TypeError("memoryview: product(shape) * itemsize != buffer size")
+        if format == "B":
+            return SageMemoryView(SageByteArray(self._bytes_values()))
+        if format == self.format:
+            return SageMemoryView(self)
+        raise TypeError("memoryview: cannot cast to unsupported format " + format)
 
     def _bytes_values(self) -> list[_Int]:
         if hasattr(self._source, "_bytes_values"):

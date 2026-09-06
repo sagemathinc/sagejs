@@ -19,6 +19,13 @@ _Float = float
 _Int = int
 _Str = str
 
+_builtins_symbol_class = runtime.reflect.get(runtime.global_object, "Symbol")
+_BUILTINS_CALLABLE_ALLOCATION_KEY = runtime.reflect.apply(
+    runtime.reflect.get(_builtins_symbol_class, "for"),
+    runtime.undefined,
+    ["sagejs.python.callable-instance-allocation"],
+)
+
 
 def _sagejs_version(json: _Bool = False) -> Any:
     """Return the Sage.js release string or its machine-readable record.
@@ -291,6 +298,9 @@ _BUILTINS_DELETED_BUILTIN = _builtins_deleted_builtin
 ρσ_getattr_missing = _BUILTINS_MISSING
 _builtins_float_prototype = runtime.undefined
 _builtins_descriptor_cache = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+_builtins_class_namespace_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
 _builtins_data_descriptor_names = runtime.reflect.construct(runtime.set_class, [])
@@ -3185,51 +3195,61 @@ def ρσ_id(value: Any) -> _Int:
     return answer
 
 
-_BUILTINS_HIDDEN_INTROSPECTION_NAMES = [
-    "__argnames__",
-    "__bind_methods__",
-    "__handles_kwarg_interpolation__",
-    "__sagejs_baselib_private_names__",
-    "__varargs__",
-    "__varkw__",
-    "apply",
-    "arguments",
-    "bind",
-    "call",
-    "caller",
-    "constructor",
-    "prototype",
-    "pysort",
-    "toLocaleString",
-    "toString",
-    "valueOf",
-]
+_BUILTINS_HIDDEN_INTROSPECTION_NAMES = runtime.reflect.construct(
+    runtime.set_class,
+    [
+        [
+            "__argnames__",
+            "__bind_methods__",
+            "__handles_kwarg_interpolation__",
+            "__sagejs_baselib_private_names__",
+            "__varargs__",
+            "__varkw__",
+            "apply",
+            "arguments",
+            "bind",
+            "call",
+            "caller",
+            "constructor",
+            "prototype",
+            "pysort",
+            "toLocaleString",
+            "toString",
+            "valueOf",
+        ]
+    ],
+)
 
 
 # These attributes are stored as JavaScript own properties so calls and
 # introspection stay fast, but CPython exposes them as slots on ``function``;
 # they are not entries in a function object's writable ``__dict__``.
-_BUILTINS_FUNCTION_SLOT_NAMES = [
-    "__annotations__",
-    "__annotations_text__",
-    "__code__",
-    "__defaults__",
-    "__doc__",
-    "__globals__",
-    "__kwdefaults__",
-    "__module__",
-    "__name__",
-    "__python_descriptor__",
-    "__python_type__",
-    "__qualname__",
-]
+_BUILTINS_FUNCTION_SLOT_NAMES = runtime.reflect.construct(
+    runtime.set_class,
+    [
+        [
+            "__annotations__",
+            "__annotations_text__",
+            "__code__",
+            "__defaults__",
+            "__doc__",
+            "__globals__",
+            "__kwdefaults__",
+            "__module__",
+            "__name__",
+            "__python_descriptor__",
+            "__python_type__",
+            "__qualname__",
+        ]
+    ],
+)
 
 
 def _builtins_visible_introspection_name(name: Any) -> _Bool:
     return (
         runtime.strict_equal(runtime.jstype(name), "string")
         and runtime.string_find(name, "ρσ") != 0
-        and name not in _BUILTINS_HIDDEN_INTROSPECTION_NAMES
+        and not _BUILTINS_HIDDEN_INTROSPECTION_NAMES.has(name)
     )
 
 
@@ -3245,6 +3265,7 @@ def _builtins_introspection_target(value: Any) -> Any:
 def _builtins_append_dir_names(
     value: Any,
     answer: list[_Str],
+    seen: Any,
 ) -> None:
     current = value
     while (
@@ -3270,8 +3291,9 @@ def _builtins_append_dir_names(
             if (
                 not data_value_missing
                 and _builtins_visible_introspection_name(name)
-                and name not in answer
+                and not seen.has(name)
             ):
+                seen.add(name)
                 answer.append(name)
         current = runtime.object.getPrototypeOf(current)
 
@@ -3279,6 +3301,7 @@ def _builtins_append_dir_names(
 def _builtins_append_own_dir_names(
     value: Any,
     answer: list[_Str],
+    seen: Any,
 ) -> None:
     for name in runtime.object.getOwnPropertyNames(value):
         descriptor = runtime.object.getOwnPropertyDescriptor(value, name)
@@ -3298,8 +3321,9 @@ def _builtins_append_own_dir_names(
         if (
             not data_value_missing
             and _builtins_visible_introspection_name(name)
-            and name not in answer
+            and not seen.has(name)
         ):
+            seen.add(name)
             answer.append(name)
 
 
@@ -3314,27 +3338,8 @@ def _builtins_is_module_namespace(value: Any) -> _Bool:
     return runtime.reflect.apply(has_module, module_namespaces, [value])
 
 
-def _builtins_namespace_dict(value: Any) -> Any:
-    """Return the Python-visible own namespace of an object or class."""
-    if _builtins_is_module_namespace(value):
-        # Unlike class ``__dict__``, a module dictionary is a mutable live
-        # namespace.  Wrapping the actual object is both the CPython behavior
-        # and dramatically cheaper for documentation-heavy modules such as
-        # ``mpmath.function_docs``.
-        live_scope_dict = runtime.reflect.get(
-            runtime.global_object, "ρσ_live_scope_dict"
-        )
-        return runtime.reflect.apply(live_scope_dict, runtime.undefined, [value])
-
-    if runtime.strict_equal(runtime.jstype(value), "object"):
-        # Instance ``__dict__`` is a writable live namespace.  A detached
-        # snapshot breaks ``obj.__dict__.update(...)`` and other ordinary
-        # Python object-model operations.
-        live_scope_dict = runtime.reflect.get(
-            runtime.global_object, "ρσ_live_scope_dict"
-        )
-        return runtime.reflect.apply(live_scope_dict, runtime.undefined, [value, True])
-
+def _builtins_callable_namespace_snapshot(value: Any) -> Any:
+    """Build one Python-visible snapshot of a class or function namespace."""
     namespace = runtime.object.create(None)
     plain_function = runtime.strict_equal(
         runtime.jstype(value), "function"
@@ -3380,7 +3385,7 @@ def _builtins_namespace_dict(value: Any) -> Any:
                 and not (
                     source is value
                     and plain_function
-                    and member_name in _BUILTINS_FUNCTION_SLOT_NAMES
+                    and _BUILTINS_FUNCTION_SLOT_NAMES.has(member_name)
                 )
                 and _builtins_get_member(
                     member,
@@ -3418,6 +3423,95 @@ def _builtins_namespace_dict(value: Any) -> Any:
     return runtime.scope_dict(namespace)
 
 
+@runtime.lightweight_math_class
+class _BuiltinsClassNamespaceProxy:
+    """Read-only live view of a compiled class namespace."""
+
+    def __init__(self, owner: Any) -> None:
+        self._owner = owner
+        self._epoch = -1
+        self._mapping = None
+
+    def _refresh(self) -> Any:
+        if self._epoch != _builtins_descriptor_epoch:
+            self._mapping = _builtins_callable_namespace_snapshot(self._owner)
+            self._epoch = _builtins_descriptor_epoch
+        return self._mapping
+
+    def __getitem__(self, key: Any) -> Any:
+        # Use the mapping protocol explicitly.  A literal subscript in this
+        # low-level baselib module is otherwise eligible for native host
+        # property lowering, while the wrapped namespace uses SageDict maps.
+        return self._refresh().__getitem__(key)
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        raise TypeError("'mappingproxy' object does not support item assignment")
+
+    def __delitem__(self, key: Any) -> None:
+        raise TypeError("'mappingproxy' object does not support item deletion")
+
+    def __iter__(self) -> Any:
+        return iter(self._refresh())
+
+    def __len__(self) -> _Int:
+        return len(self._refresh())
+
+    def __contains__(self, key: Any) -> _Bool:
+        return key in self._refresh()
+
+    def get(self, key: Any, default_value: Any = None) -> Any:
+        return self._refresh().get(key, default_value)
+
+    def keys(self) -> Any:
+        return self._refresh().keys()
+
+    def values(self) -> Any:
+        return self._refresh().values()
+
+    def items(self) -> Any:
+        return self._refresh().items()
+
+    def copy(self) -> Any:
+        return self._refresh().copy()
+
+    def __repr__(self) -> _Str:
+        return "mappingproxy(" + repr(self._refresh()) + ")"
+
+
+def _builtins_namespace_dict(value: Any) -> Any:
+    """Return the Python-visible own namespace of an object or class."""
+    if _builtins_is_module_namespace(value):
+        # Unlike class ``__dict__``, a module dictionary is a mutable live
+        # namespace.  Wrapping the actual object is both the CPython behavior
+        # and dramatically cheaper for documentation-heavy modules such as
+        # ``mpmath.function_docs``.
+        live_scope_dict = runtime.reflect.get(
+            runtime.global_object, "ρσ_live_scope_dict"
+        )
+        return runtime.reflect.apply(live_scope_dict, runtime.undefined, [value])
+
+    if runtime.strict_equal(runtime.jstype(value), "object") or (
+        runtime.strict_equal(runtime.jstype(value), "function")
+        and runtime.native_get(value, "__sagejs_callable_instance__") is True
+    ):
+        # Instance ``__dict__`` is a writable live namespace.  A detached
+        # snapshot breaks ``obj.__dict__.update(...)`` and other ordinary
+        # Python object-model operations.
+        live_scope_dict = runtime.reflect.get(
+            runtime.global_object, "ρσ_live_scope_dict"
+        )
+        return runtime.reflect.apply(live_scope_dict, runtime.undefined, [value, True])
+
+    if _builtins_is_python_class(value):
+        cached = _builtins_class_namespace_cache.get(value)
+        if cached is runtime.undefined:
+            cached = _BuiltinsClassNamespaceProxy(value)
+            _builtins_class_namespace_cache.set(value, cached)
+        return cached
+
+    return _builtins_callable_namespace_snapshot(value)
+
+
 def ρσ_default_dir(item: Any = runtime.undefined) -> list[_Str]:
     """Return the default sorted Python-facing attributes for `item`."""
     if item is runtime.undefined:
@@ -3425,23 +3519,24 @@ def ρσ_default_dir(item: Any = runtime.undefined) -> list[_Str]:
 
     target = _builtins_introspection_target(item)
     answer = []
+    seen = runtime.reflect.construct(runtime.set_class, [])
     target_is_function = runtime.strict_equal(runtime.jstype(target), "function")
     constructor = _builtins_get_member(target, "constructor")
     target_is_python_instance = _builtins_is_python_class(constructor)
     if target_is_function and not target_is_python_instance:
-        _builtins_append_own_dir_names(target, answer)
+        _builtins_append_own_dir_names(target, answer, seen)
         for native_function_name in ["length", "name"]:
             if native_function_name in answer:
                 answer.remove(native_function_name)
     else:
-        _builtins_append_dir_names(target, answer)
+        _builtins_append_dir_names(target, answer, seen)
 
     # Python classes expose their instance methods through the class object.
     # Sage.js stores those methods on the JavaScript constructor prototype.
     if target_is_function:
         prototype = _builtins_get_member(target, "prototype")
         if prototype is not runtime.undefined and prototype is not None:
-            _builtins_append_dir_names(prototype, answer)
+            _builtins_append_dir_names(prototype, answer, seen)
     if target_is_python_instance and target_is_function:
         for class_only_name in [
             "__bases__",
@@ -3463,12 +3558,12 @@ def ρσ_default_dir(item: Any = runtime.undefined) -> list[_Str]:
                 if private_name in answer:
                     answer.remove(private_name)
 
-    for left_index in range(len(answer)):
-        for right_index in range(left_index + 1, len(answer)):
-            if answer[right_index] < answer[left_index]:
-                temporary = answer[left_index]
-                answer[left_index] = answer[right_index]
-                answer[right_index] = temporary
+    # Attribute names are primitive strings, so the host's stable lexical sort
+    # has exactly the ordering required by Python without routing every
+    # comparison through the generic rich-comparison machinery.  Traitlets
+    # calls ``dir(cls)`` for every descriptor-bearing class, making the former
+    # quadratic Python loop dominate imports of class-heavy packages.
+    runtime.reflect.apply(runtime.array.prototype.sort, answer, [])
     return answer
 
 
@@ -3836,7 +3931,7 @@ def ρσ_search_doc(query: Any) -> None:
     ```sage
     sage: search_doc('q-expansion')
     Search results for 'q-expansion':
-        EisensteinSeriesElement.q_expansion -- Return the ...
+        ClassicalModularFormElement.q_expansion -- Return the ...
     ```
 
     This intentionally searches the locally installed Sage.js API.  It does
@@ -5086,6 +5181,11 @@ def ρσ_getattr_internal(
 ) -> Any:
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
+    value_type = runtime.jstype(value)
+    value_is_callable_instance = (
+        runtime.strict_equal(value_type, "function")
+        and runtime.native_get(value, "__sagejs_callable_instance__") is True
+    )
     if runtime.instance_of(value, runtime.error):
         # Native TypeError/ReferenceError/SyntaxError objects are part of the
         # Python exception hierarchy but do not pass through BaseException's
@@ -5160,22 +5260,14 @@ def ρσ_getattr_internal(
 
         return native_next
     if runtime.strict_equal(name, "__class__"):
-        if _builtins_is_python_class(value):
-            return ρσ_type
-        if _builtins_get_member(
-            value, "__sagejs_callable_instance__"
-        ) is True and runtime.strict_equal(
-            runtime.jstype(_builtins_get_member(value, "__python_type__")),
-            "function",
-        ):
-            return _builtins_get_member(value, "__python_type__")
-        if runtime.strict_equal(runtime.jstype(value), "function"):
-            return ρσ_function_type
-        return _builtins_get_member(value, "constructor")
+        # `obj.__class__` and `type(obj)` are the same observable Python
+        # operation.  In particular, JavaScript primitives and our native
+        # list/tuple representations must not leak their host constructors.
+        return ρσ_type(value)
     if (
         runtime.strict_equal(name, "__get__")
-        and runtime.strict_equal(runtime.jstype(value), "function")
-        and _builtins_get_member(value, "__sagejs_callable_instance__") is not True
+        and runtime.strict_equal(value_type, "function")
+        and not value_is_callable_instance
     ):
         # Python function objects implement the descriptor protocol.  This is
         # observable when libraries retain an unbound method such as
@@ -5196,10 +5288,7 @@ def ρσ_getattr_internal(
     descriptor_kind = _BUILTINS_DESCRIPTOR_GENERIC
     owner = runtime.undefined
     if (
-        (
-            not runtime.strict_equal(runtime.jstype(value), "function")
-            or _builtins_get_member(value, "__sagejs_callable_instance__") is True
-        )
+        (not runtime.strict_equal(value_type, "function") or value_is_callable_instance)
         and value is not None
         and value is not runtime.undefined
     ):
@@ -5283,7 +5372,7 @@ def ρσ_getattr_internal(
             _BUILTINS_DESCRIPTOR_DIRECT,
         ):
             return descriptor
-    if runtime.strict_equal(runtime.jstype(value), "function"):
+    if runtime.strict_equal(value_type, "function") and not value_is_callable_instance:
         if _builtins_is_baselib_function(value) and (
             runtime.strict_equal(name, "__globals__")
             or runtime.strict_equal(name, "__code__")
@@ -5321,7 +5410,12 @@ def ρσ_getattr_internal(
                 or ρσ_is_bound_method(class_member)
                 or (
                     _builtins_is_baselib_function(class_member)
-                    and runtime.native_get(class_member, "__sagejs_native_method__")
+                    # Receiver-style native methods need an explicit-receiver
+                    # adapter when they are retrieved from the class.  Bound
+                    # calls such as ``items.extend(values)`` supply JavaScript
+                    # ``this``; CPython's ``list.extend(items, values)`` form
+                    # does not.
+                    and _builtins_get_member(class_member, "__sagejs_native_method__")
                     is not True
                     and _builtins_get_member(class_member, "__python_descriptor__")
                     is not True
@@ -5394,15 +5488,20 @@ def ρσ_getattr_internal(
             [name],
         )
         class_prototype_member = runtime.undefined
-        if runtime.strict_equal(runtime.jstype(value), "function"):
+        if (
+            runtime.strict_equal(value_type, "function")
+            and not value_is_callable_instance
+        ):
             class_prototype = _builtins_get_member(value, "prototype")
             if class_prototype is not runtime.undefined and _builtins_has_member(
                 class_prototype, name
             ):
                 class_prototype_member = _builtins_get_member(class_prototype, name)
-        if runtime.strict_equal(
-            runtime.jstype(value), "function"
-        ) and _builtins_has_member(member, "__classmethod__"):
+        if (
+            runtime.strict_equal(value_type, "function")
+            and not value_is_callable_instance
+            and _builtins_has_member(member, "__classmethod__")
+        ):
             class_target = _builtins_get_member(member, "__func__")
             if runtime.strict_equal(runtime.jstype(class_target), "function"):
                 member = class_target
@@ -5699,12 +5798,6 @@ def ρσ_resolve_module_name(
             namespace = runtime.reflect.get(baselib_modules, module_name)
             if namespace is not runtime.undefined:
                 python_builtin_namespaces.append(namespace)
-    if was_cleared_exception:
-        for namespace in python_builtin_namespaces:
-            if _builtins_has_member(namespace, name):
-                python_builtin_value = _builtins_get_member(namespace, name)
-                if python_builtin_value is not runtime.undefined:
-                    return python_builtin_value
     if _builtins_has_member(module_builtins, name):
         builtin_value = _builtins_get_member(module_builtins, name)
         is_python_builtin = False
@@ -5757,6 +5850,13 @@ def ρσ_resolve_module_name(
         return value
     if declared_in_module:
         # Deleted Python bindings may use Python builtins, never JS globals.
+        raise NameError("name '" + name + "' is not defined")
+    facade_names = runtime.native_get(
+        module_builtins, "__sagejs_builtin_facade_names__"
+    )
+    if facade_names is not runtime.undefined and facade_names.has(name):
+        # A deleted builtin must not reappear through the browser's original
+        # global alias. Real module/lexical bindings were already checked.
         raise NameError("name '" + name + "' is not defined")
     if _builtins_has_member(runtime.global_object, name):
         global_value = _builtins_get_member(runtime.global_object, name)
@@ -5907,15 +6007,12 @@ def _builtins_code_source(source: Any) -> _Str:
     raise TypeError("source must be a string, bytes, bytearray, or memoryview")
 
 
-def ρσ_compile(
+def _builtins_compile_code(
     source: Any,
     filename: Any,
     mode: Any,
-    flags: Any = 0,
-    dont_inherit: Any = False,
-    optimize: Any = -1,
+    sage_mode: Any,
 ) -> _Code:
-    del flags, dont_inherit, optimize
     source = _builtins_code_source(source)
     filename = str(filename)
     mode = str(mode)
@@ -5926,7 +6023,7 @@ def ρσ_compile(
         native_code = runtime.reflect.apply(
             runtime.reflect.get(helper, "compile"),
             helper,
-            [source, filename, mode],
+            [source, filename, mode, sage_mode],
         )
     except SyntaxError as error:
         if runtime.strict_equal(
@@ -5936,6 +6033,44 @@ def ρσ_compile(
             raise IndentationError(str(error))  # noqa: B904
         raise
     return _Code(source, filename, mode, native_code)
+
+
+def ρσ_compile(
+    source: Any,
+    filename: Any,
+    mode: Any,
+    flags: Any = 0,
+    dont_inherit: Any = False,
+    optimize: Any = -1,
+) -> _Code:
+    del flags, dont_inherit, optimize
+    return _builtins_compile_code(source, filename, mode, False)
+
+
+def sage_eval(
+    source: Any,
+    locals: Any = None,
+    cmds: Any = "",
+    preparse: Any = True,
+) -> Any:
+    """Evaluate source with Sage syntax and exact arithmetic semantics."""
+    if isinstance(source, (list, tuple)):
+        cmds = source[0]
+        if len(source) > 2:
+            locals = source[2].copy()
+        source = source[1]
+    source = _builtins_code_source(source)
+    if locals is None:
+        locals = dict()
+    if not isinstance(locals, dict):
+        raise TypeError("locals must be a dictionary")
+    if cmds:
+        program = str(cmds) + "\n__sagejs_sage_eval_result__ = (\n" + source + "\n)"
+        code = _builtins_compile_code(program, "<sage-eval>", "exec", preparse)
+        ρσ_exec(code, locals, locals)
+        return locals.pop("__sagejs_sage_eval_result__")
+    code = _builtins_compile_code(source, "<sage-eval>", "eval", preparse)
+    return ρσ_eval(code, locals, locals)
 
 
 def _builtins_dynamic_namespaces(
@@ -6843,7 +6978,11 @@ def ρσ_apply_metaclass(
     compiled_class: Any,
 ) -> Any:
     """Create a class through `metaclass` from a compiled class body."""
-    namespace = _builtins_namespace_dict(compiled_class)
+    # A class exposes a read-only live mappingproxy, while a metaclass receives
+    # the mutable namespace produced by executing the class body.  Detach a
+    # copy so custom metaclasses can normalize entries before ``type.__new__``
+    # without mutating the temporary compiler-generated class.
+    namespace = _builtins_namespace_dict(compiled_class).copy()
     # Class construction invokes ``type(metaclass).__call__``.  It must not
     # invoke a ``__call__`` defined *by* the metaclass: that hook constructs
     # instances of the eventual class (RegexLexerMeta is a prominent real
@@ -7525,11 +7664,7 @@ def factorial(value: Any) -> Any:
         native_factorial = runtime.reflect.get(backend, "factorial")
         if runtime.jstype(native_factorial) == "function":
             return runtime.normalize_integer(
-                runtime.reflect.apply(
-                    native_factorial,
-                    backend,
-                    [integer_number],
-                )
+                runtime.reflect.apply(native_factorial, backend, [integer_number])
             )
     return _factorial_product(2, integer_number)
 
@@ -8005,117 +8140,16 @@ def _moebius_range(start: Any, stop: Any = None) -> Any:
 runtime.reflect.set(moebius, "range", _moebius_range)
 
 
-_ZETA_BERNOULLI = [
-    0.16666666666666666,
-    -0.03333333333333333,
-    0.023809523809523808,
-    -0.03333333333333333,
-    0.07575757575757576,
-    -0.2531135531135531,
-    1.1666666666666667,
-    -7.092156862745098,
-]
+_special_functions_module_cache = runtime.undefined
 
 
-def _zeta_integer_greater_than_one(value: Any) -> Any:
-    if not runtime.is_exact_integer(value):
-        raise TypeError("the Euler--Maclaurin shortcut requires an integer")
-    s = runtime.number(value)
-    if s <= 1:
-        raise ValueError("the Euler--Maclaurin shortcut requires an integer > 1")
-
-    cutoff = 16
-    answer = 0.0
-    for n in range(1, cutoff):
-        answer += runtime.math.pow(n, -s)
-    answer += runtime.math.pow(cutoff, 1 - s) / (s - 1) + 0.5 * runtime.math.pow(
-        cutoff, -s
-    )
-
-    rising = s
-    factorial = 2.0
-    for index in range(len(_ZETA_BERNOULLI)):
-        if index:
-            rising *= (s + 2 * index - 1) * (s + 2 * index)
-            factorial *= (2 * index + 1) * (2 * index + 2)
-        answer += (
-            _ZETA_BERNOULLI[index]
-            * rising
-            / factorial
-            * runtime.math.pow(cutoff, -(s + 2 * index + 1))
+def _special_functions_module() -> Any:
+    global _special_functions_module_cache
+    if _special_functions_module_cache is runtime.undefined:
+        _special_functions_module_cache = _builtins_default_import(
+            "sagejs.special_functions", fromlist=["complex_gamma"]
         )
-    return answer
-
-
-_riemann_zeta_module_cache = runtime.undefined
-
-
-def _riemann_zeta_module() -> Any:
-    global _riemann_zeta_module_cache
-    if _riemann_zeta_module_cache is runtime.undefined:
-        _riemann_zeta_module_cache = _builtins_default_import(
-            "sagejs.number_fields.riemann_zeta",
-            fromlist=["riemann_zeta"],
-        )
-    return _riemann_zeta_module_cache
-
-
-def _analytic_precision(value: Any) -> Any:
-    if value is None:
-        value = 53
-    precision = runtime.normalize_integer(value)
-    if (
-        runtime.jstype(precision) != "number"
-        or not runtime.number.isSafeInteger(precision)
-        or precision < 16
-    ):
-        raise ValueError("analytic precision must be at least 16 bits")
-    return precision
-
-
-def _analytic_complex_point(field: Any, value: Any) -> Any:
-    if runtime.array.isArray(value) and len(value) == 2:
-        return field(value[0], value[1])
-    try:
-        return field(value)
-    except Exception:
-        evaluator_factory = getattr(value, "_plot_complex_callable", None)
-        if evaluator_factory is not None:
-            evaluator = evaluator_factory([])
-            evaluated = runtime.reflect.apply(evaluator, runtime.undefined, [])
-            real_part = runtime.reflect.get(evaluated, "real")
-            imaginary_part = runtime.reflect.get(evaluated, "imag")
-            if (
-                runtime.jstype(real_part) != "number"
-                or runtime.jstype(imaginary_part) != "number"
-                or not runtime.number.isFinite(real_part)
-                or not runtime.number.isFinite(imaginary_part)
-            ):
-                return _riemann_raise_nonfinite()
-            return field(real_part, imaginary_part)
-        real_part = getattr(value, "real", runtime.undefined)
-        imaginary_part = getattr(value, "imag", runtime.undefined)
-        if (
-            real_part is not runtime.undefined
-            and imaginary_part is not runtime.undefined
-        ):
-            if callable(real_part):
-                real_part = real_part()
-            if callable(imaginary_part):
-                imaginary_part = imaginary_part()
-            try:
-                return field(str(real_part), str(imaginary_part))
-            except Exception:
-                pass
-        raise
-
-
-def _analytic_complex_batch(points: Any, precision: Any) -> Any:
-    if not runtime.array.isArray(points) or len(points) == 0:
-        raise ValueError("analytic points must be a nonempty list or tuple")
-    precision = _analytic_precision(precision)
-    field = runtime.reflect.get(runtime.global_object, "ComplexField")(precision)
-    return field, [_analytic_complex_point(field, point)._native for point in points]
+    return _special_functions_module_cache
 
 
 def complex_gamma_values(points: Any, prec: Any = 53) -> list[Any]:
@@ -8126,19 +8160,13 @@ def complex_gamma_values(points: Any, prec: Any = 53) -> list[Any]:
     implement symbolic gamma or exact integer/half-integer simplification.
     """
 
-    field, native_points = _analytic_complex_batch(points, prec)
-    backend = runtime.flint_backend()
-    evaluator = getattr(backend, "complexGammaValues", runtime.undefined)
-    if evaluator is runtime.undefined:
-        raise RuntimeError("the complex-gamma batch backend is unavailable")
-    native_values = evaluator(native_points, field.precision())
-    return [field._fromNative(value) for value in native_values]
+    return _special_functions_module().complex_gamma_values(points, prec=prec)
 
 
 def complex_gamma(value: Any, prec: Any = 53) -> Any:
     """Numerically evaluate complex gamma in `ComplexField(prec)`."""
 
-    return complex_gamma_values([value], prec=prec)[0]
+    return _special_functions_module().complex_gamma(value, prec=prec)
 
 
 def riemann_xi_values(points: Any, prec: Any = 53) -> list[Any]:
@@ -8150,93 +8178,25 @@ def riemann_xi_values(points: Any, prec: Any = 53) -> list[Any]:
     receipt-backed Arb/Acb batch is available.
     """
 
-    field, native_points = _analytic_complex_batch(points, prec)
-    backend = runtime.flint_backend()
-    evaluator = getattr(backend, "riemannXiValues", runtime.undefined)
-    if evaluator is runtime.undefined:
-        scalar = getattr(backend, "riemannXiStandardValue", runtime.undefined)
-        if scalar is runtime.undefined:
-            raise RuntimeError("the Riemann-xi backend is unavailable")
-        native_values = [scalar(point, field.precision()) for point in native_points]
-    else:
-        native_values = evaluator(native_points, field.precision())
-    two = field(2)
-    return [field._fromNative(value) * two for value in native_values]
+    return _special_functions_module().riemann_xi_values(points, prec=prec)
 
 
 def riemann_xi(value: Any, prec: Any = 53) -> Any:
     """Numerically evaluate no-half-normalized Riemann xi."""
 
-    return riemann_xi_values([value], prec=prec)[0]
-
-
-class _FlintRiemannZetaProvider:
-    def _field(self, precision: Any) -> Any:
-        return runtime.reflect.get(runtime.global_object, "ComplexField")(precision)
-
-    def _point(self, field: Any, value: Any) -> Any:
-        return _analytic_complex_point(field, value)
-
-    def jet(
-        self,
-        value: Any,
-        first_order: Any,
-        count: Any,
-        deflate: Any,
-        precision: Any,
-    ) -> list[Any]:
-        field = self._field(precision)
-        point = self._point(field, value)
-        native_values = runtime.flint_backend().riemannZetaJet(
-            point._native,
-            first_order,
-            count,
-            deflate,
-            precision,
-        )
-        return [field._fromNative(item) for item in native_values]
-
-    def values(
-        self,
-        points: Any,
-        derivative: Any,
-        precision: Any,
-    ) -> list[Any]:
-        if derivative != 0:
-            return [
-                self.jet(point, derivative, 1, False, precision)[0] for point in points
-            ]
-        field = self._field(precision)
-        native_points = [self._point(field, point)._native for point in points]
-        native_values = runtime.flint_backend().riemannZetaValues(
-            native_points, precision
-        )
-        return [field._fromNative(item) for item in native_values]
-
-    def xi(self, value: Any, precision: Any) -> Any:
-        field = self._field(precision)
-        standard = field._fromNative(
-            runtime.flint_backend().riemannXiStandardValue(
-                self._point(field, value)._native, precision
-            )
-        )
-        return standard * 2
-
-
-_flint_riemann_zeta_provider = _FlintRiemannZetaProvider()
-
-
-def _riemann_raise_nonfinite() -> Any:
-    raise ValueError("Riemann-zeta point must be finite")
+    return _special_functions_module().riemann_xi(value, prec=prec)
 
 
 def RiemannZeta(prec: Any = 53) -> Any:
     """Return an arbitrary-precision FLINT/Arb Riemann-zeta evaluator."""
 
-    return _riemann_zeta_module().RiemannZetaEvaluator(
-        prec,
-        provider=_flint_riemann_zeta_provider,
-    )
+    return _special_functions_module().RiemannZeta(prec)
+
+
+def zeta(value: Any, derivative: Any = 0, prec: Any = None) -> Any:
+    """Numerically evaluate the Riemann zeta function or one derivative."""
+
+    return _special_functions_module().zeta(value, derivative=derivative, prec=prec)
 
 
 def kronecker_character(discriminant: Any, reduce: Any = False) -> Any:
@@ -8254,22 +8214,6 @@ def kronecker_character(discriminant: Any, reduce: Any = False) -> Any:
         reduce_radicand=reduce,
         group_factory=group_factory,
     )
-
-
-def zeta(value: Any, derivative: Any = 0, prec: Any = None) -> Any:
-    """Numerically evaluate the Riemann zeta function or one derivative."""
-
-    if (
-        prec is None
-        and runtime.is_exact_integer(value)
-        and runtime.integer_bigint(value) > 1
-        and runtime.integer_bigint(derivative) == 0
-    ):
-        return _zeta_integer_greater_than_one(value)
-    precision = 53 if prec is None else prec
-    if prec is None and hasattr(value, "precision"):
-        precision = value.precision()
-    return RiemannZeta(precision).value(value, derivative=derivative)
 
 
 def _sage_random_word() -> _Int:
@@ -9132,6 +9076,39 @@ def copy(value: Any) -> Any:
         raise TypeError("object does not support shallow copying")  # noqa: B904
 
 
+def flatten(
+    in_list: Any,
+    ltypes: Any = None,
+    max_level: _Int = 1000000000,
+) -> list[Any]:
+    """Flatten nested values of the selected types into a new list.
+
+    The outer input is always iterated. `max_level=0` keeps its elements
+    unchanged, while larger values recursively flatten that many nested
+    levels. By default only lists and tuples are flattened, matching Sage.
+    """
+    use_default_types = ltypes is None
+    answer = []
+    values = list(in_list)
+    pending = []
+    for index in range(len(values) - 1, -1, -1):
+        pending.append((values[index], 0))
+    while pending:
+        value, level = pending.pop()
+        flatten_value = (
+            isinstance(value, (list, tuple))
+            if use_default_types
+            else isinstance(value, ltypes)
+        )
+        if level < max_level and flatten_value:
+            nested = list(value)
+            for index in range(len(nested) - 1, -1, -1):
+                pending.append((nested[index], level + 1))
+        else:
+            answer.append(value)
+    return answer
+
+
 def quit(code: Any = None) -> None:
     """Exit the current Sage.js or Python session.
 
@@ -9207,15 +9184,19 @@ runtime.set_class_repr(ρσ_bool, "<class 'bool'>")
 runtime.set_class_repr(ρσ_float, "<class 'float'>")
 runtime.set_class_repr(ρσ_type, "<class 'type'>")
 runtime.set_class_repr(runtime.function_class, "<class 'function'>")
-for builtin_numeric_type, _builtin_type_name in [
-    (ρσ_int, "int"),
-    (ρσ_bool, "bool"),
-    (ρσ_float, "float"),
-    (ρσ_type, "type"),
-]:
-    runtime.reflect.set(builtin_numeric_type, "__name__", _builtin_type_name)
-    runtime.reflect.set(builtin_numeric_type, "__qualname__", _builtin_type_name)
-    runtime.reflect.set(builtin_numeric_type, "__module__", "builtins")
+
+
+def _builtins_set_type_metadata(cls: Any, name: _Str) -> None:
+    runtime.reflect.set(cls, "__name__", name)
+    runtime.reflect.set(cls, "__qualname__", name)
+    runtime.reflect.set(cls, "__module__", "builtins")
+
+
+_builtins_set_type_metadata(ρσ_int, "int")
+_builtins_set_type_metadata(ρσ_bool, "bool")
+_builtins_set_type_metadata(ρσ_float, "float")
+_builtins_set_type_metadata(runtime.function_class, "function")
+for builtin_numeric_type in (ρσ_int, ρσ_bool, ρσ_float, ρσ_type):
     runtime.object.defineProperty(
         builtin_numeric_type,
         "__python_type__",
@@ -9223,10 +9204,10 @@ for builtin_numeric_type, _builtin_type_name in [
     )
 runtime.reflect.set(runtime.function_class, "__python_type__", ρσ_type)
 runtime.set_class_repr(ρσ_tuple, "<class 'tuple'>")
-runtime.reflect.set(ρσ_tuple, "__name__", "tuple")
-runtime.reflect.set(ρσ_tuple, "__qualname__", "tuple")
 runtime.set_class_repr(ρσ_property, "<class 'property'>")
 runtime.set_class_repr(SageProperty, "<class 'property'>")
+_builtins_set_type_metadata(ρσ_tuple, "tuple")
+_builtins_set_type_metadata(ρσ_property, "property")
 for builtin_factory_type in (ρσ_tuple, ρσ_property):
     # These Python-callable factories implement builtin classes.  Compiled
     # baselib functions receive lazy function metadata, so replace that marker
@@ -9277,6 +9258,20 @@ def _builtins_object_new(cls: Any) -> Any:
     )
     if not _builtins_is_python_class(cls) or not owns_python_bases:
         raise TypeError("object.__new__() argument 1 must be a type")
+    callable_allocation = runtime.reflect.get(
+        cls,
+        _BUILTINS_CALLABLE_ALLOCATION_KEY,
+    )
+    if callable_allocation is not runtime.undefined:
+        # Consume the prepared host function.  A custom ``__new__`` can call
+        # object.__new__ at most once for the allocation it returns; deleting
+        # here also makes a second explicit call allocate a distinct object,
+        # as it does in CPython.
+        runtime.reflect.deleteProperty(
+            cls,
+            _BUILTINS_CALLABLE_ALLOCATION_KEY,
+        )
+        return callable_allocation
     return runtime.object.create(runtime.reflect.get(cls, "prototype"))
 
 

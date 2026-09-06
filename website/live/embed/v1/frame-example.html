@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sage.js Cell iframe example</title>
+    <style>
+      body { max-width: 58rem; margin: 2rem auto; padding: 0 1rem; font: 16px/1.5 system-ui, sans-serif; }
+      iframe { width: 100%; min-height: 28rem; border: 0; }
+    </style>
+    <script type="module" src="./frame-example.mjs"></script>
+  </head>
+  <body>
+    <h1>Sandboxable Sage.js Cell frame</h1>
+    <p id="frame-status" role="status">Loading the frame…</p>
+    <iframe id="sagejs-frame" sandbox="allow-scripts allow-same-origin" title="Interactive Sage.js calculation"></iframe>
+  </body>
+</html>

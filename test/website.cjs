@@ -7,10 +7,15 @@ const path = require("node:path");
 const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
-const packageVersion = JSON.parse(
-  fs.readFileSync(path.join(root, "package.json"), "utf8"),
-).version;
 const website = path.join(root, "website");
+const publishedRelease = JSON.parse(
+  fs.readFileSync(path.join(website, "published-release.json"), "utf8"),
+);
+assert.match(publishedRelease.version, /^\d+\.\d+\.\d+$/);
+assert.match(
+  publishedRelease.releaseTag,
+  new RegExp(`^v${publishedRelease.version.replaceAll(".", "\\.")}(?:\\+release\\.[1-9][0-9]*)?$`),
+);
 const payload = JSON.parse(
   fs.readFileSync(path.join(website, "capabilities.json"), "utf8"),
 );
@@ -21,6 +26,10 @@ const html = fs.readFileSync(path.join(website, "index.html"), "utf8");
 const script = fs.readFileSync(path.join(website, "app.js"), "utf8");
 const pagesWorkflow = fs.readFileSync(
   path.join(root, ".github/workflows/pages.yml"),
+  "utf8",
+);
+const installerStager = fs.readFileSync(
+  path.join(root, "scripts/stage-website-installer.cjs"),
   "utf8",
 );
 const stdlibCoverage = JSON.parse(
@@ -218,10 +227,17 @@ test("dashboard covers the three questions and all install paths", () => {
   }
   assert.match(html, /@sagemath\/sagejs/);
   assert.match(html, /curl -fsSL https:\/\/sagejs\.org\/install\.sh \| sh/);
-  assert.match(pagesWorkflow, /cp install\.sh website\/install\.sh/);
+  assert.match(pagesWorkflow, /node scripts\/stage-website-installer\.cjs/);
+  assert.match(installerStager, /published-release\.json/);
+  assert.match(installerStager, /release\.releaseTag/);
+  assert.match(installerStager, /SAGEJS_VERSION/);
   assert.match(
     html,
-    new RegExp(`Early alpha · v${packageVersion.replaceAll(".", "\\.")}`),
+    new RegExp(`Early alpha · v${publishedRelease.version.replaceAll(".", "\\.")}`),
+  );
+  assert.match(
+    html,
+    new RegExp(`@sagemath/sagejs@${publishedRelease.version.replaceAll(".", "\\.")}`),
   );
   assert.match(html, /sagejs-windows-x64\.zip/);
   assert.match(html, /GPL-3\.0/);

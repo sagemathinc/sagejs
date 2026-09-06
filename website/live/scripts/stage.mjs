@@ -102,6 +102,19 @@ async function stageKatex(target) {
   }
 }
 
+async function stageWidgets(target) {
+  const manager = require.resolve("@cocalc/widgets");
+  const controls = require.resolve(
+    "@jupyter-widgets/controls/css/widgets.built.css",
+  );
+  const destination = path.join(target, "vendor", "widgets");
+  await copyFileWithParents(manager, path.join(destination, "index.mjs"));
+  await copyFileWithParents(
+    controls,
+    path.join(destination, "widgets.built.css"),
+  );
+}
+
 async function json(filename) {
   return JSON.parse(await readFile(filename, "utf8"));
 }
@@ -188,7 +201,7 @@ export async function stageRelease({
   await rm(target, { recursive: true, force: true });
   await mkdir(target, { recursive: true });
   await copyTree(appRoot, target, SHELL_EXCLUDED);
-  await stageKatex(target);
+  await Promise.all([stageKatex(target), stageWidgets(target)]);
   await build({
     entryPoints: [path.join(appRoot, "codemirror-editor.mjs")],
     outfile: path.join(target, "codemirror-editor.mjs"),

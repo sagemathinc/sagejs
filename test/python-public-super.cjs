@@ -12,7 +12,7 @@ const { isolatedEnvironment } = require("../scripts/run-python-compat.cjs");
 const root = join(__dirname, "..");
 
 async function compileStandaloneFixture() {
-  const [root, input, outputFile] = process.argv.slice(2);
+  const [root, input, outputFile, scope] = process.argv.slice(2);
   const { readFileSync, writeFileSync } = require("node:fs");
   const { join } = require("node:path");
   const { default: createCompiler } = require(join(root, "dist/tools/compiler.js"));
@@ -30,7 +30,7 @@ async function compileStandaloneFixture() {
     const output = new compiler.OutputStream({
       baselib_plain: standaloneRuntimeRequirePrelude() +
         readFileSync(join(root, "dist/compiler/baselib-plain-pretty.js"), "utf8"),
-      beautify: true, private_scope: true, exact_integers: true,
+      beautify: true, private_scope: scope !== "global", exact_integers: true,
       python_tuples: true, python_truthiness: true, python_attributes: true,
     });
     ast.print(output);
@@ -49,7 +49,7 @@ function clean(result) {
 }
 
 for (const fixture of ["python-public-super.py", "python-public-builtins-no-import.py"])
-for (const mode of ["node-runtime", "standalone"]) {
+for (const mode of ["node-runtime", "standalone", "standalone-global"]) {
   test(`${mode}: ${fixture} publishes ordinary Python builtin lookup`, async () => {
     const scratch = mkdtempSync(join(tmpdir(), "sagejs-public-super-"));
     try {
@@ -71,9 +71,16 @@ for (const mode of ["node-runtime", "standalone"]) {
         const driver = join(scratch, "compile.cjs");
         writeFileSync(driver, `(${compileStandaloneFixture.toString()})().catch(error => { console.error(error); process.exitCode = 1; });\n`);
         clean(await executeAssertion(process.execPath,
-          ["--max-old-space-size=512", driver, root, pythonFile, javascriptFile], options));
+          ["--max-old-space-size=512", driver, root, pythonFile, javascriptFile,
+            mode === "standalone-global" ? "global" : "private"], options));
+        // The browser evaluates a non-strict bootstrap in the worker global
+        // realm, unlike a Node file's CommonJS wrapper. Preserve that distinction
+        // so stale host aliases cannot hide behind private-scope-only tests.
+        const execution = mode === "standalone-global"
+          ? ["-e", "require('node:vm').runInThisContext('void 0;\\n' + require('node:fs').readFileSync(process.argv[1], 'utf8'))", javascriptFile]
+          : [javascriptFile];
         clean(await executeAssertion(process.execPath,
-          ["--max-old-space-size=512", javascriptFile], options));
+          ["--max-old-space-size=512", ...execution], options));
       }
     } finally { rmSync(scratch, { recursive: true, force: true }); }
   });

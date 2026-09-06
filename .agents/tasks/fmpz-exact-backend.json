@@ -1,0 +1,106 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fmpz-exact-backend",
+  "title": "Resident FLINT fmpz exact backend witness",
+  "lane": "native-compiler",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Implement and qualify the smallest source-transparent compiler slice that represents resident exact integer-vector state with FLINT fmpz values, including promoted arithmetic, Python floor division and remainder, and direct fmpz matrix entry round trips without hot-loop mpz conversion",
+  "base_commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+  "claims": [
+    "tools/native-kernel/fmpz-backend.cjs",
+    "tools/native-kernel/fmpz-runtime.cjs",
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/integer-ir.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/compiler.cjs",
+    "tools/native-kernel/ffi-codegen.cjs",
+    "tools/native-kernel/js-backend.cjs",
+    "tools/native-kernel/test/fmpz-backend.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "ARCHITECTURE.md",
+    "FFI.md",
+    "architecture/decisions/0004-resident-exact-native-machine.md"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "same-source generated JavaScript and existing GMP exact backend differential execution",
+      "generated C structural inspection and FLINT promotion-boundary cases"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test tools/native-kernel/test/fmpz-backend.cjs",
+    "pnpm merge:check",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "node test/native-kernel.cjs",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/fmpz-backend.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.823,
+      "started_at": "2026-09-04T06:51:58.078Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "7da3992b4fb37a81ca89f76fb7dde5550249b4ac41f542759d04d30a7715e4d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.571,
+      "started_at": "2026-09-04T06:52:05.076Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "7da3992b4fb37a81ca89f76fb7dde5550249b4ac41f542759d04d30a7715e4d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 42.375,
+      "started_at": "2026-09-04T06:52:14.028Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "7da3992b4fb37a81ca89f76fb7dde5550249b4ac41f542759d04d30a7715e4d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/native-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 67.202,
+      "started_at": "2026-09-04T06:53:01.054Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "7da3992b4fb37a81ca89f76fb7dde5550249b4ac41f542759d04d30a7715e4d9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a deliberately narrow internal FLINT fmpz backend for closed exact-arena programs. Qualified `arena.integer_vector(capacity, 0)` stores inline-promoting `fmpz` values, performs promoted scalar/vector arithmetic with Python floor division and remainder, and passes exact values directly through fmpz matrix entry calls. The ordinary public ABI converts once at entry and exit; explicit tagged, GMP, and same-source JavaScript implementations remain available as differential oracles. Generated-C evidence proves the resident vector has no per-entry `mpz_init` and the selected internal function contains no `mpz_*` operation or fmpz/mpz bridge.",
+    "risks": [
+      "The backend is intentionally fail-closed outside one arena, unbounded vectors, uint64 indices, Integer results, and the three direct fmpz matrix declarations; the cubic root therefore remains on GMP.",
+      "Repository-wide `pnpm architecture:check` reaches all native/package/Wasm checks but fails the optimizer-opportunity manifest freshness check already inherited from the integration base; that merge-owned census must be regenerated after compiler lanes land.",
+      "`pnpm test:native` passed every correctness, FFI, sanitizer, compiler, and production-pack stage, then failed only the unrelated final dense-QQ performance budget under shared-container load (`select_rows_300`, `select_columns_300`, and `stack_300x300`)."
+    ],
+    "next_steps": [
+      "Teach the fmpz emitter to lower a closed native call graph with bool and tuple results, preserving direct fmpz arguments across helper calls.",
+      "Add a resident fmpz import/view for IntegerBuffer parameters so the cubic root does not perform an mpz/fmpz conversion on every buffer access.",
+      "Qualify `uint64.from_integer_checked` and the cubic root's remaining twelve FFI declarations, then require generated-C evidence that the complete root has no mpz operations in its hot region before enabling selection."
+    ]
+  }
+}

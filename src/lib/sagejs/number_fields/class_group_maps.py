@@ -43,6 +43,10 @@ from sagejs.number_fields.class_group_proof import (
     UnconditionalMinkowskiProofRecord,
     proof_label,
 )
+from sagejs.number_fields.class_group_proof_contracts import (
+    BDF_CLASS_CHARACTER_GRH,
+    analytic_class_unit_assumption_statement,
+)
 
 _PROGRESS_SCHEMA = "sagejs.number-fields.minkowski-proof-progress.v1"
 _PARTITION_SCHEMA = "sagejs.number-fields.minkowski-proof-partition.v1"
@@ -478,13 +482,24 @@ def _conditional_factor_base_plan(
         max_memory_bytes=_CONDITIONAL_MAX_MEMORY_BYTES,
     )
     plan.require_feasible()
+    expected_assumptions = (
+        () if "minkowski" in theorem.lower() else (BDF_CLASS_CHARACTER_GRH,)
+    )
     if (
         str(plan.theorem) != theorem
         or _integer(plan.bound, "conditional theorem bound") != bound
-        or tuple(plan.assumptions) != ("GRH for the Dedekind zeta function",)
+        or tuple(plan.assumptions) != expected_assumptions
     ):
         raise ArithmeticError("conditional theorem metadata failed exact replay")
     return module, plan, _canonical_payload(plan, "conditional factor-base plan")
+
+
+def _conditional_completion_assumption(theorem: str) -> str:
+    """Name every GRH hypothesis used after the exact relation search."""
+    plan_assumptions = (
+        () if "minkowski" in theorem.lower() else (BDF_CLASS_CHARACTER_GRH,)
+    )
+    return analytic_class_unit_assumption_statement(theorem, plan_assumptions)
 
 
 def _finalize_generator_relation_receipt(
@@ -577,7 +592,7 @@ def _producer_conditional_evidence(
         ],
         "theorem": theorem,
         "bound": [bound, 1],
-        "assumption": "GRH for the Dedekind zeta function",
+        "assumption": _conditional_completion_assumption(theorem),
         "relation_count": relation_count,
         "factor_base_plan": plan_payload,
         "factor_base": (
@@ -2333,6 +2348,7 @@ class _EngineProofReplayContext:
             or evidence.get("theorem") != record.theorem
             or evidence.get("bound") != list(record.bound)
             or evidence.get("assumption") != record.assumption
+            or record.assumption != _conditional_completion_assumption(record.theorem)
             or _integer(evidence.get("relation_count"), "conditional relation count")
             != record.relation_count
         ):
@@ -2841,7 +2857,7 @@ class _EngineProofReplayContext:
             and record.theorem == self.engine_group.factor_base_theorem
             and record.bound == (int(diagnostics.get("factor_base_bound")), 1)
             and record.relation_count == int(diagnostics.get("relations"))
-            and "GRH" in record.assumption.upper()
+            and record.assumption == _conditional_completion_assumption(record.theorem)
             and self._conditional_evidence_payload is not None
             and (
                 accepted
@@ -3637,7 +3653,7 @@ def _class_group_from_engine_result(
             theorem,
             (bound, 1),
             relation_count=relation_count,
-            assumption="GRH for the Dedekind zeta function",
+            assumption=_conditional_completion_assumption(theorem),
             saturation=saturation,
             analytic_index_one=True,
         )

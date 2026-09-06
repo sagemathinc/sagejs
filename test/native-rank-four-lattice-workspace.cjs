@@ -193,7 +193,7 @@ test("Magma authenticates the independent Brandt rank-four fixture", () => {
 
 test("rank-four state uses the generic resident exact ownership graph", async () => {
   const ir = await lowerSource(readFileSync(sourcePath, "utf8"), sourcePath);
-  assert.equal(ir.version, 34);
+  assert.equal(ir.version, 38);
   const fn = ir.functions.find(
     (candidate) => candidate.name === "rank_four_lattice_workspace",
   );

@@ -9,39 +9,62 @@ generated: true
 This file is generated from the runtime DocSpec registry. Edit the
 adjacent public docstring and registration metadata, then regenerate it.
 
+## `AbelianVariety`
+
+```sage
+AbelianVariety(X: Any) -> Any
+```
+
+Construct a weight-$2$ $\Gamma_0(N)$ modular abelian variety.
+
+A level or `Gamma0` group constructs $J_0(N)$. A sign-zero cuspidal
+modular-symbol subspace constructs its saturated embedded subvariety, and
+a normalized newform constructs the connected quotient $A_f$.
+
+```sage
+sage: AbelianVariety(11).dimension()
+1
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.abvar.constructor`
+- Tags: modular abelian varieties, newforms, quotients, integral homology
+- Backends: Sage.js exact modular symbols, FLINT integer kernels, Hermite forms, and Smith forms
+- Sage compatibility: partial — Accepts Gamma0 levels/groups, sign-zero cuspidal modular symbols, and weight-two normalized newforms. Newforms construct connected quotients and also expose the embedded isogenous subvariety.
+- Limitations: Products and arbitrary Hecke-ideal quotients are not implemented. Only weight-two Gamma0 spaces over QQ are accepted.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular abelian variety constructors](https://doc.sagemath.org/html/en/reference/modabvar/); license GPL-2.0-or-later
+
 ## `AffineSpace`
 
 ```sage
-AffineSpace(dimension: int, base: sage.Parent, names: Any='x') -> AffineSpaceParent
+AffineSpace(first: Any, second: Any, names: Any='x') -> AffineSpaceParent
 ```
 
-Construct affine space with the requested coordinate names.
-
-### Example
+Construct affine space in either Sage-compatible argument order.
 
 ```sage
-sage: A = AffineSpace(2, QQ, 'xy')
-sage: A
-Affine Space of dimension 2 over Rational Field
-sage: A.gens()
-(x, y)
+sage: A = AffineSpace(QQ, 2, names=("x", "y"))
+sage: A.dimension()
+2
 ```
-
-The coordinate ring is a FLINT-backed multivariate polynomial ring.
 
 ### Metadata
 
 - Kind: `function`
 - Module: `sage.schemes`
-- Tags: algebraic geometry, affine schemes, curves, multivariate polynomials
-- Backends: FLINT, Sage.js algebraic geometry layer
-- Sage compatibility: partial — Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation.
-- Limitations: General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal.
+- Tags: algebraic geometry, affine schemes, projective schemes, curves
+- Backends: Sage.js exact polynomial and ideal layers
+- Sage compatibility: partial — Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary.
 
 ### Provenance
 
-- `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
-- `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
+- `sage-derived` — [SageMath schemes public API](https://doc.sagemath.org/html/en/reference/schemes/); license GPL-2.0-or-later
+- `sagejs-original` — [Sage.js no-Singular algebraic geometry](https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md); license GPL-3.0-only
 
 ## `animate`
 
@@ -603,39 +626,31 @@ Return a cube centered at `center` with side length `size`.
 ## `Curve`
 
 ```sage
-Curve(polynomial: Any) -> AffinePlaneCurve
+Curve(polynomial: Any) -> Any
 ```
 
-Construct an affine plane curve from a multivariate polynomial.
-
-### Example
+Construct an affine or projective plane curve from one polynomial.
 
 ```sage
-sage: x, y = AffineSpace(2, QQ, 'xy').gens()
-sage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))
-sage: C.irreducible_components()
-[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
-  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
-  x^3 + y^3 - 1]
+sage: R = PolynomialRing(QQ, names=("x", "y"))
+sage: x, y = R.gens()
+sage: C = Curve(y^2 - x^3)
+sage: C.degree()
+3
 ```
-
-Hypersurface components use FLINT multivariate factorization. Plane-curve
-intersections over `QQ` use a resultant followed by factorization and
-Gröbner bases. General primary decomposition is not yet implemented.
 
 ### Metadata
 
 - Kind: `function`
 - Module: `sage.schemes`
-- Tags: algebraic geometry, affine schemes, curves, multivariate polynomials
-- Backends: FLINT, Sage.js algebraic geometry layer
-- Sage compatibility: partial — Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation.
-- Limitations: General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal.
+- Tags: algebraic geometry, affine schemes, projective schemes, curves
+- Backends: Sage.js exact polynomial and ideal layers
+- Sage compatibility: partial — Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary.
 
 ### Provenance
 
-- `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
-- `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
+- `sage-derived` — [SageMath schemes public API](https://doc.sagemath.org/html/en/reference/schemes/); license GPL-2.0-or-later
+- `sagejs-original` — [Sage.js no-Singular algebraic geometry](https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md); license GPL-3.0-only
 
 ## `curve_fit`
 
@@ -1212,56 +1227,6 @@ sage: b.q_expansion(100).precision_absolute()
 - `sage-derived` — [SageMath modular forms API](https://doc.sagemath.org/html/en/reference/modfrm/); license GPL-2.0-or-later
 - `library-backed` — [FLINT exact arithmetic](https://flintlib.org/)
 - `sagejs-original` — Lightweight parent-aware modular-form implementation
-
-### References
-
-- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
-
-## `EisensteinSeriesElement.q_expansion`
-
-```sage
-q_expansion(prec: Any=None) -> Any
-```
-
-Return the `q`-expansion to absolute precision `O(q^prec)`.
-
-### Parameters
-
-- `prec` — nonnegative integer; when omitted, use the precision
-  requested when this basis element was constructed.
-
-### Examples
-
-The level-389 weight-2 Eisenstein form can be displayed briefly and
-then expanded farther without reconstructing its parent:
-
-```sage
-sage: E = EisensteinForms(389, 2)
-sage: b = E.basis(prec=8)[0]
-sage: b.q_expansion(5)
-1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)
-```
-
-### Implementation
-
-Level-one divisor sums are generated in one native FLINT sieve.
-Prime-level oldforms use the exact degeneracy map `q -> q^N`.
-
-### Metadata
-
-- Kind: `method`
-- Module: `sage.modular.modform.element`
-- Tags: modular forms, Eisenstein series, q-expansions, power series
-- Backends: FLINT, Sage.js native helpers
-- Sage compatibility: compatible — Returns an exact power series with Sage-style absolute precision notation.
-- Algorithm: Native exact divisor-sum sieve and degeneracy maps
-- Limitations: The currently constructed Eisenstein spaces cover the implemented congruence-subgroup cases.
-
-### Provenance
-
-- `sage-derived` — [SageMath modular-form element API](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/modform/element.html); license GPL-2.0-or-later
-- `library-backed` — [FLINT exact arithmetic](https://flintlib.org/)
-- `sagejs-original` — Native coefficient sieve and parent integration
 
 ### References
 
@@ -5440,6 +5405,34 @@ Return whether `value` is prime, using FLINT's primality test.
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `J0`
+
+```sage
+J0(N: Any) -> Any
+```
+
+Return the modular Jacobian $J_0(N)$ over $\mathbf Q$.
+
+```sage
+sage: J = J0(37)
+sage: (J.dimension(), J.integral_homology().rank())
+(2, 4)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.abvar.constructor`
+- Tags: modular abelian varieties, modular symbols, integral homology, Hecke operators
+- Backends: Sage.js exact modular symbols, FLINT integer kernels and normal forms
+- Sage compatibility: partial — The weight-two Gamma0/Q object and integral-homology core are implemented; general groups and arithmetic invariants remain future slices.
+- Limitations: Only weight two, Gamma0, trivial character, and base field QQ are supported. Period lattices, polarizations, modular degrees, and component groups are deferred.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular abelian variety object model](https://doc.sagemath.org/html/en/reference/modabvar/); license GPL-2.0-or-later
+- `sagejs-original` — Connected quotient lattice and construction-authenticated SagePack representation
+
 ## `Jacobian`
 
 ```sage
@@ -5948,9 +5941,10 @@ ModularForms(group: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=T
 
 Construct the implemented ambient space of modular forms.
 
-`group` is a level or congruence subgroup, `weight` is nonnegative,
-and `prec` controls the default displayed q-expansion precision.
-Initial ambient spaces are exact over `QQ`.
+`group` is a level, congruence subgroup, or Dirichlet character; `weight`
+is nonnegative, and `prec` controls the default displayed q-expansion
+precision. Trivial and quadratic characters are exact over `QQ`, while
+higher-order characters use their minimal exact cyclotomic value field.
 
 ### Examples
 
@@ -5962,9 +5956,9 @@ sage: M.cuspidal_subspace().dimension()
 1
 ```
 
-This foundation currently provides exact dimensions, cusp/Eisenstein
-subspaces, and Eisenstein q-expansions.  It is not yet SageMath's complete
-Hecke-module implementation.
+The returned cusp, Eisenstein, old, new, and ambient spaces share one
+parented exact element contract, including exact Hecke action and
+Sturm-certified coordinate recovery.
 
 ### Metadata
 
@@ -7746,10 +7740,10 @@ Plot a function of two variables as a three-dimensional surface.
 ## `point`
 
 ```sage
-point(points: Any, **options: Any) -> Graphics
+point(points: Any, **options: Any) -> Any
 ```
 
-Return a graphics object containing one or more points.
+Return one or more points, dispatching three coordinates to `point3d`.
 
 ### Metadata
 
@@ -7772,10 +7766,10 @@ Return a graphics object containing one or more points.
 ## `point2d`
 
 ```sage
-point(points: Any, **options: Any) -> Graphics
+point(points: Any, **options: Any) -> Any
 ```
 
-Return a graphics object containing one or more points.
+Return one or more points, dispatching three coordinates to `point3d`.
 
 ### Metadata
 
@@ -7820,10 +7814,10 @@ Return one or more points in three-dimensional space.
 ## `points`
 
 ```sage
-point(points: Any, **options: Any) -> Graphics
+point(points: Any, **options: Any) -> Any
 ```
 
-Return a graphics object containing one or more points.
+Return one or more points, dispatching three coordinates to `point3d`.
 
 ### Metadata
 
@@ -8096,6 +8090,33 @@ sage: prime_range(10, 20)
 ### References
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `ProjectiveSpace`
+
+```sage
+ProjectiveSpace(first: Any, second: Any, names: Any='x') -> ProjectiveSpaceParent
+```
+
+Construct projective space in either Sage-compatible argument order.
+
+```sage
+sage: P = ProjectiveSpace(QQ, 2, names=("x", "y", "z"))
+sage: P(2, 4, 6) == P(1, 2, 3)
+True
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.schemes`
+- Tags: algebraic geometry, affine schemes, projective schemes, curves
+- Backends: Sage.js exact polynomial and ideal layers
+- Sage compatibility: partial — Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary.
+
+### Provenance
+
+- `sage-derived` — [SageMath schemes public API](https://doc.sagemath.org/html/en/reference/schemes/); license GPL-2.0-or-later
+- `sagejs-original` — [Sage.js no-Singular algebraic geometry](https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md); license GPL-3.0-only
 
 ## `Qp`
 
@@ -8415,7 +8436,7 @@ well as documented methods of loaded Python classes.
 ```sage
 sage: search_doc('q-expansion')
 Search results for 'q-expansion':
-    EisensteinSeriesElement.q_expansion -- Return the ...
+    ClassicalModularFormElement.q_expansion -- Return the ...
 ```
 
 This intentionally searches the locally installed Sage.js API.  It does
@@ -8469,11 +8490,12 @@ q - q^3 + O(q^4)
 show(value: Any, *others: Any, **options: Any) -> Any
 ```
 
-Return `value` for rich display, combining graphics when requested.
+Display `value`, combining graphics when requested.
 
-Multiple graphics are added before display.  Notebook kernels render the
-returned semantic object using Plotly-compatible HTML/data, without
-requiring a Jupyter extension.
+Multiple graphics are added before display. Notebook and browser kernels
+publish the semantic object through their rich-display channel; text-only
+processes print its ordinary representation. This also works from inside
+callbacks, where returning the object would otherwise discard it.
 
 ### Metadata
 

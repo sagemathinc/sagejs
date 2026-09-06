@@ -1,0 +1,87 @@
+{
+  "fixture": "prep.doctests.json",
+  "skip": {},
+  "run": {},
+  "match": {},
+  "xfail": {},
+  "xfailGroups": [
+    {
+      "file": "src/doc/en/prep/advanced-2D-plotting.rst",
+      "classification": "planned",
+      "reason": "remaining Sage plotting and presentation compatibility",
+      "lines": [297, 322, 433, 454, 479, 688, 689, 690, 697, 698, 704, 705]
+    },
+    {
+      "file": "src/doc/en/prep/calculus.rst",
+      "classification": "planned",
+      "reason": "remaining symbolic calculus, vector, and plotting compatibility",
+      "lines": [79, 110, 140, 295, 304, 312, 322, 335, 343, 354, 415, 432, 446, 454, 467, 479, 531, 574, 623, 635, 698, 699, 700, 701, 702]
+    },
+    {
+      "file": "src/doc/en/prep/intro-tutorial.rst",
+      "classification": "planned",
+      "reason": "remaining symbolic evaluation and Sage presentation compatibility",
+      "lines": [150, 174, 206, 265, 280, 303, 417]
+    },
+    {
+      "file": "src/doc/en/prep/programming.rst",
+      "classification": "planned",
+      "reason": "remaining REPL display, table, and Sage object compatibility",
+      "lines": [111, 250, 280, 290, 478, 520, 526, 546, 557, 558, 565, 575, 691, 730, 732]
+    },
+    {
+      "file": "src/doc/en/prep/quickstarts/abstract-algebra.rst",
+      "classification": "planned",
+      "reason": "larger abstract-algebra subsystem tracked after the current PREP slice",
+      "lines": [31, 32, 37, 38, 43, 48, 49, 62, 81, 86, 88, 99, 103, 108, 109, 114, 121, 122, 129, 139, 145, 152, 186, 187, 192, 197, 202, 207, 211, 216, 244, 249, 269, 274, 275, 280, 284, 311, 337, 338, 356, 361]
+    },
+    {
+      "file": "src/doc/en/prep/quickstarts/differential-equations.rst",
+      "classification": "planned",
+      "reason": "remaining differential-equation solvers and plotting compatibility",
+      "lines": [57, 66, 68, 108, 114, 131, 139, 162, 168]
+    },
+    {
+      "file": "src/doc/en/prep/quickstarts/graphs-and-discrete.rst",
+      "classification": "planned",
+      "reason": "remaining graph, symbolic-matrix, and symmetric-function compatibility",
+      "lines": [37, 38, 53, 76, 77, 94, 96, 97, 98, 109, 118, 119, 124, 125, 127, 133, 219, 220, 221, 332]
+    },
+    {
+      "file": "src/doc/en/prep/quickstarts/linear-algebra.rst",
+      "classification": "planned",
+      "reason": "remaining Sage matrix constructor and linear-algebra compatibility",
+      "lines": [94, 192, 194, 287, 289, 306, 316, 328, 334]
+    },
+    {
+      "file": "src/doc/en/prep/quickstarts/multivariable-calculus.rst",
+      "classification": "planned",
+      "reason": "symbolic-vector calculus and three-dimensional plotting compatibility",
+      "lines": [103, 205, 233, 298, 299, 300]
+    },
+    {
+      "file": "src/doc/en/prep/quickstarts/number-theory.rst",
+      "classification": "planned",
+      "reason": "remaining elementary number theory, class-group, and teaching-crypto compatibility",
+      "lines": [32, 146, 232, 254, 255, 260, 262, 263, 264, 265]
+    },
+    {
+      "file": "src/doc/en/prep/quickstarts/numerical-analysis.rst",
+      "classification": "planned",
+      "reason": "remaining binary reconstruction, numeric approximation, and plotting compatibility",
+      "lines": [95, 121, 160, 161, 168, 193, 198, 206, 239, 300, 310, 311]
+    },
+    {
+      "file": "src/doc/en/prep/quickstarts/statistics-and-distributions.rst",
+      "classification": "planned",
+      "reason": "selected statistics, SciPy, and optional external-language compatibility",
+      "lines": [27, 38, 39, 59, 60, 67, 81, 82, 83, 92, 93, 94, 110, 111, 112, 122, 148, 149, 150, 151, 152, 154]
+    },
+    {
+      "file": "src/doc/en/prep/symbolics-and-basic-plotting.rst",
+      "classification": "planned",
+      "reason": "remaining symbolic simplification and three-dimensional plotting compatibility",
+      "lines": [67, 112, 122, 151, 166, 180, 207, 393, 428, 442, 444, 461]
+    }
+  ]
+}

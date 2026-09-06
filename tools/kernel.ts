@@ -31,7 +31,10 @@ import {
   SageSourceLanguage,
 } from "./polyglot";
 import { DocumentationCatalog } from "./documentation";
-import { kernelWorkerPath } from "./resources";
+import {
+  kernelWorkerPath,
+  singleExecutableNativeResourceDirectory,
+} from "./resources";
 
 export interface SageDisplayData {
   /** MIME type understood by an embedding renderer. */
@@ -45,6 +48,11 @@ export interface SageEvaluationResult {
   stdout: string;
   durationMs: number;
   display?: SageDisplayData;
+  /** Standard Python/Jupyter MIME bundle for the final expression. */
+  mimeBundle?: {
+    data: Record<string, unknown>;
+    metadata: Record<string, unknown>;
+  };
   /** Ordered stream/display events published while evaluating the cell. */
   events: SageOutputEvent[];
   /** Ordered comm events published while evaluating the cell. */
@@ -69,6 +77,14 @@ export interface SageEvaluationOptions {
   structuredResult?: boolean;
 }
 
+export interface SageRequestHandlers {
+  onOutput?: (text: string) => void;
+  onEvent?: (event: SageOutputEvent) => void;
+  onComm?: (event: SageCommEvent) => void;
+  /** Replace the worker if this request does not finish within this many milliseconds. */
+  timeout?: number;
+}
+
 export interface SageSessionOptions {
   mode?: SageLanguageMode;
 }
@@ -78,7 +94,7 @@ export interface SageLanguageOptions {
 }
 
 interface PendingRequest {
-  kind: "evaluate" | "request";
+  kind: "evaluate" | "comm" | "request";
   output: string;
   onOutput?: (text: string) => void;
   onEvent?: (event: SageOutputEvent) => void;
@@ -183,12 +199,18 @@ export class SageSession extends EventEmitter {
       new SharedArrayBuffer(2 * Int32Array.BYTES_PER_ELEMENT),
     );
     this.interruptState = interruptState;
+    const workerFilename = kernelWorkerPath(
+      join(__dirname, "kernel-worker.js"),
+    );
+    const nativeResourceDirectory =
+      singleExecutableNativeResourceDirectory();
     const worker = new Worker(
-      kernelWorkerPath(join(__dirname, "kernel-worker.js")),
+      workerFilename,
       {
         workerData: {
           mode: this.mode,
           interruptBuffer: interruptState.buffer,
+          nativeResourceDirectory,
         },
       },
     );
@@ -384,10 +406,17 @@ export class SageSession extends EventEmitter {
     type: "complete" | "inspect" | "isComplete" | "documentation" | "comm" | "commInfo",
     source: string,
     extra: Record<string, unknown> = {},
+    handlers: SageRequestHandlers = {},
   ): Promise<T> {
     if (this.closed) throw new SageSessionClosedError();
     if (typeof source !== "string") {
       throw new TypeError("Sage.js source must be a string");
+    }
+    if (
+      handlers.timeout !== undefined &&
+      (!Number.isFinite(handlers.timeout) || handlers.timeout <= 0)
+    ) {
+      throw new TypeError("Sage.js request timeout must be a positive number");
     }
     await this.ready();
     const worker = this.worker;
@@ -399,13 +428,27 @@ export class SageSession extends EventEmitter {
         settle = done;
       });
       this.pending.set(id, {
-        kind: "request",
+        kind: type === "comm" ? "comm" : "request",
         output: "",
+        onOutput: handlers.onOutput,
+        onEvent: handlers.onEvent,
+        onComm: handlers.onComm,
         resolve,
         reject,
         settled,
         settle,
       });
+      const pending = this.pending.get(id)!;
+      if (handlers.timeout !== undefined) {
+        pending.timer = setTimeout(() => {
+          if (!this.pending.has(id)) return;
+          void this.replaceWorker(
+            new SageSessionTimeoutError(
+              `Sage.js ${type} request timed out after ${handlers.timeout} ms`,
+            ),
+          );
+        }, handlers.timeout);
+      }
       worker.postMessage({ type, id, source, ...extra });
     });
   }
@@ -429,8 +472,11 @@ export class SageSession extends EventEmitter {
   }
 
   /** Deliver one normalized frontend comm event on the session queue. */
-  comm(event: SageCommEvent): Promise<void> {
-    return this.request("comm", "", { event });
+  comm(
+    event: SageCommEvent,
+    handlers: SageRequestHandlers = {},
+  ): Promise<void> {
+    return this.request("comm", "", { event }, handlers);
   }
 
   /** Return the exact live comm registry, optionally filtered by target. */
@@ -525,7 +571,7 @@ export class SageSession extends EventEmitter {
     if (this.closed) throw new SageSessionClosedError();
     await this.ready();
     const active = [...this.pending.entries()].filter(
-      ([, pending]) => pending.kind === "evaluate",
+      ([, pending]) => pending.kind === "evaluate" || pending.kind === "comm",
     );
     const state = this.interruptState;
     if (!state || active.length === 0) {

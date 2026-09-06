@@ -473,6 +473,7 @@ class AST_Toplevel(AST_Scope):
         "filename": "[string] The absolute path to the file from which this module was read",
         "srchash": "[string] SHA1 hash of source code, used for caching",
         "comments_after": "[array] True iff there were comments before this token",
+        "python_star_import": "[boolean?] resolve unbound globals through the module namespace after a star import",
     }
 
 

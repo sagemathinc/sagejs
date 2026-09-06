@@ -103,7 +103,11 @@ function dynamicSyntaxError(error) {
  * pass only the execution namespace's names and undefined-name shape; runtime
  * values never cross into the compiler realm.
  */
-export function createBrowserDynamicCompiler(compiler, frontend) {
+export function createBrowserDynamicCompiler(
+  compiler,
+  pythonFrontend,
+  sageFrontend = pythonFrontend,
+) {
   let nextProgramId = 0;
   const programs = new Map();
 
@@ -118,6 +122,8 @@ export function createBrowserDynamicCompiler(compiler, frontend) {
     }
     const id = ++nextProgramId;
     const moduleId = `__dynamic_browser_${id}__`;
+    const jsage = filename === "<sage-eval>";
+    const frontend = jsage ? sageFrontend : pythonFrontend;
     let ast;
     try {
       ast = frontend.parse(dynamicSource(source, mode), {
@@ -139,7 +145,7 @@ export function createBrowserDynamicCompiler(compiler, frontend) {
     } catch (error) {
       throw dynamicSyntaxError(error);
     }
-    programs.set(id, { ast, moduleId, outputs: new Map() });
+    programs.set(id, { ast, jsage, moduleId, outputs: new Map() });
     return Object.freeze({ id, moduleId, mode });
   }
 
@@ -183,6 +189,7 @@ export function createBrowserDynamicCompiler(compiler, frontend) {
         write_name: true,
         beautify: true,
         exact_integers: true,
+        rational_division: program.jsage,
         python_tuples: true,
         python_truthiness: true,
         python_attributes: true,
@@ -206,7 +213,8 @@ export function createBrowserDynamicCompiler(compiler, frontend) {
 
   function close() {
     programs.clear();
-    frontend.close?.();
+    pythonFrontend.close?.();
+    if (sageFrontend !== pythonFrontend) sageFrontend.close?.();
   }
 
   return Object.freeze({ close, compile, run });

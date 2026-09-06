@@ -1,15 +1,21 @@
 import { serializeDiagnosticError } from "./python/diagnostics";
 import { parentPort, workerData } from "worker_threads";
 
+import type { SageLanguageMode } from "./kernel-evaluator";
 import {
-  createKernelEvaluatorAsync,
-  SageLanguageMode,
-} from "./kernel-evaluator";
+  useSharedSingleExecutableNativeResourceDirectory,
+} from "./resources";
 
 if (!parentPort) {
   throw new Error("the Sage.js kernel worker requires a parent port");
 }
 
+useSharedSingleExecutableNativeResourceDirectory(
+  workerData.nativeResourceDirectory,
+);
+const { createKernelEvaluatorAsync } = require(
+  "./kernel-evaluator",
+) as typeof import("./kernel-evaluator");
 let evaluationId: number | undefined;
 const interruptState = new Int32Array(
   workerData.interruptBuffer as SharedArrayBuffer,

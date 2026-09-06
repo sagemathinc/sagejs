@@ -399,6 +399,44 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "structural-polynomial-flint-production",
+      "source": "src/lib/sagejs/kernels/polynomial/structural_flint.py",
+      "functions": [
+        "flint_integer_polynomial_compose",
+        "flint_integer_polynomial_reverse",
+        "flint_integer_polynomial_shift_left",
+        "flint_integer_polynomial_shift_right",
+        "flint_integer_polynomial_truncate",
+        "flint_integer_polynomial_integral",
+        "flint_integer_polynomial_resultant",
+        "flint_integer_polynomial_discriminant",
+        "flint_rational_polynomial_compose",
+        "flint_rational_polynomial_reverse",
+        "flint_rational_polynomial_shift_left",
+        "flint_rational_polynomial_shift_right",
+        "flint_rational_polynomial_truncate",
+        "flint_rational_polynomial_integral",
+        "flint_rational_polynomial_resultant",
+        "flint_rational_polynomial_discriminant",
+        "flint_prime_polynomial_compose",
+        "flint_prime_polynomial_reverse",
+        "flint_prime_polynomial_shift_left",
+        "flint_prime_polynomial_shift_right",
+        "flint_prime_polynomial_truncate",
+        "flint_prime_polynomial_integral",
+        "flint_prime_polynomial_resultant",
+        "flint_prime_polynomial_discriminant"
+      ],
+      "semantic_domain": "source-transparent exact integer, rational, and prime-field polynomial composition, reversal, shifts, truncation, integration, resultants, and discriminants through declared FLINT FFI",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "wasm_production": false,
+      "wasm_fallback_reason": "foreign-resource-not-declared-for-wasm",
+      "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
+      "benchmark": "test:polynomial:performance",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "extension-polynomial-flint-production",
       "source": "src/lib/sagejs/kernels/polynomial/extension_flint.py",
       "functions": [
@@ -494,14 +532,27 @@
       "id": "class-group-resident-hnf-production",
       "source": "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
       "functions": [
+        "cubic_reduced_shell_relation_hnf_v1",
         "resident_exact_relation_hnf_select",
-        "resident_exact_relation_hnf_select_v2"
+        "resident_exact_relation_hnf_select_v2",
+        "stable_exact_relation_hnf_select_v1"
       ],
-      "semantic_domain": "resident bounded exact relation HNF support, stable candidate deletion, retained rank, and exact transform replay through one arena-owned declared FLINT resource graph",
+      "semantic_domain": "resident bounded exact relation HNF support, cubic reduced-ideal shell generation and exact prime-power containment, stable candidate deletion, retained rank, exact transform replay, and basis-only selectors through arena-owned declared FLINT resource graphs",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint"],
       "benchmark": "bench:number-field-resident-hnf",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "complex-cubic-class-group-production",
+      "source": "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+      "functions": ["certified_complex_cubic_class_group_v1"],
+      "semantic_domain": "one closed monic integral polynomial-to-class-group program for complex cubic fields, with an exact maximal order, unconditional Minkowski ideal generators, resident relation HNF/SNF, a certified unit, and a Belabas-Friedman GRH-conditional analytic index-one proof in one shared GMP/FLINT arena",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "pari", "lmfdb", "ordinary-exact-class-unit-replay"],
+      "benchmark": "bench:number-field-cubic-native-class-number",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {

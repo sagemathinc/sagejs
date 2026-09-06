@@ -192,6 +192,7 @@ def print_rich_getitem(self, output):  # AST_ItemAccess
         and is_node_type(prop, AST_New)
         and is_node_type(prop.expression, AST_SymbolRef)
         and prop.expression.name is "slice"
+        and not prop.expression.python_identifier
         and prop.args.length is 3
         and all(is_node_type(argument, AST_Null) for argument in prop.args)
     ):

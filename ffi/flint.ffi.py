@@ -51,6 +51,7 @@ flint = Library(
     windows_default="packages/flint/.native/vcpkg-installed/x64-windows-static-md-release",
     include_dirs=["include"],
     source_include_dirs=["packages/flint/include"],
+    checkpoint_cleanup="sagejs_flint_exact_checkpoint_cleanup",
 )
 
 
@@ -61,6 +62,8 @@ FmpzMatrix = flint.resource(
     close="ffiFmpzMatrixClose",
     clear="sagejs_fmpz_matrix_clear",
     size="sagejs_fmpz_matrix_allocated_bytes",
+    item_get="fmpz_matrix_entry",
+    item_set="fmpz_matrix_set_entry",
     wasm=True,
 )
 
@@ -3920,6 +3923,61 @@ def fmpz_matrix_hnf(source: FmpzMatrix) -> FmpzMatrix: ...
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixHnfInto",
+    symbol="sagejs_fmpz_matrix_hnf_into",
+    returns=int,
+    abi=[
+        in_("hermite", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["hermite"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix HNF dimensions or aliases are invalid",
+    ),
+    wasm=True,
+)
+def fmpz_matrix_hnf_into(hermite: Writable[FmpzMatrix], source: FmpzMatrix) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixHnfPrefixInto",
+    symbol="sagejs_fmpz_matrix_hnf_prefix_into",
+    returns=int,
+    abi=[
+        in_("hermite", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["hermite"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix HNF logical-prefix bounds or aliases are invalid",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_hnf_prefix_into(
+    hermite: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixSnf",
     symbol="sagejs_fmpz_matrix_snf",
     returns=int,
@@ -3932,6 +3990,61 @@ def fmpz_matrix_hnf(source: FmpzMatrix) -> FmpzMatrix: ...
     wasm=False,
 )
 def fmpz_matrix_snf(source: FmpzMatrix) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixSnfInto",
+    symbol="sagejs_fmpz_matrix_snf_into",
+    returns=int,
+    abi=[
+        in_("smith", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["smith"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix SNF dimensions or aliases are invalid",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_snf_into(smith: Writable[FmpzMatrix], source: FmpzMatrix) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixSnfPrefixInto",
+    symbol="sagejs_fmpz_matrix_snf_prefix_into",
+    returns=int,
+    abi=[
+        in_("smith", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["smith"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix SNF logical-prefix bounds or aliases are invalid",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_snf_prefix_into(
+    smith: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
 
 
 @flint.function(
@@ -3960,6 +4073,105 @@ def fmpz_matrix_hnf_transform(
     hermite: Writable[FmpzMatrix],
     transform: Writable[FmpzMatrix],
     source: FmpzMatrix,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixHnfTransformPrefix",
+    symbol="sagejs_fmpz_matrix_hnf_transform_prefix",
+    returns=int,
+    abi=[
+        in_("hermite", sagejs_fmpz_matrix_t),
+        in_("transform", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["hermite", "transform"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message=(
+            "integer matrix HNF transform logical-prefix bounds or aliases are invalid"
+        ),
+    ),
+    wasm=False,
+)
+def fmpz_matrix_hnf_transform_prefix(
+    hermite: Writable[FmpzMatrix],
+    transform: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixLllTransform",
+    symbol="sagejs_fmpz_matrix_lll_transform",
+    returns=int,
+    abi=[
+        in_("reduced", sagejs_fmpz_matrix_t),
+        in_("transform", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["reduced", "transform"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix LLL transform dimensions or aliases are invalid",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_lll_transform(
+    reduced: Writable[FmpzMatrix],
+    transform: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixLllTransformPrefix",
+    symbol="sagejs_fmpz_matrix_lll_transform_prefix",
+    returns=int,
+    abi=[
+        in_("reduced", sagejs_fmpz_matrix_t),
+        in_("transform", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["reduced", "transform"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message=(
+            "integer matrix LLL transform logical-prefix bounds or aliases are invalid"
+        ),
+    ),
+    wasm=False,
+)
+def fmpz_matrix_lll_transform_prefix(
+    reduced: Writable[FmpzMatrix],
+    transform: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
 ) -> bool: ...
 
 
@@ -5371,6 +5583,27 @@ def fmpq_matrix_nonzero_count(source: FmpqMatrix) -> uint64: ...
 )
 def fmpq_matrix_echelon_pivots(source: FmpqMatrix) -> FlintByteRegion:
     """Return pivot columns as packed little-endian `uint64` values."""
+    ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixFullRowRankPivots",
+    symbol="sagejs_fmpq_matrix_full_row_rank_pivots",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="rational matrix was not certified to have full row rank",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_full_row_rank_pivots(source: FmpqMatrix) -> FlintByteRegion:
+    """Return a certifying prime followed by full-row-rank pivot columns."""
     ...
 
 
@@ -11192,6 +11425,86 @@ def number_field_analyze_resource(
 
 
 @flint.function(
+    dynamic="ffiNumberFieldAnalysisResourceProject",
+    symbol="sagejs_number_field_analysis_resource_project",
+    returns=int,
+    abi=[
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="output_length",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_("resource", sagejs_number_field_analysis_resource_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="number-field analysis projection is invalid",
+    ),
+    wasm=False,
+)
+def number_field_analysis_resource_project(
+    output: Writable[IntegerBuffer],
+    resource: NumberFieldAnalysisResource,
+    output_length: uint64,
+    one: Min[uint64, 1],
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNumberFieldAnalysisResourceProjectProof",
+    symbol="sagejs_number_field_analysis_resource_project_proof",
+    returns=int,
+    abi=[
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="output_length",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_("resource", sagejs_number_field_analysis_resource_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="number-field analysis proof projection is invalid",
+    ),
+    wasm=False,
+)
+def number_field_analysis_resource_project_proof(
+    output: Writable[IntegerBuffer],
+    resource: NumberFieldAnalysisResource,
+    output_length: uint64,
+    one: Min[uint64, 1],
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiIntegerLogSqrtBallsPacked",
     symbol="sagejs_flint_integer_log_sqrt_balls_packed",
     returns=int,
@@ -11241,5 +11554,70 @@ def integer_log_sqrt_balls_packed(
     output_length: uint64,
     count: uint64,
     one: Min[uint64, 1],
+    precision: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiIntegerLogSqrtBallsResource",
+    symbol="sagejs_flint_integer_log_sqrt_balls_resource",
+    returns=int,
+    abi=[
+        in_("output", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("precision", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT resident integer logarithm/square-root batch is invalid",
+    ),
+    wasm=True,
+)
+def integer_log_sqrt_balls_resource(
+    output: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    precision: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiPositiveRationalLogBallsResource",
+    symbol="sagejs_flint_positive_rational_log_balls_resource",
+    returns=int,
+    abi=[
+        in_("output", sagejs_fmpz_matrix_t),
+        in_("numerators", sagejs_fmpz_matrix_t),
+        in_("denominators", sagejs_fmpz_matrix_t),
+        in_("count", uint64_t),
+        in_("precision", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message=(
+            "FLINT resident positive-rational logarithm batch dimensions, "
+            "aliases, or entries are invalid"
+        ),
+    ),
+    wasm=True,
+)
+def positive_rational_log_balls_resource(
+    output: Writable[FmpzMatrix],
+    numerators: FmpzMatrix,
+    denominators: FmpzMatrix,
+    count: uint64,
     precision: uint64,
 ) -> bool: ...

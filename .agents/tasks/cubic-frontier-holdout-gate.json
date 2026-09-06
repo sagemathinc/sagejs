@@ -1,0 +1,103 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-frontier-holdout-gate",
+  "title": "Complex cubic frontier holdout gate",
+  "lane": "optimizer-development",
+  "status": "review",
+  "owner": "user",
+  "objective": "Machine-enforce a content-addressed frontier freeze before loading the exact twenty-field complex-cubic holdout and provide a correctness census path",
+  "base_commit": "66b9980c729c00a6308dc59b8b10812990d47d0b",
+  "claims": [
+    "bench/class-unit-groups/complex-cubic-frontier-holdout.cjs",
+    "bench/class-unit-groups/COMPLEX-CUBIC-FRONTIER.md",
+    "test/complex-cubic-frontier-holdout-gate.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Synthetic content-addressed corpus, census, timing, and holdout fixtures",
+      "Existing complex-cubic Sage.js receipt/replay and direct PARI census protocol"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check",
+    "node --test test/complex-cubic-frontier-holdout-gate.cjs test/complex-cubic-frontier-runner.cjs test/complex-cubic-frontier-competitor-adapters.cjs",
+    "pnpm docs:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 377.661,
+      "started_at": "2026-09-02T23:38:40.200Z",
+      "commit": "9fe0c6cca6066c30dbdad4478465f0bebfe0bdfb",
+      "workspace_fingerprint": "cec013f4bf195a630d6470bf6be8f908dcdce1e291905f62e8d7cc95ceb66d17",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.411,
+      "started_at": "2026-09-02T23:45:04.095Z",
+      "commit": "9fe0c6cca6066c30dbdad4478465f0bebfe0bdfb",
+      "workspace_fingerprint": "cec013f4bf195a630d6470bf6be8f908dcdce1e291905f62e8d7cc95ceb66d17",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.141,
+      "started_at": "2026-09-02T23:46:01.159Z",
+      "commit": "9fe0c6cca6066c30dbdad4478465f0bebfe0bdfb",
+      "workspace_fingerprint": "cec013f4bf195a630d6470bf6be8f908dcdce1e291905f62e8d7cc95ceb66d17",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/complex-cubic-frontier-holdout-gate.cjs test/complex-cubic-frontier-runner.cjs test/complex-cubic-frontier-competitor-adapters.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.095,
+      "started_at": "2026-09-02T23:46:15.653Z",
+      "commit": "9fe0c6cca6066c30dbdad4478465f0bebfe0bdfb",
+      "workspace_fingerprint": "cec013f4bf195a630d6470bf6be8f908dcdce1e291905f62e8d7cc95ceb66d17",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 374.591,
+      "started_at": "2026-09-02T23:46:24.532Z",
+      "commit": "9fe0c6cca6066c30dbdad4478465f0bebfe0bdfb",
+      "workspace_fingerprint": "cec013f4bf195a630d6470bf6be8f908dcdce1e291905f62e8d7cc95ceb66d17",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a content-addressed survey freeze that fully revalidates census proof branches, retained timing, source/build identity, and deterministic frontier selection before any holdout read. Added a gated exact-ranks-51-through-70 loader and correctness-only holdout census using the existing Sage.js receipt replay, direct bnfinit(P,0), and LMFDB invariants.",
+    "risks": [
+      "The holdout command intentionally provides correctness census only; any retained holdout timing claim needs its own predeclared and frozen protocol.",
+      "The freeze accepts only the official direct Sage.js and direct GP paths in sagejs,pari order, not optional external Magma or Hecke adapters."
+    ],
+    "next_steps": [
+      "Integrate this commit before generating the survey freeze; do not download or inspect the holdout asset first.",
+      "After survey timing completes, run --freeze and preserve its content-addressed file, then run --holdout-census against exactly the frozen stratum."
+    ]
+  }
+}

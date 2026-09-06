@@ -675,6 +675,40 @@ assert.equal(
   "0",
 );
 
+// Rational normal forms retain their content. The ideal-division API must
+// not use FLINT's primitive-part helper, which intentionally normalizes a
+// one-term remainder and would make distinct quotient elements equal.
+{
+  const context = flint.mpolyContext("qq", 2, "degrevlex", 0n);
+  const x = flint.mpolyGen(context, 0);
+  const y = flint.mpolyGen(context, 1);
+  const twoX = flint.mpolyMul(
+    flint.mpolyConstant(context, 2n, 1n),
+    x,
+  );
+  const basis = [
+    flint.mpolySub(flint.mpolyPow(x, 2), y),
+    flint.mpolySub(
+      flint.mpolyPow(y, 2),
+      flint.mpolyConstant(context, 1n, 1n),
+    ),
+  ];
+  assert.equal(
+    flint.mpolyToString(flint.mpolyReduce(twoX, basis), ["x", "y"]),
+    "2*x",
+  );
+  assert.equal(
+    flint.mpolyToString(
+      flint.mpolyReduce(
+        flint.mpolyConstant(context, 2n, 1n),
+        basis,
+      ),
+      ["x", "y"],
+    ),
+    "2",
+  );
+}
+
 {
   const context = flint.mpolyContext("nmod", 2, "degrevlex", 65537n);
   const x = flint.mpolyGen(context, 0);
@@ -1173,6 +1207,14 @@ assert.equal(flint.realPrecision(r53), 53);
 assert.equal(flint.realToString(r53), "1.20000000000000");
 assert.equal(flint.realToDouble(r53), 1.2);
 assert.equal(
+  flint.realToString(flint.realFromRational(1n, 9n, 20), 10, 0, true),
+  "0.11111116",
+);
+assert.equal(
+  flint.realToString(flint.realFromString("0.101", 53, 0, 2), 2, 0, true),
+  `0.101${"0".repeat(50)}`,
+);
+assert.equal(
   flint.realToString(r100),
   "0.33333333333333333333333333333",
 );
@@ -1188,6 +1230,53 @@ assert.equal(
 assert.equal(
   flint.realToString(flint.realPowInt(flint.realFromBigInt(2n, 53), -3n)),
   "0.125000000000000",
+);
+
+const intervalThird = flint.realIntervalFromRational(1n, 9n, 10);
+const intervalOne = flint.realIntervalFromRational(1n, 1n, 10);
+assert.equal(flint.realIntervalPrecision(intervalThird), 10);
+assert.equal(flint.realIntervalToString(intervalThird, 0), "0.112?");
+assert.equal(
+  flint.realIntervalToString(intervalThird, 1),
+  "[0.11108 .. 0.11121]",
+);
+const intervalInverse = flint.realIntervalBinary(
+  3, intervalOne, intervalThird, 10,
+);
+assert.equal(flint.realIntervalToString(intervalInverse, 0), "9.0?");
+assert.equal(flint.realIntervalRelation(1, intervalInverse, intervalOne), false);
+assert.throws(
+  () => flint.realIntervalBinary(
+    4,
+    flint.realIntervalFromRational(0n, 1n, 10),
+    flint.realIntervalFromRational(2n, 1n, 10),
+    10,
+  ),
+  /intervals do not overlap/,
+);
+assert.equal(
+  flint.realIntervalRelation(
+    1,
+    intervalInverse,
+    flint.realIntervalFromRational(9n, 1n, 10),
+  ),
+  true,
+);
+const intervalComplex = flint.complexIntervalFromParts(
+  intervalThird, intervalThird, 10,
+);
+assert.equal(flint.complexIntervalPrecision(intervalComplex), 10);
+assert.equal(
+  flint.complexIntervalToString(intervalComplex, 0),
+  "0.112? + 0.112?*I",
+);
+assert.equal(
+  flint.realIntervalRelation(
+    0,
+    flint.complexIntervalPart(0, intervalComplex),
+    intervalThird,
+  ),
+  true,
 );
 
 const c53 = flint.complexFromReals(

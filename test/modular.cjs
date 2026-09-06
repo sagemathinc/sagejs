@@ -229,7 +229,7 @@ test("Eisenstein basis elements retain their parent and expand on demand", async
     const search = await session.evaluate("search_doc('q-expansion')");
     assert.match(
       search.stdout,
-      /EisensteinSeriesElement\.q_expansion/,
+      /ClassicalModularFormElement\.q_expansion/,
     );
   } finally {
     await session.close();
@@ -400,7 +400,7 @@ test("level-one ambient and cusp bases carry replayable certificates", async () 
             "B=C.basis()\n" +
             "[C.is_verified(),C.verify(),C.dimension(),C.sturm_bound()," +
             "C.algorithm(),len(B),[f.weight() for f in B]," +
-            "[f.parent() is M for f in B],M.gens()==B," +
+            "[f.parent() is M for f in B],M.gens()==M.basis()," +
             "CS.is_verified(),CS.dimension(),S.dimension()," +
             "S.q_expansion_basis(4)]",
         )

@@ -45,6 +45,13 @@ const root = join(__dirname, "..");
 const witness = join(root, "bench", "native-ffi-flint.py");
 const matrixWitness = join(root, "bench", "native-ffi-flint-matrix.py");
 const resourceWitness = join(root, "bench", "native-ffi-flint-resource.py");
+const resourceIndexWitness = join(
+  root,
+  "test",
+  "fixtures",
+  "native-ffi-flint-index",
+  "witness.py",
+);
 const igraphWitness = join(root, "bench", "native-ffi-igraph.py");
 const igraphCanonicalWitness = join(
   root, "bench", "native-ffi-igraph-canonical.py",
@@ -199,6 +206,9 @@ test("FFI declarations are strict and generated modules are current", () => {
   assert.ok(flintResourceTypes.length > 0);
   assert.equal(new Set(flintResourceTypes).size, flintResourceTypes.length);
   const byteRegion = flint.byResourceType.get("FlintByteRegion");
+  const integerMatrix = flint.byResourceType.get("FmpzMatrix");
+  assert.equal(integerMatrix.item_get, "fmpz_matrix_entry");
+  assert.equal(integerMatrix.item_set, "fmpz_matrix_set_entry");
   assert.deepEqual(byteRegion.host_transfer, {
     kind: "copied_bytes",
     dynamic: { export: "ffiFlintByteRegionCopyBytes" },
@@ -301,6 +311,198 @@ test("FFI declarations are strict and generated modules are current", () => {
       (resource) => resource.id === "dirichlet_group",
     ).native.clear_symbol,
     "dirichlet_group_clear",
+  );
+});
+
+test("declared resource indexing is the same host-isolated FFI call", async () => {
+  const source = readFileSync(resourceIndexWitness, "utf8");
+  const ir = await lowerSource(source, resourceIndexWitness);
+  const calls = ir.functions.slice(0, 2).map((fn) =>
+    fn.body.findLast((operation) => operation.kind === "ffi.call")
+  );
+  assert.equal(calls.length, 2);
+  assert.deepEqual(
+    calls.map((call) => call.foreign.declarationId),
+    ["flint:fmpz_matrix_entry", "flint:fmpz_matrix_entry"],
+  );
+  assert.deepEqual(
+    calls.map((call) => call.foreign.function.native.symbol),
+    ["sagejs_fmpz_matrix_entry", "sagejs_fmpz_matrix_entry"],
+  );
+  assert.deepEqual(
+    calls[0].foreign.function.call_plan,
+    calls[1].foreign.function.call_plan,
+  );
+  assert.deepEqual(
+    calls.map((call) => call.arguments.map((argument) => argument.type)),
+    [
+      ["FmpzMatrix", "uint64", "uint64"],
+      ["FmpzMatrix", "uint64", "uint64"],
+    ],
+  );
+  const core = generateHostCore(ir);
+  assert.equal(core.audit.hostCallbacks, 0);
+  assert.match(core.source, /sagejs_fmpz_matrix_entry/);
+  assert.match(core.source, /sagejs_fmpz_matrix_set_entry/);
+  assert.doesNotMatch(
+    core.source,
+    /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/,
+  );
+  const setters = ir.functions.slice(2).map((fn) => fn.body.find(
+    (operation) =>
+      operation.kind === "ffi.call" &&
+      operation.foreign.declarationId === "flint:fmpz_matrix_set_entry",
+  ));
+  assert.equal(setters.length, 4);
+  assert.deepEqual(
+    setters.map((call) => call.foreign.function.native.symbol),
+    Array(4).fill("sagejs_fmpz_matrix_set_entry"),
+  );
+  assert.deepEqual(
+    setters[0].foreign.function.call_plan,
+    setters[1].foreign.function.call_plan,
+  );
+  assert.deepEqual(
+    setters[2].foreign.function.call_plan,
+    setters[3].foreign.function.call_plan,
+  );
+
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-index-"));
+  try {
+    const result = await compileKernel({
+      sourcePath: resourceIndexWitness,
+      cacheRoot: temporary,
+    });
+    const module = require(result.modulePath);
+    for (const value of [0n, -17n, (1n << 521n) + 31n]) {
+      assert.equal(module.indexed_entry(value), module.explicit_entry(value));
+      assert.equal(
+        module.indexed_entry.javascript(value),
+        module.explicit_entry.javascript(value),
+      );
+      assert.equal(
+        module.indexed_assignment(value),
+        module.explicit_assignment(value),
+      );
+      assert.equal(
+        module.indexed_assignment.javascript(value),
+        module.explicit_assignment.javascript(value),
+      );
+    }
+    for (const suffix of ["", ".javascript"]) {
+      const explicit = suffix === ""
+        ? module.explicit_invalid_assignment
+        : module.explicit_invalid_assignment.javascript;
+      const indexed = suffix === ""
+        ? module.indexed_invalid_assignment
+        : module.indexed_invalid_assignment.javascript;
+      assert.throws(() => explicit(9n), /integer matrix entry is out of bounds/);
+      assert.throws(() => indexed(9n), /integer matrix entry is out of bounds/);
+    }
+  } finally {
+    removeLoadedNativeCache(temporary);
+  }
+
+  await assert.rejects(
+    () => lowerSource(
+      "from sagejs.ffi.flint import FmpzMatrix\n" +
+        "def f(matrix: FmpzMatrix) -> Integer:\n" +
+        "    return matrix[0]\n",
+      "invalid-resource-index.py",
+    ),
+    /FmpzMatrix indexing expects 2 indices, got 1/,
+  );
+  await assert.rejects(
+    () => lowerSource(
+      "from sagejs.ffi.flint import FmpzMatrix\n" +
+        "def f(matrix: FmpzMatrix) -> Integer:\n" +
+        "    matrix[0, 0] += 1\n" +
+        "    return matrix[0, 0]\n",
+      "invalid-resource-augmented-index.py",
+    ),
+    /FmpzMatrix does not support augmented indexed assignment/,
+  );
+
+  const ordered = await lowerSource(
+    "from sagejs.ffi.flint import FmpzMatrix, fmpz_matrix\n" +
+      "def f(value: Integer) -> Integer:\n" +
+      "    matrix = fmpz_matrix(2, 2)\n" +
+      "    row: uint64 = 0\n" +
+      "    matrix[row + 1, 0] = value + 7\n" +
+      "    return matrix[1, 0]\n",
+    "resource-assignment-order.py",
+  );
+  const body = ordered.functions[0].body;
+  const valueIndex = body.findIndex((operation) =>
+    operation.kind === "integer.binary" && operation.operation === "add"
+  );
+  const rowIndex = body.findIndex((operation) =>
+    operation.kind === "uint64.binary" && operation.operation === "add"
+  );
+  const callIndex = body.findIndex((operation) =>
+    operation.kind === "ffi.call" &&
+    operation.foreign.declarationId === "flint:fmpz_matrix_set_entry"
+  );
+  assert.ok(valueIndex >= 0 && valueIndex < rowIndex && rowIndex < callIndex);
+});
+
+test("resource indexing declarations reject unsafe or ambiguous accessors", () => {
+  const registry = declarations.loadRegistry({ root });
+  const original = JSON.parse(
+    readFileSync(join(root, "ffi", "flint.ffi.json"), "utf8"),
+  );
+  const matrix = (document) => document.resources.find(
+    (resource) => resource.python_name === "FmpzMatrix",
+  );
+  const load = (document) => declarations.loadDeclarationDocument(document, {
+    filename: "invalid-resource-index.ffi.json",
+    catalog: registry.catalog,
+  });
+
+  const missing = structuredClone(original);
+  matrix(missing).item_get = "missing_matrix_accessor";
+  assert.throws(
+    () => load(missing),
+    /item_get names unknown function missing_matrix_accessor/,
+  );
+
+  const noIndex = structuredClone(original);
+  matrix(noIndex).item_get = "fmpz_matrix_nrows";
+  assert.throws(
+    () => load(noIndex),
+    /item_get requires one or more uint64 indices/,
+  );
+
+  const impure = structuredClone(original);
+  impure.functions.find(
+    (fn) => fn.python_name === "fmpz_matrix_entry",
+  ).effects.pure = false;
+  assert.throws(
+    () => load(impure),
+    /item_get must be a pure read/,
+  );
+
+  const missingSetter = structuredClone(original);
+  matrix(missingSetter).item_set = "missing_matrix_setter";
+  assert.throws(
+    () => load(missingSetter),
+    /item_set names unknown function missing_matrix_setter/,
+  );
+
+  const readOnlySetter = structuredClone(original);
+  matrix(readOnlySetter).item_set = "fmpz_matrix_entry";
+  assert.throws(
+    () => load(readOnlySetter),
+    /item_set must first borrow FmpzMatrix writable/,
+  );
+
+  const noWrite = structuredClone(original);
+  noWrite.functions.find(
+    (fn) => fn.python_name === "fmpz_matrix_set_entry",
+  ).effects.writes = [];
+  assert.throws(
+    () => load(noWrite),
+    /item_set must write exactly its resource argument/,
   );
 });
 
@@ -1553,7 +1755,7 @@ test("generated igraph views pin owners and invalidate on explicit close", () =>
 test("typed FFI imports lower to declared host-isolated calls", async () => {
   const source = readFileSync(witness, "utf8");
   const ir = await lowerSource(source, witness);
-  assert.equal(ir.version, 34);
+  assert.equal(ir.version, 38);
   assert.equal(ir.foreignLibraries.length, 1);
   assert.equal(ir.foreignLibraries[0].id, "flint");
   assert.match(ir.foreignLibraries[0].declarationHash, /^[0-9a-f]{64}$/);
@@ -2055,6 +2257,7 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     "-frtti",
   ]);
   assert.equal(linux.xcode_settings, undefined);
+  assert.ok(linux.ldflags.includes("-Wl,-z,nodelete"));
 
   const macos = bindingGyp(ir, true, true, "darwin").targets[0];
   assert.deepEqual(macos.cflags_cc, [
@@ -2070,6 +2273,7 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     MACOSX_DEPLOYMENT_TARGET:
       process.env.MACOSX_DEPLOYMENT_TARGET || "13.0",
   });
+  assert.equal(macos.ldflags, undefined);
 
   const windows = bindingGyp(ir, true, true, "win32").targets[0];
   assert.equal(windows.win_delay_load_hook, "true");
@@ -2086,6 +2290,30 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
   });
   assert.equal(windows.cflags_cc, undefined);
 
+  const profiledLinux = bindingGyp(ir, true, true, "linux", true).targets[0];
+  assert.ok(profiledLinux.cflags.includes("-g"));
+  assert.ok(!profiledLinux.ldflags.includes("-Wl,--strip-all"));
+
+  const profiledMacos = bindingGyp(ir, true, true, "darwin", true).targets[0];
+  assert.equal(
+    profiledMacos.xcode_settings.GCC_GENERATE_DEBUGGING_SYMBOLS,
+    "YES",
+  );
+  assert.equal(
+    profiledMacos.xcode_settings.DEBUG_INFORMATION_FORMAT,
+    "dwarf-with-dsym",
+  );
+
+  const profiledWindows = bindingGyp(ir, true, true, "win32", true).targets[0];
+  assert.equal(
+    profiledWindows.msvs_settings.VCCLCompilerTool.DebugInformationFormat,
+    3,
+  );
+  assert.equal(
+    profiledWindows.msvs_settings.VCLinkerTool.GenerateDebugInformation,
+    "true",
+  );
+
   const exactWindows = bindingGyp({
     foreignLibraries: [],
     functions: [{ kernelKind: "integer" }],
@@ -2094,6 +2322,18 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     exactWindows.configurations.Release.msbuild_toolset,
     "ClangCL",
   );
+
+  const flintBinding = JSON.parse(readFileSync(
+    join(root, "packages", "flint", "binding.gyp"),
+    "utf8",
+  ));
+  const linuxTargets = flintBinding.targets[0].conditions
+    .filter(([condition]) => condition.startsWith("OS=='linux'"))
+    .map(([, settings]) => settings);
+  assert.equal(linuxTargets.length, 2);
+  for (const settings of linuxTargets) {
+    assert.ok(settings.ldflags.includes("-Wl,-z,nodelete"));
+  }
 });
 
 test("Windows native builds use a short disposable junction", () => {
@@ -2183,6 +2423,36 @@ test("generated binding.gyp selects exact-platform link declarations", () => {
   ir.foreignLibraries[0].native.link.darwin = [];
   assert.equal(bindingGyp(ir, true, false, "darwin").targets[0].libraries
     .includes(join(prefix, "fallback.a")), false);
+});
+
+test("native foreign identity tracks inline headers in external reused prefixes", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-inline-inputs-"));
+  const previous = process.env.SAGEJS_INLINE_TEST_PREFIX;
+  try {
+    mkdirSync(join(temporary, "include"));
+    writeFileSync(join(temporary, "include", "root.h"), '#include "leaf.h"\n');
+    const leaf = join(temporary, "include", "leaf.h");
+    writeFileSync(leaf, "static inline int answer(void) { return 1; }\n");
+    process.env.SAGEJS_INLINE_TEST_PREFIX = temporary;
+    const ir = {foreignLibraries: [{id: "inline_test", native: {
+      headers: ["root.h"], link: {unix: [], windows: []}, toolchain: {
+        prefix_environment: "SAGEJS_INLINE_TEST_PREFIX",
+        unix_default: "unused", windows_default: "unused",
+        include_dirs: ["include"], source_include_dirs: [],
+      },
+    }}]};
+    const before = foreignCompilationInputs(ir)[0];
+    assert.equal(before.transitiveHeaders.length, 1);
+    writeFileSync(leaf, "static inline int answer(void) { return 2; }\n");
+    const after = foreignCompilationInputs(ir)[0];
+    assert.notEqual(before.fingerprint, after.fingerprint);
+    assert.deepEqual(before.headers, after.headers);
+    assert.deepEqual(before.libraries, after.libraries);
+  } finally {
+    if (previous === undefined) delete process.env.SAGEJS_INLINE_TEST_PREFIX;
+    else process.env.SAGEJS_INLINE_TEST_PREFIX = previous;
+    rmSync(temporary, {recursive: true, force: true});
+  }
 });
 
 test("native foreign input identity hashes only selected platform links", () => {

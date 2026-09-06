@@ -1,0 +1,91 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fmpz-resource-projection",
+  "title": "Admit resident FLINT resources and transactional projections",
+  "lane": "native-compiler",
+  "status": "blocked",
+  "owner": "user",
+  "objective": "Admit the 13 field-analysis FLINT calls required by the cubic class-group closure to the atomic fmpz backend, including owned matrix polynomial and analysis resources plus a reusable transactional packed-fmpz-matrix output adapter that publishes directly to IntegerBuffer without mpz staging, fails closed without partial output, and preserves reverse cleanup",
+  "base_commit": "4adc6cf99b8991540260c3b71ab6c855ea233362",
+  "claims": [
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/ffi-codegen.cjs",
+    "tools/native-kernel/fmpz-backend.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/test/fmpz-borrowed-aggregates.cjs",
+    "tools/native-kernel/test/fmpz-resource-projection.cjs"
+  ],
+  "dependencies": [
+    "fmpz-exact-range-semantics"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "GMP and dynamic differential execution for every admitted direct/resource call",
+      "failure-injection proving transactional no-partial-publication and reverse cleanup",
+      "generated C evidence excluding mpz conversions from the fmpz projection path"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/fmpz-resource-projection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.47,
+      "started_at": "2026-09-04T13:25:32.176Z",
+      "commit": "56c067d19fccfe834d752c98abe9020ef587a76c",
+      "workspace_fingerprint": "9b5bd5bbe2355eccc3db907fc79ca51485e1c1f754832541f88c363275a04419",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -lc node --test tools/native-kernel/test/fmpz-*.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.572,
+      "started_at": "2026-09-04T13:25:49.067Z",
+      "commit": "56c067d19fccfe834d752c98abe9020ef587a76c",
+      "workspace_fingerprint": "9b5bd5bbe2355eccc3db907fc79ca51485e1c1f754832541f88c363275a04419",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 42.62,
+      "started_at": "2026-09-04T13:26:05.575Z",
+      "commit": "56c067d19fccfe834d752c98abe9020ef587a76c",
+      "workspace_fingerprint": "9b5bd5bbe2355eccc3db907fc79ca51485e1c1f754832541f88c363275a04419",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Admitted exactly the 13 additional FLINT declarations needed by the certified complex-cubic class-group closure, along with owned fmpz_matrix, fmpz_polynomial, and number_field_analysis_resource values. Packed analysis projections now use private fmpz_mat staging, validate minima before aggregate shapes, preflight every staged limb count and IntegerBuffer capacity, publish directly with the shared fmpz setter, and clear all staging on success and failure. Publication is transactional per FFI operation, so an earlier successful projection remains committed if a later proof projection fails, matching ordinary Python call order. The shared fmpz setter now canonicalizes reused IntegerBuffer slots by zeroing unused limbs. Focused differential tests cover fmpz, GMP, tagged, and JavaScript execution; negative and multiword entries; poisoned raw limbs; foreign, shape, capacity, and second-projector failures; reverse cleanup; and ASan/UBSan. The complete production cubic root compiles 83 of 83 functions to fmpz with no rejected functions, all 16 expected FLINT dependencies (the 3 existing calls plus the 13 admitted here), and no mpz_, fmpz_get_mpz, or fmpz_set_mpz use in any generated fmpz body.",
+    "risks": [
+      "The newly complete fmpz closure intentionally marks 61 borrowed-resource helpers hostCallable=false, but required production autoload currently treats their local @native decorators as missing artifacts. The production pack test therefore fails first at _cubic_analysis_fixed_points_are_valid even though the public cubic root is built. Do not expose borrowed aggregate ABIs; the follow-up must authenticate intentional private-helper membership and leave direct helper calls on the original Python fallback.",
+      "A completed full native run built all production artifacts and reported 74 passes, 6 failures, and 1 skip. Besides the production private-helper failure above, five integrated-base regressions are outside this lane: foreign-input identity fixture data lacks platform_links; the exact-arena temporary-name snapshot expects tmp_13/tmp_9 instead of tmp_15/tmp_19; and three exact arena/matrix/vector sanitizer builds reject an unused sagejs__iteration variable under -Werror.",
+      "architecture:check passes the FFI, package graph, native architecture, Wasm capability/workload/resource-lifetime, and COWASM checks, then stops because architecture/optimizer-opportunities.json has a stale generated input hash after compiler changes.",
+      "The required Linux arm64, macOS arm64, and Windows x64 receipts remain pending integration."
+    ],
+    "next_steps": [
+      "Integrate implementation commit 56c067d19fccfe834d752c98abe9020ef587a76c before rebuilding production kernels.",
+      "In the serialized compiler/runtime protocol lane, record only local-source decorated hostCallable=false functions as authenticated private helpers in wrapper and discovery/production metadata; required mode should accept only positively authenticated private names, preserve root-to-helper direct fmpz edges, and leave an externally called private helper uncompiled on its original Python implementation.",
+      "Repair the five exact-range integration regressions in their separate lane, regenerate the optimizer opportunity manifest in its owning lane, then rerun pnpm architecture:check and pnpm test:native.",
+      "Collect the cross-platform compiler, differential, lifecycle, and sanitizer-equivalent receipts without broadening the admitted FFI declaration set."
+    ]
+  }
+}

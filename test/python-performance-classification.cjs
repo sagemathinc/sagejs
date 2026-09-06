@@ -77,3 +77,9 @@ test("behavior mismatch prevents a performance claim", () => {
     },
   );
 });
+
+test("confirmed sample counts must be whole, bounded integers", () => {
+  for (const minimumConfirmedSamples of [0, -1, 1.5, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => validatePolicy({ ...policy, minimumConfirmedSamples }), /minimumConfirmedSamples/);
+  }
+});

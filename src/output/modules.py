@@ -228,6 +228,7 @@ def write_imports(module, output):
             "Array.isArray(globalThis.__sagejs_baselib_facade_names__)) { "
             "var builtinTarget=Object.create(null);"
             "var facadeNames=new Set(globalThis.__sagejs_baselib_facade_names__);"
+            'facadeNames.add("super");'
             "var baselibModules=globalThis.__sagejs_baselib_modules__ || {};"
             "Object.keys(baselibModules).forEach(function(moduleName){"
             'if(moduleName.indexOf("sagejs._baselib.") !== 0)return;'
@@ -253,6 +254,7 @@ def write_imports(module, output):
             "return {configurable:true,enumerable:true,writable:true,value:globalThis.super}}"
             "return Reflect.getOwnPropertyDescriptor(target,name)}"
             "}); Object.defineProperties(ρσ_modules.builtins, {"
+            "__sagejs_builtin_facade_names__:{value:facadeNames},"
             "abs:{configurable:true,enumerable:true,get:function(){return abs},"
             "set:function(value){abs=value}},"
             "open:{configurable:true,enumerable:true,get:function(){return ρσ_open},"

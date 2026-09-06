@@ -60,6 +60,24 @@ static int mpz_to_int64(const mpz_t value, int64_t *result)
     return 1;
 }
 
+static int mpz_to_uint64(const mpz_t value, uint64_t *result)
+{
+    size_t count = 0;
+    uint64_t magnitude = 0;
+    if (mpz_sgn(value) < 0 || mpz_sizeinbase(value, 2) > 64)
+        return 0;
+    if (mpz_sgn(value) == 0)
+    {
+        *result = UINT64_C(0);
+        return 1;
+    }
+    mpz_export(&magnitude, &count, -1, sizeof(magnitude), 0, 0, value);
+    if (count > 1)
+        return 0;
+    *result = magnitude;
+    return 1;
+}
+
 static uint64_t sagejs_mpz_mod_uint64(
     const mpz_t value, uint64_t modulus)
 {
@@ -1032,6 +1050,19 @@ static int sagejs_tagged_to_int64(
         return 1;
     }
     return mpz_to_int64(value->big, result);
+}
+
+static int sagejs_tagged_to_uint64(
+    sagejs_tagged_int *value, uint64_t *result)
+{
+    if (!value->is_big)
+    {
+        if (value->small < 0)
+            return 0;
+        *result = (uint64_t) value->small;
+        return 1;
+    }
+    return mpz_to_uint64(value->big, result);
 }
 
 static uint64_t sagejs_tagged_mod_uint64(

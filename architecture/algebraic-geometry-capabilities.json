@@ -1,0 +1,369 @@
+{
+  "$schema": "./algebraic-geometry-capabilities.schema.json",
+  "schema": "sagejs.algebraic-geometry-capabilities/v1",
+  "scope": "exact embedded affine and projective schemes without Singular",
+  "routing_key": [
+    "operation",
+    "base_field_descriptor",
+    "monomial_order",
+    "proof_mode",
+    "platform",
+    "resource_envelope"
+  ],
+  "supported_base_fields": [
+    {
+      "id": "QQ",
+      "descriptor": { "family": "rational", "characteristic": 0, "degree": 1 }
+    },
+    {
+      "id": "GF(p)",
+      "descriptor": { "family": "finite-field", "characteristic": "prime-p", "degree": 1 }
+    }
+  ],
+  "deferred_base_fields": [
+    {
+      "id": "GF(p^d), d > 1",
+      "plan": "agents/no-singular-extension-fields-plan.md"
+    },
+    {
+      "id": "absolute-number-field",
+      "plan": "agents/no-singular-extension-fields-plan.md"
+    }
+  ],
+  "platforms": ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64", "node-wasm", "browser"],
+  "forbidden_runtime_dependencies": ["Singular", "Macaulay2", "CoCoA", "Oscar", "Julia"],
+  "operations": [
+    {
+      "id": "polynomial.evaluate",
+      "phase": 1,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["all-supported-global"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/baselib/polynomial.py",
+      "fallback": "same-source dynamic polynomial arithmetic",
+      "resource_envelope": "polynomial representation limits",
+      "limitation": "exact coercible coordinates in one parent"
+    },
+    {
+      "id": "polynomial.substitute",
+      "phase": 1,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["all-supported-global"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/baselib/polynomial.py",
+      "fallback": "same-source simultaneous sparse substitution",
+      "resource_envelope": "polynomial representation limits",
+      "limitation": "simultaneous substitutions must share a coercible target parent"
+    },
+    {
+      "id": "polynomial.differentiate",
+      "phase": 1,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["all-supported-global"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/baselib/polynomial.py",
+      "fallback": "same-source formal differentiation",
+      "resource_envelope": "polynomial representation limits",
+      "limitation": "formal derivative in the coefficient characteristic"
+    },
+    {
+      "id": "polynomial.homogenize",
+      "phase": 1,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["all-supported-global"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/baselib/polynomial.py",
+      "fallback": "same-source sparse degree lifting",
+      "resource_envelope": "polynomial representation limits",
+      "limitation": "explicit collision-free homogenizing variable and target parent"
+    },
+    {
+      "id": "quotient.canonical-arithmetic",
+      "phase": 1,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["all-supported-global"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/baselib/polynomial_quotient.py",
+      "fallback": "public ideal normal form",
+      "resource_envelope": "underlying Groebner resource policy",
+      "limitation": "one fixed cover ring and defining ideal"
+    },
+    {
+      "id": "quotient.linear-algebra",
+      "phase": 1,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["all-supported-global"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/baselib/polynomial_quotient.py",
+      "fallback": "portable standard-monomial and exact matrix layer",
+      "resource_envelope": "zero-dimensional finite-basis limits",
+      "limitation": "basis, coordinates, multiplication matrices, minimal polynomials, and FGLM require dimension zero"
+    },
+    {
+      "id": "ideal.intersection",
+      "phase": 2,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["all-supported-global"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/lib/sagejs/polynomial_algorithms/ideal_operations.py",
+      "fallback": "exact auxiliary-variable elimination",
+      "resource_envelope": "128 submitted generators",
+      "limitation": "ideals must have one exact parent"
+    },
+    {
+      "id": "ideal.colon",
+      "phase": 2,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["all-supported-global"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/lib/sagejs/polynomial_algorithms/ideal_operations.py",
+      "fallback": "intersection of exact principal colons",
+      "resource_envelope": "128 submitted generators",
+      "limitation": "finitely generated ideals over a supported field"
+    },
+    {
+      "id": "ideal.saturation",
+      "phase": 2,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["all-supported-global"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/lib/sagejs/polynomial_algorithms/ideal_operations.py",
+      "fallback": "exact colon stabilization",
+      "resource_envelope": "32 exact stabilization steps and 128 generators",
+      "limitation": "resource exhaustion raises without a partial result"
+    },
+    {
+      "id": "ideal.hilbert-data",
+      "phase": 3,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["all-supported-global"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/lib/sagejs/polynomial_algorithms/hilbert.py",
+      "fallback": "exact leading-monomial inclusion-exclusion",
+      "resource_envelope": "leading-monomial recursion limits",
+      "limitation": "standard-graded homogeneous ideals"
+    },
+    {
+      "id": "affine.space-point",
+      "phase": 4,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["degrevlex-coordinate-ring"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/baselib/schemes.py",
+      "fallback": "coefficient-neutral public field operations",
+      "resource_envelope": "point arity and coefficient coercion",
+      "limitation": "positive affine dimensions over the declared base field; dimension zero awaits a zero-variable polynomial parent"
+    },
+    {
+      "id": "affine.scheme-basics",
+      "phase": 4,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["degrevlex-coordinate-ring"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/baselib/schemes.py",
+      "fallback": "public ideal and quotient interfaces",
+      "resource_envelope": "underlying ideal operations",
+      "limitation": "closed embedded affine subschemes"
+    },
+    {
+      "id": "affine.rational-points",
+      "phase": 4,
+      "domains": ["GF(p)"],
+      "orders": ["degrevlex-coordinate-ring"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/baselib/schemes.py",
+      "fallback": "bounded exact enumeration",
+      "resource_envelope": "100000 ambient points by default",
+      "limitation": "prime finite fields only"
+    },
+    {
+      "id": "projective.space-point",
+      "phase": 5,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["degrevlex-coordinate-ring"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/baselib/schemes.py",
+      "fallback": "first-nonzero-coordinate normalization",
+      "resource_envelope": "point arity and coefficient coercion",
+      "limitation": "all-zero coordinates are rejected"
+    },
+    {
+      "id": "projective.scheme-basics",
+      "phase": 5,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["degrevlex-coordinate-ring"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/baselib/schemes.py",
+      "fallback": "exact irrelevant-ideal saturation",
+      "resource_envelope": "underlying saturation and Groebner limits",
+      "limitation": "homogeneous closed embedded subschemes"
+    },
+    {
+      "id": "projective.patch-closure",
+      "phase": 5,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["degrevlex-coordinate-ring"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/lib/sagejs/schemes/projective.py",
+      "fallback": "homogenization followed by homogenizing-coordinate saturation",
+      "resource_envelope": "underlying saturation and Groebner limits",
+      "limitation": "standard projective closure and standard affine patches"
+    },
+    {
+      "id": "morphism.evaluate-compose",
+      "phase": 6,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["degrevlex-coordinate-ring"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/lib/sagejs/schemes/morphism.py",
+      "fallback": "simultaneous polynomial pullback",
+      "resource_envelope": "polynomial representation limits",
+      "limitation": "everywhere-defined polynomial morphisms; no rational-map base locus"
+    },
+    {
+      "id": "morphism.graph-fiber-preimage",
+      "phase": 6,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["lex-elimination"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/lib/sagejs/schemes/morphism.py",
+      "fallback": "exact graph equations and pullback",
+      "resource_envelope": "32 graph variables and 256 graph equations",
+      "limitation": "closed embedded source and target"
+    },
+    {
+      "id": "morphism.image-closure",
+      "phase": 6,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["lex-elimination"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/lib/sagejs/schemes/morphism.py",
+      "fallback": "graph elimination and projective saturation",
+      "resource_envelope": "32 graph variables and 256 graph equations",
+      "limitation": "scheme-theoretic closure of an everywhere-defined map"
+    },
+    {
+      "id": "jacobian.tangent-space",
+      "phase": 7,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["degrevlex-coordinate-ring"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/lib/sagejs/schemes/jacobian.py",
+      "fallback": "formal differentiation and exact matrix kernel",
+      "resource_envelope": "ambient matrix dimensions",
+      "limitation": "base-field rational points"
+    },
+    {
+      "id": "jacobian.singular-subscheme",
+      "phase": 7,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["degrevlex-coordinate-ring"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/lib/sagejs/schemes/jacobian.py",
+      "fallback": "exact Jacobian minors",
+      "resource_envelope": "minor order 8 and at most 4096 minors",
+      "limitation": "hypersurfaces and presentations certified as complete intersections"
+    },
+    {
+      "id": "curve.plane",
+      "phase": 8,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["degrevlex-coordinate-ring"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/baselib/schemes.py",
+      "fallback": "generic scheme, projective, and Jacobian primitives",
+      "resource_envelope": "underlying scheme operations",
+      "limitation": "affine plane hypersurfaces and homogeneous projective plane hypersurfaces"
+    },
+    {
+      "id": "curve.arithmetic-genus",
+      "phase": 8,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["degrevlex-coordinate-ring"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/baselib/schemes.py",
+      "fallback": "projective plane hypersurface degree formula",
+      "resource_envelope": "exact integer degree",
+      "limitation": "arithmetic genus only; singular geometric genus is unsupported"
+    },
+    {
+      "id": "zero-dimensional.radical",
+      "phase": 9,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["all-supported-global"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/lib/sagejs/polynomial_algorithms/zero_dimensional.py",
+      "fallback": "coordinate minimal polynomials and squarefree annihilators",
+      "resource_envelope": "finite quotient basis and Groebner limits",
+      "limitation": "zero-dimensional perfect-field ideals"
+    },
+    {
+      "id": "zero-dimensional.primary-decomposition",
+      "phase": 9,
+      "domains": ["QQ", "GF(p)"],
+      "orders": ["all-supported-global"],
+      "proof_modes": ["required", "relaxed"],
+      "platforms": ["all"],
+      "implementation": "src/lib/sagejs/polynomial_algorithms/zero_dimensional.py",
+      "fallback": "minimal-polynomial splitting with exact recomposition",
+      "resource_envelope": "64 recursion levels and 65536 exhaustive finite quotient candidates",
+      "limitation": "zero-dimensional ideals; non-split residue fields are retained"
+    }
+  ],
+  "explicit_rejections": [
+    {
+      "id": "coefficient.extension-field",
+      "exception": "NotImplementedError",
+      "message_contains": "finite extensions and number fields",
+      "plan": "agents/no-singular-extension-fields-plan.md"
+    },
+    {
+      "id": "decomposition.positive-dimensional",
+      "exception": "NotImplementedError",
+      "message_contains": "zero-dimensional ideals",
+      "plan": "agents/no-singular-algebraic-geometry-plan.md"
+    },
+    {
+      "id": "curve.geometric-genus",
+      "exception": "NotImplementedError",
+      "message_contains": "normalization",
+      "plan": "agents/no-singular-algebraic-geometry-plan.md"
+    },
+    {
+      "id": "morphism.rational-map-base-locus",
+      "exception": "ValueError",
+      "message_contains": "base point",
+      "plan": "agents/no-singular-algebraic-geometry-plan.md"
+    },
+    {
+      "id": "jacobian.mixed-dimensional-global",
+      "exception": "NotImplementedError",
+      "message_contains": "mixed-dimensional",
+      "plan": "agents/no-singular-algebraic-geometry-plan.md"
+    }
+  ]
+}

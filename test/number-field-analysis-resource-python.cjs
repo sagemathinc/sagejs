@@ -59,7 +59,9 @@ test("independent Python authenticates and corrupts fused field analysis", async
       "        return True",
       "complete_raw = packed([-5, 0, 1], 3)",
       "complete = decode_field_analysis_resource(complete_raw, expected_polynomial=[-5, 0, 1], expected_scale=3)",
-      "partial_raw = packed([-1022117, 0, 1])",
+      "word_composite_raw = packed([-1022117, 0, 1])",
+      "word_composite = decode_field_analysis_resource(word_composite_raw)",
+      "partial_raw = packed([-4295622677, 0, 1])",
       "partial = decode_field_analysis_resource(partial_raw)",
       "arbitrary_raw = packed([-18446744073709551629, 0, 1])",
       "arbitrary = decode_field_analysis_resource(arbitrary_raw)",
@@ -87,6 +89,12 @@ test("independent Python authenticates and corrupts fused field analysis", async
       "tampered = partial_raw[:]",
       "regions = integer_regions(tampered)",
       "tampered[regions[13][1]] = 0",
+      "checks.append(rejects(tampered))",
+      "tampered = word_composite_raw[:]",
+      "replace_small_integer(tampered, 11, 1)",
+      "checks.append(rejects(tampered))",
+      "tampered = word_composite_raw[:]",
+      "replace_small_integer(tampered, 12, 2)",
       "checks.append(rejects(tampered))",
       "tampered = complete_raw[:]",
       "regions = integer_regions(tampered)",
@@ -158,10 +166,10 @@ test("independent Python authenticates and corrupts fused field analysis", async
       "finally:",
       "    flint.number_field_analyze_resource = saved_analysis",
       "checks.append(native_calls == [1] and convenient.candidate_complete and convenient.certified and convenient.index == 2)",
-      "[complete.certified, complete.locally_certified_primes, partial.certified, partial.locally_certified_primes, arbitrary.certified, wild.certified, wild.locally_certified_primes, tame.certified, tame.locally_certified_primes, multi.certified, multi.locally_certified_primes, checks]",
+      "[complete.certified, complete.locally_certified_primes, word_composite.certified, [(component.value, component.exponent) for component in word_composite.components], partial.certified, partial.locally_certified_primes, arbitrary.certified, wild.certified, wild.locally_certified_primes, tame.certified, tame.locally_certified_primes, multi.certified, multi.locally_certified_primes, checks]",
     ].join("\n"));
     assert.equal(result.repr,
-      "[True, [2], False, [2], False, True, [2, 3], True, [3, 5], True, [2, 3, 5], [True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]]");
+      "[True, [2], True, [(2, 2), (1009, 1), (1013, 1)], False, [2], False, True, [2, 3], True, [3, 5], True, [2, 3, 5], [True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]]");
   } finally {
     await session.close();
   }
@@ -213,6 +221,22 @@ assert packed_field_analysis_fixed_points_are_valid(
     dimensions,
     radicals,
     selectors,
+    -108,
+    degree,
+    2,
+)
+# Resident callers deliberately allocate fixed-capacity buffers.  The checker
+# consumes only the authenticated prefix and must neither reject nor inspect
+# unrelated trailing capacity.
+assert packed_field_analysis_fixed_points_are_valid(
+    [0] * len(workspace),
+    polynomial,
+    numerator,
+    1,
+    primes + [97, 101],
+    dimensions + [3, 3],
+    radicals + [99] * 18,
+    selectors + [99] * 6,
     -108,
     degree,
     2,

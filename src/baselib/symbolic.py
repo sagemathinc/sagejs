@@ -570,6 +570,9 @@ class Expression(sage.Element):
     def __neg__(self) -> Expression:
         return Expression(_call_backend("canonical", [["Negate", self._tree]]))
 
+    def __abs__(self) -> Expression:
+        return Expression(_call_backend("canonical", [["Abs", self._tree]]))
+
     def __pow__(self, exponent: Any) -> Expression:
         return Expression(
             _call_backend(
@@ -755,7 +758,7 @@ class Expression(sage.Element):
         xtol: float = 1e-12,
         method: str = "auto",
         full_output: bool = False,
-        trace: str = "iterations",
+        trace: str | None = None,
     ) -> Any:
         expression = self
         if (
@@ -767,9 +770,35 @@ class Expression(sage.Element):
         variables = expression.variables()
         if len(variables) != 1:
             raise ValueError("find_root() requires an expression in one variable")
+        # Keep the ordinary structured solver as the authority whenever the
+        # caller asks for its evidence record or selects a particular method.
+        # The scalar default may use the reviewed symbolic Wasm bisection
+        # kernel: its public result exposes only the root value, and unsupported
+        # expression trees still fall through to ordinary Python.
+        if not full_output and str(method) == "auto":
+            numeric_backend = runtime.flint_backend()
+            wasm_find_root = runtime.reflect.get(numeric_backend, "symbolicFindRoot")
+            if runtime.jstype(wasm_find_root) == "function":
+                accelerated = runtime.reflect.apply(
+                    wasm_find_root,
+                    numeric_backend,
+                    [
+                        expression._tree,
+                        _symbol_name(variables[0]),
+                        float(lower),
+                        float(upper),
+                        int(maxiter),
+                        float(xtol),
+                    ],
+                )
+                if accelerated is not runtime.undefined:
+                    return float(accelerated)
         evaluator = fast_callable(expression, vars=variables)
         module = _numerics_module()
         solver = module.find_root
+        trace_level = trace
+        if trace_level is None:
+            trace_level = "iterations" if full_output else "none"
         result = solver(
             evaluator,
             float(lower),
@@ -777,7 +806,7 @@ class Expression(sage.Element):
             method=method,
             maxiter=int(maxiter),
             xtol=float(xtol),
-            trace=trace,
+            trace=trace_level,
             expression=str(expression),
             variable=_symbol_name(variables[0]),
             source_language="sage",
@@ -1879,7 +1908,11 @@ def _laplace_transform_tree(
 def diff(
     expression: Any,
     *variables: Any,
-) -> Expression:
+) -> Any:
+    if not isinstance(expression, Expression):
+        derivative_method = getattr(expression, "diff", None)
+        if callable(derivative_method):
+            return derivative_method(*variables)
     if len(variables) == 0:
         return SR(expression).derivative()
     return SR(expression).derivative(*variables)
@@ -3435,6 +3468,7 @@ pi = Expression("Pi")
 e = Expression("ExponentialE")
 oo = Expression("PositiveInfinity")
 minus_infinity = Expression("NegativeInfinity")
+golden_ratio = Expression(["Divide", ["Add", 1, ["Sqrt", 5]], 2])
 _imaginary_unit = Expression("ImaginaryUnit")
 i = _imaginary_unit
 runtime.reflect.set(runtime.global_object, "I", _imaginary_unit)

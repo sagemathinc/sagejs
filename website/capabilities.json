@@ -665,8 +665,8 @@
         "summary": "Implements many modules needed by mathematical scripts and notebooks over Node APIs; unsupported CPython modules and edge semantics remain explicit.",
         "score": {
           "kind": "measured",
-          "value": 44.3,
-          "numerator": 86,
+          "value": 44.8,
+          "numerator": 87,
           "denominator": 194,
           "unit": "public top-level standard-library modules import successfully",
           "reference": "CPython 3.14 public top-level module set",

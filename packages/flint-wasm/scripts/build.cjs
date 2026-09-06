@@ -5,6 +5,7 @@ const { createHash } = require("node:crypto");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const esbuild = require("esbuild");
+const { browserModuleCache } = require("./browser-module-cache.cjs");
 const { loadRegistry } = require("../../../tools/ffi/declarations.cjs");
 const {
   generatedWasmResourceAdapter,
@@ -25,6 +26,9 @@ const autoReceiptPolicyApi = require(
   "../../../tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs"
 );
 const { kernelPackExports } = require("./kernel-pack-exports.cjs");
+const {
+  productionKernelsForPack,
+} = require("../../../tools/native-kernel/wasm-production-pack.cjs");
 const wasmAbiAllowlist = path.join(__dirname, "wasm-abi-allowlist.cjs");
 
 const packageRoot = path.resolve(__dirname, "..");
@@ -575,8 +579,8 @@ const numericSource = path.join(packageRoot, "src", "numeric.c");
 const numericExports = [...fs.readFileSync(numericSource, "utf8")
   .matchAll(/EXPORT\s+[\w\s*]+\s+(sagejs_numeric_\w+)\s*\(/g)]
   .map((match) => match[1]);
-if (numericExports.length !== 35 || new Set(numericExports).size !== 35) {
-  throw new Error("the reviewed 35-function numeric Wasm export closure drifted");
+if (numericExports.length !== 59 || new Set(numericExports).size !== 59) {
+  throw new Error("the reviewed 59-function numeric Wasm export closure drifted");
 }
 const dirichletGroupHostSource = path.join(packageRoot, "dirichlet-group.mjs");
 const dirichletGroupExports = [...new Set(
@@ -662,6 +666,7 @@ const algebraicExports = [
   "sagejs_wasm_algebraic_property",
   "sagejs_wasm_algebraic_polynomial_roots",
   "sagejs_wasm_algebraic_minpoly",
+  "sagejs_wasm_algebraic_cyclotomic_coefficients",
   "sagejs_wasm_algebraic_enclosure",
   "sagejs_wasm_algebraic_format",
   "sagejs_wasm_algebraic_serialize",
@@ -671,9 +676,12 @@ const algebraicExports = [
   "sagejs_wasm_algebraic_matrix_create",
   "sagejs_wasm_algebraic_matrix_binary",
   "sagejs_wasm_algebraic_matrix_unary",
+  "sagejs_wasm_algebraic_matrix_select",
+  "sagejs_wasm_algebraic_matrix_right_kernel",
   "sagejs_wasm_algebraic_matrix_scalar_mul",
   "sagejs_wasm_algebraic_matrix_entry",
   "sagejs_wasm_algebraic_matrix_det",
+  "sagejs_wasm_algebraic_matrix_pivots",
   "sagejs_wasm_algebraic_matrix_rank",
   "sagejs_wasm_algebraic_matrix_equal",
   "sagejs_wasm_algebraic_matrix_charpoly",
@@ -688,9 +696,9 @@ const declaredAlgebraicExports = [...fs.readFileSync(
   "utf8",
 ).matchAll(/EXPORT\s+[\w\s*]+\s+(sagejs_wasm_algebraic_\w+)\s*\(/g)]
   .map((match) => match[1]);
-if (declaredAlgebraicExports.length !== 43 ||
+if (declaredAlgebraicExports.length !== 47 ||
     declaredAlgebraicExports.some((name, index) => name !== algebraicExports[index])) {
-  throw new Error("the reviewed 43-function algebraic Wasm export closure drifted");
+  throw new Error("the reviewed 47-function algebraic Wasm export closure drifted");
 }
 const exportNames = [
   "sagejs_factor_input",
@@ -967,7 +975,7 @@ for (const filename of pythonSources(standardLibrarySourceDirectory)) {
   standardLibraryModules[name] = {
     package: path.basename(filename) === "__init__.py",
     source,
-    cache,
+    cache: browserModuleCache(cache, name),
   };
 }
 fs.writeFileSync(
@@ -1147,6 +1155,7 @@ const receipt = writeProductionReceipt({
     ...dynamicProgramInputs,
     lazyModuleGenerator,
     lazyModuleConfig,
+    require.resolve("./browser-module-cache.cjs"),
     path.join(repositoryRoot, "scripts", "numerical-product.cjs"),
     conwayDataSource,
     kernelCoverageSource,
@@ -1258,7 +1267,7 @@ function buildKernelPacks({ reuseLinkedArtifacts = false } = {}) {
     if (!new Set(["flint", "gmp"]).has(pack.domain)) {
       throw new Error(`unsupported production kernel domain ${pack.domain}`);
     }
-    const kernels = manifest.kernels.filter((kernel) => kernel.domain === pack.domain);
+    const kernels = productionKernelsForPack(manifest.kernels, pack);
     const sources = kernels.flatMap((kernel) => {
       const directory = path.join(
         kernelBuildDirectory,

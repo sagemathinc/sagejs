@@ -1,14 +1,23 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { EXAMPLES } from "../examples.mjs";
 import { stageRelease } from "../scripts/stage.mjs";
 import { startStaticServer } from "../scripts/static-server.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const chromium = [process.env.SAGEJS_CHROMIUM, "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"].filter(Boolean).find(existsSync);
 assert.ok(chromium, "Chromium not found; set SAGEJS_CHROMIUM");
+
+const uploadDirectory = mkdtempSync(path.join(tmpdir(), "sagejs-widget-upload-"));
+const uploadName = "sagejs-upload.txt";
+const uploadContents = "Sage.js upload\n";
+const uploadBytes = Buffer.from(uploadContents);
+const uploadPath = path.join(uploadDirectory, uploadName);
+writeFileSync(uploadPath, uploadBytes);
 
 const staged = await stageRelease({ appRoot: root });
 const server = await startStaticServer({ directory: staged.target });
@@ -37,6 +46,7 @@ try {
   let id = 0;
   const pending = new Map();
   const errors = [];
+  const browserConsole = [];
   socket.addEventListener("message", ({ data }) => {
     const message = JSON.parse(data);
     if (message.id !== undefined) {
@@ -45,6 +55,9 @@ try {
       else handlers?.resolve(message.result);
     }
     if (message.method === "Runtime.exceptionThrown") errors.push(message.params.exceptionDetails.exception?.description ?? message.params.exceptionDetails.text);
+    if (message.method === "Runtime.consoleAPICalled") {
+      browserConsole.push(message.params.args.map((arg) => arg.value ?? arg.description).join(" "));
+    }
   });
   const command = (method, params = {}) => new Promise((resolve, reject) => {
     id += 1; pending.set(id, { resolve, reject }); socket.send(JSON.stringify({ id, method, params }));
@@ -71,8 +84,15 @@ try {
       source: document.querySelector('#source')?.value,
       runDisabled: document.querySelector('[data-run="all"]')?.disabled,
       diagnostics: document.querySelector('#diagnostics')?.textContent,
+      widgetInputs: Array.from(document.querySelectorAll('#output input'), (input) => ({
+        type: input.type,
+        value: input.value,
+      })),
+      widgetSliders: Array.from(document.querySelectorAll('#output [role=slider]'), (slider) => ({
+        value: slider.getAttribute('aria-valuenow'),
+      })),
     })`);
-    throw new Error(`timed out waiting for ${expression}\npage snapshot: ${snapshot}\n${errors.join("\n")}\n${chromeErrors}`);
+    throw new Error(`timed out waiting for ${expression}\npage snapshot: ${snapshot}\nbrowser console:\n${browserConsole.join("\n")}\n${errors.join("\n")}\n${chromeErrors}`);
   }
   async function runFactor({ setSource = true } = {}) {
     await evaluate(`${setSource ? "document.querySelector('#source').value='factor(2026)';" : ""} document.querySelector('[data-run="all"]').click()`);
@@ -81,6 +101,23 @@ try {
   async function runSource(source, ready, timeout = 90_000) {
     await evaluate(`document.querySelector('#source').value=${JSON.stringify(source)}; document.querySelector('[data-run="all"]').click()`);
     await waitFor(ready, timeout);
+  }
+  async function runCellSource(source, ready, timeout = 90_000) {
+    await evaluate(`(() => {
+      const editor = document.querySelector('#source');
+      editor.value = ${JSON.stringify(source)};
+      editor.setSelectionRange(editor.value.length);
+      document.querySelector('[data-run="cell"]').click();
+    })()`);
+    await waitFor(ready, timeout);
+  }
+  async function pressKey(key, code, windowsVirtualKeyCode) {
+    await command("Input.dispatchKeyEvent", {
+      type: "keyDown", key, code, windowsVirtualKeyCode,
+    });
+    await command("Input.dispatchKeyEvent", {
+      type: "keyUp", key, code, windowsVirtualKeyCode,
+    });
   }
   async function renderedPlotPixelStats() {
     return evaluate(`(async () => {
@@ -215,6 +252,22 @@ try {
     "pure typeset results should not duplicate the plain representation",
   );
   await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    "pretty_print(html('<h2 id=\\\"sage-html-heading\\\">Area $x^2$</h2>' + " +
+      "'<script>globalThis.__sagejs_html_injection__ = true</script>'))",
+    "document.querySelector('#output #sage-html-heading .katex') !== null",
+  );
+  assert.equal(
+    await evaluate("globalThis.__sagejs_html_injection__"),
+    undefined,
+    "HTML rich output must not execute user-provided scripts",
+  );
+  assert.equal(
+    await evaluate("document.querySelector('#output script')"),
+    null,
+    "HTML rich output must remove executable elements",
+  );
+  await evaluate("document.querySelector('#clear-output').click()");
   await evaluate("document.querySelector('#typeset-math').checked = false");
   await runSource(
     "2/3",
@@ -262,6 +315,208 @@ try {
     (await renderedPlotPixelStats()).chromatic > 100,
     "mesh plots should draw visible WebGL pixels",
   );
+  const widgetExample = EXAMPLES.find(
+    (example) => example.id === "interactive-symbolic-plot",
+  );
+  assert.ok(widgetExample);
+  await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    widgetExample.source,
+    "document.querySelector('#output')?.textContent.includes('power') && " +
+      "document.querySelector('#output')?.textContent.includes('2x') && " +
+      "document.querySelector('#output .js-plotly-plot') !== null",
+    30_000,
+  );
+  assert.ok(
+    await evaluate("Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) >= 0"),
+    "the initial widget plot should display x squared",
+  );
+  await evaluate("document.querySelector('#output [role=slider]').focus()");
+  await command("Input.dispatchKeyEvent", {
+    type: "keyDown", key: "ArrowRight", code: "ArrowRight",
+    windowsVirtualKeyCode: 39,
+  });
+  await command("Input.dispatchKeyEvent", {
+    type: "keyUp", key: "ArrowRight", code: "ArrowRight",
+    windowsVirtualKeyCode: 39,
+  });
+  await waitFor(
+    "Number(document.querySelector('#output [role=slider]')?.getAttribute('aria-valuenow')) === 3 && " +
+      "Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) < -1",
+    30_000,
+  );
+  await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    "@interact\ndef repeated_callback(n=(1..100)):\n    print(n, n**3)",
+    "document.querySelector('#output [role=slider]') !== null && " +
+      "document.querySelector('#output')?.textContent.includes('1 1')",
+    30_000,
+  );
+  await evaluate("document.querySelector('#output [role=slider]').focus()");
+  for (const [value, cube] of [[2, 8], [3, 27], [4, 64], [5, 125], [6, 216]]) {
+    await pressKey("ArrowRight", "ArrowRight", 39);
+    await waitFor(
+      `Number(document.querySelector('#output [role=slider]')?.getAttribute('aria-valuenow')) === ${value - 1} && ` +
+        `document.querySelector('#output')?.textContent.includes('${value} ${cube}')`,
+      30_000,
+    );
+  }
+  await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    "@interact\ndef plotted_callback(n=(1..10)):\n    show(plot(x^n))",
+    "document.querySelector('#output [role=slider]') !== null && " +
+      "document.querySelector('#output .js-plotly-plot') !== null",
+    30_000,
+  );
+  const expressionExample = EXAMPLES.find(
+    (example) => example.id === "interactive-function-explorer",
+  );
+  assert.ok(expressionExample);
+  await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    expressionExample.source,
+    "document.querySelector('#output input[type=text]')?.value === 'x^3 - 2*x' && " +
+      "document.querySelector('#output .js-plotly-plot') !== null",
+    30_000,
+  );
+  assert.ok(
+    await evaluate("Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) < -1"),
+    "the initial expression widget should display a cubic with negative values",
+  );
+  await evaluate(`(() => {
+    const input = document.querySelector('#output input[type=text]');
+    const setValue = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    ).set;
+    setValue.call(input, 'x^4');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await waitFor(
+    "document.querySelector('#output input[type=text]')?.value === 'x^4' && " +
+      "Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) >= 0",
+    30_000,
+  );
+  await evaluate(`(() => {
+    const input = document.querySelector('#output input[type=text]');
+    const setValue = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    ).set;
+    setValue.call(input, 'x^5');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await waitFor(
+    "document.querySelector('#output input[type=text]')?.value === 'x^5' && " +
+      "Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) < -1",
+    30_000,
+  );
+  await evaluate("document.querySelector('#clear-output').click()");
+  const blankLineExplorer =
+    "from IPython.display import display\n\n" +
+    "@interact\n" +
+    "def blank_line_explorer(f=input_box('x^3 - 2*x', label='f(x)=')):\n" +
+    "    display(f)\n" +
+    "    display(f.derivative(x))\n" +
+    "    display(plot(f, (x, -2, 2), ymin=-10, ymax=10))";
+  await runCellSource(
+    blankLineExplorer,
+    "document.querySelector('#output input[type=text]')?.value === 'x^3 - 2*x' && " +
+      "document.querySelector('#output .js-plotly-plot') !== null && " +
+      "!document.querySelector('#output')?.textContent.includes('display is not defined')",
+    30_000,
+  );
+  const galleryExample = EXAMPLES.find(
+    (example) => example.id === "ipywidgets-core-gallery",
+  );
+  assert.ok(galleryExample);
+  await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    galleryExample.source,
+    "document.querySelector('#output [role=slider]') !== null && " +
+      "document.querySelector('#output input[type=number]')?.value === '4' && " +
+      "Array.from(document.querySelectorAll('#output button'))" +
+      ".some((button) => button.textContent.includes('Upload text'))",
+    30_000,
+  );
+  await evaluate("document.querySelector('#output [role=slider]').focus()");
+  await command("Input.dispatchKeyEvent", {
+    type: "keyDown", key: "ArrowRight", code: "ArrowRight",
+    windowsVirtualKeyCode: 39,
+  });
+  await command("Input.dispatchKeyEvent", {
+    type: "keyUp", key: "ArrowRight", code: "ArrowRight",
+    windowsVirtualKeyCode: 39,
+  });
+  await waitFor(
+    "Number(document.querySelector('#output [role=slider]')?.getAttribute('aria-valuenow')) === 5 && " +
+      "document.querySelector('#output input[type=number]')?.value === '5'",
+    30_000,
+  );
+  await evaluate(`Array.from(document.querySelectorAll('#output button'))
+    .find((button) => button.textContent.includes('Capture output')).click()`);
+  await waitFor(
+    "document.querySelector('#output')?.textContent.includes('captured 5') && " +
+      "document.querySelector('#output .katex') !== null",
+    30_000,
+  );
+  await evaluate(`Array.from(document.querySelectorAll('#output button'))
+    .find((button) => button.textContent.includes('Clear output')).click()`);
+  await waitFor(
+    "!document.querySelector('#output')?.textContent.includes('captured 5')",
+    30_000,
+  );
+  await evaluate(`Array.from(document.querySelectorAll('#output button'))
+    .find((button) => button.textContent.includes('Raise error')).click()`);
+  await waitFor(
+    "document.querySelector('#output .widget-error')?.textContent.includes('deliberate widget error')",
+    30_000,
+  );
+  await command("Page.setInterceptFileChooserDialog", { enabled: true });
+  const fileChooser = new Promise((resolve, reject) => {
+    const timeout = setTimeout(
+      () => reject(new Error("timed out waiting for the widget file chooser")),
+      10_000,
+    );
+    const listener = ({ data }) => {
+      const message = JSON.parse(data);
+      if (message.method !== "Page.fileChooserOpened") return;
+      clearTimeout(timeout);
+      socket.removeEventListener("message", listener);
+      resolve(message.params);
+    };
+    socket.addEventListener("message", listener);
+  });
+  await evaluate(`Array.from(document.querySelectorAll('#output button'))
+    .find((button) => button.textContent.includes('Upload text')).click()`);
+  const fileChooserEvent = await fileChooser;
+  await command("DOM.setFileInputFiles", {
+    backendNodeId: fileChooserEvent.backendNodeId,
+    files: [uploadPath],
+  });
+  await command("Page.setInterceptFileChooserDialog", { enabled: false });
+  await waitFor(
+    `document.querySelector('#output')?.textContent.includes(${JSON.stringify(
+      `uploaded ${uploadName} ${uploadBytes.length} ${uploadBytes.reduce((sum, value) => sum + value, 0)}`,
+    )})`,
+    30_000,
+  );
+  await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    "import ipywidgets as widgets\nwidgets.IntSlider(min=0, max=100)",
+    "document.querySelector('#output [role=slider]') !== null && " +
+      "!document.querySelector('#output')?.textContent.includes('IntSlider(value=')",
+    30_000,
+  );
+  await evaluate("document.querySelector('#reset').click()");
+  await waitFor(
+    "document.querySelector('#output .widget-stale-notice')?.textContent.includes('Run its input again') && " +
+      "document.querySelector('#output input[type=text]') === null && " +
+      "document.querySelector('#kernel-status')?.dataset.state === 'ready'",
+    30_000,
+  );
   await evaluate("document.querySelector('#clear-output').click()");
   await runFactor();
   await evaluate("navigator.serviceWorker.ready.then(() => true)");
@@ -275,4 +530,5 @@ try {
 } finally {
   chrome.kill("SIGTERM");
   server.close();
+  rmSync(uploadDirectory, { recursive: true, force: true });
 }

@@ -360,6 +360,64 @@ coarse 2x acceptance threshold, not PARI parity or complete-corpus promotion.
 The raw one-line receipts are retained outside Git as content-addressed
 campaign evidence; tune/heldout closure remains a separate freeze gate.
 
+### C7 safety correction and stable basis-only result
+
+Release review subsequently found that the transform-based resident selector
+could deterministically corrupt the process on an ordinary 37-by-8 cubic
+relation workspace.  Its native evidence had covered at most 29 rows.  The
+original automatic and explicit route therefore remains guarded, before
+buffer allocation, by its exact 29-row, 10-column, three-bit release envelope.
+No later cubic result widens that claim.
+
+The stable source-order selector now has a distinct implementation and release
+identity.  `stable_exact_relation_hnf_select_v1` owns only four equal-shape
+FLINT matrices: the source, its canonical basis, the mutable trial source, and
+the trial basis.  It calls the new caller-owned `fmpz_matrix_hnf_into`
+operation, compares canonical bases, and publishes one basis plus one compact
+selection mask.  Redundant candidates are tested from right to left so the
+earliest sufficient relations survive; relation discovery orders those rows
+by witness complexity, and retaining later rows can inflate an otherwise
+small public proof certificate by orders of magnitude.  It has no
+transformation matrix, determinant, or GMP replay
+accumulator from the unsafe route.  Cancellation retains the ordinary
+interruptible algorithm; a private native decline restarts the untouched
+mature FLINT route without publishing candidate state.
+
+The separate selector is admitted only for at most 64 rows, 10 columns, and
+four-bit signed entries.  Qualification executes both HNF destinations and a
+deletion trial at every one of the 640 `(rows, columns)` shapes in that
+envelope and compares each result with the mature FLINT oracle.  The exact
+former-crash 37-by-8 matrix executes its complete 31-HNF sequence and returns
+class number 4 with invariants `(2, 2)`.  The 54-by-10 tune matrix executes its
+complete 49-HNF sequence and returns class number 9 with invariants `(3, 3)`.
+The generated production Wasm pack independently executes the former-crash
+matrix with the same rank, basis, mask, and HNF count.  Alias, dimension,
+lifecycle, and sanitizer schedules also pass for the new caller-owned FFI
+operation.
+
+On the dedicated four-core `opt` VM, an exact rebuilt baseline at commit
+`be039b48f45643ed1436e2829d50380364d464b6` was compared with the new route in
+three discarded and eleven retained alternating ABBA/BAAB blocks.  Each block
+contained two fresh processes per arm; the primary observation was the second
+fresh-field public call in each process.  Every observation checked class
+number 9, proof status `exact-relations-conditional-grh`, a 54-by-10 selector,
+49 HNFs, and either 49 mature-library crossings for the baseline or one native
+crossing for the candidate.  The steady public median improved from
+1.914980992 seconds to 1.694561536 seconds, or 11.51%, and all eleven blocks
+were positive.  The minimum paired improvement was 9.9186%; two blocks were
+fractionally below the campaign's strict 10%-in-every-pair gate.  The
+process-cold median improved 6.38%.  Receipt
+`sha256:68359d5172f12c5d07b70031ac52659782d4bada769c958449ffa3bb9f7c989c`
+retains every raw observation plus exact build, adapter, source-workspace, and
+route identities outside Git.
+
+This is strong causal evidence and a safe correction, but it is not promoted
+as satisfying the strict paired-performance gate and it is nowhere near PARI
+parity.  It removes repeated host crossings from the existing mathematical
+regime.  The next parity intervention must address the relation/ideal search
+regime itself, especially PARI's adjacent-ideal strategy, rather than claim
+that a faster HNF selector is the missing class-group algorithm.
+
 The post-C7 profile also changes the next engineering question.  On the same
 prepared public call, the candidate spent 19.896 seconds inside the class-unit
 engine.  Its coarse phases were 3.712 seconds for relation collection, 1.869

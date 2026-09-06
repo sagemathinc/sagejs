@@ -49,8 +49,17 @@ deterministically, and supplies a tracing-GC finalizer fallback. Browser
 `dumps` and `loads` use the same data-only SagePack codec as Node, so a dense
 integer matrix roundtrip bulk-exports and reconstructs one resource instead of
 materializing scalar entries. Higher-weight and Dirichlet-character Manin
-presentations still require host-neutral core extraction from the Node
-adapter.
+presentations have exact portable implementations. Character Hecke matrices
+use the ordinary Python character-weighted Heilbronn action in
+`sagejs.modular_forms.character_hecke` when the native accelerator is absent.
+The same exact prime-power recurrence then supplies bulk Hecke images and
+Gamma1 cusp/newform descent. The mandatory character-Hecke browser corpus
+covers Gamma1(13), higher weight, imprimitive characters, bad primes, and
+degree-four coefficient fields; it requires answers, not capability errors.
+This is a portable correctness path, not a claim of native-speed browser
+performance. Existing presentation-size guards still apply.
+General cyclotomic polynomial factorization for higher-dimensional newform
+decompositions is still a separate browser limitation.
 
 Dense matrices over `GF(2)` use a separate generated M4RI WebAssembly module.
 M4RI-to-M4RI operations stay entirely inside that module: the host sees only

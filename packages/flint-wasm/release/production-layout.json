@@ -135,8 +135,8 @@
           "web-tree-sitter.wasm"
         ],
         "maximumCompressedDelta": {
-          "gzipBytes": 16600000,
-          "brotliBytes": 9200000
+          "gzipBytes": 17600000,
+          "brotliBytes": 9700000
         }
       },
       {
@@ -204,8 +204,8 @@
           "native-kernels/kernel-flint.wasm"
         ],
         "maximumCompressedDelta": {
-          "gzipBytes": 2400000,
-          "brotliBytes": 1900000
+          "gzipBytes": 2500000,
+          "brotliBytes": 1950000
         }
       },
       {
