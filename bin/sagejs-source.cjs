@@ -159,7 +159,12 @@ if (argv.mode === "self") {
     process.exitCode = 1;
   });
 } else if (argv.mode === "compile") {
-  load("compile").default({ argv, src_path: srcPath, lib_path: compilerPath });
+  load("compile").default({ argv, src_path: srcPath, lib_path: compilerPath }).catch((error) => {
+    process.stderr.write(load("python/diagnostics").renderCliDiagnostic(error, {
+      includeHostStack: process.env.SAGEJS_DIAGNOSTIC_HOST_STACK === "1",
+    }));
+    process.exitCode = 1;
+  });
 } else {
   throw Error(`unknown mode "${argv.mode}"`);
 }

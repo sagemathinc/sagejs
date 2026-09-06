@@ -539,6 +539,13 @@ def print_class(output):
 
     add_hidden_class_property("__module__", print_class_module, True)
 
+    if not compiling_baselib:
+        output.indent()
+        output.print("ρσ_register_heap_class(")
+        self.name.print(output)
+        output.print(")")
+        output.end_statement()
+
     class_annotations = []
     for statement in self.body:
         annotated = statement
@@ -1348,6 +1355,16 @@ def print_class(output):
         Object.keys(self.classmethods)
     )
     for method_name in inherited_callable_names:
+        if (
+            not compiling_baselib
+            and method_name == "__annotations__"
+            and not defined_methods[method_name]
+            and not (self.own_classvars or {})[method_name]
+        ):
+            # The default type annotation slot is own-class-only. Do not
+            # materialize an inherited callable annotation value as an own
+            # constructor property and accidentally bypass that slot.
+            continue
         output.indent()
         self.name.print(output)
         output.assign("." + method_name)

@@ -1466,6 +1466,8 @@ runtime.set_class_repr(ρσ_str, "<class 'str'>")
 runtime.reflect.set(ρσ_str, "__name__", "str")
 runtime.reflect.set(ρσ_str, "__qualname__", "str")
 runtime.reflect.set(ρσ_str, "__module__", "builtins")
+runtime.reflect.deleteProperty(ρσ_str, "__annotations__")
+runtime.reflect.deleteProperty(ρσ_str, "__annotations_text__")
 runtime.object.defineProperty(
     ρσ_str,
     "__python_type__",

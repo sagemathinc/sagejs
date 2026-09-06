@@ -305,6 +305,62 @@ _builtins_class_namespace_cache = runtime.reflect.construct(
 )
 _builtins_data_descriptor_names = runtime.reflect.construct(runtime.set_class, [])
 _builtins_descriptor_epoch = 0
+_builtins_heap_class_keys = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+_builtins_class_annotation_slots = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+
+
+def ρσ_register_heap_class(value: Any) -> Any:
+    """Brand a newly allocated Python class without allocating annotations."""
+    _builtins_heap_class_keys.set(value, value)
+    return value
+
+
+def ρσ_alias_heap_class(wrapper: Any, target: Any) -> Any:
+    """Preserve private class slots across a known runtime proxy adapter."""
+    key = _builtins_heap_class_keys.get(target)
+    if key is not runtime.undefined:
+        _builtins_heap_class_keys.set(wrapper, key)
+    return wrapper
+
+
+def _builtins_class_annotation_key(value: Any) -> Any:
+    key = _builtins_heap_class_keys.get(value)
+    if key is runtime.undefined:
+        return runtime.undefined
+    # This slice supplies the default type slot, not metaclass overrides.
+    # Preserve existing lookup/set/delete behavior when a metaclass explicitly
+    # provides this name. A metaclass's own private annotation slot is not an
+    # attribute of its class instances and must not count as an override.
+    metaclass = _builtins_get_member(value, "__python_type__")
+    if metaclass is not runtime.undefined and metaclass is not ρσ_type:
+        resolution = _builtins_class_attribute_resolution(metaclass, "__annotations__")
+        if resolution is not runtime.undefined:
+            return runtime.undefined
+    return key
+
+
+def _builtins_own_class_annotation(value: Any) -> Any:
+    descriptor = runtime.object.getOwnPropertyDescriptor(value, "__annotations__")
+    if descriptor is runtime.undefined:
+        prototype = runtime.reflect.get(value, "prototype")
+        if prototype is not runtime.undefined:
+            descriptor = runtime.object.getOwnPropertyDescriptor(
+                prototype, "__annotations__"
+            )
+    return descriptor
+
+
+def _builtins_read_class_annotation(value: Any, key: Any) -> Any:
+    if not _builtins_class_annotation_slots.has(key):
+        _builtins_class_annotation_slots.set(key, dict())
+    member = _builtins_class_annotation_slots.get(key)
+    if _builtins_member_is_function(member, "__get__"):
+        return _builtins_call_member(member, "__get__", [None, value])
+    return member
 
 
 def _builtins_as_any(value: Any) -> Any:
@@ -5181,6 +5237,18 @@ def ρσ_getattr_internal(
 ) -> Any:
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
+    if runtime.strict_equal(name, "__annotations__"):
+        annotation_key = _builtins_class_annotation_key(value)
+        if (
+            annotation_key is not runtime.undefined
+            and _builtins_own_class_annotation(value) is runtime.undefined
+        ):
+            try:
+                return _builtins_read_class_annotation(value, annotation_key)
+            except AttributeError:
+                if default_value is not _BUILTINS_MISSING:
+                    return default_value
+                raise
     value_type = runtime.jstype(value)
     value_is_callable_instance = (
         runtime.strict_equal(value_type, "function")
@@ -5635,6 +5703,14 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
     global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
+    if runtime.strict_equal(name, "__annotations__"):
+        annotation_key = _builtins_class_annotation_key(value)
+        if (
+            annotation_key is not runtime.undefined
+            and _builtins_own_class_annotation(value) is runtime.undefined
+        ):
+            _builtins_class_annotation_slots.set(annotation_key, member)
+            return
     if _builtins_get_member(value, "__sagejs_super__") is True:
         runtime.reflect.set(value, name, member)
         return
@@ -6227,6 +6303,25 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
     global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
+    if runtime.strict_equal(name, "__annotations__"):
+        annotation_key = _builtins_class_annotation_key(value)
+        if annotation_key is not runtime.undefined:
+            if _builtins_own_class_annotation(value) is runtime.undefined:
+                if not _builtins_class_annotation_slots.has(annotation_key):
+                    raise AttributeError("object has no attribute '__annotations__'")
+                runtime.reflect.apply(
+                    runtime.reflect.get(_builtins_class_annotation_slots, "delete"),
+                    _builtins_class_annotation_slots,
+                    [annotation_key],
+                )
+                return
+            # Deleting an explicit namespace value also discards any older
+            # synthesized slot, so it cannot reappear on the next lookup.
+            runtime.reflect.apply(
+                runtime.reflect.get(_builtins_class_annotation_slots, "delete"),
+                _builtins_class_annotation_slots,
+                [annotation_key],
+            )
     builtin_facade_names = runtime.native_get(value, "__sagejs_builtin_facade_names__")
     if builtin_facade_names is not runtime.undefined and builtin_facade_names.has(name):
         if not runtime.reflect.deleteProperty(value, name):
@@ -6754,6 +6849,11 @@ def ρσ_type(*values: Any) -> Any:
         runtime.reflect.set(dynamic_class, "__qualname__", class_name)
         runtime.reflect.set(dynamic_class, "__bases__", runtime.math_tuple(list(bases)))
         runtime.reflect.set(prototype, "__bases__", runtime.math_tuple(list(bases)))
+        # The host callable implements type allocation; its Python-function
+        # metadata is not an explicit entry in the new class namespace.
+        runtime.reflect.deleteProperty(dynamic_class, "__annotations__")
+        runtime.reflect.deleteProperty(dynamic_class, "__annotations_text__")
+        ρσ_register_heap_class(dynamic_class)
         for pair in namespace.items():
             member_name = pair[0]
             member = pair[1]
@@ -9190,6 +9290,9 @@ def _builtins_set_type_metadata(cls: Any, name: _Str) -> None:
     runtime.reflect.set(cls, "__name__", name)
     runtime.reflect.set(cls, "__qualname__", name)
     runtime.reflect.set(cls, "__module__", "builtins")
+    # Factory-function annotations are not annotations of the builtin type.
+    runtime.reflect.deleteProperty(cls, "__annotations__")
+    runtime.reflect.deleteProperty(cls, "__annotations_text__")
 
 
 _builtins_set_type_metadata(ρσ_int, "int")
@@ -9401,9 +9504,7 @@ runtime.reflect.set(
     _type_bases,
 )
 runtime.reflect.set(ρσ_type, "__mro__", _type_mro)
-runtime.reflect.set(ρσ_type, "__module__", "builtins")
-runtime.reflect.set(ρσ_type, "__name__", "type")
-runtime.reflect.set(ρσ_type, "__qualname__", "type")
+_builtins_set_type_metadata(ρσ_type, "type")
 _object_bases = runtime.reflect.get(SageObject, "__bases__")
 runtime.object.freeze(_object_bases)
 runtime.object.freeze(
@@ -9427,8 +9528,7 @@ runtime.object.defineProperty(
     {"value": ρσ_type, "writable": True, "configurable": True},
 )
 runtime.set_class_repr(ρσ_range, "<class 'range'>")
-runtime.reflect.set(ρσ_range, "__name__", "range")
-runtime.reflect.set(ρσ_range, "__qualname__", "range")
+_builtins_set_type_metadata(ρσ_range, "range")
 
 
 class _SageModuleType:

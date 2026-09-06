@@ -768,6 +768,13 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
         [target, handler],
     )
     runtime.reflect.set(wrapper, "__sagejs_callable_instance_class__", True)
+    alias_heap_class = _internal_builtin("ρσ_alias_heap_class")
+    if not _internal_type_is(runtime.jstype(alias_heap_class), "function"):
+        alias_heap_class = runtime.reflect.get(
+            runtime.global_object, "ρσ_alias_heap_class"
+        )
+    if _internal_type_is(runtime.jstype(alias_heap_class), "function"):
+        runtime.reflect.apply(alias_heap_class, runtime.undefined, [wrapper, target])
     target.prototype.constructor = wrapper
     _internal_set_class_repr(wrapper, target)
     return wrapper
