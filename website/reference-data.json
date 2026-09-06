@@ -30292,9 +30292,9 @@
         "name": "ModularSymbols",
         "qualified": "ModularSymbols",
         "path": "src/baselib/modular.py",
-        "line": 5951,
+        "line": 5970,
         "excerpt": {
-          "start_line": 5939,
+          "start_line": 5958,
           "text": "            + \") of weight \"\n            + str(self._weight)\n            + \" with sign \"\n            + str(self._sign)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ModularSymbols(\n    group: Any = 1,\n    weight: Any = 2,\n    sign: Any = 0,\n    base_ring: Any = None,\n) -> ModularSymbolsSpace:\n    r\"\"\"\n    Construct a modular-symbol Hecke module.\n\n    Weight-2 full `Gamma_0(N)` spaces with sign zero provide exact matrices\n    for every Hecke operator `T_n`. Prime operators are assembled natively\n    from a minimal Manin presentation; general indices use multiplicativity\n    and the weight-2 prime-power recurrence. Higher even weights over `QQ`"
         }
       },
@@ -30373,16 +30373,16 @@
         "name": "boundary_map",
         "qualified": "ModularSymbolsSpace.boundary_map",
         "path": "src/baselib/modular.py",
-        "line": 4995,
+        "line": 5009,
         "excerpt": {
-          "start_line": 4983,
+          "start_line": 4997,
           "text": "        boundary_space = BoundarySymbolsSpace(ambient, cusps)\n        ambient._boundary_data_cache = runtime.math_tuple(\n            [defining_matrix, boundary_space]\n        )\n        return ambient._boundary_data_cache\n\n    def _boundary_matrix(self) -> Any:\n        return self._boundary_data()[0]\n\n    def boundary_space(self) -> BoundarySymbolsSpace:\n        return self._boundary_data()[1]\n\n    def boundary_map(self) -> ModularSymbolsBoundaryMap:\n        r\"\"\"\n        Return the exact map from modular symbols to cusp divisors.\n\n        Rows of the matrix are boundaries of the domain basis vectors. Its\n        kernel is the cuspidal submodule.\n\n        ```sage\n        sage: M = ModularSymbols(11)\n        sage: M.boundary_map().matrix()\n        [ 1 -1]\n        [ 0  0]\n        [ 0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#be246b1bd85db602-e3b0c44298fc1c14",
-          "line": 5003,
+          "line": 5017,
           "source": "M = ModularSymbols(11)",
           "want": "",
           "tags": [],
@@ -30398,7 +30398,7 @@
         },
         {
           "id": "src/baselib/modular.py#88facfb84ea232c1-90ae519c16c23134",
-          "line": 5004,
+          "line": 5018,
           "source": "M.boundary_map().matrix()",
           "want": "[ 1 -1]\n[ 0  0]\n[ 0  0]\n",
           "tags": [],
@@ -30487,9 +30487,9 @@
         "name": "cuspidal_submodule",
         "qualified": "ModularSymbolsSpace.cuspidal_submodule",
         "path": "src/baselib/modular.py",
-        "line": 5708,
+        "line": 5727,
         "excerpt": {
-          "start_line": 5696,
+          "start_line": 5715,
           "text": "        sage: M = ModularSymbols(1000, 2)\n        sage: M.hecke_matrix(6).trace()\n        60\n        ```\n        \"\"\"\n        return self.T(index).matrix()\n\n    def T(self, index: Any) -> HeckeOperator:\n        return HeckeOperator(self, _positive_integer(index, \"Hecke index\"))\n\n    hecke_operator = T\n\n    def cuspidal_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the exact kernel of the boundary map.\"\"\"\n        if self._is_cuspidal:\n            return self\n        if self._supports_native_weight2():\n            if self._cuspidal_cache is None:\n                ambient = self.ambient_module()\n                change = ambient._ambient_change_of_basis()\n                if self.is_ambient():\n                    if change is None:\n                        basis = (\n                            ambient.p1list()\n                            .cuspidal_basis_matrix()"
         }
       },
@@ -30570,16 +30570,16 @@
         "name": "decomposition",
         "qualified": "ModularSymbolsSpace.decomposition",
         "path": "src/baselib/modular.py",
-        "line": 5278,
+        "line": 5292,
         "excerpt": {
-          "start_line": 5266,
+          "start_line": 5280,
           "text": "                    continue\n                constituent = space._subspace_from_local_basis(local_basis, \"Hecke\")\n                if exponent == 1:\n                    finished.append(constituent)\n                else:\n                    remaining.append(constituent)\n        return finished + remaining\n\n    def _bad_hecke_primes(self) -> list[int]:\n        \"\"\"Return the prime divisors whose operators are `U_p`.\"\"\"\n        return [runtime.number(pair[0]) for pair in sage.factor(self.level())]\n\n    def decomposition(\n        self,\n        bound: Any = None,\n        anemic: bool = True,\n        **_kwds: Any,\n    ) -> list[ModularSymbolsSpace]:\n        r\"\"\"Decompose this space into simple modules for Hecke operators.\n\n        The implementation follows the standard modular-symbol algorithm:\n        factor characteristic polynomials of successive `T_p`, and split by\n        the left kernels of their irreducible factors.  A constituent whose\n        restricted characteristic polynomial is irreducible is certified\n        simple as a module for the commutative Hecke algebra."
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#e773e65ae60c2b9f-e3b0c44298fc1c14",
-          "line": 5298,
+          "line": 5312,
           "source": "M = ModularSymbols(389, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -30595,7 +30595,7 @@
         },
         {
           "id": "src/baselib/modular.py#611b234d59ea3095-8559994e24c5cb01",
-          "line": 5299,
+          "line": 5313,
           "source": "[A.dimension() for A in M.decomposition()]",
           "want": "[1, 1, 2, 3, 6, 20]\n",
           "tags": [],
@@ -30611,7 +30611,7 @@
         },
         {
           "id": "src/baselib/modular.py#405518e5fdedddca-e3b0c44298fc1c14",
-          "line": 5306,
+          "line": 5320,
           "source": "G = DirichletGroup(37)",
           "want": "",
           "tags": [],
@@ -30627,7 +30627,7 @@
         },
         {
           "id": "src/baselib/modular.py#858b266f0968cf76-e3b0c44298fc1c14",
-          "line": 5307,
+          "line": 5321,
           "source": "M = ModularSymbols(G.0, 5)",
           "want": "",
           "tags": [],
@@ -30643,7 +30643,7 @@
         },
         {
           "id": "src/baselib/modular.py#8258fe03019e163d-7638ad4d4f4c164d",
-          "line": 5308,
+          "line": 5322,
           "source": "[A.dimension() for A in M.decomposition(bound=2)]",
           "want": "[1, 1, 24]\n",
           "tags": [],
@@ -30733,16 +30733,16 @@
         "name": "degeneracy_map",
         "qualified": "ModularSymbolsSpace.degeneracy_map",
         "path": "src/baselib/modular.py",
-        "line": 5020,
+        "line": 5034,
         "excerpt": {
-          "start_line": 5008,
+          "start_line": 5022,
           "text": "        ```\n        \"\"\"\n        if self._boundary_map_cache is None:\n            if self.is_ambient():\n                defining_matrix = self._boundary_matrix()\n            else:\n                defining_matrix = self.basis_matrix() * self._boundary_matrix()\n            self._boundary_map_cache = ModularSymbolsBoundaryMap(\n                self, self.boundary_space(), defining_matrix\n            )\n        return self._boundary_map_cache\n\n    def degeneracy_map(\n        self,\n        codomain: Any,\n        index: Any = 1,\n    ) -> ModularSymbolsDegeneracyMap:\n        r\"\"\"Return an exact level-lowering degeneracy map.\n\n        `codomain` may be a modular-symbol space or its level. The target\n        must divide this space's level; level-raising maps are not yet\n        implemented. The returned morphism exposes `matrix()`, `rank()`,\n        `kernel()`, `image()`, and evaluation on modular symbols.\n\n        ```sage"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#44bcc9a53bb1591b-e3b0c44298fc1c14",
-          "line": 5033,
+          "line": 5047,
           "source": "M = ModularSymbols(22, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -30758,7 +30758,7 @@
         },
         {
           "id": "src/baselib/modular.py#9fe9ef85d9e7d7c3-e3b0c44298fc1c14",
-          "line": 5034,
+          "line": 5048,
           "source": "d = M.degeneracy_map(11, 1)",
           "want": "",
           "tags": [],
@@ -30774,7 +30774,7 @@
         },
         {
           "id": "src/baselib/modular.py#2e1a3f149e87befa-05d9e5123438e21c",
-          "line": 5035,
+          "line": 5049,
           "source": "(d.matrix().dimensions(), d.rank())",
           "want": "((5, 2), 2)\n",
           "tags": [],
@@ -30847,7 +30847,7 @@
       "examples": [
         {
           "id": "src/baselib/modular.py#1e0fada8cc8c7990-e3b0c44298fc1c14",
-          "line": 5696,
+          "line": 5715,
           "source": "M = ModularSymbols(1000, 2)",
           "want": "",
           "tags": [],
@@ -30863,7 +30863,7 @@
         },
         {
           "id": "src/baselib/modular.py#92b5ba6413319e6f-39fa9ec190eee7b6",
-          "line": 5697,
+          "line": 5716,
           "source": "M.hecke_matrix(6).trace()",
           "want": "60\n",
           "tags": [],
@@ -30952,9 +30952,9 @@
         "name": "minus_submodule",
         "qualified": "ModularSymbolsSpace.minus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 5535,
+        "line": 5554,
         "excerpt": {
-          "start_line": 5523,
+          "start_line": 5542,
           "text": "            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:\n        ambient = self.ambient_module()\n        projective_line = ambient.p1list()\n        dimension = ambient.dimension()\n        result = None\n        for prime, exponent in sage.factor(index):\n            p = runtime.number(prime)"
         }
       },
@@ -31033,9 +31033,9 @@
         "name": "modular_symbol",
         "qualified": "ModularSymbolsSpace.modular_symbol",
         "path": "src/baselib/modular.py",
-        "line": 5098,
+        "line": 5112,
         "excerpt": {
-          "start_line": 5086,
+          "start_line": 5100,
           "text": "            raise NotImplementedError(\n                \"degeneracy maps require a native Gamma0 Manin presentation over QQ\"\n            )\n        images = self.basis_matrix()._sparse_left_multiply(ambient_matrix)\n        defining_matrix = target.basis_matrix().solve_left(images)\n        return ModularSymbolsDegeneracyMap(\n            self, target, defining_matrix, ambient_matrix, index\n        )\n\n    def cusps(self) -> list[ModularCusp]:\n        return self.boundary_space().cusps()\n\n    def modular_symbol(\n        self,\n        start: Any,\n        stop: Any,\n    ) -> ModularSymbolElement:\n        r\"\"\"\n        Construct the rational path `{start, stop}` as an exact element.\n\n        Endpoints are numerator/denominator pairs; `(1, 0)` denotes infinity.\n        Continued-fraction reduction happens in one native call.\n        \"\"\"\n        ambient = self.ambient_module()\n        if ambient.weight() != 2:"
         }
       },
@@ -31121,16 +31121,16 @@
         "name": "new_submodule",
         "qualified": "ModularSymbolsSpace.new_submodule",
         "path": "src/baselib/modular.py",
-        "line": 5361,
+        "line": 5380,
         "excerpt": {
-          "start_line": 5349,
+          "start_line": 5368,
           "text": "            for prime in self._bad_hecke_primes():\n                answer = self._refine_decomposition_with_operator(answer, prime)\n        for index in range(1, len(answer)):\n            item = answer[index]\n            position = index\n            while position > 0 and answer[position - 1].dimension() > item.dimension():\n                answer[position] = answer[position - 1]\n                position -= 1\n            answer[position] = item\n        self._decomposition_cache.set(key, answer)\n        return answer\n\n    def new_submodule(self, prime: Any = None) -> ModularSymbolsSpace:\n        r\"\"\"Return the new, or `p`-new, submodule of this space.\n\n        For trivial-character Gamma0 spaces over `QQ`, this computes the\n        intersection of the kernels of the two level-lowering degeneracy\n        maps to level `N/p`, for every prime `p` dividing `N`.  All maps are\n        assembled natively and horizontally joined before taking one exact\n        kernel, following the optimized Magma modular-symbols algorithm.\n\n        ```sage\n        sage: M = ModularSymbols(1000, 2, sign=1)\n        sage: N = M.new_submodule()\n        sage: N.dimension()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#d668c2300b6a68dd-e3b0c44298fc1c14",
-          "line": 5371,
+          "line": 5390,
           "source": "M = ModularSymbols(1000, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -31146,7 +31146,7 @@
         },
         {
           "id": "src/baselib/modular.py#b30e6bf0f0f5ee51-e3b0c44298fc1c14",
-          "line": 5372,
+          "line": 5391,
           "source": "N = M.new_submodule()",
           "want": "",
           "tags": [],
@@ -31162,7 +31162,7 @@
         },
         {
           "id": "src/baselib/modular.py#93c9f0c2cd6d7087-c2356069e9d1e79c",
-          "line": 5373,
+          "line": 5392,
           "source": "N.dimension()",
           "want": "24\n",
           "tags": [],
@@ -31178,7 +31178,7 @@
         },
         {
           "id": "src/baselib/modular.py#e38abd35fcdc37b2-3b01616cb89b0520",
-          "line": 5375,
+          "line": 5394,
           "source": "[A.dimension() for A in N.decomposition()]",
           "want": "[2, 2, 2, 2, 4, 4, 4, 4]\n",
           "tags": [],
@@ -31267,9 +31267,9 @@
         "name": "plus_submodule",
         "qualified": "ModularSymbolsSpace.plus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 5529,
+        "line": 5548,
         "excerpt": {
-          "start_line": 5517,
+          "start_line": 5536,
           "text": "            basis = (\n                eigenspace if self.is_ambient() else self._intersect_basis(eigenspace)\n            )\n        prefix = \"Cuspidal \" if self._is_cuspidal else \"\"\n        result = self._new_coordinate_subspace(\n            basis,\n            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:"
         }
       },
@@ -31358,7 +31358,7 @@
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14",
-          "line": 5812,
+          "line": 5831,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -31374,7 +31374,7 @@
         },
         {
           "id": "src/baselib/modular.py#af2fb6f84988516a-b5e9ab680a923c0f",
-          "line": 5813,
+          "line": 5832,
           "source": "S.q_expansion_basis(6)",
           "want": "[q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)]\n",
           "tags": [],
@@ -31473,7 +31473,7 @@
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14~3",
-          "line": 5883,
+          "line": 5902,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -31489,7 +31489,7 @@
         },
         {
           "id": "src/baselib/modular.py#f4aeb5aa7208c1f6-e3b0c44298fc1c14",
-          "line": 5884,
+          "line": 5903,
           "source": "C = S.q_expansion_basis_certificate()",
           "want": "",
           "tags": [],
@@ -31505,7 +31505,7 @@
         },
         {
           "id": "src/baselib/modular.py#449784d892aed5b0-db814fb8aef595e4",
-          "line": 5885,
+          "line": 5904,
           "source": "(C.dimension(), C.is_sturm_certified(), C.verify())",
           "want": "(1, True, True)\n",
           "tags": [],
@@ -31604,7 +31604,7 @@
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14~2",
-          "line": 5859,
+          "line": 5878,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -31620,7 +31620,7 @@
         },
         {
           "id": "src/baselib/modular.py#34c87c2bfa3e38a6-ed61d37e25515866",
-          "line": 5860,
+          "line": 5879,
           "source": "S.q_expansion_module(5, ZZ).basis_matrix()",
           "want": "[ 0  1 -2 -1  2]\n",
           "tags": [],
@@ -31709,9 +31709,9 @@
         "name": "star_involution",
         "qualified": "ModularSymbolsSpace.star_involution",
         "path": "src/baselib/modular.py",
-        "line": 5145,
+        "line": 5159,
         "excerpt": {
-          "start_line": 5133,
+          "start_line": 5147,
           "text": "                ).transpose()\n        return ambient._star_matrix_cache\n\n    def _restrict_ambient_matrix(self, defining_matrix: Any) -> Any:\n        if self.is_ambient():\n            return defining_matrix\n        basis = self.basis_matrix()\n        pivot_columns = list(basis.pivots())\n        return basis._sparse_left_multiply(\n            defining_matrix.matrix_from_columns(pivot_columns)\n        )\n\n    def star_involution(self) -> ModularSymbolsLinearOperator:\n        \"\"\"Return complex conjugation on this modular-symbol space.\"\"\"\n        if (\n            self._supports_native_higher_weight() or self._supports_native_character()\n        ) and self.sign() != 0:\n            defining_matrix = (\n                identity_matrix(  # type: ignore[name-defined]  # noqa: F821\n                    self.base_ring(), self.dimension()\n                )\n                * self.sign()\n            )\n            return ModularSymbolsLinearOperator(\n                self, defining_matrix, \"Star involution\""
         }
       },
@@ -32229,9 +32229,9 @@
         "name": "p1list",
         "qualified": "ModularSymbolsSpace.p1list",
         "path": "src/baselib/modular.py",
-        "line": 4857,
+        "line": 4871,
         "excerpt": {
-          "start_line": 4845,
+          "start_line": 4859,
           "text": "        operator = self.T(index)\n        operator._matrix_cache = matrix_value\n        return operator\n\n    def _from_serialized_linear_operator(\n        self,\n        matrix_value: Any,\n        name: str,\n        ambient_matrix: Any = None,\n    ) -> ModularSymbolsLinearOperator:\n        return ModularSymbolsLinearOperator(self, matrix_value, name, ambient_matrix)\n\n    def p1list(self) -> P1List:\n        if self._group._family != \"Gamma0\":\n            raise NotImplementedError(\"native P1 lists currently model Gamma0 spaces\")\n        if self._p1list_cache is None:\n            self._p1list_cache = P1List(self.level())\n        return self._p1list_cache\n\n    def manin_relations(self, modulus: Any = 65521) -> ManinRelations:\n        if self._character is not None:\n            raise NotImplementedError(\n                \"the machine-word ManinRelations relation matrix models \"\n                \"trivial character only; use M.manin_presentation() for \"\n                \"the exact character presentation\""
         }
       },
@@ -32359,7 +32359,7 @@
       "examples": [
         {
           "id": "src/baselib/modular.py#d678e5ffb4d20ee6-87fce8343ac4cd78",
-          "line": 3765,
+          "line": 3779,
           "source": "P1List(11).hecke_matrix(2)",
           "want": "[ 3  0  0]\n[ 1 -2  0]\n[ 1  0 -2]\n",
           "tags": [],
@@ -35388,16 +35388,16 @@
         "name": "prime_pi",
         "qualified": "prime_pi",
         "path": "src/baselib/builtins.py",
-        "line": 7486,
+        "line": 7514,
         "excerpt": {
-          "start_line": 7474,
+          "start_line": 7502,
           "text": "\ndef latex(value: Any) -> LatexExpr:\n    \"\"\"Return a compact LaTeX expression for `value`.\"\"\"\n    if _builtins_member_is_function(value, \"_latex_\"):\n        return LatexExpr(_builtins_call_member(value, \"_latex_\", []))\n    return LatexExpr(value)\n\n\n_prime_pi_primes = None\n_prime_pi_checked_through = 1\n\n\ndef prime_pi(value: Any) -> Any:\n    r\"\"\"\n    Return the number of primes less than or equal to `value`.\n\n    Results are exact.  Moderate bounds are served by an incremental prime\n    cache, while large isolated bounds use Lehmer's combinatorial algorithm.\n    As in Sage, inputs are limited to integers below `2^63`.\n\n    ### Examples\n\n    ```sage\n    sage: prime_pi(10)\n    4"
         }
       },
       "examples": [
         {
           "id": "src/baselib/builtins.py#4c7d8330c2c79857-4b227777d4dd1fc6",
-          "line": 7497,
+          "line": 7525,
           "source": "prime_pi(10)",
           "want": "4\n",
           "tags": [],
@@ -35413,7 +35413,7 @@
         },
         {
           "id": "src/baselib/builtins.py#ca981138a8a22b10-b7a56873cd771f2c",
-          "line": 7499,
+          "line": 7527,
           "source": "prime_pi(100)",
           "want": "25\n",
           "tags": [],
@@ -35429,7 +35429,7 @@
         },
         {
           "id": "src/baselib/builtins.py#c0bc81d3429aebdb-0f03cde178fa9f37",
-          "line": 7501,
+          "line": 7529,
           "source": "prime_pi(10^12)",
           "want": "37607912018\n",
           "tags": [],
@@ -35772,9 +35772,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 9254,
+        "line": 9091,
         "excerpt": {
-          "start_line": 9242,
+          "start_line": 9079,
           "text": "            if use_default_types\n            else isinstance(value, ltypes)\n        )\n        if level < max_level and flatten_value:\n            nested = list(value)\n            for index in range(len(nested) - 1, -1, -1):\n                pending.append((nested[index], level + 1))\n        else:\n            answer.append(value)\n    return answer\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
