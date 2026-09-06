@@ -91,6 +91,32 @@ execution speed or independently justify the source allowance. The additional
 acceptance without proof; the public replay and exhaustion tests qualify that
 behavior separately.
 
+## Browser follow-up discovered during final qualification
+
+The refreshed cubic Wasm artifact passes the exact 15-module ABI inventory,
+routine Chromium parity, prefix-Arb Node-Wasm/browser tests and unchanged
+compressed payload/topology budgets. Apart from the prefix-Arb boundary,
+generated kernel ABI changes are content-hash prefixes only: normalized names,
+kinds and multiplicities are identical.
+
+Adding the previously absent lazy `unittest` module exposed a separate emitter
+bug in direct browser use of `warnings.catch_warnings()`. Python attribute
+lookup lowers to a getter call, but `AST_New` only parenthesized explicit AST
+calls, generating `new getter(...)` instead of `new (getter(...))`. Zero-argument
+construction returned the class; argument-bearing construction was also
+incorrect. Keyword construction and Node's other call path hid the defect.
+
+Parenthesize Python property-access constructor targets. A focused emitter
+regression demonstrates both failures with the old compiler, and checks the
+retrieved class is constructed, the getter is not constructed, and lookup
+occurs exactly once. The full warning browser fixture remains a required
+regression. All four focused tests pass with the corrected compiler. A diagnostic
+Chromium run serving that compiler to the previous local artifact also passes
+the complete warning fixture; this is diagnosis, not final artifact qualification.
+The refreshed census again compiles 16553 functions with zero failures.
+A fresh complete build and packaged browser check remain required after this
+correction; the earlier artifact qualification does not cover it yet.
+
 ## #130 and #134: aggregate review authorized
 
 Reviewed scope at #130 `3a694809b95e7e08f1b12adee78121b96f4eed69`

@@ -249,6 +249,10 @@ def generate_code():
     def f_prop_access(output):
         p = output.parent()
         if is_node_type(p, AST_New) and p.expression is this:
+            # Python attribute access emits a getter call even when the AST
+            # contains no call. Construct its result, not the getter itself.
+            if output.options.python_attributes:
+                return True
             # i.e. new (foo.bar().baz)
             #
             # if there's one call into this subtree, then we need
