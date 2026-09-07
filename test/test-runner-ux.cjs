@@ -83,6 +83,14 @@ test("runner UX options are not forwarded to node:test", () => {
       runnerArguments: ["--test-name-pattern=matrix"],
     },
   );
+  assert.deepEqual(parseRunnerOptions(["--resume-fresh"], { concurrency: 1, heartbeatSeconds: 20 }), {
+    concurrency: 1, heartbeatSeconds: 20, runnerArguments: [], resume: true, resumeFresh: true,
+  });
+  assert.deepEqual(parseRunnerOptions(["--file", "test/example.cjs", "--resume"], { concurrency: 1, heartbeatSeconds: 20 }), {
+    concurrency: 1, heartbeatSeconds: 20, runnerArguments: [], resume: true, resumeFresh: false,
+    requestedFiles: ["test/example.cjs"],
+  });
+  assert.throws(() => parseRunnerOptions(["--file", "--resume"]), /requires a test path/);
 });
 
 test("routine validation is bounded and full validation remains exhaustive", () => {

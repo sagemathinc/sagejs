@@ -1,5 +1,6 @@
 // sagejs-test-tier: unit
 // sagejs-test-portable: true
+// sagejs-test-resume-inputs: []
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");

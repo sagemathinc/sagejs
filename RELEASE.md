@@ -128,6 +128,38 @@ not successful evidence. A host lock prevents two runners from mutating the
 same checkout. Do not manually relabel receipts. Never restore a checkpoint
 from another machine as proof of local execution.
 
+Correctness file queues also use `--resume`. A test is reusable only after an
+isolation audit adds `// sagejs-test-resume-inputs: [...]` beside its tier. The
+JSON array lists every ignored/generated dependency it consumes; `[]` is only
+for tests of tracked source using Node built-ins. The declaration also asserts
+read-only inputs, no setup consumed by siblings, and no unbound external tools,
+services, caches or installed packages. Tests lacking it execute normally. The
+initial pilot covers three source-only infrastructure files, not the large
+mathematical integration suite. Expand coverage through explicit audits, never
+by assuming every independently spawned test is hermetic.
+
+File records bind the whole clean candidate, declared input contents, exact Node
+executable, host/platform, complete child environment digest, arguments and
+concurrency. Shared input trees are hashed once at entry and again after all
+children finish/cancel, not once per file. Changed inputs invalidate the attempt.
+Normally completed files survive a later sibling failure. A killed controller's
+completed records require matching current identities and a confirmed missing
+owner; the stale lock still requires manual orphan-process inspection. Running,
+corrupt, invalidated and unstarted records never count as passes. `--fresh`
+forces fresh file execution as well as fresh stages, and a failed fresh attempt
+supersedes an older successful record. File state lives in
+`build/release-test-checkpoints`, separate from learned timing estimates.
+
+For a developer's clean checkout, `pnpm test:unit --resume` opts into this same
+mechanism; `--resume-fresh` replaces previous results. Other reporters and dirty
+checkouts do not support resume. Local file records remain scheduling hints,
+not portable numerical evidence or authorization to publish.
+Use repeatable `--file PATH` selectors for targeted full-file runs without
+filtering individual test names, for example
+`pnpm test:unit --resume --file test/release-inventory.cjs`. A targeted run is
+still partial qualification; a full release stage accounts for every selected
+file whether it executes or safely reuses a matching record.
+
 Stages consuming the native/Node `dist` additionally require the existing
 source-current build receipt before running or reusing tests. Hashing an old
 runtime next to a new checkout is not qualification of that checkout.

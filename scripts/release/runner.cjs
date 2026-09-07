@@ -182,7 +182,7 @@ async function run({ root, candidate, stages, environment = process.env, fresh =
       const timer = setTimeout(() => { timedOut = true; controller.abort(); }, stage.timeoutSeconds * 1000);
       try {
         for (const template of stage.commands) {
-          const command = template.map((item) => item === "{candidate}" ? candidate : item);
+          const command = template.map((item) => item === "{candidate}" ? candidate : fresh && item === "--resume" ? "--resume-fresh" : item);
           const invocation = command[0] === "pnpm" ? pnpmInvocation(command.slice(1)) :
             { command: command[0] === "node" ? process.execPath : command[0], arguments: command.slice(1) };
           const output = (chunk) => {
@@ -275,4 +275,4 @@ async function main(argv) {
 if (require.main === module) main(process.argv.slice(2)).catch((error) => {
   console.error(error.stack); process.exitCode = 1;
 });
-module.exports = { run, identity, snapshot, acquireLock, environmentIdentity };
+module.exports = { run, identity, snapshot, acquireLock, environmentIdentity, fileDigest, atomicJson };

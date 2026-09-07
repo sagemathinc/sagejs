@@ -99,6 +99,12 @@ test("timeout is a failed gate, not a passing checkpoint", async (t) => {
     "setInterval(()=>{},1000)", { timeoutSeconds: 0.05 })] }), /failed or interrupted/);
   assert.equal(readStatus(context.root, context.candidate).failure.code, "RELEASE_TIMEOUT");
 });
+test("fresh release stages force fresh nested file checkpoints", async (t) => {
+  const context = fixture(t);
+  const stage = task("fresh", "require('node:assert').ok(process.argv.includes('--resume-fresh'))");
+  stage.commands[0].push("--", "--resume");
+  await run({ ...context, stages: [stage], fresh: true });
+});
 test("space failure blocks child launch and retry reuses only completed stages", async (t) => {
   const context = fixture(t);
   const stages = [task("one", "void 0"), task("two", "require('fs').writeFileSync('build/launched','yes')")];

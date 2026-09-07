@@ -64,9 +64,18 @@ function parseRunnerOptions(rawArguments, defaults = {}) {
   let concurrency = defaults.concurrency ?? defaults.batchSize;
   let heartbeatSeconds = defaults.heartbeatSeconds;
   let gate;
+  let resume = false;
+  let resumeFresh = false;
+  const requestedFiles = [];
   for (let index = 0; index < rawArguments.length; index += 1) {
     const argument = rawArguments[index];
-    if (argument === "--gate") {
+    if (argument === "--file") {
+      const filename = rawArguments[++index];
+      if (!filename || filename.startsWith("--")) throw new Error("--file requires a test path");
+      requestedFiles.push(filename);
+    } else if (argument === "--resume") resume = true;
+    else if (argument === "--resume-fresh") { resume = true; resumeFresh = true; }
+    else if (argument === "--gate") {
       gate = rawArguments[++index];
       if (!["correctness", "performance"].includes(gate)) throw new Error("invalid --gate");
     } else if (argument.startsWith("--concurrency=")) {
@@ -91,7 +100,8 @@ function parseRunnerOptions(rawArguments, defaults = {}) {
       runnerArguments.push(argument);
     }
   }
-  return { concurrency, heartbeatSeconds, runnerArguments, ...(gate ? { gate } : {}) };
+  return { concurrency, heartbeatSeconds, runnerArguments, ...(gate ? { gate } : {}),
+    ...(resume ? { resume, resumeFresh } : {}), ...(requestedFiles.length ? { requestedFiles } : {}) };
 }
 
 function selectedByNamePattern(files, runnerArguments) {
@@ -233,6 +243,8 @@ async function runFileQueue({
   replayFailure = true,
   runnerArguments,
   tier,
+  checkpoints,
+  workingDirectory = root,
 }) {
   const queue = longestFirst(files, learned, fallbackMilliseconds);
   const pending = new Set(queue);
@@ -241,6 +253,7 @@ async function runFileQueue({
   const verbose = process.env.SAGEJS_TEST_VERBOSE === "1";
   const started = Date.now();
   let completed = 0;
+  let reused = 0;
   let next = 0;
   let firstFailure = null;
   let interrupted = false;
@@ -273,6 +286,20 @@ async function runFileQueue({
       next += 1;
       if (index >= queue.length) return;
       const file = queue[index];
+      try {
+        if (checkpoints?.reusable(file)) {
+          pending.delete(file);
+          completed += 1;
+          reused += 1;
+          process.stdout.write(`[test:${tier}] REUSE ${completed}/${files.length} ${file} (verified input identity)\n`);
+          continue;
+        }
+        checkpoints?.started(file);
+      } catch (error) {
+        firstFailure = { file, duration: 0, status: 1, stdout: "", stderr: `${error.stack || error}\n` };
+        controller.abort();
+        return;
+      }
       const fileStarted = Date.now();
       active.set(file, fileStarted);
       let result;
@@ -287,7 +314,7 @@ async function runFileQueue({
             file,
           ],
           {
-            cwd: root,
+            cwd: workingDirectory,
             env: childTestEnvironment(),
             signal: controller.signal,
             onStdout: verbose ? (data) => process.stdout.write(data) : undefined,
@@ -304,6 +331,12 @@ async function runFileQueue({
       rememberTiming(learned, file, duration);
       if (result.status !== 0) {
         firstFailure = { file, duration, ...result };
+        controller.abort();
+        return;
+      }
+      try { checkpoints?.passed(file, duration); }
+      catch (error) {
+        firstFailure = { file, duration, status: 1, stdout: "", stderr: `${error.stack || error}\n` };
         controller.abort();
         return;
       }
@@ -329,6 +362,7 @@ async function runFileQueue({
     clearInterval(heartbeat);
     process.removeListener("SIGINT", interrupt);
     process.removeListener("SIGTERM", interrupt);
+    checkpoints?.finish();
   }
   if (interrupted) return 130;
   if (firstFailure !== null) {
@@ -353,7 +387,7 @@ async function runFileQueue({
   }
   process.stdout.write(
     `\n[test:${tier}] PASS: ${files.length} files in ` +
-      `${formatDuration(Date.now() - started)}\n`,
+      `${formatDuration(Date.now() - started)}${checkpoints ? ` (${reused} reused)` : ""}\n`,
   );
   return 0;
 }
@@ -365,7 +399,7 @@ async function main(arguments_ = process.argv.slice(2)) {
     console.error(
       `usage: node scripts/run-test-tier.cjs ` +
         `<${Object.keys(manifest).join("|")}> [node:test options] ` +
-        `[--concurrency N] [--heartbeat-seconds N]`,
+        `[--concurrency N] [--heartbeat-seconds N] [--file PATH] [--resume | --resume-fresh]`,
     );
     return 2;
   }
@@ -383,15 +417,22 @@ async function main(arguments_ = process.argv.slice(2)) {
     heartbeatSeconds: Number(process.env.SAGEJS_TEST_HEARTBEAT_SECONDS || 20),
   });
   if (options.runnerArguments[0] === "--") options.runnerArguments.shift();
-  const selectedFiles = require("./release/test-gates.cjs").selectGate(
+  let selectedFiles = require("./release/test-gates.cjs").selectGate(
     selectedByNamePattern(files, options.runnerArguments), options.gate,
   );
+  if (options.requestedFiles) {
+    for (const filename of options.requestedFiles) {
+      if (!selectedFiles.includes(filename)) throw new Error(`test file is outside the selected tier/gate: ${filename}`);
+    }
+    selectedFiles = selectedFiles.filter((filename) => options.requestedFiles.includes(filename));
+  }
   if (selectedFiles.length === 0) {
     console.error(`no ${tier} test file matches the requested pattern`);
     return 1;
   }
   const concurrency = Math.min(options.concurrency, selectedFiles.length);
   if (reporter !== "spec") {
+    if (options.resume) throw new Error("--resume requires the per-file spec reporter");
     return runStructuredReporter({
       concurrency,
       files: selectedFiles,
@@ -426,6 +467,12 @@ async function main(arguments_ = process.argv.slice(2)) {
       `  expected:    about ${formatDuration(expected)} on this host\n` +
       `  failure:     cancel active siblings and stop scheduling immediately\n`,
   );
+  const hasResumeFiles = manifest.records.some((entry) => entry.resumeInputs !== undefined && selectedFiles.includes(entry.filename));
+  const checkpoints = options.resume && hasResumeFiles ? require("./release/test-checkpoints.cjs").openCheckpoints({
+    root, files: selectedFiles, concurrency, runnerArguments: options.runnerArguments,
+    environment: childTestEnvironment(), fresh: options.resumeFresh,
+  }) : undefined;
+  if (options.resume) process.stdout.write(`  resumable:   ${checkpoints?.eligibleFiles.length || 0}/${selectedFiles.length} audited isolated files\n`);
   const status = await runFileQueue({
     concurrency,
     fallbackMilliseconds,
@@ -434,6 +481,7 @@ async function main(arguments_ = process.argv.slice(2)) {
     learned,
     runnerArguments: options.runnerArguments,
     tier,
+    checkpoints,
   });
   try {
     writeTimings(timings);

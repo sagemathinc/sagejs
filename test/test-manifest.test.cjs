@@ -1,4 +1,5 @@
 // sagejs-test-tier: unit
+// sagejs-test-resume-inputs: []
 "use strict";
 
 const assert = require("node:assert/strict");
