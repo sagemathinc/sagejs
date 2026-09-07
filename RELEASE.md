@@ -156,7 +156,8 @@ trusted source selection, exact artifact/signature checks and raw numerical
 evidence reconstruction remain mandatory. No current whole-workflow guard is
 removed by adding this verifier.
 
-The native v1 aggregate runs on tag candidates even if prerequisites fail. It
+The native v1 aggregate runs on tags and explicit full pre-tag candidates even
+if prerequisites fail. It
 asserts all ten release producer jobs explicitly: routine validation, numerical
 runtime, shared npm/browser root, four native builds, macOS signing, browser
 numerical evidence and the final reconstructed numerical gate. The publisher
@@ -200,10 +201,8 @@ Archive verification streams bytes without extracting or executing them.
 
 For pre-tag capture the identity supports `--purpose qualification --event
 workflow_dispatch --ref CANDIDATE_BRANCH`; every required product boundary must
-still have passed. Current native CI only produces its complete signed/numerical
-aggregate for tags, so enabling a complete non-publishing qualification campaign
-remains necessary before this pre-tag path works end to end. Partial manual
-campaigns do not qualify. Changing the purpose in an old manifest is not promotion.
+still have passed. Use the explicit full mode below, not ordinary partial manual
+campaigns. Changing the purpose in an old manifest is not promotion.
 
 This schema is a **transport inventory**, not the complete release acceptance
 manifest. GitHub's archive digest covers its downloadable ZIP, not directly the
@@ -212,6 +211,42 @@ producer, verify inner product digests and platform/version matrix, reconstruct
 raw numerical evidence and check signatures. Publication attempts must reference
 the frozen qualification identity without relabeling it as their own attempt.
 No current publisher/deployer consumes this inventory yet; existing guards remain.
+
+### Full pre-tag qualification without publication
+
+After local/persistent-host iteration, dispatch both workflows on a frozen
+candidate branch using its full SHA:
+
+```sh
+gh workflow run ci.yml --ref release-candidate \
+  -F qualify_release=true -f candidate_sha=FULL_SHA \
+  -f native_targets=all -F platform_smoke=false
+gh workflow run wasm-release.yml --ref release-candidate \
+  -F qualify_release=true -f candidate_sha=FULL_SHA
+```
+
+This is opt-in. `candidate-mode.cjs` rejects a mismatched dispatch/checkout SHA,
+partial target selection, smoke-only or mixed recovery requests before product
+installation/build in the root jobs. Keep the branch fixed for both dispatches;
+capture also requires their exact source/ref/event identities to agree. The mode
+retains qualified-NLopt eligibility, all numerical product/supplemental rows,
+macOS signing/notarization and the existing explicit Windows signing policy.
+The browser build retains provenance attestation. Pending component qualification
+is still a failure, not permission to promote unqualified mathematics.
+
+Publication requires an actual tag **push** event, not just a tag-shaped ref;
+manual dispatch cannot publish through `publish-release`, even at an existing
+tag. Qualification also excludes the publication-recovery job. Nothing in this
+mode edits GitHub Latest, npm channels, Pages or app deployment pointers. It does
+use signing/provenance services and their existing approval protections.
+
+Operational prerequisite checked on 2026-09-07: `sagejs-signing` permits only
+`v*` tags and requires a human reviewer. It therefore currently blocks pre-tag
+signing. Before a full trial, the owner must explicitly permit a single dedicated
+candidate branch (proposed: `release-candidate`) while retaining approval. Do not
+broaden the policy to all branches, remove review, create a throwaway tag, or
+silently skip signing to work around this. No environment policy was changed
+while implementing the mode, and no full candidate workflow has yet validated it.
 
 `pnpm release:run --candidate FULL_SHA` executes the native-host plan. First
 install the pinned JavaScript dependencies and place the **same candidate's**

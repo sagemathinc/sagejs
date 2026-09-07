@@ -121,7 +121,7 @@ test("native acceptance covers every release producer and never accepts a missin
   const jobs = parseWorkflow(fs.readFileSync(path.join(root, filename), "utf8"), filename).jobs;
   const gate = jobs["native-product-acceptance"];
   assert.equal(gate.name, boundaries.native.job);
-  assert.equal(gate.if, "${{ always() && startsWith(github.ref, 'refs/tags/v') }}");
+  assert.equal(gate.if, "${{ always() && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) }}");
   assert.equal(gate["continue-on-error"] ?? false, false);
   assert.deepEqual([...gate.needs].sort(), [...nativePrerequisites].sort());
   const excluded = ["platform-smoke", "publish-release", "recover-publish", "native-product-acceptance"];

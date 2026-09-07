@@ -896,3 +896,21 @@ used; no Sage.js native rebuild or existing release directory was involved.
 The temporary Windows source fixture and archive were removed afterward.
 This is portability evidence for the manifest foundation, not full Windows
 product qualification or authenticated live publication.
+
+Explicit pre-tag CI mode: `qualify_release=true` plus a matching full
+`candidate_sha` now enables the complete native signing/numerical producer
+closure and browser provenance without enabling publication. Admission rejects
+partial/smoke/recovery combinations before installation/build in the root jobs.
+The publisher now requires a tag push event: a manual dispatch at a tag is not
+publication. Fixture expression comparisons ensure every conditional release
+producer step also executes for a full candidate, across all Windows signing
+modes. The focused set passes 83 tests, release metadata and merge checks pass.
+No full workflow has been dispatched; fixture checks are not hosted qualification.
+
+Read-only environment audit found that `sagejs-signing` allows only `v*` tags
+and retains a required human reviewer. Exercising pre-tag signing needs the
+owner's approval to allow one dedicated candidate branch; no protected policy
+was changed. Keep review, source-current component eligibility and all existing
+raw numerical checks. In particular the pending NLopt state remains an explicit
+qualification failure, not a reason to relax admission or launch a doomed long
+campaign. This configuration issue was found before any expensive CI dispatch.

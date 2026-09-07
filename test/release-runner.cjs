@@ -286,7 +286,7 @@ test("non-publishing preparation is distinct from mandatory canonical numerical 
   assert.ok(!preparation.flatMap((stage) => stage.commands.flat()).includes("--require-qualified"));
   assert.throws(() => plan("typo", "numerical-product"), /unknown profile/);
   const ci = fs.readFileSync(path.join(__dirname, "../.github/workflows/ci.yml"), "utf8");
-  assert.match(ci, /name: Require source-current qualified NLopt for a tagged product[\s\S]*?--require-qualified/);
+  assert.match(ci, /name: Require source-current qualified NLopt for a release product or candidate[\s\S]*?--require-qualified/);
 });
 test("preparation status cannot be mistaken for complete release qualification", async (t) => {
   const context = fixture(t);

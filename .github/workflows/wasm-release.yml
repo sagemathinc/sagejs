@@ -6,6 +6,17 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      qualify_release:
+        description: Qualify exact pre-tag artifacts, including build provenance, without publication
+        required: false
+        default: false
+        type: boolean
+      candidate_sha:
+        description: Exact full commit SHA required with qualify_release
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -39,6 +50,10 @@ jobs:
         with:
           node-version: 26.5.1
           cache: pnpm
+      - name: Validate the explicit qualification request
+        env:
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
+        run: node scripts/release/candidate-mode.cjs browser
       - name: Fetch every pinned native source from the private R2 mirror
         run: |
           node tools/source-mirror/scripts/source-mirror.mjs fetch \
@@ -114,6 +129,10 @@ jobs:
         with:
           node-version: 26.5.1
           cache: pnpm
+      - name: Validate the explicit qualification request
+        env:
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
+        run: node scripts/release/candidate-mode.cjs browser
       - name: Fetch every pinned build source from the private R2 mirror
         run: |
           node tools/source-mirror/scripts/source-mirror.mjs fetch \
@@ -342,7 +361,7 @@ jobs:
             -C build/a/packages/flint-wasm -czf build/sagejs-wasm.tar.gz dist
           sha256sum build/sagejs-wasm.tar.gz > build/sagejs-wasm.tar.gz.sha256
       - uses: actions/attest-build-provenance@v3
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         with:
           subject-path: build/sagejs-wasm.tar.gz
       - uses: actions/upload-artifact@v7

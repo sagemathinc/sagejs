@@ -9,6 +9,16 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      qualify_release:
+        description: Full signed release qualification without publication (all native targets)
+        required: false
+        default: false
+        type: boolean
+      candidate_sha:
+        description: Exact full commit SHA required with qualify_release
+        required: false
+        default: ""
+        type: string
       platform_smoke:
         description: Run the Linux arm64, macOS arm64, and Windows x64 smoke matrix
         required: false
@@ -42,7 +52,7 @@ concurrency:
 jobs:
   routine:
     name: Routine gate (Linux x64)
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.recovery_run_id == '' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.recovery_run_id == '' || inputs.qualify_release || inputs.candidate_sha != '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
@@ -64,6 +74,11 @@ jobs:
         with:
           node-version: 26.5.1
           cache: pnpm
+
+      - name: Validate the explicit qualification request
+        env:
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
+        run: node scripts/release/candidate-mode.cjs native
 
       - name: Install the pinned dependency graph
         run: pnpm install --frozen-lockfile
@@ -123,8 +138,8 @@ jobs:
           node scripts/numerical-product.cjs publish \
             --output build/authenticated-numerical-product
 
-      - name: Require source-current qualified NLopt for a tagged product
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Require source-current qualified NLopt for a release product or candidate
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: >-
           node
           src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs
@@ -447,10 +462,14 @@ jobs:
           unit, host integration, native, and SEA tests are blocking.
           EOF
 
-      - name: Validate tagged release metadata and installer
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Validate release metadata and installer
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
-          pnpm test:release -- --tag "$GITHUB_REF_NAME"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            pnpm test:release -- --tag "$GITHUB_REF_NAME"
+          else
+            pnpm test:release
+          fi
           pnpm test:installer
 
       - name: Package the Linux x64 SEA distribution
@@ -470,14 +489,14 @@ jobs:
           cp install.sh build/release/install.sh
 
       - name: Cache authenticated numerical oracle inputs
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/cache@v6
         with:
           path: build/numerical-scipy-downloads
           key: numerical-scipy-linux-x64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
 
       - name: Provision the hermetic numerical oracle
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
           mkdir -p build/numerical-scipy-downloads build/numerical-scipy
           pnpm release:qualify:numerics:oracle -- \
@@ -489,7 +508,7 @@ jobs:
           echo "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$(pwd)/build/numerical-scipy/provenance.json" >> "$GITHUB_ENV"
 
       - name: Collect exact Linux x64 numerical product rows
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
           pnpm release:qualify:numerics:platform -- \
             --candidate "$(git rev-parse HEAD)" \
@@ -499,7 +518,7 @@ jobs:
             --output build/numerical-qualification/platform/linux-x64
 
       - name: Upload Linux x64 numerical qualification
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/upload-artifact@v7
         with:
           name: numerical-qualification-linux-x64
@@ -638,14 +657,14 @@ jobs:
           pnpm package:native-npm linux-arm64 build/sea/sagejs build/sea/sagepython
 
       - name: Cache authenticated numerical oracle inputs
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/cache@v6
         with:
           path: build/numerical-scipy-downloads
           key: numerical-scipy-linux-arm64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
 
       - name: Provision the hermetic numerical oracle
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
           mkdir -p build/numerical-scipy-downloads build/numerical-scipy
           pnpm release:qualify:numerics:oracle -- \
@@ -657,7 +676,7 @@ jobs:
           echo "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$(pwd)/build/numerical-scipy/provenance.json" >> "$GITHUB_ENV"
 
       - name: Collect exact Linux arm64 numerical product rows
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
           pnpm release:qualify:numerics:platform -- \
             --candidate "$(git rev-parse HEAD)" \
@@ -667,7 +686,7 @@ jobs:
             --output build/numerical-qualification/platform/linux-arm64
 
       - name: Upload Linux arm64 numerical qualification
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/upload-artifact@v7
         with:
           name: numerical-qualification-linux-arm64
@@ -825,7 +844,7 @@ jobs:
         run: pnpm release:run --candidate "${{ github.sha }}" --stage sea
 
       - name: Authenticate to Azure Artifact Signing
-        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
         uses: azure/login@v3
         with:
           client-id: ${{ secrets.SAGEJS_AZURE_CLIENT_ID }}
@@ -833,7 +852,7 @@ jobs:
           subscription-id: ${{ secrets.SAGEJS_AZURE_SUBSCRIPTION_ID }}
 
       - name: Sign with Azure Artifact Signing
-        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
         uses: azure/artifact-signing-action@v2
         with:
           endpoint: ${{ vars.SAGEJS_ARTIFACT_SIGNING_ENDPOINT }}
@@ -846,18 +865,18 @@ jobs:
           timestamp-digest: SHA256
 
       - name: Verify Azure-signed Windows executables
-        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
         run: pwsh -File scripts/sign-windows.ps1 -VerifyOnly
 
-      - name: Authenticode-sign tagged Windows executables with a PFX
-        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'pfx'
+      - name: Authenticode-sign Windows release or candidate executables with a PFX
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'pfx'
         env:
           SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64: ${{ secrets.SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64 }}
           SAGEJS_WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.SAGEJS_WINDOWS_CERTIFICATE_PASSWORD }}
         run: pnpm release:windows:sign
 
       - name: Record the Windows signing policy
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         shell: pwsh
         env:
           SIGNING_MODE: ${{ vars.SAGEJS_WINDOWS_SIGNING_MODE }}
@@ -891,14 +910,14 @@ jobs:
         run: pnpm package:native-npm windows-x64 build/sea/sagejs.exe build/sea/sagepython.exe
 
       - name: Cache authenticated numerical oracle inputs
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/cache@v6
         with:
           path: build/numerical-scipy-downloads
           key: numerical-scipy-windows-x64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
 
       - name: Provision the hermetic numerical oracle
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force build/numerical-scipy-downloads,build/numerical-scipy | Out-Null
@@ -912,7 +931,7 @@ jobs:
           "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$root\build\numerical-scipy\provenance.json" >> $env:GITHUB_ENV
 
       - name: Collect exact Windows x64 numerical product rows
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         shell: pwsh
         run: |
           $candidate = git rev-parse HEAD
@@ -924,7 +943,7 @@ jobs:
             --output build/numerical-qualification/platform/windows-x64
 
       - name: Upload Windows x64 numerical qualification
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/upload-artifact@v7
         with:
           name: numerical-qualification-windows-x64
@@ -1055,14 +1074,14 @@ jobs:
         run: pnpm release:run --candidate "${{ github.sha }}" --stage sea
 
       - name: Cache authenticated numerical oracle inputs
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/cache@v6
         with:
           path: build/numerical-scipy-downloads
           key: numerical-scipy-macos-arm64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
 
       - name: Provision the hermetic numerical oracle
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
           mkdir -p build/numerical-scipy-downloads build/numerical-scipy
           pnpm release:qualify:numerics:oracle -- \
@@ -1074,7 +1093,7 @@ jobs:
           echo "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$(pwd)/build/numerical-scipy/provenance.json" >> "$GITHUB_ENV"
 
       - name: Collect the exact macOS Node numerical row
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
           pnpm release:qualify:numerics:platform -- \
             --candidate "$(git rev-parse HEAD)" \
@@ -1082,7 +1101,7 @@ jobs:
             --output build/numerical-qualification/platform/macos-arm64
 
       - name: Upload macOS numerical signing inputs
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-macos-arm64-qualification-input
@@ -1094,7 +1113,7 @@ jobs:
           retention-days: 14
 
       - name: Upload validated macOS executables for signing
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-macos-arm64-unsigned
@@ -1107,7 +1126,7 @@ jobs:
 
   macos-sign:
     name: Sign and notarize macOS arm64 release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
     needs: [macos-arm64, public-npm-root]
     runs-on: macos-15
     timeout-minutes: 120
@@ -1252,7 +1271,7 @@ jobs:
 
   numerical-browser-qualification:
     name: Numerical browser and supplemental qualification
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
     needs: [linux-x64, numerical-product, public-npm-root]
     runs-on: ubuntu-24.04
     timeout-minutes: 240
@@ -1373,7 +1392,7 @@ jobs:
 
   numerical-release-gate:
     name: Numerical release qualification gate
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
     needs:
       - linux-x64
       - linux-arm64
@@ -1471,9 +1490,9 @@ jobs:
 
   native-product-acceptance:
     name: Sage.js native product acceptance v1
-    # Run even when a prerequisite failed, but never claim release acceptance
-    # for partial manual/scheduled campaigns that lack signing/numerical gates.
-    if: ${{ always() && startsWith(github.ref, 'refs/tags/v') }}
+    # Run even when a prerequisite failed. Only tags and explicit full candidate
+    # campaigns include signing/numerical gates; partial manual runs do not.
+    if: ${{ always() && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) }}
     needs:
       - routine
       - numerical-product
@@ -1499,7 +1518,7 @@ jobs:
 
   publish-release:
     name: Publish tagged GitHub and npm release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
     needs:
       - numerical-release-gate
       - native-product-acceptance
@@ -1714,7 +1733,7 @@ jobs:
 
   recover-publish:
     name: Re-run a validated release publication
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' && !inputs.qualify_release && inputs.candidate_sha == '' }}
     runs-on: ubuntu-24.04
     permissions:
       actions: write
