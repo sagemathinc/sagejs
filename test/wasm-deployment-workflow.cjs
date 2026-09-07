@@ -17,22 +17,15 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   assert.match(workflow, /qualification_run_id:/);
   assert.match(workflow, /- preview\n\s+- production/);
   assert.doesNotMatch(workflow, /pull_request_target:/);
-  assert.match(workflow, /\.github\/workflows\/wasm-release\.yml/);
-  assert.match(workflow, /\.conclusion[^\n]+success/);
-
-  for (const gate of [
-    "Native Node oracle for the public browser corpus",
-    "Clean reproducibility build a",
-    "Clean reproducibility build b",
-    "reproducibility",
-    "Browser release gates",
-    "Numerical release qualification gate",
-  ]) assert.match(workflow, new RegExp(gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-
-  assert.match(workflow, /if \[\[ "\$release_gate" != "success" \]\]/);
+  assert.match(workflow, /node build\/input-control\/scripts\/release\/deployment-inputs\.cjs/);
+  assert.match(workflow, /scripts\/release\/product-acceptance\.cjs/);
+  assert.doesNotMatch(workflow, /\.conclusion[^\n]+success|Browser release gates/);
   assert.doesNotMatch(workflow, /Required legacy release job/);
-  assert.match(workflow, /qualification_sha[\s\S]+source_sha/);
   assert.match(workflow, /numerical-release-gate/);
+  const recheck = workflow.indexOf("Recheck selected product attempts before activation");
+  const activation = workflow.indexOf("- name: Atomically activate");
+  assert.ok(recheck > workflow.indexOf("Upload the prepared release") && recheck < activation);
+  assert.match(workflow, /deployment-inputs\.cjs --recheck "\$RUNNER_TEMP\/sagejs-deployment-inputs\.json"/);
 
   assert.match(workflow, /ref: \$\{\{ steps\.source\.outputs\.sha \}\}/);
   assert.match(workflow, /ref: \$\{\{ github\.sha \}\}/);
@@ -95,7 +88,7 @@ test("fast candidate artifacts are structurally non-deployable", async () => {
   assert.match(candidate, /--samples 1/);
   assert.match(candidate, /--safety-ceilings-only/);
   assert.doesNotMatch(candidate, /cloudflare\/wrangler-action/);
-  assert.match(deployment, /\.github\/workflows\/wasm-release\.yml/);
+  assert.match(deployment, /deployment-inputs\.cjs/);
   assert.match(deployment, /\.github\/workflows\/wasm-candidate\.yml/);
   assert.doesNotMatch(deployment, /wasm-candidate-build/);
 });

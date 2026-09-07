@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       source_run_id:
-        description: Successful "Sage.js WebAssembly reproducible release" run to deploy
+        description: WebAssembly release run with successful browser product acceptance
         required: true
         type: string
       qualification_run_id:
-        description: Successful same-SHA Sage.js CI run containing the numerical release gate
+        description: Same-SHA CI run with successful native product acceptance and numerical gate
         required: true
         type: string
       target:
@@ -42,102 +42,29 @@ jobs:
       name: sagejs-app-${{ inputs.target }}
       url: ${{ inputs.target == 'production' && vars.SAGEJS_PUBLIC_ORIGIN || steps.deploy.outputs.deployment-url }}
     steps:
-      - name: Validate the completed release run
+      - name: Check out the product acceptance control
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: build/input-control
+          sparse-checkout: scripts/release
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+
+      - name: Validate both product acceptance gates
         id: source
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
           SOURCE_RUN_ID: ${{ inputs.source_run_id }}
           QUALIFICATION_RUN_ID: ${{ inputs.qualification_run_id }}
           TARGET: ${{ inputs.target }}
           PREVIEW_NAME: ${{ inputs.preview_name }}
         run: |
           set -euo pipefail
-          [[ "$SOURCE_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
-            echo "source_run_id must be a positive GitHub Actions run id" >&2
-            exit 1
-          }
-          [[ "$QUALIFICATION_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
-            echo "qualification_run_id must be a positive GitHub Actions run id" >&2
-            exit 1
-          }
-          run_metadata="$(gh api "repos/${GH_REPO}/actions/runs/${SOURCE_RUN_ID}")"
-          [[ "$(jq -r .repository.full_name <<<"$run_metadata")" == "$GH_REPO" ]]
-          [[ "$(jq -r .path <<<"$run_metadata")" == ".github/workflows/wasm-release.yml" ]] || {
-            echo "The source run did not execute the WebAssembly release workflow" >&2
-            exit 1
-          }
-          [[ "$(jq -r .conclusion <<<"$run_metadata")" == "success" ]] || {
-            echo "The WebAssembly release run has not completed successfully" >&2
-            exit 1
-          }
-          source_sha="$(jq -r .head_sha <<<"$run_metadata")"
-          [[ "$source_sha" =~ ^[a-f0-9]{40}$ ]] || {
-            echo "The release run reported an invalid source commit" >&2
-            exit 1
-          }
-
-          jobs="$(gh api "repos/${GH_REPO}/actions/runs/${SOURCE_RUN_ID}/jobs?per_page=100")"
-          for required in \
-            "Native Node oracle for the public browser corpus" \
-            "Clean reproducibility build a" \
-            "Clean reproducibility build b" \
-            "reproducibility"
-          do
-            conclusion="$(jq -r --arg name "$required" \
-              '[.jobs[] | select(.name == $name) | .conclusion] | first // "missing"' \
-              <<<"$jobs")"
-            [[ "$conclusion" == "success" ]] || {
-              echo "Required release job '$required' concluded '$conclusion'" >&2
-              exit 1
-            }
-          done
-
-          release_gate="$(jq -r \
-            '[.jobs[] | select(.name == "Browser release gates") | .conclusion] | first // "missing"' \
-            <<<"$jobs")"
-          if [[ "$release_gate" != "success" ]]; then
-            echo "Required release job 'Browser release gates' concluded '$release_gate'" >&2
-            exit 1
-          fi
-
-          qualification_metadata="$(gh api \
-            "repos/${GH_REPO}/actions/runs/${QUALIFICATION_RUN_ID}")"
-          [[ "$(jq -r .path <<<"$qualification_metadata")" == ".github/workflows/ci.yml" ]] || {
-            echo "The qualification run did not execute Sage.js CI" >&2
-            exit 1
-          }
-          [[ "$(jq -r .event <<<"$qualification_metadata")" == "push" ]]
-          [[ "$(jq -r .conclusion <<<"$qualification_metadata")" == "success" ]] || {
-            echo "The qualification run did not succeed" >&2
-            exit 1
-          }
-          qualification_sha="$(jq -r .head_sha <<<"$qualification_metadata")"
-          [[ "$qualification_sha" == "$source_sha" ]] || {
-            echo "Wasm run $source_sha and numerical qualification $qualification_sha differ" >&2
-            exit 1
-          }
-          qualification_jobs="$(gh api --paginate \
-            "repos/${GH_REPO}/actions/runs/${QUALIFICATION_RUN_ID}/jobs?per_page=100")"
-          numerical_gate="$(jq -r \
-            '[.jobs[] | select(.name == "Numerical release qualification gate") | .conclusion] | first // "missing"' \
-            <<<"$qualification_jobs")"
-          [[ "$numerical_gate" == "success" ]] || {
-            echo "Required numerical release gate concluded '$numerical_gate'" >&2
-            exit 1
-          }
-
-          if [[ "$TARGET" == "production" ]]; then
-            deploy_branch="main"
-          else
-            [[ "$PREVIEW_NAME" =~ ^[a-z0-9][a-z0-9-]{0,38}$ ]] || {
-              echo "preview_name must contain only lowercase letters, digits, and hyphens" >&2
-              exit 1
-            }
-            deploy_branch="preview-${PREVIEW_NAME}-${source_sha:0:12}"
-          fi
-          echo "sha=$source_sha" >>"$GITHUB_OUTPUT"
-          echo "branch=$deploy_branch" >>"$GITHUB_OUTPUT"
+          node build/input-control/scripts/release/deployment-inputs.cjs > "$RUNNER_TEMP/sagejs-deployment-inputs.json"
+          echo "sha=$(jq -r .sourceRevision "$RUNNER_TEMP/sagejs-deployment-inputs.json")" >>"$GITHUB_OUTPUT"
+          echo "branch=$(jq -r .branch "$RUNNER_TEMP/sagejs-deployment-inputs.json")" >>"$GITHUB_OUTPUT"
 
       - name: Check out exactly the validated source commit
         uses: actions/checkout@v7
@@ -157,6 +84,8 @@ jobs:
             docs/webassembly-cloudflare-deployment.md
             packages/flint-wasm/scripts/browser-wasm-deployment.cjs
             test/wasm-deployment-workflow.cjs
+            scripts/release/deployment-inputs.cjs
+            scripts/release/product-acceptance.cjs
             website/live/cloudflare
             website/live/test/cloudflare-deployment.test.mjs
           sparse-checkout-cone-mode: false
@@ -335,6 +264,15 @@ jobs:
             `${JSON.stringify({ private: true })}\n`,
           );
           NODE
+
+      - name: Recheck selected product attempts before activation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          QUALIFICATION_RUN_ID: ${{ inputs.qualification_run_id }}
+          TARGET: ${{ inputs.target }}
+          PREVIEW_NAME: ${{ inputs.preview_name }}
+        run: node build/deployment-control/scripts/release/deployment-inputs.cjs --recheck "$RUNNER_TEMP/sagejs-deployment-inputs.json"
 
       - name: Atomically activate the uploaded release with a Cloudflare Worker
         id: deploy

@@ -914,7 +914,7 @@ test("one trusted workflow publishes and recovery reruns its authenticated job",
     group: "sagejs-production-publication", "cancel-in-progress": false, queue: "max",
   });
   assert.match(ci, /Numerical release qualification gate|numerical-release-gate/);
-  assert.match(ci, /Require successful same-tag WebAssembly release/);
+  assert.match(ci, /Require same-tag WebAssembly product acceptance/);
   assert.match(ci, /actions\/workflows\/wasm-release\.yml\/runs\?event=push&head_sha=\$\{GITHUB_SHA\}/);
   assert.match(ci, /require-wasm-release\.cjs[\s\S]+--sha "\$GITHUB_SHA" --tag "\$GITHUB_REF_NAME"/);
   assert.match(ci, /id-token:\s*write/);
@@ -997,9 +997,9 @@ test("recovery selects the latest exact job occurrence across rerun attempts", (
 
 test("Cloudflare activation requires the same qualified source SHA", () => {
   assert.match(deploy, /qualification_run_id:/);
-  assert.match(deploy, /\.github\/workflows\/ci\.yml/);
-  assert.match(deploy, /Numerical release qualification gate/);
-  assert.match(deploy, /qualification_sha[\s\S]+source_sha/);
+  assert.match(deploy, /deployment-inputs\.cjs/);
+  assert.match(read("scripts/release/deployment-inputs.cjs"), /nativeRun\?\.head_sha !== browserRun\.head_sha/);
+  assert.match(deploy, /Recheck selected product attempts before activation/);
   assert.match(deploy, /--candidate "\$SOURCE_SHA"/);
   assert.match(
     deploy,

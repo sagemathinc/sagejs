@@ -19,7 +19,7 @@ function fixture(t, files) {
   return dir;
 }
 
-test("real publisher and deployment retain indirect reporting ancestors in the shadow graph", () => {
+test("publisher and deployment require product checks without reporting ancestors", () => {
   const graph = workflowInventory(root);
   assert.deepEqual(graph.reviewErrors, []);
   assert.deepEqual(graph.nodes.find((node) => node.key === "ci.yml#publish-release").concurrency, {
@@ -29,9 +29,15 @@ test("real publisher and deployment retain indirect reporting ancestors in the s
     group: "sagejs-production-publication", "cancel-in-progress": false, queue: "max",
   });
   const route = (from, to) => dependencyPath(graph.nodes, graph.edges, from, to);
-  assert.deepEqual(route("ci.yml#publish-release", "wasm-release.yml#browser-performance"), [
-    "ci.yml#publish-release", "wasm-release.yml#@success", "wasm-release.yml#browser-performance",
-  ]);
+  for (const consumer of ["ci.yml#publish-release", "wasm-deploy-cloudflare.yml#deploy"]) {
+    assert.equal(route(consumer, "wasm-release.yml#browser-performance"), null);
+    for (const product of require("../scripts/release/product-prerequisites.cjs").browserPrerequisites) {
+      assert.ok(route(consumer, `wasm-release.yml#${product}`), `missing required browser ancestor ${product}`);
+    }
+    for (const product of require("../scripts/release/product-prerequisites.cjs").nativePrerequisites) {
+      assert.ok(route(consumer, `ci.yml#${product}`), `missing required native ancestor ${product}`);
+    }
+  }
   assert.equal(route("wasm-release.yml#workload-enforcement", "wasm-release.yml#browser-performance"), null);
   assert.equal(route("wasm-release.yml#browser-product-acceptance", "wasm-release.yml#browser-performance"), null);
   assert.ok(route("wasm-release.yml#browser-product-acceptance", "wasm-release.yml#node-oracle"),

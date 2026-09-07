@@ -76,8 +76,9 @@ entries, unresolved direct package scripts, detected unreviewed control steps
 and drift in reviewed API checks. It is not a release acceptance
 command: stages remain required within the selected profile. The explicit
 `reporting` profile is separate from local browser product acceptance; the
-legacy GitHub whole-workflow publication guards still require reports until
-their coordinated migration.
+publisher and app consumer wiring uses the explicit product aggregates rather
+than whole-workflow conclusions. This feature-branch migration still requires
+an end-to-end candidate trial before production adoption.
 The inventory also parses every workflow with YAML 1.2 and preserves job `needs`,
 conditions, matrix strategies, timeouts, tolerance and exact step bodies. The
 source-bound API review registry distinguishes whole-workflow/job success,
@@ -120,8 +121,8 @@ trusted transport remains part of release qualification.
 The release-process branch now collects these receipts immediately after each
 engine's parity test, in both the browser runner profile and Wasm workflow.
 Workload enforcement reads only the explicit parity/acceptance files. Local
-browser acceptance and repeated timing use separate profiles. The legacy
-whole-workflow publication guards are retained during validation. Tests
+browser acceptance and repeated timing use separate profiles. Publication and
+app admission consume product acceptance without the reporting aggregate. Tests
 prove source/route preservation, no memory sampling, and failure handling. A
 read-only three-engine trial of the shared execution loop passed against the
 retained `19789307` artifact (see the release-process plan); it is not
@@ -132,11 +133,11 @@ startup, size, numerical evidence and dedicated memory/security gates are not
 replaced by route acceptance.
 
 `scripts/release/product-acceptance.cjs` is the read-only job-status verifier
-for the explicit product boundary. It is not wired into publication yet.
+for the explicit product boundary, wired into publisher and app admission.
 The Wasm workflow now has the v1 browser aggregate, asserting all ten required
 job families (including clean/cross-platform builds, Windows, reproducibility,
 Node and browser parity, workload routes and security/recovery). The native v1
-aggregate is not yet installed. Old successful workflow/job names deliberately
+aggregate is also installed. Old successful workflow/job names deliberately
 do not satisfy the new contract.
 
 ```sh
@@ -157,8 +158,8 @@ to be tag-release observations.
 A report job may fail or remain in progress independently of a passed product
 boundary. That is only a job-status observation, **not permission to publish**:
 trusted source selection, exact artifact/signature checks and raw numerical
-evidence reconstruction remain mandatory. No current whole-workflow guard is
-removed by adding this verifier.
+evidence reconstruction remain mandatory. Consumer tests require every product
+ancestor while proving reporting is no longer a publication/deployment ancestor.
 
 The native v1 aggregate runs on tags and explicit full pre-tag candidates even
 if prerequisites fail. It
@@ -170,8 +171,13 @@ manual campaign cannot produce release acceptance. Smoke-only, publication and
 recovery jobs are deliberately outside the producer aggregate. Both native and
 browser prerequisite assertions require an explicit product kind; tests bind
 their exact workflow dependencies and reject missing/skipped/failed producers.
-External publisher/deployer job inspection still needs coordinated adoption;
-the existing same-tag Wasm whole-workflow requirement remains in force.
+External publisher/deployer job inspection now uses these aggregates. The
+publisher checks the newest exact-tag browser run, not an older successful run.
+App admission checks both same-source aggregates; immediately before activation
+it rechecks source, run, attempt and product-job identity. A reporting status
+change is allowed; a different product attempt requires artifact preparation
+again. Legacy successful runs without the v1 aggregates cannot use this path.
+Immutable artifact-set consumer migration and a real candidate trial remain.
 
 ### Frozen artifact transport inventory
 
@@ -1041,11 +1047,12 @@ After every required native job passes, the protected release workflow should:
 npm Trusted Publishing authorizes the calling workflow filename. Consequently
 `.github/workflows/ci.yml` is the only workflow that executes `npm publish`.
 Immediately before restoring publication artifacts, its publisher queries the
-WebAssembly workflow through the authenticated GitHub API and requires a
-successful push run for the exact immutable tag and full source SHA. The two
-workflows may build concurrently, but a failed or still-running Wasm gate can
-therefore never race npm publication. If native qualification finishes first,
-the publisher fails closed; after the Wasm workflow succeeds, use the same
+WebAssembly workflow through the authenticated GitHub API and requires the
+successful product aggregate in the newest push run for the exact immutable tag
+and full source SHA. The two workflows may build concurrently; missing, failed
+or still-running product acceptance blocks publication, but unrelated reporting
+does not. If native qualification finishes first, the publisher fails closed;
+after browser product acceptance succeeds, use the same
 validated-publication recovery below rather than rebuilding successful native
 producers.
 
@@ -1144,10 +1151,10 @@ remain required before calling the complete release process adopted. The
 integrated controller regression exercises interruption at all three publication
 stages with real helper code and fixture products/services, not public writes.
 
-Deploy `app.sagejs.org` only from the successful reproducible Wasm run and the
-successful numerical-qualification CI run for the same source SHA. Supply both
-run IDs to the deployment workflow. It rejects different SHAs, a missing or
-non-successful numerical gate job, and a gate artifact whose content ID or
+Deploy `app.sagejs.org` only from browser and native runs with successful v1
+product aggregates for the same source SHA. Supply both run IDs to the deployment
+workflow. It rejects different SHAs, a missing or unsuccessful product assertion,
+changed attempts before activation, and a gate artifact whose content ID or
 exact inventory fails authentication. Production additionally requires that
 SHA to be reachable from `origin/main`.
 

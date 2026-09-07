@@ -660,8 +660,8 @@ jobs:
           SAGEJS_PRODUCT_NEEDS: ${{ toJSON(needs) }}
         run: node scripts/release/product-prerequisites.cjs browser
 
-  # Retain the legacy whole-workflow/reporting guard during qualification of
-  # the new product boundary. Publisher/deployer adoption is a separate change.
+  # Combined reporting status remains visible, but publication/deployment use
+  # browser-product-acceptance, not this job or the whole workflow conclusion.
   browser-release-gates:
     name: Browser release gates
     if: ${{ always() }}

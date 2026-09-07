@@ -5,8 +5,9 @@
 // artifact authentication or permission to publish, and cannot substitute for
 // reconstruction of raw numerical evidence. Both v1 aggregates are defined
 // in their workflows; external consumer adoption and end-to-end qualification
-// remain pending.
-// Legacy job names are not aliases. No current publisher calls this module yet.
+// remain pending for exact artifact transport.
+// Legacy job names are not aliases. Publication and app deployment consume
+// these product boundaries without requiring unrelated reporting success.
 const { execFileSync } = require("node:child_process");
 const repository = "sagemathinc/sagejs";
 const boundaries = Object.freeze({

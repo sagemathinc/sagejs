@@ -47,7 +47,7 @@ checklist to repeat. This planning refresh inspected committed release tooling
 through `ef08f9b03` and the subsequent native-observation workflow integration,
 including the control-step audit and four-platform archive content checks, on
 2026-09-07. The shadow
-inventory reports **85 stage instances, 44 workflow jobs and 141 potential
+inventory reports **85 stage instances, 44 workflow jobs and 143 potential
 dependency edges**, with **zero detected unreviewed control steps and five incomplete
 audit scopes**. These are not timings or proof of complete gate coverage.
 `release:inventory --check` passing means its declared inventory is consistent,
@@ -90,6 +90,14 @@ share a non-cancelling lock. One integrated fixture test interrupts all three
 controllers and resumes without duplicate writes. This branch wiring is not yet
 deployed or exercised by a real candidate. Full exact-artifact consumer adoption,
 app/website promotion and end-to-end candidate validation remain incomplete.
+Publisher and app admission now use the explicit product aggregates instead of
+whole-workflow success. Graph tests preserve all native/browser product
+ancestors and reject a reporting dependency; consumer tests reject failed
+product assertions, mixed sources, foreign workflows and changing attempts.
+App activation rechecks the original run/attempt/job identities. These are
+feature-branch changes, not an observed production release. Immutable artifact
+transport and the remaining recovery consumers still need adoption; do not
+interpret the removed reporting edges as complete process qualification.
 Use those helpers where appropriate, but do not equate accumulated helper tests
 with an end-to-end release. The first success criterion remains one interrupted
 promotion resumed with the same tested bytes and no rebuild.

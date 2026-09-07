@@ -14,17 +14,26 @@ those objects at the same origin, applies the reviewed isolation headers, and
 caches immutable content-addressed assets at the edge.
 
 The deployment workflow does not build an unreviewed bundle. It accepts the run
-ID of a successful **Sage.js WebAssembly reproducible release** workflow and a
-successful **Sage.js CI** run for the same commit. The CI run must contain the
-passing 16-row numerical release gate and all five supplemental categories. It
+ID of a **Sage.js WebAssembly reproducible release** workflow with successful
+browser product acceptance and a **Sage.js CI** run with successful native
+product acceptance for the same commit. Whole-workflow reporting may still be
+running or have failed. The CI run must contain the passing numerical release
+gate and its complete supplemental evidence. It
 requires both clean builds, byte reproducibility, the native oracle, and all
-browser parity, sharded performance, security, offline, and recovery gates to
+browser parity, workload acceptance, security, offline, and recovery gates to
 have passed, then checks out that run's exact commit. It downloads one of the
 mutually verified artifacts, validates its
 production manifest and embedded build receipt, and stages only authenticated
 runtime files. The publication step makes deterministic identity and Brotli
 representations, validates both, and uploads them before a Worker deployment
 atomically selects the new release.
+
+The control checkout authenticates both v1 product aggregates in explicit run
+attempts and rechecks those identities immediately before activation. Legacy
+aggregate names cannot stand in for the current contract. Repeated comparative
+timing campaigns are not prerequisites; required correctness, startup, size,
+memory and safety checks remain in product qualification. This feature-branch
+consumer migration needs an end-to-end trial before production adoption.
 
 ## One-time Cloudflare and GitHub setup
 

@@ -1561,7 +1561,7 @@ jobs:
           node-version: 26.5.1
           registry-url: https://registry.npmjs.org
 
-      - name: Require successful same-tag WebAssembly release
+      - name: Require same-tag WebAssembly product acceptance
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
