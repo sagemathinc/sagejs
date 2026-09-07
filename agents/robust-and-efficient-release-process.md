@@ -766,3 +766,43 @@ repositories, and retains the existing clean-candidate requirement. Status now
 adds explicit read-time observation ages/wall times without rewriting historical
 records or claiming progress for a missing/unknown process owner. These changes
 do not change mathematical acceptance, performance budgets or artifact payloads.
+
+Validation of `e0ecd663c`: 59 focused Linux tests and `merge:check` pass. The
+30 source/preflight/runner tests also pass on native Windows x64 with Node
+26.5.1, using a SHA-256-verified 300 KiB source bundle and real local Git
+submodule fixtures, not a full product build. Initial sparse bundles omitted
+files read by existing gate-partition tests; adding those tracked inputs fixed
+the test harness without changing code or assertions. The temporary Windows
+bundle was removed afterward; existing release artifacts were not modified.
+Actual read-only inspection accepts the initialized pins in the ongoing
+`f9384a408` preparation checkout and rejects all three missing modules in the
+new worktree. The updated status observer correctly reports the live campaign
+and stage wall time while retaining the older durable journal's values.
+
+Exact-candidate preparation at `f9384a408499accf60d348df28dd473e1855ce33`
+completed the selected numerical-product/public-runtime/public-build stages in
+1,451.503 s. Numerical preparation reused its verified checkpoint; runtime plus
+the complete lazy cache took 768.241 s, and browser assembly/receipt/size checks
+took 681.918 s. Repeating the identical command reused all three checkpoints in
+1.894 s without running their build commands. The failed earlier attempt remains
+in the run history. These are single local observations, not a full preparation
+profile (root packing was not selected), release qualification or an SLA.
+The full `architecture:check` now also passes with the prepared runtime.
+
+The resulting production artifact is
+`sha256:f8be73f49dbe4808dc8477ca77d9b70b9bca4647de2a1955c8523eb01cd60361`.
+It passed the existing payload budget without changing thresholds. This provides
+an exact-source artifact for the new collector CLI, unlike the earlier read-only
+shared-loop trial on the retained 0.8.0 artifact. Keep that distinction when
+interpreting or transferring results.
+
+The actual same-commit collector CLI passed on Chromium, Firefox and WebKit,
+each with all 21 workloads cold and warm (42 evaluations per engine), validating
+the production receipt and unchanged source/artifact identities before and after
+collection. Receipts are under `build/wasm-acceptance-{engine}.json` in the frozen
+`robust-release-process` checkout at `f9384a408`. At most two read-only browser
+collectors ran concurrently, using separate sessions/output files; ordinary
+timing ratios and memory sampling were not collected. Full mathematical parity,
+dedicated resource/safety qualification and the complete publication-boundary
+migration remain outstanding; these three acceptance receipts do not authorize
+a release or deployment.
