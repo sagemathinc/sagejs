@@ -21,6 +21,7 @@ test("runner inventory has reviewed coverage for every profile and target withou
       .map((stage) => stage.id), plan("native", undefined, target).map((stage) => stage.id));
   }
   assert.deepEqual(result.workflows.reviewErrors, []);
+  assert.deepEqual(result.workflows.unreviewedControlSteps, []);
   assert.ok(result.incompleteScopes.includes("unreviewed workflow API/action/artifact dependencies"));
 });
 

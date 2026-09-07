@@ -70,14 +70,14 @@ if (require.main === module) {
     const result = inventory();
     const unresolved = result.instances.flatMap((stage) => stage.packageEntrypoints.filter((entry) => !entry.resolved));
     if (pathQuery) {
-      if (result.workflows.reviewErrors.length) throw new Error("workflow API edge review has drifted; inspect release:inventory --check");
+      if (result.workflows.reviewErrors.length || result.workflows.unreviewedControlSteps.length) throw new Error("workflow control review is incomplete or has drifted; inspect release:inventory --check");
       const route = dependencyPath(result.workflows.nodes, result.workflows.edges, args[1], args[2]);
       console.log(JSON.stringify({ mode: "shadow", potentialDependencyPath: route,
         edges: route?.slice(1).map((to, index) => result.workflows.edges.find((edge) => edge.from === route[index] && edge.to === to)) ?? [],
         limitations: result.workflows.limitations }, null, 2));
     } else if (args.includes("--check")) {
-      if (result.unreviewed.length || result.stalePolicy.length || unresolved.length || result.workflows.reviewErrors.length) {
-        throw new Error(`inventory needs review: ${JSON.stringify({ unreviewed: result.unreviewed, stalePolicy: result.stalePolicy, unresolved, apiEdges: result.workflows.reviewErrors })}`);
+      if (result.unreviewed.length || result.stalePolicy.length || unresolved.length || result.workflows.reviewErrors.length || result.workflows.unreviewedControlSteps.length) {
+        throw new Error(`inventory needs review: ${JSON.stringify({ unreviewed: result.unreviewed, stalePolicy: result.stalePolicy, unresolved, apiEdges: result.workflows.reviewErrors, controlSteps: result.workflows.unreviewedControlSteps })}`);
       }
       console.log(`${result.instances.length} runner stage instances; ${result.workflows.nodes.filter((node) => node.kind === "job").length} workflow jobs; ${result.workflows.edges.length} potential edges; ${result.workflows.unreviewedControlSteps.length} additional API/control steps need review; shadow policy only; ${result.incompleteScopes.length} scopes still incomplete`);
     } else console.log(JSON.stringify(result, null, 2));

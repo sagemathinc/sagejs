@@ -44,9 +44,9 @@ uncommitted prototypes are not proof that these milestones are complete.
 
 Read this brief first; section 9 is historical evidence, not a prerequisite
 checklist to repeat. This planning refresh inspected committed release tooling
-at `0e04e16c2` and the current experimental checkout on 2026-09-07. The shadow
-inventory reports **85 stage instances, 43 workflow jobs and 114 potential
-dependency edges**, with **seven unreviewed control steps and five incomplete
+through `af260a188` and the subsequent control-step audit on 2026-09-07. The shadow
+inventory reports **85 stage instances, 43 workflow jobs and 138 potential
+dependency edges**, with **zero detected unreviewed control steps and five incomplete
 audit scopes**. These are not timings or proof of complete gate coverage.
 `release:inventory --check` passing means its declared inventory is consistent,
 not that all publication dependencies have been reviewed.
@@ -58,7 +58,7 @@ verifiers. Deliver these bounded changes in order:
 
 | Order | Deliverable | Completion demonstration |
 | --- | --- | --- |
-| 1 | Close the seven control-step reviews and trace publisher, recovery and both website/app consumers back to required product checks | Every promotion path has an explicit required closure; reporting timeout cannot block it and missing correctness evidence cannot pass |
+| 1 | Finish transitive action/script and consumer dependency review, using the source-bound control-step inventory; migrate publisher, recovery and both website/app consumers to required product checks | Every promotion path has an explicit required closure; reporting timeout cannot block it and missing correctness evidence cannot pass |
 | 2 | Finish exact artifact-set consumption using the existing raw numerical verifier, package checks and signing checks | All nine transport roles authenticate; inner SEA/npm/browser identities and signature state match the selected candidate; altered or mixed bytes fail |
 | 3 | Journal publication and pointer promotion independently of builds | Interrupt after some immutable uploads, resume with integrity checks and zero compiler invocations; old public installer remains usable |
 | 4 | Exercise the complete non-publishing candidate path, then adopt it in production | Four native targets and real browsers qualify the exact delivered bytes; owner-approved signing policy and required human review remain intact |
@@ -68,6 +68,37 @@ general remote execution, broad cross-commit mathematical evidence reuse, or a
 complete compiler refactor. None is necessary to prove safe publication retries.
 Conversely, a downloader and a green fixture suite do not complete it: the real
 publisher/deployer/recovery consumers must actually use the new boundary.
+
+### Findings from the control-step audit
+
+The seven previously unreviewed detected controls now have source-bound reviews.
+That closes a known inventory gap, not the five remaining audit scopes or the
+production migration. Three distinctions materially affect the plan:
+
+- **Dispatch is not completion.** The recovery entry point dispatches another
+  workflow; that workflow requests a publisher rerun without awaiting its
+  result. The final promotion journal must observe and authenticate completion,
+  not record a successful API request as a successful release. Legacy recovery
+  also selects latest successful producer-job occurrences, potentially across
+  attempts; the new handoff enforces its explicit attempt binding instead.
+- **Artifact availability is not product acceptance.** Name-based downloads
+  do not establish qualification or immutable identity. The experimental handoff
+  binds exact artifact identities to native/browser product-acceptance jobs;
+  the real publisher and app deployment still require whole workflows, including
+  reporting. Replace those consumers together rather than relabeling tests.
+- **Latest must mean installable, not just the highest version.** The prior
+  Latest selector checked release tags/status but not assets. The audited helper
+  now requires the complete eleven-asset installer matrix: installer script,
+  four platform archives, macOS installer and their checksums, each uploaded and
+  nonempty. This metadata safeguard alone does not verify checksum contents,
+  signatures or npm/app coherence. The final promotion must verify those and
+  advance public pointers only after the complete artifact set is available.
+
+The inventory now distinguishes job-success prerequisites, artifact data inputs
+and dispatch/pointer effects. Reviews bind exact step/helper hashes and literal
+producer artifact names; changed controls fail review checks. External action
+internals, transitive helpers and other explicitly incomplete scopes still need
+inspection. A missing graph path is not proof that no hidden dependency exists.
 
 ### Gate policy to implement, without blanket waivers
 
@@ -1145,3 +1176,20 @@ bytes for `sagejs` and 274,266,574 for `sagepython`. The whole check took about
 6.30 seconds at 85,212 KiB peak RSS. This is one local historical byte comparison,
 not a new source-current qualification or signature claim. No runtime payload,
 budget, signing environment, tag or public pointer changed.
+
+The subsequent workflow control audit reviewed all seven previously detected
+unreviewed controls. The current shadow graph has 85 runner stage instances,
+43 workflow jobs and 138 potential prerequisite/data edges, with dispatch and
+pointer effects recorded separately. Its review check now rejects newly
+detected unreviewed controls as well as source/helper drift. Five audit scopes
+remain incomplete; this is not a complete transitive release proof. The real
+publisher/deployer still has reporting ancestors, while the experimental
+artifact handoff consumes explicit product acceptance instead.
+
+Validation of this audit: 53 focused graph, inventory, Latest, product-acceptance
+and transport tests pass, as do the shadow inventory and merge checks. The
+Latest-selector regression tests reject partial, duplicate, empty or unuploaded
+installer assets. A read-only GitHub metadata check confirmed that the currently
+published `v0.7.0+release.6` satisfies the new eleven-asset completeness condition.
+No public pointer was changed, and this metadata check does not claim a fresh
+installation, checksum/signature verification or a new release qualification.

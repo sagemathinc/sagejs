@@ -102,16 +102,40 @@ function workflowInventory(root, suppliedReview) {
   const reviewBytes = suppliedReview ? null : readWithin(root, reviewPath);
   if (reviewBytes) sources.push({ filename: reviewPath, sha256: digest(reviewBytes) });
   const review = suppliedReview || JSON.parse(reviewBytes);
-  if (review.schema !== "sagejs.workflow-api-edges/v1" || !Array.isArray(review.entries)) throw new Error("invalid workflow API review registry");
+  if (review.schema !== "sagejs.workflow-api-edges/v2" || !Array.isArray(review.entries)) throw new Error("invalid workflow API review registry");
   const reviewedSteps = new Set();
+  const controlEffects = [];
+  const jobKeys = new Set(nodes.filter((node) => node.kind === "job").map((node) => node.key));
+  function validArtifactInput(item) {
+    const producer = nodes.find((node) => node.kind === "job" && node.key === item?.producer);
+    const binding = item?.matrix ?? {};
+    if (!binding || typeof binding !== "object" || Array.isArray(binding)) return false;
+    // Only an explicitly reviewed literal cell of a simple static matrix is
+    // supported. This is not evaluation of arbitrary GitHub expressions.
+    if (Object.keys(binding).length && (producer?.strategy?.matrix?.include || producer?.strategy?.matrix?.exclude ||
+        Object.entries(binding).some(([key, value]) => !Array.isArray(producer?.strategy?.matrix?.[key]) ||
+          typeof value !== "string" || !producer.strategy.matrix[key].includes(value)))) return false;
+    const nameFor = (text) => typeof text === "string" ? text.replace(/\$\{\{\s*matrix\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g,
+      (expression, key) => Object.hasOwn(binding, key) ? binding[key] : expression) : null;
+    return producer && Array.isArray(item.names) && item.names.length && new Set(item.names).size === item.names.length &&
+      item.names.every((name) => typeof name === "string" && name.trim() && producer.steps.some((step) =>
+        /^actions\/upload-artifact@/.test(step.uses ?? "") && nameFor(step.with?.name) === name));
+  }
   for (const entry of review.entries) {
     const from = jobKey(entry.workflow, entry.job);
     const job = nodes.find((node) => node.key === from && node.kind === "job");
     const matches = job?.steps.filter((step) => step.name === entry.step) || [];
     const failures = [];
     if (matches.length !== 1 || matches[0].runSha256 !== entry.runSha256) failures.push("step missing, ambiguous or changed");
-    if (!Array.isArray(entry.helpers) || !Array.isArray(entry.requiresWorkflowSuccess) || !entry.requiresWorkflowSuccess.length ||
-        entry.requiresWorkflowSuccess.some((name) => !workflows.has(name)) || typeof entry.semantics !== "string") failures.push("invalid API edge declaration");
+    const requiredJobs = entry.requiresJobSuccess ?? [], artifactInputs = entry.artifactInputs ?? [], effects = entry.effects ?? [];
+    if (!Array.isArray(entry.helpers) || !Array.isArray(entry.requiresWorkflowSuccess) ||
+        entry.requiresWorkflowSuccess.some((name) => !workflows.has(name)) || new Set(entry.requiresWorkflowSuccess).size !== entry.requiresWorkflowSuccess.length ||
+        !Array.isArray(requiredJobs) || requiredJobs.some((key) => !jobKeys.has(key)) || new Set(requiredJobs).size !== requiredJobs.length ||
+        !Array.isArray(artifactInputs) || artifactInputs.some((item) => !validArtifactInput(item)) ||
+        !Array.isArray(effects) || effects.some((item) => !item || !["dispatch", "rerun-job", "release-pointer"].includes(item.kind) ||
+          (item.kind === "release-pointer" ? item.target !== "github:releases/latest" : !jobKeys.has(item.target))) ||
+        !(entry.requiresWorkflowSuccess.length || requiredJobs.length || artifactInputs.length || effects.length) ||
+        typeof entry.semantics !== "string" || !entry.semantics.trim()) failures.push("invalid API edge declaration");
     else for (const helper of entry.helpers) {
       try {
         const sha256 = digest(readWithin(root, helper.filename));
@@ -126,16 +150,25 @@ function workflowInventory(root, suppliedReview) {
     for (const workflow of entry.requiresWorkflowSuccess) edges.push({ from, to: successKey(workflow),
       kind: "reviewed-api-workflow-success", step: matches[0].index, runSha256: entry.runSha256,
       semantics: entry.semantics, conditional: true });
+    for (const to of requiredJobs) edges.push({ from, to, kind: "reviewed-api-job-success", step: matches[0].index,
+      runSha256: entry.runSha256, semantics: entry.semantics, conditional: true });
+    for (const item of artifactInputs) edges.push({ from, to: item.producer, kind: "reviewed-artifact-input", names: item.names, matrix: item.matrix ?? null,
+      step: matches[0].index, runSha256: entry.runSha256, semantics: entry.semantics, conditional: true });
+    // Dispatch/rerun/pointer effects are recorded separately: treating them as
+    // prerequisites would invent completion guarantees and false cycles.
+    for (const effect of effects) controlEffects.push({ from, ...effect, step: matches[0].index,
+      runSha256: entry.runSha256, semantics: entry.semantics });
   }
   // A reviewed cross-workflow condition can also make the composed graph cyclic.
   for (const key of adjacency.keys()) adjacency.set(key, []);
   for (const edge of edges) adjacency.get(edge.from).push(edge.to);
   done.clear(); active.clear();
   for (const key of adjacency.keys()) visit(key);
-  return { schema: "sagejs.workflow-inventory/v1", mode: "shadow", sources, nodes, edges, reviewErrors,
+  return { schema: "sagejs.workflow-inventory/v1", mode: "shadow", sources, nodes, edges, reviewErrors, controlEffects,
     unreviewedControlSteps: controlSteps.filter((step) => !reviewedSteps.has(`${step.key}/${step.index}`)),
     limitations: ["Potential graph only: expressions, matrix cells and tolerated failures are not evaluated",
-      "Reviewed API edges are source-bound human findings, not general shell analysis",
+      "Reviewed API edges are source-bound findings, not general shell analysis; artifact edges describe availability, not successful qualification",
+      "Control effects are not prerequisite edges or proof that dispatched work finished",
       "Action internals, reusable workflows and transitive script/artifact dataflow still require inventory",
       "No pass, cache reuse, numerical evidence authentication or publication authorization is implied"] };
 }

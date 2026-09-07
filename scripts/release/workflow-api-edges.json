@@ -1,5 +1,5 @@
 {
-  "schema": "sagejs.workflow-api-edges/v1",
+  "schema": "sagejs.workflow-api-edges/v2",
   "entries": [
     {
       "workflow": "ci.yml",
@@ -12,7 +12,9 @@
           "sha256": "c7206222b80d4730416eae998546d9c591830af32baa5693ff40a08ac145b5c4"
         }
       ],
-      "requiresWorkflowSuccess": ["wasm-release.yml"],
+      "requiresWorkflowSuccess": [
+        "wasm-release.yml"
+      ],
       "semantics": "Authenticated GitHub run lookup; helper requires a completed successful push run at the exact source SHA and immutable release tag. Entire workflow conclusion, not only product acceptance jobs."
     },
     {
@@ -21,8 +23,239 @@
       "step": "Validate the completed release run",
       "runSha256": "58fec2156eb8356831cb62e5d1f7647ed7ca1f911d92590ef87d5c340d645f00",
       "helpers": [],
-      "requiresWorkflowSuccess": ["wasm-release.yml", "ci.yml"],
+      "requiresWorkflowSuccess": [
+        "wasm-release.yml",
+        "ci.yml"
+      ],
       "semantics": "Authenticated run metadata requires successful Wasm and CI workflows with equal source SHAs; also checks named clean/oracle/reproducibility/browser/numerical jobs. Whole-workflow edges conservatively include these narrower job checks."
+    },
+    {
+      "workflow": "ci.yml",
+      "job": "publish-release",
+      "step": "Download the validated release artifacts",
+      "artifactInputs": [
+        {
+          "producer": "ci.yml#linux-x64",
+          "names": [
+            "sagejs-linux-x64"
+          ]
+        },
+        {
+          "producer": "ci.yml#linux-arm64",
+          "names": [
+            "sagejs-linux-arm64"
+          ]
+        },
+        {
+          "producer": "ci.yml#windows-x64",
+          "names": [
+            "sagejs-windows-x64"
+          ]
+        },
+        {
+          "producer": "ci.yml#macos-sign",
+          "names": [
+            "sagejs-macos-arm64"
+          ]
+        },
+        {
+          "producer": "ci.yml#public-npm-root",
+          "names": [
+            "sagejs-public-npm-root"
+          ]
+        }
+      ],
+      "semantics": "Downloads four native artifacts by name from the current run, then copies the already restored common npm root. Availability/data edges only; upstream native-product acceptance supplies required job success separately. Names do not pin immutable artifact IDs; migration to the authenticated artifact set remains required.",
+      "runSha256": "2dbdc39352c3e07d6541de8c9817282c9dcdfb1d7d3a03af50cc6f6f29866a58",
+      "helpers": [],
+      "requiresWorkflowSuccess": []
+    },
+    {
+      "workflow": "ci.yml",
+      "job": "recover-publish",
+      "step": "Authenticate the source run and rerun its original trusted publisher",
+      "helpers": [
+        {
+          "filename": "scripts/release/select-recovery-publisher.cjs",
+          "sha256": "ae7165c48bf13d23c5579d329d52504b7c27d5f55d3442ccdcd28c9735107f44"
+        }
+      ],
+      "requiresJobSuccess": [
+        "ci.yml#linux-x64",
+        "ci.yml#linux-arm64",
+        "ci.yml#macos-arm64",
+        "ci.yml#windows-x64",
+        "ci.yml#macos-sign",
+        "ci.yml#numerical-browser-qualification",
+        "ci.yml#numerical-release-gate"
+      ],
+      "effects": [
+        {
+          "kind": "rerun-job",
+          "target": "ci.yml#publish-release"
+        }
+      ],
+      "semantics": "Authenticates a completed tagged CI source run and matching source/tag/checkout SHA, selects each named producer latest exact occurrence and requires success, then POSTs the unsuccessful publisher job rerun. Does not require whole CI success and does not wait for or prove rerun success. Different source job attempts may be selected by this legacy helper.",
+      "runSha256": "a00dd44566e82e8ccd89e3dcda5af17c1f68b75cb572b89448dfdeba8626bd1b",
+      "requiresWorkflowSuccess": []
+    },
+    {
+      "workflow": "protect-latest-release.yml",
+      "job": "protect-latest-product-release",
+      "step": "Keep infrastructure and evidence releases out of latest",
+      "helpers": [
+        {
+          "filename": "scripts/release-latest-policy.cjs",
+          "sha256": "fae0a517d76c52e193760c218482a9a446cee0e0ac86799946e12dc29d6643a5"
+        }
+      ],
+      "effects": [
+        {
+          "kind": "release-pointer",
+          "target": "github:releases/latest"
+        }
+      ],
+      "semantics": "Reads published non-draft/non-prerelease releases, requires all eleven installer/archive/checksum assets to be uniquely present, uploaded and nonempty, then selects the highest recognized product tag and may update Latest. No CI/job success prerequisite. Asset metadata completeness is not digest/signature verification, URL probing or npm/app coherence; this is not complete-release qualification.",
+      "runSha256": "c290371174f4dfe119fde55b557538477a763a71e3d06b46fa373d95c3c2fcb0",
+      "requiresWorkflowSuccess": []
+    },
+    {
+      "workflow": "publish-validated-release.yml",
+      "job": "request",
+      "step": "Dispatch the trusted CI workflow at the exact release tag",
+      "effects": [
+        {
+          "kind": "dispatch",
+          "target": "ci.yml#recover-publish"
+        }
+      ],
+      "semantics": "Checks input shape then dispatches ci.yml at the requested release tag with recovery inputs. It does not authenticate that source run or await publication; the dispatched recover-publish job performs source authentication. Dispatch is an effect, not a completion dependency.",
+      "runSha256": "1ae87ee0378d4f360cdba09a4c73714ff5282411f9b7206a5d79a3937b3d8d05",
+      "helpers": [],
+      "requiresWorkflowSuccess": []
+    },
+    {
+      "workflow": "release-artifact-handoff.yml",
+      "job": "capture",
+      "step": "Capture exact qualified artifact set",
+      "helpers": [
+        {
+          "filename": "scripts/release/artifact-set.cjs",
+          "sha256": "4f4661823cd06ffdee07c1f85c0792a6d15ba1869d7c3556d16c959e7db94297"
+        },
+        {
+          "filename": "scripts/release/product-acceptance.cjs",
+          "sha256": "e6b4f34a15ddb93486ee92b9212f06e5110209bf069befda004ba2dee47a4904"
+        }
+      ],
+      "requiresJobSuccess": [
+        "ci.yml#native-product-acceptance",
+        "wasm-release.yml#browser-product-acceptance"
+      ],
+      "artifactInputs": [
+        {
+          "producer": "ci.yml#linux-x64",
+          "names": [
+            "sagejs-linux-x64"
+          ]
+        },
+        {
+          "producer": "ci.yml#linux-arm64",
+          "names": [
+            "sagejs-linux-arm64"
+          ]
+        },
+        {
+          "producer": "ci.yml#windows-x64",
+          "names": [
+            "sagejs-windows-x64"
+          ]
+        },
+        {
+          "producer": "ci.yml#macos-sign",
+          "names": [
+            "sagejs-macos-arm64"
+          ]
+        },
+        {
+          "producer": "ci.yml#public-npm-root",
+          "names": [
+            "sagejs-public-npm-root"
+          ]
+        },
+        {
+          "producer": "ci.yml#numerical-release-gate",
+          "names": [
+            "numerical-release-gate",
+            "numerical-release-evidence"
+          ]
+        },
+        {
+          "producer": "wasm-release.yml#clean-build",
+          "matrix": {
+            "replica": "a"
+          },
+          "names": [
+            "wasm-clean-build-a"
+          ]
+        },
+        {
+          "producer": "wasm-release.yml#reproducibility",
+          "names": [
+            "sagejs-wasm-reproducible"
+          ]
+        }
+      ],
+      "semantics": "Requires attempt-scoped successful native/browser product aggregates at the explicit same product SHA/ref/event/purpose, then captures nine immutable artifact IDs/digests and rechecks producer attempts. It deliberately does not require whole-workflow success. This handoff neither authenticates inner contents/signatures nor authorizes publication.",
+      "runSha256": "18cc3c6c60f36e1abd888388b8e7071219f5575f6504f26d8b7a370c54d7a2f2",
+      "requiresWorkflowSuccess": []
+    },
+    {
+      "workflow": "wasm-deploy-cloudflare.yml",
+      "job": "deploy",
+      "step": "Download the reproducible production artifact",
+      "artifactInputs": [
+        {
+          "producer": "wasm-release.yml#clean-build",
+          "matrix": {
+            "replica": "a"
+          },
+          "names": [
+            "wasm-clean-build-a"
+          ]
+        }
+      ],
+      "semantics": "Downloads the named clean-build artifact from the selected Wasm source run and copies its dist into deployment staging after required metadata files exist. The earlier validation step supplies same-source full-workflow success checks; this download alone establishes neither immutable-ID pinning nor mathematical acceptance.",
+      "runSha256": "9590c6aa57b382ec47e5272bf940cf86b436d836330456ac7da38ba2f2d6a975",
+      "helpers": [],
+      "requiresWorkflowSuccess": []
+    },
+    {
+      "workflow": "wasm-deploy-cloudflare.yml",
+      "job": "deploy",
+      "step": "Rebuild and authenticate the same-candidate numerical release gate",
+      "helpers": [
+        {
+          "filename": "scripts/numerical-computing/qualification/assemble-release-gate.cjs",
+          "sha256": "4c7391a41e3d5fd0147ea5aeaa9506539fa72a9d1adce1e34a2279efbb5699b0"
+        },
+        {
+          "filename": "scripts/numerical-computing/qualification/authenticate-release-gate.cjs",
+          "sha256": "e1c30fff47208be0c000b2a6d4cd282b44229128281b9a0b3fbd5404bf128e6a"
+        }
+      ],
+      "artifactInputs": [
+        {
+          "producer": "ci.yml#numerical-release-gate",
+          "names": [
+            "numerical-release-gate",
+            "numerical-release-evidence"
+          ]
+        }
+      ],
+      "semantics": "Downloads named gate and raw-evidence artifacts from the selected CI qualification run, reconstructs the source-current numerical gate, requires equality with the retained gate, and binds the browser distribution. Earlier validation checks same-source successful CI/Wasm runs. Script/manifest transitive closure remains a separately declared incomplete audit scope.",
+      "runSha256": "4be2a559ba6aeeeddfce607f9d5242a33cc4eb5e3dbdb2a3054c1d55d1e27186",
+      "requiresWorkflowSuccess": []
     }
   ]
 }

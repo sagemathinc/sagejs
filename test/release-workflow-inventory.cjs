@@ -37,9 +37,16 @@ test("real publisher and deployment retain indirect reporting ancestors in the s
   assert.deepEqual(perf.strategy.matrix.engine, ["chromium", "firefox", "webkit"]);
   assert.deepEqual(perf.strategy.matrix.shard, [1, 2, 3, 4]);
   assert.ok(perf.steps.some((s) => typeof s.run === "string"));
-  assert.ok(graph.unreviewedControlSteps.length > 0, "unreviewed API calls must not disappear");
-  assert.ok(graph.unreviewedControlSteps.some((step) => step.key === "release-artifact-handoff.yml#capture"),
-    "new helper-based cross-workflow capture must remain visible until its edges are explicitly reviewed");
+  assert.deepEqual(graph.unreviewedControlSteps, []);
+  assert.ok(route("release-artifact-handoff.yml#capture", "ci.yml#native-product-acceptance"));
+  assert.ok(route("release-artifact-handoff.yml#capture", "wasm-release.yml#browser-product-acceptance"));
+  assert.equal(route("release-artifact-handoff.yml#capture", "wasm-release.yml#browser-performance"), null);
+  assert.equal(route("publish-validated-release.yml#request", "ci.yml#publish-release"), null,
+    "dispatch is not proof of publication completion");
+  assert.ok(graph.controlEffects.some((effect) => effect.from === "publish-validated-release.yml#request" && effect.target === "ci.yml#recover-publish" && effect.kind === "dispatch"));
+  assert.ok(graph.controlEffects.some((effect) => effect.from === "ci.yml#recover-publish" && effect.target === "ci.yml#publish-release" && effect.kind === "rerun-job"));
+  assert.ok(graph.controlEffects.some((effect) => effect.kind === "release-pointer" && effect.target === "github:releases/latest"));
+  assert.ok(graph.edges.some((edge) => edge.kind === "reviewed-artifact-input" && edge.names.includes("sagejs-macos-arm64") && edge.to === "ci.yml#macos-sign"));
 });
 
 test("YAML 1.2 triggers, block scalars, conditions, tolerance and matrix expressions survive inspection", (t) => {
@@ -62,7 +69,7 @@ jobs:
       - report
     steps: []
 ` });
-  const graph = workflowInventory(dir, { schema: "sagejs.workflow-api-edges/v1", entries: [] });
+  const graph = workflowInventory(dir, { schema: "sagejs.workflow-api-edges/v2", entries: [] });
   assert.deepEqual(graph.nodes[0].triggers, ["push"]);
   const report = graph.nodes.find((n) => n.id === "report");
   assert.equal(report.condition, false);
@@ -79,7 +86,7 @@ test("missing needs, cycles, duplicate YAML keys and unsupported YAML tags fail 
     ["tag", "jobs: !custom {}", /invalid workflow/],
   ]) {
     const dir = fixture(t, { [`${label}.yml`]: source });
-    assert.throws(() => workflowInventory(dir, { schema: "sagejs.workflow-api-edges/v1", entries: [] }), message);
+    assert.throws(() => workflowInventory(dir, { schema: "sagejs.workflow-api-edges/v2", entries: [] }), message);
   }
   assert.throws(() => parseWorkflow("jobs: []", "fixture"), /lacks jobs/);
 });
@@ -90,7 +97,7 @@ test("reviewed API edges require exact shell and helper identities; drift is vis
     "build.yml": "jobs: {build: {steps: []}}",
   });
   fs.writeFileSync(path.join(dir, "helper.cjs"), "original helper");
-  const review = { schema: "sagejs.workflow-api-edges/v1", entries: [{
+  const review = { schema: "sagejs.workflow-api-edges/v2", entries: [{
     workflow: "publish.yml", job: "publish", step: "Check", runSha256: sha("gh api trusted"),
     helpers: [{ filename: "helper.cjs", sha256: sha("original helper") }],
     requiresWorkflowSuccess: ["build.yml"], semantics: "fixture complete workflow check",
@@ -113,7 +120,7 @@ test("reviewed API edges require exact shell and helper identities; drift is vis
 
 test("ambiguous step names and unknown target workflows cannot be reviewed by accident", (t) => {
   const dir = fixture(t, { "test.yml": "jobs: {p: {steps: [{name: Check, run: test}, {name: Check, run: test}]}}" });
-  const graph = workflowInventory(dir, { schema: "sagejs.workflow-api-edges/v1", entries: [{
+  const graph = workflowInventory(dir, { schema: "sagejs.workflow-api-edges/v2", entries: [{
     workflow: "test.yml", job: "p", step: "Check", runSha256: sha("test"), helpers: [],
     requiresWorkflowSuccess: ["missing.yml"], semantics: "fixture",
   }] });
@@ -123,8 +130,61 @@ test("ambiguous step names and unknown target workflows cannot be reviewed by ac
 
 test("cross-workflow review cannot introduce a hidden circular completion dependency", (t) => {
   const dir = fixture(t, { "test.yml": "jobs: {p: {steps: [{name: Check, run: test}]}}" });
-  assert.throws(() => workflowInventory(dir, { schema: "sagejs.workflow-api-edges/v1", entries: [{
+  assert.throws(() => workflowInventory(dir, { schema: "sagejs.workflow-api-edges/v2", entries: [{
     workflow: "test.yml", job: "p", step: "Check", runSha256: sha("test"), helpers: [],
     requiresWorkflowSuccess: ["test.yml"], semantics: "impossible self completion",
   }] }), /cyclic workflow dependencies/);
+});
+
+test("job checks, artifact inputs and control effects have separate meanings and all anchors are checked", (t) => {
+  const dir = fixture(t, {
+    "build.yml": "jobs: {product: {steps: [{uses: actions/upload-artifact@v7, with: {name: product-bytes}}]}, report: {steps: []}}",
+    "publish.yml": "jobs: {p: {steps: [{name: Check, run: 'gh api checked'}]}}",
+  });
+  const entry = { workflow: "publish.yml", job: "p", step: "Check", runSha256: sha("gh api checked"), helpers: [], requiresWorkflowSuccess: [],
+    requiresJobSuccess: ["build.yml#product"], artifactInputs: [{ producer: "build.yml#product", names: ["product-bytes"] }],
+    effects: [{ kind: "rerun-job", target: "publish.yml#p" }], semantics: "fixture qualified-product consumption and asynchronous retry" };
+  const inspect = (value = entry) => workflowInventory(dir, { schema: "sagejs.workflow-api-edges/v2", entries: [value] });
+  const graph = inspect(); assert.deepEqual(graph.reviewErrors, []); assert.equal(graph.controlEffects.length, 1);
+  assert.deepEqual(dependencyPath(graph.nodes, graph.edges, "publish.yml#p", "build.yml#product"), ["publish.yml#p", "build.yml#product"]);
+  assert.equal(dependencyPath(graph.nodes, graph.edges, "publish.yml#p", "build.yml#report"), null);
+  for (const changed of [
+    { requiresJobSuccess: ["build.yml#@success"] }, { requiresJobSuccess: ["build.yml#missing"] },
+    { requiresJobSuccess: ["build.yml#product", "build.yml#product"] },
+    { artifactInputs: [{ producer: "build.yml#product", names: ["other-bytes"] }] },
+    { artifactInputs: [{ producer: "build.yml#report", names: ["product-bytes"] }] },
+    { effects: [{ kind: "dispatch", target: "build.yml#missing" }] },
+    { effects: [{ kind: "release-pointer", target: "arbitrary-pointer" }] },
+    { effects: [{ kind: "unknown-effect", target: "publish.yml#p" }] },
+    { requiresJobSuccess: [], artifactInputs: [], effects: [] },
+  ]) {
+    const bad = inspect({ ...entry, ...changed });
+    assert.equal(bad.reviewErrors.length, 1); assert.equal(bad.unreviewedControlSteps.length, 1);
+    assert.equal(bad.controlEffects.length, 0);
+    assert.equal(bad.edges.filter((edge) => edge.kind.startsWith("reviewed-")).length, 0);
+  }
+});
+
+test("unreviewed new control calls remain visible after the existing review is complete", (t) => {
+  const dir = fixture(t, { "test.yml": "jobs: {p: {steps: [{name: New API, run: 'gh run download 123'}]}}" });
+  const graph = workflowInventory(dir, { schema: "sagejs.workflow-api-edges/v2", entries: [] });
+  assert.equal(graph.unreviewedControlSteps.length, 1);
+  assert.deepEqual(graph.edges.map((edge) => edge.kind), ["workflow-conclusion"]);
+});
+
+test("artifact name checks accept only an explicit literal cell of a static matrix", (t) => {
+  const dir = fixture(t, {
+    "build.yml": 'jobs: {product: {strategy: {matrix: {replica: [a, b]}}, steps: [{uses: actions/upload-artifact@v7, with: {name: "product-${{ matrix.replica }}"}}]}}',
+    "publish.yml": "jobs: {p: {steps: [{name: Download, run: 'gh run download 123'}]}}",
+  });
+  const entry = { workflow: "publish.yml", job: "p", step: "Download", runSha256: sha("gh run download 123"), helpers: [], requiresWorkflowSuccess: [],
+    artifactInputs: [{ producer: "build.yml#product", names: ["product-a"], matrix: { replica: "a" } }], semantics: "select exact replica a bytes" };
+  const inspect = (e) => workflowInventory(dir, { schema: "sagejs.workflow-api-edges/v2", entries: [e] });
+  assert.deepEqual(inspect(entry).reviewErrors, []);
+  for (const matrix of [{}, { replica: "b" }, { replica: "c" }, { other: "a" }, "a"]) {
+    assert.equal(inspect({ ...entry, artifactInputs: [{ ...entry.artifactInputs[0], matrix }] }).reviewErrors.length, 1);
+  }
+  const filename = path.join(dir, ".github/workflows/build.yml"), source = fs.readFileSync(filename, "utf8");
+  fs.writeFileSync(filename, source.replace("replica: [a, b]", "replica: [a, b], exclude: [{replica: a}]"));
+  assert.equal(inspect(entry).reviewErrors.length, 1, "a review cannot pretend to interpret an excluded cell");
 });
