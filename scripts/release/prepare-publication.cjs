@@ -107,6 +107,10 @@ async function preparePublication(options, dependencies = {}) {
   const relativeCache = path.relative(root, cache);
   if (relativeCache !== ".." && !relativeCache.startsWith(`..${path.sep}`) && !path.isAbsolute(relativeCache)) throw new Error("artifact cache must be outside the consumer checkout");
   checkConsumer(root, options.sha);
+  options.signal?.throwIfAborted();
+  // Fail before artifact authentication/download if the controller cannot read
+  // Linux distribution archives. This never installs tools or builds products.
+  require("./linux-tar-contents.cjs").requireXz();
   // Authenticate before copying anything into the source-only consumer.
   const accepted = await prepareHandoff(options, dependencies);
   const candidate = accepted.manifest.sourceRevision, digest = accepted.manifest.manifestDigest;
@@ -155,8 +159,8 @@ async function preparePublication(options, dependencies = {}) {
     const platformPackages = authenticatePlatformNpmPackages(gate, "release/npm", root);
     const { authenticatePackagedExecutables } = require("./packaged-executables.cjs");
     const packagedExecutables = await authenticatePackagedExecutables(root, gate, platformPackages, { signal: options.signal });
-    const { authenticateDownloadableZips } = require("./downloadable-zips.cjs");
-    const downloadableZips = await authenticateDownloadableZips(root, packagedExecutables, { signal: options.signal });
+    const { authenticateDownloadableArchives } = require("./downloadable-archives.cjs");
+    const downloadableArchives = await authenticateDownloadableArchives(root, packagedExecutables, { signal: options.signal });
     const { authenticateBrowserInputs } = require("./browser-inputs.cjs");
     const selectedBrowser = authenticateBrowserInputs(root, candidate, gate);
     const { authenticateBrowserArchive } = require("./browser-archive.cjs");
@@ -171,9 +175,9 @@ async function preparePublication(options, dependencies = {}) {
     return { authentication: accepted.authentication, candidateRoot: root, results,
       productIdentity: { sourceRevision: candidate, ref: accepted.manifest.ref, event: accepted.manifest.event,
         purpose: accepted.manifest.purpose, manifestDigest: digest },
-      files: inputs.map(({ target, size, sha256 }) => ({ path: target, size, sha256 })), platformPackages, packagedExecutables, downloadableZips, selectedBrowser,
+      files: inputs.map(({ target, size, sha256 }) => ({ path: target, size, sha256 })), platformPackages, packagedExecutables, downloadableArchives, selectedBrowser,
       status: "numerical-publication-inputs-authenticated",
-      authority: "not publication authorization; Linux tar.xz, macOS installer, signatures and deployment adoption remain required" };
+      authority: "not publication authorization; macOS installer, signatures and deployment adoption remain required" };
   } finally { unlock(); }
 }
 async function main(args) {

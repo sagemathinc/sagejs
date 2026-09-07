@@ -117,6 +117,15 @@ async function inspectArchive(filename, { browser = false, hashFiles = browser, 
   const stream = createGunzip();
   source.once("error", (error) => stream.destroy(error));
   source.pipe(stream);
+  try {
+    return { archive: basename(filename),
+      ...await inspectTarStream(stream, { root: browser ? "dist" : "package", gnuAllowed: browser, strictMode: browser, hashFiles, signal }),
+      schema: browser ? "sagejs.browser-archive-validation/v1" : hashFiles ? "sagejs.package-archive-content/v1" : "sagejs.package-archive-validation/v1" };
+  } finally { source.destroy(); stream.destroy(); }
+}
+
+async function inspectTarStream(stream, { root, gnuAllowed = false, strictMode = false, includeMode = false, hashFiles = false, signal } = {}) {
+  signal?.throwIfAborted();
   const members = [];
   const collisionKeys = new Set();
   const memberTypes = new Map();
@@ -144,7 +153,7 @@ async function inspectArchive(filename, { browser = false, hashFiles = browser, 
     verifyChecksum(header);
 
     const ustar = header.subarray(257, 265).equals(Buffer.from("ustar\0" + "00", "ascii"));
-    const gnu = browser && header.subarray(257, 265).equals(Buffer.from("ustar  \0", "ascii"));
+    const gnu = gnuAllowed && header.subarray(257, 265).equals(Buffer.from("ustar  \0", "ascii"));
     if (!ustar && !gnu) {
       // In particular, a V7 header does not define the ustar prefix field.
       // Interpreting it here while the downstream extractor ignores it would
@@ -178,10 +187,11 @@ async function inspectArchive(filename, { browser = false, hashFiles = browser, 
       throw new Error("tar regular member has an unexpected link target");
     }
 
-    if (browser && (parseOctal(header, 100, 8, "tar member mode") & 0o7000)) {
-      throw new Error("browser tar member has forbidden special permission bits");
+    const mode = strictMode || includeMode ? parseOctal(header, 100, 8, "tar member mode") : undefined;
+    if (strictMode && mode > 0o777) {
+      throw new Error("tar member has forbidden special permission bits");
     }
-    const path = normalizedMemberPath(memberName(header, gnu), type, browser ? "dist" : "package");
+    const path = normalizedMemberPath(memberName(header, gnu), type, root);
     const collisionKey = path.toLowerCase();
     if (collisionKeys.has(collisionKey)) {
       throw new Error(`tar archive has a duplicate normalized path: ${path}`);
@@ -201,6 +211,7 @@ async function inspectArchive(filename, { browser = false, hashFiles = browser, 
     collisionKeys.add(collisionKey);
     memberTypes.set(collisionKey, type);
     members.push({ path, size, type });
+    if (includeMode) members.at(-1).mode = mode;
     if (members.length > MAX_ENTRIES) {
       throw new Error(`tar archive exceeds ${MAX_ENTRIES} members`);
     }
@@ -264,18 +275,21 @@ async function inspectArchive(filename, { browser = false, hashFiles = browser, 
     }
     if (!ended) throw new Error("tar archive lacks two zero end blocks");
     return {
-      archive: basename(filename),
       members,
-      schema: browser ? "sagejs.browser-archive-validation/v1" : hashFiles ? "sagejs.package-archive-content/v1" : "sagejs.package-archive-validation/v1",
       uncompressed_bytes: uncompressedBytes,
     };
-  } finally { source.destroy(); stream.destroy(); }
+  } finally { stream.destroy(); }
 }
 
 // Separate entry points make the accepted root/dialect/hash policy explicit.
 function validateArchive(filename) { return inspectArchive(filename); }
 function validateBrowserArchive(filename, { signal } = {}) { return inspectArchive(filename, { browser: true, signal }); }
 function validatePackageArchiveContents(filename, { signal } = {}) { return inspectArchive(filename, { hashFiles: true, signal }); }
+async function validateLinuxTarStream(stream, platform, { signal } = {}) {
+  if (!["linux-x64", "linux-arm64"].includes(platform)) throw new Error("canonical Linux archive platform required");
+  return { ...await inspectTarStream(stream, { root: `sagejs-${platform}`, gnuAllowed: true, strictMode: true, includeMode: true, hashFiles: true, signal }),
+    schema: "sagejs.linux-tar-content/v1" };
+}
 
 async function main() {
   if (process.argv.length !== 3) {
@@ -293,4 +307,4 @@ async function main() {
 
 if (require.main === module) void main();
 
-module.exports = { validateArchive, validateBrowserArchive, validatePackageArchiveContents };
+module.exports = { validateArchive, validateBrowserArchive, validatePackageArchiveContents, validateLinuxTarStream };

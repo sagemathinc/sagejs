@@ -4,36 +4,35 @@
 const test = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), os = require("node:os"), path = require("node:path"), { createHash } = require("node:crypto");
 const { zipSync, Zip, ZipPassThrough } = require("fflate");
-const { authenticateDownloadableZips } = require("../scripts/release/downloadable-zips.cjs");
+const { authenticateDownloadableArchives } = require("../scripts/release/downloadable-archives.cjs");
 const { inspectZipContents } = require("../scripts/release/zip-contents.cjs");
 const { platformPackage } = require("./helpers/release-platform-package.cjs");
-const { sourceDocumentation, zipFiles } = require("./helpers/release-downloadable-zip.cjs");
+const { sourceDocumentation, archiveFiles, encodeArchive } = require("./helpers/release-downloadable-archive.cjs");
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "sagejs-release-zip-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, "release"));
   const docs = sourceDocumentation(root), packages = [], entries = new Map();
-  const file = (platform) => path.join(root, `release/sagejs-${platform}.zip`);
-  function write(platform, bytes) { fs.writeFileSync(file(platform), bytes); fs.writeFileSync(`${file(platform)}.sha256`, `${hash(bytes)}  sagejs-${platform}.zip\r\n`); }
+  const file = (platform) => path.join(root, `release/sagejs-${platform}.${platform.startsWith("linux") ? "tar.xz" : "zip"}`);
+  function write(platform, bytes) { fs.writeFileSync(file(platform), bytes); fs.writeFileSync(`${file(platform)}.sha256`, `${hash(bytes)}  ${path.basename(file(platform))}\r\n`); }
   for (const platform of ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]) {
     const product = platformPackage(platform), extension = platform === "windows-x64" ? ".exe" : "";
     packages.push({ platform, archive: `release/npm/sagejs-${platform}.tgz`,
       executables: [["sagejs", product.sea], ["sagepython", product.python]].map(([name, data]) => ({ name, member: `package/bin/${name}${extension}`, bytes: data.length, sha256: hash(data) })) });
-    if (platform.startsWith("linux")) continue;
-    const files = zipFiles(platform, product, docs); entries.set(platform, files); write(platform, Buffer.from(zipSync(files)));
+    const files = archiveFiles(platform, product, docs); entries.set(platform, files); write(platform, encodeArchive(platform, files));
   }
-  return { root, packages, entries, file, write, check: (options) => authenticateDownloadableZips(root, packages, options) };
+  return { root, packages, entries, file, write, check: (options) => authenticateDownloadableArchives(root, packages, options) };
 }
-test("downloadable Windows/macOS ZIPs contain the qualified binaries and exact source documentation", async (t) => {
+test("all four downloadable platform archives contain the qualified binaries and exact source documentation", async (t) => {
   const f = fixture(t), result = await f.check();
-  assert.deepEqual(result.map((item) => item.platform), ["macos-arm64", "windows-x64"]);
+  assert.deepEqual(result.map((item) => item.platform), ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]);
   assert.ok(result.every((item) => item.files.length === 6));
   assert.deepEqual(await f.check(), result);
-  assert.equal(fs.readdirSync(path.join(f.root, "release")).length, 4, "no executable extraction");
+  assert.equal(fs.readdirSync(path.join(f.root, "release")).length, 8, "no executable extraction");
 });
 test("a valid checksum cannot hide substituted binaries, missing files, changed licenses or extra payloads", async (t) => {
-  for (const platform of ["macos-arm64", "windows-x64"]) {
+  for (const platform of ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]) {
     for (const alter of [
       (files, key) => { files[key][0] = Buffer.from("wrong executable"); },
       (files, key) => { delete files[key]; },
@@ -41,15 +40,15 @@ test("a valid checksum cannot hide substituted binaries, missing files, changed 
       (files) => { files["unexpected-code.js"] = Buffer.from("code"); },
     ]) {
       const f = fixture(t), files = f.entries.get(platform), key = Object.keys(files)[1];
-      alter(files, key); f.write(platform, Buffer.from(zipSync(files)));
-      await assert.rejects(f.check(), /differs from qualified|missing required|unexpected file/);
+      alter(files, key); f.write(platform, encodeArchive(platform, files));
+      await assert.rejects(f.check(), /differs from qualified|omits qualified|missing required|unexpected file|outside sagejs/);
     }
   }
 });
-test("macOS execute permissions and special Unix bits are validated, not normalized away", async (t) => {
-  for (const mode of [0o100644, 0o100777, 0o100111, 0o104755, 0o120755]) {
-    const f = fixture(t), files = f.entries.get("macos-arm64"); files[Object.keys(files)[0]][1].attrs = (mode << 16) >>> 0;
-    f.write("macos-arm64", Buffer.from(zipSync(files)));
+test("Linux/macOS execute permissions and special Unix bits are validated, not normalized away", async (t) => {
+  for (const platform of ["linux-x64", "linux-arm64", "macos-arm64"]) for (const mode of [0o100644, 0o100777, 0o100111, 0o104755]) {
+    const f = fixture(t), files = f.entries.get(platform); files[Object.keys(files)[0]][1].attrs = (mode << 16) >>> 0;
+    f.write(platform, encodeArchive(platform, files));
     await assert.rejects(f.check(), /not executable|special permission|link or special/);
   }
 });
@@ -60,7 +59,7 @@ test("noncanonical checksums, changed selections and cancellation cannot authori
   }
   fs.writeFileSync(filename, valid);
   await assert.rejects(f.check({ signal: AbortSignal.abort() }), /abort/i);
-  await assert.rejects(authenticateDownloadableZips(f.root, f.packages.slice(1)), /selection/);
+  await assert.rejects(authenticateDownloadableArchives(f.root, f.packages.slice(1)), /selection/);
   f.packages[2].executables[0].member = "other"; await assert.rejects(f.check(), /identity is malformed/);
 });
 test("ZIP reader supports explicit directories and streaming descriptors with bounded content checking", async (t) => {

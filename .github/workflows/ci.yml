@@ -743,6 +743,19 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Provision native XZ for release transport tests
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'sagejs-xz-5.8.3'
+          $archive = "$tools.zip"
+          Invoke-WebRequest -Uri 'https://github.com/tukaani-project/xz/releases/download/v5.8.3/xz-5.8.3-windows.zip' -OutFile $archive -TimeoutSec 90
+          if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLower() -ne '8d0048ee51177b11ef1613959c2a268c951f4e7f6fb3706e681e00e34bb6d5e3') {
+            throw 'XZ controller tool checksum mismatch'
+          }
+          Expand-Archive -LiteralPath $archive -DestinationPath $tools -Force
+          Join-Path $tools 'bin_x86-64' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: Ensure Visual Studio clang-cl is installed
         shell: pwsh
         run: |

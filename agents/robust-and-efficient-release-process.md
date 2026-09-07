@@ -1220,3 +1220,36 @@ temporary source fixtures, archive and helper were removed. These tests include
 substituted executables with matching checksums, source-notice changes, missing
 or extra payloads, permissions, CRC/size disagreement, streaming descriptors,
 alternate-path metadata, cancellation and resumable transport repair.
+
+Linux x64/ARM64 tar.xz comparison now extends the same preparation boundary to
+all four downloadable platform archives. The shared tar inspector retains the
+npm USTAR-only and browser GNU/USTAR policies through separate entry points.
+The Linux entry point checks exact root/layout, file hashes, permissions,
+notices and executable identities; it rejects links, sparse/extended formats,
+duplicates and oversized output. XZ runs with read-only stdin, stdout piping,
+one thread, a 128 MiB memory limit and a five-minute deadline. It is killed and
+awaited on cancellation or inspection failure. A complete tar does not count as
+success if XZ subsequently reports a corrupt or truncated footer.
+
+Controller preflight requires XZ before artifact downloads; Windows CI provisions
+the pinned upstream native tool before native compilation. This adds no runtime
+dependency to SEA/npm/browser products, nor a WSL/MSYS2 requirement. The pinned
+Windows tool archive is about 1 MiB. Version/availability checks are not a
+substitute for maintaining a patched, trusted controller toolchain.
+
+Read-only inspection of the published `v0.7.0+release.6` Linux archives matched
+their GitHub asset digests and inspected 27 files each: approximately 4.61 seconds
+for x64 (744,704,000 expanded tar bytes) and 4.79 seconds for ARM64 (725,882,880
+bytes). These are historical format/integrity measurements, not a fresh
+candidate qualification. No runtime build or executable invocation was involved.
+macOS installer/signature binding, production consumer adoption and the five
+incomplete transitive audit scopes remain open.
+
+Validation of the four-archive integration: 135 focused Linux tests, including
+the preexisting npm archive/runtime contract suite, and 47 native Windows tests
+pass. The Windows tests used the SHA-256-pinned upstream XZ 5.8.3 tool in an
+isolated fixture, not WSL or MSYS2; temporary tools, sources and helper were
+removed. Merge invariants and the shadow inventory pass. The checks cover
+actual decoder completion, corrupt/truncated footers, cancellation, unsafe tar
+metadata, ambient-option isolation and missing-tool preflight in addition to
+the existing wrong-binary and resumable-repair tests.

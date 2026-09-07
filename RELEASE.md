@@ -316,7 +316,15 @@ Inner SEA/npm archives remain unopened and are never executed by extraction.
 The composite consumer runs from the reviewed control checkout but requires a
 **separate, clean, source-only Git checkout at the exact product SHA**. Do not
 point it at a built producer or retained release worktree. The artifact cache
-must be outside that consumer checkout:
+must be outside that consumer checkout.
+
+The controller needs maintained XZ Utils (`xz` on `PATH`) to inspect Linux
+distribution archives. Availability is checked before downloading artifact
+inputs. This is a release-tool/test prerequisite, not a dependency of installed
+Sage.js, its npm runtime or the browser. Native Windows CI provisions the pinned,
+checksum-verified upstream Windows tool before the expensive native build; it
+does not require WSL/MSYS2. Developers running these transport tests on Windows
+can use the native tools from [XZ Utils](https://tukaani.org/xz/). Example:
 
 ```sh
 node scripts/release/prepare-publication.cjs \
@@ -358,15 +366,19 @@ an independent `sagepython` row. No binary is extracted or executed.
 The producer workflow orders macOS collection after Developer ID signing and
 notarization, and Windows collection after the configured signing step; this
 cross-binding therefore must use the post-signing row rather than an earlier
-unsigned binary. Preparation compares both downloadable ZIPs against these
-identities and the candidate's exact documentation/notices. `downloadableZips`
-records the checked member hashes; the reader preserves Windows' root layout
-and macOS' enclosing directory, checks local/central records and streaming
-descriptors, bounds expansion and requires the actual macOS executable mode.
+unsigned binary. Preparation compares all four downloadable archives against
+these identities and the candidate's exact documentation/notices.
+`downloadableArchives` records checked member hashes. ZIP inspection preserves
+Windows' root layout and macOS' enclosing directory, checks local/central
+records and streaming descriptors, and rejects ambiguous metadata. Linux XZ
+decoding feeds the shared GNU/USTAR inspector through a pipe, with one decoder
+thread, a 128 MiB decoder-memory limit and a five-minute deadline. Ambient XZ
+options cannot override those flags; cancellation kills and awaits the decoder.
+A valid tar followed by an XZ integrity failure is rejected. All readers bound
+expansion and check executable modes, without extracting or executing binaries.
 Matching checksum sidecars alone cannot authorize different executables.
-No ZIP content is extracted or executed. Linux tar.xz and macOS installer
-content comparison, and authenticating signature/notarization state, remain
-necessary before adopting the final publisher.
+macOS installer content comparison and authenticating signature/notarization
+state remain necessary before adopting the final publisher.
 
 Browser preparation selects the clean-build distribution explicitly. Its bytes
 must match the numerical gate and the canonical artifact report recorded by the
