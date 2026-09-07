@@ -1135,7 +1135,7 @@ function validateReceipt(receipt) {
   return receipt;
 }
 
-function assertCurrentBinding(receipt, root, requireClean) {
+function assertCurrentArtifactBinding(receipt, root, requireClean) {
   const corpusBinding = digestPath(root, receipt.corpus.path, "receipt corpus path");
   if (canonicalJson(corpusBinding) !== canonicalJson({
     path: receipt.corpus.path,
@@ -1184,12 +1184,28 @@ function assertCurrentBinding(receipt, root, requireClean) {
   if (requireClean && (!repository.clean || !receipt.repository.clean)) {
     fail("receipt.repository", "clean evidence is required");
   }
+}
+
+function assertCurrentBinding(receipt, root, requireClean) {
+  assertCurrentArtifactBinding(receipt, root, requireClean);
   if (canonicalJson(platformIdentity()) !== canonicalJson(receipt.platform)) {
     fail("receipt.platform", "does not describe this measured host");
   }
   if (canonicalJson(collectorIdentity()) !== canonicalJson(receipt.runtime.collector)) {
     fail("receipt.runtime.collector", "does not describe this collector runtime");
   }
+}
+
+// Aggregation restores authenticated producer artifacts on a different host.
+// Verify the same current source/artifact bindings, but retain the measured
+// producer's platform and collector identity rather than claiming a new run.
+// Content hashes alone do not establish who produced a receipt: the caller
+// must obtain it from the trusted producer/evidence transport.
+function verifyTransferredReceipt(receipt, { root = null, requireClean = false } = {}) {
+  if (root === null) fail("verification", "transferred verification requires a repository root");
+  const normalized = validateReceipt(receipt);
+  assertCurrentArtifactBinding(normalized, root, requireClean);
+  return { valid: true, mode: "transferred-current-binding", receipt: normalized };
 }
 
 function verifyReceipt(receipt, { root = null, historical = false, requireClean = false } = {}) {
@@ -1237,6 +1253,7 @@ module.exports = {
   validateMetricSummary,
   validateReceipt,
   verifyReceipt,
+  verifyTransferredReceipt,
   writeImmutableJson,
   qualificationInternals: Object.freeze({ memoryMeasurement }),
 };

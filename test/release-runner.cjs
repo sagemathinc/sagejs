@@ -91,6 +91,20 @@ test("gate partition is exhaustive and disjoint; default still runs everything",
   assert.equal(selectGate(files), files);
   assert.throws(() => selectGate(files, "optional"), /unknown/);
 });
+test("mixed dense-matrix checks retain every assertion in the serial timing gate", () => {
+  const files = ["test/dense-prime-host-boundary.cjs"];
+  assert.deepEqual(selectGate(files, "correctness"), []);
+  assert.deepEqual(selectGate(files, "performance"), files);
+  assert.equal(selectGate(files), files);
+  const stages = require("../scripts/release/stages.cjs").plan("native", "integration-performance");
+  assert.equal(stages[0].gate, "performance");
+  assert.deepEqual(stages[0].commands, [["node", "scripts/run-test-tier.cjs",
+    "integration", "--gate", "performance", "--concurrency", "1"]]);
+  for (const filename of performance) {
+    const source = fs.readFileSync(path.join(__dirname, "..", filename), "utf8");
+    assert.match(source, /sagejs-test-tier: integration/, filename);
+  }
+});
 test("coordinator quotes host launch commands without interpolating checkout or environment", () => {
   const { remoteCommand } = require("../scripts/release/coordinate.cjs");
   const host = { root: "/path with spaces/and'quotes", target: "linux-x64", env: { EXAMPLE: "$not-a-shell-variable" } };

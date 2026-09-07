@@ -335,6 +335,16 @@ does the same. Thus valid-looking nested SHA/content-ID substitutions cannot be
 authorized by merely recomputing the compact outer ID; the successful producer
 run's immutable raw evidence is the trust boundary.
 
+Transferred browser-memory receipts use current source-and-artifact verification,
+not measured-host verification: the aggregation or publication machine is not
+the measurement machine. Preserve the producer's platform and collector facts;
+never rewrite them to match the consumer. Receipt content, corpus, source bundle,
+adapter, artifacts, capabilities, exact candidate/tree, and clean checkout remain
+mandatory bindings. Direct collection verification still requires the actual
+measured host and collector runtime. This distinction does not make arbitrary
+external JSON trustworthy; the successful producer's immutable evidence transport
+is still required, and historical-content-only verification is insufficient.
+
 After `pnpm bootstrap`, use the run-only test and packaging boundaries. They
 consume the exact validated native prefixes and generated artifacts instead of
 preparing them again:
