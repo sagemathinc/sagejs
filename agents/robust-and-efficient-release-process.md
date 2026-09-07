@@ -396,6 +396,16 @@ qualified reference measurement, not automatic budget inflation. This cannot
 promise 400 ms on every conceivable machine. Browser network fetch, cached
 startup, and worker ready are separate contracts.
 
+**Measurement follow-up:** the [raw startup-readiness audit](startup-readiness-audit.md)
+retains four-platform pipe and three-platform real-terminal observations on
+the historical `19789307` executables. Terminal prompts appeared in 132/159/250 ms
+median on Linux x64/Linux ARM64/macOS, but launch-to-first-answer medians were
+314/396/520 ms. The runtime initializes its parser and context after the initial
+prompt. Thus the proposal above must cover usable first interaction, not merely
+prompt text. Record first-answer and returned-prompt events separately; a
+prompt-only pass is insufficient. No budget changed, no current candidate was
+qualified, and native Windows console readiness remains an explicit gap.
+
 The audited browser budget has a baseline of 187,049,102 uncompressed bytes,
 25,160,189 gzip bytes and 15,556,467 Brotli bytes, with 5% compressed-growth
 policy and eager-core caps of 17,600,000 gzip / 9,700,000 Brotli bytes. These
