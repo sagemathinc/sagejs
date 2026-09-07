@@ -851,3 +851,15 @@ workflow/deployment suite passes 44/44. These are contract tests, not a new
 four-platform release qualification. Deployment, publication recovery and
 artifact authentication must be migrated together before dropping their legacy
 whole-workflow requirements.
+
+Recovery audit finding: `select-recovery-publisher.cjs` intentionally searches
+all attempts and selects the latest occurrence of each producer, then reruns
+only the original trusted publisher. The new job verifier instead requires a
+single current attempt. A fixture modeling a publisher-only retry correctly
+rejects missing current-attempt acceptance and a relabeled older aggregate.
+Do not wire that verifier into recovery as a drop-in replacement: first bind a
+qualified producer attempt and immutable artifact IDs/digests in the release
+manifest, separately from the publication attempt. Authenticate those bytes on
+retry and reject changed producer evidence. This makes the minimal artifact
+manifest/recovery work a prerequisite of the complete consumer migration,
+not an optional later optimization. The existing recovery path is unchanged.

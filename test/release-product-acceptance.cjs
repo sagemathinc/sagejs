@@ -96,6 +96,22 @@ test("attempt pagination must be complete, unique and source-bound", () => {
   assert.equal(verifyProductAcceptance(paginated, options).jobId, 201);
 });
 
+test("a publisher-only retry cannot silently inherit an earlier product observation", () => {
+  // Model selective publication recovery, not a claim about which jobs an
+  // arbitrary GitHub rerun includes. Publication attempt and qualification
+  // attempt need separate artifact-bound identities before consumer migration.
+  const value = snapshot();
+  value.before.path = value.after.path = boundaries.native.workflow;
+  const native = { ...options, kind: "native" };
+  value.pages = [{ total_count: 1, jobs: [{ ...value.pages[0].jobs[0],
+    name: "Publish tagged GitHub and npm release", status: "in_progress", conclusion: null }] }];
+  assert.throws(() => verifyProductAcceptance(value, native), /exactly one/);
+  value.pages[0].jobs.push({ ...value.pages[0].jobs[0], id: 203,
+    name: boundaries.native.job, run_attempt: 1, status: "completed", conclusion: "success" });
+  value.pages[0].total_count = 2;
+  assert.throws(() => verifyProductAcceptance(value, native), /foreign-attempt/);
+});
+
 test("authenticated inspection pins the attempt endpoint and rereads the run before accepting", () => {
   const value = snapshot(), calls = [];
   const api = (endpoint, paginate) => {
