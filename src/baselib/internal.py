@@ -1097,6 +1097,16 @@ def ρσ_interpolate_kwargs_legacy(
     target_function: Any,
     supplied_args: Any,
 ) -> Any:
+    # Bootstrap/runtime callers can invoke user-defined Python functions.
+    # Their argument contract belongs to the callee, not the caller's older
+    # compilation mode (notably an empty **kwargs carrier on a zero-arg call).
+    python_function_type = _internal_builtin("ρσ_function_type")
+    if (
+        python_function_type is not runtime.undefined
+        and runtime.native_get(target_function, "__python_type__")
+        is python_function_type
+    ):
+        return ρσ_interpolate_kwargs(receiver, target_function, supplied_args)
     if (
         _internal_class_instance_function(receiver, target_function)
         and _internal_get_member(target_function, "__self__") is runtime.undefined

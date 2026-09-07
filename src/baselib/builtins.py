@@ -6925,6 +6925,8 @@ def ρσ_type(*values: Any) -> Any:
                     namespace,
                 )
 
+        runtime.validate_class_bases(bases)
+
         def dynamic_class(*args: Any, **keywords: Any) -> Any:
             # Forward user keywords as the eventual instance initializer's
             # keyword packet.  Sending them through ordinary interpolation
@@ -6968,6 +6970,7 @@ def ρσ_type(*values: Any) -> Any:
             if (
                 runtime.strict_equal(runtime.jstype(member), "function")
                 and _builtins_get_member(member, "__staticmethod__") is not True
+                and _builtins_get_member(member, "__sagejs_native_method__") is not True
             ):
                 # Functions supplied to ``type(name, bases, namespace)`` are
                 # descriptors.  Compiler-emitted class methods normally rely
@@ -7220,6 +7223,7 @@ def ρσ_apply_inherited_metaclass(
                 "be a subclass of the metaclasses of all its bases"
             )
     if selected is runtime.undefined:
+        runtime.validate_class_bases(bases)
         return compiled_class
     return ρσ_apply_metaclass(selected, class_name, bases, compiled_class)
 
@@ -9412,6 +9416,8 @@ runtime.set_class_repr(ρσ_property, "<class 'property'>")
 runtime.set_class_repr(SageProperty, "<class 'property'>")
 _builtins_set_type_metadata(ρσ_tuple, "tuple")
 _builtins_set_type_metadata(ρσ_property, "property")
+for builtin_layout_type in (ρσ_int, ρσ_float, ρσ_type, ρσ_tuple, ρσ_property):
+    runtime.register_native_layout(builtin_layout_type)
 for builtin_factory_type in (ρσ_tuple, ρσ_property):
     # These Python-callable factories implement builtin classes.  Compiled
     # baselib functions receive lazy function metadata, so replace that marker
@@ -9957,3 +9963,4 @@ runtime.reflect.set(runtime.global_object, "ρσ_py_true", True)
 runtime.reflect.set(runtime.global_object, "ρσ_py_false", False)
 runtime.set_class_repr(_Code, "<class 'code'>")
 runtime.set_class_repr(ρσ_function_type, "<class 'function'>")
+runtime.register_native_layout(ρσ_function_type, False)

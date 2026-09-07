@@ -20,6 +20,7 @@ compiler.  Generated programs continue to use `baselib/sagejs/runtime.py`.
 # globals: ρσ_list_constructor, ρσ_list_contains, ρσ_math_tuple
 # globals: ρσ_modular_inverse, ρσ_modular_power, ρσ_modules
 # globals: ρσ_native_method, ρσ_non_exception_throw
+# globals: ρσ_register_native_layout, ρσ_validate_class_bases
 # globals: ρσ_normalize_integer, ρσ_output_write, ρσ_repr, ρσ_scope_dict
 # globals: ρσ_operator_add_exact, ρσ_operator_mul_exact
 # globals: ρσ_sequence_class, ρσ_set_class_repr, ρσ_str, ρσ_strict_equal
@@ -347,6 +348,8 @@ def documentation_registry():
 
 
 array = Array
+register_native_layout = ρσ_register_native_layout
+validate_class_bases = ρσ_validate_class_bases
 arraylike = ρσ_arraylike
 bigint = BigInt
 bool_builtin = ρσ_bool

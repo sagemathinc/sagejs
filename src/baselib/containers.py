@@ -1979,6 +1979,7 @@ for builtin_container_type in (
     ρσ_set,
     ρσ_frozenset,
 ):
+    runtime.register_native_layout(builtin_container_type)
     runtime.object.defineProperty(
         builtin_container_type,
         "__python_type__",

@@ -13,8 +13,11 @@ const sourceRoot = resolve(__dirname, "../upstream-tests/python-compat");
 function copyFixture(context) {
   const root = mkdtempSync(join(tmpdir(), "sagejs-manifest-test-"));
   context.after(() => rmSync(root, { recursive: true, force: true }));
-  cpSync(sourceRoot, root, { recursive: true });
-  return root;
+  const manifestRoot = join(root, "upstream-tests/python-compat");
+  mkdirSync(join(root, "upstream-tests"));
+  cpSync(sourceRoot, manifestRoot, { recursive: true });
+  cpSync(resolve(sourceRoot, "../micropython"), join(root, "upstream-tests/micropython"), { recursive: true });
+  return manifestRoot;
 }
 
 test("pinned RustPython selection binds unchanged programs, fixture closure, and license", () => {
@@ -27,7 +30,18 @@ test("pinned RustPython selection binds unchanged programs, fixture closure, and
 
 test("independent runtime tranches retain required public-behavior cases and pinned sources", () => {
   const loaded = loadManifest(join(sourceRoot, "manifest.json"));
-  assert.equal(loaded.cases.length, 28);
+  assert.equal(loaded.cases.length, 536);
+  assert.equal(loaded.cases.filter(entry => entry.comparison === "assertion-exit-empty-output").length, 28);
+  const legacy = loaded.cases.filter(entry => entry.suite === "micropython");
+  assert.equal(legacy.length, 508);
+  assert.deepEqual(legacy.map(entry => entry.path).sort(),
+    Object.keys(loaded.outputComparisons.micropython.baseline.outcomes).sort().map(name => `basics/${name}`));
+  for (const entry of legacy) {
+    assert.equal(entry.disposition, "required");
+    assert.equal(entry.comparison, "cpython-output-baseline-v2");
+    assert.equal(entry.sourceSha256,
+      loaded.outputComparisons.micropython.baseline.evidence[entry.path.slice("basics/".length)].sourceSha256);
+  }
   for (const [suite, count, revision] of [
     ["pypy", 4, "194f9f44b50552d75484d67cda6e2b36607dee0c"],
     ["graalpy", 5, "992e0053563c2f73876c0e47d2cc7d14b0505699"],
@@ -44,6 +58,16 @@ test("independent runtime tranches retain required public-behavior cases and pin
       assert.deepEqual(entry.targets, ["node"]);
     }
   }
+});
+
+test("MicroPython fixture keeps the required sibling source anchor", (context) => {
+  const root = copyFixture(context);
+  const manifest = JSON.parse(readFileSync(join(root, "manifest.json")));
+  manifest.suites = {micropython:manifest.suites.micropython};
+  manifest.cases = manifest.cases.filter(entry => entry.suite === "micropython");
+  const flattened = resolve(root, "../flat-manifest.json");
+  writeFileSync(flattened, JSON.stringify(manifest));
+  assert.throws(() => loadManifest(flattened), /invalid upstream-tests anchor layout/);
 });
 
 test("every adopted suite rejects modified license and selected program bytes", (context) => {
@@ -123,6 +147,9 @@ test("CLI rejects unknown arguments and preserves explicit diagnostic scope", ()
   assert.equal(parseArguments(["--artifact-report"]).artifactReport, true);
   assert.deepEqual(parseArguments(["--only", "rustpython/builtin_callable"]).only,
     ["rustpython/builtin_callable"]);
+  assert.deepEqual(parseArguments(["--suite", "micropython", "--suite", "rustpython"]).suite,
+    ["micropython", "rustpython"]);
+  assert.throws(() => parseArguments(["--suite"]), /missing value/);
   assert.throws(() => parseArguments(["--only"]), /missing value/);
   assert.throws(() => parseArguments(["--update-baseline"]), /unknown argument/);
 });

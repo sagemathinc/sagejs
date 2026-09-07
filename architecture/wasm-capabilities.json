@@ -21924,6 +21924,36 @@
       "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
     },
     {
+      "id": "runtime:register_native_layout",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": ["compiled Sage and Python classes"],
+      "tests": ["runtime-intrinsic-contract"],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "Registers native storage roots by identity in the shared runtime's WeakMap; no Node or native-library dependency.",
+      "public_explanation": "Native class storage registration uses the shared JavaScript runtime."
+    },
+    {
+      "id": "runtime:validate_class_bases",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": ["compiled Sage and Python classes"],
+      "tests": ["runtime-intrinsic-contract"],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "Checks class bases and inherited native storage identities using shared runtime arrays and WeakMap; no Node or native-library dependency.",
+      "public_explanation": "Class base validation uses the shared JavaScript runtime."
+    },
+    {
       "id": "runtime:repr",
       "kind": "runtime-intrinsic",
       "family": "runtime",

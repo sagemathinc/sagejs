@@ -591,9 +591,9 @@ def print_class(output):
         output.semicolon()
         output.newline()
 
-    # Validate bases before mutating any prototypes.  In particular, a bound
-    # native method's JavaScript constructor is Function, but CPython does not
-    # permit ``class C(type([].append))``.
+    # Validate type/prototype shape before preparing the class namespace.
+    # Storage compatibility belongs to actual allocation: a metaclass may
+    # replace the proposed bases before calling type.__new__.
     if self.bases.length:
         output.indent()
         output.print("ρσ_validate_class_bases([")
@@ -601,7 +601,7 @@ def print_class(output):
             if i:
                 output.comma()
             base.print(output)
-        output.print("])")
+        output.print("], false)")
         output.end_statement()
 
     # inheritance
