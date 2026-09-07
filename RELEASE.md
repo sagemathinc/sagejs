@@ -659,6 +659,12 @@ blocks canonical preparation before its numerical build. The check is explicitly
 or evidence, and cannot replace the later `--require-qualified` verifier.
 The `preparation` profile remains available to build inputs for qualification;
 it does not acquire release authority by omitting the eligibility stage.
+The CI numerical producer uses the same dependency-free check for tags and
+explicit full candidates, before `pnpm install` or toolchain preparation:
+`node scripts/release/source-preflight.cjs --numerical-eligibility`.
+Its JSON report and nonzero exit identify pending/malformed state immediately.
+Scheduled and partial development preparation keep their existing policy; the
+required post-build `verify-release.cjs --require-qualified` check is unchanged.
 
 `pnpm release:run --candidate FULL_SHA --status` reads structured scheduling
 status without requiring a build or changing a lock. `status.json` records the

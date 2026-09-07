@@ -100,4 +100,17 @@ function requireSourcePreflight(options) {
   return report;
 }
 
-module.exports = { parserSubmodules, inspectSourcePreflight, requireSourcePreflight };
+// CI can perform the same cheap manifest-state admission before dependency
+// installation or toolchain setup. Do not import the full runner/build graph.
+function main(argv = process.argv.slice(2)) {
+  if (argv.length !== 1 || argv[0] !== "--numerical-eligibility") {
+    console.error("Usage: node scripts/release/source-preflight.cjs --numerical-eligibility");
+    return 2;
+  }
+  const report = inspectSourcePreflight({ root: process.cwd(), stages: [{ id: "numerical-eligibility" }] });
+  console.log(JSON.stringify(report, null, 2));
+  return report.passed ? 0 : 1;
+}
+if (require.main === module) process.exitCode = main();
+
+module.exports = { parserSubmodules, inspectSourcePreflight, requireSourcePreflight, main };

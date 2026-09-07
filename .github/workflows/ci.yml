@@ -127,6 +127,10 @@ jobs:
           node-version: 26.5.1
           cache: pnpm
 
+      - name: Reject pending numerical release qualification before preparation
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
+        run: node scripts/release/source-preflight.cjs --numerical-eligibility
+
       - run: pnpm install --frozen-lockfile
 
       - id: toolchain

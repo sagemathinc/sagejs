@@ -7,7 +7,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { execFileSync } = require("node:child_process");
+const { execFileSync, spawnSync } = require("node:child_process");
 const { parserSubmodules, inspectSourcePreflight, requireSourcePreflight } = require("../scripts/release/source-preflight.cjs");
 const { plan } = require("../scripts/release/stages.cjs");
 const { run } = require("../scripts/release/runner.cjs");
@@ -130,6 +130,10 @@ test("canonical admission rejects pending qualification before numerical builds"
   assert.deepEqual(status.stages.map(s => s.state), ["blocked", "blocked"]);
   assert.match(status.sourcePreflight.remedy, /source-current NLopt qualification/);
   assert.doesNotMatch(status.sourcePreflight.remedy, /git submodule/);
+  const cli = path.resolve(__dirname, "../scripts/release/source-preflight.cjs");
+  const observed = spawnSync(process.execPath, [cli, "--numerical-eligibility"], { cwd: context.root, encoding: "utf8", timeout: 10000 });
+  assert.equal(observed.status, 1);
+  assert.equal(JSON.parse(observed.stdout).eligibility[0].state, "pending");
   assert.equal(inspectSourcePreflight({ root: context.root, stages: selected.slice(0, 1) }).passed, true,
     "preparation remains available to produce inputs for qualification");
   for (const value of ["{", JSON.stringify({ qualification: { status: "qualified" } })]) {
@@ -157,4 +161,29 @@ test("qualified manifest state admits preparation but retains full artifact elig
   assert.equal(report.eligibility[0].state, "qualified");
   assert.ok(selected[0].commands[0].includes("--require-qualified"));
   assert.ok(selected[0].inputs.includes("src/lib/sagejs/numerics/optimization/backends/nlopt/build"));
+  const cli = path.resolve(__dirname, "../scripts/release/source-preflight.cjs");
+  const observed = spawnSync(process.execPath, [cli, "--numerical-eligibility"], { cwd: root, encoding: "utf8", timeout: 10000 });
+  assert.equal(observed.status, 0);
+  assert.equal(JSON.parse(observed.stdout).eligibility[0].scope, "manifest-state-only");
+  for (const args of [[], ["--unknown"], ["--numerical-eligibility", "--ignore-failure"]]) {
+    const invalid = spawnSync(process.execPath, [cli, ...args], { cwd: root, encoding: "utf8", timeout: 10000 });
+    assert.equal(invalid.status, 2);
+    assert.equal(invalid.stdout, "");
+  }
+});
+
+test("CI rejects known ineligible release products before install and retains post-build verification", () => {
+  const { parseWorkflow } = require("../scripts/release/workflow-inventory.cjs");
+  const filename = ".github/workflows/ci.yml";
+  const workflow = parseWorkflow(fs.readFileSync(path.resolve(__dirname, "..", filename), "utf8"), filename);
+  const steps = workflow.jobs["numerical-product"].steps;
+  const early = steps.findIndex(s => s.run === "node scripts/release/source-preflight.cjs --numerical-eligibility");
+  const install = steps.findIndex(s => s.run === "pnpm install --frozen-lockfile");
+  const build = steps.findIndex(s => s.name === "Build and bind the canonical numerical runtime");
+  const verify = steps.findIndex(s => s.run?.includes("verify-release.cjs") && s.run.includes("--require-qualified"));
+  assert.ok(early >= 0 && early < install && install < build && build < verify);
+  assert.equal(steps[early].if, steps[verify].if);
+  assert.equal(steps[early].if, "(startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))");
+  assert.equal(steps[early]["continue-on-error"] ?? false, false);
+  assert.equal(steps[verify]["continue-on-error"] ?? false, false);
 });
