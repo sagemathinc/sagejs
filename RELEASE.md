@@ -110,7 +110,11 @@ route. Receipts use `sagejs.browser-wasm-workload-acceptance/v1`, not a fabricat
 performance baseline. Content identities do not authenticate the producer;
 trusted transport remains part of release qualification.
 
-This collector is not yet adopted by the default runner/CI gates. Fixture tests
+The release-process branch now collects these receipts immediately after each
+engine's parity test, in both the browser runner profile and Wasm workflow.
+Workload enforcement reads only the explicit parity/acceptance files and runs
+before timing reports in the local profile. The legacy reporting requirements
+and whole-workflow publication guards are retained during validation. Tests
 prove source/route preservation, no memory sampling, and failure handling. A
 read-only three-engine trial of the shared execution loop passed against the
 retained `19789307` artifact (see the release-process plan); it is not
@@ -120,9 +124,12 @@ startup, size, numerical evidence and dedicated memory/security gates are not
 replaced by route acceptance.
 
 `scripts/release/product-acceptance.cjs` is the read-only job-status verifier
-for the future explicit product boundary. It is not wired into publication yet:
-the v1 aggregate jobs and their complete prerequisite assertions must first be
-adopted. Old successful workflow/job names deliberately do not satisfy it.
+for the explicit product boundary. It is not wired into publication yet.
+The Wasm workflow now has the v1 browser aggregate, asserting all ten required
+job families (including clean/cross-platform builds, Windows, reproducibility,
+Node and browser parity, workload routes and security/recovery). The native v1
+aggregate is not yet installed. Old successful workflow/job names deliberately
+do not satisfy the new contract.
 
 ```sh
 node scripts/release/product-acceptance.cjs \
@@ -245,8 +252,9 @@ the harness's `prepareCandidateDirectEnvironment()` before qualification; never
 turn off the input mutation check to accommodate lazy preparation.
 
 Browser workload enforcement is an aggregate gate: it follows all three engine
-parity and timing stages and explicitly consumes their receipts. It is not a
-Node-only prerequisite. When qualifying an older frozen candidate, use explicit
+parity/acceptance stages and explicitly consumes their six receipts. Timing
+reports are not its inputs. It is not a Node-only prerequisite. Older frozen
+candidates retain their original timing-receipt contract; use explicit
 stage ordering and the same receipt handoff as the clean CI DAG rather than
 rebuilding the mathematical product merely to change the scheduler.
 

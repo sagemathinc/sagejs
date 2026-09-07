@@ -395,11 +395,18 @@ jobs:
             --engines ${{ matrix.engine }} \
             --require-engines ${{ matrix.engine }} \
             --receipt build/wasm-parity-${{ matrix.engine }}.json
+      - name: Require cold and warm workload routes without timing campaigns
+        run: |
+          node bench/browser-wasm-workload-acceptance.mjs \
+            --engine ${{ matrix.engine }} \
+            --output build/wasm-acceptance-${{ matrix.engine }}.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: wasm-browser-parity-${{ matrix.engine }}-receipts
-          path: build/wasm-parity-${{ matrix.engine }}.json
+          path: |
+            build/wasm-parity-${{ matrix.engine }}.json
+            build/wasm-acceptance-${{ matrix.engine }}.json
           if-no-files-found: error
 
   browser-performance:
@@ -575,7 +582,7 @@ jobs:
 
   workload-enforcement:
     name: Reject silent portable computation
-    needs: [browser-parity, browser-performance]
+    needs: browser-parity
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -591,11 +598,49 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v8
         with:
-          pattern: wasm-browser-*-receipts
+          pattern: wasm-browser-parity-*-receipts
           merge-multiple: true
           path: .artifacts/wasm-workload-receipts
-      - run: pnpm wasm:workload-enforce
+      - name: Require source-current parity and workload acceptance for every engine
+        run: |
+          node scripts/wasm-workload-dashboard.cjs --check \
+            --acceptance-only --source-revision "$GITHUB_SHA" \
+            --explicit-receipts-only \
+            --receipt .artifacts/wasm-workload-receipts/wasm-parity-chromium.json \
+            --receipt .artifacts/wasm-workload-receipts/wasm-acceptance-chromium.json \
+            --receipt .artifacts/wasm-workload-receipts/wasm-parity-firefox.json \
+            --receipt .artifacts/wasm-workload-receipts/wasm-acceptance-firefox.json \
+            --receipt .artifacts/wasm-workload-receipts/wasm-parity-webkit.json \
+            --receipt .artifacts/wasm-workload-receipts/wasm-acceptance-webkit.json
 
+  browser-product-acceptance:
+    name: Sage.js browser product acceptance v1
+    if: ${{ always() }}
+    needs:
+      - node-oracle
+      - clean-build
+      - cross-platform-toolchain
+      - windows-prebuilt-artifact
+      - reproducibility
+      - browser-parity
+      - browser-security-chromium
+      - browser-webkit-recovery
+      - node-wasm-cli
+      - workload-enforcement
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+      - name: Require every product prerequisite
+        env:
+          SAGEJS_PRODUCT_NEEDS: ${{ toJSON(needs) }}
+        run: node scripts/release/product-prerequisites.cjs
+
+  # Retain the legacy whole-workflow/reporting guard during qualification of
+  # the new product boundary. Publisher/deployer adoption is a separate change.
   browser-release-gates:
     name: Browser release gates
     if: ${{ always() }}

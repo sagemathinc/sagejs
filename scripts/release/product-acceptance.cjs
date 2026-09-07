@@ -3,9 +3,9 @@
 
 // Attempt-scoped job acceptance for the new product boundary. This is NOT
 // artifact authentication or permission to publish, and cannot substitute for
-// reconstruction of raw numerical evidence. The v1 aggregate jobs must first
-// be adopted with complete required dependency sets; legacy job names are not
-// aliases. No current publisher calls this module yet.
+// reconstruction of raw numerical evidence. The browser v1 aggregate is defined
+// in its workflow; native adoption and end-to-end qualification remain pending.
+// Legacy job names are not aliases. No current publisher calls this module yet.
 const { execFileSync } = require("node:child_process");
 const repository = "sagemathinc/sagejs";
 const boundaries = Object.freeze({

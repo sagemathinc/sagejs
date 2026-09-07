@@ -706,7 +706,23 @@ successful scheduled run `34080875618` correctly rejected its legacy aggregate
 name: that historical run does not implement the new contract. The new source-only
 verifier test is an isolated-file resume pilot; it does not call GitHub.
 
-No current publisher/deployer uses this verifier, and the v1 aggregate jobs
-are not yet installed. Adoption must prove complete prerequisite coverage and
-preserve raw artifact/numerical authentication; passing status fixtures alone
-cannot prove mathematical or platform gate coverage.
+No current publisher/deployer uses this verifier. Adoption must prove complete
+prerequisite coverage and preserve raw artifact/numerical authentication;
+passing status fixtures alone cannot prove mathematical or platform coverage.
+
+Browser workflow integration now collects the cold/warm acceptance receipt
+alongside each engine's full parity receipt. Workload enforcement consumes only
+those six explicit files, with exact-candidate acceptance enabled; no timing
+receipt is an input. The local browser profile enforces workload coverage before
+its four still-required timing stages. A new v1 browser aggregate asserts the
+complete ten-job prerequisite set, including the build/reproduction/Windows/Node
+jobs outside the old five-job browser aggregate. Tests bind its exact `needs`,
+assertion command and matrix coverage, reject every unsuccessful or missing
+prerequisite, and ensure new unclassified jobs cannot silently evade the set.
+
+This is a transitional branch integration, not production adoption: legacy
+browser-release-gates and whole-workflow publication guards remain, and
+`node-oracle` still contains repeated timing collection. The native aggregate,
+native-timing extraction, publisher/deployer migration and exact-candidate
+collector validation remain outstanding. The focused runner, inventory,
+acceptance, prerequisite, workload and artifact-gate set passes 73 Linux tests.

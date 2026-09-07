@@ -237,16 +237,27 @@ test("native preparation finishes mutable runtime caches before qualification", 
     ["node", "scripts/release/prepare-test-runtime.cjs"]]);
   assert.ok(stages.indexOf(bootstrap) < stages.findIndex((stage) => stage.id === "sea"));
 });
-test("browser workload enforcement consumes completed engine receipts last", () => {
+test("browser workload enforcement consumes parity and acceptance before timing reports", () => {
   const stages = require("../scripts/release/stages.cjs").plan("browser");
-  const enforcement = stages.at(-1);
+  const enforcement = stages.find((stage) => stage.id === "wasm-workload");
   assert.equal(enforcement.id, "wasm-workload");
   assert.ok(enforcement.commands[0].includes("--explicit-receipts-only"));
+  assert.ok(enforcement.commands[0].includes("--acceptance-only"));
+  assert.ok(enforcement.commands[0].includes("{candidate}"));
   assert.ok(!stages.find((stage) => stage.id === "wasm-node").commands.flat().includes("wasm:workload-enforce"));
   for (const engine of ["chromium", "firefox", "webkit"]) {
-    for (const name of [`build/wasm-parity-${engine}.json`, `build/wasm-performance-${engine}.json`]) {
+    const producer = stages.find((stage) => stage.id === `wasm-${engine}`);
+    assert.ok(stages.indexOf(producer) < stages.indexOf(enforcement));
+    assert.ok(producer.commands.flat().includes("bench/browser-wasm-workload-acceptance.mjs"));
+    for (const name of [`build/wasm-parity-${engine}.json`, `build/wasm-acceptance-${engine}.json`]) {
+      assert.ok(producer.outputs.includes(name));
       assert.ok(enforcement.inputs.includes(name));
       assert.ok(enforcement.commands[0].includes(name));
     }
   }
+  for (const stage of stages.filter((stage) => stage.gate === "performance-report")) {
+    assert.ok(stages.indexOf(stage) > stages.indexOf(enforcement));
+  }
+  assert.equal(stages.filter((stage) => stage.gate === "performance-report").length, 4);
+  assert.ok(!enforcement.inputs.some((name) => name.includes("performance")));
 });

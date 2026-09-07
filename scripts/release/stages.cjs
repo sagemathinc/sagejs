@@ -71,8 +71,10 @@ function plan(profile = "native", selected, target = targetForHost()) {
     ], { inputs: [...runtime, "packages/flint-wasm/dist"], outputs: ["build/wasm-node-oracle.json", "build/wasm-node-cli-parity.json"] }),
     ...["chromium", "firefox", "webkit"].map((engine) => stage(`wasm-${engine}`, "correctness",
       [["node", "packages/flint-wasm/test/browser-wasm-parity.mjs", "--tier", "release", "--engines", engine,
-        "--require-engines", engine, "--receipt", `build/wasm-parity-${engine}.json`]],
-      { inputs: ["packages/flint-wasm/dist"], outputs: [`build/wasm-parity-${engine}.json`] })),
+        "--require-engines", engine, "--receipt", `build/wasm-parity-${engine}.json`],
+      ["node", "bench/browser-wasm-workload-acceptance.mjs", "--engine", engine,
+        "--output", `build/wasm-acceptance-${engine}.json`]],
+      { inputs: ["packages/flint-wasm/dist"], outputs: [`build/wasm-parity-${engine}.json`, `build/wasm-acceptance-${engine}.json`] })),
     stage("wasm-security", "correctness", [
       ["node", "--test", "packages/flint-wasm/test/browser-wasm-wasi-quota.test.mjs"],
       ...["browser-wasm-serialization", "browser-wasm-security", "browser-wasm-offline-cache",
@@ -89,12 +91,12 @@ function plan(profile = "native", selected, target = targetForHost()) {
         "--require-baseline", "--report-regressions", "--output", `build/wasm-performance-${engine}.json`]],
       { inputs: ["packages/flint-wasm/dist", "build/wasm-performance-node-native.json"], outputs: [`build/wasm-performance-${engine}.json`] })),
     stage("wasm-workload", "correctness", [["node", "scripts/wasm-workload-dashboard.cjs", "--check",
-      "--explicit-receipts-only",
+      "--acceptance-only", "--source-revision", "{candidate}", "--explicit-receipts-only",
       ...["chromium", "firefox", "webkit"].flatMap((engine) => [
         "--receipt", `build/wasm-parity-${engine}.json`,
-        "--receipt", `build/wasm-performance-${engine}.json`,
+        "--receipt", `build/wasm-acceptance-${engine}.json`,
       ])]], { inputs: ["packages/flint-wasm/dist", ...["chromium", "firefox", "webkit"].flatMap((engine) => [
-      `build/wasm-parity-${engine}.json`, `build/wasm-performance-${engine}.json`,
+      `build/wasm-parity-${engine}.json`, `build/wasm-acceptance-${engine}.json`,
     ])] }),
   ];
   if (selected) {
@@ -107,7 +109,13 @@ function plan(profile = "native", selected, target = targetForHost()) {
     });
   }
   if (profile === "canonical") return ["numerical-product", "public-runtime", "public-build", "public-pack"].map((id) => all.find((item) => item.id === id));
-  if (profile === "browser") return all.filter((item) => item.id.startsWith("wasm-"));
+  if (profile === "browser") {
+    const browser = all.filter((item) => item.id.startsWith("wasm-"));
+    // Required workload evidence does not consume timing output anymore. Finish
+    // it before reports; reports remain required by this transitional profile.
+    return [...browser.filter((item) => item.gate !== "performance-report"),
+      ...browser.filter((item) => item.gate === "performance-report")];
+  }
   if (profile !== "native") throw new Error(`unknown profile ${profile}`);
   // Package/install first: a broken consumer install must not wait for soaks.
   const order = ["metadata", "bootstrap", "sea", "npm", "package-install", "startup", "strict",

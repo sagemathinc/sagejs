@@ -26,9 +26,10 @@ test("real publisher and deployment retain indirect reporting ancestors in the s
   assert.deepEqual(route("ci.yml#publish-release", "wasm-release.yml#browser-performance"), [
     "ci.yml#publish-release", "wasm-release.yml#@success", "wasm-release.yml#browser-performance",
   ]);
-  assert.deepEqual(route("wasm-release.yml#workload-enforcement", "wasm-release.yml#browser-performance"), [
-    "wasm-release.yml#workload-enforcement", "wasm-release.yml#browser-performance",
-  ]);
+  assert.equal(route("wasm-release.yml#workload-enforcement", "wasm-release.yml#browser-performance"), null);
+  assert.equal(route("wasm-release.yml#browser-product-acceptance", "wasm-release.yml#browser-performance"), null);
+  assert.ok(route("wasm-release.yml#browser-product-acceptance", "wasm-release.yml#node-oracle"),
+    "the mixed native oracle still contains timing work; the split is not complete");
   assert.ok(route("wasm-deploy-cloudflare.yml#deploy", "ci.yml#numerical-release-gate"));
   assert.ok(route("wasm-deploy-cloudflare.yml#deploy", "wasm-release.yml#browser-security-chromium"));
   assert.equal(route("wasm-release.yml#browser-performance", "ci.yml#publish-release"), null);
