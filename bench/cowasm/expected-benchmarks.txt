@@ -59,3 +59,10 @@ dict_iteration
 dict_to_list
 dict_copy
 parse_int
+defaults required supplied
+defaults positional supplied
+defaults positional omitted
+defaults keyword-only supplied
+defaults keyword-only omitted
+defaults bound supplied
+defaults bound omitted

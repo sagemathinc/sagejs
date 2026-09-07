@@ -24,7 +24,8 @@ function documented(value, metadata) {
   ].join("\n");
   value.__name__ = "example";
   value.__argnames__ = ["order"];
-  value.__defaults__ = { order: 4 };
+  value.__defaults__ = Object.freeze([4]);
+  value.__kwdefaults__ = null;
   return [["example", value, metadata]];
 }
 
@@ -115,7 +116,8 @@ test("DocSpec preserves typed positional and keyword-only signatures", () => {
   example.__name__ = "typed";
   example.__argnames__ = ["value"];
   example.__kwonly__ = ["proof"];
-  example.__defaults__ = { proof: true };
+  example.__defaults__ = null;
+  example.__kwdefaults__ = { jsmap: new Map([["proof", true]]) };
   example.__annotations_text__ = {
     value: "list[int]",
     proof: "bool",
@@ -128,6 +130,24 @@ test("DocSpec preserves typed positional and keyword-only signatures", () => {
     catalog.entries[0].signature,
     "typed(value: list[int], *, proof: bool=true) -> tuple[int, ...]",
   );
+});
+
+test("DocSpec reads tuple subclass default storage without Python hooks", () => {
+  function example() {}
+  example.__name__ = "subclass_defaults";
+  example.__argnames__ = ["value"];
+  const defaults = {
+    _tuple_values: [17],
+    __len__() { throw new Error("Python len override"); },
+    __getitem__() { throw new Error("Python getitem override"); },
+    __iter__() { throw new Error("Python iter override"); },
+  };
+  example.__defaults__ = defaults;
+  const catalog = documentationCatalogFromRegistry([["subclass_defaults", example, {
+    provenance: [{ kind: "sagejs-original" }],
+  }]]);
+  assert.equal(catalog.entries[0].signature, "subclass_defaults(value=17)");
+  assert.equal(example.__defaults__, defaults);
 });
 
 test("DocSpec supports documented constants without mutating their value", () => {

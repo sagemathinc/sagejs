@@ -125,6 +125,7 @@ def native_method_adapter(target_function):
         }
         for (const name of [
             "__annotations__", "__annotations_text__", "__code__",
+            "__sagejs_bootstrap_defaults__",
             "__defaults__", "__doc__", "__globals__",
             "__handles_kwarg_interpolation__", "__kwdefaults__",
             "__kwonly__", "__module__", "__name__",
@@ -134,7 +135,13 @@ def native_method_adapter(target_function):
             const descriptor = Object.getOwnPropertyDescriptor(
                 target_function, name
             );
-            if (descriptor && typeof descriptor.get === "function") {
+            if (name === "__defaults__" || name === "__kwdefaults__") {
+                Object.defineProperty(method, name, {
+                    configurable: true, enumerable: true,
+                    get: () => target_function[name],
+                    set: value => { target_function[name] = value; },
+                });
+            } else if (descriptor && typeof descriptor.get === "function") {
                 Object.defineProperty(method, name, descriptor);
             } else {
                 method[name] = target_function[name];
@@ -158,6 +165,7 @@ def unbound_method_adapter(target_function):
         }
         for (const name of [
             "__annotations__", "__annotations_text__", "__code__",
+            "__sagejs_bootstrap_defaults__",
             "__defaults__", "__doc__", "__globals__",
             "__handles_kwarg_interpolation__", "__kwdefaults__",
             "__kwonly__", "__module__", "__name__",
@@ -168,7 +176,13 @@ def unbound_method_adapter(target_function):
                 const descriptor = Object.getOwnPropertyDescriptor(
                     target_function, name
                 );
-                if (descriptor && typeof descriptor.get === "function") {
+                if (name === "__defaults__" || name === "__kwdefaults__") {
+                    Object.defineProperty(method, name, {
+                        configurable: true, enumerable: true,
+                        get: () => target_function[name],
+                        set: value => { target_function[name] = value; },
+                    });
+                } else if (descriptor && typeof descriptor.get === "function") {
                     Object.defineProperty(method, name, descriptor);
                 } else {
                     method[name] = target_function[name];

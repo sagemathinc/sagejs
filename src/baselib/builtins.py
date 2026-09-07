@@ -582,12 +582,38 @@ _BUILTINS_BOUND_METHODS = runtime.reflect.construct(
 )
 
 
+def _builtins_bound_defaults(bound: Any) -> Any:
+    return _builtins_get_member(_builtins_get_member(bound, "__func__"), "__defaults__")
+
+
+def _builtins_bound_kwdefaults(bound: Any) -> Any:
+    return _builtins_get_member(
+        _builtins_get_member(bound, "__func__"), "__kwdefaults__"
+    )
+
+
+_BUILTINS_BOUND_DEFAULT_DESCRIPTORS = {
+    "__defaults__": {
+        "get": runtime.native_method(_builtins_bound_defaults),
+        "configurable": True,
+        "enumerable": True,
+    },
+    "__kwdefaults__": {
+        "get": runtime.native_method(_builtins_bound_kwdefaults),
+        "configurable": True,
+        "enumerable": True,
+    },
+}
+
+
 def ρσ_brand_bound_method(value: Any) -> Any:
     runtime.reflect.apply(
         runtime.reflect.get(_BUILTINS_BOUND_METHODS, "add"),
         _BUILTINS_BOUND_METHODS,
         [value],
     )
+    if _builtins_get_member(value, "__func__") is not runtime.undefined:
+        runtime.object.defineProperties(value, _BUILTINS_BOUND_DEFAULT_DESCRIPTORS)
     return value
 
 
@@ -1392,6 +1418,15 @@ def _builtins_sequence_values(value: Any) -> Any:
     if _builtins_has_member(value, "_tuple_values"):
         return _builtins_get_member(value, "_tuple_values")
     return runtime.undefined
+
+
+def ρσ_tuple_storage_values(value: Any) -> Any:
+    """Read validated tuple storage without Python subclass lookup hooks."""
+    if value is None or value is runtime.undefined:
+        return None
+    if runtime.array.isArray(value):
+        return value
+    return runtime.native_get(value, "_tuple_values")
 
 
 def _builtins_sequence_is_tuple(value: Any) -> _Bool:
@@ -3255,6 +3290,7 @@ _BUILTINS_HIDDEN_INTROSPECTION_NAMES = runtime.reflect.construct(
     runtime.set_class,
     [
         [
+            "__sagejs_bootstrap_defaults__",
             "__argnames__",
             "__bind_methods__",
             "__handles_kwarg_interpolation__",
@@ -3707,6 +3743,11 @@ def _builtins_has_own(value: Any, name: _Str) -> _Bool:
 def _builtins_signature(value: Any, name: _Str) -> _Str:
     argument_names = _builtins_get_member(value, "__argnames__")
     defaults = _builtins_get_member(value, "__defaults__")
+    keyword_defaults = _builtins_get_member(value, "__kwdefaults__")
+    legacy_defaults = (
+        _builtins_get_member(value, "__sagejs_bootstrap_defaults__") is True
+    )
+    positional_defaults = None if legacy_defaults else ρσ_tuple_storage_values(defaults)
     annotation_text = _builtins_get_member(
         value,
         "__signature_annotations_text__",
@@ -3730,23 +3771,28 @@ def _builtins_signature(value: Any, name: _Str) -> _Str:
             return callable_name
         return runtime.repr(item)
 
-    def argument_part(argument: _Str) -> _Str:
+    def argument_part(argument: _Str, default_value: Any) -> _Str:
         part = argument
         type_name = annotation(argument)
         if type_name:
             part += ": " + type_name
-        if _builtins_has_own(defaults, argument):
-            default_value = _builtins_get_member(defaults, argument)
-            if default_value is runtime.undefined:
-                part += "=None"
-            else:
-                part += "=" + runtime.repr(default_value)
+        if default_value is not runtime.undefined:
+            part += "=" + runtime.repr(default_value)
         return part
 
     parts = []
     if runtime.array.isArray(argument_names):
-        for argument in argument_names:
-            parts.append(argument_part(argument))
+        for index, argument in enumerate(argument_names):
+            default_value = runtime.undefined
+            if legacy_defaults and _builtins_has_own(defaults, argument):
+                default_value = _builtins_get_member(defaults, argument)
+            elif positional_defaults is not None and runtime.array.isArray(
+                positional_defaults
+            ):
+                default_index = index - len(argument_names) + len(positional_defaults)
+                if default_index >= 0:
+                    default_value = positional_defaults[default_index]
+            parts.append(argument_part(argument, default_value))
 
     positional_only = _builtins_get_member(value, "__positional_only__")
     if positional_only is True and len(parts):
@@ -3764,7 +3810,21 @@ def _builtins_signature(value: Any, name: _Str) -> _Str:
         if not runtime.strict_equal(runtime.jstype(varargs), "string"):
             parts.append("*")
         for argument in kwonly:
-            parts.append(argument_part(argument))
+            default_value = runtime.undefined
+            if legacy_defaults and _builtins_has_own(defaults, argument):
+                default_value = _builtins_get_member(defaults, argument)
+            elif (
+                keyword_defaults is not None
+                and keyword_defaults is not runtime.undefined
+            ):
+                default_value = runtime.reflect.apply(
+                    runtime.reflect.get(
+                        runtime.global_object, "ρσ_dict_storage_get_string"
+                    ),
+                    runtime.undefined,
+                    [keyword_defaults, argument, runtime.undefined],
+                )
+            parts.append(argument_part(argument, default_value))
     varkw = _builtins_get_member(value, "__varkw__")
     if runtime.strict_equal(runtime.jstype(varkw), "string"):
         varkw_part = "**" + varkw
@@ -5725,6 +5785,24 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
         value
     ):
         raise AttributeError("'method' object has no attribute '" + name + "'")
+    if name in ("__defaults__", "__kwdefaults__") and (
+        _builtins_get_member(value, "__python_type__") is ρσ_function_type
+        and not _builtins_is_python_class(value)
+    ):
+        expected = (
+            runtime.tuple_builtin
+            if name == "__defaults__"
+            else runtime.reflect.get(runtime.global_object, "ρσ_dict")
+        )
+        if member is not None and not isinstance(member, expected):
+            raise TypeError(
+                name
+                + " must be set to a "
+                + ("tuple" if name == "__defaults__" else "dict")
+                + " object"
+            )
+        runtime.reflect.set(value, name, member)
+        return
     if name == "__class__":
         if not _builtins_is_python_class(member):
             raise TypeError("__class__ must be set to a class")
@@ -6322,6 +6400,14 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
                 _builtins_class_annotation_slots,
                 [annotation_key],
             )
+    if name in ("__defaults__", "__kwdefaults__") and (
+        _builtins_get_member(value, "__python_type__") is ρσ_function_type
+        and not _builtins_is_python_class(value)
+    ):
+        if ρσ_is_bound_method(value):
+            raise AttributeError("'method' object has no attribute '" + name + "'")
+        runtime.reflect.set(value, name, None)
+        return
     builtin_facade_names = runtime.native_get(value, "__sagejs_builtin_facade_names__")
     if builtin_facade_names is not runtime.undefined and builtin_facade_names.has(name):
         if not runtime.reflect.deleteProperty(value, name):
@@ -6694,6 +6780,17 @@ def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
     if not ρσ_skip_init_for_custom_new(cls, initializer):
         return
     allocator = ρσ_getattr(cls, "__new__", None)
+
+    def forward_default(name: _Str) -> None:
+        def get_default() -> Any:
+            return _builtins_get_member(ρσ_getattr(cls, "__new__", None), name)
+
+        runtime.object.defineProperty(
+            cls, name, {"get": get_default, "configurable": True, "enumerable": True}
+        )
+
+    forward_default("__defaults__")
+    forward_default("__kwdefaults__")
     argument_names = _builtins_get_member(allocator, "__argnames__")
     if runtime.array.isArray(argument_names):
         runtime.reflect.set(
@@ -6702,7 +6799,7 @@ def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
             runtime.reflect.apply(runtime.array.prototype.slice, argument_names, [1]),
         )
     for attribute_name in (
-        "__defaults__",
+        "__sagejs_bootstrap_defaults__",
         "__handles_kwarg_interpolation__",
         "__kwonly__",
         "__varargs__",

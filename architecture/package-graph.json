@@ -44,7 +44,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 901000,
+      "max_source_bytes": 907500,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -156,6 +156,7 @@
       "files": [
         "src/lib/sagejs/compiler.py",
         "src/lib/sagejs/native.py",
+        "src/lib/sagejs/_native_defaults.py",
         "src/lib/sagejs/kernels/__init__.py"
       ],
       "prefixes": ["src/baselib/sagejs/ffi/", "src/lib/sagejs/ffi/"]

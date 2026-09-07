@@ -73,6 +73,9 @@ def function_args(argnames, output, strip_first):
 
 
 def function_preamble(node, output, offset, javascript_name):
+    if output.options.python_attributes:
+        python_function_preamble(node, output, offset, javascript_name)
+        return
     a = node.argnames
     if not a:
         return
@@ -380,6 +383,173 @@ def function_preamble(node, output, offset, javascript_name):
     validate_arguments()
 
 
+def python_function_preamble(node, output, offset, javascript_name):
+    """Bind supplied arguments directly; consult live defaults only on omission."""
+    a = node.argnames
+    fname = output.make_name(javascript_name or "ρσ_function")
+
+    def argument_name(argument):
+        return (
+            output.make_python_name(argument.name)
+            if argument.python_identifier
+            or (
+                node.python_lexical_hygiene
+                and node.python_scope_bindings
+                and node.python_scope_bindings.indexOf(argument.name) is not -1
+            )
+            else output.make_name(argument.name)
+        )
+
+    def statement(source):
+        output.indent()
+        output.print(source)
+        output.end_statement()
+
+    def required(argument, keyword_only, missing_test=None):
+        name = argument_name(argument)
+        message = (
+            "missing required keyword-only argument: "
+            if keyword_only
+            else "missing required argument: "
+        ) + argument.name
+        return (
+            "if ("
+            + (missing_test if missing_test is not None else name + " === undefined")
+            + ") throw ρσ_function_argument_error("
+            + JSON.stringify(message)
+            + ", "
+            + fname
+            + ")"
+        )
+
+    if offset:
+        statement(
+            "if ((this === globalThis || this == null) && arguments.length > 0) "
+            + "return "
+            + fname
+            + ".apply(arguments[0], Array.prototype.slice.call(arguments, 1))"
+        )
+
+    count = a.length - offset
+    if a.is_simple_func:
+        if a.starargs is undefined:
+            statement(
+                "if (arguments.length > "
+                + str(count)
+                + ') throw ρσ_function_argument_error("too many positional arguments", '
+                + fname
+                + ")"
+            )
+    else:
+        statement("var ρσ_kwargs_obj = arguments[arguments.length - 1]")
+        statement(
+            "var ρσ_has_kwargs = ρσ_kwargs_obj != null && "
+            + "ρσ_kwargs_obj[ρσ_kwargs_symbol] === true"
+        )
+        statement("var ρσ_nargs = arguments.length - (ρσ_has_kwargs ? 1 : 0)")
+        if a.starargs is undefined:
+            statement(
+                "if (ρσ_nargs > "
+                + str(count)
+                + ') throw ρσ_function_argument_error("too many positional arguments", '
+                + fname
+                + ")"
+            )
+
+    for index, argument in enumerate(a):
+        if index < offset:
+            continue
+        name = argument_name(argument)
+        if not a.is_simple_func:
+            statement(
+                "var "
+                + name
+                + " = "
+                + str(index - offset)
+                + " < ρσ_nargs ? arguments["
+                + str(index - offset)
+                + "] : undefined"
+            )
+        output.indent()
+        output.print("if (" + name + " === undefined) ")
+
+        def bind_default():
+            statement(
+                "var ρσ_defaults = ρσ_tuple_storage_values(" + fname + ".__defaults__)"
+            )
+            statement(
+                "if (ρσ_defaults !== null && ρσ_defaults.length >= "
+                + str(a.length - index)
+                + ") "
+                + name
+                + " = ρσ_defaults[ρσ_defaults.length - "
+                + str(a.length - index)
+                + "]"
+            )
+            # The runtime's undefined value is a valid declared default.
+            # Only absent tuple storage is missing, not its stored value.
+            statement("else " + required(argument, False))
+
+        output.with_block(bind_default)
+        output.newline()
+
+    for argument in a.kwonly:
+        name = argument_name(argument)
+        key = JSON.stringify(argument.name)
+        statement(
+            "var "
+            + name
+            + " = ρσ_has_kwargs && "
+            + "Object.prototype.hasOwnProperty.call(ρσ_kwargs_obj, "
+            + key
+            + ")"
+            + " ? ρσ_kwargs_obj["
+            + key
+            + "] : undefined"
+        )
+        if a.kwargs is not undefined:
+            statement("if (ρσ_has_kwargs) delete ρσ_kwargs_obj[" + key + "]")
+        output.indent()
+        output.print("if (" + name + " === undefined) ")
+
+        def bind_keyword_default():
+            statement("var ρσ_kwdefaults = " + fname + ".__kwdefaults__")
+            statement("var ρσ_kwmissing = {}")
+            statement(
+                "if (ρσ_kwdefaults !== null) "
+                + name
+                + " = ρσ_dict_storage_get_string(ρσ_kwdefaults, "
+                + key
+                + ", ρσ_kwmissing)"
+            )
+            statement(
+                required(
+                    argument,
+                    True,
+                    "ρσ_kwdefaults === null || " + name + " === ρσ_kwmissing",
+                )
+            )
+
+        output.with_block(bind_keyword_default)
+        output.newline()
+
+    if a.starargs is not undefined:
+        starargs = argument_name(a.starargs)
+        statement(
+            "var "
+            + starargs
+            + " = ρσ_math_tuple(Array.prototype.slice.call(arguments, "
+            + str(count)
+            + ", ρσ_nargs))"
+        )
+    if a.kwargs is not undefined:
+        statement(
+            "var "
+            + argument_name(a.kwargs)
+            + " = ρσ_dict(ρσ_has_kwargs ? ρσ_kwargs_obj : undefined)"
+        )
+
+
 def has_annotations(self):
     if self.return_annotation:
         return True
@@ -454,6 +624,8 @@ def function_annotation(self, output, strip_first, name):
         and not output.options.write_name
         and not output.options.python_attributes
     )
+    if compiling_baselib and Object.keys(self.argnames.defaults).length:
+        props.__sagejs_bootstrap_defaults__ = lambda: output.print("true")
     if not compiling_baselib and not strip_first:
 
         def python_descriptor():
@@ -466,6 +638,56 @@ def function_annotation(self, output, strip_first, name):
 
     if self.is_coroutine:
         props.__is_coroutine__ = lambda: output.print("true")
+
+    if output.options.python_attributes:
+
+        def print_default(default_name):
+            value = self.argnames.defaults[default_name]
+            if is_node_type(value, AST_Seq):
+                output.print("ρσ_math_tuple([")
+                value.print(output)
+                output.print("])")
+            else:
+                value.print(output)
+
+        def positional_defaults():
+            names = []
+            for argument in self.argnames:
+                if Object.prototype.hasOwnProperty.call(
+                    self.argnames.defaults, argument.name
+                ):
+                    names.push(argument.name)
+            if not names.length:
+                output.print("null")
+                return
+            output.print("ρσ_math_tuple([")
+            for index, default_name in enumerate(names):
+                if index:
+                    output.comma()
+                print_default(default_name)
+            output.print("])")
+
+        def keyword_defaults():
+            names = []
+            for argument in self.argnames.kwonly:
+                if Object.prototype.hasOwnProperty.call(
+                    self.argnames.defaults, argument.name
+                ):
+                    names.push(argument.name)
+            if not names.length:
+                output.print("null")
+                return
+            output.print("ρσ_dict_literal([")
+            for index, default_name in enumerate(names):
+                if index:
+                    output.comma()
+                output.print_string(default_name)
+                output.comma()
+                print_default(default_name)
+            output.print("])")
+
+        props.__defaults__ = positional_defaults
+        props.__kwdefaults__ = keyword_defaults
 
     # Keep the exact source spelling independently of runtime evaluation.
     # This powers help(), DocSpec, and the static reference manual even when
@@ -533,7 +755,7 @@ def function_annotation(self, output, strip_first, name):
     # Create __defaults__
     defaults = self.argnames.defaults
     dkeys = Object.keys(self.argnames.defaults)
-    if dkeys.length:
+    if dkeys.length and not output.options.python_attributes:
 
         def __defaults__():
             output.print("{")
@@ -576,7 +798,8 @@ def function_annotation(self, output, strip_first, name):
             self.argnames.defaults[name].print(output)
         output.print("}")
 
-    props.__kwdefaults__ = __kwdefaults__
+    if not output.options.python_attributes:
+        props.__kwdefaults__ = __kwdefaults__
 
     # Create __handles_kwarg_interpolation__
     if not self.argnames.is_simple_func:
@@ -707,15 +930,16 @@ def function_definition(
     javascript_name,
 ):
     as_expression = as_expression or self.is_expression or self.is_anonymous
+    binder_name = "ρσ_function" if output.options.python_attributes else javascript_name
     if as_expression:
         orig_indent = output.indentation()
         output.set_indentation(output.next_indent())
         output.spaced("(function()", "{"), output.newline()
         output.indent(), output.spaced("var", anonfunc, "="), output.space()
     output.print("function"), output.space()
-    if self.name:
-        if javascript_name:
-            output.print_name(javascript_name)
+    if self.name or binder_name:
+        if binder_name:
+            output.print_name(binder_name)
         else:
             self.name.print(output)
 
@@ -724,11 +948,14 @@ def function_definition(
             node,
             output,
             offset,
-            javascript_name,
+            binder_name,
         )
 
     if self.is_generator:
-        output.print("()"), output.space()
+        if output.options.python_attributes:
+            function_args(self.argnames, output, strip_first)
+        else:
+            output.print("()"), output.space()
 
         def output_generator():
             # Dynamically resolved methods are invoked like unbound Python
@@ -737,29 +964,21 @@ def function_definition(
             # ordinary wrapper before creating the native generator.  Doing
             # this only inside ``function* js_generator`` returns the nested
             # generator as StopIteration.value instead of delegating to it.
-            if strip_first and output.options.python_attributes:
-                generator_wrapper_name = javascript_name or (
-                    output.make_python_name(self.name.name)
-                    if self.name and self.name.python_identifier
-                    else self.name.name
-                    if self.name
-                    else anonfunc
-                )
-                output.indent()
-                output.print("if ((this === globalThis || this == null) ")
-                output.print("&& arguments.length > 0) return ")
-                output.print_name(output.make_name(generator_wrapper_name))
-                output.print(".apply(")
-                output.print("arguments[0], Array.prototype.slice.call(arguments, 1))")
-                output.end_statement()
+            if output.options.python_attributes:
+                output_function_preamble(self, output, 1 if strip_first else 0)
             output.indent()
             output.print("function* js_generator")
-            function_args(self.argnames, output, strip_first)
+            if output.options.python_attributes:
+                output.print("() ")
+            else:
+                function_args(self.argnames, output, strip_first)
             print_bracketed(
                 self,
                 output,
                 True,
-                output_function_preamble,
+                (lambda node, output, offset: None)
+                if output.options.python_attributes
+                else output_function_preamble,
             )
 
             output.newline()
@@ -853,8 +1072,13 @@ def print_function(output):
         decorate(self.decorators, output, output_function_definition)
         output.end_statement()
     else:
+        delay_publication = (
+            output.options.python_attributes
+            and not self.is_expression
+            and not self.is_anonymous
+        )
         if (
-            self.sequential_definition
+            (self.sequential_definition or delay_publication)
             and not self.is_expression
             and not self.is_anonymous
         ):
@@ -865,10 +1089,11 @@ def print_function(output):
                 if self.name.python_identifier
                 else self.name.name
             )
-        function_definition(self, output, False)
+        function_definition(self, output, False, delay_publication)
         if not self.is_expression and not self.is_anonymous:
             output.end_statement()
-            function_annotation(self, output, False)
+            if not delay_publication:
+                function_annotation(self, output, False)
 
 
 def find_this(expression):

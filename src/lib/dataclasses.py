@@ -23,13 +23,26 @@ def _install_method(cls, name, function):
     method = runtime.native_method_adapter(function)
     runtime.reflect.set(prototype, name, method)
     if name == "__init__":
-        # Class-call keyword interpolation consults signature metadata on the
-        # class before invoking its initializer.  A dataclass replaces the
-        # compiler's synthetic initializer dynamically, so publish the new
-        # callable contract on the class as well.
+        # Publish the dataclass signature for introspection and constructor
+        # paths outside the live user-class protocol. Ordinary user-class
+        # calls bind against the actual initializer, not these class fields.
+        def forward_default(attribute):
+            def get_default():
+                return runtime.reflect.get(
+                    runtime.reflect.get(prototype, "__init__"), attribute
+                )
+
+            descriptor = runtime.object.create(None)
+            runtime.reflect.set(descriptor, "get", get_default)
+            runtime.reflect.set(descriptor, "configurable", True)
+            runtime.reflect.set(descriptor, "enumerable", True)
+            runtime.object.defineProperty(cls, attribute, descriptor)
+
+        forward_default("__defaults__")
+        forward_default("__kwdefaults__")
         for attribute in (
+            "__sagejs_bootstrap_defaults__",
             "__argnames__",
-            "__defaults__",
             "__handles_kwarg_interpolation__",
             "__kwonly__",
             "__varargs__",

@@ -1604,6 +1604,14 @@ def _set_metadata(target: Any, name: str, value: Any) -> None:
     setattr(target, name, value)
 
 
+def _bind_source_defaults(source: Any, compiled: Any) -> Any:
+    # Keep the explicit host boundary lazy so importing this marker module
+    # under CPython never requires a JavaScript runtime.
+    from sagejs._native_defaults import bind_source_defaults
+
+    return bind_source_defaults(source, compiled)
+
+
 def native(function: Any) -> Any:
     """Mark `function` as an experimental native-compilation candidate.
 
@@ -1646,6 +1654,7 @@ def native(function: Any) -> Any:
         bind_fallback = getattr(replacement, "__sagejs_native_bind_fallback__", None)
         if callable(bind_fallback):
             replacement = bind_fallback(function)
+        replacement = _bind_source_defaults(function, replacement)
         _copy_metadata(function, replacement)
         _set_metadata(replacement, "__wrapped__", function)
         _set_metadata(replacement, "__sagejs_native_compiled__", True)
@@ -1675,6 +1684,12 @@ def execution_mode(function: Any, *args: Any) -> str:
     """
     if not is_compiled(function):
         return "dynamic"
+    source = getattr(function, "__sagejs_native_source__", None)
+    if args and source is not None:
+        if len(args) != len(getattr(source, "__argnames__", ())):
+            return "dynamic"
+        if getattr(source, "__kwonly__", ()):
+            return "dynamic"
     backend_for = getattr(function, "backendFor", None)
     if args and callable(backend_for):
         backend = backend_for(*args)
