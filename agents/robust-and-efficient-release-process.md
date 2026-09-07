@@ -7,6 +7,34 @@ Audit date: 2026-09-07. Source inspected: `origin/main` at
 not qualify newer `main`. This document does not change the active candidate,
 publish anything, or claim that 0.8.0 qualification is complete.
 
+## Executive decision
+
+**Modularize release work before modularizing the public distribution.** Keep
+one repository, a straightforward npm install and self-contained SEA products.
+Make building, qualification, packaging, signing and promotion separate,
+resumable operations over explicitly identified artifacts.
+
+The immediate problem is not evidence that Sage.js is inherently unreleasable.
+The audit identifies avoidable coupling: reporting lies on publication paths,
+successful work is invalidated too broadly, and packaging/qualification repeat
+expensive preparation. Fix those boundaries first. A wholesale mathematical
+rewrite or a new build-system framework is not a prerequisite.
+
+Read sections 2 and 7 for the audit and implementation sequence; section 9
+distinguishes existing experimental tooling from adopted release behavior.
+The first delivery should demonstrate three things:
+
+1. A failed optional timing campaign cannot block an otherwise qualified
+   product, but failed correctness, startup, size or platform checks still do.
+2. A stopped campaign resumes valid completed work without accepting partial
+   artifacts or concealing a failed attempt.
+3. A partially published release can finish using exactly the already-tested
+   bytes, without launching a compiler or repeating mathematical qualification.
+
+This is a planning document. Proposed budget changes, evidence reuse and gate
+reclassification require their stated validation before adoption. Existing
+uncommitted prototypes are not proof that these milestones are complete.
+
 ## 1. Objective and priorities
 
 Make releases bounded promotion operations over validated artifacts, rather
@@ -542,6 +570,46 @@ unnecessary publication dependencies, stop losing completed work, and make
 release artifacts explicit. D and E then make growth sustainable. None requires
 turning Sage.js into many independently installed packages or reintroducing
 SageMath's opaque dependency problems.
+
+### First bounded implementation cut
+
+Do not interpret A + B + C as permission to spend another release cycle building
+a universal release framework. Deliver the smallest end-to-end path, then
+expand it:
+
+1. **Close the reporting boundary.** Inventory the actual prerequisite steps
+   and artifact consumers for native and browser product acceptance. In
+   particular, extract timing from the mixed `node-oracle` job as well as
+   `browser-performance`; preserve mathematical parity and private-route checks.
+   Introduce explicit product aggregate jobs covering all required matrix cells,
+   reproduction, security, packaging and numerical evidence. Do not simply
+   rename the old browser aggregate: whole-workflow success currently protects
+   additional jobs outside its explicit `needs` list.
+2. **Make publication consume the new boundary safely.** Update npm and app
+   deployment together, keeping existing raw-evidence authentication. Bind job
+   observations to repository, workflow, source, event/ref and run attempt;
+   reject skipped, missing, duplicated or stale-attempt prerequisites. Test a
+   retry race. A successful job observation is not artifact authentication.
+3. **Prove one recoverable artifact campaign.** Use conservative exact-candidate
+   identities, existing platform producers and a minimal manifest for the
+   actual SEA/npm/browser outputs. Add only the journal states needed to resume
+   these nodes and publication. Start with fixture-backed interrupted uploads,
+   then a real candidate under the normal publication authority. Keep complete
+   numerical qualification initially; cross-candidate reuse is not necessary
+   to prove this improvement.
+
+For each cut, report changed dependencies, preserved assertions, measured time
+and resource use, fault-injection results, and remaining manual steps. If a
+boundary cannot be proven, retain its current required status and name the
+specific unresolved dependency. Do not resolve the uncertainty by endlessly
+rerunning all platforms or by silently deleting a gate.
+
+Planning recheck: the shadow inventory on `feat/release-process-v2` at
+`b31c57508` still reports 79 runner stage instances, 40 aggregate workflow jobs,
+91 potential edges and six additional API/control steps needing review. It
+confirms the path `ci.yml#publish-release` → whole Wasm workflow success →
+`wasm-release.yml#browser-performance`. This is a source-bound dependency
+finding, not a claim that the complete assertion/artifact audit is finished.
 
 ## 9. Implementation tracking
 
