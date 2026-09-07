@@ -21,7 +21,9 @@ function fixture(t) {
   git("commit", "-m", "fixture");
   fs.mkdirSync(path.join(root, "build"));
   fs.writeFileSync(path.join(root, "build/input"), "input");
-  return { root, candidate: git("rev-parse", "HEAD") };
+  // These tiny child-process fixtures exercise scheduling, not production
+  // capacity. Capacity policy and failure injection have their own tests.
+  return { root, candidate: git("rev-parse", "HEAD"), preflight: () => ({ passed: true }) };
 }
 function task(id, code, extra = {}) {
   return { id, gate: "correctness", timeoutSeconds: 30,
