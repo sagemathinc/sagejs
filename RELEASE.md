@@ -1092,6 +1092,9 @@ the root consumes exact versions, not those tags. Registry channel updates are
 not compare-and-swap transactions. The publisher job now uses the shared
 `sagejs-production-publication` concurrency group, without cancelling an active
 publisher, and queues pending jobs. This serializes participating CI publishers,
+and the outer workflow disables automatic cancellation for release tags while
+retaining it for routine branch pushes. The job-level setting alone would not
+protect a publisher from cancellation of its parent workflow. This protection covers CI,
 not manual registry actions or the separate app/website workflows. Extend the
 same coordination boundary to those consumers and recheck before every public
 pointer transition; do not assume queue order is release-version order.

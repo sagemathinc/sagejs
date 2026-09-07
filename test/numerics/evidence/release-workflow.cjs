@@ -907,6 +907,9 @@ test("clean browser qualification builds source evidence before restoring the pr
 });
 
 test("one trusted workflow publishes and recovery reruns its authenticated job", () => {
+  const workflow = require("yaml").parse(ci);
+  assert.equal(workflow.concurrency["cancel-in-progress"], "${{ !startsWith(github.ref, 'refs/tags/v') }}",
+    "outer workflow cancellation must not interrupt a live tagged publisher");
   assert.deepEqual(require("yaml").parse(ci).jobs["publish-release"].concurrency, {
     group: "sagejs-production-publication", "cancel-in-progress": false, queue: "max",
   });
