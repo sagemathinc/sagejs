@@ -341,6 +341,17 @@ the equivalent `--platform-npm-directory release/npm` authenticator option.
 These are content checks of already-qualified packages, not replacement
 cross-platform installation tests or fresh signature verification.
 
+Browser preparation selects the clean-build distribution explicitly. Its bytes
+must match the numerical gate and the canonical artifact report recorded by the
+successful reproducibility producer, including the ARM64/macOS comparison
+reports. The checker revalidates file hashes, Wasm memory declarations, manifest
+and build-receipt metadata, and derived totals against the candidate's total and
+topology budgets. It reuses compression measurements from the authenticated
+report instead of running gzip/Brotli again. This requires trusted transport:
+`verifyRecordedArtifact` by itself cannot authenticate a self-authored report.
+The result identifies `selectedBrowser.directory`; it does not certify inner
+`sagejs-wasm.tar.gz` contents or authorize deployment of an arbitrary directory.
+
 Reruns revalidate cached files and reuse valid verification checkpoints. A failed
 gate directory is retained outside the canonical raw-evidence tree before a
 fresh reconstruction; interrupted copies and replaced inputs are likewise

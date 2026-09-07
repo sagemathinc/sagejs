@@ -151,8 +151,10 @@ async function preparePublication(options, dependencies = {}) {
     // candidates to implement a new CLI flag or rewrite their qualified source.
     const { authenticatePlatformNpmPackages } = require("../numerical-computing/qualification/authenticate-release-gate.cjs");
     const { readJson } = require("../numerical-computing/common.cjs");
-    const platformPackages = authenticatePlatformNpmPackages(
-      readJson(path.join(root, "build/validated-numerical-gate/release-gate.json")), "release/npm", root);
+    const gate = readJson(path.join(root, "build/validated-numerical-gate/release-gate.json"));
+    const platformPackages = authenticatePlatformNpmPackages(gate, "release/npm", root);
+    const { authenticateBrowserInputs } = require("./browser-inputs.cjs");
+    const selectedBrowser = authenticateBrowserInputs(root, candidate, gate);
     for (const file of inputs) {
       options.signal?.throwIfAborted();
       const target = path.join(root, file.target);
@@ -162,7 +164,7 @@ async function preparePublication(options, dependencies = {}) {
     return { authentication: accepted.authentication, candidateRoot: root, results,
       productIdentity: { sourceRevision: candidate, ref: accepted.manifest.ref, event: accepted.manifest.event,
         purpose: accepted.manifest.purpose, manifestDigest: digest },
-      files: inputs.map(({ target, size, sha256 }) => ({ path: target, size, sha256 })), platformPackages,
+      files: inputs.map(({ target, size, sha256 }) => ({ path: target, size, sha256 })), platformPackages, selectedBrowser,
       status: "numerical-publication-inputs-authenticated",
       authority: "not publication authorization; platform package, signature and deployment adoption remain required" };
   } finally { unlock(); }

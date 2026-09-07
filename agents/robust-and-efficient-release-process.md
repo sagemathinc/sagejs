@@ -1065,3 +1065,23 @@ installation/signature qualification. Six new fault/contract tests and the
 consumer recovery fixtures pass on Linux and native Windows; the temporary
 Windows fixture/archive/helper were removed. Reproducible browser binding,
 SEA/signature acceptance and full promotion adoption remain unfinished.
+
+Browser input preparation now selects the clean-build distribution and binds it
+to the numerical gate plus the canonical reproducibility reports. It reuses
+authenticated compressed-size measurements while rechecking file bytes, Wasm
+memory declarations, metadata and derived totals against candidate total/eager
+budgets. This is wired into the resumable consumer, not just a standalone report
+helper. The helper alone does not authenticate provenance. Canonical JSON
+comparison handles the strict reader's null-prototype objects without weakening
+the compared field inventory. Neither an arbitrary directory nor unexamined
+inner `sagejs-wasm.tar.gz` contents acquire deployment authority.
+
+Validation: 146 focused Linux tests, merge and shadow inventory checks pass;
+20 browser/platform/handoff tests pass on native Windows. The temporary Windows
+fixture/archive/helper were removed. A read-only historical trial verified the
+retained `f9384a408` distribution's 96 files (178,332,575 bytes) against its
+original report in approximately 0.39 seconds, with gzip/Brotli functions
+disabled. This single measurement verifies historical bytes and the checker,
+not a new candidate or trusted archival handoff. No artifact was rebuilt or
+recompressed. SEA/signature and inner archive binding, real promotion/recovery
+adoption and permanent authenticated retention remain required.

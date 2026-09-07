@@ -15,6 +15,7 @@ const {
   enforceBudget,
   enforceTopologyBudgets,
   inspectProductionArtifact,
+  verifyRecordedArtifact,
   sha256,
 } = require("../packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs");
 const {
@@ -61,6 +62,29 @@ function fixtureDirectory(answer = 42) {
   }));
   return directory;
 }
+
+test("recorded artifact verification checks bytes and totals without running compression", (t) => {
+  const directory = fixtureDirectory();
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const report = inspectProductionArtifact(directory);
+  const zlib = require("node:zlib");
+  t.mock.method(zlib, "gzipSync", () => { throw new Error("unexpected recompression"); });
+  t.mock.method(zlib, "brotliCompressSync", () => { throw new Error("unexpected recompression"); });
+  assert.deepEqual(verifyRecordedArtifact(directory, report), report);
+  for (const mutate of [
+    (value) => value.files.push(value.files[0]),
+    (value) => { value.files[0].sha256 = "0".repeat(64); },
+    (value) => { value.files[0].brotli_bytes = -1; },
+    (value) => { value.totals.gzip_bytes++; },
+    (value) => { value.build_receipt_sha256 = "0".repeat(64); },
+    (value) => { value.source_revision = "other"; },
+  ]) {
+    const changed = structuredClone(report); mutate(changed);
+    assert.throws(() => verifyRecordedArtifact(directory, changed), /recorded/);
+  }
+  fs.appendFileSync(path.join(directory, "kernel.mjs"), "// changed");
+  assert.throws(() => verifyRecordedArtifact(directory, report), /digest/);
+});
 
 test("release artifact receipts validate hashes, Wasm magic, compression, and reproducibility", () => {
   const left = fixtureDirectory();

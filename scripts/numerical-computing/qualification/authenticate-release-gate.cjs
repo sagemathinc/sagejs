@@ -374,8 +374,8 @@ function authenticatePublicNpmRoot(value, filename) {
   return digest;
 }
 
-function authenticateBrowserDistribution(value, filename) {
-  const digest = contentDigestPath(root, filename, "browser distribution");
+function authenticateBrowserDistribution(value, filename, repositoryRoot = root) {
+  const digest = contentDigestPath(repositoryRoot, filename, "browser distribution");
   if (digest !== value.artifact_coherence.browser_distribution_content_sha256) {
     throw new Error(
       "browser distribution differs from the numerically qualified browser distribution",

@@ -172,11 +172,14 @@ test("prepare authenticates, stages and expands all roles, repairing corruption 
 });
 
 test("publication input preparation retains a failed gate, resumes raw verification, then reuses both successful stages", async (t) => {
+  const { createBrowserInputs, budget } = require("./helpers/release-browser-inputs.cjs");
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "sagejs-consumer-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, "scripts/numerical-computing/qualification"), { recursive: true });
   fs.writeFileSync(path.join(root, ".gitignore"), "build/\nrelease/\npackages/flint-wasm/dist/\n");
   fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "source-only-consumer-fixture", version: "0.8.0" }));
+  fs.mkdirSync(path.join(root, "bench"));
+  fs.writeFileSync(path.join(root, "bench/browser-wasm-budget.json"), JSON.stringify(budget));
   const rawManifests = new Map(), capability_manifests = [];
   for (const platform of ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]) {
     const bytes = Buffer.from(`fixture npm/sagejs-${platform}.tgz`);
@@ -186,7 +189,6 @@ test("publication input preparation retains a failed gate, resumes raw verificat
     rawManifests.set(relative, Buffer.from(manifest));
     capability_manifests.push({ row_id: `${platform}-npm`, path: `build/numerical-qualification/${relative}`, sha256: checksum(Buffer.from(manifest)).slice(7) });
   }
-  const exact = JSON.stringify({ fixture_gate: true, capability_manifests }) + "\n";
   // Source-only CLI fixtures exercise orchestration and byte-equality failure,
   // not numerical correctness or actual product acceptance.
   fs.writeFileSync(path.join(root, "scripts/numerical-computing/qualification/assemble-release-gate.cjs"), `
@@ -198,7 +200,7 @@ test("publication input preparation retains a failed gate, resumes raw verificat
       fs.writeFileSync('build/release-publication/seen','1');
       fs.writeFileSync(dir+'/partial.json','failed'); process.exit(7);
     }
-    fs.writeFileSync(dir+'/release-gate.json',${JSON.stringify(exact)});
+    fs.copyFileSync('build/validated-numerical-gate/release-gate.json',dir+'/release-gate.json');
   `);
   fs.writeFileSync(path.join(root, "scripts/numerical-computing/qualification/authenticate-release-gate.cjs"), `
     const fs=require('node:fs'),args=process.argv;
@@ -210,8 +212,13 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
   git("init"); git("add", "."); git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "Fixture source");
   const candidate = git("rev-parse", "HEAD"), f = fixture(t, candidate), archives = new Map();
+  const browser = createBrowserInputs(path.join(f.options.directory, "browser-fixture"), candidate);
+  const exact = JSON.stringify({ fixture_gate: true, capability_manifests, ...browser.gate }) + "\n";
   for (const record of f.manifest.artifacts) {
     const policy = layout(record.key), files = Object.fromEntries(policy.required.map((name) => [name, Buffer.from(name === "release-gate.json" ? exact : `fixture ${name}`)]));
+    if (record.key === "native/sagejs-public-npm-root") for (const [name, bytes] of browser.files) files[`packages/flint-wasm/dist/${name}`] = bytes;
+    if (record.key === "browser/wasm-clean-build-a") for (const [name, bytes] of browser.clean) files[name] = bytes;
+    if (record.key === "browser/sagejs-wasm-reproducible") for (const [name, bytes] of browser.reproduced) files[name] = bytes;
     if (record.key === "native/numerical-release-evidence") for (const [name, bytes] of rawManifests) files[name] = bytes;
     for (const prefix of policy.prefixes) if (!Object.keys(files).some((name) => name.startsWith(prefix))) files[`${prefix}fixture.json`] = Buffer.from("{}");
     const archive = Buffer.from(zipSync(files)); archives.set(record.key, archive); record.archiveDigest = checksum(archive); record.sizeInBytes = archive.length;
@@ -228,6 +235,7 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   const passed = await preparePublication(options, dependencies);
   assert.equal(passed.status, "numerical-publication-inputs-authenticated");
   assert.equal(passed.platformPackages.length, 4);
+  assert.equal(passed.selectedBrowser.artifactIdentity, browser.report.artifact_identity);
   assert.equal(passed.results.length, 2); assert.ok(passed.results.every((result) => !result.reused));
   const retained = path.join(root, "build/release-publication/retained-gates");
   assert.ok(fs.readdirSync(retained).some((id) => fs.existsSync(path.join(retained, id, "partial.json"))));
