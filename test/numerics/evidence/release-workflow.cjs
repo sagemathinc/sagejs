@@ -908,7 +908,7 @@ test("clean browser qualification builds source evidence before restoring the pr
 
 test("one trusted workflow publishes and recovery reruns its authenticated job", () => {
   const workflow = require("yaml").parse(ci);
-  assert.equal(workflow.concurrency["cancel-in-progress"], "${{ !startsWith(github.ref, 'refs/tags/v') }}",
+  assert.equal(workflow.concurrency["cancel-in-progress"], "${{ !startsWith(github.ref, 'refs/tags/v') && !inputs.publish_prepared }}",
     "outer workflow cancellation must not interrupt a live tagged publisher");
   assert.deepEqual(require("yaml").parse(ci).jobs["publish-release"].concurrency, {
     group: "sagejs-production-publication", "cancel-in-progress": false, queue: "max",
@@ -944,7 +944,7 @@ test("one trusted workflow publishes and recovery reruns its authenticated job",
   const uploads = [...ci.matchAll(/uses: actions\/upload-artifact@v7[\s\S]*?with:\n([\s\S]*?)(?=\n\s{6}-|\n\s{2}\w|$)/g)];
   assert.ok(uploads.length >= 13);
   for (const upload of uploads) {
-    if (/name: sagejs-(?:(?:github|npm)-publication|finalization)-attempt-/.test(upload[1])) {
+    if (/name: sagejs-(?:(?:github|npm)-publication|finalization|(?:verify|publish)-prepared)-attempt-/.test(upload[1])) {
       assert.match(upload[1], /github\.run_attempt/);
       assert.doesNotMatch(upload[1], /overwrite:\s*true/);
     } else assert.match(upload[1], /overwrite:\s*true/);

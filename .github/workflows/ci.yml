@@ -39,6 +39,16 @@ on:
         required: false
         default: ""
         type: string
+      prepared_request:
+        description: Exact frozen artifact and native inspection request JSON; no producer builds
+        required: false
+        default: ""
+        type: string
+      publish_prepared:
+        description: Publish verified prepared products using the protected environment (default is verification only)
+        required: false
+        default: false
+        type: boolean
   schedule:
     - cron: "17 4 * * 1"
 
@@ -46,13 +56,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: sagejs-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+  group: sagejs-ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.publish_prepared && 'publication' || 'validation' }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') && !inputs.publish_prepared }}
 
 jobs:
   routine:
     name: Routine gate (Linux x64)
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.recovery_run_id == '' || inputs.qualify_release || inputs.candidate_sha != '' }}
+    if: ${{ !inputs.prepared_request && !inputs.publish_prepared && (github.event_name != 'workflow_dispatch' || inputs.recovery_run_id == '' || inputs.qualify_release || inputs.candidate_sha != '') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
@@ -1505,7 +1515,7 @@ jobs:
     name: Sage.js native product acceptance v1
     # Run even when a prerequisite failed. Only tags and explicit full candidate
     # campaigns include signing/numerical gates; partial manual runs do not.
-    if: ${{ always() && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) }}
+    if: ${{ always() && !inputs.prepared_request && !inputs.publish_prepared && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) }}
     needs:
       - routine
       - numerical-product
@@ -1669,7 +1679,7 @@ jobs:
 
   recover-publish:
     name: Re-run a validated release publication
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' && !inputs.qualify_release && inputs.candidate_sha == '' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' && !inputs.qualify_release && inputs.candidate_sha == '' && !inputs.prepared_request && !inputs.publish_prepared }}
     runs-on: ubuntu-24.04
     permissions:
       actions: write
@@ -1722,3 +1732,127 @@ jobs:
             | jq -s '.' > "$jobs_file"
           publisher_id="$(node scripts/release/select-recovery-publisher.cjs < "$jobs_file")"
           gh api --method POST "repos/${GH_REPO}/actions/jobs/${publisher_id}/rerun"
+
+  verify-prepared:
+    name: Verify exact prepared release artifacts
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.prepared_request && !inputs.publish_prepared }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Check out the reviewed publication control
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: control
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+          package_json_file: control/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+      - name: Install control dependencies without building products
+        working-directory: control
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Admit the exact prepared request
+        id: request
+        env:
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
+        run: |
+          node control/scripts/release/publish-prepared.cjs admit > "$RUNNER_TEMP/prepared-request.json"
+          echo "sha=$(jq -r .sourceRevision "$RUNNER_TEMP/prepared-request.json")" >>"$GITHUB_OUTPUT"
+      - name: Check out the unchanged product source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.request.outputs.sha }}
+          fetch-depth: 0
+          path: candidate
+      - name: Verify the frozen artifact set
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/sagejs-prepared-artifacts"
+          node control/scripts/release/publish-prepared.cjs "$GITHUB_WORKSPACE/candidate" "$RUNNER_TEMP/sagejs-prepared-artifacts"
+      - name: Retain preparation and publication progress
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-verify-prepared-attempt-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/prepared-request.json
+            ${{ runner.temp }}/sagejs-prepared-artifacts/prepared-promotion.json
+            ${{ runner.temp }}/sagejs-prepared-artifacts/publication/*.json
+            candidate/build/release-runner/**/*.json
+            candidate/build/release-runner/**/*.log
+          if-no-files-found: ignore
+          retention-days: 90
+
+
+  publish-prepared:
+    name: Publish exact prepared release artifacts
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_prepared }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: sagejs-release
+    concurrency:
+      group: sagejs-production-publication
+      cancel-in-progress: false
+      queue: max
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+    steps:
+      - name: Check out the reviewed publication control
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: control
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+          package_json_file: control/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          registry-url: https://registry.npmjs.org
+      - name: Install control dependencies without building products
+        working-directory: control
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Admit the exact prepared request
+        id: request
+        env:
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
+        run: |
+          node control/scripts/release/publish-prepared.cjs admit > "$RUNNER_TEMP/prepared-request.json"
+          echo "sha=$(jq -r .sourceRevision "$RUNNER_TEMP/prepared-request.json")" >>"$GITHUB_OUTPUT"
+      - name: Check out the unchanged product source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.request.outputs.sha }}
+          fetch-depth: 0
+          path: candidate
+      - name: Publish the frozen artifact set
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/sagejs-prepared-artifacts"
+          node control/scripts/release/publish-prepared.cjs "$GITHUB_WORKSPACE/candidate" "$RUNNER_TEMP/sagejs-prepared-artifacts"
+      - name: Retain preparation and publication progress
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-publish-prepared-attempt-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/prepared-request.json
+            ${{ runner.temp }}/sagejs-prepared-artifacts/prepared-promotion.json
+            ${{ runner.temp }}/sagejs-prepared-artifacts/publication/*.json
+            candidate/build/release-runner/**/*.json
+            candidate/build/release-runner/**/*.log
+          if-no-files-found: ignore
+          retention-days: 90

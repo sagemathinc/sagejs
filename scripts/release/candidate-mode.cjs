@@ -7,6 +7,7 @@ const { execFileSync } = require("node:child_process");
 function validateCandidateRequest({ kind, event, ref, sha, checkoutSha, inputs }) {
   if (!["native", "browser"].includes(kind)) throw new Error("unknown qualification workflow kind");
   if (!inputs || typeof inputs !== "object" || Array.isArray(inputs)) throw new Error("invalid qualification inputs");
+  if (inputs.prepared_request || inputs.publish_prepared) throw new Error("prepared artifact consumption cannot invoke a producer campaign");
   if (inputs.qualify_release !== undefined && typeof inputs.qualify_release !== "boolean") throw new Error("qualify_release must be boolean");
   if (inputs.qualify_release !== true) {
     if (inputs.candidate_sha) throw new Error("candidate_sha requires qualify_release=true");

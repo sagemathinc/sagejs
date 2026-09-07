@@ -82,6 +82,37 @@ test("manual qualification cannot invoke publisher or publication recovery, even
   assert.equal(enabled(jobs["native-product-acceptance"].if, ordinary), false, "ordinary partial manual runs do not qualify");
 });
 
+test("prepared consumption never schedules producers and verification has no publication credentials", () => {
+  const w = workflow("ci.yml"), jobs = w.jobs;
+  assert.equal(w.on.workflow_dispatch.inputs.publish_prepared.default, false);
+  for (const ref of ["refs/heads/release-control", "refs/tags/v0.8.0"]) for (const publish of [false, true]) {
+    const context = { github: { event_name: "workflow_dispatch", ref }, inputs: {
+      prepared_request: "explicit request", publish_prepared: publish, qualify_release: false,
+      platform_smoke: false, candidate_sha: "", recovery_run_id: "", recovery_tag: "", native_targets: "all" } };
+    const scheduled = new Set();
+    for (const [id, job] of Object.entries(jobs)) {
+      const needs = job.needs === undefined ? [] : Array.isArray(job.needs) ? job.needs : [job.needs];
+      if (enabled(job.if, context) && (String(job.if).includes("always()") || needs.every(x => scheduled.has(x)))) scheduled.add(id);
+    }
+    assert.deepEqual([...scheduled], [publish ? "publish-prepared" : "verify-prepared"]);
+  }
+  assert.equal(jobs["verify-prepared"].environment, undefined);
+  assert.deepEqual(jobs["verify-prepared"].permissions, { actions: "read", contents: "read" });
+  assert.equal(jobs["publish-prepared"].environment, "sagejs-release");
+  assert.equal(jobs["publish-prepared"].permissions["id-token"], "write");
+  assert.equal(jobs["publish-prepared"].concurrency.group, jobs["publish-release"].concurrency.group);
+  assert.match(w.concurrency.group, /inputs.publish_prepared.*publication.*validation/);
+  for (const id of ["verify-prepared", "publish-prepared"]) {
+    assert.equal(jobs[id].steps.find(step => step.uses?.startsWith("pnpm/action-setup@")).with.package_json_file, "control/package.json");
+    assert.equal(jobs[id].steps.find(step => step.name === "Install control dependencies without building products")["working-directory"], "control");
+    const commands = jobs[id].steps.map(x => x.run ?? "").join("\n");
+    assert.match(commands, /pnpm install --frozen-lockfile --ignore-scripts/);
+    assert.doesNotMatch(commands, /pnpm (?:build|test)|npm publish|git tag|gh workflow run|gh run rerun/);
+    assert.match(commands, /publish-prepared.cjs/);
+    assert.equal(jobs[id].needs, undefined);
+  }
+});
+
 test("candidate admission precedes expensive work in all native/browser root jobs", () => {
   for (const [filename, kind, roots] of [["ci.yml", "native", ["routine"]], ["wasm-release.yml", "browser", ["node-oracle", "clean-build"]]]) {
     const data = workflow(filename);

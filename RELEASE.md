@@ -179,6 +179,70 @@ change is allowed; a different product attempt requires artifact preparation
 again. Legacy successful runs without the v1 aggregates cannot use this path.
 Immutable artifact-set consumer migration and a real candidate trial remain.
 
+### Prepared-artifact verification and publication
+
+The feature branch now has two explicit `ci.yml` consumers, selected by
+`prepared_request` and `publish_prepared`. Neither schedules native/browser
+producer jobs. The default `publish_prepared=false` job has read-only permissions,
+no protected environment and no OIDC token. It authenticates and prepares the
+complete frozen product set, then stops. The publishing job remains in `ci.yml`
+for npm Trusted Publishing, uses `sagejs-release` and the shared non-cancelling
+publication lock, and requires explicit `publish_prepared=true`.
+
+Supply a JSON request with this shape, replacing every example identity with
+the actual full source/control SHAs and retained run/attempt/artifact IDs:
+
+```json
+{
+  "schema": "sagejs.prepared-promotion-request/v1",
+  "sourceRevision": "FULL_PRODUCT_SHA",
+  "sourceRef": "release-candidate",
+  "sourceEvent": "workflow_dispatch",
+  "purpose": "qualification",
+  "tag": "v0.8.0",
+  "handoff": {
+    "runId": 123, "runAttempt": 1, "artifactId": 456,
+    "controlSha": "FULL_HANDOFF_CONTROL_SHA"
+  },
+  "macos": {
+    "runId": 789, "runAttempt": 1, "artifactId": 987,
+    "controlSha": "FULL_INSPECTION_CONTROL_SHA"
+  }
+}
+```
+
+The handoff is from `release-artifact-handoff.yml`; the native observation is
+from `release-macos-inspection.yml`. Its expected Apple Team ID and verifier
+digest come from reviewed control code, not the observation's self-description.
+For a tagged producer, use its exact tag as `sourceRef`, `push` as `sourceEvent`
+and `release` as `purpose`. Verification can run before a tag exists. Publication
+requires an already existing matching tag, matching package version and source
+ancestry in `origin/main`; it never creates or moves a tag.
+
+`scripts/release/publish-prepared.cjs` checks out no code itself. The workflow
+provides separate control and isolated product clones; installs only control
+dependencies with lifecycle scripts disabled; downloads pinned control artifacts
+and all nine product roles; then calls the existing full artifact preparation
+and native-observation authentication. Publication calls the three resumable
+controllers only after those checks, retaining progress outside the product
+clone. It holds the product mutation lease and rechecks source and qualified
+file digests between publication stages. A saved `verified-only` result is never
+used as publication authority on a subsequent invocation.
+
+The isolated product clone gets a clone-local `/release/` exclusion because
+the source repository does not ignore that generated directory. Shared
+worktrees are rejected; tracked source changes remain errors. Keep a persistent
+external artifact cache to reuse downloaded/expanded bytes and verified runner
+checkpoints. A fresh GitHub job may redownload artifacts, but does not compile,
+repack or repeat mathematical computations. Raw evidence reconstruction and
+content authentication still run or reuse valid checkpoints.
+
+This path is wired and fixture-tested, not yet proven by a real candidate.
+The tag-triggered legacy publisher and app still need the remaining frozen-set
+consumer migration. Current `sagejs-signing` and `sagejs-release` policies allow
+only `v*` tags; do not widen them automatically. A signed pre-tag trial requires
+the separately requested narrow signing-branch approval, retaining human review.
+
 ### Frozen artifact transport inventory
 
 `scripts/release/artifact-set.cjs` captures the nine required GitHub artifact

@@ -15,7 +15,7 @@
       "helpers": [
         {
           "filename": "scripts/release/finalize-github-release.cjs",
-          "sha256": "39d53989fb3d30c3554dd1162e4457c0ef6f2f3163d66cfc2c83b5a4a50cd2f4"
+          "sha256": "b0d3458001ae2a7f07cd774704ac8ce3c471d5ceb740e09a4faaba543234bf26"
         },
         {
           "filename": "scripts/release/publish-github-assets.cjs",
@@ -441,6 +441,150 @@
       "semantics": "Downloads named gate and raw-evidence artifacts from the selected CI qualification run, reconstructs the source-current numerical gate, requires equality with the retained gate, and binds the browser distribution. Earlier validation checks same-source successful CI/Wasm runs. Script/manifest transitive closure remains a separately declared incomplete audit scope.",
       "runSha256": "4be2a559ba6aeeeddfce607f9d5242a33cc4eb5e3dbdb2a3054c1d55d1e27186",
       "requiresWorkflowSuccess": []
+    },
+    {
+      "workflow": "ci.yml",
+      "job": "verify-prepared",
+      "step": "Verify the frozen artifact set",
+      "runSha256": "279232c28f9edd11d481c817591a8c50fb2b670da7564182683e051b40e6d978",
+      "helpers": [
+        {
+          "filename": "scripts/release/publish-prepared.cjs",
+          "sha256": "027c2eeda61536c3e5b11ceecf003d0d0f8cefd9dd586f940a38f11f636ec06f"
+        },
+        {
+          "filename": "scripts/release/prepare-publication.cjs",
+          "sha256": "33fcbac597305f7bb127ecb20686f753fc5cddac68b5432e513eaccb5ebd4015"
+        },
+        {
+          "filename": "scripts/release/artifact-handoff.cjs",
+          "sha256": "f4b8d8dd7ae38504f593d129175d3dbfa129fe848396d5d143903e094c489b41"
+        },
+        {
+          "filename": "scripts/release/control-artifact.cjs",
+          "sha256": "47c1a25ad8257db09eb019caece51768b100d11ada09b9e57946b6d6ae645e26"
+        },
+        {
+          "filename": "scripts/release/stage-artifacts.cjs",
+          "sha256": "25d740886bd0518fd717958e689327a261b29d5119e84a7b52a25924a94c3400"
+        },
+        {
+          "filename": "scripts/release/extract-artifact.cjs",
+          "sha256": "0e9c120d1e47afff7ee6de53e2498837524360f46930ed118ed6209f34febeed"
+        },
+        {
+          "filename": "scripts/release/macos-observation.cjs",
+          "sha256": "947b423488db5d678bf78f5d8922b9d753b95bdb9f2484e39346c00cfb46303a"
+        },
+        {
+          "filename": "scripts/release/macos-installer.cjs",
+          "sha256": "a0ecb9a0796a8783612b36195b00fecc0083fa0ff524cce623ffa26b0ebb3cda"
+        },
+        {
+          "filename": "scripts/release/runner.cjs",
+          "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3"
+        },
+        {
+          "filename": "scripts/release/directory-transaction.cjs",
+          "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284"
+        },
+        {
+          "filename": "scripts/release/publish-github-assets.cjs",
+          "sha256": "46bdf44ea8eb170eb0829eb1b0a8da61f9554e72922438a79eccab47fa206b68"
+        },
+        {
+          "filename": "scripts/release/publish-npm-packages.cjs",
+          "sha256": "256c410efeb2bb3d338d0ce828a827d0c1164c9340686260f0bb4b4d6f96d4b7"
+        },
+        {
+          "filename": "scripts/release/finalize-github-release.cjs",
+          "sha256": "b0d3458001ae2a7f07cd774704ac8ce3c471d5ceb740e09a4faaba543234bf26"
+        }
+      ],
+      "requiresWorkflowSuccess": [
+        "release-artifact-handoff.yml",
+        "release-macos-inspection.yml"
+      ],
+      "semantics": "Consumes explicit historical handoff and native-inspection control run/attempt/artifact/source pins. Fetches immutable IDs with bounded digest checks; stages all nine roles, reconstructs numerical evidence, checks exact npm/SEA/browser bytes and native Mac observation against independent signer/verifier policy. Dedicated isolated source clone; clone-local generated-output excludes and journals outside it preserve clean-source checks. No producer build/install or tag mutation. Read-only permissions, no protected environment or OIDC token; publish_prepared=false returns after full authentication and never calls a publisher. A successful local result is not an independent release attestation."
+    },
+    {
+      "workflow": "ci.yml",
+      "job": "publish-prepared",
+      "step": "Publish the frozen artifact set",
+      "runSha256": "279232c28f9edd11d481c817591a8c50fb2b670da7564182683e051b40e6d978",
+      "helpers": [
+        {
+          "filename": "scripts/release/publish-prepared.cjs",
+          "sha256": "027c2eeda61536c3e5b11ceecf003d0d0f8cefd9dd586f940a38f11f636ec06f"
+        },
+        {
+          "filename": "scripts/release/prepare-publication.cjs",
+          "sha256": "33fcbac597305f7bb127ecb20686f753fc5cddac68b5432e513eaccb5ebd4015"
+        },
+        {
+          "filename": "scripts/release/artifact-handoff.cjs",
+          "sha256": "f4b8d8dd7ae38504f593d129175d3dbfa129fe848396d5d143903e094c489b41"
+        },
+        {
+          "filename": "scripts/release/control-artifact.cjs",
+          "sha256": "47c1a25ad8257db09eb019caece51768b100d11ada09b9e57946b6d6ae645e26"
+        },
+        {
+          "filename": "scripts/release/stage-artifacts.cjs",
+          "sha256": "25d740886bd0518fd717958e689327a261b29d5119e84a7b52a25924a94c3400"
+        },
+        {
+          "filename": "scripts/release/extract-artifact.cjs",
+          "sha256": "0e9c120d1e47afff7ee6de53e2498837524360f46930ed118ed6209f34febeed"
+        },
+        {
+          "filename": "scripts/release/macos-observation.cjs",
+          "sha256": "947b423488db5d678bf78f5d8922b9d753b95bdb9f2484e39346c00cfb46303a"
+        },
+        {
+          "filename": "scripts/release/macos-installer.cjs",
+          "sha256": "a0ecb9a0796a8783612b36195b00fecc0083fa0ff524cce623ffa26b0ebb3cda"
+        },
+        {
+          "filename": "scripts/release/runner.cjs",
+          "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3"
+        },
+        {
+          "filename": "scripts/release/directory-transaction.cjs",
+          "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284"
+        },
+        {
+          "filename": "scripts/release/publish-github-assets.cjs",
+          "sha256": "46bdf44ea8eb170eb0829eb1b0a8da61f9554e72922438a79eccab47fa206b68"
+        },
+        {
+          "filename": "scripts/release/publish-npm-packages.cjs",
+          "sha256": "256c410efeb2bb3d338d0ce828a827d0c1164c9340686260f0bb4b4d6f96d4b7"
+        },
+        {
+          "filename": "scripts/release/finalize-github-release.cjs",
+          "sha256": "b0d3458001ae2a7f07cd774704ac8ce3c471d5ceb740e09a4faaba543234bf26"
+        }
+      ],
+      "requiresWorkflowSuccess": [
+        "release-artifact-handoff.yml",
+        "release-macos-inspection.yml"
+      ],
+      "effects": [
+        {
+          "kind": "release-assets",
+          "target": "github:release-assets"
+        },
+        {
+          "kind": "npm-publication",
+          "target": "npm:registry"
+        },
+        {
+          "kind": "release-pointer",
+          "target": "github:releases/latest"
+        }
+      ],
+      "semantics": "Consumes explicit historical handoff and native-inspection control run/attempt/artifact/source pins. Fetches immutable IDs with bounded digest checks; stages all nine roles, reconstructs numerical evidence, checks exact npm/SEA/browser bytes and native Mac observation against independent signer/verifier policy. Dedicated isolated source clone; clone-local generated-output excludes and journals outside it preserve clean-source checks. No producer build/install or tag mutation. Protected sagejs-release and existing ci.yml OIDC identity. Requires existing tag equal to source and source reachable from origin/main before product downloads. Calls resumable GitHub uploads, npm publication and finalization only after full input authentication; saves progress by attempt."
     }
   ]
 }

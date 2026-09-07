@@ -71,7 +71,7 @@ function workflowInventory(root, suppliedReview) {
         if (step.run !== undefined && typeof step.run !== "string") throw new Error(`invalid run body: ${key}/${index}`);
         // Detection only flags additional review work; no edges are inferred
         // from shell substrings, nor is absence a proof of no external calls.
-        if (/\bgh\s+(?:api|workflow|run)\b|require-wasm-release\.cjs|deployment-inputs\.cjs|artifact-set\.cjs\s+capture|artifact-handoff\.cjs\s+(?:verify|stage|prepare)|collect-macos-inspection\.cjs|publish-(?:github-assets|npm-packages)\.cjs|finalize-github-release\.cjs/.test(step.run || "")) controlSteps.push({ key, index, name: step.name ?? null });
+        if (/\bgh\s+(?:api|workflow|run)\b|require-wasm-release\.cjs|deployment-inputs\.cjs|artifact-set\.cjs\s+capture|artifact-handoff\.cjs\s+(?:verify|stage|prepare)|collect-macos-inspection\.cjs|publish-(?:github-assets|npm-packages)\.cjs|publish-prepared\.cjs\s+(?!admit\b)|finalize-github-release\.cjs/.test(step.run || "")) controlSteps.push({ key, index, name: step.name ?? null });
         return { index, ...step, runSha256: step.run === undefined ? null : digest(step.run) };
       });
       nodes.push({ key, kind: "job", workflow: filename, id, name: job.name ?? id,

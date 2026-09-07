@@ -178,7 +178,7 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "sagejs-consumer-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, "scripts/numerical-computing/qualification"), { recursive: true });
-  fs.writeFileSync(path.join(root, ".gitignore"), "build/\nrelease/\npackages/flint-wasm/dist/\n");
+  fs.writeFileSync(path.join(root, ".gitignore"), "build/\npackages/flint-wasm/dist/\n");
   fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "source-only-consumer-fixture", version: "0.8.0" }));
   fs.mkdirSync(path.join(root, "bench"));
   fs.writeFileSync(path.join(root, "bench/browser-wasm-budget.json"), JSON.stringify(budget));
@@ -228,6 +228,7 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
   git("init"); git("add", "."); git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "Fixture source");
   const candidate = git("rev-parse", "HEAD"), f = fixture(t, candidate), archives = new Map();
+  require("../scripts/release/publish-prepared.cjs").configureConsumer(root, candidate);
   const browser = createBrowserInputs(path.join(f.options.directory, "browser-fixture"), candidate);
   const exact = JSON.stringify({ fixture_gate: true, capability_manifests, ...browser.gate }) + "\n";
   for (const record of f.manifest.artifacts) {
@@ -288,7 +289,8 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   const nativeContract = require("../scripts/release/macos-observation.cjs").contract;
   const nativeChecks = require("../scripts/release/macos-observation.cjs").checks;
   const macos = { runId: 60, runAttempt: 1, artifactId: 600, controlSha: "d".repeat(40),
-    filename: path.join(f.options.directory, "native-observation.zip"), teamId: "BVF94G2MB4", verifierSha256: "e".repeat(64) };
+    filename: path.join(f.options.directory, "native-observation.zip"), teamId: "BVF94G2MB4",
+    verifierSha256: require("../scripts/release/runner.cjs").fileDigest(path.join(__dirname, "../scripts/release/macos-installer.cjs")) };
   const observation = { schema: "sagejs.macos-installer-observation/v1", status: "passed", request: structuredClone(passed.nativeInspectionRequests.macos),
     teamId: macos.teamId, verifierSha256: macos.verifierSha256, checks: nativeChecks, host: { platform: "darwin", version: "26.4" } };
   const nativeRun = { ...f.run, id: 60, run_attempt: 1, head_sha: macos.controlSha, path: nativeContract.workflow };
@@ -309,7 +311,41 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   assert.equal(promotedInputs.status, "product-artifacts-authenticated");
   assert.equal(promotedInputs.macosInspection.authentication.installerSha256, passed.nativeInspectionRequests.macos.installer.sha256);
   assert.ok(promotedInputs.results.every(item => item.reused)); assert.equal(downloads, 9);
+  // Exercise the actual consumer entrypoint through transport and preparation;
+  // native signatures/numerical scripts here are fixtures, not release evidence.
+  const { runPrepared } = require("../scripts/release/publish-prepared.cjs");
+  const pins = x => ({ runId: x.runId, runAttempt: x.runAttempt, artifactId: x.artifactId, controlSha: x.controlSha });
+  const request = { schema: "sagejs.prepared-promotion-request/v1", sourceRevision: candidate,
+    sourceRef: options.ref, sourceEvent: options.event, purpose: options.purpose, tag: "v0.8.0",
+    handoff: pins(options), macos: pins(macos) };
+  const consumerOptions = { request, candidateRoot: root, directory: options.directory, publish: false };
+  let controlDownloads = 0; const writes = [];
+  const consumerDependencies = { api: (endpoint, paginate) => /\/runs\/60\/|\/artifacts\/600$/.test(endpoint) ? macosApi(endpoint, paginate) : f.api(endpoint, paginate),
+    github: { resolveTag: async () => candidate }, preparation: { ...dependencies, macosApi },
+    download: async (record, filename) => { controlDownloads++; fs.writeFileSync(filename, record.id === 500 ? handoff : nativeBytes); },
+    upload: async value => writes.push(["github", value]), npm: async value => writes.push(["npm", value]),
+    finalize: async value => writes.push(["finalize", value]),
+  };
+  const verified = await runPrepared(consumerOptions, consumerDependencies);
+  assert.equal(verified.status, "verified-only"); assert.equal(writes.length, 0);
+  await runPrepared(consumerOptions, consumerDependencies);
+  assert.equal(controlDownloads, 2); assert.equal(downloads, 9);
+  git("update-ref", "refs/remotes/origin/main", candidate);
+  await runPrepared({ ...consumerOptions, publish: true }, consumerDependencies);
+  assert.deepEqual(writes.map(x => x[0]), ["github", "npm", "finalize"]);
+  for (const [, args] of writes) { assert.equal(args.source, candidate); assert.equal(args.tag, "v0.8.0"); assert.ok(args.journal.startsWith(options.directory + path.sep)); }
+  assert.equal(git("status", "--porcelain"), "");
+  assert.equal(controlDownloads, 2); assert.equal(downloads, 9);
+  let laterPublisherCalls = 0;
+  await assert.rejects(runPrepared({ ...consumerOptions, publish: true }, { ...consumerDependencies,
+    upload: async () => { fs.writeFileSync(path.join(root, "release/install.sh"), "changed after qualification"); },
+    npm: async () => { laterPublisherCalls++; }, finalize: async () => { laterPublisherCalls++; },
+  }), /qualified inputs changed/);
+  assert.equal(laterPublisherCalls, 0);
+  await runPrepared(consumerOptions, consumerDependencies);
   observation.request.installer.sha256 = "0".repeat(64); resealNative();
+  await assert.rejects(runPrepared({ ...consumerOptions, publish: true }, consumerDependencies));
+  assert.equal(writes.length, 3, "changed native evidence cannot reach another publication call");
   await assert.rejects(preparePromotion({ ...options, macos }, { ...dependencies, macosApi }), /differs from selected product/);
   // Transport provenance and a matching checksum cannot substitute a binary
   // after qualification, including when earlier numerical checkpoints pass.

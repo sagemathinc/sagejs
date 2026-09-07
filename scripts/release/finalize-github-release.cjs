@@ -42,7 +42,9 @@ async function finalizeGithubRelease(options, clients, checkpoint = () => {}) {
   realDirectory(root);
   const inputs = { github: localInputs(directory, notes), npm: readInputs(path.join(directory, "npm"), match[1]) };
   const binding = { repository: "sagemathinc/sagejs", tag: options.tag, source: options.source, inputs };
-  const journalPath = path.join(root, "release-finalization.json"), unlock = acquireLock(`${journalPath}.lock`);
+  const journalPath = path.resolve(options.journal ?? path.join(root, "release-finalization.json"));
+  realDirectory(path.dirname(journalPath));
+  const unlock = acquireLock(`${journalPath}.lock`);
   let journal = { schema: "sagejs.github-finalization/v1", binding, releaseId: null, phase: "checking" };
   function save(phase) { journal.phase = phase; atomicJson(journalPath, journal); checkpoint(phase, journal); }
   function checkLocal() {

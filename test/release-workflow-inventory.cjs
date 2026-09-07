@@ -53,6 +53,15 @@ test("publisher and deployment require product checks without reporting ancestor
   assert.ok(route("release-artifact-handoff.yml#capture", "ci.yml#native-product-acceptance"));
   assert.ok(route("release-artifact-handoff.yml#capture", "wasm-release.yml#browser-product-acceptance"));
   assert.equal(route("release-artifact-handoff.yml#capture", "wasm-release.yml#browser-performance"), null);
+  for (const consumer of ["ci.yml#verify-prepared", "ci.yml#publish-prepared"]) {
+    assert.ok(route(consumer, "release-artifact-handoff.yml#capture"));
+    assert.ok(route(consumer, "release-macos-inspection.yml#inspect"));
+    assert.equal(route(consumer, "wasm-release.yml#browser-performance"), null);
+  }
+  assert.ok(!graph.controlEffects.some(effect => effect.from === "ci.yml#verify-prepared"));
+  for (const kind of ["release-assets", "npm-publication", "release-pointer"]) {
+    assert.ok(graph.controlEffects.some(effect => effect.from === "ci.yml#publish-prepared" && effect.kind === kind));
+  }
   assert.equal(route("publish-validated-release.yml#request", "ci.yml#publish-release"), null,
     "dispatch is not proof of publication completion");
   assert.ok(graph.controlEffects.some((effect) => effect.from === "publish-validated-release.yml#request" && effect.target === "ci.yml#recover-publish" && effect.kind === "dispatch"));

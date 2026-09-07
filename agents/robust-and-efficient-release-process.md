@@ -47,7 +47,7 @@ checklist to repeat. This planning refresh inspected committed release tooling
 through `ef08f9b03` and the subsequent native-observation workflow integration,
 including the control-step audit and four-platform archive content checks, on
 2026-09-07. The shadow
-inventory reports **85 stage instances, 44 workflow jobs and 143 potential
+inventory reports **85 stage instances, 46 workflow jobs and 149 potential
 dependency edges**, with **zero detected unreviewed control steps and five incomplete
 audit scopes**. These are not timings or proof of complete gate coverage.
 `release:inventory --check` passing means its declared inventory is consistent,
@@ -98,6 +98,14 @@ App activation rechecks the original run/attempt/job identities. These are
 feature-branch changes, not an observed production release. Immutable artifact
 transport and the remaining recovery consumers still need adoption; do not
 interpret the removed reporting edges as complete process qualification.
+An explicit `ci.yml` prepared-artifact path now connects frozen handoff and
+native-observation transport to full preparation and the three publication
+controllers. Verification is read-only by default and schedules no producers;
+publication requires an explicit choice, the existing protected environment and
+an existing matching tag. Isolated product clones keep generated outputs and
+journals from invalidating clean-source checks. This closes the disconnected
+helper-to-consumer gap for that path, not the real-candidate trial, legacy
+tag-triggered/app transport migration, or signing-policy approval.
 Use those helpers where appropriate, but do not equate accumulated helper tests
 with an end-to-end release. The first success criterion remains one interrupted
 promotion resumed with the same tested bytes and no rebuild.
