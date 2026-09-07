@@ -542,3 +542,24 @@ unnecessary publication dependencies, stop losing completed work, and make
 release artifacts explicit. D and E then make growth sustainable. None requires
 turning Sage.js into many independently installed packages or reintroducing
 SageMath's opaque dependency problems.
+
+## 9. Implementation tracking
+
+Work is isolated on `feat/release-process-v2`, based on the audited source, not
+in the active frozen 0.8.0 candidate. Initial implementation:
+
+- `b64e13cff` / `1816a8a7f`: Node/disk/inode preflight, durable attempt journals,
+  read-only status and safe cancellation on log ENOSPC. The 21 focused runner
+  and preflight tests pass on Linux x64 and native Windows x64. Actual Windows
+  low-disk preflight also correctly refused execution. These are safety floors,
+  not resource reservations or full toolchain/oracle preflight.
+- `pnpm release:inventory`: generated shadow inventory of all 79 runner stage
+  instances with direct package scripts, current test selectors, timeouts and
+  proposed classifications. It explicitly does not yet cover the transitive
+  workflow/API/shell, signing or numerical aggregation graphs. Unknown stages
+  remain required and require review; no enforcement has been relaxed.
+
+Phases A–F are **not complete**. Next: finish dependency inventory, separate
+required assertions from reporting, add safe per-file resume and transactional
+oracle preparation, then artifact-set publication. Current stage checkpoints
+remain exact-candidate scheduling hints; they are not transferable evidence.

@@ -68,6 +68,15 @@ when the fix is a one-line test-portability correction.
 
 ### Resumable execution (required before tagging)
 
+`pnpm release:inventory` generates an inspectable **shadow** inventory of all
+runner targets/profiles, direct package-script bodies, declared input/output
+boundaries, timeouts, existing test selectors and proposed P/C/R classifications.
+`pnpm release:inventory --check` detects unreviewed runner stages, stale policy
+entries and unresolved direct package scripts. It is not a release acceptance
+command: all current stages remain required, including proposed reporting lanes.
+The output explicitly names incomplete scopes, including transitive shell and
+workflow/API dependencies, which must be audited before adopting policy changes.
+
 `pnpm release:run --candidate FULL_SHA` executes the native-host plan. First
 install the pinned JavaScript dependencies and place the **same candidate's**
 canonical numerical product at `build/authenticated-numerical-product` and

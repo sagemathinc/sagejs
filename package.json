@@ -118,6 +118,7 @@
   "scripts": {
     "bootstrap": "node scripts/bootstrap.cjs",
     "release:run": "node scripts/release/runner.cjs",
+    "release:inventory": "node scripts/release/inventory.cjs",
     "release:coordinate": "node scripts/release/coordinate.cjs",
     "native:dependencies:identity": "node scripts/native-prebuilt-dependencies.cjs identity",
     "native:dependencies:pack": "node scripts/native-prebuilt-dependencies.cjs pack build/native-dependencies",

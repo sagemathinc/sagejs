@@ -7,9 +7,11 @@ const runtime = ["dist", "packages/flint/build/Release", "packages/graph/build/R
 function stage(id, gate, commands, options = {}) {
   return { id, gate, commands, timeoutSeconds: 7200, inputs: runtime, ...options };
 }
-function plan(profile = "native", selected) {
-  const target = targetForHost();
-  if (!target) throw new Error("unsupported release host");
+const targets = Object.freeze(["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]);
+function plan(profile = "native", selected, target = targetForHost()) {
+  // Explicit targets are for inspection/generation. The execution CLI continues
+  // to select the real host and cannot qualify a foreign target by relabeling it.
+  if (!targets.includes(target)) throw new Error("unsupported release host");
   const all = [
     stage("numerical-product", "integrity", [
       ["node", "packages/wasm-toolchain/scripts/toolchain.cjs", "prepare"],
@@ -117,4 +119,4 @@ function plan(profile = "native", selected) {
     "native-performance", "oracle", "numerical-npm", "numerical-sea", "numerical-node"];
   return order.map((id) => all.find((item) => item.id === id));
 }
-module.exports = { plan };
+module.exports = { plan, targets };
