@@ -415,3 +415,11 @@ compiler branches for individual symbols.
    callbacks.
 6. Add a representative benchmark when performance motivates the binding.
 7. Run `pnpm ffi:check`, `pnpm architecture:check`, and relevant native tests.
+8. If declaration or shared ABI-catalog identities change, rebuild the production
+   Wasm packs and inspect their exact import/export inventories. Even an additive
+   catalog change can rename content-addressed exports for existing declarations.
+   Refresh `packages/flint-wasm/release/wasm-abi-allowlist.json` only after checking
+   the actual linked artifacts and running their resource/public-route tests;
+   keep the exact-identity check fail-closed. Source-only browser witnesses do
+   not replace full production-artifact validation. See the
+   [floating-FFI ABI follow-up](agents/numerical-wasm-abi-refresh.md).

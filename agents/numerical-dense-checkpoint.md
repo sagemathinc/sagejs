@@ -233,3 +233,11 @@ allowlist for `native-kernels/kernel-flint.wasm`. Their earlier passing
 source-browser checks do not supersede that failure. Inspect and qualify the
 actual changed artifact before refreshing its ABI inventory or making the
 dependent stack non-draft for the automatic merge manager.
+
+The [ABI follow-up](numerical-wasm-abi-refresh.md) identifies unchanged imports
+and 372 unchanged semantic exports, with 14 content-derived module identifier
+renames from the additive shared ABI catalog. The refreshed exact inventory
+passes the production build, authenticated Node-Wasm/browser hyperelliptic
+routes, public gap corpus and resource regressions. It is an integration repair,
+not four-platform or numerical-performance qualification. Older prerequisite
+heads need the repair propagated before their failures can be considered closed.
