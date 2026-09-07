@@ -652,6 +652,14 @@ repositories are not required by this check. `--profile` and `--stage` apply to
 the preflight selection too. This is still not complete compiler/browser/oracle
 provisioning or verification.
 
+Plans containing `numerical-eligibility` also inspect the NLopt qualification
+manifest state before any stage runs. A missing, malformed or pending manifest
+blocks canonical preparation before its numerical build. The check is explicitly
+`manifest-state-only`: it does not authenticate source closure, artifact bytes
+or evidence, and cannot replace the later `--require-qualified` verifier.
+The `preparation` profile remains available to build inputs for qualification;
+it does not acquire release authority by omitting the eligibility stage.
+
 `pnpm release:run --candidate FULL_SHA --status` reads structured scheduling
 status without requiring a build or changing a lock. `status.json` records the
 latest attempt, including pre-command failures, pending/blocked stages, reused

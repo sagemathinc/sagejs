@@ -34,6 +34,28 @@ function inspectSourcePreflight({ root, stages = [] }) {
   const needed = [...new Set(stages.flatMap((stage) => stage.sourceSubmodules || []))].sort();
   const records = [];
   const failures = [];
+  const remedies = [];
+  const eligibility = [];
+  // Reject a known pending release before the earlier numerical-product build.
+  // This is only admission: the later verifier must still authenticate actual
+  // artifacts, source closure and qualification evidence after preparation.
+  if (stages.some((stage) => stage.id === "numerical-eligibility")) {
+    const name = "src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json";
+    const record = { path: name, passed: false, scope: "manifest-state-only" };
+    eligibility.push(record);
+    try {
+      requireRegularPath(root, name);
+      const { validateManifestQualificationState } = require("../../src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs");
+      const manifest = JSON.parse(fs.readFileSync(path.join(root, name), "utf8"));
+      record.state = validateManifestQualificationState(manifest);
+      if (record.state !== "qualified") throw new Error("NLopt is pending source-current qualification");
+      record.passed = true;
+    } catch {
+      record.reason = "NLopt release manifest is missing, invalid, or pending qualification";
+      failures.push(`${name}: ${record.reason}`);
+      remedies.push("Complete source-current NLopt qualification before canonical release preparation; use --profile preparation only to build inputs for qualification, not to authorize release");
+    }
+  }
   for (const name of needed) {
     if (!parserSubmodules.includes(name)) throw new Error(`unknown release source prerequisite: ${name}`);
     const record = { path: name, passed: false };
@@ -61,15 +83,16 @@ function inspectSourcePreflight({ root, stages = [] }) {
       failures.push(`${name}: ${record.reason}`);
     }
   }
+  if (records.some((record) => !record.passed)) remedies.push(`git submodule update --init --recursive -- ${needed.join(" ")}`);
   return { schema: "sagejs.release-source-preflight/v1", passed: failures.length === 0,
-    submodules: records, failures,
-    remedy: failures.length ? `git submodule update --init --recursive -- ${needed.join(" ")}` : null };
+    submodules: records, eligibility, failures,
+    remedy: remedies.length ? remedies.join("; ") : null };
 }
 
 function requireSourcePreflight(options) {
   const report = inspectSourcePreflight(options);
   if (!report.passed) {
-    const error = new Error(`release source preflight failed: ${report.failures.join("; ")}. Inspect local changes before running: ${report.remedy}`);
+    const error = new Error(`release source preflight failed: ${report.failures.join("; ")}. Inspect local changes first. Remedy: ${report.remedy}`);
     error.code = "RELEASE_SOURCE_PREFLIGHT";
     error.sourceReport = report;
     throw error;

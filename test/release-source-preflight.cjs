@@ -105,3 +105,56 @@ test("runner refuses missing later-stage sources before starting earlier expensi
   assert.equal(status.sourcePreflight.passed, false);
   assert.deepEqual(status.stages.map((stage) => stage.state), ["blocked", "blocked"]);
 });
+
+test("canonical admission rejects pending qualification before numerical builds", async (t) => {
+  const context = fixture(t);
+  const relative = "src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json";
+  const filename = path.join(context.root, relative);
+  fs.mkdirSync(path.dirname(filename), { recursive: true });
+  const pending = { qualification: {
+    status: "pending_source_current_requalification", reason: "fixture requires qualification",
+    public_semantics_bundle_sha256: "a".repeat(64), qualification_tooling_bundle_sha256: "a".repeat(64),
+    selection_sha256: "a".repeat(64), oracle_sha256: "a".repeat(64), invalidated_summary: "qualification-v1.json",
+  } };
+  fs.writeFileSync(filename, JSON.stringify(pending));
+  git(context.root, "add", "."); git(context.root, "commit", "-m", "pending qualification fixture");
+  context.candidate = git(context.root, "rev-parse", "HEAD");
+  const selected = [{ id: "numerical-product", gate: "build", inputs: [], outputs: [], timeoutSeconds: 30,
+    commands: [["node", "-e", "require('fs').writeFileSync('build/should-not-exist','bad')"]] },
+  { id: "numerical-eligibility", gate: "numerical-evidence", inputs: [], commands: [] }];
+  await assert.rejects(run({ ...context, preflight: () => ({ passed: true }), stages: selected }),
+    { code: "RELEASE_SOURCE_PREFLIGHT" });
+  assert.equal(fs.existsSync(path.join(context.root, "build/should-not-exist")), false);
+  const status = readStatus(context.root, context.candidate);
+  assert.equal(status.sourcePreflight.eligibility[0].state, "pending");
+  assert.deepEqual(status.stages.map(s => s.state), ["blocked", "blocked"]);
+  assert.match(status.sourcePreflight.remedy, /source-current NLopt qualification/);
+  assert.doesNotMatch(status.sourcePreflight.remedy, /git submodule/);
+  assert.equal(inspectSourcePreflight({ root: context.root, stages: selected.slice(0, 1) }).passed, true,
+    "preparation remains available to produce inputs for qualification");
+  for (const value of ["{", JSON.stringify({ qualification: { status: "qualified" } })]) {
+    fs.writeFileSync(filename, value);
+    assert.equal(inspectSourcePreflight({ root: context.root, stages: selected }).passed, false);
+  }
+  fs.unlinkSync(filename);
+  assert.equal(inspectSourcePreflight({ root: context.root, stages: selected }).passed, false);
+});
+
+test("qualified manifest state admits preparation but retains full artifact eligibility stage", (t) => {
+  const { root } = fixture(t);
+  const filename = path.join(root, "src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json");
+  const qualification = { status: "qualified", candidate_commit: "b".repeat(40), summary_bytes: 1,
+    artifact_bytes: 1, historical_cobyla_status: "excluded-not-qualified",
+    evidence_receipts_sha256: {}, portable_receipts_sha256: {} };
+  for (const field of ["summary_sha256", "public_semantics_bundle_sha256", "qualification_tooling_bundle_sha256",
+    "selection_sha256", "corpus_sha256", "oracle_sha256", "source_closure_sha256", "artifact_sha256",
+    "case_execution_sha256", "campaign_challenge"]) qualification[field] = "a".repeat(64);
+  fs.mkdirSync(path.dirname(filename), { recursive: true });
+  fs.writeFileSync(filename, JSON.stringify({ qualification }));
+  const selected = plan("canonical", "numerical-eligibility", "linux-x64");
+  const report = requireSourcePreflight({ root, stages: selected });
+  assert.equal(report.eligibility[0].scope, "manifest-state-only");
+  assert.equal(report.eligibility[0].state, "qualified");
+  assert.ok(selected[0].commands[0].includes("--require-qualified"));
+  assert.ok(selected[0].inputs.includes("src/lib/sagejs/numerics/optimization/backends/nlopt/build"));
+});

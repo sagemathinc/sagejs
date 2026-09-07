@@ -313,15 +313,16 @@ test("preparation status cannot be mistaken for complete release qualification",
   const status = readStatus(context.root, context.candidate);
   assert.deepEqual(status.scope, { profile: "preparation", selectedStages: false,
     authority: "scheduling-only; not release eligibility or publication authorization" });
-  // A successful preparation checkpoint is reusable, but never satisfies a
-  // different admission command or grants a successful canonical status.
+  // A successful preparation checkpoint cannot bypass plan-level admission.
+  // This fixture lacks the qualified manifest, so canonical stops even before
+  // looking for that checkpoint or launching the eligibility command.
   await assert.rejects(run({ ...context, profile: "canonical", selectedStages: false,
-    stages: [task("numerical-product", "void 0"), task("numerical-eligibility", "process.exit(1)")] }), /numerical-eligibility/);
+    stages: [task("numerical-product", "void 0"), task("numerical-eligibility", "process.exit(1)")] }), { code: "RELEASE_SOURCE_PREFLIGHT" });
   const failed = readStatus(context.root, context.candidate);
   assert.equal(failed.state, "failed");
   assert.equal(failed.scope.profile, "canonical");
-  assert.equal(failed.stages[0].reused, true);
-  assert.equal(failed.stages[1].state, "failed");
+  assert.equal(failed.sourcePreflight.eligibility[0].passed, false);
+  assert.deepEqual(failed.stages.map(stage => stage.state), ["blocked", "blocked"]);
 });
 test("native preparation finishes mutable runtime caches before qualification", () => {
   const stages = require("../scripts/release/stages.cjs").plan("native");
