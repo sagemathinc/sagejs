@@ -88,6 +88,7 @@ function openCheckpoints({ root, files, runnerArguments = [], concurrency,
       finish() {
         if (closed) return;
         closed = true;
+        let safeToUnlock = true;
         try {
           identity(root, candidate);
           for (const { inputs, hash } of groups.values()) {
@@ -97,9 +98,21 @@ function openCheckpoints({ root, files, runnerArguments = [], concurrency,
           atomicJson(attemptPath, attempt);
         } catch (error) {
           attempt.state = "invalidated";
-          try { atomicJson(attemptPath, attempt); } catch {}
+          try { atomicJson(attemptPath, attempt); }
+          catch {
+            // Renaming the existing authority record needs no new file data
+            // allocation. If even that fails, retain the lease: a collecting
+            // record must not later look like an innocently killed controller.
+            try { fs.renameSync(attemptPath, `${attemptPath}.invalidated`); }
+            catch (renameError) {
+              if (renameError.code !== "ENOENT") {
+                safeToUnlock = false;
+                throw new Error(`cannot invalidate checkpoint attempt; quarantine ${directory} before recovery`, { cause: error });
+              }
+            }
+          }
           throw error;
-        } finally { unlock(); }
+        } finally { if (safeToUnlock) unlock(); }
       },
     };
   } catch (error) { unlock(); throw error; }

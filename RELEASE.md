@@ -149,6 +149,11 @@ corrupt, invalidated and unstarted records never count as passes. `--fresh`
 forces fresh file execution as well as fresh stages, and a failed fresh attempt
 supersedes an older successful record. File state lives in
 `build/release-test-checkpoints`, separate from learned timing estimates.
+If a failed input check cannot persist invalidation, the attempt record is
+renamed out of the reusable namespace. If that too fails, the lease is retained
+and the error requires quarantining the checkpoint store—not just deleting its
+lock. This prevents a disk/permission failure from turning known-invalid work
+into apparently recoverable interrupted work.
 
 For a developer's clean checkout, `pnpm test:unit --resume` opts into this same
 mechanism; `--resume-fresh` replaces previous results. Other reporters and dirty

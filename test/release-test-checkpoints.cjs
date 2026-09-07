@@ -140,3 +140,33 @@ test("completed files from a terminated controller recover only after stale-owne
   try { assert.ok(retry.reusable(f.files[0])); assert.equal(retry.reusable(f.files[1]), null); }
   finally { retry.finish(); }
 });
+test("disk-full invalidation removes collecting authority before releasing the lease", (t) => {
+  const f = fixture(t);
+  const session = openCheckpoints(f.options); session.passed(f.files[0], 1);
+  fs.writeFileSync(path.join(f.root, "build/runtime"), "changed");
+  const write = fs.writeFileSync;
+  fs.writeFileSync = (filename, ...args) => {
+    if (String(filename).includes(`${path.sep}attempts${path.sep}`)) throw Object.assign(new Error("full"), { code: "ENOSPC" });
+    return write(filename, ...args);
+  };
+  try { assert.throws(() => session.finish(), /inputs changed/); }
+  finally { fs.writeFileSync = write; }
+  const directory = path.join(f.root, "build/release-test-checkpoints");
+  assert.equal(fs.existsSync(path.join(directory, "active.lock")), false);
+  assert.ok(fs.readdirSync(path.join(directory, "attempts")).some((name) => name.endsWith(".invalidated")));
+  fs.writeFileSync(path.join(f.root, "build/runtime"), "1");
+  const retry = openCheckpoints(f.options);
+  try { assert.equal(retry.reusable(f.files[0]), null); } finally { retry.finish(); }
+});
+test("an unmodifiable checkpoint store retains its lease for explicit quarantine", (t) => {
+  const f = fixture(t);
+  const session = openCheckpoints(f.options); session.passed(f.files[0], 1);
+  fs.writeFileSync(path.join(f.root, "build/runtime"), "changed");
+  const write = fs.writeFileSync;
+  const rename = fs.renameSync;
+  fs.writeFileSync = () => { throw Object.assign(new Error("full"), { code: "ENOSPC" }); };
+  fs.renameSync = () => { throw Object.assign(new Error("read only"), { code: "EPERM" }); };
+  try { assert.throws(() => session.finish(), /quarantine/); }
+  finally { fs.writeFileSync = write; fs.renameSync = rename; }
+  assert.ok(fs.existsSync(path.join(f.root, "build/release-test-checkpoints/active.lock")));
+});
