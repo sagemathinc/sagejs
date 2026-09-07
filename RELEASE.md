@@ -160,10 +160,26 @@ Set `SAGEJS_NUMERICAL_PRODUCT_ROOT` to that product directory and
 `SAGEJS_NUMERICAL_RUNTIME_REQUIRED=1`; use the required native dependency
 catalog as in CI. This command is not a toolchain provisioning substitute.
 
-Produce that canonical handoff on Linux with
-`pnpm release:run --candidate FULL_SHA --profile canonical`. It checkpoints the
-authenticated numerical build, browser/runtime build, and one public root pack
-separately. Its outputs are the numerical product directory, browser `dist`,
+To build a new candidate **for testing**, use
+`pnpm release:run --candidate FULL_SHA --profile preparation` on Linux. This
+non-publishing profile checkpoints the authenticated numerical build,
+browser/runtime build, and one public root pack separately. A source-current
+pending numerical artifact is allowed during preparation, so that qualification
+can be collected against it. A passing preparation run does **not** establish
+release eligibility, mathematical qualification, signing or publication
+authority; its journal records the profile and whether only selected stages ran.
+
+The `canonical` profile retains the mandatory qualified-NLopt check as the
+separate `numerical-eligibility` stage, after numerical preparation and before
+runtime/packaging, matching its previous enforcement order. It checks the
+qualified manifest and current compiled artifact, never a renamed preparation
+receipt. Tagged CI retains the same required check. Once the numerical
+qualification exists, run `pnpm release:run --candidate FULL_SHA --profile
+canonical`; compatible same-candidate build checkpoints can be reused, but
+they cannot satisfy the eligibility stage. All remaining platform, product and
+raw-evidence gates still apply.
+
+The preparation outputs are the numerical product directory, browser `dist`,
 and root tarball described above. Runtime preparation includes the full lazy
 module cache before browser assembly freezes `dist` as an input; the smaller
 startup cache alone is insufficient. Copy those exact outputs, not independently

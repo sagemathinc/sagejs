@@ -745,3 +745,14 @@ qualified, or rerun a full four-platform campaign merely to test collector
 plumbing. This finding adds a preparation/admission edge to phase A/B's audit;
 it does not establish that the underlying mathematical qualification is cyclic
 or unnecessary.
+
+Preparation/admission split: the explicit non-publishing `preparation` profile
+now builds the numerical handoff, runtime, browser artifact and common npm
+archive without claiming qualification. The `canonical` profile still requires
+the same qualified-NLopt command in a separate `numerical-eligibility` stage,
+before runtime/packaging as previously enforced. Tagged CI's admission check is
+unchanged. Run journals identify profile and selected-stage scope and explicitly
+deny publication authority. A test demonstrates that a passing preparation
+checkpoint cannot satisfy a failed eligibility stage. The inventory now has
+84 stage instances: four preparation instances and the extracted eligibility
+instance are additional, not 84 mandatory sequential release steps.

@@ -230,6 +230,39 @@ test("canonical runtime completes the lazy cache before browser inputs are froze
   assert.ok(browser.inputs.includes("dist"));
   assert.ok(stages.indexOf(runtime) < stages.indexOf(browser));
 });
+test("non-publishing preparation is distinct from mandatory canonical numerical admission", () => {
+  const { plan } = require("../scripts/release/stages.cjs");
+  const preparation = plan("preparation"), canonical = plan("canonical");
+  assert.deepEqual(preparation.map((stage) => stage.id), ["numerical-product", "public-runtime", "public-build", "public-pack"]);
+  assert.deepEqual(canonical.map((stage) => stage.id), ["numerical-product", "numerical-eligibility", "public-runtime", "public-build", "public-pack"]);
+  assert.deepEqual(canonical.filter((stage) => stage.id !== "numerical-eligibility"), preparation);
+  const admission = canonical[1];
+  assert.equal(admission.gate, "numerical-evidence");
+  assert.deepEqual(admission.commands, [["node", "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs", "--require-qualified"]]);
+  assert.ok(admission.inputs.includes("build/authenticated-numerical-product"));
+  assert.ok(admission.inputs.includes("src/lib/sagejs/numerics/optimization/backends/nlopt/build"));
+  assert.ok(!preparation.flatMap((stage) => stage.commands.flat()).includes("--require-qualified"));
+  assert.throws(() => plan("typo", "numerical-product"), /unknown profile/);
+  const ci = fs.readFileSync(path.join(__dirname, "../.github/workflows/ci.yml"), "utf8");
+  assert.match(ci, /name: Require source-current qualified NLopt for a tagged product[\s\S]*?--require-qualified/);
+});
+test("preparation status cannot be mistaken for complete release qualification", async (t) => {
+  const context = fixture(t);
+  await run({ ...context, profile: "preparation", selectedStages: false,
+    stages: [task("numerical-product", "void 0")] });
+  const status = readStatus(context.root, context.candidate);
+  assert.deepEqual(status.scope, { profile: "preparation", selectedStages: false,
+    authority: "scheduling-only; not release eligibility or publication authorization" });
+  // A successful preparation checkpoint is reusable, but never satisfies a
+  // different admission command or grants a successful canonical status.
+  await assert.rejects(run({ ...context, profile: "canonical", selectedStages: false,
+    stages: [task("numerical-product", "void 0"), task("numerical-eligibility", "process.exit(1)")] }), /numerical-eligibility/);
+  const failed = readStatus(context.root, context.candidate);
+  assert.equal(failed.state, "failed");
+  assert.equal(failed.scope.profile, "canonical");
+  assert.equal(failed.stages[0].reused, true);
+  assert.equal(failed.stages[1].state, "failed");
+});
 test("native preparation finishes mutable runtime caches before qualification", () => {
   const stages = require("../scripts/release/stages.cjs").plan("native");
   const bootstrap = stages.find((stage) => stage.id === "bootstrap");

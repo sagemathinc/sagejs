@@ -11,8 +11,8 @@ test("runner inventory has reviewed coverage for every profile and target withou
   const result = inventory();
   assert.deepEqual(result.unreviewed, []);
   assert.deepEqual(result.stalePolicy, []);
-  assert.equal(result.instances.length, 79);
-  assert.equal(new Set(result.instances.map((stage) => stage.key)).size, 79);
+  assert.equal(result.instances.length, 84);
+  assert.equal(new Set(result.instances.map((stage) => stage.key)).size, 84);
   assert.ok(result.instances.every((stage) => stage.policy.requiredNow));
   assert.ok(result.instances.every((stage) => stage.packageEntrypoints.every((entry) => entry.resolved)));
   assert.ok(result.instances.every((stage) => stage.timeoutSeconds > 0 && Array.isArray(stage.inputs)));

@@ -8,18 +8,28 @@ function stage(id, gate, commands, options = {}) {
   return { id, gate, commands, timeoutSeconds: 7200, inputs: runtime, ...options };
 }
 const targets = Object.freeze(["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]);
+const profiles = Object.freeze(["preparation", "canonical", "native", "browser"]);
 function plan(profile = "native", selected, target = targetForHost()) {
   // Explicit targets are for inspection/generation. The execution CLI continues
   // to select the real host and cannot qualify a foreign target by relabeling it.
   if (!targets.includes(target)) throw new Error("unsupported release host");
+  if (!profiles.includes(profile)) throw new Error(`unknown profile ${profile}`);
   const all = [
-    stage("numerical-product", "integrity", [
+    stage("numerical-product", "build", [
       ["node", "packages/wasm-toolchain/scripts/toolchain.cjs", "prepare"],
       ["node", "packages/wasm-toolchain/scripts/probe.cjs"],
       ["node", "packages/flint-wasm/numerical/scripts/build-all.cjs"],
       ["node", "scripts/numerical-product.cjs", "publish", "--output", "build/authenticated-numerical-product"],
-      ["node", "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs", "--require-qualified"],
     ], { inputs: [], outputs: ["build/authenticated-numerical-product"] }),
+    // Preparation may create a source-bound pending artifact so that it can be
+    // tested. Admission is a different required check, never a build flag that
+    // turns pending evidence into qualified evidence. Canonical retains the
+    // previous admission ordering; the explicit preparation profile does not
+    // claim release eligibility.
+    stage("numerical-eligibility", "numerical-evidence", [
+      ["node", "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs", "--require-qualified"],
+    ], { inputs: ["build/authenticated-numerical-product",
+      "src/lib/sagejs/numerics/optimization/backends/nlopt/build"], timeoutSeconds: 300 }),
     // Browser assembly consumes the full lazy cache, not just the smaller
     // startup cache produced by build. Complete that output before freezing
     // dist as the browser stage's input.
@@ -108,7 +118,11 @@ function plan(profile = "native", selected, target = targetForHost()) {
       return entry;
     });
   }
-  if (profile === "canonical") return ["numerical-product", "public-runtime", "public-build", "public-pack"].map((id) => all.find((item) => item.id === id));
+  if (profile === "canonical" || profile === "preparation") {
+    const order = ["numerical-product", ...(profile === "canonical" ? ["numerical-eligibility"] : []),
+      "public-runtime", "public-build", "public-pack"];
+    return order.map((id) => all.find((item) => item.id === id));
+  }
   if (profile === "browser") {
     const browser = all.filter((item) => item.id.startsWith("wasm-"));
     // Required workload evidence does not consume timing output anymore. Finish
@@ -125,4 +139,4 @@ function plan(profile = "native", selected, target = targetForHost()) {
     "native-performance", "oracle", "numerical-npm", "numerical-sea", "numerical-node"];
   return order.map((id) => all.find((item) => item.id === id));
 }
-module.exports = { plan, targets };
+module.exports = { plan, targets, profiles };

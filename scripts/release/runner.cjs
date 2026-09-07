@@ -95,7 +95,7 @@ function environmentIdentity(env) {
   return digest(JSON.stringify(entries));
 }
 async function run({ root, candidate, stages, environment = process.env, fresh = false,
-  preflight = requirePreflight }) {
+  preflight = requirePreflight, profile = "custom", selectedStages = true }) {
   if (!Array.isArray(stages) || stages.length === 0 ||
       stages.some((stage) => !/^[a-z][a-z0-9-]*$/.test(stage.id)) ||
       new Set(stages.map((stage) => stage.id)).size !== stages.length) {
@@ -112,6 +112,7 @@ async function run({ root, candidate, stages, environment = process.env, fresh =
   const started = Date.now();
   const results = [];
   const journal = { schema: "sagejs.release-run/v1", runId: randomUUID(), source,
+    scope: { profile, selectedStages, authority: "scheduling-only; not release eligibility or publication authorization" },
     owner: { host: os.hostname(), pid: process.pid }, state: "running",
     started: new Date().toISOString(),
     stages: stages.map((stage) => ({ id: stage.id, gate: stage.gate, state: "pending" })) };
@@ -270,7 +271,8 @@ async function main(argv) {
   }
   const stages = plan(options.profile || "native", options.stage);
   if (options.list) return console.log(JSON.stringify(stages, null, 2));
-  await run({ root, candidate: options.candidate, stages, fresh: options.fresh });
+  await run({ root, candidate: options.candidate, stages, fresh: options.fresh,
+    profile: options.profile || "native", selectedStages: options.stage !== undefined });
 }
 if (require.main === module) main(process.argv.slice(2)).catch((error) => {
   console.error(error.stack); process.exitCode = 1;
