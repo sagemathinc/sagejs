@@ -639,7 +639,7 @@ jobs:
       - name: Require every product prerequisite
         env:
           SAGEJS_PRODUCT_NEEDS: ${{ toJSON(needs) }}
-        run: node scripts/release/product-prerequisites.cjs
+        run: node scripts/release/product-prerequisites.cjs browser
 
   # Retain the legacy whole-workflow/reporting guard during qualification of
   # the new product boundary. Publisher/deployer adoption is a separate change.

@@ -838,3 +838,16 @@ reusable after a separate reporting failure, but a changed failing correctness
 command still fails. Actual native CLI qualification and the native/browser
 aggregate, publisher and deploy migration remain required before production
 adoption. No raw numerical, startup, size, signing or source guard is removed.
+
+Native aggregate follow-up: the tagged workflow now defines the native v1
+acceptance job over all ten release producers, with an unconditional-on-failure
+assertion scoped to tags. Its exact dependencies include every native platform,
+signing, shared root and numerical reconstruction. The publisher adds this
+prerequisite without deleting its numerical gate or external Wasm check.
+Fixture tests reject every missing/failed/skipped producer, cross-product
+substitution and undeclared jobs; the actual native CLI assertion passes its
+complete fixture. The focused prerequisite/job-inspection/inventory/numerical
+workflow/deployment suite passes 44/44. These are contract tests, not a new
+four-platform release qualification. Deployment, publication recovery and
+artifact authentication must be migrated together before dropping their legacy
+whole-workflow requirements.

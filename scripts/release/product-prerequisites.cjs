@@ -10,31 +10,40 @@ const browserPrerequisites = Object.freeze([
   "browser-security-chromium", "browser-webkit-recovery", "node-wasm-cli",
   "workload-enforcement",
 ]);
+// Deliberately list the full producer closure, not just the final numerical
+// assembler. Publication/recovery and the non-release smoke lane are excluded.
+const nativePrerequisites = Object.freeze([
+  "routine", "numerical-product", "public-npm-root", "linux-x64", "linux-arm64",
+  "windows-x64", "macos-arm64", "macos-sign", "numerical-browser-qualification",
+  "numerical-release-gate",
+]);
 
-function requireBrowserPrerequisites(needs) {
+function requireProductPrerequisites(kind, needs) {
+  const prerequisites = { browser: browserPrerequisites, native: nativePrerequisites }[kind];
+  if (!["browser", "native"].includes(kind)) throw new Error("unknown product kind");
   if (!needs || typeof needs !== "object" || Array.isArray(needs)) {
-    throw new Error("missing browser product prerequisite results");
+    throw new Error(`missing ${kind} product prerequisite results`);
   }
   const actual = Object.keys(needs).sort();
-  const expected = [...browserPrerequisites].sort();
+  const expected = [...prerequisites].sort();
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-    throw new Error("browser product prerequisite set differs from the reviewed contract");
+    throw new Error(`${kind} product prerequisite set differs from the reviewed contract`);
   }
   const unsuccessful = expected.filter((id) => needs[id]?.result !== "success");
   if (unsuccessful.length) {
     // Print only checked identifiers, not arbitrary JSON from the environment.
-    throw new Error(`browser product prerequisites did not succeed: ${unsuccessful.join(", ")}`);
+    throw new Error(`${kind} product prerequisites did not succeed: ${unsuccessful.join(", ")}`);
   }
-  return { product: "browser", status: "passed", prerequisites: expected };
+  return { product: kind, status: "passed", prerequisites: expected };
 }
 
 if (require.main === module) {
   try {
-    if (process.argv.length !== 2) throw new Error("this assertion takes no command-line overrides");
+    if (process.argv.length !== 3) throw new Error("specify exactly one product kind: browser or native");
     let needs;
     try { needs = JSON.parse(process.env.SAGEJS_PRODUCT_NEEDS ?? ""); }
-    catch { throw new Error("invalid browser product prerequisite JSON"); }
-    console.log(JSON.stringify(requireBrowserPrerequisites(needs)));
+    catch { throw new Error("invalid product prerequisite JSON"); }
+    console.log(JSON.stringify(requireProductPrerequisites(process.argv[2], needs)));
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }
-module.exports = { browserPrerequisites, requireBrowserPrerequisites };
+module.exports = { browserPrerequisites, nativePrerequisites, requireProductPrerequisites };

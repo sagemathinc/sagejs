@@ -156,6 +156,18 @@ trusted source selection, exact artifact/signature checks and raw numerical
 evidence reconstruction remain mandatory. No current whole-workflow guard is
 removed by adding this verifier.
 
+The native v1 aggregate runs on tag candidates even if prerequisites fail. It
+asserts all ten release producer jobs explicitly: routine validation, numerical
+runtime, shared npm/browser root, four native builds, macOS signing, browser
+numerical evidence and the final reconstructed numerical gate. The publisher
+requires this aggregate in addition to its existing numerical gate. A partial
+manual campaign cannot produce release acceptance. Smoke-only, publication and
+recovery jobs are deliberately outside the producer aggregate. Both native and
+browser prerequisite assertions require an explicit product kind; tests bind
+their exact workflow dependencies and reject missing/skipped/failed producers.
+External publisher/deployer job inspection still needs coordinated adoption;
+the existing same-tag Wasm whole-workflow requirement remains in force.
+
 `pnpm release:run --candidate FULL_SHA` executes the native-host plan. First
 install the pinned JavaScript dependencies and place the **same candidate's**
 canonical numerical product at `build/authenticated-numerical-product` and

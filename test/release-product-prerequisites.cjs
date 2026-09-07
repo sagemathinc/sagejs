@@ -6,7 +6,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { browserPrerequisites, requireBrowserPrerequisites } = require("../scripts/release/product-prerequisites.cjs");
+const { browserPrerequisites, nativePrerequisites, requireProductPrerequisites } = require("../scripts/release/product-prerequisites.cjs");
+const requireBrowserPrerequisites = (needs) => requireProductPrerequisites("browser", needs);
 const { boundaries, requiredStep } = require("../scripts/release/product-acceptance.cjs");
 const { parseWorkflow } = require("../scripts/release/workflow-inventory.cjs");
 const root = path.resolve(__dirname, "..");
@@ -40,7 +41,7 @@ test("actual workflow binds the verifier contract and asserts every declared nee
   assert.equal(steps[0].if, undefined);
   assert.equal(steps[0]["continue-on-error"] ?? false, false);
   assert.deepEqual(steps[0].env, { SAGEJS_PRODUCT_NEEDS: "${{ toJSON(needs) }}" });
-  assert.equal(steps[0].run, "node scripts/release/product-prerequisites.cjs");
+  assert.equal(steps[0].run, "node scripts/release/product-prerequisites.cjs browser");
   // An added job cannot disappear from acceptance merely because no needs edge
   // was added. These two explicit exclusions retain their legacy enforcement.
   const excluded = ["browser-performance", "browser-release-gates", "browser-product-acceptance"];
@@ -103,7 +104,7 @@ test("native correctness retains both corpora but no repeated timing campaign", 
 });
 
 test("the actual aggregate command fails closed on absent, malformed or failed results", () => {
-  const run = (value) => spawnSync(process.execPath, [path.join(root, "scripts/release/product-prerequisites.cjs")], {
+  const run = (value) => spawnSync(process.execPath, [path.join(root, "scripts/release/product-prerequisites.cjs"), "browser"], {
     env: { ...process.env, SAGEJS_PRODUCT_NEEDS: value }, encoding: "utf8",
   });
   const passed = run(JSON.stringify(good()));
@@ -113,4 +114,45 @@ test("the actual aggregate command fails closed on absent, malformed or failed r
   assert.notEqual(run(JSON.stringify(needs)).status, 0);
   for (const value of ["", "null", "{untrusted-response", "{}"] ) assert.notEqual(run(value).status, 0);
   assert.doesNotMatch(run("{untrusted-response").stderr, /untrusted-response/);
+});
+
+test("native acceptance covers every release producer and never accepts a missing or failed prerequisite", () => {
+  const filename = boundaries.native.workflow;
+  const jobs = parseWorkflow(fs.readFileSync(path.join(root, filename), "utf8"), filename).jobs;
+  const gate = jobs["native-product-acceptance"];
+  assert.equal(gate.name, boundaries.native.job);
+  assert.equal(gate.if, "${{ always() && startsWith(github.ref, 'refs/tags/v') }}");
+  assert.equal(gate["continue-on-error"] ?? false, false);
+  assert.deepEqual([...gate.needs].sort(), [...nativePrerequisites].sort());
+  const excluded = ["platform-smoke", "publish-release", "recover-publish", "native-product-acceptance"];
+  assert.deepEqual(Object.keys(jobs).filter((id) => !excluded.includes(id)).sort(), [...nativePrerequisites].sort());
+  for (const id of nativePrerequisites) assert.equal(jobs[id]["continue-on-error"] ?? false, false, id);
+  const steps = gate.steps.filter((step) => step.name === requiredStep);
+  assert.equal(steps.length, 1);
+  assert.equal(steps[0].run, "node scripts/release/product-prerequisites.cjs native");
+  assert.equal(steps[0].if, undefined);
+  assert.equal(steps[0]["continue-on-error"] ?? false, false);
+  assert.deepEqual(steps[0].env, { SAGEJS_PRODUCT_NEEDS: "${{ toJSON(needs) }}" });
+  const passed = () => Object.fromEntries(nativePrerequisites.map((id) => [id, { result: "success" }]));
+  assert.equal(requireProductPrerequisites("native", passed()).product, "native");
+  for (const id of nativePrerequisites) {
+    for (const result of ["failure", "cancelled", "skipped", "neutral", null, undefined]) {
+      const needs = passed(); needs[id].result = result;
+      assert.throws(() => requireProductPrerequisites("native", needs), /did not succeed/);
+    }
+    const missing = passed(); delete missing[id];
+    assert.throws(() => requireProductPrerequisites("native", missing), /set differs/);
+  }
+  assert.throws(() => requireProductPrerequisites("native", good()), /set differs/);
+  assert.throws(() => requireProductPrerequisites("browser", passed()), /set differs/);
+  for (const kind of [undefined, "", "constructor", "toString", "unknown"]) {
+    assert.throws(() => requireProductPrerequisites(kind, passed()), /unknown product kind/);
+  }
+  const cli = spawnSync(process.execPath, [path.join(root, "scripts/release/product-prerequisites.cjs"), "native"], {
+    env: { ...process.env, SAGEJS_PRODUCT_NEEDS: JSON.stringify(passed()) }, encoding: "utf8",
+  });
+  assert.equal(cli.status, 0, cli.stderr);
+  assert.equal(JSON.parse(cli.stdout).product, "native");
+  // Add the complete producer boundary without removing the old numerical gate.
+  assert.deepEqual(jobs["publish-release"].needs, ["numerical-release-gate", "native-product-acceptance"]);
 });

@@ -3,8 +3,9 @@
 
 // Attempt-scoped job acceptance for the new product boundary. This is NOT
 // artifact authentication or permission to publish, and cannot substitute for
-// reconstruction of raw numerical evidence. The browser v1 aggregate is defined
-// in its workflow; native adoption and end-to-end qualification remain pending.
+// reconstruction of raw numerical evidence. Both v1 aggregates are defined
+// in their workflows; external consumer adoption and end-to-end qualification
+// remain pending.
 // Legacy job names are not aliases. No current publisher calls this module yet.
 const { execFileSync } = require("node:child_process");
 const repository = "sagemathinc/sagejs";
