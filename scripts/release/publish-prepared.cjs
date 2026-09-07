@@ -19,17 +19,45 @@ const sha = x => /^[a-f0-9]{40}$/.test(x ?? "");
 const exact = (value, keys) => value && typeof value === "object" && !Array.isArray(value) &&
   Object.keys(value).sort().join(",") === [...keys].sort().join(",");
 function validateRequest(value) {
-  if (!exact(value, ["schema", "sourceRevision", "sourceRef", "sourceEvent", "purpose", "tag", "handoff", "macos"]) ||
-      value.schema !== "sagejs.prepared-promotion-request/v1" || !sha(value.sourceRevision) ||
+  return validateProductRequest(value, false);
+}
+function validateBrowserRequest(value) {
+  return validateProductRequest(value, true);
+}
+function validateProductRequest(value, browserOnly) {
+  if (!exact(value, ["schema", "sourceRevision", "sourceRef", "sourceEvent", "purpose", "tag", "handoff", ...(browserOnly ? [] : ["macos"])]) ||
+      value.schema !== (browserOnly ? "sagejs.prepared-browser-request/v1" : "sagejs.prepared-promotion-request/v1") || !sha(value.sourceRevision) ||
       typeof value.sourceRef !== "string" || !value.sourceRef || /[\s\x00-\x1f]/.test(value.sourceRef) ||
       !["push", "workflow_dispatch"].includes(value.sourceEvent) || !["qualification", "release"].includes(value.purpose) ||
       !/^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:\+release\.[1-9]\d*)?$/.test(value.tag ?? "")) throw new Error("invalid prepared promotion request");
   if (value.purpose === "release" && (value.sourceEvent !== "push" || value.sourceRef !== value.tag)) throw new Error("release handoff must match the exact pushed tag");
-  for (const item of [value.handoff, value.macos]) {
+  for (const item of browserOnly ? [value.handoff] : [value.handoff, value.macos]) {
     if (!exact(item, ["runId", "runAttempt", "artifactId", "controlSha"]) || !sha(item.controlSha) ||
         ![item.runId, item.runAttempt, item.artifactId].every(x => Number.isSafeInteger(x) && x > 0)) throw new Error("explicit immutable control artifact pins required");
   }
   return structuredClone(value);
+}
+async function controlArchive(cache, pins, contract, name, validate, dependencies = {}, signal) {
+  signal?.throwIfAborted();
+  return replaceDirectory({ parent: cache, name: `${name}-${pins.artifactId}`,
+    async prepare(pending) {
+      const { artifact } = inspectControlArtifact(pins, contract, dependencies.api);
+      requireDownloadSpace(pending, artifact.size_in_bytes);
+      await (dependencies.download ?? downloadGithubArchive)({ id: artifact.id, sizeInBytes: artifact.size_in_bytes }, path.join(pending, "control.zip"), { signal });
+    },
+    validate(pending) {
+      signal?.throwIfAborted();
+      const filename = path.join(pending, "control.zip");
+      validate(filename); return filename;
+    },
+  });
+}
+function assertPreparedFiles(root, source, files, signal) {
+  signal?.throwIfAborted(); identity(root, source);
+  for (const file of files) {
+    const filename = path.join(root, file.path), stat = fs.lstatSync(filename);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size !== file.size || fileDigest(filename) !== file.sha256) throw new Error("qualified inputs changed before publication");
+  }
 }
 function requestFromInputs(inputs) {
   if (typeof inputs?.prepared_request !== "string" || !inputs.prepared_request || inputs.prepared_request.length > 8192 ||
@@ -75,29 +103,16 @@ async function runPrepared(options, dependencies = {}) {
   const unlock = acquireLock(path.join(cache, "prepared-promotion.lock"));
   try {
     const product = { sha: request.sourceRevision, ref: request.sourceRef, event: request.sourceEvent, purpose: request.purpose };
-    async function controlArchive(pins, contract, name, validate) {
-      return replaceDirectory({ parent: cache, name: `${name}-${pins.artifactId}`, signal: options.signal,
-        async prepare(pending) {
-          const { artifact } = inspectControlArtifact(pins, contract, dependencies.api);
-          requireDownloadSpace(pending, artifact.size_in_bytes);
-          await (dependencies.download ?? downloadGithubArchive)({ id: artifact.id, sizeInBytes: artifact.size_in_bytes }, path.join(pending, "control.zip"), { signal: options.signal });
-        },
-        validate(pending) {
-          const filename = path.join(pending, "control.zip");
-          validate(filename); return filename;
-        },
-      });
-    }
-    const handoff = await controlArchive(request.handoff, handoffContract, "handoff", filename =>
-      verifyHandoffArchive({ ...request.handoff, ...product, filename }, dependencies.api));
-    const macos = await controlArchive(request.macos, macosContract, "macos", filename => {
+    const handoff = await controlArchive(cache, request.handoff, handoffContract, "handoff", filename =>
+      verifyHandoffArchive({ ...request.handoff, ...product, filename }, dependencies.api), dependencies, options.signal);
+    const macos = await controlArchive(cache, request.macos, macosContract, "macos", filename => {
       // Full native observation authentication occurs inside preparePromotion,
       // after independently reconstructing its expected product request.
       const { artifact } = inspectControlArtifact(request.macos, macosContract, dependencies.api);
       const stat = fs.lstatSync(filename);
       if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size !== artifact.size_in_bytes ||
           `sha256:${fileDigest(filename)}` !== artifact.digest) throw new Error("native observation archive differs from pinned transport");
-    });
+    }, dependencies, options.signal);
     const prepared = await (dependencies.prepare ?? preparePromotion)({ ...request.handoff, ...product,
       filename: handoff.value, directory: cache, candidateRoot: root, signal: options.signal,
       macos: { ...request.macos, filename: macos.value, teamId: "BVF94G2MB4",
@@ -115,11 +130,7 @@ async function runPrepared(options, dependencies = {}) {
     const shared = { tag: request.tag, source: request.sourceRevision, signal: options.signal };
     const unlockProducts = acquireLock(path.join(root, "build/release-publication/active.lock"));
     function assertPrepared() {
-      options.signal?.throwIfAborted(); identity(root, request.sourceRevision);
-      for (const file of prepared.files) {
-        const filename = path.join(root, file.path), stat = fs.lstatSync(filename);
-        if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size !== file.size || fileDigest(filename) !== file.sha256) throw new Error("qualified inputs changed before publication");
-      }
+      assertPreparedFiles(root, request.sourceRevision, prepared.files, options.signal);
     }
     try {
       assertPrepared();
@@ -144,4 +155,4 @@ if (require.main === module) {
   })().catch(() => { console.error("Prepared promotion failed; inspect retained verification logs and publication journals. No rebuild was requested."); process.exitCode = 1; })
     .finally(() => { process.removeListener("SIGINT", stop); process.removeListener("SIGTERM", stop); });
 }
-module.exports = { validateRequest, requestFromInputs, configureConsumer, runPrepared };
+module.exports = { validateRequest, validateBrowserRequest, requestFromInputs, configureConsumer, controlArchive, assertPreparedFiles, runPrepared };

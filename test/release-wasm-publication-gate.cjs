@@ -3,7 +3,6 @@
 "use strict";
 const assert = require("node:assert/strict"), test = require("node:test");
 const { requireWasmProduct, runsFromPages } = require("../scripts/release/require-wasm-release.cjs");
-const { inspectDeploymentInputs, requireSameDeploymentInputs } = require("../scripts/release/deployment-inputs.cjs");
 const { boundaries, requiredStep } = require("../scripts/release/product-acceptance.cjs");
 const sha = "2".repeat(40), tag = "v0.8.0+release.2";
 function run(id = 101, kind = "browser", overrides = {}) {
@@ -28,7 +27,6 @@ function fixture(overrides = {}) {
   };
   return { runs, jobs, api, calls };
 }
-const options = { sourceRunId: 101, qualificationRunId: 201, target: "production" };
 test("publisher authenticates newest exact-tag product without requiring reporting completion", () => {
   for (const conclusion of ["failure", "timed_out", "cancelled", null]) {
     const f = fixture({ conclusion, status: conclusion === null ? "in_progress" : "completed" });
@@ -58,46 +56,4 @@ test("publication rejects missing, foreign or malformed evidence even if list sa
   f.runs[101].head_repository.full_name = "fork/sagejs";
   assert.throws(() => requireWasmProduct({ workflow_runs: [run()] }, sha, tag, f.api), /identity/);
   assert.throws(() => requireWasmProduct({ workflow_runs: [] }, "short", tag, f.api), /full lowercase/);
-});
-test("app consumes same-source native and browser products independently of reports", () => {
-  const f = fixture({ status: "in_progress", conclusion: null });
-  const value = inspectDeploymentInputs(options, f.api);
-  assert.equal(value.sourceRevision, sha); assert.equal(value.branch, "main");
-  assert.equal(value.native.productStatus, "passed"); assert.equal(value.browser.productStatus, "passed");
-  assert.equal(inspectDeploymentInputs({ ...options, target: "preview", previewName: "candidate" }, f.api).branch, "preview-candidate-" + sha.slice(0,12));
-  f.runs[101].conclusion = f.runs[201].conclusion = "failure";
-  f.runs[101].status = f.runs[201].status = "completed";
-  requireSameDeploymentInputs(value, inspectDeploymentInputs(options, f.api));
-});
-test("both app product gates remain mandatory; wrong source or foreign workflows fail", () => {
-  for (const id of [101, 201]) for (const conclusion of ["failure", "timed_out", "skipped", null]) {
-    const f = fixture(); f.jobs[id][0].conclusion = conclusion;
-    assert.throws(() => inspectDeploymentInputs(options, f.api), /did not succeed/);
-  }
-  for (const mutate of [
-    f => f.runs[201].head_sha = "3".repeat(40),
-    f => f.runs[201].event = "workflow_dispatch",
-    f => f.runs[101].path = ".github/workflows/wasm-candidate.yml",
-    f => f.runs[201].repository.full_name = "fork/sagejs",
-    f => f.jobs[201][0].steps = [],
-  ]) { const f = fixture(); mutate(f); assert.throws(() => inspectDeploymentInputs(options, f.api)); }
-});
-test("app admission rejects malformed IDs and preview output injection before API reads", () => {
-  for (const changes of [{ sourceRunId: "101" }, { qualificationRunId: 0 }, { target: "bad" }, { target: "preview", previewName: "x\nsha=evil" }]) {
-    const f = fixture(); assert.throws(() => inspectDeploymentInputs({ ...options, ...changes }, f.api)); assert.equal(f.calls.length, 0);
-  }
-});
-test("app detects reruns during second product inspection and before activation", () => {
-  const f = fixture(); const previous = inspectDeploymentInputs(options, f.api);
-  let browserReads = 0;
-  assert.throws(() => inspectDeploymentInputs(options, (endpoint, pages) => {
-    const value = f.api(endpoint, pages);
-    if (endpoint.endsWith("/101") && ++browserReads === 4) value.run_attempt++;
-    return value;
-  }), /attempt changed/);
-  for (const field of ["runAttempt", "jobId", "sourceRevision", "ref"]) {
-    const changed = structuredClone(previous); changed.browser[field] = "changed";
-    assert.throws(() => requireSameDeploymentInputs(previous, changed), /identity changed/);
-  }
-  assert.throws(() => inspectDeploymentInputs(options, () => { throw new Error("API unavailable"); }), /API unavailable/);
 });

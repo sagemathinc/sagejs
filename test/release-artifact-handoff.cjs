@@ -257,9 +257,34 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   const dependencies = { api: f.api, runner: { preflight: () => ({ passed: true }) },
     staging: { verifyRemote: () => {}, download: async (record, filename) => { downloads++; fs.writeFileSync(filename, archives.get(record.key)); } } };
   const options = { ...f.options, candidateRoot: root };
-  await assert.rejects(preparePublication(options, dependencies), /command failed/);
+  const { runBrowser } = require("../scripts/release/prepare-browser-deployment.cjs");
+  const browserRequest = { schema: "sagejs.prepared-browser-request/v1", sourceRevision: candidate,
+    sourceRef: options.ref, sourceEvent: options.event, purpose: options.purpose, tag: "v0.8.0",
+    handoff: { runId: options.runId, runAttempt: options.runAttempt, artifactId: options.artifactId, controlSha: options.controlSha } };
+  const browserOptions = { request: browserRequest, action: "prepare", candidateRoot: root, directory: options.directory };
+  let browserControlDownloads = 0;
+  const browserDependencies = { api: f.api, preparation: dependencies,
+    download: async (record, filename) => { assert.equal(record.id, 500); browserControlDownloads++; fs.writeFileSync(filename, handoff); } };
+  await assert.rejects(runBrowser(browserOptions, browserDependencies), /command failed/);
   assert.equal(fs.readFileSync(path.join(root, "build/numerical-qualification/gate/partial.json"), "utf8"), "failed");
-  const passed = await preparePublication(options, dependencies);
+  const browserPassed = await runBrowser(browserOptions, browserDependencies);
+  assert.equal(browserPassed.status, "browser-deployment-inputs-authenticated");
+  assert.equal(browserPassed.selectedBrowser.artifactIdentity, browser.report.artifact_identity);
+  assert.equal(downloads, 5, "browser deployment downloads only browser/root/raw-evidence roles");
+  assert.equal(browserControlDownloads, 1, "browser preparation never requests native inspection");
+  assert.ok(!fs.existsSync(path.join(root, "release/sagejs-linux-x64.tar.xz")));
+  assert.ok(!fs.existsSync(path.join(root, "release/npm/sagejs-windows-x64.tgz")));
+  await runBrowser(browserOptions, browserDependencies);
+  assert.equal((await runBrowser({ ...browserOptions, action: "recheck" }, browserDependencies)).status, "browser-inputs-unchanged");
+  const browserFile = path.join(root, "packages/flint-wasm/dist", [...browser.files.keys()][0]);
+  const originalBrowser = fs.readFileSync(browserFile); fs.writeFileSync(browserFile, "changed after staging");
+  await assert.rejects(runBrowser({ ...browserOptions, action: "recheck" }, browserDependencies), /qualified inputs changed/);
+  assert.equal(fs.readFileSync(browserFile, "utf8"), "changed after staging", "pre-activation check must reject, not silently repair staged inputs");
+  fs.writeFileSync(browserFile, originalBrowser);
+  assert.equal(downloads, 5); assert.equal(browserControlDownloads, 1);
+  // Full preparation must expand the selection back to all nine roles even if
+  // callers supply a subset. Browser acceptance cannot stand in for native.
+  const passed = await preparePublication({ ...options, keys: ["native/sagejs-public-npm-root"] }, dependencies);
   assert.equal(passed.status, "numerical-publication-inputs-authenticated");
   assert.equal(passed.platformPackages.length, 4);
   assert.equal(passed.packagedExecutables.length, 4);
@@ -274,7 +299,9 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   assert.equal(passed.selectedBrowser.artifactIdentity, browser.report.artifact_identity);
   assert.equal(passed.selectedBrowser.archive.files, browser.files.size);
   assert.equal(passed.selectedBrowser.archive.sha256, checksum(browser.reproduced.get("sagejs-wasm.tar.gz")).slice(7));
-  assert.equal(passed.results.length, 2); assert.ok(passed.results.every((result) => !result.reused));
+  assert.equal(passed.results.length, 2);
+  assert.equal(passed.results[0].reused, true, "unchanged raw reconstruction survives browser-to-full expansion");
+  assert.ok(!passed.results[1].reused, "adding platform packages invalidates the authentication input closure");
   const retained = path.join(root, "build/release-publication/retained-gates");
   assert.ok(fs.readdirSync(retained).some((id) => fs.existsSync(path.join(retained, id, "partial.json"))));
   const reused = await preparePublication(options, dependencies);
@@ -329,13 +356,13 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   const verified = await runPrepared(consumerOptions, consumerDependencies);
   assert.equal(verified.status, "verified-only"); assert.equal(writes.length, 0);
   await runPrepared(consumerOptions, consumerDependencies);
-  assert.equal(controlDownloads, 2); assert.equal(downloads, 9);
+  assert.equal(controlDownloads, 1); assert.equal(downloads, 9);
   git("update-ref", "refs/remotes/origin/main", candidate);
   await runPrepared({ ...consumerOptions, publish: true }, consumerDependencies);
   assert.deepEqual(writes.map(x => x[0]), ["github", "npm", "finalize"]);
   for (const [, args] of writes) { assert.equal(args.source, candidate); assert.equal(args.tag, "v0.8.0"); assert.ok(args.journal.startsWith(options.directory + path.sep)); }
   assert.equal(git("status", "--porcelain"), "");
-  assert.equal(controlDownloads, 2); assert.equal(downloads, 9);
+  assert.equal(controlDownloads, 1); assert.equal(downloads, 9);
   let laterPublisherCalls = 0;
   await assert.rejects(runPrepared({ ...consumerOptions, publish: true }, { ...consumerDependencies,
     upload: async () => { fs.writeFileSync(path.join(root, "release/install.sh"), "changed after qualification"); },

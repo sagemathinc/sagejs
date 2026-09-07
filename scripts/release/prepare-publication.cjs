@@ -11,6 +11,10 @@ const { run, identity, fileDigest, atomicJson, acquireLock } = require("./runner
 const { realDirectory, exists } = require("./directory-transaction.cjs");
 const { requireDownloadSpace } = require("./stage-artifacts.cjs");
 const statePath = "build/release-publication/state.json";
+// The complete nine-role handoff is still authenticated. Browser deployment
+// consumes only these bytes; it does not qualify or publish native installers.
+const browserKeys = Object.freeze(["native/sagejs-public-npm-root", "native/numerical-release-gate",
+  "native/numerical-release-evidence", "browser/wasm-clean-build-a", "browser/sagejs-wasm-reproducible"]);
 
 function projectedPath(key, name) {
   if (/^native\/sagejs-(linux-x64|linux-arm64|windows-x64|macos-arm64)$/.test(key)) return `release/${name}`;
@@ -100,7 +104,7 @@ function verificationStages(root, candidate, manifestDigest) {
         "--public-npm-root", "release/npm/sagejs.tgz", "--browser-distribution", "packages/flint-wasm/dist"]] },
   ];
 }
-async function preparePublication(options, dependencies = {}) {
+async function prepareInputs(options, dependencies, browserOnly) {
   if (typeof options.candidateRoot !== "string") throw new Error("explicit dedicated candidate checkout required");
   const root = path.resolve(options.candidateRoot), cache = path.resolve(options.directory);
   realDirectory(root); identity(root, options.sha);
@@ -110,9 +114,9 @@ async function preparePublication(options, dependencies = {}) {
   options.signal?.throwIfAborted();
   // Fail before artifact authentication/download if the controller cannot read
   // Linux distribution archives. This never installs tools or builds products.
-  require("./linux-tar-contents.cjs").requireXz();
+  if (!browserOnly) require("./linux-tar-contents.cjs").requireXz();
   // Authenticate before copying anything into the source-only consumer.
-  const accepted = await prepareHandoff(options, dependencies);
+  const accepted = await prepareHandoff({ ...options, keys: browserOnly ? browserKeys : undefined }, dependencies);
   const candidate = accepted.manifest.sourceRevision, digest = accepted.manifest.manifestDigest;
   const inputs = projection(accepted.expanded);
   checkConsumer(root, candidate, digest);
@@ -156,11 +160,11 @@ async function preparePublication(options, dependencies = {}) {
     const { authenticatePlatformNpmPackages } = require("../numerical-computing/qualification/authenticate-release-gate.cjs");
     const { readJson } = require("../numerical-computing/common.cjs");
     const gate = readJson(path.join(root, "build/validated-numerical-gate/release-gate.json"));
-    const platformPackages = authenticatePlatformNpmPackages(gate, "release/npm", root);
+    const platformPackages = browserOnly ? [] : authenticatePlatformNpmPackages(gate, "release/npm", root);
     const { authenticatePackagedExecutables } = require("./packaged-executables.cjs");
-    const packagedExecutables = await authenticatePackagedExecutables(root, gate, platformPackages, { signal: options.signal });
+    const packagedExecutables = browserOnly ? [] : await authenticatePackagedExecutables(root, gate, platformPackages, { signal: options.signal });
     const { authenticateDownloadableArchives } = require("./downloadable-archives.cjs");
-    const downloadableArchives = await authenticateDownloadableArchives(root, packagedExecutables, { signal: options.signal });
+    const downloadableArchives = browserOnly ? [] : await authenticateDownloadableArchives(root, packagedExecutables, { signal: options.signal });
     const { authenticateBrowserInputs } = require("./browser-inputs.cjs");
     const selectedBrowser = authenticateBrowserInputs(root, candidate, gate);
     const { authenticateBrowserArchive } = require("./browser-archive.cjs");
@@ -169,7 +173,7 @@ async function preparePublication(options, dependencies = {}) {
     const productIdentity = { sourceRevision: candidate, ref: accepted.manifest.ref, event: accepted.manifest.event,
       purpose: accepted.manifest.purpose, manifestDigest: digest };
     const { createMacosInstallerRequest } = require("./macos-installer.cjs");
-    const nativeInspectionRequests = { macos: createMacosInstallerRequest(root, productIdentity, packagedExecutables, inputs) };
+    const nativeInspectionRequests = browserOnly ? {} : { macos: createMacosInstallerRequest(root, productIdentity, packagedExecutables, inputs) };
     for (const file of inputs) {
       options.signal?.throwIfAborted();
       const target = path.join(root, file.target);
@@ -179,10 +183,12 @@ async function preparePublication(options, dependencies = {}) {
     return { authentication: accepted.authentication, candidateRoot: root, results,
       productIdentity, nativeInspectionRequests,
       files: inputs.map(({ target, size, sha256 }) => ({ path: target, size, sha256 })), platformPackages, packagedExecutables, downloadableArchives, selectedBrowser,
-      status: "numerical-publication-inputs-authenticated",
-      authority: "not publication authorization; macOS installer, signatures and deployment adoption remain required" };
+      status: browserOnly ? "browser-deployment-inputs-authenticated" : "numerical-publication-inputs-authenticated",
+      authority: browserOnly ? "browser inputs only; no native installer or publication authorization" : "not publication authorization; macOS installer, signatures and deployment adoption remain required" };
   } finally { unlock(); }
 }
+const preparePublication = (options, dependencies = {}) => prepareInputs(options, dependencies, false);
+const prepareBrowserDeployment = (options, dependencies = {}) => prepareInputs(options, dependencies, true);
 async function preparePromotion(options, dependencies = {}) {
   // Fail on missing/unsuccessful native inspection before downloading the full
   // product set. Authentication of its contents follows independent preparation.
@@ -234,5 +240,5 @@ async function main(args) {
   try { console.log(JSON.stringify(await (macos ? preparePromotion : preparePublication)({ ...options, candidateRoot, macos, signal: controller.signal }), null, 2)); }
   finally { process.removeListener("SIGINT", cancel); process.removeListener("SIGTERM", cancel); }
 }
-module.exports = { preparePublication, preparePromotion, verificationStages, projection, projectedPath, checkConsumer, rotateGate };
+module.exports = { preparePublication, preparePromotion, prepareBrowserDeployment, browserKeys, verificationStages, projection, projectedPath, checkConsumer, rotateGate };
 if (require.main === module) main(process.argv.slice(2)).catch(() => { console.error("Publication input preparation failed; inspect retained runner logs. Nothing was published."); process.exitCode = 1; });

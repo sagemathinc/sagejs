@@ -3,12 +3,8 @@ name: Deploy the Sage.js browser application
 on:
   workflow_dispatch:
     inputs:
-      source_run_id:
-        description: WebAssembly release run with successful browser product acceptance
-        required: true
-        type: string
-      qualification_run_id:
-        description: Same-SHA CI run with successful native product acceptance and numerical gate
+      prepared_request:
+        description: Frozen browser request JSON (source identity and handoff run/attempt/artifact/control SHA)
         required: true
         type: string
       target:
@@ -41,54 +37,46 @@ jobs:
     environment:
       name: sagejs-app-${{ inputs.target }}
       url: ${{ inputs.target == 'production' && vars.SAGEJS_PUBLIC_ORIGIN || steps.deploy.outputs.deployment-url }}
+    defaults:
+      run:
+        working-directory: candidate
     steps:
-      - name: Check out the product acceptance control
+      - name: Check out the deployment control plane
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-          path: build/input-control
-          sparse-checkout: scripts/release
+          path: control
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+          package_json_file: control/package.json
       - uses: actions/setup-node@v7
         with:
           node-version: 26.5.1
+          cache: pnpm
+          cache-dependency-path: control/pnpm-lock.yaml
 
-      - name: Validate both product acceptance gates
+      - name: Install control dependencies without product builds
+        working-directory: control
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Validate frozen browser request
         id: source
+        working-directory: control
         env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
-          QUALIFICATION_RUN_ID: ${{ inputs.qualification_run_id }}
-          TARGET: ${{ inputs.target }}
-          PREVIEW_NAME: ${{ inputs.preview_name }}
+          SAGEJS_BROWSER_INPUTS: ${{ toJSON(inputs) }}
         run: |
           set -euo pipefail
-          node build/input-control/scripts/release/deployment-inputs.cjs > "$RUNNER_TEMP/sagejs-deployment-inputs.json"
-          echo "sha=$(jq -r .sourceRevision "$RUNNER_TEMP/sagejs-deployment-inputs.json")" >>"$GITHUB_OUTPUT"
-          echo "branch=$(jq -r .branch "$RUNNER_TEMP/sagejs-deployment-inputs.json")" >>"$GITHUB_OUTPUT"
+          node scripts/release/prepare-browser-deployment.cjs admit > "$RUNNER_TEMP/sagejs-browser-request.json"
+          echo "sha=$(jq -r .sourceRevision "$RUNNER_TEMP/sagejs-browser-request.json")" >>"$GITHUB_OUTPUT"
 
       - name: Check out exactly the validated source commit
         uses: actions/checkout@v7
         with:
           ref: ${{ steps.source.outputs.sha }}
+          path: candidate
           submodules: recursive
           fetch-depth: 0
-
-      - name: Check out the deployment control plane
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-          path: build/deployment-control
-          sparse-checkout: |
-            .github/workflows/wasm-candidate.yml
-            .github/workflows/wasm-deploy-cloudflare.yml
-            docs/webassembly-cloudflare-deployment.md
-            packages/flint-wasm/scripts/browser-wasm-deployment.cjs
-            test/wasm-deployment-workflow.cjs
-            scripts/release/deployment-inputs.cjs
-            scripts/release/product-acceptance.cjs
-            website/live/cloudflare
-            website/live/test/cloudflare-deployment.test.mjs
-          sparse-checkout-cone-mode: false
 
       - name: Require production deployments to come from main
         if: inputs.target == 'production'
@@ -101,18 +89,6 @@ jobs:
             echo "Production deployment source $SOURCE_SHA is not reachable from origin/main" >&2
             exit 1
           }
-
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 11.9.0
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26.5.1
-          cache: pnpm
-
-      - name: Install the exact staging dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Fail closed when Cloudflare configuration is absent
         env:
@@ -143,47 +119,19 @@ jobs:
             exit 1
           }
 
-      - name: Download the reproducible production artifact
+      - name: Prepare the frozen browser artifact set
+        working-directory: control
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          SAGEJS_BROWSER_INPUTS: ${{ toJSON(inputs) }}
         run: |
           set -euo pipefail
-          gh run download "$SOURCE_RUN_ID" \
-            --repo "$GH_REPO" \
-            --name wasm-clean-build-a \
-            --dir build/prebuilt
-          test -f build/prebuilt/packages/flint-wasm/dist/production-manifest.json
-          test -f build/prebuilt/packages/flint-wasm/dist/build-receipt.json
-          rm -rf packages/flint-wasm/dist
-          cp -a build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist
+          mkdir -p "$RUNNER_TEMP/sagejs-browser-artifacts"
+          node scripts/release/prepare-browser-deployment.cjs prepare \
+            "$GITHUB_WORKSPACE/candidate" "$RUNNER_TEMP/sagejs-browser-artifacts"
 
-      - name: Rebuild and authenticate the same-candidate numerical release gate
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          QUALIFICATION_RUN_ID: ${{ inputs.qualification_run_id }}
-          SOURCE_SHA: ${{ steps.source.outputs.sha }}
-        run: |
-          set -euo pipefail
-          gh run download "$QUALIFICATION_RUN_ID" \
-            --repo "$GH_REPO" \
-            --name numerical-release-gate \
-            --dir build/validated-numerical-gate
-          gh run download "$QUALIFICATION_RUN_ID" \
-            --repo "$GH_REPO" \
-            --name numerical-release-evidence \
-            --dir build/numerical-qualification
-          pnpm release:qualify:numerics:gate -- \
-            --candidate "$SOURCE_SHA" \
-            --input build/numerical-qualification \
-            --output build/numerical-qualification/gate
-          pnpm release:qualify:numerics:authenticate -- \
-            --candidate "$SOURCE_SHA" \
-            --gate build/validated-numerical-gate/release-gate.json \
-            --rebuilt-gate build/numerical-qualification/gate/release-gate.json \
-            --browser-distribution packages/flint-wasm/dist
+      - name: Install the exact staging dependencies without lifecycle builds
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Verify the receipt and stage the credential-free application
         run: |
@@ -193,9 +141,8 @@ jobs:
           node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
             --headers website/live/dist/_headers
           node --test website/live/test/*.test.mjs
-          node --test test/wasm-deployment-workflow.cjs
-          node --test build/deployment-control/website/live/test/cloudflare-deployment.test.mjs
-          node --test build/deployment-control/test/wasm-deployment-workflow.cjs
+          node --test ../control/website/live/test/cloudflare-deployment.test.mjs
+          node --test ../control/test/wasm-deployment-workflow.cjs
           test -f website/live/dist/runtime-version.json
           test -f website/live/dist/asset-manifest.json
 
@@ -209,7 +156,7 @@ jobs:
           SAGEJS_PUBLIC_ORIGIN: ${{ vars.SAGEJS_PUBLIC_ORIGIN }}
         run: |
           set -euo pipefail
-          node build/deployment-control/website/live/cloudflare/prepare-release.mjs \
+          node ../control/website/live/cloudflare/prepare-release.mjs \
             --site website/live/dist \
             --output build/cloudflare-deploy \
             --target "$TARGET" \
@@ -217,7 +164,7 @@ jobs:
             --worker-name "$CLOUDFLARE_WORKER_NAME" \
             --bucket "$R2_BUCKET_NAME" \
             --public-origin "$SAGEJS_PUBLIC_ORIGIN"
-          node build/deployment-control/website/live/cloudflare/upload-r2.mjs \
+          node ../control/website/live/cloudflare/upload-r2.mjs \
             --deployment build/cloudflare-deploy/deployment.json \
             --verify-only
           printf '%s\n' "$GITHUB_SHA" > build/cloudflare-deploy/deployment-control.sha
@@ -232,14 +179,14 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
-          node build/deployment-control/website/live/cloudflare/upload-r2.mjs \
+          node ../control/website/live/cloudflare/upload-r2.mjs \
             --deployment build/cloudflare-deploy/deployment.json
 
       - name: Preserve the exact staged site as a deployment receipt
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-app-${{ inputs.target }}-${{ steps.source.outputs.sha }}
-          path: website/live/dist
+          path: candidate/website/live/dist
           if-no-files-found: error
           retention-days: 30
 
@@ -248,10 +195,10 @@ jobs:
         with:
           name: sagejs-r2-${{ inputs.target }}-${{ steps.source.outputs.sha }}
           path: |
-            build/cloudflare-deploy/deployment.json
-            build/cloudflare-deploy/deployment-control.sha
-            build/cloudflare-deploy/wrangler.json
-            build/cloudflare-deploy/worker.mjs
+            candidate/build/cloudflare-deploy/deployment.json
+            candidate/build/cloudflare-deploy/deployment-control.sha
+            candidate/build/cloudflare-deploy/wrangler.json
+            candidate/build/cloudflare-deploy/worker.mjs
           if-no-files-found: error
           retention-days: 90
 
@@ -265,14 +212,12 @@ jobs:
           );
           NODE
 
-      - name: Recheck selected product attempts before activation
+      - name: Recheck frozen browser bytes before activation
+        working-directory: control
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
-          QUALIFICATION_RUN_ID: ${{ inputs.qualification_run_id }}
-          TARGET: ${{ inputs.target }}
-          PREVIEW_NAME: ${{ inputs.preview_name }}
-        run: node build/deployment-control/scripts/release/deployment-inputs.cjs --recheck "$RUNNER_TEMP/sagejs-deployment-inputs.json"
+          SAGEJS_BROWSER_INPUTS: ${{ toJSON(inputs) }}
+        run: node scripts/release/prepare-browser-deployment.cjs recheck "$GITHUB_WORKSPACE/candidate" "$RUNNER_TEMP/sagejs-browser-artifacts"
 
       - name: Atomically activate the uploaded release with a Cloudflare Worker
         id: deploy
@@ -280,7 +225,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: build/cloudflare-deploy
+          workingDirectory: candidate/build/cloudflare-deploy
           packageManager: npm
           wranglerVersion: "4.125.0"
           command: deploy --config wrangler.json
@@ -295,7 +240,7 @@ jobs:
             echo "Cloudflare returned an unexpected preview URL" >&2
             exit 1
           }
-          node build/deployment-control/packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
+          node ../control/packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
             --headers website/live/_headers \
             --origin "$DEPLOYMENT_URL" \
             --expected-runtime website/live/dist/runtime-version.json
@@ -307,7 +252,7 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 12); do
-            if node build/deployment-control/packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
+            if node ../control/packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
               --headers website/live/_headers \
               --origin "$SAGEJS_PUBLIC_ORIGIN" \
               --expected-runtime website/live/dist/runtime-version.json
@@ -321,3 +266,16 @@ jobs:
             echo "Production origin is not ready; retrying in 10 seconds ($attempt/12)" >&2
             sleep 10
           done
+
+      - name: Preserve browser preparation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-app-preparation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/sagejs-browser-request.json
+            ${{ runner.temp }}/sagejs-browser-artifacts/prepared-browser.json
+            candidate/build/release-runner/**/*.json
+            candidate/build/release-runner/**/*.log
+          if-no-files-found: warn
+          retention-days: 90

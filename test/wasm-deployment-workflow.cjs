@@ -13,37 +13,25 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   const workflow = await readFile(workflowFile, "utf8");
 
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /source_run_id:/);
-  assert.match(workflow, /qualification_run_id:/);
+  assert.match(workflow, /prepared_request:/);
+  assert.doesNotMatch(workflow, /source_run_id:|qualification_run_id:|gh run download|--name wasm-clean-build-a/);
   assert.match(workflow, /- preview\n\s+- production/);
   assert.doesNotMatch(workflow, /pull_request_target:/);
-  assert.match(workflow, /node build\/input-control\/scripts\/release\/deployment-inputs\.cjs/);
-  assert.match(workflow, /scripts\/release\/product-acceptance\.cjs/);
+  assert.match(workflow, /prepare-browser-deployment\.cjs admit/);
   assert.doesNotMatch(workflow, /\.conclusion[^\n]+success|Browser release gates/);
   assert.doesNotMatch(workflow, /Required legacy release job/);
-  assert.match(workflow, /numerical-release-gate/);
-  const recheck = workflow.indexOf("Recheck selected product attempts before activation");
+  const recheck = workflow.indexOf("Recheck frozen browser bytes before activation");
   const activation = workflow.indexOf("- name: Atomically activate");
   assert.ok(recheck > workflow.indexOf("Upload the prepared release") && recheck < activation);
-  assert.match(workflow, /deployment-inputs\.cjs --recheck "\$RUNNER_TEMP\/sagejs-deployment-inputs\.json"/);
+  assert.match(workflow, /prepare-browser-deployment\.cjs recheck "\$GITHUB_WORKSPACE\/candidate" "\$RUNNER_TEMP\/sagejs-browser-artifacts"/);
 
   assert.match(workflow, /ref: \$\{\{ steps\.source\.outputs\.sha \}\}/);
   assert.match(workflow, /ref: \$\{\{ github\.sha \}\}/);
-  assert.match(workflow, /path: build\/deployment-control/);
-  assert.match(workflow, /\.github\/workflows\/wasm-candidate\.yml/);
+  assert.match(workflow, /path: control/);
+  assert.match(workflow, /path: candidate/);
   assert.match(workflow, /git merge-base --is-ancestor "\$SOURCE_SHA" origin\/main/);
-  assert.match(workflow, /gh run download "\$SOURCE_RUN_ID"[\s\S]+--name wasm-clean-build-a/);
-  assert.match(
-    workflow,
-    /release:qualify:numerics:authenticate[\s\S]+--browser-distribution packages\/flint-wasm\/dist/,
-  );
-  const install = workflow.indexOf("pnpm install --frozen-lockfile");
-  const browserCopy = workflow.indexOf(
-    "cp -a build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist",
-  );
-  const browserBinding = workflow.indexOf(
-    "--browser-distribution packages/flint-wasm/dist",
-  );
+  const install = workflow.indexOf("Install the exact staging dependencies without lifecycle builds");
+  const browserBinding = workflow.indexOf("prepare-browser-deployment.cjs prepare");
   const receipt = workflow.indexOf("production-receipt.cjs validate");
   const stage = workflow.indexOf("website/live/scripts/stage.mjs");
   const prepare = workflow.indexOf("prepare-release.mjs");
@@ -51,9 +39,8 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   const deploy = workflow.indexOf("cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd");
   assert.ok(
     install >= 0 &&
-      browserCopy >= 0 &&
-      browserCopy < browserBinding &&
-      browserBinding < receipt &&
+      browserBinding >= 0 &&
+      browserBinding < install &&
       install < receipt &&
       receipt < stage &&
       stage < prepare &&
@@ -63,19 +50,30 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
   );
   assert.match(workflow, /cache: pnpm/);
   assert.match(workflow, /node --test website\/live\/test\/\*\.test\.mjs/);
-  assert.match(workflow, /node --test test\/wasm-deployment-workflow\.cjs/);
-  assert.match(workflow, /website\/live\/cloudflare\n/);
-  assert.match(workflow, /build\/deployment-control\/website\/live\/cloudflare\/prepare-release\.mjs/);
-  assert.match(workflow, /build\/deployment-control\/website\/live\/cloudflare\/upload-r2\.mjs/);
-  assert.match(workflow, /build\/deployment-control\/packages\/flint-wasm\/scripts\/browser-wasm-deployment\.cjs/);
+  assert.match(workflow, /node --test \.\.\/control\/test\/wasm-deployment-workflow\.cjs/);
+  assert.match(workflow, /\.\.\/control\/website\/live\/cloudflare\/prepare-release\.mjs/);
+  assert.match(workflow, /\.\.\/control\/website\/live\/cloudflare\/upload-r2\.mjs/);
+  assert.match(workflow, /\.\.\/control\/packages\/flint-wasm\/scripts\/browser-wasm-deployment\.cjs/);
   assert.match(workflow, /build\/cloudflare-deploy\/deployment-control\.sha/);
   assert.match(workflow, /build\/cloudflare-deploy\/package\.json/);
-  assert.match(workflow, /workingDirectory: build\/cloudflare-deploy/);
+  assert.match(workflow, /workingDirectory: candidate\/build\/cloudflare-deploy/);
   assert.match(workflow, /packageManager: npm/);
   assert.match(workflow, /deploy --config wrangler\.json/);
   assert.doesNotMatch(workflow, /pages deploy/);
   assert.match(workflow, /website\/live\/dist\n\s+if-no-files-found: error/);
   assert.match(workflow, /build\/cloudflare-deploy\/deployment\.json/);
+  const parsed = require("../scripts/release/workflow-inventory.cjs").parseWorkflow(workflow, workflowFile);
+  const job = parsed.jobs.deploy;
+  assert.equal(job.defaults.run["working-directory"], "candidate");
+  const controlSteps = ["Install control dependencies without product builds", "Validate frozen browser request",
+    "Prepare the frozen browser artifact set", "Recheck frozen browser bytes before activation"];
+  for (const name of controlSteps) assert.equal(job.steps.find(step => step.name === name)["working-directory"], "control");
+  const installs = job.steps.filter(step => step.run?.includes("pnpm install"));
+  assert.equal(installs.length, 2);
+  assert.ok(installs.every(step => step.run === "pnpm install --frozen-lockfile --ignore-scripts"));
+  assert.equal(job.steps.find(step => step.uses === "pnpm/action-setup@v6").with.package_json_file, "control/package.json");
+  assert.equal(job.steps.find(step => step.name === "Preserve browser preparation diagnostics").if, "always()");
+  assert.doesNotMatch(workflow, /pnpm (?:run )?build\b|git tag\b|workflow run|publish_prepared/);
 });
 
 test("fast candidate artifacts are structurally non-deployable", async () => {
@@ -88,8 +86,7 @@ test("fast candidate artifacts are structurally non-deployable", async () => {
   assert.match(candidate, /--samples 1/);
   assert.match(candidate, /--safety-ceilings-only/);
   assert.doesNotMatch(candidate, /cloudflare\/wrangler-action/);
-  assert.match(deployment, /deployment-inputs\.cjs/);
-  assert.match(deployment, /\.github\/workflows\/wasm-candidate\.yml/);
+  assert.match(deployment, /prepare-browser-deployment\.cjs/);
   assert.doesNotMatch(deployment, /wasm-candidate-build/);
 });
 

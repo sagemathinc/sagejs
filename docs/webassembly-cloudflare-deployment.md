@@ -92,16 +92,44 @@ baseline. Candidate artifacts have distinct names, contain no deployment
 credentials, and are explicitly rejected by the deployment workflow. They can
 never substitute for a release run.
 
-First run **Sage.js WebAssembly reproducible release** and tagged **Sage.js
-CI** for the candidate
-commit. Wait for its native oracle, two clean builds, reproducibility check,
-complete Chromium, Firefox, and WebKit parity, all twelve browser-performance
-shards, Chromium security/offline checks, WebKit recovery checks, workload
-route enforcement, and numerical release qualification to succeed. Copy both
-numeric run IDs from their Actions URLs.
+First qualify the exact candidate through the native and browser product
+aggregates, then freeze its complete artifact set with
+`release-artifact-handoff.yml` (see [RELEASE.md](../RELEASE.md)). Required
+correctness, platform, size, safety and raw numerical evidence remain mandatory;
+the twelve optional browser-performance reporting shards do not block deployment.
 
-Then run **Deploy the Sage.js browser application** with the Wasm run ID as
-`source_run_id` and the same-commit CI run ID as `qualification_run_id`:
+Run **Deploy the Sage.js browser application** with `prepared_request` containing
+JSON of this form, replacing all example IDs and full SHAs with the actual
+frozen identities:
+
+```json
+{
+  "schema": "sagejs.prepared-browser-request/v1",
+  "sourceRevision": "FULL_PRODUCT_SHA",
+  "sourceRef": "release-candidate",
+  "sourceEvent": "workflow_dispatch",
+  "purpose": "qualification",
+  "tag": "v0.8.0",
+  "handoff": {
+    "runId": 123, "runAttempt": 1, "artifactId": 456,
+    "controlSha": "FULL_HANDOFF_CONTROL_SHA"
+  }
+}
+```
+
+For a tagged producer use the exact tag as `sourceRef`, `push` as `sourceEvent`
+and `release` as `purpose`. This browser request intentionally has no separate
+Mac installer-inspection pins: it is not native publication authorization.
+The complete nine-role handoff must authenticate, but deployment downloads only
+the root/browser distribution, numerical gate, raw numerical evidence, clean
+browser build and reproduced browser archive. It reconstructs the numerical gate
+and checks exact browser contents and size limits, without building mathematics.
+Dependency installation disables lifecycle builds; app-shell staging remains a
+separate step. Before activation it reauthenticates the historical handoff and
+checks local input bytes without silently repairing changed staged inputs.
+Newer producer/publisher attempts do not change these pinned identities.
+
+Choose the deployment target:
 
 - choose `preview` to publish a unique `workers.dev` Worker; the optional alias
   accepts only lowercase letters, digits, and hyphens;
@@ -133,8 +161,7 @@ performs the one-time setup above, the exact remaining activation step is:
 
 1. confirm the private `sagejs` R2 bucket and its bucket-scoped credentials;
 2. install the environment secrets and variables listed above;
-3. run a successful reproducible Wasm release and same-SHA numerical release
-   qualification;
+3. qualify and freeze the same-source native/browser product artifact set;
 4. invoke the deployment workflow once for preview and once for production.
 
 Do not describe `app.sagejs.org` as deployed until the production workflow's

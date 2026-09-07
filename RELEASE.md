@@ -173,11 +173,11 @@ browser prerequisite assertions require an explicit product kind; tests bind
 their exact workflow dependencies and reject missing/skipped/failed producers.
 External publisher/deployer job inspection now uses these aggregates. The
 publisher checks the newest exact-tag browser run, not an older successful run.
-App admission checks both same-source aggregates; immediately before activation
-it rechecks source, run, attempt and product-job identity. A reporting status
-change is allowed; a different product attempt requires artifact preparation
-again. Legacy successful runs without the v1 aggregates cannot use this path.
-Immutable artifact-set consumer migration and a real candidate trial remain.
+App admission now consumes their frozen artifact handoff; immediately before
+activation it reauthenticates that historical handoff and checks selected input
+bytes. A newer producer/publisher attempt does not replace pinned evidence.
+Legacy successful runs without the v1 aggregates cannot create this handoff.
+Legacy publisher migration and a real candidate trial remain.
 
 ### Prepared-artifact verification and publication
 
@@ -238,10 +238,25 @@ repack or repeat mathematical computations. Raw evidence reconstruction and
 content authentication still run or reuse valid checkpoints.
 
 This path is wired and fixture-tested, not yet proven by a real candidate.
-The tag-triggered legacy publisher and app still need the remaining frozen-set
+The tag-triggered legacy publisher still needs the remaining frozen-set
 consumer migration. Current `sagejs-signing` and `sagejs-release` policies allow
 only `v*` tags; do not widen them automatically. A signed pre-tag trial requires
 the separately requested narrow signing-branch approval, retaining human review.
+
+The app workflow takes a `sagejs.prepared-browser-request/v1` JSON request:
+the same source/ref/event/purpose/tag and `handoff` fields above, but no `macos`
+field. It authenticates the complete handoff and prepares only five browser and
+numerical evidence roles, avoiding native archive downloads and repeated Mac
+inspection. It still reconstructs the raw numerical gate and authenticates the
+root/browser distribution, clean-build comparison, reproduced archive and size
+budgets. This is browser-input acceptance, not full native product acceptance.
+The separate control checkout runs the current deployment tests; an older frozen
+candidate's workflow-layout tests must not constrain the updated control plane.
+Preparation and pre-activation rechecks use immutable IDs; changed candidate
+inputs fail instead of being silently repaired after staging. See the
+[app deployment instructions](docs/webassembly-cloudflare-deployment.md) for
+the exact request and protected preview/production paths. This migration has
+local fixture coverage; a real staged/deployed candidate remains unverified.
 
 ### Frozen artifact transport inventory
 

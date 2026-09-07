@@ -8,6 +8,16 @@ const { validateRequest, requestFromInputs, configureConsumer, runPrepared } = r
 const pins = { runId: 1, runAttempt: 1, artifactId: 2, controlSha: "a".repeat(40) };
 const request = { schema: "sagejs.prepared-promotion-request/v1", sourceRevision: "b".repeat(40), sourceRef: "release-candidate",
   sourceEvent: "workflow_dispatch", purpose: "qualification", tag: "v0.8.0", handoff: pins, macos: { ...pins, artifactId: 3 } };
+test("browser requests omit native inspection without permitting partial publication", async () => {
+  const { macos, ...browser } = request; browser.schema = "sagejs.prepared-browser-request/v1";
+  const { requestFromInputs: select, runBrowser } = require("../scripts/release/prepare-browser-deployment.cjs");
+  assert.deepEqual(select({ prepared_request: JSON.stringify(browser), target: "preview", preview_name: "candidate" }), browser);
+  assert.throws(() => validateRequest(browser));
+  assert.throws(() => select({ prepared_request: JSON.stringify(request), target: "production" }));
+  assert.throws(() => select({ prepared_request: JSON.stringify(browser), target: "preview", preview_name: "Bad!" }));
+  assert.throws(() => select({ prepared_request: JSON.stringify(browser), target: "other" }));
+  await assert.rejects(runBrowser({ signal: AbortSignal.abort() }), /abort/i);
+});
 test("prepared request binds exact historical controls and does not mix producer modes", () => {
   assert.deepEqual(validateRequest(request), request);
   assert.equal(requestFromInputs({ prepared_request: JSON.stringify(request), publish_prepared: false }).publish, false);

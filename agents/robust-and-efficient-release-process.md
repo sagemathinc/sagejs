@@ -47,7 +47,7 @@ checklist to repeat. This planning refresh inspected committed release tooling
 through `ef08f9b03` and the subsequent native-observation workflow integration,
 including the control-step audit and four-platform archive content checks, on
 2026-09-07. The shadow
-inventory reports **85 stage instances, 46 workflow jobs and 149 potential
+inventory reports **85 stage instances, 46 workflow jobs and 145 potential
 dependency edges**, with **zero detected unreviewed control steps and five incomplete
 audit scopes**. These are not timings or proof of complete gate coverage.
 `release:inventory --check` passing means its declared inventory is consistent,
@@ -105,7 +105,27 @@ publication requires an explicit choice, the existing protected environment and
 an existing matching tag. Isolated product clones keep generated outputs and
 journals from invalidating clean-source checks. This closes the disconnected
 helper-to-consumer gap for that path, not the real-candidate trial, legacy
-tag-triggered/app transport migration, or signing-policy approval.
+tag-triggered transport migration, or signing-policy approval.
+The app workflow now consumes the frozen handoff through a browser-only
+preparation scope: five browser/root/raw-evidence roles, not four native
+distributions or an independent Mac observation. Full publication still requires
+all nine roles and native observation. Both scopes share authenticated transport,
+raw numerical reconstruction and browser content/budget checks. Pre-activation
+rechecks derive expected bytes from the historical handoff, not saved success
+JSON, and reject changed local inputs without silently repairing a staged app.
+Fixture retries exercise this path and reuse its handoff when expanding to full
+publication. App-shell tests, main ancestry, protected environments and remote
+origin checks remain. Actual candidate deployment and interrupted promotion
+remain unverified; this is consumer migration, not a completed release.
+Local validation for this migration passed 160 focused transport, numerical,
+publication, workflow and app tests, plus merge invariants, release metadata and
+the shadow inventory. A separate clean checkout of the unchanged dependency/app
+sources installed with `pnpm install --frozen-lockfile --ignore-scripts` in
+3.8 seconds and passed eight app staging/Cloudflare tests. This verifies that
+staging does not need dependency lifecycle builds, not mathematical qualification
+or production deployment. The superseded current-attempt app admission helper
+was removed; release metadata checks now inspect controller wiring rather than
+requiring obsolete inline upload/publish shell fragments.
 Use those helpers where appropriate, but do not equate accumulated helper tests
 with an end-to-end release. The first success criterion remains one interrupted
 promotion resumed with the same tested bytes and no rebuild.

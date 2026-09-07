@@ -59,6 +59,9 @@ test("publisher and deployment require product checks without reporting ancestor
     assert.equal(route(consumer, "wasm-release.yml#browser-performance"), null);
   }
   assert.ok(!graph.controlEffects.some(effect => effect.from === "ci.yml#verify-prepared"));
+  assert.ok(route("wasm-deploy-cloudflare.yml#deploy", "release-artifact-handoff.yml#capture"));
+  assert.equal(route("wasm-deploy-cloudflare.yml#deploy", "release-macos-inspection.yml#inspect"), null,
+    "browser deployment consumes the complete product handoff, but not an independent installer-inspection download");
   for (const kind of ["release-assets", "npm-publication", "release-pointer"]) {
     assert.ok(graph.controlEffects.some(effect => effect.from === "ci.yml#publish-prepared" && effect.kind === kind));
   }

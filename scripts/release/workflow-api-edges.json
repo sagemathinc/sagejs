@@ -125,7 +125,7 @@
         },
         {
           "filename": "scripts/release/artifact-handoff.cjs",
-          "sha256": "f4b8d8dd7ae38504f593d129175d3dbfa129fe848396d5d143903e094c489b41"
+          "sha256": "7a28bcf5ac7787aa2f8d573a0f3fa0e9ac3a6847a4c6c98b101d292585b47966"
         },
         {
           "filename": "scripts/release/stage-artifacts.cjs",
@@ -168,50 +168,6 @@
       "semantics": "Selects the newest exact source/tag push run, then independently authenticates repository/workflow/source/ref, current attempt and successful browser product aggregate/assertion. Does not fall back to older successful campaigns or require reporting/whole-workflow success. Raw numerical evidence and exact packaged-byte authentication remain mandatory later publisher steps; job acceptance alone is not artifact qualification.",
       "requiresJobSuccess": [
         "wasm-release.yml#browser-product-acceptance"
-      ]
-    },
-    {
-      "workflow": "wasm-deploy-cloudflare.yml",
-      "job": "deploy",
-      "step": "Validate both product acceptance gates",
-      "runSha256": "5c7f6e92329e78568f342223f9c1e2ea0f20eccff3c5109cac5e02ee262dfc8a",
-      "helpers": [
-        {
-          "filename": "scripts/release/deployment-inputs.cjs",
-          "sha256": "d621ee0da78854abbe6ee26170686334cb1aa63b0e8d89f11545720b92c011de"
-        },
-        {
-          "filename": "scripts/release/product-acceptance.cjs",
-          "sha256": "8e0418bdb1848420eb95ec79af4c128c22e2ffb153692bde54132593636d9461"
-        }
-      ],
-      "requiresWorkflowSuccess": [],
-      "semantics": "Reviewed control checkout authenticates same-source browser and native product aggregates in their current attempts, including successful required assertions. Native evidence must come from a push, foreign repositories/workflows fail. Does not require reporting or whole-workflow success. Main ancestry, browser identity, raw numerical reconstruction and origin checks remain separate required steps. Name-based artifact transport still needs immutable artifact-set adoption.",
-      "requiresJobSuccess": [
-        "wasm-release.yml#browser-product-acceptance",
-        "ci.yml#native-product-acceptance"
-      ]
-    },
-    {
-      "workflow": "wasm-deploy-cloudflare.yml",
-      "job": "deploy",
-      "step": "Recheck selected product attempts before activation",
-      "runSha256": "f9ba0b8b47e0d08e25f2396c20c49aba81a489496add0d6461b70aadacc9f5c1",
-      "helpers": [
-        {
-          "filename": "scripts/release/deployment-inputs.cjs",
-          "sha256": "d621ee0da78854abbe6ee26170686334cb1aa63b0e8d89f11545720b92c011de"
-        },
-        {
-          "filename": "scripts/release/product-acceptance.cjs",
-          "sha256": "8e0418bdb1848420eb95ec79af4c128c22e2ffb153692bde54132593636d9461"
-        }
-      ],
-      "requiresWorkflowSuccess": [],
-      "semantics": "Reauthenticates both product gates immediately before Worker activation and requires unchanged source/run/attempt/job identities from initial admission. Reporting completion may change; product identity may not. Does not itself activate or upload anything.",
-      "requiresJobSuccess": [
-        "wasm-release.yml#browser-product-acceptance",
-        "ci.yml#native-product-acceptance"
       ]
     },
     {
@@ -396,53 +352,6 @@
       "requiresWorkflowSuccess": []
     },
     {
-      "workflow": "wasm-deploy-cloudflare.yml",
-      "job": "deploy",
-      "step": "Download the reproducible production artifact",
-      "artifactInputs": [
-        {
-          "producer": "wasm-release.yml#clean-build",
-          "matrix": {
-            "replica": "a"
-          },
-          "names": [
-            "wasm-clean-build-a"
-          ]
-        }
-      ],
-      "semantics": "Downloads the named clean-build artifact from the selected Wasm source run and copies its dist into deployment staging after required metadata files exist. The earlier validation step supplies same-source full-workflow success checks; this download alone establishes neither immutable-ID pinning nor mathematical acceptance.",
-      "runSha256": "9590c6aa57b382ec47e5272bf940cf86b436d836330456ac7da38ba2f2d6a975",
-      "helpers": [],
-      "requiresWorkflowSuccess": []
-    },
-    {
-      "workflow": "wasm-deploy-cloudflare.yml",
-      "job": "deploy",
-      "step": "Rebuild and authenticate the same-candidate numerical release gate",
-      "helpers": [
-        {
-          "filename": "scripts/numerical-computing/qualification/assemble-release-gate.cjs",
-          "sha256": "4c7391a41e3d5fd0147ea5aeaa9506539fa72a9d1adce1e34a2279efbb5699b0"
-        },
-        {
-          "filename": "scripts/numerical-computing/qualification/authenticate-release-gate.cjs",
-          "sha256": "e1c30fff47208be0c000b2a6d4cd282b44229128281b9a0b3fbd5404bf128e6a"
-        }
-      ],
-      "artifactInputs": [
-        {
-          "producer": "ci.yml#numerical-release-gate",
-          "names": [
-            "numerical-release-gate",
-            "numerical-release-evidence"
-          ]
-        }
-      ],
-      "semantics": "Downloads named gate and raw-evidence artifacts from the selected CI qualification run, reconstructs the source-current numerical gate, requires equality with the retained gate, and binds the browser distribution. Earlier validation checks same-source successful CI/Wasm runs. Script/manifest transitive closure remains a separately declared incomplete audit scope.",
-      "runSha256": "4be2a559ba6aeeeddfce607f9d5242a33cc4eb5e3dbdb2a3054c1d55d1e27186",
-      "requiresWorkflowSuccess": []
-    },
-    {
       "workflow": "ci.yml",
       "job": "verify-prepared",
       "step": "Verify the frozen artifact set",
@@ -450,15 +359,15 @@
       "helpers": [
         {
           "filename": "scripts/release/publish-prepared.cjs",
-          "sha256": "027c2eeda61536c3e5b11ceecf003d0d0f8cefd9dd586f940a38f11f636ec06f"
+          "sha256": "2e7fd0d9412bb274b1d4c82cdeb472002c92112edbd4a0000efa8c903345f243"
         },
         {
           "filename": "scripts/release/prepare-publication.cjs",
-          "sha256": "33fcbac597305f7bb127ecb20686f753fc5cddac68b5432e513eaccb5ebd4015"
+          "sha256": "3b65032a97a01789fe363792ec75056d5ed6e395f15d07bb7a950c5a34f9cdbf"
         },
         {
           "filename": "scripts/release/artifact-handoff.cjs",
-          "sha256": "f4b8d8dd7ae38504f593d129175d3dbfa129fe848396d5d143903e094c489b41"
+          "sha256": "7a28bcf5ac7787aa2f8d573a0f3fa0e9ac3a6847a4c6c98b101d292585b47966"
         },
         {
           "filename": "scripts/release/control-artifact.cjs",
@@ -515,15 +424,15 @@
       "helpers": [
         {
           "filename": "scripts/release/publish-prepared.cjs",
-          "sha256": "027c2eeda61536c3e5b11ceecf003d0d0f8cefd9dd586f940a38f11f636ec06f"
+          "sha256": "2e7fd0d9412bb274b1d4c82cdeb472002c92112edbd4a0000efa8c903345f243"
         },
         {
           "filename": "scripts/release/prepare-publication.cjs",
-          "sha256": "33fcbac597305f7bb127ecb20686f753fc5cddac68b5432e513eaccb5ebd4015"
+          "sha256": "3b65032a97a01789fe363792ec75056d5ed6e395f15d07bb7a950c5a34f9cdbf"
         },
         {
           "filename": "scripts/release/artifact-handoff.cjs",
-          "sha256": "f4b8d8dd7ae38504f593d129175d3dbfa129fe848396d5d143903e094c489b41"
+          "sha256": "7a28bcf5ac7787aa2f8d573a0f3fa0e9ac3a6847a4c6c98b101d292585b47966"
         },
         {
           "filename": "scripts/release/control-artifact.cjs",
@@ -585,6 +494,118 @@
         }
       ],
       "semantics": "Consumes explicit historical handoff and native-inspection control run/attempt/artifact/source pins. Fetches immutable IDs with bounded digest checks; stages all nine roles, reconstructs numerical evidence, checks exact npm/SEA/browser bytes and native Mac observation against independent signer/verifier policy. Dedicated isolated source clone; clone-local generated-output excludes and journals outside it preserve clean-source checks. No producer build/install or tag mutation. Protected sagejs-release and existing ci.yml OIDC identity. Requires existing tag equal to source and source reachable from origin/main before product downloads. Calls resumable GitHub uploads, npm publication and finalization only after full input authentication; saves progress by attempt."
+    },
+    {
+      "workflow": "wasm-deploy-cloudflare.yml",
+      "job": "deploy",
+      "step": "Prepare the frozen browser artifact set",
+      "runSha256": "48878ca6de01fbd4b7a04312e3d42200ff23fa4acd9b8e951e6b51c9d8f1f08b",
+      "helpers": [
+        {
+          "filename": "scripts/release/prepare-browser-deployment.cjs",
+          "sha256": "eada1c449be553e31b192103bb57338747a293cd085235e5e82433ada62888a4"
+        },
+        {
+          "filename": "scripts/release/publish-prepared.cjs",
+          "sha256": "2e7fd0d9412bb274b1d4c82cdeb472002c92112edbd4a0000efa8c903345f243"
+        },
+        {
+          "filename": "scripts/release/prepare-publication.cjs",
+          "sha256": "3b65032a97a01789fe363792ec75056d5ed6e395f15d07bb7a950c5a34f9cdbf"
+        },
+        {
+          "filename": "scripts/release/artifact-handoff.cjs",
+          "sha256": "7a28bcf5ac7787aa2f8d573a0f3fa0e9ac3a6847a4c6c98b101d292585b47966"
+        },
+        {
+          "filename": "scripts/release/control-artifact.cjs",
+          "sha256": "47c1a25ad8257db09eb019caece51768b100d11ada09b9e57946b6d6ae645e26"
+        },
+        {
+          "filename": "scripts/release/stage-artifacts.cjs",
+          "sha256": "25d740886bd0518fd717958e689327a261b29d5119e84a7b52a25924a94c3400"
+        },
+        {
+          "filename": "scripts/release/extract-artifact.cjs",
+          "sha256": "0e9c120d1e47afff7ee6de53e2498837524360f46930ed118ed6209f34febeed"
+        },
+        {
+          "filename": "scripts/release/browser-inputs.cjs",
+          "sha256": "44efb39e16f3168aca28a3e1f463d00a71a276236d5bf0a2c651ccca1d8ee633"
+        },
+        {
+          "filename": "scripts/release/browser-archive.cjs",
+          "sha256": "3f3c704ce012d07df2e0f29d45c857eb0c81c5c5ab94034a146bbdb67e7dbc3c"
+        },
+        {
+          "filename": "scripts/release/runner.cjs",
+          "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3"
+        },
+        {
+          "filename": "scripts/release/directory-transaction.cjs",
+          "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284"
+        }
+      ],
+      "requiresWorkflowSuccess": [
+        "release-artifact-handoff.yml"
+      ],
+      "semantics": "Authenticates the complete historical handoff with fixed product/source/ref/event/purpose and control run/attempt/artifact/SHA pins, then stages only the five browser/root/numerical transport roles. Reconstructs raw numerical evidence, binds the root and browser bytes, clean/reproduction archive identity and browser size limits. No native archive or Mac observation download, no product build, no publication."
+    },
+    {
+      "workflow": "wasm-deploy-cloudflare.yml",
+      "job": "deploy",
+      "step": "Recheck frozen browser bytes before activation",
+      "runSha256": "1b2c0a2a7e2a35a5a889f989c26276b50282f38150f531fc622d79aabb7d1c12",
+      "helpers": [
+        {
+          "filename": "scripts/release/prepare-browser-deployment.cjs",
+          "sha256": "eada1c449be553e31b192103bb57338747a293cd085235e5e82433ada62888a4"
+        },
+        {
+          "filename": "scripts/release/publish-prepared.cjs",
+          "sha256": "2e7fd0d9412bb274b1d4c82cdeb472002c92112edbd4a0000efa8c903345f243"
+        },
+        {
+          "filename": "scripts/release/prepare-publication.cjs",
+          "sha256": "3b65032a97a01789fe363792ec75056d5ed6e395f15d07bb7a950c5a34f9cdbf"
+        },
+        {
+          "filename": "scripts/release/artifact-handoff.cjs",
+          "sha256": "7a28bcf5ac7787aa2f8d573a0f3fa0e9ac3a6847a4c6c98b101d292585b47966"
+        },
+        {
+          "filename": "scripts/release/control-artifact.cjs",
+          "sha256": "47c1a25ad8257db09eb019caece51768b100d11ada09b9e57946b6d6ae645e26"
+        },
+        {
+          "filename": "scripts/release/stage-artifacts.cjs",
+          "sha256": "25d740886bd0518fd717958e689327a261b29d5119e84a7b52a25924a94c3400"
+        },
+        {
+          "filename": "scripts/release/extract-artifact.cjs",
+          "sha256": "0e9c120d1e47afff7ee6de53e2498837524360f46930ed118ed6209f34febeed"
+        },
+        {
+          "filename": "scripts/release/browser-inputs.cjs",
+          "sha256": "44efb39e16f3168aca28a3e1f463d00a71a276236d5bf0a2c651ccca1d8ee633"
+        },
+        {
+          "filename": "scripts/release/browser-archive.cjs",
+          "sha256": "3f3c704ce012d07df2e0f29d45c857eb0c81c5c5ab94034a146bbdb67e7dbc3c"
+        },
+        {
+          "filename": "scripts/release/runner.cjs",
+          "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3"
+        },
+        {
+          "filename": "scripts/release/directory-transaction.cjs",
+          "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284"
+        }
+      ],
+      "requiresWorkflowSuccess": [
+        "release-artifact-handoff.yml"
+      ],
+      "semantics": "Reauthenticates the pinned historical handoff, derives five-role expected file identities from authenticated transport, and rejects changed local product inputs before activation without repairing them. Does not select current producer attempts, trust saved success JSON, upload, or activate."
     }
   ]
 }

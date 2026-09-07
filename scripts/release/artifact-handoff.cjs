@@ -39,7 +39,7 @@ function verifyHandoffArchive(options, request = githubApi) {
 async function stageHandoff(options, dependencies = {}) {
   const accepted = verifyHandoffArchive(options, dependencies.api ?? githubApi);
   const staged = await stageArtifactSet({ ...dependencies.staging, manifest: accepted.manifest,
-    expectedDigest: accepted.authentication.manifestDigest, directory: options.directory, signal: options.signal });
+    expectedDigest: accepted.authentication.manifestDigest, directory: options.directory, keys: options.keys, signal: options.signal });
   return { ...accepted, staged };
 }
 async function prepareHandoff(options, dependencies = {}) {

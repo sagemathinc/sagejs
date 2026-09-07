@@ -996,14 +996,19 @@ test("recovery selects the latest exact job occurrence across rerun attempts", (
 });
 
 test("Cloudflare activation requires the same qualified source SHA", () => {
-  assert.match(deploy, /qualification_run_id:/);
-  assert.match(deploy, /deployment-inputs\.cjs/);
-  assert.match(read("scripts/release/deployment-inputs.cjs"), /nativeRun\?\.head_sha !== browserRun\.head_sha/);
-  assert.match(deploy, /Recheck selected product attempts before activation/);
-  assert.match(deploy, /--candidate "\$SOURCE_SHA"/);
-  assert.match(
-    deploy,
-    /--name numerical-release-evidence[\s\S]+release:qualify:numerics:gate[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json[\s\S]+--browser-distribution packages\/flint-wasm\/dist/,
-  );
+  assert.match(deploy, /prepared_request:/);
+  assert.match(deploy, /prepare-browser-deployment\.cjs prepare/);
+  assert.match(deploy, /Recheck frozen browser bytes before activation/);
+  const { browserKeys, verificationStages } = require("../../../scripts/release/prepare-publication.cjs");
+  assert.ok(browserKeys.includes("native/numerical-release-gate"));
+  assert.ok(browserKeys.includes("native/numerical-release-evidence"));
+  const commands = verificationStages(root, "a".repeat(40), `sha256:${"b".repeat(64)}`).flatMap(stage => stage.commands);
+  const reconstruct = commands.find(command => command.includes("scripts/numerical-computing/qualification/assemble-release-gate.cjs"));
+  const authenticate = commands.find(command => command.includes("scripts/numerical-computing/qualification/authenticate-release-gate.cjs"));
+  assert.equal(reconstruct[reconstruct.indexOf("--candidate") + 1], "a".repeat(40));
+  assert.equal(authenticate[authenticate.indexOf("--candidate") + 1], "a".repeat(40));
+  assert.ok(authenticate.includes("--rebuilt-gate"));
+  assert.ok(authenticate.includes("--public-npm-root"));
+  assert.ok(authenticate.includes("--browser-distribution"));
   assert.doesNotMatch(deploy, /Required legacy release job|if \[\[ "\$release_gate" == "missing" \]\]/);
 });
