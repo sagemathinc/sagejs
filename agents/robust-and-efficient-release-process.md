@@ -44,12 +44,39 @@ uncommitted prototypes are not proof that these milestones are complete.
 
 Read this brief first; section 9 is historical evidence, not a prerequisite
 checklist to repeat. This planning refresh inspected committed release tooling
-through `af260a188` and the subsequent control-step audit on 2026-09-07. The shadow
+through `cb6ebc5ff`, including the control-step audit and four-platform archive
+content checks, on 2026-09-07. The shadow
 inventory reports **85 stage instances, 43 workflow jobs and 138 potential
 dependency edges**, with **zero detected unreviewed control steps and five incomplete
 audit scopes**. These are not timings or proof of complete gate coverage.
 `release:inventory --check` passing means its declared inventory is consistent,
 not that all publication dependencies have been reviewed.
+
+### Planning handoff and remaining audit work
+
+The family-level audit is sufficient to choose an implementation sequence; it
+is not sufficient to remove every existing gate. The five remaining scopes are:
+
+1. Transitive package scripts and shell commands.
+2. Specialized/package tests outside the runner.
+3. Workflow API, external action and artifact dependencies beyond the reviewed
+   controls.
+4. Numerical browser and supplemental evidence aggregation.
+5. Signing, publication and deployment command semantics.
+
+Close these scopes along the first promotion path, recording each required
+assertion and artifact consumer. Do not make auditing every unrelated benchmark
+a prerequisite to that bounded delivery. A scope is closed by an inspectable
+dependency/coverage review and negative tests, not by another successful full
+build. The shadow inventory check was rerun for this planning handoff and passed
+with the counts above; no candidate was qualified by that check.
+
+Existing experimental preparation can check the contents of all four platform
+archives against selected executable identities. It still does not establish
+macOS installer/signature acceptance or production publisher/deployer adoption.
+Use those helpers where appropriate, but do not equate accumulated helper tests
+with an end-to-end release. The first success criterion remains one interrupted
+promotion resumed with the same tested bytes and no rebuild.
 
 ### First milestone: one recoverable promotion, not another release framework
 
