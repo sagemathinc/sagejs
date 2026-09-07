@@ -198,7 +198,16 @@ space immediately before each stage that actually executes: both the checkout
 and the child's temporary directory need at least 2 GiB available and 8,192 free
 inodes where inode counts are supported. These are initial safety floors, not
 peak-space estimates or reservations; other processes can still consume space.
-This check does not yet provision or validate every compiler, browser or oracle.
+For plans containing `public-runtime` or `bootstrap`, preflight also checks the
+three required foreign-parser submodules against their pinned Git commits and
+requires ordinary grammar/parser/scanner source files. The runner checks the
+whole selected plan's source prerequisites before launching its first command,
+so missing runtime sources cannot waste an earlier numerical build. Inspection
+does not fetch or modify submodules; it reports the scoped initialization command
+and asks that local changes be inspected first. Unrelated upstream test
+repositories are not required by this check. `--profile` and `--stage` apply to
+the preflight selection too. This is still not complete compiler/browser/oracle
+provisioning or verification.
 
 `pnpm release:run --candidate FULL_SHA --status` reads structured scheduling
 status without requiring a build or changing a lock. `status.json` records the
@@ -210,6 +219,12 @@ before recovery. Remote or inaccessible owner probes are explicitly unknown.
 Neither this status nor a partial stage selection authorizes publication. If
 the filesystem becomes completely full even failure-journal writes may fail;
 the runner reports that and retains the original causal error.
+
+The `observation` object is computed at read time without rewriting the journal.
+It shows the age of the last durable update and current campaign/active-stage
+wall times when the owner is locally live. Remote, missing and inaccessible
+owners get `null` execution-time estimates; a stale journal is not proof that
+work kept running. Recorded durations and attempt results remain unchanged.
 
 Checkpoints and separate attempt logs live in
 `build/release-runner/FULL_SHA/`. A successful checkpoint is reusable only for

@@ -756,3 +756,13 @@ deny publication authority. A test demonstrates that a passing preparation
 checkpoint cannot satisfy a failed eligibility stage. The inventory now has
 84 stage instances: four preparation instances and the extracted eligibility
 instance are additional, not 84 mandatory sequential release steps.
+
+An exact preparation run exposed two additional operational gaps: missing parser
+submodules failed after build launch, and a long stage's durable elapsed field
+stayed at its start value. The follow-up `feat/release-preflight-status` checks
+the complete selected plan's three required parser pins and source files before
+any command executes. It is read-only, does not initialize optional upstream
+repositories, and retains the existing clean-candidate requirement. Status now
+adds explicit read-time observation ages/wall times without rewriting historical
+records or claiming progress for a missing/unknown process owner. These changes
+do not change mathematical acceptance, performance budgets or artifact payloads.

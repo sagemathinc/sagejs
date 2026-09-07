@@ -12,6 +12,7 @@ const { runBufferedCommand } = require("../build-parallelism.cjs");
 const { pnpmInvocation } = require("../pnpm-invocation.cjs");
 const { requirePreflight, inspectPreflight } = require("./preflight.cjs");
 const { readStatus } = require("./status.cjs");
+const { inspectSourcePreflight, requireSourcePreflight } = require("./source-preflight.cjs");
 
 const digest = (value) => createHash("sha256").update(value).digest("hex");
 function fileDigest(filename) {
@@ -125,6 +126,10 @@ async function run({ root, candidate, stages, environment = process.env, fresh =
   let current;
   try {
     persist();
+    // Check the complete selected plan up front, not after an earlier expensive
+    // build has run. This read-only source check also applies to cache reuse.
+    journal.sourcePreflight = requireSourcePreflight({ root, stages });
+    persist();
     for (const [index, stage] of stages.entries()) {
       current = journal.stages[index];
       current.state = "checking";
@@ -235,6 +240,7 @@ async function run({ root, candidate, stages, environment = process.env, fresh =
   } catch (error) {
     journal.state = "failed";
     journal.failure = { stage: current?.id ?? null, code: error.code || "RELEASE_VALIDATION", message: error.message };
+    if (error.sourceReport) journal.sourcePreflight = error.sourceReport;
     if (current && current.state !== "passed") {
       current.state = "failed";
       if (error.report) current.preflight = error.report;
@@ -265,6 +271,8 @@ async function main(argv) {
   if (options.preflight) {
     identity(root, options.candidate);
     const report = inspectPreflight({ root });
+    report.sourcePreflight = inspectSourcePreflight({ root, stages: plan(options.profile || "native", options.stage) });
+    report.passed = report.passed && report.sourcePreflight.passed;
     console.log(JSON.stringify(report, null, 2));
     if (!report.passed) process.exitCode = 1;
     return;

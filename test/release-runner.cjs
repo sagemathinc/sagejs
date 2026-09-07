@@ -160,6 +160,47 @@ test("status works without a build and rejects unsafe paths or corrupt journal i
   fs.writeFileSync(path.join(directory, "status.json"), JSON.stringify({ schema: "other" }));
   assert.throws(() => readStatus(context.root, context.candidate), /identity\/schema/);
 });
+test("status computes fresh observation times without rewriting durable evidence or assuming owner health", (t) => {
+  const context = fixture(t);
+  const filename = path.join(context.root, "build/release-runner", context.candidate, "status.json");
+  fs.mkdirSync(path.dirname(filename), { recursive: true });
+  const journal = { schema: "sagejs.release-run/v1", source: { commit: context.candidate },
+    owner: { host: "reference-host", pid: 42 }, state: "running", elapsedSeconds: 10,
+    started: "2026-09-07T00:00:00.000Z", updated: "2026-09-07T00:00:10.000Z",
+    stages: [{ id: "built", state: "passed", durationSeconds: 10 },
+      { id: "building", state: "running", started: "2026-09-07T00:00:10.000Z" },
+      { id: "next", state: "pending" }] };
+  const options = { hostname: "reference-host", probe: () => {}, now: Date.parse("2026-09-07T00:05:00.000Z") };
+  const save = () => fs.writeFileSync(filename, JSON.stringify(journal));
+  save();
+  const before = fs.readFileSync(filename);
+  const live = readStatus(context.root, context.candidate, options);
+  assert.equal(live.elapsedSeconds, 10, "durable elapsed field is not silently overwritten");
+  assert.equal(live.observation.elapsedSeconds, 300);
+  assert.equal(live.observation.journalAgeSeconds, 290);
+  assert.deepEqual(live.observation.activeStages, [{ id: "building", state: "running", elapsedSeconds: 290 }]);
+  assert.equal(readStatus(context.root, context.candidate, { ...options, now: options.now + 1000 }).observation.elapsedSeconds, 301);
+  assert.deepEqual(fs.readFileSync(filename), before);
+  for (const code of ["ESRCH", "EPERM"]) {
+    const result = readStatus(context.root, context.candidate, { ...options,
+      probe: () => { throw Object.assign(new Error(), { code }); } });
+    assert.equal(result.observation.elapsedSeconds, null);
+    assert.equal(result.observation.activeStages[0].elapsedSeconds, null);
+    assert.equal(result.observation.journalAgeSeconds, 290);
+  }
+  assert.equal(readStatus(context.root, context.candidate, { ...options, hostname: "remote" }).observation.elapsedSeconds, null);
+  journal.state = "failed";
+  save();
+  assert.equal(readStatus(context.root, context.candidate, options).observation.elapsedSeconds, null);
+  journal.state = "running";
+  journal.started = "not-a-time";
+  journal.stages[1].started = "2026-09-08T00:00:00.000Z";
+  save();
+  const invalid = readStatus(context.root, context.candidate, options);
+  assert.equal(invalid.observation.elapsedSeconds, null);
+  assert.equal(invalid.observation.activeStages[0].elapsedSeconds, null);
+  assert.throws(() => readStatus(context.root, context.candidate, { ...options, now: NaN }), /observation time/);
+});
 test("gate partition is exhaustive and disjoint; default still runs everything", () => {
   const files = ["test/example.cjs", ...performance];
   const correctness = selectGate(files, "correctness");
@@ -200,6 +241,7 @@ test("native profile performs installation before long tests and retains numeric
     require("node:vm").runInNewContext(source, {
       module,
       require(name) {
+        if (name === "./source-preflight.cjs") return require("../scripts/release/source-preflight.cjs");
         assert.equal(name, "../package-qualification/runtime.cjs");
         return { targetForHost: () => target };
       },

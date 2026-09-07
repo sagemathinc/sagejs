@@ -3,6 +3,7 @@
 // Required gate inventory shared by persistent hosts and GitHub jobs. A
 // single-stage invocation is deliberately not a complete release receipt.
 const { targetForHost } = require("../package-qualification/runtime.cjs");
+const { parserSubmodules } = require("./source-preflight.cjs");
 const runtime = ["dist", "packages/flint/build/Release", "packages/graph/build/Release"];
 function stage(id, gate, commands, options = {}) {
   return { id, gate, commands, timeoutSeconds: 7200, inputs: runtime, ...options };
@@ -34,7 +35,7 @@ function plan(profile = "native", selected, target = targetForHost()) {
     // startup cache produced by build. Complete that output before freezing
     // dist as the browser stage's input.
     stage("public-runtime", "build", [["pnpm", "build"], ["pnpm", "python:precompile:run"]],
-      { inputs: ["build/authenticated-numerical-product"], outputs: ["dist"] }),
+      { inputs: ["build/authenticated-numerical-product"], outputs: ["dist"], sourceSubmodules: parserSubmodules }),
     stage("public-build", "build", [["pnpm", "--dir", "packages/flint-wasm", "build"],
       ["node", "scripts/numerical-product.cjs", "validate-installed"],
       ["node", "packages/flint-wasm/scripts/production-receipt.cjs", "validate"],
@@ -47,7 +48,7 @@ function plan(profile = "native", selected, target = targetForHost()) {
       ...(target.startsWith("linux-") ? [["pnpm", "test:installer"]] : [])], { inputs: [], timeoutSeconds: 300 }),
     stage("bootstrap", "build", [["pnpm", "bootstrap", "--without-sea"],
       ["pnpm", "python:precompile:run"], ["node", "scripts/release/prepare-test-runtime.cjs"]],
-      { inputs: ["build/authenticated-numerical-product"], outputs: runtime }),
+      { inputs: ["build/authenticated-numerical-product"], outputs: runtime, sourceSubmodules: parserSubmodules }),
     stage("startup", "performance", [["pnpm", "test:startup:run"]], { timeoutSeconds: 300 }),
     stage("strict", "correctness", [["pnpm", "test:baselib:strict"]], { timeoutSeconds: 600 }),
     stage("unit", "correctness", [["node", "scripts/run-test-tier.cjs", "unit", "--resume"]]),
