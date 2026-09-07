@@ -888,3 +888,11 @@ explicit non-publishing qualification mode is therefore required before real
 pre-tag capture. Do not create a tag just to test this foundation or mislabel
 a partial manual run as a qualified candidate. The aggregate/manifest protocol
 must be exercised in that mode before retiring legacy publication guards.
+
+Native Windows validation of `428b2723b`: all 11 artifact-set tests pass under
+Node 26.5.1 in 1.51 s, including streaming ZIP checks and the exact workflow
+role inventory. A SHA-256-verified 1,024,000-byte source/dependency bundle was
+used; no Sage.js native rebuild or existing release directory was involved.
+The temporary Windows source fixture and archive were removed afterward.
+This is portability evidence for the manifest foundation, not full Windows
+product qualification or authenticated live publication.
