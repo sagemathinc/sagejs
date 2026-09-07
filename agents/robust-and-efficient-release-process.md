@@ -558,8 +558,16 @@ in the active frozen 0.8.0 candidate. Initial implementation:
   proposed classifications. It explicitly does not yet cover the transitive
   workflow/API/shell, signing or numerical aggregation graphs. Unknown stages
   remain required and require review; no enforcement has been relaxed.
+- `fc0e599e6` / `1c2f52dab`: opt-in isolated-file resume with complete candidate,
+  generated-input, Node executable, host, environment and invocation bindings.
+  Ten checkpoint recovery/fault tests pass on Linux and native Windows; the
+  broader focused runner/metadata/UX set passes 54 tests on Linux. The real CLI
+  executed, reused, and forcibly reran all three source-only pilot files.
+  Native Windows tests used a small sparse worktree which was removed afterward;
+  existing release artifacts were untouched. Input-mutation and storage-failure
+  handling fail closed. This is not yet broad mathematical-suite reuse.
 
 Phases A–F are **not complete**. Next: finish dependency inventory, separate
-required assertions from reporting, add safe per-file resume and transactional
-oracle preparation, then artifact-set publication. Current stage checkpoints
+required assertions from reporting, audit more files for the resume contract,
+add transactional oracle preparation, then artifact-set publication. Current stage checkpoints
 remain exact-candidate scheduling hints; they are not transferable evidence.
