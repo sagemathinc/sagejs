@@ -73,7 +73,10 @@ runner targets/profiles, direct package-script bodies, declared input/output
 boundaries, timeouts, existing test selectors and proposed P/C/R classifications.
 `pnpm release:inventory --check` detects unreviewed runner stages, stale policy
 entries, unresolved direct package scripts and drift in reviewed API checks. It is not a release acceptance
-command: all current stages remain required, including proposed reporting lanes.
+command: stages remain required within the selected profile. The explicit
+`reporting` profile is separate from local browser product acceptance; the
+legacy GitHub whole-workflow publication guards still require reports until
+their coordinated migration.
 The inventory also parses every workflow with YAML 1.2 and preserves job `needs`,
 conditions, matrix strategies, timeouts, tolerance and exact step bodies. The
 source-bound API review registry describes the indirect whole-workflow checks
@@ -112,14 +115,15 @@ trusted transport remains part of release qualification.
 
 The release-process branch now collects these receipts immediately after each
 engine's parity test, in both the browser runner profile and Wasm workflow.
-Workload enforcement reads only the explicit parity/acceptance files and runs
-before timing reports in the local profile. The legacy reporting requirements
-and whole-workflow publication guards are retained during validation. Tests
+Workload enforcement reads only the explicit parity/acceptance files. Local
+browser acceptance and repeated timing use separate profiles. The legacy
+whole-workflow publication guards are retained during validation. Tests
 prove source/route preservation, no memory sampling, and failure handling. A
 read-only three-engine trial of the shared execution loop passed against the
 retained `19789307` artifact (see the release-process plan); it is not
-qualification of this branch. Exact-candidate CLI runs and the full publication
-dependency migration remain required before adoption. Mathematical parity,
+qualification of this branch. Exact-candidate browser collector CLI runs now
+pass at `f9384a408`; full parity and the complete publication dependency
+migration remain required before adoption. Mathematical parity,
 startup, size, numerical evidence and dedicated memory/security gates are not
 replaced by route acceptance.
 
@@ -319,10 +323,33 @@ uses the existing portable/native inventory rather than silently adding a
 second full integration campaign. On a prepared Linux browser host, run
 `pnpm release:run --candidate FULL_SHA --profile browser` for Node/native and
 Node-Wasm parity, all three real browser engines, security/recovery tests,
-workload enforcement, and the existing timing reports. Install the matching
+native workload acceptance and browser workload enforcement. Install the matching
 Playwright engines and OS libraries beforehand. Numerical browser/supplemental
 collection and cross-host clean reproducibility remain the separately required
 commands below.
+
+The required native workload step uses
+`node bench/browser-wasm-performance.mjs --native-acceptance --budget
+bench/browser-wasm-budget.json --output build/wasm-native-acceptance.json`.
+It executes all 21 checked-in programs cold/warm once, without memory sampling
+or minor timing-ratio enforcement. Failed evaluation/interruption and the
+existing absolute interruption ceiling remain blocking. It cannot accept a
+custom corpus, shard, repeated sample count or report-only override. Its v2
+receipt labels the measurement as `native-workload-acceptance`; incidental
+durations can inform diagnostics but are not a repeated timing qualification.
+Independent raw startup, mathematical parity and memory/security gates remain
+required.
+
+Use `pnpm release:run --candidate FULL_SHA --profile reporting` separately on
+the same prepared checkout for the existing seven-sample native reference and
+three browser timing reports. This profile has no build commands. Its failure
+retains its own attempt journal and cannot invalidate unchanged successful
+product checkpoints. The Wasm workflow also uses the one-observation native
+acceptance step on its already-built oracle; browser timing reports label ratios
+against that reference as single-observation diagnostics. This removes repeated
+native timing from the required oracle job without another build or a large
+cross-job runtime transfer. The GitHub browser-report job and legacy publication
+guards remain until full product-boundary adoption.
 
 To launch the four hosts together, use
 `pnpm release:coordinate --candidate FULL_SHA --hosts build/release-hosts.json`.

@@ -29,7 +29,7 @@ function packageEntrypoint(command, directory = root) {
 
 function inventory() {
   const manifest = discoverTestManifest(root);
-  const profiles = [["preparation", "linux-x64"], ["canonical", "linux-x64"], ["browser", "linux-x64"], ...targets.map((target) => ["native", target])];
+  const profiles = [["preparation", "linux-x64"], ["canonical", "linux-x64"], ["browser", "linux-x64"], ["reporting", "linux-x64"], ...targets.map((target) => ["native", target])];
   const instances = profiles.flatMap(([profile, target]) => {
     const stages = plan(profile, undefined, target);
     return stages.map((stage, index) => ({

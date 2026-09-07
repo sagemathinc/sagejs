@@ -9,7 +9,7 @@ function stage(id, gate, commands, options = {}) {
   return { id, gate, commands, timeoutSeconds: 7200, inputs: runtime, ...options };
 }
 const targets = Object.freeze(["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]);
-const profiles = Object.freeze(["preparation", "canonical", "native", "browser"]);
+const profiles = Object.freeze(["preparation", "canonical", "native", "browser", "reporting"]);
 function plan(profile = "native", selected, target = targetForHost()) {
   // Explicit targets are for inspection/generation. The execution CLI continues
   // to select the real host and cannot qualify a foreign target by relabeling it.
@@ -80,6 +80,10 @@ function plan(profile = "native", selected, target = targetForHost()) {
       ["node", "packages/flint-wasm/test/browser-wasm-node-parity.cjs", "--tier", "release", "--receipt", "build/wasm-node-oracle.json"],
       ["node", "packages/flint-wasm/scripts/node-cli-parity.cjs", "--tier", "release", "--receipt", "build/wasm-node-cli-parity.json"],
     ], { inputs: [...runtime, "packages/flint-wasm/dist"], outputs: ["build/wasm-node-oracle.json", "build/wasm-node-cli-parity.json"] }),
+    stage("wasm-native-acceptance", "correctness", [["node", "bench/browser-wasm-performance.mjs",
+      "--native-acceptance", "--budget", "bench/browser-wasm-budget.json",
+      "--output", "build/wasm-native-acceptance.json"]],
+    { inputs: runtime, outputs: ["build/wasm-native-acceptance.json"] }),
     ...["chromium", "firefox", "webkit"].map((engine) => stage(`wasm-${engine}`, "correctness",
       [["node", "packages/flint-wasm/test/browser-wasm-parity.mjs", "--tier", "release", "--engines", engine,
         "--require-engines", engine, "--receipt", `build/wasm-parity-${engine}.json`],
@@ -125,12 +129,11 @@ function plan(profile = "native", selected, target = targetForHost()) {
     return order.map((id) => all.find((item) => item.id === id));
   }
   if (profile === "browser") {
-    const browser = all.filter((item) => item.id.startsWith("wasm-"));
-    // Required workload evidence does not consume timing output anymore. Finish
-    // it before reports; reports remain required by this transitional profile.
-    return [...browser.filter((item) => item.gate !== "performance-report"),
-      ...browser.filter((item) => item.gate === "performance-report")];
+    return all.filter((item) => item.id.startsWith("wasm-") && item.gate !== "performance-report");
   }
+  // Reports consume the same prepared immutable runtime/artifact, but their
+  // repetition or failure is not a prerequisite of browser product acceptance.
+  if (profile === "reporting") return all.filter((item) => item.gate === "performance-report");
   if (profile !== "native") throw new Error(`unknown profile ${profile}`);
   // Package/install first: a broken consumer install must not wait for soaks.
   const order = ["metadata", "bootstrap", "sea", "npm", "package-install", "startup", "strict",

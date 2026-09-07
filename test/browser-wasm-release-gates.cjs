@@ -124,8 +124,8 @@ test("release CI shards performance and reuses only authenticated native cache e
   assert.doesNotMatch(workflow, /pnpm bootstrap/);
   assert.match(
     workflow,
-    /--runtime node-native --samples 7[\s\S]{0,240}--report-regressions/,
-    "the heterogeneous shared-runner native baseline must retain reviewed evidence without blocking browser correctness",
+    /--native-acceptance[\s\S]{0,160}--budget bench\/browser-wasm-budget.json[\s\S]{0,100}--output build\/wasm-native-acceptance.json/,
+    "the required native corpus must retain execution and interruption acceptance without repeated timing",
   );
   assert.match(workflow, /browser-parity:/);
   assert.match(workflow, /browser-performance:/);
@@ -687,6 +687,11 @@ test("browser/native comparison requires identical workload identities", async (
   assert.equal(comparison.startup_median_ratio, 2);
   assert.equal(comparison.operations.example.cold_median_ratio, 3);
   assert.equal(comparison.operations.example.warm_median_ratio, 2);
+  const diagnostic = compareNativeReceipts(browser, { ...native, samples: 1,
+    measurement_purpose: "native-workload-acceptance" });
+  assert.equal(diagnostic.reference_samples, 1);
+  assert.equal(diagnostic.reference_measurement_purpose, "native-workload-acceptance");
+  assert.match(diagnostic.interpretation, /not repeated timing qualification/);
   assert.throws(
     () => compareNativeReceipts(browser, { ...native, workload_identity: "other" }),
     /different workloads/,

@@ -812,12 +812,12 @@ dedicated resource/safety qualification and the complete publication-boundary
 migration remain outstanding; these three acceptance receipts do not authorize
 a release or deployment.
 
-### Uncommitted native workload/reporting follow-up
+### Native workload/reporting follow-up
 
-The following describes a prototype in the `release-preflight-status` worktree
-on `feat/release-native-acceptance`, not adopted production behavior. Its code
-changes remain separate from this planning handoff. Finish review and validation
-before committing or integrating that implementation.
+The following describes the implementation on `feat/release-native-acceptance`,
+not adopted production behavior. The focused acceptance, runner, inventory,
+prerequisite, numerical-workflow and deployment-workflow tests pass 84/84;
+`merge:check` also passes. Production qualification remains separate.
 
 Native workload/reporting separation: the proposed required Node oracle retains full
 release parity and all 21 additional benchmark sources cold/warm once, with

@@ -255,6 +255,11 @@ export function compareNativeReceipts(browserReport, nativeReport, referenceIden
     status: "available",
     reference_identity: referenceIdentity,
     reference_source_revision: nativeReport.source_revision ?? null,
+    reference_samples: nativeReport.samples ?? null,
+    reference_measurement_purpose: nativeReport.measurement_purpose ?? "timing-report",
+    interpretation: nativeReport.samples === 1
+      ? "Single-observation diagnostic ratio, not repeated timing qualification"
+      : "Sampled timing comparison; acceptance depends on the consumer's explicit policy",
     startup_median_ratio: ratio(
       browserReport.startup_ms.median,
       nativeReport.startup_ms.median,
@@ -479,6 +484,27 @@ export async function runPerformance(driver, workloads, samples, workloadIdentit
   };
 }
 
+// Preserve the extra native corpus that formerly ran only inside a seven-pass
+// timing campaign. One cold/warm pair exercises each unchanged source and its
+// assertions. Incidental durations remain honest diagnostic data, not a new
+// statistical baseline or a substitute for the product startup/memory gates.
+export async function runNativeAcceptance(driver, workloads, workloadIdentity, budget, options = {}) {
+  if (driver.runtime?.kind !== "node-native") throw new Error("native acceptance needs a Node-native driver");
+  const ceiling = budget?.thresholds?.maximum_interrupt_latency_ms;
+  if (budget?.schema !== "sagejs.browser-wasm-budget/v1" || !Number.isFinite(ceiling) || ceiling <= 0) {
+    throw new Error("native acceptance requires a finite positive interruption safety ceiling");
+  }
+  const report = await runPerformance(driver, workloads, 1, workloadIdentity, { ...options, collectMemory: false });
+  report.budget = { ...checkBudget(report, budget, false, {
+    enforceRegressionBaseline: false, enforceNativeRatio: false,
+  }), enforcement: "required" };
+  if (report.budget.failures.length) throw new Error(`native workload acceptance failed: ${report.budget.failures.join("; ")}`);
+  report.measurement_purpose = "native-workload-acceptance";
+  report.acceptance = { status: "passed",
+    scope: "All selected sources cold/warm and interruption safety; no repeated timing or memory qualification. Product startup and mathematical parity remain separate required gates." };
+  return report;
+}
+
 export function checkBudget(
   report,
   budget,
@@ -573,9 +599,10 @@ export function checkBudget(
 }
 
 async function main() {
-  const runtimeKind = option("--runtime", "browser-wasm");
+  const nativeAcceptance = process.argv.includes("--native-acceptance");
+  const runtimeKind = option("--runtime", nativeAcceptance ? "node-native" : "browser-wasm");
   const engine = option("--engine", "chromium");
-  const samples = Number(option("--samples", "5"));
+  const samples = Number(option("--samples", nativeAcceptance ? "1" : "5"));
   const output = option("--output");
   const budgetPath = option("--budget");
   const workloadPath = path.resolve(option(
@@ -587,6 +614,11 @@ async function main() {
   const requireBaseline = process.argv.includes("--require-baseline");
   const safetyCeilingsOnly = process.argv.includes("--safety-ceilings-only");
   const reportRegressions = process.argv.includes("--report-regressions");
+  if (nativeAcceptance && (runtimeKind !== "node-native" || samples !== 1 || !budgetPath ||
+      nativeReferencePath || shard || process.argv.includes("--workloads") || requireBaseline ||
+      safetyCeilingsOnly || reportRegressions)) {
+    throw new Error("--native-acceptance requires the full checked-in corpus, one sample and --budget; custom workloads, shards and timing-policy flags are not allowed");
+  }
   if (!Number.isSafeInteger(samples) || samples < 1 || samples > 50) {
     throw new Error("--samples must be an integer from 1 through 50");
   }
@@ -609,15 +641,15 @@ async function main() {
   const workloads = validatePerformanceWorkloads(JSON.parse(workloadBytes));
   const workloadIdentity = `sha256:${sha256(workloadBytes)}`;
   const selected = selectPerformanceWorkloads(workloads, shard);
+  const acceptanceBudget = nativeAcceptance ? JSON.parse(await fs.promises.readFile(budgetPath, "utf8")) : null;
   const driver = runtimeKind === "browser-wasm"
     ? await createBrowserDriver(engine)
     : await createNativeDriver();
-  const report = await runPerformance(
-    driver,
-    selected.workloads,
-    samples,
-    workloadIdentity,
-  );
+  const report = nativeAcceptance
+    ? await runNativeAcceptance(driver, selected.workloads, workloadIdentity, acceptanceBudget, {
+      onProgress: ({ index, count, id, state }) => console.log(`[native-acceptance] ${state} ${index + 1}/${count} ${id}`),
+    })
+    : await runPerformance(driver, selected.workloads, samples, workloadIdentity);
   report.workload_selection = selected.selection;
   if (runtimeKind === "browser-wasm") {
     if (nativeReferencePath) {
@@ -636,14 +668,14 @@ async function main() {
   } else {
     report.native_comparison = null;
   }
-  if (budgetPath) {
+  if (budgetPath && !nativeAcceptance) {
     const budget = JSON.parse(await fs.promises.readFile(budgetPath, "utf8"));
     report.budget = checkBudget(report, budget, requireBaseline, {
       enforceNativeRatio: !safetyCeilingsOnly,
       enforceRegressionBaseline: !safetyCeilingsOnly,
     });
     report.budget.enforcement = reportRegressions ? "report-only" : "required";
-  } else {
+  } else if (!nativeAcceptance) {
     report.budget = null;
   }
   const serialized = `${JSON.stringify(report, null, 2)}\n`;

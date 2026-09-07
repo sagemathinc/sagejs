@@ -14,7 +14,7 @@ const groups = [
   ["oracle", "C", "numerical-qualification", "Provision the authenticated numerical reference environment"],
   ["numerical-npm numerical-sea numerical-node", "P", "numerical-qualification", "Retain the existing exact product evidence matrix"],
   ["numerical-eligibility", "P", "numerical-qualification", "Require source-current qualified NLopt before canonical release handoff; preparation alone does not satisfy admission"],
-  ["wasm-node wasm-chromium wasm-firefox wasm-webkit wasm-security wasm-workload", "P", "browser", "Validate target behavior, safety and workload coverage"],
+  ["wasm-node wasm-native-acceptance wasm-chromium wasm-firefox wasm-webkit wasm-security wasm-workload", "P", "browser", "Validate target behavior, safety and workload coverage"],
   ["integration-performance native-performance", "C", "qualification", "Mixed assertions: retain required coverage until correctness and minor timing ratios are separated"],
   ["wasm-native-timings wasm-chromium-timings wasm-firefox-timings wasm-webkit-timings", "R", "browser-performance", "Proposed reporting lane; extract required correctness/resource assertions and sever publication dependencies before adoption"],
 ];

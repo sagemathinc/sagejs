@@ -312,7 +312,7 @@ test("native preparation finishes mutable runtime caches before qualification", 
     ["node", "scripts/release/prepare-test-runtime.cjs"]]);
   assert.ok(stages.indexOf(bootstrap) < stages.findIndex((stage) => stage.id === "sea"));
 });
-test("browser workload enforcement consumes parity and acceptance before timing reports", () => {
+test("browser workload enforcement consumes parity and acceptance independently of reporting", () => {
   const stages = require("../scripts/release/stages.cjs").plan("browser");
   const enforcement = stages.find((stage) => stage.id === "wasm-workload");
   assert.equal(enforcement.id, "wasm-workload");
@@ -330,9 +330,32 @@ test("browser workload enforcement consumes parity and acceptance before timing 
       assert.ok(enforcement.commands[0].includes(name));
     }
   }
-  for (const stage of stages.filter((stage) => stage.gate === "performance-report")) {
-    assert.ok(stages.indexOf(stage) > stages.indexOf(enforcement));
-  }
-  assert.equal(stages.filter((stage) => stage.gate === "performance-report").length, 4);
+  assert.equal(stages.filter((stage) => stage.gate === "performance-report").length, 0);
+  assert.ok(stages.find((stage) => stage.id === "wasm-native-acceptance").commands.flat().includes("--native-acceptance"));
+  const reports = require("../scripts/release/stages.cjs").plan("reporting");
+  assert.equal(reports.length, 4);
+  assert.ok(reports.every((stage) => stage.gate === "performance-report"));
+  assert.deepEqual(reports[0].commands[0].slice(2, 6), ["--runtime", "node-native", "--samples", "7"]);
+  assert.ok(reports.every((stage) => !stages.some((required) => required.id === stage.id)));
+  assert.ok(reports.every((stage) => stage.commands.every((command) => command[0] === "node" && command[1] === "bench/browser-wasm-performance.mjs")), "reports consume prepared artifacts, never launch a build");
   assert.ok(!enforcement.inputs.some((name) => name.includes("performance")));
+});
+test("failed separate reporting does not invalidate accepted products or conceal correctness failure", async (t) => {
+  const context = fixture(t);
+  const product = task("product", "require('fs').writeFileSync('build/product','accepted')", { outputs: ["build/product"] });
+  const reporting = task("report", "process.exit(7)", { gate: "performance-report" });
+  await run({ ...context, stages: [product], profile: "browser", selectedStages: false });
+  const accepted = readStatus(context.root, context.candidate);
+  await assert.rejects(run({ ...context, stages: [reporting], profile: "reporting", selectedStages: false }), /command failed/);
+  const failedReport = readStatus(context.root, context.candidate);
+  assert.equal(failedReport.scope.profile, "reporting");
+  assert.equal(failedReport.state, "failed", "report failure remains visible");
+  const repeat = await run({ ...context, stages: [product], profile: "browser", selectedStages: false });
+  assert.equal(repeat[0].reused, true);
+  const retained = path.join(context.root, "build/release-runner", context.candidate, "runs");
+  assert.equal(JSON.parse(fs.readFileSync(path.join(retained, `${accepted.runId}.json`))).state, "passed");
+  assert.equal(JSON.parse(fs.readFileSync(path.join(retained, `${failedReport.runId}.json`))).state, "failed");
+  product.commands = [["node", "-e", "process.exit(3)"]];
+  await assert.rejects(run({ ...context, stages: [product], profile: "browser", selectedStages: false }), /command failed/);
+  assert.equal(readStatus(context.root, context.candidate).state, "failed", "a changed correctness command cannot reuse older acceptance");
 });

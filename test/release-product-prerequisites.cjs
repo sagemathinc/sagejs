@@ -79,6 +79,29 @@ test("parity jobs produce both receipts and workload enforcement never reads per
   assert.ok(jobs["browser-release-gates"].needs.includes("browser-performance"), "legacy guard stays until coordinated adoption");
 });
 
+test("native correctness retains both corpora but no repeated timing campaign", () => {
+  const jobs = workflow().jobs;
+  const oracle = jobs["node-oracle"];
+  const parity = oracle.steps.filter((step) => step.run?.includes("browser-wasm-node-parity.cjs"));
+  assert.equal(parity.length, 1);
+  assert.match(parity[0].run, /--tier release --receipt build\/wasm-node-oracle.json/);
+  const acceptance = oracle.steps.filter((step) => step.run?.includes("--native-acceptance"));
+  assert.equal(acceptance.length, 1);
+  assert.equal(acceptance[0].if, undefined);
+  assert.equal(acceptance[0]["continue-on-error"] ?? false, false);
+  assert.match(acceptance[0].run, /--budget bench\/browser-wasm-budget.json/);
+  assert.doesNotMatch(acceptance[0].run, /--(?:samples|workloads|shard|report-regressions|require-baseline)/);
+  assert.ok(oracle.steps.indexOf(acceptance[0]) > oracle.steps.indexOf(parity[0]));
+  assert.equal(oracle.steps.filter((step) => step.run?.includes("pnpm build")).length, 1);
+  const upload = oracle.steps.find((step) => step.uses?.startsWith("actions/upload-artifact@"));
+  assert.match(upload.with.path, /wasm-node-oracle.json/);
+  assert.match(upload.with.path, /wasm-native-acceptance.json/);
+  assert.doesNotMatch(oracle.steps.map((step) => step.run || "").join("\n"), /--samples 7/);
+  const report = jobs["browser-performance"].steps.find((step) => step.run?.includes("--native-reference"));
+  assert.match(report.run, /--native-reference build\/node-reference\/wasm-native-acceptance.json/);
+  assert.match(report.run, /--report-regressions/);
+});
+
 test("the actual aggregate command fails closed on absent, malformed or failed results", () => {
   const run = (value) => spawnSync(process.execPath, [path.join(root, "scripts/release/product-prerequisites.cjs")], {
     env: { ...process.env, SAGEJS_PRODUCT_NEEDS: value }, encoding: "utf8",
