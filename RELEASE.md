@@ -307,18 +307,36 @@ Numerical product qualification has checked-in production entry points. Each
 platform producer first provisions the authenticated, link-free SciPy oracle
 declared by
 `bench/numerical-computing/qualification/scipy-oracle-catalog.json`; a Python
-or SciPy found on `PATH` is intentionally never accepted. On POSIX hosts the
-essential sequence is:
+or SciPy found on `PATH` is intentionally never accepted. For persistent-host
+preparation use `node scripts/release/prepare-oracle.cjs` (also used by the
+runner's `oracle` stage). It revalidates an existing installation against the
+current catalog, complete prefix and provenance and actually probes the Python,
+NumPy and SciPy runtime. A cache hit is not a path-exists shortcut.
+
+When replacement is necessary, prefix and provenance are prepared as one private
+bundle. The old directory stays in place until that bundle validates, then is
+retained under `build/.transactions-numerical-scipy/<transaction-id>/previous`.
+Failed or partial preparation is also retained there. The checkout mutation lease
+excludes running consumers; a direct child of the release runner may borrow its
+parent's lease. Standalone invocations must acquire their own lease. Windows has
+no atomic exchange of nonempty directories, so a brief missing-target interval
+is covered by the transaction journal and recovery, not claimed to be invisible.
+
+After an interrupted attempt, inspect any stale lock's owner and children before
+unlocking. Rerunning preparation restores the previous directory when needed,
+reuses a verified staged bundle if present, and verifies the installed location
+again. It never accepts a stale catalog, silently falls back to PATH, or deletes
+previous/failed directories. Corrupt journals and unsafe filesystem objects fail
+closed for inspection. Retained transactions consume disk: archive or prune only
+after inspecting active leases and which evidence/artifacts still reference them.
+
+The older low-level provisioning command remains useful for clean, explicitly
+chosen output paths, but is not the retry interface for a persistent checkout.
+The persistent-host platform sequence is:
 
 ```sh
 candidate=$(git rev-parse HEAD)
-rm -rf build/numerical-scipy build/numerical-qualification/platform/PLATFORM
-mkdir -p build/numerical-scipy-downloads build/numerical-scipy
-pnpm release:qualify:numerics:oracle -- \
-  --artifact-directory build/numerical-scipy-downloads \
-  --prefix build/numerical-scipy/prefix \
-  --provenance build/numerical-scipy/provenance.json \
-  --download
+node scripts/release/prepare-oracle.cjs
 export SAGEJS_QUALIFICATION_SCIPY_PREFIX="$PWD/build/numerical-scipy/prefix"
 export SAGEJS_QUALIFICATION_SCIPY_PROVENANCE="$PWD/build/numerical-scipy/provenance.json"
 pnpm release:qualify:numerics:platform -- \
@@ -331,7 +349,10 @@ pnpm release:qualify:numerics:platform -- \
 
 Replace `PLATFORM` with `linux-x64`, `linux-arm64`, `macos-arm64`, or
 `windows-x64`. Use the equivalent PowerShell environment assignments on native
-Windows. The platform collector derives and checks its platform rather than
+Windows. This low-level collector requires a fresh output directory; preserve
+prior evidence before invoking it. For retries prefer the release runner's
+subject stages, which retain previous outputs and verified checkpoints.
+The platform collector derives and checks its platform rather than
 trusting a command-line label. It cold-runs and immediately verifies the Node,
 fresh-npm, and relocated-SEA product rows against the same source commit,
 corpus, artifacts, and hermetic oracle. The macOS signing workflow may collect

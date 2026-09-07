@@ -56,9 +56,7 @@ function plan(profile = "native", selected, target = targetForHost()) {
     { inputs: ["build/sea", "build/release/npm/sagejs.tgz"], outputs: [`build/release/npm/sagejs-${target}.tgz`] }),
     stage("package-install", "installation", [["node", "scripts/release/package-preflight.cjs"]],
       { inputs: ["build/release/npm/sagejs.tgz", `build/release/npm/sagejs-${target}.tgz`], timeoutSeconds: 600 }),
-    stage("oracle", "integrity", [["pnpm", "release:qualify:numerics:oracle", "--",
-      "--artifact-directory", "build/numerical-scipy-downloads", "--prefix", "build/numerical-scipy/prefix",
-      "--provenance", "build/numerical-scipy/provenance.json", "--download"]],
+    stage("oracle", "integrity", [["node", "scripts/release/prepare-oracle.cjs"]],
     { inputs: [], outputs: ["build/numerical-scipy"], timeoutSeconds: 1200 }),
     ...["npm", "sea", "node"].map((subject) => stage(`numerical-${subject}`, "numerical-evidence",
       [["node", "scripts/release/collect-subject.cjs", "{candidate}", subject]], {
