@@ -174,6 +174,7 @@ test("prepare authenticates, stages and expands all roles, repairing corruption 
 test("publication input preparation retains a failed gate, resumes raw verification, then reuses both successful stages", async (t) => {
   const { createBrowserInputs, budget } = require("./helpers/release-browser-inputs.cjs");
   const { platformPackage } = require("./helpers/release-platform-package.cjs");
+  const { sourceDocumentation, platformZip } = require("./helpers/release-downloadable-zip.cjs");
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "sagejs-consumer-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, "scripts/numerical-computing/qualification"), { recursive: true });
@@ -181,9 +182,11 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "source-only-consumer-fixture", version: "0.8.0" }));
   fs.mkdirSync(path.join(root, "bench"));
   fs.writeFileSync(path.join(root, "bench/browser-wasm-budget.json"), JSON.stringify(budget));
-  const rawManifests = new Map(), capability_manifests = [], platformArchives = new Map();
+  const docs = sourceDocumentation(root);
+  const rawManifests = new Map(), capability_manifests = [], platformArchives = new Map(), zipArchives = new Map();
   for (const platform of ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]) {
     const fixture = platformPackage(platform); platformArchives.set(platform, fixture.bytes);
+    if (!platform.startsWith("linux")) zipArchives.set(platform, platformZip(platform, fixture, docs));
     for (const [kind, value] of fixture.manifests) {
       const relative = `platform/${platform}/${platform}-${kind}/capabilities.json`, manifest = JSON.stringify(value);
       rawManifests.set(relative, Buffer.from(manifest));
@@ -215,6 +218,12 @@ test("publication input preparation retains a failed gate, resumes raw verificat
       fs.writeFileSync(name,bytes);
       fs.writeFileSync(name+'.sha256',require('node:crypto').createHash('sha256').update(bytes).digest('hex')+'  build/sagejs-wasm.tar.gz'+String.fromCharCode(10));
     }
+    if(fs.existsSync('build/release-publication/mutate-downloadable-zip')){
+      const name='release/sagejs-windows-x64.zip';
+      const bytes=fs.readFileSync('build/release-publication/replacement.zip');
+      fs.writeFileSync(name,bytes);
+      fs.writeFileSync(name+'.sha256',require('node:crypto').createHash('sha256').update(bytes).digest('hex')+'  sagejs-windows-x64.zip'+String.fromCharCode(10));
+    }
   `);
   const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
   git("init"); git("add", "."); git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "Fixture source");
@@ -225,6 +234,10 @@ test("publication input preparation retains a failed gate, resumes raw verificat
     const policy = layout(record.key), files = Object.fromEntries(policy.required.map((name) => [name, Buffer.from(name === "release-gate.json" ? exact : `fixture ${name}`)]));
     const nativePlatform = record.key.match(/^native\/sagejs-(linux-x64|linux-arm64|macos-arm64|windows-x64)$/)?.[1];
     if (nativePlatform) files[`npm/sagejs-${nativePlatform}.tgz`] = platformArchives.get(nativePlatform);
+    if (zipArchives.has(nativePlatform)) {
+      const name = `sagejs-${nativePlatform}.zip`, bytes = zipArchives.get(nativePlatform);
+      files[name] = bytes; files[`${name}.sha256`] = Buffer.from(`${checksum(bytes).slice(7)}  ${name}\n`);
+    }
     if (record.key === "native/sagejs-public-npm-root") for (const [name, bytes] of browser.files) files[`packages/flint-wasm/dist/${name}`] = bytes;
     if (record.key === "browser/wasm-clean-build-a") for (const [name, bytes] of browser.clean) files[name] = bytes;
     if (record.key === "browser/sagejs-wasm-reproducible") for (const [name, bytes] of browser.reproduced) files[name] = bytes;
@@ -245,6 +258,8 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   assert.equal(passed.status, "numerical-publication-inputs-authenticated");
   assert.equal(passed.platformPackages.length, 4);
   assert.equal(passed.packagedExecutables.length, 4);
+  assert.equal(passed.downloadableZips.length, 2);
+  assert.ok(passed.downloadableZips.every((item) => item.files.length === 6));
   assert.equal(passed.packagedExecutables[0].executables[0].evidence, "linux-x64-npm and linux-x64-sea");
   assert.equal(passed.selectedBrowser.artifactIdentity, browser.report.artifact_identity);
   assert.equal(passed.selectedBrowser.archive.files, browser.files.size);
@@ -256,8 +271,20 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   assert.ok(reused.results.every((result) => result.reused));
   assert.deepEqual(reused.selectedBrowser.archive, passed.selectedBrowser.archive);
   assert.deepEqual(reused.packagedExecutables, passed.packagedExecutables);
+  assert.deepEqual(reused.downloadableZips, passed.downloadableZips);
   assert.equal(downloads, 9);
   assert.equal(git("status", "--porcelain"), "");
+  // Transport provenance and a matching checksum cannot substitute a binary
+  // after qualification, including when earlier numerical checkpoints pass.
+  const wrong = platformPackage("windows-x64"); wrong.python = Buffer.from("unqualified executable");
+  fs.writeFileSync(path.join(root, "build/release-publication/replacement.zip"), platformZip("windows-x64", wrong, docs));
+  const mutateZip = path.join(root, "build/release-publication/mutate-downloadable-zip"); fs.writeFileSync(mutateZip, "1");
+  fs.unlinkSync(path.join(root, "build/release-runner", candidate, "publication-numerical-authentication.json"));
+  await assert.rejects(preparePublication(options, dependencies), /ZIP differs from qualified/);
+  fs.unlinkSync(mutateZip);
+  const zipRepaired = await preparePublication(options, dependencies);
+  assert.ok(zipRepaired.results.every((result) => result.reused));
+  assert.deepEqual(zipRepaired.downloadableZips, passed.downloadableZips);
   // A successful reconstructed gate and matching archive checksum are not
   // enough: the inner tree must match, even when runner checkpoints are reused.
   const mutateArchive = path.join(root, "build/release-publication/mutate-browser-archive");

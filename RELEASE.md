@@ -358,9 +358,15 @@ an independent `sagepython` row. No binary is extracted or executed.
 The producer workflow orders macOS collection after Developer ID signing and
 notarization, and Windows collection after the configured signing step; this
 cross-binding therefore must use the post-signing row rather than an earlier
-unsigned binary. Checking downloadable ZIP/tar.xz archives and macOS installer
-contents against these executable identities, and authenticating their signing
-state, remain necessary before adopting the final publisher.
+unsigned binary. Preparation compares both downloadable ZIPs against these
+identities and the candidate's exact documentation/notices. `downloadableZips`
+records the checked member hashes; the reader preserves Windows' root layout
+and macOS' enclosing directory, checks local/central records and streaming
+descriptors, bounds expansion and requires the actual macOS executable mode.
+Matching checksum sidecars alone cannot authorize different executables.
+No ZIP content is extracted or executed. Linux tar.xz and macOS installer
+content comparison, and authenticating signature/notarization state, remain
+necessary before adopting the final publisher.
 
 Browser preparation selects the clean-build distribution explicitly. Its bytes
 must match the numerical gate and the canonical artifact report recorded by the

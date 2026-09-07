@@ -1193,3 +1193,30 @@ installer assets. A read-only GitHub metadata check confirmed that the currently
 published `v0.7.0+release.6` satisfies the new eleven-asset completeness condition.
 No public pointer was changed, and this metadata check does not claim a fresh
 installation, checksum/signature verification or a new release qualification.
+
+Publication preparation now compares the downloadable Windows and macOS ZIPs
+with the previously bound npm/SEA executable identities, on every invocation
+including numerical checkpoint reuse. It also requires the exact candidate's
+README, distribution documentation, license and third-party notices. The bounded
+streaming reader checks local/central ZIP consistency, streaming descriptors,
+content CRC/SHA-256, expansion limits, layout and actual executable permissions;
+no binaries are extracted or executed. A fault-injection test replaces the
+Windows binary and supplies a matching archive checksum after numerical checks
+pass: preparation rejects it, then repairs the authenticated transport inputs
+and reuses successful numerical stages on retry.
+
+Read-only inspection of the actual published `v0.7.0+release.6` ZIPs, after
+matching their GitHub asset digests, verified 27 files each in approximately
+3.18 seconds for macOS and 3.05 seconds for Windows. Those historical inspections
+cover ZIP format/content integrity, not new qualification or signatures. They
+confirmed the producer's different layouts and macOS streaming descriptors.
+The ZIP check does not complete Linux tar.xz comparison, macOS installer payload
+and signature binding, or production publisher/deployer adoption. No build,
+signing policy, release tag or public pointer changed.
+
+Validation of the ZIP integration: 112 focused Linux tests and 41 portable tests
+on native Windows pass; merge invariants and the shadow inventory pass. Windows
+temporary source fixtures, archive and helper were removed. These tests include
+substituted executables with matching checksums, source-notice changes, missing
+or extra payloads, permissions, CRC/size disagreement, streaming descriptors,
+alternate-path metadata, cancellation and resumable transport repair.

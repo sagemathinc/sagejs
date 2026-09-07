@@ -396,7 +396,7 @@ function zipEntries(bytes, { limits = LIMITS, wheel = true } = {}) {
     if (expanded > limits.expanded_bytes) fail("wheel exceeds its expansion budget");
     entries.push({
       name: portable, directory, flags, method, crc, compressed, size, localOffset,
-      mode: (mode & 0o111) === 0 ? 0o644 : 0o755,
+      mode: (mode & 0o111) === 0 ? 0o644 : 0o755, rawMode: mode,
     });
     offset = end;
   }
