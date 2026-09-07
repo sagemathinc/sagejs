@@ -857,7 +857,11 @@ test("tag CI packs one authenticated public npm root before every consumer", () 
     /cp build\/release\/npm\/sagejs\.tgz release\/npm\/sagejs\.tgz[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
   );
   assert.match(publisher, /--browser-distribution packages\/flint-wasm\/dist/);
-  assert.match(publisher, /publish_package release\/npm\/sagejs\.tgz latest/);
+  assert.match(publisher, /run: node scripts\/release\/publish-npm-packages\.cjs/);
+  assert.match(read("scripts/release/publish-npm-packages.cjs"), /directory: "release\/npm"/);
+  assert.deepEqual(require("../../../scripts/release/publish-npm-packages.cjs").packages.at(-1), {
+    archive: "sagejs.tgz", name: "@sagemath/sagejs", tag: "latest",
+  });
 });
 
 test("tag CI release artifact graph is acyclic", () => {
@@ -903,12 +907,17 @@ test("clean browser qualification builds source evidence before restoring the pr
 });
 
 test("one trusted workflow publishes and recovery reruns its authenticated job", () => {
+  assert.deepEqual(require("yaml").parse(ci).jobs["publish-release"].concurrency, {
+    group: "sagejs-production-publication", "cancel-in-progress": false, queue: "max",
+  });
   assert.match(ci, /Numerical release qualification gate|numerical-release-gate/);
   assert.match(ci, /Require successful same-tag WebAssembly release/);
   assert.match(ci, /actions\/workflows\/wasm-release\.yml\/runs\?event=push&head_sha=\$\{GITHUB_SHA\}/);
   assert.match(ci, /require-wasm-release\.cjs[\s\S]+--sha "\$GITHUB_SHA" --tag "\$GITHUB_REF_NAME"/);
   assert.match(ci, /id-token:\s*write/);
-  assert.match(ci, /npm publish "\$archive"/);
+  const npmPublisher = read("scripts/release/publish-npm-packages.cjs");
+  assert.match(ci, /run: node scripts\/release\/publish-npm-packages\.cjs/);
+  assert.match(npmPublisher, /runCommand\("npm", \["publish"/);
   assert.doesNotMatch(ci, /secrets\.NPM_TOKEN|pnpm publish "\$archive"/);
   assert.match(
     ci,
@@ -920,9 +929,9 @@ test("one trusted workflow publishes and recovery reruns its authenticated job",
   assert.match(ci, /select-recovery-publisher\.cjs/);
   assert.match(ci, /actions\/jobs\/\$\{publisher_id\}\/rerun/);
   assert.match(ci, /Numerical release qualification gate/);
-  assert.match(ci, /npm view "\$\{name\}@\$\{version\}" dist\.integrity --json/);
-  assert.match(ci, /createHash\("sha512"\)/);
-  assert.match(ci, /\[\[ "\$version" == "\$package_version" \]\]/);
+  assert.match(npmPublisher, /remote\.dist\?\.integrity !== record\.integrity/);
+  assert.match(npmPublisher, /createHash\("sha512"\)/);
+  assert.match(npmPublisher, /metadata\.version !== version/);
   assert.match(ci, /\.head_branch \/\/ ""[\s\S]+== "\$RECOVERY_TAG"/);
   assert.doesNotMatch(manual, /npm publish|pnpm publish|id-token:\s*write/);
   assert.match(manual, /gh workflow run \.github\/workflows\/ci\.yml/);
@@ -932,7 +941,7 @@ test("one trusted workflow publishes and recovery reruns its authenticated job",
   const uploads = [...ci.matchAll(/uses: actions\/upload-artifact@v7[\s\S]*?with:\n([\s\S]*?)(?=\n\s{6}-|\n\s{2}\w|$)/g)];
   assert.ok(uploads.length >= 13);
   for (const upload of uploads) {
-    if (upload[1].includes("name: sagejs-github-publication-attempt-")) {
+    if (/name: sagejs-(?:github|npm)-publication-attempt-/.test(upload[1])) {
       assert.match(upload[1], /github\.run_attempt/);
       assert.doesNotMatch(upload[1], /overwrite:\s*true/);
     } else assert.match(upload[1], /overwrite:\s*true/);

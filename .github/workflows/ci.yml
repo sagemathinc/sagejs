@@ -1531,6 +1531,10 @@ jobs:
 
   publish-release:
     name: Publish tagged GitHub and npm release
+    concurrency:
+      group: sagejs-production-publication
+      cancel-in-progress: false
+      queue: max
     if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
     needs:
       - numerical-release-gate
@@ -1636,100 +1640,17 @@ jobs:
       - name: Publish the platform and public npm packages
         env:
           NPM_CONFIG_PROVENANCE: "true"
-        run: |
-          package_version="$(tar -xOzf release/npm/sagejs.tgz package/package.json | \
-            node -e "let text=''; process.stdin.on('data',x=>text+=x); process.stdin.on('end',()=>console.log(JSON.parse(text).version))")"
-          case "${GITHUB_REF_NAME}" in
-            "v${package_version}") ;;
-            "v${package_version}+release."*)
-              recovery="${GITHUB_REF_NAME#v${package_version}+release.}"
-              [[ "$recovery" =~ ^[1-9][0-9]*$ ]] || {
-                echo "Invalid recovery tag ${GITHUB_REF_NAME}" >&2
-                exit 1
-              }
-              ;;
-            *)
-              echo "Tag ${GITHUB_REF_NAME} does not match npm version ${package_version}" >&2
-              exit 1
-              ;;
-          esac
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release/publish-npm-packages.cjs
 
-          publish_package() {
-            local archive="$1"
-            local tag="$2"
-            local metadata name version published published_integrity local_integrity tags tagged_version
-            metadata="$(tar -xOzf "$archive" package/package.json)"
-            name="$(node -e 'console.log(JSON.parse(process.argv[1]).name)' "$metadata")"
-            version="$(node -e 'console.log(JSON.parse(process.argv[1]).version)' "$metadata")"
-            [[ "$version" == "$package_version" ]] || {
-              echo "$archive contains ${name}@${version}, expected version ${package_version}" >&2
-              exit 1
-            }
-            local_integrity="$(node -e \
-              'const fs=require("node:fs"),crypto=require("node:crypto"); const bytes=fs.readFileSync(process.argv[1]); console.log(`sha512-${crypto.createHash("sha512").update(bytes).digest("base64")}`)' \
-              "$archive")"
-            if published="$(npm view "${name}@${version}" version --json 2>/dev/null)"; then
-              [[ "$(node -e 'console.log(JSON.parse(process.argv[1]))' "$published")" == "$version" ]] || {
-                echo "Unexpected published version for ${name}@${version}: $published" >&2
-                exit 1
-              }
-              published_integrity="$(npm view "${name}@${version}" dist.integrity --json)"
-              published_integrity="$(node -e \
-                'const value=JSON.parse(process.argv[1]); if(typeof value !== "string") process.exit(1); console.log(value)' \
-                "$published_integrity")"
-              [[ "$published_integrity" == "$local_integrity" ]] || {
-                echo "${name}@${version} exists with different registry integrity" >&2
-                exit 1
-              }
-              tags="$(npm view "$name" dist-tags --json)"
-              tagged_version="$(node -e \
-                'console.log(JSON.parse(process.argv[1])[process.argv[2]] ?? "")' \
-                "$tags" "$tag")"
-              [[ "$tagged_version" == "$version" ]] || {
-                echo "${name}@${version} exists but dist-tag ${tag} points at ${tagged_version:-nothing}" >&2
-                exit 1
-              }
-              echo "${name}@${version} is already published with dist-tag ${tag}; skipping"
-            else
-              npm publish "$archive" \
-                --access public --tag "$tag" --ignore-scripts
-            fi
-          }
-
-          publish_package release/npm/sagejs-linux-x64.tgz linux-x64
-          publish_package release/npm/sagejs-linux-arm64.tgz linux-arm64
-          publish_package release/npm/sagejs-windows-x64.tgz windows-x64
-          publish_package release/npm/sagejs-macos-arm64.tgz macos-arm64
-          publish_package release/npm/sagejs.tgz latest
-
-          wait_for_package() {
-            local archive="$1"
-            local metadata name version encoded
-            metadata="$(tar -xOzf "$archive" package/package.json)"
-            name="$(node -e 'console.log(JSON.parse(process.argv[1]).name)' "$metadata")"
-            version="$(node -e 'console.log(JSON.parse(process.argv[1]).version)' "$metadata")"
-            encoded="$(node -e 'console.log(encodeURIComponent(process.argv[1]))' "$name")"
-            for attempt in {1..120}; do
-              if curl --fail --silent --output /dev/null \
-                "https://registry.npmjs.org/${encoded}/${version}"
-              then
-                echo "Public npm registry serves ${name}@${version}"
-                return
-              fi
-              if (( attempt % 4 == 0 )); then
-                echo "Waiting for npm scanning: ${name}@${version} (${attempt}/120)"
-              fi
-              sleep 15
-            done
-            echo "npm did not make ${name}@${version} public within 30 minutes" >&2
-            exit 1
-          }
-
-          wait_for_package release/npm/sagejs-linux-x64.tgz
-          wait_for_package release/npm/sagejs-linux-arm64.tgz
-          wait_for_package release/npm/sagejs-windows-x64.tgz
-          wait_for_package release/npm/sagejs-macos-arm64.tgz
-          wait_for_package release/npm/sagejs.tgz
+      - name: Retain npm publication progress
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-npm-publication-attempt-${{ github.run_attempt }}
+          path: npm-publication.json
+          if-no-files-found: ignore
+          retention-days: 90
 
       - name: Publish the immutable GitHub release
         env:

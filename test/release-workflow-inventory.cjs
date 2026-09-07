@@ -22,6 +22,9 @@ function fixture(t, files) {
 test("real publisher and deployment retain indirect reporting ancestors in the shadow graph", () => {
   const graph = workflowInventory(root);
   assert.deepEqual(graph.reviewErrors, []);
+  assert.deepEqual(graph.nodes.find((node) => node.key === "ci.yml#publish-release").concurrency, {
+    group: "sagejs-production-publication", "cancel-in-progress": false, queue: "max",
+  });
   const route = (from, to) => dependencyPath(graph.nodes, graph.edges, from, to);
   assert.deepEqual(route("ci.yml#publish-release", "wasm-release.yml#browser-performance"), [
     "ci.yml#publish-release", "wasm-release.yml#@success", "wasm-release.yml#browser-performance",
@@ -47,6 +50,7 @@ test("real publisher and deployment retain indirect reporting ancestors in the s
   assert.ok(graph.controlEffects.some((effect) => effect.from === "ci.yml#recover-publish" && effect.target === "ci.yml#publish-release" && effect.kind === "rerun-job"));
   assert.ok(graph.controlEffects.some((effect) => effect.kind === "release-pointer" && effect.target === "github:releases/latest"));
   assert.ok(graph.controlEffects.some((effect) => effect.from === "ci.yml#publish-release" && effect.kind === "release-assets" && effect.target === "github:release-assets"));
+  assert.ok(graph.controlEffects.some((effect) => effect.from === "ci.yml#publish-release" && effect.kind === "npm-publication" && effect.target === "npm:registry"));
   assert.ok(graph.edges.some((edge) => edge.kind === "reviewed-artifact-input" && edge.names.includes("sagejs-macos-arm64") && edge.to === "ci.yml#macos-sign"));
 });
 

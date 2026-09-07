@@ -79,9 +79,13 @@ provide job/attempt-bound transport; `preparePromotion` compares the authenticat
 observation against independently reconstructed product inputs. The existing CI
 publisher's GitHub upload step now has digest-checked reconciliation and an
 attempt-retained progress journal; it can recover missing local state from remote
-assets without clobber or builds. This branch wiring is fixture-tested, not yet
+assets without clobber or builds. npm publication now also retains progress and
+requires all four integrity-matched public platform versions before root/latest
+publication; scanning waits run together. Current npm OIDC does not authorize
+independent dist-tag repair, so a temporary-tag/promote design needs a separate
+explicit authentication decision. This branch wiring is fixture-tested, not yet
 deployed or exercised by a real candidate. Full exact-artifact consumer adoption,
-npm/channel/app journaling and end-to-end promotion remain incomplete.
+serialized GitHub/channel/app promotion and end-to-end validation remain incomplete.
 Use those helpers where appropriate, but do not equate accumulated helper tests
 with an end-to-end release. The first success criterion remains one interrupted
 promotion resumed with the same tested bytes and no rebuild.

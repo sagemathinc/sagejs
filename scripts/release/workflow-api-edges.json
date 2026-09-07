@@ -4,6 +4,22 @@
     {
       "workflow": "ci.yml",
       "job": "publish-release",
+      "step": "Publish the platform and public npm packages",
+      "runSha256": "d36a0793620be899a6f189ecc4cb7fafc7ef6a0263e8cb8c9d6817690c9f941b",
+      "effects": [{ "kind": "npm-publication", "target": "npm:registry" }],
+      "helpers": [
+        { "filename": "scripts/release/publish-npm-packages.cjs", "sha256": "28142499452312b3288e828b72f13a362d8a46aacc6de01d23207c1d5fd53b7f" },
+        { "filename": "scripts/release/publish-github-assets.cjs", "sha256": "14942e708bf6b04cba5c6f9bc6f1a54944c37ea21308128e181e0b3bd4f27527" },
+        { "filename": "scripts/release/runner.cjs", "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3" },
+        { "filename": "scripts/release/directory-transaction.cjs", "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284" },
+        { "filename": "scripts/build-parallelism.cjs", "sha256": "6a4a76edcf24c4413037c7497cbddb39a09a2078cd4d51a3ba0d689698cd7b26" }
+      ],
+      "requiresWorkflowSuccess": [],
+      "semantics": "Consumes five already qualified tarballs without repacking/installing. Requires exact source/tag, names/versions, SHA512 registry integrity and exact four-platform root pins. Only version-endpoint 404 is absence. Publishes missing platform packages via the existing ci.yml OIDC identity, then waits for all four exact public versions before root/latest publication. Rechecks root channel to avoid stale promotion and refuses unsupported automatic dist-tag repair; per-platform convenience tags are not product qualification. Attempt journal records accepted commands but every success requires live public metadata. Does not dispatch workflows or promote GitHub/app/website pointers."
+    },
+    {
+      "workflow": "ci.yml",
+      "job": "publish-release",
       "step": "Create or update the draft GitHub release",
       "effects": [{ "kind": "release-assets", "target": "github:release-assets" }],
       "runSha256": "1a04f5da4ef35ce8b2bf47754e39c955ba7c02475f90905265740dd05af6e469",

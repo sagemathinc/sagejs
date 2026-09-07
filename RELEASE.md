@@ -1058,10 +1058,43 @@ then reruns the latest failed/cancelled publisher job by job ID. It deliberately
 require the overall source run to have succeeded (the publisher failure is the
 reason recovery exists), but it does require that run to have been triggered by
 the exact requested tag rather than merely another tag at the same commit. It
-never receives an npm OIDC token itself. The rerun treats an existing npm
-version as idempotent only when its registry SHA-512 integrity equals the exact
-qualified local archive; a partial publication from different bytes fails
-closed instead of being mixed into the GitHub release.
+never receives an npm OIDC token itself. `scripts/release/publish-npm-packages.cjs`
+treats an existing npm version as idempotent only when its public registry
+SHA-512 integrity equals the exact qualified local archive; a partial publication
+from different bytes fails closed instead of being mixed into the GitHub release.
+All five package names/versions and the root's exact four platform dependency
+pins are inspected before registry writes. No installation, lifecycle scripts,
+repacking or compiler invocation is part of this step.
+
+The publisher sends any missing platform archives first, waits for all four
+exact versions to be publicly visible, and only then publishes the root package
+to `latest`. Visibility checks run with at most four concurrent requests, rather
+than four independent sequential 30-minute waits. Each visibility phase has a
+30-minute ceiling; the whole publication controller has a 45-minute deadline.
+Registry errors are not treated as absence: only HTTP 404 from the version
+endpoint indicates a missing observation. Successful publish commands are
+recorded in `npm-publication.json` and retained by attempt, so an observed scanning
+delay can be retried without repeating that write. The journal cannot authorize
+success without live version/integrity/channel checks. Unknown command outcomes
+are reconciled against immutable registry state on retry; a cold controller
+cannot infer that a still-invisible package was accepted on an earlier host.
+
+Keep `ci.yml` as the OIDC caller. Current
+[npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) supports
+publishing, not an independent OIDC `dist-tag` repair. Therefore do not change
+this to “publish all packages under a temporary tag, then automatically promote”
+without explicitly solving that authentication requirement. An existing root
+version with a wrong `latest` requires authenticated repair; this helper never
+republishes immutable bytes to change a tag or adds a long-lived token. A known
+successful root command may wait for channel propagation. A newer `latest`
+stops a stale promotion. Platform convenience tags are not qualification gates:
+the root consumes exact versions, not those tags. Registry channel updates are
+not compare-and-swap transactions. The publisher job now uses the shared
+`sagejs-production-publication` concurrency group, without cancelling an active
+publisher, and queues pending jobs. This serializes participating CI publishers,
+not manual registry actions or the separate app/website workflows. Extend the
+same coordination boundary to those consumers and recheck before every public
+pointer transition; do not assume queue order is release-version order.
 
 The GitHub asset step now uses `scripts/release/publish-github-assets.cjs`
 instead of `gh release upload --clobber`. It resolves the existing tag to the
@@ -1080,9 +1113,10 @@ attestation: every retry rechecks remote state. A fresh runner without the journ
 can safely discover uploads completed before a connection loss. A surviving
 journal rejects a changed input set or replaced release. Local stale locks require
 inspection of the prior controller/upload process before removal, as with the
-existing runner. This is GitHub upload recovery only: npm channel changes, the
-final public/Latest transition and app/website deployment are not yet a single
-resumable promotion transaction. This helper does not replace qualification.
+existing runner. GitHub upload recovery and npm publication now each retain
+progress, but the final public/Latest transition and app/website deployment are
+not yet a single resumable promotion transaction. Neither helper replaces
+qualification.
 
 Deploy `app.sagejs.org` only from the successful reproducible Wasm run and the
 successful numerical-qualification CI run for the same source SHA. Supply both
