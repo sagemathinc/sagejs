@@ -168,6 +168,51 @@ their exact workflow dependencies and reject missing/skipped/failed producers.
 External publisher/deployer job inspection still needs coordinated adoption;
 the existing same-tag Wasm whole-workflow requirement remains in force.
 
+### Frozen artifact transport inventory
+
+`scripts/release/artifact-set.cjs` captures the nine required GitHub artifact
+containers: four signed/declared-policy platform bundles, the shared npm/browser
+root, numerical gate and raw evidence, browser clean-build and reproducible
+browser bundle. It records immutable artifact IDs, ZIP SHA-256 digests and byte
+counts, source/ref/event, and distinct native/browser qualification run/attempt/
+aggregate-job identities. It re-inspects both accepted product boundaries after
+the artifact reads and rejects a concurrent qualification retry.
+
+```sh
+node scripts/release/artifact-set.cjs capture \
+  --sha FULL_SHA --ref IMMUTABLE_TAG --event push --purpose release \
+  --native-run NATIVE_RUN_ID --browser-run BROWSER_RUN_ID
+node scripts/release/artifact-set.cjs verify \
+  --manifest artifact-set.json --expected-digest sha256:AUTHENTICATED_DIGEST
+node scripts/release/artifact-set.cjs verify-archive \
+  --manifest artifact-set.json --expected-digest sha256:AUTHENTICATED_DIGEST \
+  --key native/sagejs-linux-x64 --file downloaded-github-artifact.zip
+```
+
+Capture writes JSON to stdout and never publishes or downloads product archives.
+Store the manifest in a trusted immutable handoff before using it for recovery.
+The expected digest must come from that authenticated handoff, not merely be
+copied out of an untrusted JSON document. A self-hash proves neither trusted
+origin nor release eligibility. Verification uses pinned IDs, never a new
+same-name artifact. Deletion/expiry fails explicitly; recovery must retain the
+original bytes and authenticated transport record rather than silently rebuild.
+Archive verification streams bytes without extracting or executing them.
+
+For pre-tag capture the identity supports `--purpose qualification --event
+workflow_dispatch --ref CANDIDATE_BRANCH`; every required product boundary must
+still have passed. Current native CI only produces its complete signed/numerical
+aggregate for tags, so enabling a complete non-publishing qualification campaign
+remains necessary before this pre-tag path works end to end. Partial manual
+campaigns do not qualify. Changing the purpose in an old manifest is not promotion.
+
+This schema is a **transport inventory**, not the complete release acceptance
+manifest. GitHub's archive digest covers its downloadable ZIP, not directly the
+inner SEA or npm tarball. Consumers must additionally authenticate the manifest
+producer, verify inner product digests and platform/version matrix, reconstruct
+raw numerical evidence and check signatures. Publication attempts must reference
+the frozen qualification identity without relabeling it as their own attempt.
+No current publisher/deployer consumes this inventory yet; existing guards remain.
+
 `pnpm release:run --candidate FULL_SHA` executes the native-host plan. First
 install the pinned JavaScript dependencies and place the **same candidate's**
 canonical numerical product at `build/authenticated-numerical-product` and

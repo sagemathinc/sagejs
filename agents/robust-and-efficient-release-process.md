@@ -863,3 +863,28 @@ manifest, separately from the publication attempt. Authenticate those bytes on
 retry and reject changed producer evidence. This makes the minimal artifact
 manifest/recovery work a prerequisite of the complete consumer migration,
 not an optional later optimization. The existing recovery path is unchanged.
+
+Artifact transport inventory foundation: `scripts/release/artifact-set.cjs`
+captures nine reviewed product/evidence container roles from both accepted
+producer runs, checks pagination and immutable-ID re-reads, and repeats both
+product observations to reject capture-time retries. The versioned manifest
+separates qualification attempts from subsequent publication attempts and
+binds archive IDs/digests/size/source/repository. Recovery verification never
+substitutes a new same-name artifact. Streamed local verification rejects
+altered/truncated ZIP bytes. Its self-hash is explicitly not provenance or
+release authorization; trusted manifest production/retention and inner product,
+signature and raw-evidence authentication still need integration.
+
+The focused suite passes 56 tests including source mixing, changed/expired pins,
+duplicate/incomplete matrices and qualification-versus-release substitution.
+A real read-only 9,130-byte GitHub artifact download (ID `9988827252`) matches
+its API SHA-256 and byte count, confirming the ZIP transport interpretation.
+This historical reporting artifact is only a transport-format check; it is not
+new candidate qualification. No public artifact or pointer was modified.
+
+The manifest supports pre-tag qualification identities, but the existing native
+workflow still limits full signing/numerical aggregation to tags. A complete
+explicit non-publishing qualification mode is therefore required before real
+pre-tag capture. Do not create a tag just to test this foundation or mislabel
+a partial manual run as a qualified candidate. The aggregate/manifest protocol
+must be exercised in that mode before retiring legacy publication guards.
