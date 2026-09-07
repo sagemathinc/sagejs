@@ -741,6 +741,10 @@ def _builtins_class_attribute_resolution(
                         "__sagejs_method_signature_excludes_self__",
                     )
                     is True
+                    or _builtins_get_member(
+                        descriptor_value, "__sagejs_native_method__"
+                    )
+                    is True
                 )
             ):
                 # Every ordinary function stored in a Python class namespace

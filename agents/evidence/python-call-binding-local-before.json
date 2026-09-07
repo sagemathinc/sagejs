@@ -1,0 +1,375 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-06T13:28:39.260Z",
+  "corpus": {
+    "name": "cowasm-python-benchmarks",
+    "formatVersion": 2,
+    "source": "bench/cowasm/src/corpus.py",
+    "sourceTreeSha256": "943bf488d04eef889b431b8601f6ebe3ad270691c9f4176e8f6f5c4b2faf7c3c",
+    "suite": "python-defaults-diagnostic-v1",
+    "benchmarks": [
+      "defaults required supplied",
+      "defaults positional supplied",
+      "defaults positional omitted",
+      "defaults keyword-only supplied",
+      "defaults keyword-only omitted",
+      "defaults bound supplied",
+      "defaults bound omitted"
+    ],
+    "warmups": 3,
+    "samples": 7
+  },
+  "repository": {
+    "revision": "a4a8d207a6bbb54b23d7a143586082c3eeb630d2",
+    "dirty": false
+  },
+  "host": {
+    "platform": "linux",
+    "release": "6.17.0-1022-gcp",
+    "architecture": "x64",
+    "cpuModel": "AMD EPYC 7B13",
+    "logicalCpuCount": 16,
+    "totalMemoryBytes": 67418693632,
+    "freeMemoryBytes": 58564513792,
+    "loadAverage": [
+      3.43,
+      3.89,
+      3.02
+    ]
+  },
+  "runtimes": [
+    {
+      "key": "sagejs",
+      "label": "Sage.js",
+      "command": "/opt/cocalc/bin/node",
+      "version": "Sage.js 0.8.0; v26.8.1"
+    },
+    {
+      "key": "python",
+      "label": "CPython",
+      "command": "/opt/cocalc-webdev-python/bin/python",
+      "version": "Python 3.14.4"
+    }
+  ],
+  "performancePolicy": {
+    "path": "bench/python-compat/performance-policy.json",
+    "sha256": "1799b8f4f905d8e2dcc6fc59491ceab8ddc3adb6ce664206b83c9f020a6f4b26",
+    "schema": "sagejs.python-performance-policy/v1",
+    "minimumConfirmedSamples": 7
+  },
+  "benchmarks": {
+    "defaults required supplied": {
+      "runtimes": {
+        "sagejs": {
+          "firstPassUs": 63328,
+          "samplesUs": [
+            52839,
+            52703,
+            53418,
+            53758,
+            53860,
+            53223,
+            53066
+          ],
+          "medianUs": 53223,
+          "deltaToPythonUs": 47687,
+          "ratioToPython": 9.613981213872833,
+          "performance": {
+            "status": "watch",
+            "ratio": 9.613981213872833,
+            "deltaMs": 47.687,
+            "reason": "watch-threshold",
+            "sampleQualified": true,
+            "confirmationStatus": "provisional-single-run",
+            "samples": 7
+          }
+        },
+        "python": {
+          "firstPassUs": 5420,
+          "samplesUs": [
+            5495,
+            5554,
+            5543,
+            5501,
+            5496,
+            5536,
+            5540
+          ],
+          "medianUs": 5536,
+          "deltaToPythonUs": 0,
+          "ratioToPython": 1
+        }
+      }
+    },
+    "defaults positional supplied": {
+      "runtimes": {
+        "sagejs": {
+          "firstPassUs": 55198,
+          "samplesUs": [
+            51935,
+            52412,
+            53010,
+            53094,
+            52574,
+            52439,
+            52837
+          ],
+          "medianUs": 52574,
+          "deltaToPythonUs": 47062,
+          "ratioToPython": 9.538098693759071,
+          "performance": {
+            "status": "watch",
+            "ratio": 9.538098693759071,
+            "deltaMs": 47.062,
+            "reason": "watch-threshold",
+            "sampleQualified": true,
+            "confirmationStatus": "provisional-single-run",
+            "samples": 7
+          }
+        },
+        "python": {
+          "firstPassUs": 5551,
+          "samplesUs": [
+            5491,
+            5512,
+            5521,
+            5506,
+            5517,
+            5513,
+            5506
+          ],
+          "medianUs": 5512,
+          "deltaToPythonUs": 0,
+          "ratioToPython": 1
+        }
+      }
+    },
+    "defaults positional omitted": {
+      "runtimes": {
+        "sagejs": {
+          "firstPassUs": 55749,
+          "samplesUs": [
+            56284,
+            56500,
+            56914,
+            56926,
+            57179,
+            56262,
+            56792
+          ],
+          "medianUs": 56792,
+          "deltaToPythonUs": 50782,
+          "ratioToPython": 9.449584026622297,
+          "performance": {
+            "status": "watch",
+            "ratio": 9.449584026622297,
+            "deltaMs": 50.782000000000004,
+            "reason": "watch-threshold",
+            "sampleQualified": true,
+            "confirmationStatus": "provisional-single-run",
+            "samples": 7
+          }
+        },
+        "python": {
+          "firstPassUs": 6053,
+          "samplesUs": [
+            5987,
+            6095,
+            6010,
+            6008,
+            6055,
+            6026,
+            5968
+          ],
+          "medianUs": 6010,
+          "deltaToPythonUs": 0,
+          "ratioToPython": 1
+        }
+      }
+    },
+    "defaults keyword-only supplied": {
+      "runtimes": {
+        "sagejs": {
+          "firstPassUs": 487879,
+          "samplesUs": [
+            471724,
+            477452,
+            474743,
+            473388,
+            477891,
+            478510,
+            477665
+          ],
+          "medianUs": 477452,
+          "deltaToPythonUs": 470668,
+          "ratioToPython": 70.37912735849056,
+          "performance": {
+            "status": "critical-performance-cliff",
+            "ratio": 70.37912735849056,
+            "deltaMs": 470.668,
+            "reason": "critical-threshold",
+            "sampleQualified": true,
+            "confirmationStatus": "provisional-single-run",
+            "samples": 7
+          }
+        },
+        "python": {
+          "firstPassUs": 6911,
+          "samplesUs": [
+            6853,
+            6787,
+            6767,
+            6781,
+            6772,
+            6784,
+            6800
+          ],
+          "medianUs": 6784,
+          "deltaToPythonUs": 0,
+          "ratioToPython": 1
+        }
+      }
+    },
+    "defaults keyword-only omitted": {
+      "runtimes": {
+        "sagejs": {
+          "firstPassUs": 57672,
+          "samplesUs": [
+            58672,
+            59367,
+            59206,
+            59325,
+            59080,
+            59204,
+            59130
+          ],
+          "medianUs": 59204,
+          "deltaToPythonUs": 52444,
+          "ratioToPython": 8.757988165680473,
+          "performance": {
+            "status": "watch",
+            "ratio": 8.757988165680473,
+            "deltaMs": 52.444,
+            "reason": "watch-threshold",
+            "sampleQualified": true,
+            "confirmationStatus": "provisional-single-run",
+            "samples": 7
+          }
+        },
+        "python": {
+          "firstPassUs": 6801,
+          "samplesUs": [
+            6829,
+            6751,
+            6760,
+            6826,
+            6769,
+            6753,
+            6738
+          ],
+          "medianUs": 6760,
+          "deltaToPythonUs": 0,
+          "ratioToPython": 1
+        }
+      }
+    },
+    "defaults bound supplied": {
+      "runtimes": {
+        "sagejs": {
+          "firstPassUs": 52859,
+          "samplesUs": [
+            52590,
+            52947,
+            53167,
+            52944,
+            53111,
+            52688,
+            53892
+          ],
+          "medianUs": 52947,
+          "deltaToPythonUs": 46697,
+          "ratioToPython": 8.47152,
+          "performance": {
+            "status": "watch",
+            "ratio": 8.47152,
+            "deltaMs": 46.697,
+            "reason": "watch-threshold",
+            "sampleQualified": true,
+            "confirmationStatus": "provisional-single-run",
+            "samples": 7
+          }
+        },
+        "python": {
+          "firstPassUs": 6275,
+          "samplesUs": [
+            6202,
+            6279,
+            6291,
+            6233,
+            6242,
+            6265,
+            6250
+          ],
+          "medianUs": 6250,
+          "deltaToPythonUs": 0,
+          "ratioToPython": 1
+        }
+      }
+    },
+    "defaults bound omitted": {
+      "runtimes": {
+        "sagejs": {
+          "firstPassUs": 55857,
+          "samplesUs": [
+            55207,
+            55294,
+            55886,
+            55489,
+            55348,
+            55718,
+            56173
+          ],
+          "medianUs": 55489,
+          "deltaToPythonUs": 49149,
+          "ratioToPython": 8.752208201892744,
+          "performance": {
+            "status": "watch",
+            "ratio": 8.752208201892744,
+            "deltaMs": 49.149,
+            "reason": "watch-threshold",
+            "sampleQualified": true,
+            "confirmationStatus": "provisional-single-run",
+            "samples": 7
+          }
+        },
+        "python": {
+          "firstPassUs": 6343,
+          "samplesUs": [
+            6340,
+            6326,
+            6338,
+            6340,
+            6360,
+            6341,
+            6333
+          ],
+          "medianUs": 6340,
+          "deltaToPythonUs": 0,
+          "ratioToPython": 1
+        }
+      }
+    }
+  },
+  "summaries": {
+    "sagejs": {
+      "median": 9.449584026622297,
+      "geometricMean": 12.17268619757884,
+      "sumOfMediansUs": 807681
+    },
+    "python": {
+      "median": 1,
+      "geometricMean": 1,
+      "sumOfMediansUs": 43192
+    }
+  }
+}

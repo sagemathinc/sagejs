@@ -1008,8 +1008,8 @@ def ρσ_interpolate_kwargs(
                 target_function, runtime.undefined, supplied_args
             )
     elif (
-        not _internal_get_member(target_function, "__argnames__")
-        and not _internal_get_member(target_function, "__kwonly__")
+        not runtime.native_get(target_function, "__argnames__")
+        and not runtime.native_get(target_function, "__kwonly__")
         and _internal_get_member(target_function, "__sagejs_callable_instance_class__")
         is not True
         and not _internal_has_own(target_function, "__bases__")
@@ -1024,14 +1024,16 @@ def ρσ_interpolate_kwargs(
             [target_function, "__call__", None],
         )
         if callable_method is not None and (
-            _internal_get_member(callable_method, "__argnames__")
-            or _internal_get_member(callable_method, "__kwonly__")
+            runtime.native_get(callable_method, "__argnames__")
+            or runtime.native_get(callable_method, "__kwonly__")
         ):
             receiver = target_function
             target_function = callable_method
-    keyword_object = supplied_args[-1]
-    argnames = _internal_get_member(target_function, "__argnames__")
-    keyword_only = _internal_get_member(target_function, "__kwonly__")
+    # Signature slots contain data, not eagerly bound method descriptors.
+    # Read them on every invocation (including through native proxies), but
+    # do not resolve an additional descriptor on each returned array/bool.
+    argnames = runtime.native_get(target_function, "__argnames__")
+    keyword_only = runtime.native_get(target_function, "__kwonly__")
     # An empty argument-name array is meaningful metadata: it describes a
     # callable that accepts no named arguments.  Only the complete absence of
     # signature metadata means this is an opaque host callable that should be
@@ -1040,34 +1042,36 @@ def ρσ_interpolate_kwargs(
         return runtime.reflect.apply(target_function, receiver, supplied_args)
     if argnames is runtime.undefined:
         argnames = runtime.reflect.construct(runtime.array, [0])
-    positional_only = _internal_get_member(target_function, "__positional_only__")
+    positional_only = runtime.native_get(target_function, "__positional_only__")
     if positional_only is True:
         positional_only = argnames.length
     elif positional_only is runtime.undefined:
         positional_only = 0
 
     keyword_object = supplied_args.pop()
-    if _internal_get_member(target_function, "__handles_kwarg_interpolation__"):
-        argument_count = max(supplied_args.length, argnames.length)
+    if runtime.native_get(target_function, "__handles_kwarg_interpolation__"):
+        supplied_count = supplied_args.length
+        named_count = argnames.length
+        argument_count = supplied_count if supplied_count > named_count else named_count
         call_args = runtime.reflect.construct(runtime.array, [argument_count + 1])
         call_args[argument_count] = keyword_object
         for index in range(argument_count):
-            if index < argnames.length:
+            if index < named_count:
                 property_name = argnames[index]
                 if index >= positional_only and _internal_has_own(
                     keyword_object, property_name
                 ):
-                    if index < supplied_args.length:
+                    if index < supplied_count:
                         raise TypeError(
                             "multiple values for argument '" + property_name + "'"
                         )
                     call_args[index] = keyword_object[property_name]
                     runtime.reflect.deleteProperty(keyword_object, property_name)
-                elif index < supplied_args.length:
+                elif index < supplied_count:
                     call_args[index] = supplied_args[index]
             else:
                 call_args[index] = supplied_args[index]
-        if not _internal_get_member(target_function, "__varkw__"):
+        if not runtime.native_get(target_function, "__varkw__"):
             for unexpected in runtime.object.keys(keyword_object):
                 if not keyword_only or keyword_only.indexOf(unexpected) == -1:
                     raise TypeError("unexpected keyword argument '" + unexpected + "'")
