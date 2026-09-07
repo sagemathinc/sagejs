@@ -91,6 +91,34 @@ listed, and external actions, artifact dataflow and transitive shell behavior
 remain explicitly incomplete. A null path does not prove independence while
 those scopes remain unaudited. No policy change is authorized by this inventory.
 
+The new **shadow workload acceptance collector** extracts required execution,
+private cold/warm route telemetry and the existing interrupt ceiling from the
+21-case benchmark corpus. It runs each source twice, with no timing ratios,
+repeated samples or `measureUserAgentSpecificMemory` calls. It requires a clean
+checkout and a verified, same-commit production artifact, rechecked afterward:
+
+```sh
+pnpm wasm:workload-acceptance --engine chromium --output build/wasm-acceptance-chromium.json
+```
+
+Repeat for Firefox and WebKit; `--shard INDEX/COUNT` retains the complete,
+deterministic workload partition. Feed these receipts **and** the full parity
+receipts to `wasm:workload-enforce --acceptance-only --source-revision FULL_SHA
+--explicit-receipts-only --receipt FILE ...`. This mode cannot substitute a
+performance report for acceptance, and still requires every policy engine and
+route. Receipts use `sagejs.browser-wasm-workload-acceptance/v1`, not a fabricated
+performance baseline. Content identities do not authenticate the producer;
+trusted transport remains part of release qualification.
+
+This collector is not yet adopted by the default runner/CI gates. Fixture tests
+prove source/route preservation, no memory sampling, and failure handling. A
+read-only three-engine trial of the shared execution loop passed against the
+retained `19789307` artifact (see the release-process plan); it is not
+qualification of this branch. Exact-candidate CLI runs and the full publication
+dependency migration remain required before adoption. Mathematical parity,
+startup, size, numerical evidence and dedicated memory/security gates are not
+replaced by route acceptance.
+
 `pnpm release:run --candidate FULL_SHA` executes the native-host plan. First
 install the pinned JavaScript dependencies and place the **same candidate's**
 canonical numerical product at `build/authenticated-numerical-product` and

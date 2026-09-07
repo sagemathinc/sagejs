@@ -592,3 +592,36 @@ required assertions from reporting, audit more files for the resume contract,
 extend transactional preparation and its platform coverage, then artifact-set
 publication. Current stage checkpoints
 remain exact-candidate scheduling hints; they are not transferable evidence.
+
+A dedicated shadow browser workload acceptance collector now executes the same
+21 benchmark sources cold/warm, with one observation per phase and no memory
+sampling. Its separate receipt validates private routes in both phases, exact
+workload/budget/source identities and the existing 5,000 ms interrupt ceiling.
+The CLI verifies the same-commit production artifact before and after execution.
+Dashboard acceptance-only mode requires an explicit source and cannot use timing
+reports as route authority. Fixture tests preserve the complete corpus/shards,
+reject lost telemetry, failed evaluation, unsafe interrupts and missing engines,
+and detect unexpected portable routes seen only in cold execution. The default
+runner and CI still use the existing gates until real three-engine validation
+and migration of the complete publication/deployment dependency chain. This
+does not replace mathematical oracles or dedicated resource-safety tests.
+
+Read-only collector trial on 2026-09-07: the new shared execution loop, with
+memory collection disabled, ran the unchanged 21-case corpus against the
+retained `19789307151662045ca942ad8ea30dcea4b6f6fa` browser artifact. Artifact
+identity `sha256:7d726ed06c858b73c1a7a9994255bc5bf4c9334270defafb221808f4ef9c6eb2`
+verified before and after. All cold/warm private-route validators passed:
+
+- Chromium: 42 evaluations, 134.08 s total, interrupt 0.535 ms.
+- Firefox: 42 evaluations, 219.91 s total, interrupt 0.660 ms.
+- WebKit: 42 evaluations, 157.99 s total, interrupt 1.080 ms.
+
+These are single observations under ordinary host load, not a like-for-like
+benchmark against the former repeated timing campaign or new timing gates.
+The trial served the retained artifact read-only, wrote no qualification
+receipts and did not rebuild or relabel it as the new branch. It tests the
+collector, not the new candidate's mathematics or complete CLI qualification.
+The focused acceptance/dashboard/release-gate/inventory and runner/recovery sets
+pass 85 tests on Linux, and `merge:check` passes. The full `architecture:check`
+was attempted but stops at the FFI CLI because this isolated worktree has no
+`dist/tools/cli`; its generated workload projection check passes independently.

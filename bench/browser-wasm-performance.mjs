@@ -288,21 +288,28 @@ async function browserMemory(page) {
   });
 }
 
-async function createBrowserDriver(engine) {
+export async function createBrowserDriver(engine, { artifactRoot = packageRoot } = {}) {
   const types = { chromium, firefox, webkit };
   const type = types[engine];
   if (!type) throw new Error(`unsupported engine ${engine}`);
   const executablePath = executablePathFor(engine, type);
   if (!executablePath) throw new Error(`${engine} is unavailable`);
-  const server = await createBrowserWasmServer();
-  const browser = await type.launch({
-    executablePath,
-    headless: true,
-    args: engine === "chromium" ? ["--no-sandbox", "--disable-dev-shm-usage"] : [],
-  });
+  const server = await createBrowserWasmServer({ root: artifactRoot });
+  let browser;
+  try {
+    browser = await type.launch({
+      executablePath,
+      headless: true,
+      args: engine === "chromium" ? ["--no-sandbox", "--disable-dev-shm-usage"] : [],
+    });
+  } catch (error) {
+    await server.close();
+    throw error;
+  }
   let diagnostics = null;
   return {
     runtime: { kind: "browser-wasm", engine },
+    artifactRoot,
     async open() {
       const page = await browser.newPage();
       const started = performance.now();
@@ -326,8 +333,7 @@ async function createBrowserDriver(engine) {
     },
     diagnostics: () => diagnostics,
     async close() {
-      await browser.close();
-      await server.close();
+      try { await browser.close(); } finally { await server.close(); }
     },
   };
 }
@@ -390,7 +396,7 @@ function memoryMaximum(samples, key) {
   return values.length ? Math.max(...values) : null;
 }
 
-async function runPerformance(driver, workloads, samples, workloadIdentity) {
+export async function runPerformance(driver, workloads, samples, workloadIdentity, { collectMemory = true, onProgress = () => {} } = {}) {
   const startup = [];
   const interrupts = [];
   const operations = Object.fromEntries(workloads.cases.map((item) => [item.id, {
@@ -407,20 +413,22 @@ async function runPerformance(driver, workloads, samples, workloadIdentity) {
       const startupSession = await driver.open();
       startup.push(startupSession.startup_ms);
       await startupSession.close();
-      for (const item of workloads.cases) {
+      for (const [index, item] of workloads.cases.entries()) {
+        onProgress({ sample, samples, index, count: workloads.cases.length, id: item.id, state: "running" });
         const session = await driver.open();
         const current = operations[item.id];
         try {
-          const before = await session.memory();
+          const before = collectMemory ? await session.memory() : null;
           const cold = await session.evaluate(item.source, item.timeout_ms);
-          const afterCold = await session.memory();
+          const afterCold = collectMemory ? await session.memory() : null;
           const warm = await session.evaluate(item.source, item.timeout_ms);
-          const afterWarm = await session.memory();
+          const afterWarm = collectMemory ? await session.memory() : null;
           current.cold.push(cold.duration_ms);
           current.warm.push(warm.duration_ms);
           current.coldInstrumentation.push(cold.instrumentation ?? null);
           current.warmInstrumentation.push(warm.instrumentation ?? null);
           current.memory.push({ before, after_cold: afterCold, after_warm: afterWarm });
+          onProgress({ sample, samples, index, count: workloads.cases.length, id: item.id, state: "completed" });
         } finally {
           await session.close();
         }
@@ -457,6 +465,7 @@ async function runPerformance(driver, workloads, samples, workloadIdentity) {
         warm: summarizeInstrumentation(item.warmInstrumentation, item.required_capability_routes),
       },
       memory: {
+        collection: collectMemory ? "collected" : "not-collected",
         samples: item.memory,
         maximum_js_heap_bytes: memoryMaximum(item.memory, "js_heap_bytes"),
         maximum_user_agent_bytes: memoryMaximum(item.memory, "user_agent_bytes"),
@@ -465,7 +474,7 @@ async function runPerformance(driver, workloads, samples, workloadIdentity) {
     }])),
     diagnostics: driver.diagnostics(),
     artifact_root: driver.runtime.kind === "browser-wasm"
-      ? path.relative(process.cwd(), packageRoot)
+      ? path.relative(process.cwd(), driver.artifactRoot ?? packageRoot)
       : null,
   };
 }
