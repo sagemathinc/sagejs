@@ -6950,11 +6950,15 @@ class Matrix(sage.Element):
                 native_value = backend.fqMatrixRightKernel(self._native)
             elif getattr(self.base_ring(), "_kind", None) == "CyclotomicField":
                 cyclotomic_order = int(_cyclotomic_order(self.base_ring()))
-                if cyclotomic_order in [3, 4, 6]:
-                    # FLINT's direct qqbar elimination is already effective
-                    # in quadratic fields and avoids translating legacy
-                    # order-3 character presentations through a larger
-                    # cyclotomic coordinate cache.
+                if (
+                    cyclotomic_order in [3, 4, 6]
+                    or runtime.jstype(
+                        runtime.reflect.get(backend, "cyclotomicMatrixRightKernel")
+                    )
+                    != "function"
+                ):
+                    # Exact qqbar elimination handles quadratic fields and
+                    # hosts without the cyclotomic coordinate accelerator.
                     nullity = self.ncols() - self.rank()
                     native_value = backend.matrixRightKernel(self._native)
                 else:

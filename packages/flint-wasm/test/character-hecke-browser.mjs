@@ -15,7 +15,7 @@ try {
   await page.goto(`${server.origin}/browser-wasm-harness.html`);
   await page.waitForFunction(() => window.__sagejsReady !== undefined);
   await page.evaluate(() => window.__sagejsReady);
-  for (const item of [publicGapCases[1], ...characterHeckeCases]) {
+  for (const item of [publicGapCases[2], ...characterHeckeCases]) {
     const result = await page.evaluate(
       (source) => window.__sagejsTest.evaluate(source, 120000), item.source);
     assert.equal(result.repr, item.expected, item.name);

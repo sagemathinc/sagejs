@@ -3055,6 +3055,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/character-hecke-support.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/public-gap-closure-support.mjs",
         "packages/flint/test/lazy-factor.cjs",
