@@ -1,0 +1,28 @@
+{
+  "schema": "sagejs.workflow-api-edges/v1",
+  "entries": [
+    {
+      "workflow": "ci.yml",
+      "job": "publish-release",
+      "step": "Require successful same-tag WebAssembly release",
+      "runSha256": "29c4c9d1f52384a58e3c9a6f49a6de04610ab978d84c19dce5a85882be0ee2f6",
+      "helpers": [
+        {
+          "filename": "scripts/release/require-wasm-release.cjs",
+          "sha256": "c7206222b80d4730416eae998546d9c591830af32baa5693ff40a08ac145b5c4"
+        }
+      ],
+      "requiresWorkflowSuccess": ["wasm-release.yml"],
+      "semantics": "Authenticated GitHub run lookup; helper requires a completed successful push run at the exact source SHA and immutable release tag. Entire workflow conclusion, not only product acceptance jobs."
+    },
+    {
+      "workflow": "wasm-deploy-cloudflare.yml",
+      "job": "deploy",
+      "step": "Validate the completed release run",
+      "runSha256": "58fec2156eb8356831cb62e5d1f7647ed7ca1f911d92590ef87d5c340d645f00",
+      "helpers": [],
+      "requiresWorkflowSuccess": ["wasm-release.yml", "ci.yml"],
+      "semantics": "Authenticated run metadata requires successful Wasm and CI workflows with equal source SHAs; also checks named clean/oracle/reproducibility/browser/numerical jobs. Whole-workflow edges conservatively include these narrower job checks."
+    }
+  ]
+}

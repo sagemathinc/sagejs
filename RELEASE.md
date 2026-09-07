@@ -72,10 +72,24 @@ when the fix is a one-line test-portability correction.
 runner targets/profiles, direct package-script bodies, declared input/output
 boundaries, timeouts, existing test selectors and proposed P/C/R classifications.
 `pnpm release:inventory --check` detects unreviewed runner stages, stale policy
-entries and unresolved direct package scripts. It is not a release acceptance
+entries, unresolved direct package scripts and drift in reviewed API checks. It is not a release acceptance
 command: all current stages remain required, including proposed reporting lanes.
-The output explicitly names incomplete scopes, including transitive shell and
-workflow/API dependencies, which must be audited before adopting policy changes.
+The inventory also parses every workflow with YAML 1.2 and preserves job `needs`,
+conditions, matrix strategies, timeouts, tolerance and exact step bodies. The
+source-bound API review registry describes the indirect whole-workflow checks
+used by publication/deployment; changed check bodies or helpers require review.
+For example, inspect the potential dependency path without running any jobs:
+
+```sh
+pnpm release:inventory --path 'ci.yml#publish-release' 'wasm-release.yml#browser-performance'
+```
+
+This is a conservative potential graph, not a GitHub expression interpreter.
+Matrix cells stay aggregate nodes; a conditional dependency is not proof that
+the job runs or that every failure blocks. Unreviewed API/control steps are
+listed, and external actions, artifact dataflow and transitive shell behavior
+remain explicitly incomplete. A null path does not prove independence while
+those scopes remain unaudited. No policy change is authorized by this inventory.
 
 `pnpm release:run --candidate FULL_SHA` executes the native-host plan. First
 install the pinned JavaScript dependencies and place the **same candidate's**

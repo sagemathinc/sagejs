@@ -8,6 +8,7 @@ const { plan, targets } = require("./stages.cjs");
 const { classification, stageIds } = require("./policy.cjs");
 const { discoverTestManifest } = require("../test-metadata.cjs");
 const { selectGate } = require("./test-gates.cjs");
+const { workflowInventory, dependencyPath } = require("./workflow-inventory.cjs");
 const root = path.resolve(__dirname, "../..");
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
@@ -47,29 +48,38 @@ function inventory() {
   const unreviewed = [...actualIds].filter((id) => !classification(id).reviewed);
   const stalePolicy = stageIds.filter((id) => !actualIds.has(id));
   return {
-    schema: "sagejs.release-inventory/v1", mode: "shadow", scope: "runner profiles and top-level test discovery",
+    schema: "sagejs.release-inventory/v1", mode: "shadow", scope: "runner profiles, top-level test discovery and potential workflow dependencies",
     // Keep these omissions explicit: a runner-only inventory cannot authorize
     // removing CI's whole-workflow dependency or numerical evidence requirements.
     incompleteScopes: ["transitive package/shell command closure", "specialized/package tests outside the runner",
-      "workflow and authenticated GitHub API dependency edges", "numerical browser/supplemental aggregation",
-      "signing, publication and deployment"],
-    sources: ["scripts/release/stages.cjs", "scripts/release/policy.cjs", "scripts/test-metadata.cjs", "scripts/release/test-gates.cjs"]
+      "unreviewed workflow API/action/artifact dependencies", "numerical browser/supplemental aggregation",
+      "signing, publication and deployment command semantics"],
+    sources: ["scripts/release/stages.cjs", "scripts/release/policy.cjs", "scripts/test-metadata.cjs", "scripts/release/test-gates.cjs",
+      "scripts/release/workflow-inventory.cjs", "package.json", "pnpm-lock.yaml"]
       .map((filename) => ({ filename, sha256: sha256(fs.readFileSync(path.join(root, filename))) })),
     counts: Object.fromEntries(["unit", "portable", "integration", "specialized", "smoke", "platform"].map((tier) => [tier, manifest[tier].length])),
-    testRecords: manifest.records, instances, unreviewed, stalePolicy,
+    testRecords: manifest.records, instances, unreviewed, stalePolicy, workflows: workflowInventory(root),
   };
 }
 
 if (require.main === module) {
   try {
-    if (process.argv.slice(2).some((arg) => arg !== "--check")) throw new Error("usage: release:inventory [--check]");
+    const args = process.argv.slice(2);
+    const pathQuery = args.length === 3 && args[0] === "--path";
+    if (!pathQuery && !(args.length === 0 || (args.length === 1 && args[0] === "--check"))) throw new Error("usage: release:inventory [--check | --path WORKFLOW#JOB DEPENDENCY#JOB]");
     const result = inventory();
     const unresolved = result.instances.flatMap((stage) => stage.packageEntrypoints.filter((entry) => !entry.resolved));
-    if (process.argv.includes("--check")) {
-      if (result.unreviewed.length || result.stalePolicy.length || unresolved.length) {
-        throw new Error(`inventory needs review: ${JSON.stringify({ unreviewed: result.unreviewed, stalePolicy: result.stalePolicy, unresolved })}`);
+    if (pathQuery) {
+      if (result.workflows.reviewErrors.length) throw new Error("workflow API edge review has drifted; inspect release:inventory --check");
+      const route = dependencyPath(result.workflows.nodes, result.workflows.edges, args[1], args[2]);
+      console.log(JSON.stringify({ mode: "shadow", potentialDependencyPath: route,
+        edges: route?.slice(1).map((to, index) => result.workflows.edges.find((edge) => edge.from === route[index] && edge.to === to)) ?? [],
+        limitations: result.workflows.limitations }, null, 2));
+    } else if (args.includes("--check")) {
+      if (result.unreviewed.length || result.stalePolicy.length || unresolved.length || result.workflows.reviewErrors.length) {
+        throw new Error(`inventory needs review: ${JSON.stringify({ unreviewed: result.unreviewed, stalePolicy: result.stalePolicy, unresolved, apiEdges: result.workflows.reviewErrors })}`);
       }
-      console.log(`${result.instances.length} runner stage instances covered; shadow policy only; ${result.incompleteScopes.length} external scopes still need inventory`);
+      console.log(`${result.instances.length} runner stage instances; ${result.workflows.nodes.filter((node) => node.kind === "job").length} workflow jobs; ${result.workflows.edges.length} potential edges; ${result.workflows.unreviewedControlSteps.length} additional API/control steps need review; shadow policy only; ${result.incompleteScopes.length} scopes still incomplete`);
     } else console.log(JSON.stringify(result, null, 2));
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }

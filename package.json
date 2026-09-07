@@ -474,6 +474,7 @@
     "tree-sitter-macaulay2": "4.0.1",
     "tree-sitter-python": "0.25.0",
     "typescript": "^7.0.2",
+    "yaml": "2.8.1",
     "zeromq": "6.5.0"
   },
   "publishConfig": {

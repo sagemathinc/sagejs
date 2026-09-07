@@ -1,6 +1,5 @@
 // sagejs-test-tier: unit
 // sagejs-test-portable: true
-// sagejs-test-resume-inputs: []
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -21,7 +20,8 @@ test("runner inventory has reviewed coverage for every profile and target withou
     assert.deepEqual(result.instances.filter((stage) => stage.profile === "native" && stage.target === target)
       .map((stage) => stage.id), plan("native", undefined, target).map((stage) => stage.id));
   }
-  assert.ok(result.incompleteScopes.includes("workflow and authenticated GitHub API dependency edges"));
+  assert.deepEqual(result.workflows.reviewErrors, []);
+  assert.ok(result.incompleteScopes.includes("unreviewed workflow API/action/artifact dependencies"));
 });
 
 test("unknown stages remain required; startup is not confused with optional timing", () => {

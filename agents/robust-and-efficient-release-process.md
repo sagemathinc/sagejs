@@ -555,9 +555,17 @@ in the active frozen 0.8.0 candidate. Initial implementation:
   not resource reservations or full toolchain/oracle preflight.
 - `pnpm release:inventory`: generated shadow inventory of all 79 runner stage
   instances with direct package scripts, current test selectors, timeouts and
-  proposed classifications. It explicitly does not yet cover the transitive
-  workflow/API/shell, signing or numerical aggregation graphs. Unknown stages
-  remain required and require review; no enforcement has been relaxed.
+  proposed classifications. It now also parses all 13 workflow files, retaining
+  40 aggregate jobs and 91 potential edges. Source-bound reviews capture npm
+  publication's whole-Wasm-workflow prerequisite and app deployment's whole
+  Wasm/CI prerequisites. `--path` explains indirect paths; stale reviewed shell
+  bodies/helpers, invalid YAML, unknown dependencies and cycles are rejected.
+  Matrix conditions/tolerated failures are preserved, not evaluated. Six other
+  API/control steps, external actions, artifact dataflow, transitive shell and
+  numerical aggregation semantics remain unaudited. No enforcement is relaxed.
+  YAML is a pinned development-only parser dependency. The inventory test no
+  longer opts into source-only checkpoint reuse because it now loads that
+  installed dependency; the other two source-only pilot tests remain opted in.
 - `fc0e599e6` / `1c2f52dab`: opt-in isolated-file resume with complete candidate,
   generated-input, Node executable, host, environment and invocation bindings.
   Ten checkpoint recovery/fault tests pass on Linux and native Windows; the
