@@ -1,10 +1,31 @@
 # Sage.js 0.8.0 resumable qualification
 
-Status on 2026-09-06: release.12 failed native clean CI and is not publishable.
+Status on 2026-09-07: release.12 failed native clean CI and is not publishable.
 Its completed pre-tag evidence is retained below as historical evidence, not
 qualification of the replacement candidate. Publication remains pending.
 
-## Replacement candidate
+## Current replacement candidate
+
+Frozen source: `19789307151662045ca942ad8ea30dcea4b6f6fa`.
+No new tag. This corrects a release-verification defect exposed by transferring
+the complete `ef09` evidence from the measurement host to the aggregation host.
+Browser-memory verification previously required the consumer to have the exact
+producer CPU, kernel, RAM and collector Node version. That is incompatible with
+independent CI aggregation/publication machines.
+
+Transferred verification now preserves producer facts and verifies current
+corpus, source closure, adapter, artifact, capability, exact commit/tree and
+clean-checkout bindings. Direct measurement verification retains strict host
+identity checks. The supplemental wrapper must match its nested receipt's full
+repository/platform identities. Trusted producer transport remains mandatory.
+The replacement also includes the serial dense-prime timing classification.
+
+Focused runner/evidence tests: 65 passed, zero skipped. Broader evidence suite:
+116 passed, seven optional campaigns skipped, zero failed. Release metadata
+checks passed. Full source-current qualification is pending; `ef09` receipts
+must not be relabeled for this source.
+
+## Previous untagged candidate: ef09
 
 Frozen replacement source: `ef09d3c7cea6032619f641452dc5b00a32e8505d`.
 No replacement tag has been created at the time of this update.
@@ -25,7 +46,7 @@ A macOS native refresh accidentally overlapped independent Wasm cache
 preparation; both were stopped, and the interrupted generated cache was rebuilt
 before sequential revalidation/reproduction. The repair, SEA/fresh-npm/startup,
 strict Python and 117-file portable suite passed; full integration revalidation
-is still in progress. This is an operational
+completed successfully on its one full retry. This is an operational
 failure, not evidence that can be relabeled as a pass. Reproduction helpers must
 acquire the same checkout lock rather than merely observe it absent.
 
@@ -33,7 +54,7 @@ That macOS integration revalidation stopped after 149 passing files on the
 fresh GF(2) pivot timing comparison in `dense-prime-host-boundary.cjs`: 135 ms
 versus 57 ms for RREF, against its unchanged `2 * rref + 5 ms` ceiling. Exact
 mathematical checks passed. The unchanged file passed in isolation in 8.5 s;
-one complete, otherwise-idle profile retry is underway. The failed observation
+the complete retry passed all 366 files, including this unchanged file. The failed observation
 is retained, not overwritten as evidence of a successful run.
 
 The mixed host-boundary file was missing from the serial performance inventory.
@@ -46,7 +67,10 @@ and a new candidate, not indefinite retries or a threshold waiver.
 Browser numerical collection runs independently on the idle Linux benchmark
 host with its authenticated SciPy oracle. All four numerical browser rows,
 sanitizer/destructive checks, memory records and structural budgets passed.
-Final aggregation and macOS reproduction remain pending. The public npm root
+Final aggregation passed on the original measurement host, `bench-1`, with gate
+`65c71d9cf730a2888e36102900bfec768ce25a8172cb44b30114f2b6fd2cca61`,
+but failed on the independent aggregation host due to the identity defect above.
+macOS reproduction was still running when the defect was fixed. The public npm root
 is `35289e6bdc338d32ad6ee5deafedf41da7d7b9036dc71aaca158649df2ca89b2`;
 the production Wasm artifact remains byte-identical to the historical one below.
 

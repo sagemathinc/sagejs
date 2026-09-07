@@ -790,6 +790,14 @@ test("package Worker path exposes supervised child RSS to the collector", {
   );
 });
 
+test("browser memory aggregation uses current transferred bindings, not measured-host identity", () => {
+  const source = fs.readFileSync(path.join(repositoryRoot,
+    "scripts/numerical-computing/qualification/supplemental-report.cjs"), "utf8");
+  const claims = source.slice(source.indexOf("function browserClaims("), source.indexOf("function structuralPerformanceClaims("));
+  assert.match(claims, /const receipt = verifyTransferredReceipt\(/);
+  assert.match(claims, /root: repositoryRoot, requireClean: true/);
+  assert.doesNotMatch(claims, /historical: true/);
+});
 test("browser memory evidence requires authenticated process-tree delta", () => {
   const baseline = peak(200 * 1024 * 1024);
   const pressure = peak(240 * 1024 * 1024);

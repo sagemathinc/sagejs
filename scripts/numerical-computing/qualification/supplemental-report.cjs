@@ -21,7 +21,7 @@ const {
   validateCorpus,
   validateMatrixPolicy,
 } = require("../contracts.cjs");
-const { verifyReceipt } = require("../receipt.cjs");
+const { verifyReceipt, verifyTransferredReceipt } = require("../receipt.cjs");
 const { buildReport } = require("../report.cjs");
 const { renderMatrix } = require("./render-matrix.cjs");
 const {
@@ -387,11 +387,13 @@ function browserClaims(evidence) {
   const receiptBytes = fs.readFileSync(
     repositoryPath(repositoryRoot, evidence.receipt.path, "browser memory receipt").absolute,
   );
-  const receipt = verifyReceipt(
+  const receipt = verifyTransferredReceipt(
     parseJsonText(receiptBytes.toString("utf8"), "browser memory receipt"),
     { root: repositoryRoot, requireClean: true },
   ).receipt;
-  if (receipt.id !== evidence.receipt.id || receipt.repository.commit !== evidence.repository.commit ||
+  if (receipt.id !== evidence.receipt.id ||
+      canonicalJson(receipt.repository) !== canonicalJson(evidence.repository) ||
+      canonicalJson(receipt.platform) !== canonicalJson(evidence.platform) ||
       canonicalJson(receipt.runtime.subject) !== canonicalJson(subject) ||
       canonicalJson(receipt.corpus) !== canonicalJson(evidence.corpus) ||
       canonicalJson(receipt.source_bundle) !== canonicalJson(evidence.source_bundle) ||
