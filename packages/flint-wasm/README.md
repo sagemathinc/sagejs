@@ -58,8 +58,10 @@ covers Gamma1(13), higher weight, imprimitive characters, bad primes, and
 degree-four coefficient fields; it requires answers, not capability errors.
 This is a portable correctness path, not a claim of native-speed browser
 performance. Existing presentation-size guards still apply.
-General cyclotomic polynomial factorization for higher-dimensional newform
-decompositions is still a separate browser limitation.
+General cyclotomic polynomial factorization uses the ordinary Python Trager
+norm reduction in `sagejs.polynomial_algorithms.cyclotomic_factor`, with exact
+rational factorization and gcd recovery. No native number-field factorization
+adapter is required; the native adapter remains an optional accelerator.
 
 Dense matrices over `GF(2)` use a separate generated M4RI WebAssembly module.
 M4RI-to-M4RI operations stay entirely inside that module: the host sees only
