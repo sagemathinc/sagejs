@@ -299,6 +299,52 @@ deleted handoff authentication must not silently fall back to that result.
 Permanent authenticated archival and publication consumer migration remain
 explicit follow-up work; do not claim indefinite offline promotion.
 
+### Prepare authenticated publication inputs without rebuilding
+
+`artifact-handoff.cjs prepare` accepts the same arguments as `stage` and also
+expands the nine authenticated outer GitHub ZIPs into isolated, leased cache
+directories. It checks exact role layouts, local/central ZIP metadata, CRCs and
+SHA-256 inventories; it rejects links, path traversal, case collisions, extras
+and oversized expansion. Limits are 20,000 entries, 2 GiB per member and 4 GiB
+expanded per transport. Existing SciPy wheel parsing retains its smaller limits.
+Inner SEA/npm archives remain unopened and are never executed by extraction.
+
+The composite consumer runs from the reviewed control checkout but requires a
+**separate, clean, source-only Git checkout at the exact product SHA**. Do not
+point it at a built producer or retained release worktree. The artifact cache
+must be outside that consumer checkout:
+
+```sh
+node scripts/release/prepare-publication.cjs \
+  --candidate-root /absolute/path/to/source-only-product-checkout \
+  --run-id HANDOFF_RUN_ID --attempt HANDOFF_ATTEMPT \
+  --artifact-id HANDOFF_ARTIFACT_ID --control-sha REVIEWED_CONTROL_SHA \
+  --sha PRODUCT_SHA --ref PRODUCT_REF --event workflow_dispatch \
+  --purpose qualification --archive handoff.zip \
+  --directory /absolute/path/to/existing-artifact-cache
+```
+
+After authentication, the consumer copies pinned inputs to canonical publisher
+paths, then invokes the product checkout's existing numerical gate assembler
+and authenticator through the shared runner. It preserves the exact 16-row and
+eleven-raw-record contract and checks the selected public npm root and browser
+distribution. Success also rechecks projected file hashes and clean source.
+It does not install dependencies or regenerate runtime artifacts.
+
+Reruns revalidate cached files and reuse valid verification checkpoints. A failed
+gate directory is retained outside the canonical raw-evidence tree before a
+fresh reconstruction; interrupted copies and replaced inputs are likewise
+retained under `build/release-publication/`. Cancellation propagates to the
+runner and its child processes. Inspect retained attempts before manual cleanup;
+the consumer does not silently delete earlier evidence.
+
+The success status is `numerical-publication-inputs-authenticated`, **not release
+authorization**. Platform inner-package/signature checks, reproducible browser
+product binding and actual publisher/deployer/recovery adoption remain required.
+This command cannot upload, sign, tag, publish or move public pointers. Its local
+state is a resumability record, not an offline replacement for authenticated
+handoff provenance.
+
 ### Full pre-tag qualification without publication
 
 After local/persistent-host iteration, dispatch both workflows on a frozen

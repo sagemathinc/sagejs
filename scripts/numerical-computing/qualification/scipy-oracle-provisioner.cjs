@@ -319,7 +319,10 @@ async function extractPythonArchive(filename, destination) {
   for (const name of [...links.keys()].sort()) materialize(name);
 }
 
-function zipEntries(bytes) {
+// Accept a bounded random-access view as well as a Buffer so release ZIPs need
+// not be loaded into memory. Oracle callers retain their original limits and
+// wheel-only policy; release transport callers supply their own explicit bound.
+function zipEntries(bytes, { limits = LIMITS, wheel = true } = {}) {
   let eocd = -1;
   const minimum = Math.max(0, bytes.length - 65_557);
   for (let offset = bytes.length - 22; offset >= minimum; offset -= 1) {
@@ -339,7 +342,7 @@ function zipEntries(bytes) {
   if (disk !== 0 || centralDisk !== 0 || diskEntries !== count || count === 0 ||
       count === 0xffff || centralBytes === 0xffffffff || centralOffset === 0xffffffff ||
       eocd + 22 + commentBytes !== bytes.length || centralOffset + centralBytes !== eocd ||
-      count > LIMITS.entries) {
+      count > limits.entries) {
     fail("wheel ZIP topology is unsupported or inconsistent");
   }
   const entries = [];
@@ -363,7 +366,7 @@ function zipEntries(bytes) {
     const external = bytes.readUInt32LE(offset + 38);
     const localOffset = bytes.readUInt32LE(offset + 42);
     if ((flags & ~0x0808) !== 0 || ![0, 8].includes(method) || diskStart !== 0 ||
-        [compressed, size, localOffset].includes(0xffffffff) || size > LIMITS.member_bytes) {
+        [compressed, size, localOffset].includes(0xffffffff) || size > limits.member_bytes) {
       fail("wheel member uses unsupported ZIP features");
     }
     const end = offset + 46 + nameBytes + extraBytes + comment;
@@ -376,7 +379,7 @@ function zipEntries(bytes) {
     }
     const directory = name.endsWith("/");
     const portable = archivePath(name, "wheel member", { directory });
-    if (portable.split("/").some((component) => component.endsWith(".data"))) {
+    if (wheel && portable.split("/").some((component) => component.endsWith(".data"))) {
       fail(`wheel .data member ${portable} is forbidden`);
     }
     const key = portable.toLocaleLowerCase("en-US");
@@ -390,7 +393,7 @@ function zipEntries(bytes) {
       fail(`wheel member ${portable} is a link or special file`);
     }
     expanded += size;
-    if (expanded > LIMITS.expanded_bytes) fail("wheel exceeds its expansion budget");
+    if (expanded > limits.expanded_bytes) fail("wheel exceeds its expansion budget");
     entries.push({
       name: portable, directory, flags, method, crc, compressed, size, localOffset,
       mode: (mode & 0o111) === 0 ? 0o644 : 0o755,
@@ -401,7 +404,7 @@ function zipEntries(bytes) {
   return { entries, centralOffset };
 }
 
-function wheelContents(bytes, entry, centralOffset) {
+function zipMemberData(bytes, entry, centralOffset) {
   const offset = entry.localOffset;
   if (offset + 30 > centralOffset || bytes.readUInt32LE(offset) !== 0x04034b50) {
     fail(`wheel member ${entry.name} has an invalid local header`);
@@ -417,6 +420,11 @@ function wheelContents(bytes, entry, centralOffset) {
       dataOffset > centralOffset || dataEnd > centralOffset) {
     fail(`wheel member ${entry.name} local and central records disagree`);
   }
+  return { dataOffset, dataEnd };
+}
+
+function wheelContents(bytes, entry, centralOffset) {
+  const { dataOffset, dataEnd } = zipMemberData(bytes, entry, centralOffset);
   const compressed = bytes.subarray(dataOffset, dataEnd);
   const contents = entry.method === 0 ? Buffer.from(compressed) : zlib.inflateRawSync(compressed, {
     maxOutputLength: Math.max(1, entry.size),
@@ -641,5 +649,7 @@ module.exports = {
   extractWheel,
   provision,
   readCatalog,
+  zipEntries,
+  zipMemberData,
   _testing: { archivePath, csvRows, zipEntries },
 };

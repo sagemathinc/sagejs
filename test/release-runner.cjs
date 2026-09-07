@@ -29,6 +29,24 @@ function task(id, code, extra = {}) {
   return { id, gate: "correctness", timeoutSeconds: 30,
     commands: [["node", "-e", code]], inputs: ["build/input"], ...extra };
 }
+test("parent cancellation reaches the running child and never records a pass", async (t) => {
+  const context = fixture(t), controller = new AbortController();
+  const running = run({ ...context, signal: controller.signal, stages: [task("cancelled",
+    "require('fs').writeFileSync('build/child-pid',String(process.pid));setInterval(()=>{},1000)"), task("never", "void 0")] });
+  const rejected = assert.rejects(running, /interrupted/);
+  const marker = path.join(context.root, "build/child-pid");
+  try {
+    const deadline = Date.now() + 5000;
+    while (!fs.existsSync(marker) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.ok(fs.existsSync(marker), "child started before cancellation");
+  } finally { controller.abort(); await rejected; }
+  const pid = Number(fs.readFileSync(marker, "utf8"));
+  assert.throws(() => process.kill(pid, 0), (error) => error.code === "ESRCH");
+  const status = readStatus(context.root, context.candidate);
+  assert.equal(status.state, "failed");
+  assert.deepEqual(status.stages.map((stage) => stage.state), ["failed", "blocked"]);
+  assert.equal(fs.existsSync(path.join(context.root, "build/release-runner/active.lock")), false);
+});
 test("checkpoints reuse exact successful inputs, but reject altered outputs and commands", async (t) => {
   const context = fixture(t);
   const stages = [task("one", "require('fs').writeFileSync('build/output','ok')", { outputs: ["build/output"] })];

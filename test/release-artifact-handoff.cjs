@@ -4,16 +4,19 @@
 const test = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), os = require("node:os"), path = require("node:path");
 const { createHash } = require("node:crypto");
+const { execFileSync } = require("node:child_process");
+const { preparePublication, checkConsumer, projection } = require("../scripts/release/prepare-publication.cjs");
 const { zipSync } = require("fflate");
-const { verifyHandoffArchive, stageHandoff, readManifestZip, argumentsFor, workflow, jobName, requiredSteps } = require("../scripts/release/artifact-handoff.cjs");
+const { verifyHandoffArchive, stageHandoff, prepareHandoff, readManifestZip, argumentsFor, workflow, jobName, requiredSteps } = require("../scripts/release/artifact-handoff.cjs");
+const { layout } = require("../scripts/release/extract-artifact.cjs");
 const { roles, identity } = require("../scripts/release/artifact-set.cjs");
 const { parseWorkflow } = require("../scripts/release/workflow-inventory.cjs");
 const repository = "sagemathinc/sagejs";
 const checksum = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
-function fixture(t) {
+function fixture(t, sourceRevision = "a".repeat(40)) {
   const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "sagejs-handoff-"));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  const options = { runId: 50, runAttempt: 2, artifactId: 500, controlSha: "c".repeat(40), sha: "a".repeat(40),
+  const options = { runId: 50, runAttempt: 2, artifactId: 500, controlSha: "c".repeat(40), sha: sourceRevision,
     ref: "release-candidate", event: "workflow_dispatch", purpose: "qualification", filename: path.join(directory, "handoff.zip"), directory };
   const product = Buffer.from("fixture product ZIP bytes"), artifacts = [];
   for (const [kind, names] of Object.entries(roles)) for (const name of names) artifacts.push({ kind, name, key: `${kind}/${name}`,
@@ -143,6 +146,108 @@ test("capture workflow is non-publishing, bounded, one-job and retains an immuta
   assert.equal(upload.with["if-no-files-found"], "error");
   assert.equal(upload.with["compression-level"], 0);
   assert.equal(job.steps.filter((step) => step.run).length, 1);
+});
+
+test("prepare authenticates, stages and expands all roles, repairing corruption without new downloads", async (t) => {
+  const f = fixture(t), archives = new Map();
+  for (const record of f.manifest.artifacts) {
+    const policy = layout(record.key), files = Object.fromEntries(policy.required.map((name) => [name, Buffer.from(`fixture ${name}`)]));
+    for (const prefix of policy.prefixes) if (!Object.keys(files).some((name) => name.startsWith(prefix))) files[`${prefix}fixture.json`] = Buffer.from("{}");
+    const archive = Buffer.from(zipSync(files));
+    archives.set(record.key, archive); record.archiveDigest = checksum(archive); record.sizeInBytes = archive.length;
+  }
+  const { manifestDigest, ...payload } = f.manifest; f.manifest.manifestDigest = identity(payload);
+  const handoff = Buffer.from(zipSync({ "artifact-set.json": Buffer.from(JSON.stringify(f.manifest)) }));
+  f.artifact.digest = checksum(handoff); f.artifact.size_in_bytes = handoff.length; fs.writeFileSync(f.options.filename, handoff);
+  let downloads = 0;
+  const dependencies = { api: f.api, staging: { verifyRemote: () => {}, download: async (record, filename) => { downloads++; fs.writeFileSync(filename, archives.get(record.key)); } } };
+  const first = await prepareHandoff(f.options, dependencies);
+  assert.equal(first.expanded.length, 9);
+  assert.ok(first.expanded.every((item) => item.files.length && !item.reused));
+  fs.writeFileSync(path.join(first.expanded[0].directory, first.expanded[0].files[0].path), "changed");
+  const again = await prepareHandoff(f.options, dependencies);
+  assert.equal(downloads, 9);
+  assert.equal(again.expanded.filter((item) => !item.reused).length, 1);
+  assert.ok(again.staged.artifacts.every((item) => item.reused));
+});
+
+test("publication input preparation retains a failed gate, resumes raw verification, then reuses both successful stages", async (t) => {
+  const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "sagejs-consumer-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, "scripts/numerical-computing/qualification"), { recursive: true });
+  fs.writeFileSync(path.join(root, ".gitignore"), "build/\nrelease/\npackages/flint-wasm/dist/\n");
+  fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "source-only-consumer-fixture", version: "0.8.0" }));
+  const exact = '{"fixture_gate":true}\n';
+  // Source-only CLI fixtures exercise orchestration and byte-equality failure,
+  // not numerical correctness or actual product acceptance.
+  fs.writeFileSync(path.join(root, "scripts/numerical-computing/qualification/assemble-release-gate.cjs"), `
+    const fs=require('node:fs');
+    const dir='build/numerical-qualification/gate';
+    if(fs.existsSync(dir)&&fs.readdirSync(dir).length)throw Error('nonempty output');
+    fs.mkdirSync(dir,{recursive:true});
+    if(!fs.existsSync('build/release-publication/seen')){
+      fs.writeFileSync('build/release-publication/seen','1');
+      fs.writeFileSync(dir+'/partial.json','failed'); process.exit(7);
+    }
+    fs.writeFileSync(dir+'/release-gate.json',${JSON.stringify(exact)});
+  `);
+  fs.writeFileSync(path.join(root, "scripts/numerical-computing/qualification/authenticate-release-gate.cjs"), `
+    const fs=require('node:fs'),args=process.argv;
+    const file=(flag)=>args[args.indexOf(flag)+1];
+    if(!fs.readFileSync(file('--gate')).equals(fs.readFileSync(file('--rebuilt-gate'))))throw Error('gate bytes differ');
+    for(const flag of ['--public-npm-root','--browser-distribution'])if(!fs.existsSync(file(flag)))throw Error('missing product');
+    if(fs.existsSync('build/release-publication/mutate-input'))fs.writeFileSync('release/install.sh','changed by verifier');
+  `);
+  const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+  git("init"); git("add", "."); git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "Fixture source");
+  const candidate = git("rev-parse", "HEAD"), f = fixture(t, candidate), archives = new Map();
+  for (const record of f.manifest.artifacts) {
+    const policy = layout(record.key), files = Object.fromEntries(policy.required.map((name) => [name, Buffer.from(name === "release-gate.json" ? exact : `fixture ${name}`)]));
+    for (const prefix of policy.prefixes) if (!Object.keys(files).some((name) => name.startsWith(prefix))) files[`${prefix}fixture.json`] = Buffer.from("{}");
+    const archive = Buffer.from(zipSync(files)); archives.set(record.key, archive); record.archiveDigest = checksum(archive); record.sizeInBytes = archive.length;
+  }
+  const { manifestDigest, ...payload } = f.manifest; f.manifest.manifestDigest = identity(payload);
+  const handoff = Buffer.from(zipSync({ "artifact-set.json": Buffer.from(JSON.stringify(f.manifest)) }));
+  f.artifact.digest = checksum(handoff); f.artifact.size_in_bytes = handoff.length; fs.writeFileSync(f.options.filename, handoff);
+  let downloads = 0;
+  const dependencies = { api: f.api, runner: { preflight: () => ({ passed: true }) },
+    staging: { verifyRemote: () => {}, download: async (record, filename) => { downloads++; fs.writeFileSync(filename, archives.get(record.key)); } } };
+  const options = { ...f.options, candidateRoot: root };
+  await assert.rejects(preparePublication(options, dependencies), /command failed/);
+  assert.equal(fs.readFileSync(path.join(root, "build/numerical-qualification/gate/partial.json"), "utf8"), "failed");
+  const passed = await preparePublication(options, dependencies);
+  assert.equal(passed.status, "numerical-publication-inputs-authenticated");
+  assert.equal(passed.results.length, 2); assert.ok(passed.results.every((result) => !result.reused));
+  const retained = path.join(root, "build/release-publication/retained-gates");
+  assert.ok(fs.readdirSync(retained).some((id) => fs.existsSync(path.join(retained, id, "partial.json"))));
+  const reused = await preparePublication(options, dependencies);
+  assert.ok(reused.results.every((result) => result.reused));
+  assert.equal(downloads, 9);
+  assert.equal(git("status", "--porcelain"), "");
+  // A changed rebuilt gate cannot inherit its earlier authentication pass.
+  fs.writeFileSync(path.join(root, "build/numerical-qualification/gate/release-gate.json"), "changed");
+  const repaired = await preparePublication(options, dependencies);
+  assert.notEqual(repaired.results[0].reused, true);
+  assert.equal(fs.readFileSync(path.join(root, "build/numerical-qualification/gate/release-gate.json"), "utf8"), exact);
+  // Even a verifier that exits successfully cannot certify a changed input
+  // outside its own numerical subset (such as a projected installer).
+  const mutate = path.join(root, "build/release-publication/mutate-input");
+  fs.writeFileSync(mutate, "1");
+  fs.unlinkSync(path.join(root, "build/release-runner", candidate, "publication-numerical-authentication.json"));
+  await assert.rejects(preparePublication(options, dependencies), /inputs changed during verification/);
+  fs.unlinkSync(mutate);
+  const restored = await preparePublication(options, dependencies);
+  assert.equal(restored.status, "numerical-publication-inputs-authenticated");
+  const installer = restored.files.find((file) => file.path === "release/install.sh");
+  assert.equal(installer.sha256, createHash("sha256").update(fs.readFileSync(path.join(root, installer.path))).digest("hex"));
+  assert.throws(() => checkConsumer(root, candidate, `sha256:${"d".repeat(64)}`), /another artifact set/);
+  assert.throws(() => projection([{ key: "native/sagejs-linux-x64", directory: root, files: [{ path: "x" }, { path: "X" }] }]), /collide/);
+  const marker = path.join(root, "build/release-publication/state.json"), saved = fs.readFileSync(marker);
+  fs.unlinkSync(marker);
+  const calls = f.calls.length;
+  try { await assert.rejects(preparePublication(options, dependencies), /source-only publication checkout/); }
+  finally { fs.writeFileSync(marker, saved); }
+  assert.equal(f.calls.length, calls, "a built producer is rejected before inspecting or downloading remote artifacts");
 });
 
 test("handoff CLI cannot omit trusted identities or accept partial integer strings", () => {

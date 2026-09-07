@@ -91,9 +91,9 @@ thresholds. Do not claim the desired contract is already enforced.
 
 ### Scope and stop conditions
 
-Uncommitted extraction/publication-preparation code in the experimental checkout
-is **not an adopted release path**. Preserve it for its own review; this plan
-does not qualify or commit it. No new tag, publication, deployment, signing
+Extraction/publication-preparation tooling in the experimental branch
+is **not an adopted release path**. Its scoped validation is recorded in section
+9, not proof of completed production adoption. No new tag, publication, deployment, signing
 environment modification or installer-pointer change is part of this planning
 delivery. A missing signing authorization or source-current component eligibility
 should be reported by preflight before launching a long candidate campaign.
@@ -1028,3 +1028,27 @@ permission for indefinite offline promotion. Permanent authenticated archival,
 inner-product/signature/raw-evidence validation and coordinated publisher,
 deployer and recovery migration remain required. Existing publication guards
 and signing environment policy are unchanged.
+
+The source-only publication consumer now joins authenticated handoff, bounded
+outer-ZIP extraction, canonical input projection and the existing numerical
+assembler/authenticator under the shared runner. It requires a dedicated clean
+product checkout, refuses built/frozen producer directories, rechecks projected
+hashes after verification and preserves failed gates/copies for recovery. ZIP
+layout tests bind the nine extraction roles to actual workflow upload paths.
+The shared SciPy ZIP reader retains its original wheel limits and policies;
+release extraction uses a bounded random-access view and streamed payloads.
+
+Validation: 118 focused Linux tests pass, including the existing real numerical
+assembler/authenticator contract tests; merge inventory checks pass. Native
+Windows passes 18 handoff/extraction tests plus an actual parent-cancellation
+test. Its temporary fixture/archive/helper were removed. An additional Linux
+fault case verifies that a successful verifier cannot certify another projected
+input that it changed. The consumer's positive end-to-end test deliberately uses
+small source-only CLI fixtures: it proves retry, preservation, exact byte checks
+and checkpoint reuse, **not** source-current numerical qualification of Sage.js.
+
+This does not yet check platform inner-package signatures or bind reproducible
+browser bytes into an adopted publisher/deployer. No full candidate was built,
+tagged or published; no runtime payload, budget, signing policy or public pointer
+changed. The next integration must connect the exact staged inventory to those
+remaining real consumer checks before replacing legacy publication guards.

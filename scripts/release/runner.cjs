@@ -96,7 +96,8 @@ function environmentIdentity(env) {
   return digest(JSON.stringify(entries));
 }
 async function run({ root, candidate, stages, environment = process.env, fresh = false,
-  preflight = requirePreflight, profile = "custom", selectedStages = true }) {
+  preflight = requirePreflight, profile = "custom", selectedStages = true, signal }) {
+  signal?.throwIfAborted();
   if (!Array.isArray(stages) || stages.length === 0 ||
       stages.some((stage) => !/^[a-z][a-z0-9-]*$/.test(stage.id)) ||
       new Set(stages.map((stage) => stage.id)).size !== stages.length) {
@@ -108,6 +109,7 @@ async function run({ root, candidate, stages, environment = process.env, fresh =
   const unlock = acquireLock(path.join(root, "build", "release-runner", "active.lock"));
   const controller = new AbortController();
   const interrupt = () => controller.abort();
+  signal?.addEventListener("abort", interrupt, { once: true });
   process.on("SIGINT", interrupt);
   process.on("SIGTERM", interrupt);
   const started = Date.now();
@@ -253,6 +255,7 @@ async function run({ root, candidate, stages, environment = process.env, fresh =
     try { persist(); } catch (writeError) { console.error(`[release] unable to persist failure status (${writeError.code || "write failed"})`); }
     throw error;
   } finally {
+    signal?.removeEventListener("abort", interrupt);
     process.removeListener("SIGINT", interrupt);
     process.removeListener("SIGTERM", interrupt);
     unlock();

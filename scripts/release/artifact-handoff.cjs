@@ -9,6 +9,7 @@ const { createHash } = require("node:crypto");
 const { githubApi, jobsFromPages } = require("./product-acceptance.cjs");
 const { validateArtifactSet, identity } = require("./artifact-set.cjs");
 const { stageArtifactSet } = require("./stage-artifacts.cjs");
+const { prepareArtifact } = require("./extract-artifact.cjs");
 const repository = "sagemathinc/sagejs";
 const workflow = ".github/workflows/release-artifact-handoff.yml";
 const jobName = "Freeze qualified release artifact set v1";
@@ -96,11 +97,22 @@ async function stageHandoff(options, dependencies = {}) {
     expectedDigest: accepted.authentication.manifestDigest, directory: options.directory, signal: options.signal });
   return { ...accepted, staged };
 }
+async function prepareHandoff(options, dependencies = {}) {
+  const accepted = await stageHandoff(options, dependencies);
+  const expanded = [];
+  for (const artifact of accepted.staged.artifacts) {
+    options.signal?.throwIfAborted();
+    const result = await prepareArtifact({ manifest: accepted.manifest, expectedDigest: accepted.authentication.manifestDigest,
+      key: artifact.key, filename: artifact.filename, directory: options.directory, signal: options.signal });
+    expanded.push({ key: artifact.key, directory: result.directory, reused: result.reused, ...result.value });
+  }
+  return { ...accepted, expanded, authority: "authenticated transport layout only; final product and raw-evidence verification still required" };
+}
 function argumentsFor(args) {
   const [action, ...rest] = args;
   const names = ["--run-id", "--attempt", "--artifact-id", "--control-sha", "--sha", "--ref", "--event", "--purpose", "--archive"];
-  if (action === "stage") names.push("--directory");
-  if (!["verify", "stage"].includes(action) || rest.length !== names.length * 2) throw new Error("provide exact handoff, product and local archive identities");
+  if (["stage", "prepare"].includes(action)) names.push("--directory");
+  if (!["verify", "stage", "prepare"].includes(action) || rest.length !== names.length * 2) throw new Error("provide exact handoff, product and local archive identities");
   const v = {};
   for (let i = 0; i < rest.length; i += 2) {
     if (!names.includes(rest[i]) || Object.hasOwn(v, rest[i]) || !rest[i + 1] || rest[i + 1].startsWith("--")) throw new Error("invalid handoff arguments");
@@ -117,10 +129,10 @@ async function main() {
   const controller = new AbortController(), cancel = () => controller.abort();
   process.once("SIGINT", cancel); process.once("SIGTERM", cancel);
   try {
-    const result = action === "verify" ? verifyHandoffArchive(options) : await stageHandoff({ ...options, signal: controller.signal });
+    const result = action === "verify" ? verifyHandoffArchive(options) : await (action === "prepare" ? prepareHandoff : stageHandoff)({ ...options, signal: controller.signal });
     controller.signal.throwIfAborted();
     console.log(JSON.stringify(result, null, 2));
   } finally { process.removeListener("SIGINT", cancel); process.removeListener("SIGTERM", cancel); }
 }
 if (require.main === module) main().catch(() => { console.error("Artifact handoff authentication/staging failed; no release authorization granted."); process.exitCode = 1; });
-module.exports = { verifyHandoffArchive, stageHandoff, readManifestZip, argumentsFor, workflow, jobName, requiredSteps };
+module.exports = { verifyHandoffArchive, stageHandoff, prepareHandoff, readManifestZip, argumentsFor, workflow, jobName, requiredSteps };
