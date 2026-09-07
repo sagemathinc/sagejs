@@ -402,10 +402,36 @@ and disk preflight; scratch is removed after success/failure. This is a verifier
 for the trusted signed component-package format, not a general hostile-package
 extraction sandbox.
 
-Its result remains a **local observation**, not publication authorization.
-Production adoption must authenticate the verifier job/attempt and exact selected
-artifact set; never accept a user-supplied JSON solely because it says `passed`.
-That transport binding and publisher/deployer adoption remain unfinished.
+Its standalone result remains a **local observation**, not publication
+authorization. `release-macos-inspection.yml` provides the reviewed transport
+path: one read-only native job authenticates an explicit frozen handoff and
+downloads only its selected macOS role. It derives installer/npm byte identities,
+checks native state, and retains `macos-observation.json` in an immutable
+attempt-specific artifact. It neither repeats numerical campaigns nor grants
+new signing authority. Its control revision can differ from the product source.
+
+Final preparation must independently reconstruct the full qualified product
+inputs and compare that request to the authenticated native observation. Use
+`preparePromotion` from `prepare-publication.cjs`, or supply **all** of these
+additional flags to its existing CLI invocation:
+
+```sh
+--macos-run-id INSPECTION_RUN --macos-attempt INSPECTION_ATTEMPT \
+--macos-artifact-id OBSERVATION_ARTIFACT --macos-control-sha REVIEWED_CONTROL_SHA \
+--macos-archive /absolute/path/to/downloaded-observation.zip \
+--macos-team-id BVF94G2MB4 --macos-verifier-sha256 REVIEWED_VERIFIER_FILE_SHA256
+```
+
+The control revision, team and verifier hash are independent reviewed policy
+inputs, never values copied out of the observation to make it pass. Authentication
+requires the successful exact workflow/job/steps/attempt, repository provenance,
+artifact ID/digest/size and creation interval. A genuine artifact containing the
+wrong product, payload hash, verifier, signer or incomplete native checks fails.
+Preparation with these pins returns `product-artifacts-authenticated`; without
+them it still returns pending native requests, not an equivalent acceptance.
+Product files are rehashed after native-observation authentication under the
+consumer lease. Production publisher/deployer/recovery adoption and journaled
+pointer promotion remain unfinished; no JSON output alone authorizes publication.
 
 Browser preparation selects the clean-build distribution explicitly. Its bytes
 must match the numerical gate and the canonical artifact report recorded by the

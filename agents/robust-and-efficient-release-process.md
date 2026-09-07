@@ -44,9 +44,10 @@ uncommitted prototypes are not proof that these milestones are complete.
 
 Read this brief first; section 9 is historical evidence, not a prerequisite
 checklist to repeat. This planning refresh inspected committed release tooling
-through `cb6ebc5ff`, including the control-step audit and four-platform archive
-content checks, on 2026-09-07. The shadow
-inventory reports **85 stage instances, 43 workflow jobs and 138 potential
+through `ef08f9b03` and the subsequent native-observation workflow integration,
+including the control-step audit and four-platform archive content checks, on
+2026-09-07. The shadow
+inventory reports **85 stage instances, 44 workflow jobs and 141 potential
 dependency edges**, with **zero detected unreviewed control steps and five incomplete
 audit scopes**. These are not timings or proof of complete gate coverage.
 `release:inventory --check` passing means its declared inventory is consistent,
@@ -73,9 +74,10 @@ with the counts above; no candidate was qualified by that check.
 
 Existing experimental preparation can check the contents of all four platform
 archives against selected executable identities and emit a pending native macOS
-installer request. A native verifier now checks that request against the signed
-package; its local observation still requires authenticated job/attempt transport
-before promotion. Production publisher/deployer adoption is not complete.
+installer request. The native verifier and read-only inspection workflow now
+provide job/attempt-bound transport; `preparePromotion` compares the authenticated
+observation against independently reconstructed product inputs. Production
+publisher/deployer/recovery adoption and journaled promotion are not complete.
 Use those helpers where appropriate, but do not equate accumulated helper tests
 with an end-to-end release. The first success criterion remains one interrupted
 promotion resumed with the same tested bytes and no rebuild.

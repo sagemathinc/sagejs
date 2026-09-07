@@ -10,7 +10,7 @@ const { roles, identity } = require("../scripts/release/artifact-set.cjs");
 const bytes = Buffer.from("exact ZIP fixture bytes");
 const archiveDigest = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 function fixture(t) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-artifact-stage-"));
+  const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "sagejs-artifact-stage-"));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   let id = 100;
   const artifacts = Object.entries(roles).flatMap(([kind, names]) => names.map((name) => ({
@@ -56,6 +56,17 @@ test("validated staged bytes survive a controller failure before installation", 
   const result = await stageArtifactSet(f);
   assert.equal(result.artifacts.length, 9);
   assert.equal(f.downloads.length, 9, "already validated pending bytes are installed without downloading again");
+});
+
+test("explicit artifact subsets preserve the complete manifest identity and reuse their cache in full preparation", async (t) => {
+  const f = fixture(t), key = "native/sagejs-macos-arm64", progress = [];
+  const one = await stageArtifactSet({ ...f, keys: [key], onProgress: event => progress.push(event) });
+  assert.equal(one.manifestDigest, f.expectedDigest); assert.deepEqual(one.artifacts.map(item => item.key), [key]);
+  assert.deepEqual(f.downloads, [key]); assert.ok(progress.every(event => event.count === 1));
+  const full = await stageArtifactSet(f);
+  assert.equal(full.artifacts.length, 9); assert.equal(f.downloads.length, 9);
+  assert.equal(full.artifacts.find(item => item.key === key).reused, true);
+  for (const keys of [[], [key, key], ["unknown"], "all"]) await assert.rejects(stageArtifactSet({ ...f, keys }), /artifact subset/);
 });
 
 test("cache corruption is preserved and replaced without redownloading good peers", async (t) => {

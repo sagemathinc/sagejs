@@ -67,10 +67,15 @@ async function downloadGithubArchive(record, filename, { signal, timeoutMs = 600
 
 async function stageArtifactSet({ manifest: supplied, expectedDigest, directory, signal, onProgress = () => {},
   download = downloadGithubArchive, verifyRemote = verifyPinnedArtifact, checkSpace = requireDownloadSpace,
-  checkpoint = () => {} }) {
+  checkpoint = () => {}, keys }) {
   if (!/^sha256:[a-f0-9]{64}$/.test(expectedDigest ?? "")) throw new Error("an independently authenticated manifest digest is required");
   // Do not let a caller mutate the accepted identity while asynchronous work runs.
   const manifest = structuredClone(validateArtifactSet(supplied, expectedDigest));
+  // A consumer may need one platform, but the full nine-role manifest is still
+  // authenticated above. A subset is never resealed as a complete artifact set.
+  if (keys !== undefined && (!Array.isArray(keys) || keys.length === 0 || new Set(keys).size !== keys.length ||
+      keys.some((key) => !manifest.artifacts.some((item) => item.key === key)))) throw new Error("explicit nonempty artifact subset contains unknown or duplicate roles");
+  const selected = manifest.artifacts.filter((item) => keys === undefined || keys.includes(item.key));
   directory = path.resolve(directory); realDirectory(directory);
   const store = path.join(directory, `set-${expectedDigest.slice(7)}`);
   realDirectory(store, !exists(store));
@@ -84,10 +89,10 @@ async function stageArtifactSet({ manifest: supplied, expectedDigest, directory,
       validateArtifactSet(JSON.parse(fs.readFileSync(manifestFile, "utf8")), expectedDigest);
     } else atomicJson(manifestFile, manifest);
     const artifacts = [];
-    for (const [index, original] of manifest.artifacts.entries()) {
+    for (const [index, original] of selected.entries()) {
       signal?.throwIfAborted();
       const record = Object.freeze({ ...original });
-      onProgress({ index, count: manifest.artifacts.length, key: record.key, state: "checking" });
+      onProgress({ index, count: selected.length, key: record.key, state: "checking" });
       const result = await replaceDirectory({ parent: store, name: `artifact-${record.id}`,
         async prepare(pending) {
           signal?.throwIfAborted();
@@ -95,7 +100,7 @@ async function stageArtifactSet({ manifest: supplied, expectedDigest, directory,
           // Missing/corrupt cache entries need current availability; valid cached
           // bytes can be reused after remote expiry using the trusted frozen pin.
           await verifyRemote(manifest, expectedDigest, record.key);
-          onProgress({ index, count: manifest.artifacts.length, key: record.key, state: "downloading" });
+          onProgress({ index, count: selected.length, key: record.key, state: "downloading" });
           await download(record, path.join(pending, "artifact.zip"), { signal });
           signal?.throwIfAborted();
         },
@@ -111,7 +116,7 @@ async function stageArtifactSet({ manifest: supplied, expectedDigest, directory,
       signal?.throwIfAborted();
       artifacts.push({ key: record.key, id: record.id, archiveDigest: record.archiveDigest,
         filename: path.join(result.directory, "artifact.zip"), reused: result.reused });
-      onProgress({ index, count: manifest.artifacts.length, key: record.key, state: "ready", reused: result.reused });
+      onProgress({ index, count: selected.length, key: record.key, state: "ready", reused: result.reused });
     }
     return { schema: "sagejs.release-artifact-staging/v1", manifestDigest: expectedDigest,
       status: "archives-staged", artifacts,

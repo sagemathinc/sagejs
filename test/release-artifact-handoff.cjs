@@ -5,7 +5,7 @@ const test = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), os = require("node:os"), path = require("node:path");
 const { createHash } = require("node:crypto");
 const { execFileSync } = require("node:child_process");
-const { preparePublication, checkConsumer, projection } = require("../scripts/release/prepare-publication.cjs");
+const { preparePublication, preparePromotion, checkConsumer, projection } = require("../scripts/release/prepare-publication.cjs");
 const { zipSync } = require("fflate");
 const { verifyHandoffArchive, stageHandoff, prepareHandoff, readManifestZip, argumentsFor, workflow, jobName, requiredSteps } = require("../scripts/release/artifact-handoff.cjs");
 const { layout } = require("../scripts/release/extract-artifact.cjs");
@@ -267,7 +267,7 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   assert.equal(passed.nativeInspectionRequests.macos.version, "0.8.0");
   assert.deepEqual(passed.nativeInspectionRequests.macos.productIdentity, passed.productIdentity);
   assert.deepEqual(passed.nativeInspectionRequests.macos.executables,
-    passed.packagedExecutables.find((item) => item.platform === "macos-arm64").executables);
+    passed.packagedExecutables.find((item) => item.platform === "macos-arm64").executables.map(({ name, member, bytes, sha256 }) => ({ name, member, bytes, sha256 })));
   assert.ok(passed.downloadableArchives.every((item) => item.files.length === 6));
   assert.equal(passed.packagedExecutables[0].executables[0].evidence, "linux-x64-npm and linux-x64-sea");
   assert.equal(passed.selectedBrowser.artifactIdentity, browser.report.artifact_identity);
@@ -283,6 +283,34 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   assert.deepEqual(reused.downloadableArchives, passed.downloadableArchives);
   assert.equal(downloads, 9);
   assert.equal(git("status", "--porcelain"), "");
+  // The promotion boundary must use its independently reconstructed request,
+  // not trust the selected workflow's self-description as the expected product.
+  const nativeContract = require("../scripts/release/macos-observation.cjs").contract;
+  const nativeChecks = require("../scripts/release/macos-observation.cjs").checks;
+  const macos = { runId: 60, runAttempt: 1, artifactId: 600, controlSha: "d".repeat(40),
+    filename: path.join(f.options.directory, "native-observation.zip"), teamId: "BVF94G2MB4", verifierSha256: "e".repeat(64) };
+  const observation = { schema: "sagejs.macos-installer-observation/v1", status: "passed", request: structuredClone(passed.nativeInspectionRequests.macos),
+    teamId: macos.teamId, verifierSha256: macos.verifierSha256, checks: nativeChecks, host: { platform: "darwin", version: "26.4" } };
+  const nativeRun = { ...f.run, id: 60, run_attempt: 1, head_sha: macos.controlSha, path: nativeContract.workflow };
+  const nativeJob = { ...f.job, id: 61, run_id: 60, run_attempt: 1, head_sha: macos.controlSha, name: nativeContract.jobName,
+    steps: nativeContract.requiredSteps.map(name => ({ name, status: "completed", conclusion: "success" })) };
+  let nativeBytes;
+  const resealNative = () => { nativeBytes = Buffer.from(zipSync({ "macos-observation.json": Buffer.from(JSON.stringify(observation)) })); fs.writeFileSync(macos.filename, nativeBytes); };
+  resealNative();
+  const macosApi = (endpoint) => {
+    if (endpoint.endsWith("/runs/60/attempts/1")) return nativeRun;
+    if (endpoint.endsWith("/runs/60/attempts/1/jobs?per_page=100")) return [{ total_count: 1, jobs: [nativeJob] }];
+    if (endpoint.endsWith("/artifacts/600")) return { ...f.artifact, id: 600, name: `${nativeContract.artifactPrefix}1`,
+      size_in_bytes: nativeBytes.length, digest: checksum(nativeBytes), workflow_run: { ...f.artifact.workflow_run, id: 60, head_sha: macos.controlSha } };
+    throw Error("unexpected native observation API endpoint");
+  };
+  await assert.rejects(preparePromotion(options, dependencies), /explicit macOS inspection pins/);
+  const promotedInputs = await preparePromotion({ ...options, macos }, { ...dependencies, macosApi });
+  assert.equal(promotedInputs.status, "product-artifacts-authenticated");
+  assert.equal(promotedInputs.macosInspection.authentication.installerSha256, passed.nativeInspectionRequests.macos.installer.sha256);
+  assert.ok(promotedInputs.results.every(item => item.reused)); assert.equal(downloads, 9);
+  observation.request.installer.sha256 = "0".repeat(64); resealNative();
+  await assert.rejects(preparePromotion({ ...options, macos }, { ...dependencies, macosApi }), /differs from selected product/);
   // Transport provenance and a matching checksum cannot substitute a binary
   // after qualification, including when earlier numerical checkpoints pass.
   const wrong = platformPackage("windows-x64"); wrong.python = Buffer.from("unqualified executable");

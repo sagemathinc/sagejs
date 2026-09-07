@@ -34,6 +34,11 @@ function validateRequest(value) {
   }
   return value;
 }
+function installerRequest(productIdentity, version, installer, executables) {
+  return structuredClone(validateRequest({ schema: "sagejs.macos-installer-request/v1", status: "pending-native-inspection",
+    productIdentity, version, installer,
+    executables: executables.map(({ name, member, bytes, sha256 }) => ({ name, member, bytes, sha256 })) }));
+}
 function createMacosInstallerRequest(root, productIdentity, packages, files) {
   const selected = packages.filter((item) => item.platform === "macos-arm64");
   const descriptors = files.filter((item) => item.target === packagePath), descriptor = descriptors[0];
@@ -44,9 +49,8 @@ function createMacosInstallerRequest(root, productIdentity, packages, files) {
   const text = fs.readFileSync(checksum, "utf8");
   if (!["\n", "\r\n"].some((eol) => text === `${descriptor.sha256}  ${path.basename(filename)}${eol}`)) throw new Error("macOS installer checksum differs from selected input");
   const manifest = path.join(root, "package.json"); ordinary(manifest, 1024 ** 2);
-  return structuredClone(validateRequest({ schema: "sagejs.macos-installer-request/v1", status: "pending-native-inspection",
-    productIdentity, version: JSON.parse(fs.readFileSync(manifest, "utf8")).version,
-    installer: { path: packagePath, bytes: descriptor.size, sha256: descriptor.sha256 }, executables: selected[0].executables }));
+  return installerRequest(productIdentity, JSON.parse(fs.readFileSync(manifest, "utf8")).version,
+    { path: packagePath, bytes: descriptor.size, sha256: descriptor.sha256 }, selected[0].executables);
 }
 
 async function command(program, args, { signal, cwd } = {}) {
@@ -188,5 +192,5 @@ async function main(args) {
   try { console.log(JSON.stringify(await verifyMacosInstaller({ request: JSON.parse(fs.readFileSync(args[1], "utf8")), filename: args[3], expectedTeamId: args[5], signal: controller.signal }), null, 2)); }
   finally { process.removeListener("SIGINT", cancel); process.removeListener("SIGTERM", cancel); }
 }
-module.exports = { createMacosInstallerRequest, validateRequest, verifyMacosInstaller, assertInstallerSignature, assertLines, inspectPayload, packageInfoPredicate, command };
+module.exports = { createMacosInstallerRequest, installerRequest, validateRequest, verifyMacosInstaller, assertInstallerSignature, assertLines, inspectPayload, packageInfoPredicate, command };
 if (require.main === module) main(process.argv.slice(2)).catch((error) => { console.error(error.message); process.exitCode = 1; });

@@ -183,6 +183,28 @@ async function preparePublication(options, dependencies = {}) {
       authority: "not publication authorization; macOS installer, signatures and deployment adoption remain required" };
   } finally { unlock(); }
 }
+async function preparePromotion(options, dependencies = {}) {
+  // Fail on missing/unsuccessful native inspection before downloading the full
+  // product set. Authentication of its contents follows independent preparation.
+  const macos = structuredClone(options.macos);
+  if (!macos || !/^[A-Z0-9]{10}$/.test(macos.teamId ?? "") || !/^[a-f0-9]{64}$/.test(macos.verifierSha256 ?? "")) throw new Error("explicit macOS inspection pins and reviewed signer/verifier policy required");
+  const { contract, authenticateMacosObservation } = require("./macos-observation.cjs");
+  require("./control-artifact.cjs").inspectControlArtifact(macos, contract, dependencies.macosApi);
+  const prepared = await preparePublication(options, dependencies), root = prepared.candidateRoot;
+  const unlock = acquireLock(path.join(root, "build/release-publication/active.lock"));
+  try {
+    const macosInspection = authenticateMacosObservation(macos, { request: prepared.nativeInspectionRequests.macos,
+      teamId: macos.teamId, verifierSha256: macos.verifierSha256 }, dependencies.macosApi);
+    for (const file of prepared.files) {
+      options.signal?.throwIfAborted();
+      const filename = path.join(root, file.path);
+      if (ordinary(filename).size !== file.size || fileDigest(filename) !== file.sha256) throw new Error("publication inputs changed during native observation authentication");
+    }
+    identity(root, options.sha);
+    return { ...prepared, macosInspection, status: "product-artifacts-authenticated",
+      authority: "authenticated product inputs and native observation; publication journal and deployment consumer adoption still required" };
+  } finally { unlock(); }
+}
 async function main(args) {
   if (args[0] === "--rotate-gate") {
     if (args.length !== 4) throw new Error("invalid gate rotation request");
@@ -191,11 +213,26 @@ async function main(args) {
   const index = args.indexOf("--candidate-root");
   if (index < 0 || !args[index + 1]) throw new Error("--candidate-root is required");
   const rest = [...args]; const [, candidateRoot] = rest.splice(index, 2);
+  const macosFlags = { "--macos-run-id": "runId", "--macos-attempt": "runAttempt", "--macos-artifact-id": "artifactId",
+    "--macos-control-sha": "controlSha", "--macos-archive": "filename", "--macos-team-id": "teamId", "--macos-verifier-sha256": "verifierSha256" };
+  let macos;
+  if (rest.some((item) => Object.hasOwn(macosFlags, item))) {
+    macos = {};
+    for (const [flag, field] of Object.entries(macosFlags)) {
+      const offset = rest.indexOf(flag);
+      if (offset < 0 || !rest[offset + 1] || rest[offset + 1].startsWith("--")) throw new Error("all explicit macOS inspection pins and policy flags are required");
+      macos[field] = rest.splice(offset, 2)[1];
+    }
+    for (const field of ["runId", "runAttempt", "artifactId"]) {
+      if (!/^[1-9][0-9]*$/.test(macos[field])) throw new Error("invalid macOS inspection integer");
+      macos[field] = Number(macos[field]);
+    }
+  }
   const { options } = handoffArguments(["prepare", ...rest]);
   const controller = new AbortController(), cancel = () => controller.abort();
   process.once("SIGINT", cancel); process.once("SIGTERM", cancel);
-  try { console.log(JSON.stringify(await preparePublication({ ...options, candidateRoot, signal: controller.signal }), null, 2)); }
+  try { console.log(JSON.stringify(await (macos ? preparePromotion : preparePublication)({ ...options, candidateRoot, macos, signal: controller.signal }), null, 2)); }
   finally { process.removeListener("SIGINT", cancel); process.removeListener("SIGTERM", cancel); }
 }
-module.exports = { preparePublication, verificationStages, projection, projectedPath, checkConsumer, rotateGate };
+module.exports = { preparePublication, preparePromotion, verificationStages, projection, projectedPath, checkConsumer, rotateGate };
 if (require.main === module) main(process.argv.slice(2)).catch(() => { console.error("Publication input preparation failed; inspect retained runner logs. Nothing was published."); process.exitCode = 1; });

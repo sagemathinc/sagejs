@@ -2,6 +2,22 @@
   "schema": "sagejs.workflow-api-edges/v2",
   "entries": [
     {
+      "workflow": "release-macos-inspection.yml",
+      "job": "inspect",
+      "step": "Inspect exact selected macOS artifact",
+      "runSha256": "40f0853c90b41fa52962698571905d6b5f626c327fc0aa2f34c76b49b62c5296",
+      "helpers": [
+        { "filename": "scripts/release/collect-macos-inspection.cjs", "sha256": "251dc62ef9119eccb03676879ae0608f801ce6413a318826712666ca2cbf65af" },
+        { "filename": "scripts/release/control-artifact.cjs", "sha256": "47c1a25ad8257db09eb019caece51768b100d11ada09b9e57946b6d6ae645e26" },
+        { "filename": "scripts/release/artifact-handoff.cjs", "sha256": "f4b8d8dd7ae38504f593d129175d3dbfa129fe848396d5d143903e094c489b41" },
+        { "filename": "scripts/release/stage-artifacts.cjs", "sha256": "25d740886bd0518fd717958e689327a261b29d5119e84a7b52a25924a94c3400" },
+        { "filename": "scripts/release/macos-installer.cjs", "sha256": "a0ecb9a0796a8783612b36195b00fecc0083fa0ff524cce623ffa26b0ebb3cda" }
+      ],
+      "requiresWorkflowSuccess": ["release-artifact-handoff.yml"],
+      "artifactInputs": [{ "producer": "ci.yml#macos-sign", "names": ["sagejs-macos-arm64"] }],
+      "semantics": "Authenticates an explicit historical handoff workflow/source/attempt and immutable small artifact, then fetches only its selected macOS transport role using the complete nine-role manifest digest. Uses native trust/notarization and payload checks without signing, installation or publication. Final promotion must compare the authenticated observation to independently reconstructed product/qualified-executable identities; this job alone does not replace numerical qualification or authorize publication."
+    },
+    {
       "workflow": "ci.yml",
       "job": "publish-release",
       "step": "Require successful same-tag WebAssembly release",

@@ -1,0 +1,98 @@
+name: Inspect the selected Sage.js macOS installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Full qualified product source commit
+        required: true
+        type: string
+      source_ref:
+        description: Exact product workflow tag or branch
+        required: true
+        type: string
+      source_event:
+        description: Product workflow trigger
+        required: true
+        type: choice
+        options: [workflow_dispatch, push]
+      purpose:
+        description: This inspection alone never authorizes publication
+        required: true
+        type: choice
+        options: [qualification, release]
+      handoff_run_id:
+        description: Successful frozen artifact handoff run
+        required: true
+        type: string
+      handoff_attempt:
+        description: Exact handoff run attempt
+        required: true
+        type: string
+      handoff_artifact_id:
+        description: Immutable small handoff artifact ID
+        required: true
+        type: string
+      handoff_control_sha:
+        description: Reviewed full commit of the handoff control workflow
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  inspect:
+    name: Inspect selected macOS installer v1
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: control
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          path: candidate
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: control/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+      - name: Install pinned control dependencies without build hooks
+        working-directory: control
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Inspect exact selected macOS artifact
+        working-directory: control
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ inputs.candidate_sha }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+          SOURCE_EVENT: ${{ inputs.source_event }}
+          PURPOSE: ${{ inputs.purpose }}
+          HANDOFF_RUN: ${{ inputs.handoff_run_id }}
+          HANDOFF_ATTEMPT: ${{ inputs.handoff_attempt }}
+          HANDOFF_ARTIFACT: ${{ inputs.handoff_artifact_id }}
+          HANDOFF_CONTROL: ${{ inputs.handoff_control_sha }}
+        run: |
+          mkdir "$RUNNER_TEMP/macos-inspection-cache"
+          node scripts/release/collect-macos-inspection.cjs \
+            --candidate-root "$GITHUB_WORKSPACE/candidate" \
+            --directory "$RUNNER_TEMP/macos-inspection-cache" \
+            --run-id "$HANDOFF_RUN" --attempt "$HANDOFF_ATTEMPT" \
+            --artifact-id "$HANDOFF_ARTIFACT" --control-sha "$HANDOFF_CONTROL" \
+            --sha "$SOURCE_SHA" --ref "$SOURCE_REF" --event "$SOURCE_EVENT" \
+            --purpose "$PURPOSE" > macos-observation.json
+      - name: Retain native inspection
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-macos-inspection-attempt-${{ github.run_attempt }}
+          path: control/macos-observation.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
+          overwrite: false
