@@ -173,6 +173,7 @@ test("prepare authenticates, stages and expands all roles, repairing corruption 
 
 test("publication input preparation retains a failed gate, resumes raw verification, then reuses both successful stages", async (t) => {
   const { createBrowserInputs, budget } = require("./helpers/release-browser-inputs.cjs");
+  const { platformPackage } = require("./helpers/release-platform-package.cjs");
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "sagejs-consumer-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, "scripts/numerical-computing/qualification"), { recursive: true });
@@ -180,14 +181,14 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "source-only-consumer-fixture", version: "0.8.0" }));
   fs.mkdirSync(path.join(root, "bench"));
   fs.writeFileSync(path.join(root, "bench/browser-wasm-budget.json"), JSON.stringify(budget));
-  const rawManifests = new Map(), capability_manifests = [];
+  const rawManifests = new Map(), capability_manifests = [], platformArchives = new Map();
   for (const platform of ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]) {
-    const bytes = Buffer.from(`fixture npm/sagejs-${platform}.tgz`);
-    const relative = `platform/${platform}/${platform}-npm/capabilities.json`;
-    const manifest = JSON.stringify({ bindings: { artifacts: [{ name: "npm-platform-tarball",
-      path: `original/${platform}.tgz`, content_sha256: checksum(bytes).slice(7), bytes: bytes.length, files: 1 }] } });
-    rawManifests.set(relative, Buffer.from(manifest));
-    capability_manifests.push({ row_id: `${platform}-npm`, path: `build/numerical-qualification/${relative}`, sha256: checksum(Buffer.from(manifest)).slice(7) });
+    const fixture = platformPackage(platform); platformArchives.set(platform, fixture.bytes);
+    for (const [kind, value] of fixture.manifests) {
+      const relative = `platform/${platform}/${platform}-${kind}/capabilities.json`, manifest = JSON.stringify(value);
+      rawManifests.set(relative, Buffer.from(manifest));
+      capability_manifests.push({ row_id: `${platform}-${kind}`, path: `build/numerical-qualification/${relative}`, sha256: checksum(Buffer.from(manifest)).slice(7) });
+    }
   }
   // Source-only CLI fixtures exercise orchestration and byte-equality failure,
   // not numerical correctness or actual product acceptance.
@@ -222,6 +223,8 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   const exact = JSON.stringify({ fixture_gate: true, capability_manifests, ...browser.gate }) + "\n";
   for (const record of f.manifest.artifacts) {
     const policy = layout(record.key), files = Object.fromEntries(policy.required.map((name) => [name, Buffer.from(name === "release-gate.json" ? exact : `fixture ${name}`)]));
+    const nativePlatform = record.key.match(/^native\/sagejs-(linux-x64|linux-arm64|macos-arm64|windows-x64)$/)?.[1];
+    if (nativePlatform) files[`npm/sagejs-${nativePlatform}.tgz`] = platformArchives.get(nativePlatform);
     if (record.key === "native/sagejs-public-npm-root") for (const [name, bytes] of browser.files) files[`packages/flint-wasm/dist/${name}`] = bytes;
     if (record.key === "browser/wasm-clean-build-a") for (const [name, bytes] of browser.clean) files[name] = bytes;
     if (record.key === "browser/sagejs-wasm-reproducible") for (const [name, bytes] of browser.reproduced) files[name] = bytes;
@@ -241,6 +244,8 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   const passed = await preparePublication(options, dependencies);
   assert.equal(passed.status, "numerical-publication-inputs-authenticated");
   assert.equal(passed.platformPackages.length, 4);
+  assert.equal(passed.packagedExecutables.length, 4);
+  assert.equal(passed.packagedExecutables[0].executables[0].evidence, "linux-x64-npm and linux-x64-sea");
   assert.equal(passed.selectedBrowser.artifactIdentity, browser.report.artifact_identity);
   assert.equal(passed.selectedBrowser.archive.files, browser.files.size);
   assert.equal(passed.selectedBrowser.archive.sha256, checksum(browser.reproduced.get("sagejs-wasm.tar.gz")).slice(7));
@@ -250,6 +255,7 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   const reused = await preparePublication(options, dependencies);
   assert.ok(reused.results.every((result) => result.reused));
   assert.deepEqual(reused.selectedBrowser.archive, passed.selectedBrowser.archive);
+  assert.deepEqual(reused.packagedExecutables, passed.packagedExecutables);
   assert.equal(downloads, 9);
   assert.equal(git("status", "--porcelain"), "");
   // A successful reconstructed gate and matching archive checksum are not

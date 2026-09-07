@@ -1119,3 +1119,29 @@ inner archive and updates its checksum after numerical verification succeeds:
 preparation rejects the missing qualified files, then repairs from authenticated
 transport and reuses the numerical checkpoints on retry. No runtime artifacts,
 budgets, tags, signing policy or public pointers changed.
+
+Publication preparation now also streams all four qualified npm archives and
+cross-binds each inner `sagejs` executable to its canonical, gate-authenticated
+standalone SEA row. It identifies both `sagejs` and `sagepython` for subsequent
+downloadable archive comparisons, but labels the evidence honestly: the current
+numerical SEA row covers only `sagejs`; `sagepython` is bound by the tested npm
+tarball. It rechecks archive/raw-manifest bindings before and after reading,
+requires the exact four-platform selection and retains npm's USTAR-only layout
+policy. No binary is extracted, installed, executed or rebuilt.
+
+The workflow audit confirms that macOS npm/SEA collection consumes the signed
+release-directory binaries after signing/notarization, and Windows packages
+after the configured signing action and policy check. A contract test locks in
+that ordering and those macOS paths. This is not fresh signature verification,
+nor proof that the downloadable ZIP/tar.xz or macOS installer contains the same
+bytes; those comparisons and production consumer adoption remain unfinished.
+
+Validation: 187 focused Linux tests, merge checks and shadow inventory checks
+pass; 34 portable browser/platform/handoff tests pass on native Windows. The
+small Windows fixture/archive/helper were removed. A read-only historical check
+of `/home/user/sagejs/build/release/npm/sagejs-linux-x64.tgz` inspected 23 members
+and matched both binaries against the retained `build/sea` files: 350,198,222
+bytes for `sagejs` and 274,266,574 for `sagepython`. The whole check took about
+6.30 seconds at 85,212 KiB peak RSS. This is one local historical byte comparison,
+not a new source-current qualification or signature claim. No runtime payload,
+budget, signing environment, tag or public pointer changed.

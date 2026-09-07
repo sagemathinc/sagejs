@@ -384,37 +384,45 @@ function authenticateBrowserDistribution(value, filename, repositoryRoot = root)
   return digest;
 }
 
+// Bind one selected artifact to its canonical raw manifest after the full gate
+// has been reconstructed/authenticated. This helper is not standalone provenance.
+function qualifiedPackageArtifact(value, platform, kind, repositoryRoot = root) {
+  if (!EXPECTED_PLATFORMS.includes(platform) || !["npm", "sea"].includes(kind)) throw new Error("unsupported qualified package subject");
+  const rowId = `${platform}-${kind}`, artifactName = kind === "npm" ? "npm-platform-tarball" : "sea-executable";
+  const records = value.capability_manifests?.filter((record) => record.row_id === rowId);
+  if (records?.length !== 1 || records[0].path !== EXPECTED_ROWS.get(rowId).manifest) {
+    throw new Error(`${rowId} lacks its canonical qualified manifest`);
+  }
+  const filename = repositoryPath(repositoryRoot, records[0].path, `${rowId} manifest`).absolute;
+  const stat = fs.lstatSync(filename);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > 16 * 1024 * 1024) {
+    throw new Error(`${rowId} manifest must be a bounded ordinary file`);
+  }
+  const bytes = fs.readFileSync(filename);
+  if (sha256(bytes) !== records[0].sha256) throw new Error(`${rowId} manifest differs from the authenticated gate`);
+  const manifest = parseJsonText(bytes.toString("utf8"), `${rowId} manifest`);
+  const bindings = manifest.bindings?.artifacts?.filter((artifact) => artifact.name === artifactName);
+  if (bindings?.length !== 1 || !/^[a-f0-9]{64}$/.test(bindings[0].content_sha256 ?? "") ||
+      !Number.isSafeInteger(bindings[0].bytes) || bindings[0].bytes < 1 || bindings[0].files !== 1) {
+    throw new Error(`${rowId} lacks one content-bound ${kind === "npm" ? "platform tarball" : "SEA executable"}`);
+  }
+  return bindings[0];
+}
+
 function authenticatePlatformNpmPackages(value, directory, repositoryRoot = root) {
   const result = [];
   for (const platform of EXPECTED_PLATFORMS) {
-    const rowId = `${platform}-npm`;
-    const records = value.capability_manifests?.filter((record) => record.row_id === rowId);
-    if (records?.length !== 1 || records[0].path !== EXPECTED_ROWS.get(rowId).manifest) {
-      throw new Error(`${rowId} lacks its canonical qualified manifest`);
-    }
-    const filename = repositoryPath(repositoryRoot, records[0].path, `${rowId} manifest`).absolute;
-    const stat = fs.lstatSync(filename);
-    if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > 16 * 1024 * 1024) {
-      throw new Error(`${rowId} manifest must be a bounded ordinary file`);
-    }
-    const bytes = fs.readFileSync(filename);
-    if (sha256(bytes) !== records[0].sha256) throw new Error(`${rowId} manifest differs from the authenticated gate`);
-    const manifest = parseJsonText(bytes.toString("utf8"), `${rowId} manifest`);
-    const bindings = manifest.bindings?.artifacts?.filter((artifact) => artifact.name === "npm-platform-tarball");
-    if (bindings?.length !== 1 || !/^[a-f0-9]{64}$/.test(bindings[0].content_sha256 ?? "") ||
-        !Number.isSafeInteger(bindings[0].bytes) || bindings[0].bytes < 1 || bindings[0].files !== 1) {
-      throw new Error(`${rowId} lacks one content-bound platform tarball`);
-    }
+    const rowId = `${platform}-npm`, binding = qualifiedPackageArtifact(value, platform, "npm", repositoryRoot);
     // Preserve original producer paths in evidence. Only the selected archive's
     // content is compared: staging it must not relabel or rewrite the receipt.
     const archive = repositoryPath(repositoryRoot, path.join(directory, `sagejs-${platform}.tgz`), `${rowId} archive`);
     const archiveStat = fs.lstatSync(archive.absolute);
     if (!archiveStat.isFile() || archiveStat.isSymbolicLink() || archiveStat.nlink !== 1 ||
-        archiveStat.size !== bindings[0].bytes ||
-        contentDigestPath(repositoryRoot, archive.relative, `${rowId} archive`) !== bindings[0].content_sha256) {
+        archiveStat.size !== binding.bytes ||
+        contentDigestPath(repositoryRoot, archive.relative, `${rowId} archive`) !== binding.content_sha256) {
       throw new Error(`${rowId} platform tarball differs from the qualified package`);
     }
-    result.push({ platform, path: archive.relative, sha256: bindings[0].content_sha256, bytes: archiveStat.size });
+    result.push({ platform, path: archive.relative, sha256: binding.content_sha256, bytes: archiveStat.size });
   }
   return result;
 }
@@ -476,7 +484,7 @@ if (require.main === module) {
 }
 
 module.exports = {
-  authenticatePlatformNpmPackages,
+  authenticatePlatformNpmPackages, qualifiedPackageArtifact,
   authenticate, authenticateBrowserDistribution, authenticatePublicNpmRoot,
   authenticateRebuiltGate,
   main, parseArguments, usage,

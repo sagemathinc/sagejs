@@ -341,6 +341,23 @@ the equivalent `--platform-npm-directory release/npm` authenticator option.
 These are content checks of already-qualified packages, not replacement
 cross-platform installation tests or fresh signature verification.
 
+Preparation also streams each platform npm tarball to identify its two packaged
+SEA executables. The inner `sagejs` size/hash must equal the independently
+qualified platform SEA row, not merely another executable inside a tarball
+with a matching download checksum. The original raw manifest hashes and archive
+bytes are checked before and after the read, including on checkpoint reuse.
+The result's `packagedExecutables` records the exact executable members and
+their evidence scope. `sagepython` is bound by the tested npm tarball; the
+current numerical SEA row covers only `sagejs`, so the checker does not invent
+an independent `sagepython` row. No binary is extracted or executed.
+
+The producer workflow orders macOS collection after Developer ID signing and
+notarization, and Windows collection after the configured signing step; this
+cross-binding therefore must use the post-signing row rather than an earlier
+unsigned binary. Checking downloadable ZIP/tar.xz archives and macOS installer
+contents against these executable identities, and authenticating their signing
+state, remain necessary before adopting the final publisher.
+
 Browser preparation selects the clean-build distribution explicitly. Its bytes
 must match the numerical gate and the canonical artifact report recorded by the
 successful reproducibility producer, including the ARM64/macOS comparison
@@ -376,7 +393,7 @@ runner and its child processes. Inspect retained attempts before manual cleanup;
 the consumer does not silently delete earlier evidence.
 
 The success status is `numerical-publication-inputs-authenticated`, **not release
-authorization**. Platform inner-package/signature checks and actual
+authorization**. Downloadable SEA archive/installer and signature checks and actual
 publisher/deployer/recovery adoption remain required.
 This command cannot upload, sign, tag, publish or move public pointers. Its local
 state is a resumability record, not an offline replacement for authenticated

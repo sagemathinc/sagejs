@@ -153,6 +153,8 @@ async function preparePublication(options, dependencies = {}) {
     const { readJson } = require("../numerical-computing/common.cjs");
     const gate = readJson(path.join(root, "build/validated-numerical-gate/release-gate.json"));
     const platformPackages = authenticatePlatformNpmPackages(gate, "release/npm", root);
+    const { authenticatePackagedExecutables } = require("./packaged-executables.cjs");
+    const packagedExecutables = await authenticatePackagedExecutables(root, gate, platformPackages, { signal: options.signal });
     const { authenticateBrowserInputs } = require("./browser-inputs.cjs");
     const selectedBrowser = authenticateBrowserInputs(root, candidate, gate);
     const { authenticateBrowserArchive } = require("./browser-archive.cjs");
@@ -167,9 +169,9 @@ async function preparePublication(options, dependencies = {}) {
     return { authentication: accepted.authentication, candidateRoot: root, results,
       productIdentity: { sourceRevision: candidate, ref: accepted.manifest.ref, event: accepted.manifest.event,
         purpose: accepted.manifest.purpose, manifestDigest: digest },
-      files: inputs.map(({ target, size, sha256 }) => ({ path: target, size, sha256 })), platformPackages, selectedBrowser,
+      files: inputs.map(({ target, size, sha256 }) => ({ path: target, size, sha256 })), platformPackages, packagedExecutables, selectedBrowser,
       status: "numerical-publication-inputs-authenticated",
-      authority: "not publication authorization; platform package, signature and deployment adoption remain required" };
+      authority: "not publication authorization; downloadable SEA archives, signatures and deployment adoption remain required" };
   } finally { unlock(); }
 }
 async function main(args) {

@@ -111,7 +111,7 @@ function memberName(header, gnu) {
   return prefix ? `${prefix}/${name}` : name;
 }
 
-async function inspectArchive(filename, { browser = false, signal } = {}) {
+async function inspectArchive(filename, { browser = false, hashFiles = browser, signal } = {}) {
   signal?.throwIfAborted();
   const source = createReadStream(filename, { signal });
   const stream = createGunzip();
@@ -206,7 +206,7 @@ async function inspectArchive(filename, { browser = false, signal } = {}) {
     }
     skip = Math.ceil(size / BLOCK_SIZE) * BLOCK_SIZE;
     payloadRemaining = size;
-    if (browser && type === "file") {
+    if (hashFiles && type === "file") {
       payloadHash = createHash("sha256");
       if (size === 0) { members.at(-1).sha256 = payloadHash.digest("hex"); payloadHash = undefined; }
     }
@@ -266,7 +266,7 @@ async function inspectArchive(filename, { browser = false, signal } = {}) {
     return {
       archive: basename(filename),
       members,
-      schema: browser ? "sagejs.browser-archive-validation/v1" : "sagejs.package-archive-validation/v1",
+      schema: browser ? "sagejs.browser-archive-validation/v1" : hashFiles ? "sagejs.package-archive-content/v1" : "sagejs.package-archive-validation/v1",
       uncompressed_bytes: uncompressedBytes,
     };
   } finally { source.destroy(); stream.destroy(); }
@@ -275,6 +275,7 @@ async function inspectArchive(filename, { browser = false, signal } = {}) {
 // Separate entry points make the accepted root/dialect/hash policy explicit.
 function validateArchive(filename) { return inspectArchive(filename); }
 function validateBrowserArchive(filename, { signal } = {}) { return inspectArchive(filename, { browser: true, signal }); }
+function validatePackageArchiveContents(filename, { signal } = {}) { return inspectArchive(filename, { hashFiles: true, signal }); }
 
 async function main() {
   if (process.argv.length !== 3) {
@@ -292,4 +293,4 @@ async function main() {
 
 if (require.main === module) void main();
 
-module.exports = { validateArchive, validateBrowserArchive };
+module.exports = { validateArchive, validateBrowserArchive, validatePackageArchiveContents };
