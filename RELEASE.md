@@ -331,6 +331,16 @@ eleven-raw-record contract and checks the selected public npm root and browser
 distribution. Success also rechecks projected file hashes and clean source.
 It does not install dependencies or regenerate runtime artifacts.
 
+The consumer also compares all four selected platform npm tarballs against
+their original raw qualification manifests, whose file hashes are bound by the
+authenticated gate. Producer paths remain unchanged in those manifests. This
+check runs from reviewed control tooling on every preparation, including when
+the candidate's earlier verification stages are reused. It does not require a
+new CLI option in an older frozen candidate. New tagged CI explicitly enables
+the equivalent `--platform-npm-directory release/npm` authenticator option.
+These are content checks of already-qualified packages, not replacement
+cross-platform installation tests or fresh signature verification.
+
 Reruns revalidate cached files and reuse valid verification checkpoints. A failed
 gate directory is retained outside the canonical raw-evidence tree before a
 fresh reconstruction; interrupted copies and replaced inputs are likewise

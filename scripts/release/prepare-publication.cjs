@@ -93,7 +93,7 @@ function verificationStages(root, candidate, manifestDigest) {
         ["node", "scripts/numerical-computing/qualification/assemble-release-gate.cjs", "--candidate", candidate,
           "--input", "build/numerical-qualification", "--output", "build/numerical-qualification/gate"]] },
     { id: "publication-numerical-authentication", gate: "numerical-evidence", timeoutSeconds: 600,
-      inputs: [...state, "build/validated-numerical-gate", "build/numerical-qualification/gate", "release/npm/sagejs.tgz", "packages/flint-wasm/dist"],
+      inputs: [...state, "build/validated-numerical-gate", "build/numerical-qualification/gate", "build/numerical-qualification/platform", "release/npm", "packages/flint-wasm/dist"],
       outputs: [],
       commands: [["node", "scripts/numerical-computing/qualification/authenticate-release-gate.cjs", "--candidate", candidate,
         "--gate", "build/validated-numerical-gate/release-gate.json", "--rebuilt-gate", "build/numerical-qualification/gate/release-gate.json",
@@ -146,6 +146,13 @@ async function preparePublication(options, dependencies = {}) {
     options.signal?.throwIfAborted();
     const results = await run({ root, candidate, stages: verificationStages(root, candidate, digest),
       profile: "publication-inputs", selectedStages: true, signal: options.signal, preflight: dependencies.runner?.preflight });
+    // This additional content binding uses the reviewed control implementation
+    // against authenticated product evidence. Do not require older frozen
+    // candidates to implement a new CLI flag or rewrite their qualified source.
+    const { authenticatePlatformNpmPackages } = require("../numerical-computing/qualification/authenticate-release-gate.cjs");
+    const { readJson } = require("../numerical-computing/common.cjs");
+    const platformPackages = authenticatePlatformNpmPackages(
+      readJson(path.join(root, "build/validated-numerical-gate/release-gate.json")), "release/npm", root);
     for (const file of inputs) {
       options.signal?.throwIfAborted();
       const target = path.join(root, file.target);
@@ -155,7 +162,7 @@ async function preparePublication(options, dependencies = {}) {
     return { authentication: accepted.authentication, candidateRoot: root, results,
       productIdentity: { sourceRevision: candidate, ref: accepted.manifest.ref, event: accepted.manifest.event,
         purpose: accepted.manifest.purpose, manifestDigest: digest },
-      files: inputs.map(({ target, size, sha256 }) => ({ path: target, size, sha256 })),
+      files: inputs.map(({ target, size, sha256 }) => ({ path: target, size, sha256 })), platformPackages,
       status: "numerical-publication-inputs-authenticated",
       authority: "not publication authorization; platform package, signature and deployment adoption remain required" };
   } finally { unlock(); }

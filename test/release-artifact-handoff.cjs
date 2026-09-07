@@ -177,7 +177,16 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   fs.mkdirSync(path.join(root, "scripts/numerical-computing/qualification"), { recursive: true });
   fs.writeFileSync(path.join(root, ".gitignore"), "build/\nrelease/\npackages/flint-wasm/dist/\n");
   fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "source-only-consumer-fixture", version: "0.8.0" }));
-  const exact = '{"fixture_gate":true}\n';
+  const rawManifests = new Map(), capability_manifests = [];
+  for (const platform of ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]) {
+    const bytes = Buffer.from(`fixture npm/sagejs-${platform}.tgz`);
+    const relative = `platform/${platform}/${platform}-npm/capabilities.json`;
+    const manifest = JSON.stringify({ bindings: { artifacts: [{ name: "npm-platform-tarball",
+      path: `original/${platform}.tgz`, content_sha256: checksum(bytes).slice(7), bytes: bytes.length, files: 1 }] } });
+    rawManifests.set(relative, Buffer.from(manifest));
+    capability_manifests.push({ row_id: `${platform}-npm`, path: `build/numerical-qualification/${relative}`, sha256: checksum(Buffer.from(manifest)).slice(7) });
+  }
+  const exact = JSON.stringify({ fixture_gate: true, capability_manifests }) + "\n";
   // Source-only CLI fixtures exercise orchestration and byte-equality failure,
   // not numerical correctness or actual product acceptance.
   fs.writeFileSync(path.join(root, "scripts/numerical-computing/qualification/assemble-release-gate.cjs"), `
@@ -203,6 +212,7 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   const candidate = git("rev-parse", "HEAD"), f = fixture(t, candidate), archives = new Map();
   for (const record of f.manifest.artifacts) {
     const policy = layout(record.key), files = Object.fromEntries(policy.required.map((name) => [name, Buffer.from(name === "release-gate.json" ? exact : `fixture ${name}`)]));
+    if (record.key === "native/numerical-release-evidence") for (const [name, bytes] of rawManifests) files[name] = bytes;
     for (const prefix of policy.prefixes) if (!Object.keys(files).some((name) => name.startsWith(prefix))) files[`${prefix}fixture.json`] = Buffer.from("{}");
     const archive = Buffer.from(zipSync(files)); archives.set(record.key, archive); record.archiveDigest = checksum(archive); record.sizeInBytes = archive.length;
   }
@@ -217,6 +227,7 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   assert.equal(fs.readFileSync(path.join(root, "build/numerical-qualification/gate/partial.json"), "utf8"), "failed");
   const passed = await preparePublication(options, dependencies);
   assert.equal(passed.status, "numerical-publication-inputs-authenticated");
+  assert.equal(passed.platformPackages.length, 4);
   assert.equal(passed.results.length, 2); assert.ok(passed.results.every((result) => !result.reused));
   const retained = path.join(root, "build/release-publication/retained-gates");
   assert.ok(fs.readdirSync(retained).some((id) => fs.existsSync(path.join(retained, id, "partial.json"))));

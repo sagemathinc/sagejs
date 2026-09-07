@@ -1602,6 +1602,7 @@ jobs:
             --gate build/validated-numerical-gate/release-gate.json \
             --rebuilt-gate build/numerical-qualification/gate/release-gate.json \
             --public-npm-root release/npm/sagejs.tgz \
+            --platform-npm-directory release/npm \
             --browser-distribution packages/flint-wasm/dist
 
       - name: Create or update the draft GitHub release

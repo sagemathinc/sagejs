@@ -1052,3 +1052,16 @@ browser bytes into an adopted publisher/deployer. No full candidate was built,
 tagged or published; no runtime payload, budget, signing policy or public pointer
 changed. The next integration must connect the exact staged inventory to those
 remaining real consumer checks before replacing legacy publication guards.
+
+The next reviewed consumer change directly binds all four platform npm tarballs
+to their gate-authenticated raw capability manifests. Previously the publisher
+made this direct check only for the common npm root. The added check preserves
+original producer paths and checks canonical row identity, manifest SHA-256,
+one regular-file artifact binding, size and tarball content SHA-256. Tagged CI
+explicitly enables it; the resumable consumer runs the control implementation
+on every preparation without requiring a new CLI flag in frozen product source.
+It does not install packages or rerun mathematics, and does not replace target
+installation/signature qualification. Six new fault/contract tests and the
+consumer recovery fixtures pass on Linux and native Windows; the temporary
+Windows fixture/archive/helper were removed. Reproducible browser binding,
+SEA/signature acceptance and full promotion adoption remain unfinished.
