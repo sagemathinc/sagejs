@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "e566b3de97c26ab67dc8ec41bf77282fc68b913e461873d2c00da68b3d0e31b9",
+  "source_sha256": "b8567473f0e8370e254b5c6396d91e14ed475f9691720be01ed5306b11b38325",
   "counts": {
     "total": 1091,
     "by_kind": {
@@ -7513,7 +7513,7 @@
       "public_consumers": [
         "src/baselib/polynomial.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Exact matrix polynomial evaluation uses portable Horner evaluation when the native accelerator is absent."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRightKernel",
@@ -7525,7 +7525,7 @@
       "public_consumers": [
         "src/baselib/matrix.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Exact cyclotomic right kernels use portable qqbar elimination when the native accelerator is absent."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRowBasis",
@@ -7549,7 +7549,7 @@
       "public_consumers": [
         "src/baselib/polynomial.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Exact portable cyclotomic polynomial factorization is available; rational norm degree grows with the coefficient-field degree."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicRootCoefficients",

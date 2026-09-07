@@ -26,6 +26,14 @@
       "specialist-capability"
     ],
     "test_evidence": {
+      "portable-cyclotomic-factor": {
+        "differential": true,
+        "paths": [
+          "test/portable-cyclotomic-factor.cjs",
+          "packages/flint-wasm/test/character-hecke.test.mjs",
+          "packages/flint-wasm/test/character-hecke-browser.mjs"
+        ]
+      },
       "portable-character-hecke-differential": {
         "differential": true,
         "paths": [
@@ -13350,12 +13358,12 @@
         "src/baselib/polynomial.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "portable-cyclotomic-factor"
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The optional fused adapter falls back to exact Python matrix Horner evaluation; the browser corpus verifies Cayley-Hamilton and character decomposition.",
+      "public_explanation": "Exact matrix polynomial evaluation uses portable Horner evaluation when the native accelerator is absent."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRightKernel",
@@ -13369,12 +13377,12 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "portable-cyclotomic-factor"
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The optional cyclotomic-coordinate accelerator falls back to exact qqbar elimination, including degree-greater-than-two fields; browser tests check kernel dimension and annihilation.",
+      "public_explanation": "Exact cyclotomic right kernels use portable qqbar elimination when the native accelerator is absent."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRowBasis",
@@ -13407,12 +13415,12 @@
         "src/baselib/polynomial.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "portable-cyclotomic-factor"
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "Ordinary Python Trager reduction via exact cyclotomic Galois norms, rational factorization, and gcd recovery; tested against native factorization and higher-dimensional character decomposition in Chromium.",
+      "public_explanation": "Exact portable cyclotomic polynomial factorization is available; rational norm degree grows with the coefficient-field degree."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicRootCoefficients",

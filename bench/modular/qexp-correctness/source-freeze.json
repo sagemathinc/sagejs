@@ -55,7 +55,7 @@
     },
     {
       "path": "docs/gamma1-modular-forms.md",
-      "sha256": "378184b145bfc36ce9ace4e87544b0372a35a2fc370d61267a46627b9b99ec9a"
+      "sha256": "f6c979e5f31094b889ad85ab5faf1e3a2304211f9ae929eb49ebdfba2137e4f6"
     },
     {
       "path": "docs/modular-form-q-expansions.md",
@@ -158,5 +158,5 @@
       "sha256": "34beffa4e59c778fc2315377c4e1617e89aeb2f735026a0f5852a716e34c288b"
     }
   ],
-  "bundle_sha256": "21a78d556b485e54639e8209c303c26d79876c0a1e00456b1fd0f95448c8c030"
+  "bundle_sha256": "64542928420d9689013d7005c1293bfa0d0faaefad3193a1a8247f79a1df3353"
 }

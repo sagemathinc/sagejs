@@ -1,5 +1,6 @@
 {
   "imports": [
+    "sagejs.polynomial_algorithms.cyclotomic_factor",
     "conway_polynomials",
     "ipywidgets",
     "glob",

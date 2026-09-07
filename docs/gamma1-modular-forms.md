@@ -46,9 +46,33 @@ The portable path includes character factors and bad-prime operators; it uses
 the same exact coefficient fields and public objects as native execution.
 It is not a promise of native-speed browser performance, and existing browser
 presentation-size guards still apply.
-General cyclotomic polynomial factorization remains a separate browser
-limitation for higher-dimensional newform decompositions; the one-dimensional
-character constituents in this example need no factorization.
+Cyclotomic polynomial factorization has an exact portable Trager path, enabling
+higher-dimensional character decomposition without the native number-field
+factorization adapter. It squarefree-splits the input, searches for a separating
+shift, factors the rational Galois norm, and recovers factors by exact gcd.
+Repeated factors, nonrational units, and rational denominators are retained.
+This is a general algorithm, not a bounded search for linear roots; its rational
+norm degree grows by the coefficient-field degree, so large examples can still
+be expensive in the browser.
+
+For example, this factors over the declared exact field in both Node and Wasm:
+
+```python
+K = CyclotomicField(5)
+R = PolynomialRing(K, 'x')
+x = R.gen()
+f = (K.gen()/3) * (x^5 - 1)^2
+F = f.factor()
+assert F.value() == f
+assert len(F) == 5
+assert all(g.degree() == 1 and e == 2 for g, e in F)
+```
+
+The separating-norm step follows the classical Trager reduction (see also the
+[squarefree-norm documentation](https://docs.sympy.org/latest/modules/polys/reference.html#sympy.polys.polytools.sqf_norm)).
+Exact reconstruction checks the result, while irreducibility is certified by
+the squarefree norm and its irreducible rational factors—not inferred from
+reconstruction alone.
 
 ## Exact character-orbit descent
 

@@ -4870,16 +4870,29 @@ class ApproximatePolynomialElement(sage.Element):
             value = values[0]
             if value.nrows() != value.ncols():
                 raise TypeError("polynomial evaluation requires a square matrix")
-            if getattr(value.base_ring(), "_kind", None) == "CyclotomicField":
+            if (
+                getattr(value.base_ring(), "_kind", None) == "CyclotomicField"
+                and runtime.jstype(
+                    runtime.reflect.get(
+                        runtime.flint_backend(), "cyclotomicMatrixPolyEvaluate"
+                    )
+                )
+                == "function"
+            ):
                 native_coefficients = []
                 for coefficient in self.coefficients():
                     native_coefficients.append(coefficient._native)
                 backend = runtime.flint_backend()
-                return value._new(
-                    backend.cyclotomicMatrixPolyEvaluate(
-                        value._native, native_coefficients
+                try:
+                    return value._new(
+                        backend.cyclotomicMatrixPolyEvaluate(
+                            value._native, native_coefficients
+                        )
                     )
-                )
+                except TypeError:
+                    # General matrices need not carry the adapter's optional
+                    # cyclotomic coordinate cache. Horner also handles zero.
+                    pass
             matrix_parent = value.parent()
             identity = matrix_parent.identity_matrix()
             coefficients = self.coefficients()
@@ -4947,6 +4960,19 @@ class ApproximatePolynomialElement(sage.Element):
         ):
             base = self._parent.base_ring()
             coefficients = self.coefficients()
+            if not coefficients:
+                raise ArithmeticError("factorization of 0 is not defined")
+            if (
+                runtime.jstype(
+                    runtime.reflect.get(runtime.flint_backend(), "cyclotomicPolyFactor")
+                )
+                != "function"
+            ):
+                portable = __import__(
+                    "sagejs.polynomial_algorithms.cyclotomic_factor",
+                    fromlist=["factor_cyclotomic"],
+                )
+                return portable.factor_cyclotomic(self)
             native_coefficients = []
             for coefficient in coefficients:
                 native_coefficients.append(coefficient._native)
