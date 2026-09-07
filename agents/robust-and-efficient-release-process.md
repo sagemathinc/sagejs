@@ -693,3 +693,20 @@ The focused acceptance/dashboard/release-gate/inventory and runner/recovery sets
 pass 85 tests on Linux, and `merge:check` passes. The full `architecture:check`
 was attempted but stops at the FFI CLI because this isolated worktree has no
 `dist/tools/cli`; its generated workload projection check passes independently.
+
+The next publication-boundary building block is a read-only, attempt-scoped
+GitHub job verifier (`scripts/release/product-acceptance.cjs`). It requires
+explicit native/browser v1 aggregate names and a successful prerequisite
+assertion, not a whole-workflow conclusion. Repository/source/ref/event and
+both before/after run identities are checked; incomplete, duplicated or
+foreign-attempt pagination and retry races fail closed. Qualification cannot
+impersonate tag publication. Nine verifier tests plus thirteen existing
+publication/inventory tests pass on Linux. A real read-only inspection of
+successful scheduled run `34080875618` correctly rejected its legacy aggregate
+name: that historical run does not implement the new contract. The new source-only
+verifier test is an isolated-file resume pilot; it does not call GitHub.
+
+No current publisher/deployer uses this verifier, and the v1 aggregate jobs
+are not yet installed. Adoption must prove complete prerequisite coverage and
+preserve raw artifact/numerical authentication; passing status fixtures alone
+cannot prove mathematical or platform gate coverage.

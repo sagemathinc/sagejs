@@ -119,6 +119,32 @@ dependency migration remain required before adoption. Mathematical parity,
 startup, size, numerical evidence and dedicated memory/security gates are not
 replaced by route acceptance.
 
+`scripts/release/product-acceptance.cjs` is the read-only job-status verifier
+for the future explicit product boundary. It is not wired into publication yet:
+the v1 aggregate jobs and their complete prerequisite assertions must first be
+adopted. Old successful workflow/job names deliberately do not satisfy it.
+
+```sh
+node scripts/release/product-acceptance.cjs \
+  --kind browser --run-id RUN_ID --sha FULL_SHA \
+  --ref IMMUTABLE_TAG --event push --purpose release
+```
+
+The verifier checks the fixed repository/workflow, source, ref and event,
+reads the complete attempt-specific job list, then re-reads the run to reject
+attempt changes. Only one successful product job with its successful required
+assertion step is accepted; missing/skipped jobs or steps fail closed. Explicit
+pagination supports the persistent hosts' older `gh` versions. Use `--kind
+native` for the native boundary. Manual/scheduled observations must explicitly
+use `--purpose qualification` and their actual ref/event; they cannot pretend
+to be tag-release observations.
+
+A report job may fail or remain in progress independently of a passed product
+boundary. That is only a job-status observation, **not permission to publish**:
+trusted source selection, exact artifact/signature checks and raw numerical
+evidence reconstruction remain mandatory. No current whole-workflow guard is
+removed by adding this verifier.
+
 `pnpm release:run --candidate FULL_SHA` executes the native-host plan. First
 install the pinned JavaScript dependencies and place the **same candidate's**
 canonical numerical product at `build/authenticated-numerical-product` and
