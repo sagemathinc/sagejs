@@ -1656,8 +1656,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
-        run: gh release edit "$TAG" --draft=false --latest
+        run: node scripts/release/finalize-github-release.cjs
+
+      - name: Retain final promotion progress
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-finalization-attempt-${{ github.run_attempt }}
+          path: release-finalization.json
+          if-no-files-found: ignore
+          retention-days: 90
 
   recover-publish:
     name: Re-run a validated release publication

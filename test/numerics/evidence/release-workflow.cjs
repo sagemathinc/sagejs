@@ -944,7 +944,7 @@ test("one trusted workflow publishes and recovery reruns its authenticated job",
   const uploads = [...ci.matchAll(/uses: actions\/upload-artifact@v7[\s\S]*?with:\n([\s\S]*?)(?=\n\s{6}-|\n\s{2}\w|$)/g)];
   assert.ok(uploads.length >= 13);
   for (const upload of uploads) {
-    if (/name: sagejs-(?:github|npm)-publication-attempt-/.test(upload[1])) {
+    if (/name: sagejs-(?:(?:github|npm)-publication|finalization)-attempt-/.test(upload[1])) {
       assert.match(upload[1], /github\.run_attempt/);
       assert.doesNotMatch(upload[1], /overwrite:\s*true/);
     } else assert.match(upload[1], /overwrite:\s*true/);
@@ -953,6 +953,8 @@ test("one trusted workflow publishes and recovery reruns its authenticated job",
   assert.match(publisher, /run: node scripts\/release\/publish-github-assets\.cjs/);
   assert.doesNotMatch(publisher, /--clobber/);
   assert.match(publisher, /Retain GitHub publication progress[\s\S]*?always\(\)[\s\S]*?path: release-publication\.json/);
+  assert.match(publisher, /Publish the immutable GitHub release[\s\S]*?run: node scripts\/release\/finalize-github-release\.cjs/);
+  assert.doesNotMatch(publisher, /gh release edit/);
 });
 
 test("recovery selects the latest exact job occurrence across rerun attempts", () => {

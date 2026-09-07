@@ -4,12 +4,29 @@
     {
       "workflow": "ci.yml",
       "job": "publish-release",
+      "step": "Publish the immutable GitHub release",
+      "runSha256": "c000680f57052e3f98db2ee30e382170eb4a113be4de23f3984be6875ab5b2a6",
+      "effects": [{ "kind": "release-pointer", "target": "github:releases/latest" }],
+      "helpers": [
+        { "filename": "scripts/release/finalize-github-release.cjs", "sha256": "39d53989fb3d30c3554dd1162e4457c0ef6f2f3163d66cfc2c83b5a4a50cd2f4" },
+        { "filename": "scripts/release/publish-github-assets.cjs", "sha256": "46bdf44ea8eb170eb0829eb1b0a8da61f9554e72922438a79eccab47fa206b68" },
+        { "filename": "scripts/release/publish-npm-packages.cjs", "sha256": "256c410efeb2bb3d338d0ce828a827d0c1164c9340686260f0bb4b4d6f96d4b7" },
+        { "filename": "scripts/release/runner.cjs", "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3" },
+        { "filename": "scripts/release/directory-transaction.cjs", "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284" },
+        { "filename": "scripts/release-latest-policy.cjs", "sha256": "6d0aa87d78fe2b8b39d5f426ce92576cf9462558129d270f38af050eb8297a5b" }
+      ],
+      "requiresWorkflowSuccess": [],
+      "semantics": "Final existing gated-publisher step rechecks local and remote eleven-asset SHA256/size identities, exact five npm SHA512 versions, root latest and source/tag. Refuses newer published products or Latest; only writes the selected release ID via PATCH draft=false/prerelease=false/make_latest=true, then rechecks all inputs and observes both publication and Latest. Already promoted state is read-only on retry, even after loss of the journal. Does not create a tag, upload/replace assets, mutate npm or deploy the website/app. The participating Latest-repair workflow shares the publisher concurrency group; manual/API writers remain outside that lock."
+    },
+    {
+      "workflow": "ci.yml",
+      "job": "publish-release",
       "step": "Publish the platform and public npm packages",
       "runSha256": "d36a0793620be899a6f189ecc4cb7fafc7ef6a0263e8cb8c9d6817690c9f941b",
       "effects": [{ "kind": "npm-publication", "target": "npm:registry" }],
       "helpers": [
-        { "filename": "scripts/release/publish-npm-packages.cjs", "sha256": "28142499452312b3288e828b72f13a362d8a46aacc6de01d23207c1d5fd53b7f" },
-        { "filename": "scripts/release/publish-github-assets.cjs", "sha256": "14942e708bf6b04cba5c6f9bc6f1a54944c37ea21308128e181e0b3bd4f27527" },
+        { "filename": "scripts/release/publish-npm-packages.cjs", "sha256": "256c410efeb2bb3d338d0ce828a827d0c1164c9340686260f0bb4b4d6f96d4b7" },
+        { "filename": "scripts/release/publish-github-assets.cjs", "sha256": "46bdf44ea8eb170eb0829eb1b0a8da61f9554e72922438a79eccab47fa206b68" },
         { "filename": "scripts/release/runner.cjs", "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3" },
         { "filename": "scripts/release/directory-transaction.cjs", "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284" },
         { "filename": "scripts/build-parallelism.cjs", "sha256": "6a4a76edcf24c4413037c7497cbddb39a09a2078cd4d51a3ba0d689698cd7b26" }
@@ -24,10 +41,10 @@
       "effects": [{ "kind": "release-assets", "target": "github:release-assets" }],
       "runSha256": "1a04f5da4ef35ce8b2bf47754e39c955ba7c02475f90905265740dd05af6e469",
       "helpers": [
-        { "filename": "scripts/release/publish-github-assets.cjs", "sha256": "14942e708bf6b04cba5c6f9bc6f1a54944c37ea21308128e181e0b3bd4f27527" },
+        { "filename": "scripts/release/publish-github-assets.cjs", "sha256": "46bdf44ea8eb170eb0829eb1b0a8da61f9554e72922438a79eccab47fa206b68" },
         { "filename": "scripts/release/runner.cjs", "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3" },
         { "filename": "scripts/release/directory-transaction.cjs", "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284" },
-        { "filename": "scripts/release-latest-policy.cjs", "sha256": "fae0a517d76c52e193760c218482a9a446cee0e0ac86799946e12dc29d6643a5" }
+        { "filename": "scripts/release-latest-policy.cjs", "sha256": "6d0aa87d78fe2b8b39d5f426ce92576cf9462558129d270f38af050eb8297a5b" }
       ],
       "requiresWorkflowSuccess": [],
       "semantics": "Uses already gated local product bytes. Resolves the existing product tag to the exact source, creates only a draft if GitHub returns 404, checks all eleven installer assets by exact size/SHA256, and uploads only missing assets without clobber or deletion. Retry rechecks remote state independently of the local progress journal. Conflicting/incomplete existing assets fail closed; a published release is read-only and must already be complete. Does not execute a build, advance Latest, publish npm or replace upstream product acceptance. No workflow-success lookup beyond existing job prerequisites."
@@ -153,7 +170,7 @@
       "helpers": [
         {
           "filename": "scripts/release-latest-policy.cjs",
-          "sha256": "fae0a517d76c52e193760c218482a9a446cee0e0ac86799946e12dc29d6643a5"
+          "sha256": "6d0aa87d78fe2b8b39d5f426ce92576cf9462558129d270f38af050eb8297a5b"
         }
       ],
       "effects": [

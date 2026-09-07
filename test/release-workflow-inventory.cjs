@@ -25,6 +25,9 @@ test("real publisher and deployment retain indirect reporting ancestors in the s
   assert.deepEqual(graph.nodes.find((node) => node.key === "ci.yml#publish-release").concurrency, {
     group: "sagejs-production-publication", "cancel-in-progress": false, queue: "max",
   });
+  assert.deepEqual(graph.nodes.find((node) => node.key === "protect-latest-release.yml#@success").concurrency, {
+    group: "sagejs-production-publication", "cancel-in-progress": false, queue: "max",
+  });
   const route = (from, to) => dependencyPath(graph.nodes, graph.edges, from, to);
   assert.deepEqual(route("ci.yml#publish-release", "wasm-release.yml#browser-performance"), [
     "ci.yml#publish-release", "wasm-release.yml#@success", "wasm-release.yml#browser-performance",

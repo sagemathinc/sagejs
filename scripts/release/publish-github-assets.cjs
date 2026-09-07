@@ -136,23 +136,30 @@ function githubClient(fetchImplementation = fetch, uploadCommand = execFileSync)
     if (!response.ok) throw new Error(`GitHub ${method} ${endpoint}: HTTP ${response.status}`);
     return response.json();
   }
+  async function pages(endpoint) {
+    const values = [];
+    for (let page = 1; page <= 20; page++) {
+      const batch = await request(`${endpoint}?per_page=100&page=${page}`);
+      if (!Array.isArray(batch)) throw new Error("invalid GitHub inventory page");
+      values.push(...batch);
+      if (batch.length < 100) return values;
+    }
+    throw new Error("unexpectedly large release inventory");
+  }
   return {
     async resolveTag(tag) { return (await request(`commits/${encodeURIComponent(tag)}`)).sha; },
     findRelease(tag) { return request(`releases/tags/${encodeURIComponent(tag)}`, { allowMissing: true }); },
+    latestRelease() { return request("releases/latest", { allowMissing: true }); },
+    listReleases() { return pages("releases"); },
+    makePublicLatest(id) {
+      if (!positive(id)) throw new Error("exact release ID required for promotion");
+      return request(`releases/${id}`, { method: "PATCH", body: { draft: false, prerelease: false, make_latest: "true" } });
+    },
     createDraft(tag, source, body) { return request("releases", { method: "POST", body: {
       tag_name: tag, target_commitish: source, name: `Sage.js ${tag.slice(1)} — early alpha`, body,
       draft: true, prerelease: false, make_latest: "false",
     } }); },
-    async listAssets(id) {
-      const assets = [];
-      for (let page = 1; page <= 20; page++) {
-        const batch = await request(`releases/${id}/assets?per_page=100&page=${page}`);
-        if (!Array.isArray(batch)) throw new Error("invalid GitHub asset page");
-        assets.push(...batch);
-        if (batch.length < 100) return assets;
-      }
-      throw new Error("unexpectedly large release asset inventory");
-    },
+    listAssets(id) { return pages(`releases/${id}/assets`); },
     async upload(tag, filename) {
       uploadCommand("gh", ["release", "upload", tag, filename, "--repo", repository], {
         encoding: "utf8", timeout: 15 * 60 * 1000, maxBuffer: 1024 * 1024, stdio: ["ignore", "pipe", "pipe"],

@@ -122,6 +122,7 @@ if (require.main === module) {
 module.exports = {
   requiredInstallerAssets, hasCompleteInstallerAssets,
   parseProductTag,
+  compareProductTags,
   selectLatestProductRelease,
   selectLatestProductReleaseFromGitHub,
 };

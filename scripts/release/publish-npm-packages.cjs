@@ -188,4 +188,4 @@ if (require.main === module) {
     .then(() => console.log("All five immutable npm versions and root latest verified"))
     .catch((error) => { console.error(error.message); process.exitCode = 1; });
 }
-module.exports = { publishNpmPackages, npmClient, readInputs, packages, compareVersions };
+module.exports = { publishNpmPackages, npmClient, readInputs, packages, compareVersions, fileIdentity, verifyVersion };

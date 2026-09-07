@@ -1116,10 +1116,33 @@ attestation: every retry rechecks remote state. A fresh runner without the journ
 can safely discover uploads completed before a connection loss. A surviving
 journal rejects a changed input set or replaced release. Local stale locks require
 inspection of the prior controller/upload process before removal, as with the
-existing runner. GitHub upload recovery and npm publication now each retain
-progress, but the final public/Latest transition and app/website deployment are
-not yet a single resumable promotion transaction. Neither helper replaces
-qualification.
+existing runner. GitHub upload recovery and npm publication each retain progress;
+neither replaces qualification.
+
+The final CI step is `scripts/release/finalize-github-release.cjs`, not a blind
+`gh release edit --latest`. It independently rechecks the eleven uploaded asset
+identities, five immutable npm versions, root `latest`, local inputs, release ID
+and tag/source. A newer product in GitHub Latest, or a newer complete published
+product elsewhere in the release inventory, prevents stale promotion. The only
+remote write is a PATCH to the existing selected release ID that sets it public
+and Latest; no tag, asset, npm version or channel is created or repaired here.
+State is re-read afterwards, including asset IDs, before recording success.
+
+`release-finalization.json` is retained by attempt. If the write succeeded but
+its response or local journal was lost, a retry recognizes already-public/Latest
+state and performs no second mutation. An HTTP success response alone is not
+completion; missing visibility or changed inputs fail with the existing public
+state preserved for inspection, never an automatic rollback. The controller's
+network inspection has a shared 15-minute deadline. It does not rerun mathematical
+qualification, compress payloads, install packages or build products.
+
+The Latest-repair workflow shares `sagejs-production-publication` with the
+publisher and does not cancel it. This coordinates those participating writers,
+not arbitrary manual/API actions; GitHub and npm do not offer a cross-service
+compare-and-swap transaction. App/website adoption and an actual candidate trial
+remain required before calling the complete release process adopted. The
+integrated controller regression exercises interruption at all three publication
+stages with real helper code and fixture products/services, not public writes.
 
 Deploy `app.sagejs.org` only from the successful reproducible Wasm run and the
 successful numerical-qualification CI run for the same source SHA. Supply both

@@ -83,9 +83,13 @@ assets without clobber or builds. npm publication now also retains progress and
 requires all four integrity-matched public platform versions before root/latest
 publication; scanning waits run together. Current npm OIDC does not authorize
 independent dist-tag repair, so a temporary-tag/promote design needs a separate
-explicit authentication decision. This branch wiring is fixture-tested, not yet
+explicit authentication decision. GitHub finalization now independently rechecks
+the asset/npm/source state and journals its sole public/Latest mutation; retry
+recognizes a promotion that already succeeded. Publisher and Latest-repair jobs
+share a non-cancelling lock. One integrated fixture test interrupts all three
+controllers and resumes without duplicate writes. This branch wiring is not yet
 deployed or exercised by a real candidate. Full exact-artifact consumer adoption,
-serialized GitHub/channel/app promotion and end-to-end validation remain incomplete.
+app/website promotion and end-to-end candidate validation remain incomplete.
 Use those helpers where appropriate, but do not equate accumulated helper tests
 with an end-to-end release. The first success criterion remains one interrupted
 promotion resumed with the same tested bytes and no rebuild.
