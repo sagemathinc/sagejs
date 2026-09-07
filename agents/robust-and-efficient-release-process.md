@@ -76,8 +76,12 @@ Existing experimental preparation can check the contents of all four platform
 archives against selected executable identities and emit a pending native macOS
 installer request. The native verifier and read-only inspection workflow now
 provide job/attempt-bound transport; `preparePromotion` compares the authenticated
-observation against independently reconstructed product inputs. Production
-publisher/deployer/recovery adoption and journaled promotion are not complete.
+observation against independently reconstructed product inputs. The existing CI
+publisher's GitHub upload step now has digest-checked reconciliation and an
+attempt-retained progress journal; it can recover missing local state from remote
+assets without clobber or builds. This branch wiring is fixture-tested, not yet
+deployed or exercised by a real candidate. Full exact-artifact consumer adoption,
+npm/channel/app journaling and end-to-end promotion remain incomplete.
 Use those helpers where appropriate, but do not equate accumulated helper tests
 with an end-to-end release. The first success criterion remains one interrupted
 promotion resumed with the same tested bytes and no rebuild.

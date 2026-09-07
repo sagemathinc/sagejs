@@ -1063,6 +1063,27 @@ version as idempotent only when its registry SHA-512 integrity equals the exact
 qualified local archive; a partial publication from different bytes fails
 closed instead of being mixed into the GitHub release.
 
+The GitHub asset step now uses `scripts/release/publish-github-assets.cjs`
+instead of `gh release upload --clobber`. It resolves the existing tag to the
+selected source SHA, checks the eleven local installer assets and checksum
+contents, and compares existing remote assets by name, size and GitHub SHA-256
+digest. Only missing assets are uploaded. Conflicting bytes, duplicate names,
+unfinished `starter` uploads or missing digests stop recovery for investigation;
+they are never silently deleted or overwritten. An API error is not treated as
+an absent release. An already-public release can be verified, but never extended
+or replaced by this step.
+
+`release-publication.json` records the selected local input identity, release ID,
+and observed per-asset progress. The publisher retains it as an attempt-specific
+Actions artifact even on failure. It contains no credentials and is not an
+attestation: every retry rechecks remote state. A fresh runner without the journal
+can safely discover uploads completed before a connection loss. A surviving
+journal rejects a changed input set or replaced release. Local stale locks require
+inspection of the prior controller/upload process before removal, as with the
+existing runner. This is GitHub upload recovery only: npm channel changes, the
+final public/Latest transition and app/website deployment are not yet a single
+resumable promotion transaction. This helper does not replace qualification.
+
 Deploy `app.sagejs.org` only from the successful reproducible Wasm run and the
 successful numerical-qualification CI run for the same source SHA. Supply both
 run IDs to the deployment workflow. It rejects different SHAs, a missing or

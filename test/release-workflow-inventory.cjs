@@ -46,6 +46,7 @@ test("real publisher and deployment retain indirect reporting ancestors in the s
   assert.ok(graph.controlEffects.some((effect) => effect.from === "publish-validated-release.yml#request" && effect.target === "ci.yml#recover-publish" && effect.kind === "dispatch"));
   assert.ok(graph.controlEffects.some((effect) => effect.from === "ci.yml#recover-publish" && effect.target === "ci.yml#publish-release" && effect.kind === "rerun-job"));
   assert.ok(graph.controlEffects.some((effect) => effect.kind === "release-pointer" && effect.target === "github:releases/latest"));
+  assert.ok(graph.controlEffects.some((effect) => effect.from === "ci.yml#publish-release" && effect.kind === "release-assets" && effect.target === "github:release-assets"));
   assert.ok(graph.edges.some((edge) => edge.kind === "reviewed-artifact-input" && edge.names.includes("sagejs-macos-arm64") && edge.to === "ci.yml#macos-sign"));
 });
 

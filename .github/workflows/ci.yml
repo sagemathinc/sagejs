@@ -1622,23 +1622,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
-        run: |
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            [[ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" == "true" ]] || {
-              echo "Release $TAG already exists and is not a mutable draft" >&2
-              exit 1
-            }
-          else
-            gh release create "$TAG" \
-              --draft \
-              --verify-tag \
-              --title "Sage.js ${TAG#v} — early alpha" \
-              --notes-file RELEASE_NOTES.md
-          fi
-          mapfile -t assets < <(find release -maxdepth 1 -type f -print | sort)
-          [[ ${#assets[@]} -gt 0 ]] || { echo "No release assets" >&2; exit 1; }
-          gh release upload "$TAG" "${assets[@]}" --clobber
+        run: node scripts/release/publish-github-assets.cjs
+
+      - name: Retain GitHub publication progress
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-github-publication-attempt-${{ github.run_attempt }}
+          path: release-publication.json
+          if-no-files-found: ignore
+          retention-days: 90
 
       - name: Publish the platform and public npm packages
         env:

@@ -71,7 +71,7 @@ function workflowInventory(root, suppliedReview) {
         if (step.run !== undefined && typeof step.run !== "string") throw new Error(`invalid run body: ${key}/${index}`);
         // Detection only flags additional review work; no edges are inferred
         // from shell substrings, nor is absence a proof of no external calls.
-        if (/\bgh\s+(?:api|workflow|run)\b|require-wasm-release\.cjs|artifact-set\.cjs\s+capture|artifact-handoff\.cjs\s+(?:verify|stage|prepare)|collect-macos-inspection\.cjs/.test(step.run || "")) controlSteps.push({ key, index, name: step.name ?? null });
+        if (/\bgh\s+(?:api|workflow|run)\b|require-wasm-release\.cjs|artifact-set\.cjs\s+capture|artifact-handoff\.cjs\s+(?:verify|stage|prepare)|collect-macos-inspection\.cjs|publish-github-assets\.cjs/.test(step.run || "")) controlSteps.push({ key, index, name: step.name ?? null });
         return { index, ...step, runSha256: step.run === undefined ? null : digest(step.run) };
       });
       nodes.push({ key, kind: "job", workflow: filename, id, name: job.name ?? id,
@@ -132,8 +132,9 @@ function workflowInventory(root, suppliedReview) {
         entry.requiresWorkflowSuccess.some((name) => !workflows.has(name)) || new Set(entry.requiresWorkflowSuccess).size !== entry.requiresWorkflowSuccess.length ||
         !Array.isArray(requiredJobs) || requiredJobs.some((key) => !jobKeys.has(key)) || new Set(requiredJobs).size !== requiredJobs.length ||
         !Array.isArray(artifactInputs) || artifactInputs.some((item) => !validArtifactInput(item)) ||
-        !Array.isArray(effects) || effects.some((item) => !item || !["dispatch", "rerun-job", "release-pointer"].includes(item.kind) ||
-          (item.kind === "release-pointer" ? item.target !== "github:releases/latest" : !jobKeys.has(item.target))) ||
+        !Array.isArray(effects) || effects.some((item) => !item || !["dispatch", "rerun-job", "release-pointer", "release-assets"].includes(item.kind) ||
+          (item.kind === "release-pointer" ? item.target !== "github:releases/latest" :
+            item.kind === "release-assets" ? item.target !== "github:release-assets" : !jobKeys.has(item.target))) ||
         !(entry.requiresWorkflowSuccess.length || requiredJobs.length || artifactInputs.length || effects.length) ||
         typeof entry.semantics !== "string" || !entry.semantics.trim()) failures.push("invalid API edge declaration");
     else for (const helper of entry.helpers) {

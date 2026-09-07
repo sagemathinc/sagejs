@@ -2,6 +2,21 @@
   "schema": "sagejs.workflow-api-edges/v2",
   "entries": [
     {
+      "workflow": "ci.yml",
+      "job": "publish-release",
+      "step": "Create or update the draft GitHub release",
+      "effects": [{ "kind": "release-assets", "target": "github:release-assets" }],
+      "runSha256": "1a04f5da4ef35ce8b2bf47754e39c955ba7c02475f90905265740dd05af6e469",
+      "helpers": [
+        { "filename": "scripts/release/publish-github-assets.cjs", "sha256": "14942e708bf6b04cba5c6f9bc6f1a54944c37ea21308128e181e0b3bd4f27527" },
+        { "filename": "scripts/release/runner.cjs", "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3" },
+        { "filename": "scripts/release/directory-transaction.cjs", "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284" },
+        { "filename": "scripts/release-latest-policy.cjs", "sha256": "fae0a517d76c52e193760c218482a9a446cee0e0ac86799946e12dc29d6643a5" }
+      ],
+      "requiresWorkflowSuccess": [],
+      "semantics": "Uses already gated local product bytes. Resolves the existing product tag to the exact source, creates only a draft if GitHub returns 404, checks all eleven installer assets by exact size/SHA256, and uploads only missing assets without clobber or deletion. Retry rechecks remote state independently of the local progress journal. Conflicting/incomplete existing assets fail closed; a published release is read-only and must already be complete. Does not execute a build, advance Latest, publish npm or replace upstream product acceptance. No workflow-success lookup beyond existing job prerequisites."
+    },
+    {
       "workflow": "release-macos-inspection.yml",
       "job": "inspect",
       "step": "Inspect exact selected macOS artifact",
