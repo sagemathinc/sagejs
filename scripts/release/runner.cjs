@@ -6,10 +6,12 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
-const { createHash } = require("node:crypto");
+const { createHash, randomUUID } = require("node:crypto");
 const { execFileSync } = require("node:child_process");
 const { runBufferedCommand } = require("../build-parallelism.cjs");
 const { pnpmInvocation } = require("../pnpm-invocation.cjs");
+const { requirePreflight, inspectPreflight } = require("./preflight.cjs");
+const { readStatus } = require("./status.cjs");
 
 const digest = (value) => createHash("sha256").update(value).digest("hex");
 function fileDigest(filename) {
@@ -92,7 +94,13 @@ function environmentIdentity(env) {
   ).sort(([a], [b]) => a.localeCompare(b));
   return digest(JSON.stringify(entries));
 }
-async function run({ root, candidate, stages, environment = process.env, fresh = false }) {
+async function run({ root, candidate, stages, environment = process.env, fresh = false,
+  preflight = requirePreflight }) {
+  if (!Array.isArray(stages) || stages.length === 0 ||
+      stages.some((stage) => !/^[a-z][a-z0-9-]*$/.test(stage.id)) ||
+      new Set(stages.map((stage) => stage.id)).size !== stages.length) {
+    throw new Error("release run requires unique, safe stage IDs");
+  }
   const source = identity(root, candidate);
   const directory = path.join(root, "build", "release-runner", candidate);
   fs.mkdirSync(directory, { recursive: true });
@@ -103,8 +111,23 @@ async function run({ root, candidate, stages, environment = process.env, fresh =
   process.on("SIGTERM", interrupt);
   const started = Date.now();
   const results = [];
+  const journal = { schema: "sagejs.release-run/v1", runId: randomUUID(), source,
+    owner: { host: os.hostname(), pid: process.pid }, state: "running",
+    started: new Date().toISOString(),
+    stages: stages.map((stage) => ({ id: stage.id, gate: stage.gate, state: "pending" })) };
+  const persist = () => {
+    journal.updated = new Date().toISOString();
+    journal.elapsedSeconds = (Date.now() - started) / 1000;
+    atomicJson(path.join(directory, "runs", `${journal.runId}.json`), journal);
+    atomicJson(path.join(directory, "status.json"), journal);
+  };
+  let current;
   try {
+    persist();
     for (const [index, stage] of stages.entries()) {
+      current = journal.stages[index];
+      current.state = "checking";
+      persist();
       if (controller.signal.aborted) throw new Error("release run interrupted");
       identity(root, candidate);
       if ((stage.inputs || []).includes("dist")) {
@@ -115,6 +138,7 @@ async function run({ root, candidate, stages, environment = process.env, fresh =
       const key = digest(JSON.stringify({
         source, stage, node: process.version, platform: process.platform,
         arch: process.arch, host: os.hostname(), runner: digest(fs.readFileSync(__filename)),
+        preflight: fileDigest(path.join(__dirname, "preflight.cjs")),
         environment: environmentIdentity(environment), inputs,
       }));
       const receiptPath = path.join(directory, `${stage.id}.json`);
@@ -127,12 +151,24 @@ async function run({ root, candidate, stages, environment = process.env, fresh =
       if (reusable) {
         console.log(`[release] ${index + 1}/${stages.length} ${stage.id}: reused verified checkpoint`);
         results.push({ id: stage.id, status: "passed", reused: true });
+        Object.assign(current, { state: "passed", reused: true, key });
+        persist();
         continue;
       }
+      // Repeat before each executing stage: earlier tests/builds consume space.
+      // Do not rerun a successful stage just to obtain a preflight observation.
+      current.preflight = preflight({ root, environment: { ...environment, ...stage.env } });
+      if (!current.preflight.passed) throw new Error("preflight must pass before execution");
       const receipt = { schema: "sagejs.release-stage/v1", source, key, stage: stage.id,
         gate: stage.gate, status: "running", started: new Date().toISOString() };
-      atomicJson(receiptPath, receipt);
+      const writeReceipt = () => {
+        atomicJson(path.join(directory, "runs", journal.runId, `${stage.id}.json`), receipt);
+        atomicJson(receiptPath, receipt);
+      };
+      writeReceipt();
       const logPath = path.join(directory, `${stage.id}.${Date.now()}.log`);
+      Object.assign(current, { state: "running", started: receipt.started, key, log: logPath });
+      persist();
       const log = fs.openSync(logPath, "wx");
       const stageStarted = Date.now();
       console.log(`[release] ${index + 1}/${stages.length} ${stage.id} (${stage.gate}); log ${logPath}`);
@@ -140,19 +176,29 @@ async function run({ root, candidate, stages, environment = process.env, fresh =
         `[release] ${stage.id}: ${Math.round((Date.now() - stageStarted) / 1000)}s elapsed; ` +
         `total ${Math.round((Date.now() - started) / 1000)}s`,
       ), 20000);
-      const timer = setTimeout(() => controller.abort(), stage.timeoutSeconds * 1000);
+      let timedOut = false;
+      let stageError;
+      let outputError;
+      const timer = setTimeout(() => { timedOut = true; controller.abort(); }, stage.timeoutSeconds * 1000);
       try {
         for (const template of stage.commands) {
           const command = template.map((item) => item === "{candidate}" ? candidate : item);
           const invocation = command[0] === "pnpm" ? pnpmInvocation(command.slice(1)) :
             { command: command[0] === "node" ? process.execPath : command[0], arguments: command.slice(1) };
-          const output = (chunk) => { fs.writeSync(log, chunk); process.stdout.write(chunk); };
+          const output = (chunk) => {
+            if (outputError) return;
+            try { fs.writeSync(log, chunk); process.stdout.write(chunk); }
+            catch (error) { outputError = error; controller.abort(); }
+          };
           const result = await runBufferedCommand(invocation.command, invocation.arguments, {
             cwd: root, env: { ...environment, ...stage.env }, shell: invocation.shell,
             capture: false, signal: controller.signal, onStdout: output, onStderr: output,
           });
+          if (outputError) throw outputError;
           if (result.status !== 0 || controller.signal.aborted) {
-            throw new Error(`${stage.id}: command failed or interrupted (${result.status}); see ${logPath}`);
+            const error = new Error(`${stage.id}: command failed or interrupted (${result.status}); see ${logPath}`);
+            error.code = timedOut ? "RELEASE_TIMEOUT" : controller.signal.aborted ? "RELEASE_INTERRUPTED" : "RELEASE_COMMAND";
+            throw error;
           }
         }
         identity(root, candidate);
@@ -162,20 +208,43 @@ async function run({ root, candidate, stages, environment = process.env, fresh =
         receipt.outputs = snapshot(root, stage.outputs || []);
         receipt.status = "passed";
       } catch (error) {
+        stageError = error;
         receipt.status = "failed";
         receipt.error = error.message;
+        receipt.failureCode = error.code || "RELEASE_VALIDATION";
         throw error;
       } finally {
         clearInterval(heartbeat);
         clearTimeout(timer);
         fs.closeSync(log);
         receipt.durationSeconds = (Date.now() - stageStarted) / 1000;
-        atomicJson(receiptPath, receipt);
+        try { writeReceipt(); } catch (writeError) {
+          if (!stageError) throw writeError;
+          console.error(`[release] unable to persist stage failure (${writeError.code || "write failed"})`);
+        }
       }
       results.push({ id: stage.id, status: receipt.status });
+      Object.assign(current, { state: "passed", durationSeconds: receipt.durationSeconds });
+      persist();
     }
     atomicJson(path.join(directory, "last-run.json"), { source, results });
+    journal.state = "passed";
+    persist();
     return results;
+  } catch (error) {
+    journal.state = "failed";
+    journal.failure = { stage: current?.id ?? null, code: error.code || "RELEASE_VALIDATION", message: error.message };
+    if (current && current.state !== "passed") {
+      current.state = "failed";
+      if (error.report) current.preflight = error.report;
+    }
+    for (const entry of journal.stages) {
+      if (entry.state === "pending") Object.assign(entry, { state: "blocked", blockedBy: current?.id ?? "runner" });
+    }
+    // ENOSPC can also prevent writing diagnostics. Preserve the causal error
+    // and the previous journal instead of masking it with a second write error.
+    try { persist(); } catch (writeError) { console.error(`[release] unable to persist failure status (${writeError.code || "write failed"})`); }
+    throw error;
   } finally {
     process.removeListener("SIGINT", interrupt);
     process.removeListener("SIGTERM", interrupt);
@@ -188,8 +257,16 @@ async function main(argv) {
   const options = {};
   for (let i = 0; i < argv.length; i++) {
     if (["--candidate", "--stage", "--profile"].includes(argv[i])) options[argv[i].slice(2)] = argv[++i];
-    else if (["--list", "--fresh"].includes(argv[i])) options[argv[i].slice(2)] = true;
+    else if (["--list", "--fresh", "--preflight", "--status"].includes(argv[i])) options[argv[i].slice(2)] = true;
     else throw new Error(`unknown argument: ${argv[i]}`);
+  }
+  if (options.status) return console.log(JSON.stringify(readStatus(root, options.candidate), null, 2));
+  if (options.preflight) {
+    identity(root, options.candidate);
+    const report = inspectPreflight({ root });
+    console.log(JSON.stringify(report, null, 2));
+    if (!report.passed) process.exitCode = 1;
+    return;
   }
   const stages = plan(options.profile || "native", options.stage);
   if (options.list) return console.log(JSON.stringify(stages, null, 2));

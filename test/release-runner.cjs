@@ -8,6 +8,7 @@ const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 const { run, identity, snapshot, acquireLock } = require("../scripts/release/runner.cjs");
 const { selectGate, performance } = require("../scripts/release/test-gates.cjs");
+const { readStatus } = require("../scripts/release/status.cjs");
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-release-runner-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -44,8 +45,18 @@ test("failed stages stop scheduling and resume without repeating passed work", a
   await assert.rejects(run({ ...context, stages }), /two: command failed/);
   const directory = path.join(context.root, "build/release-runner", context.candidate);
   assert.equal(fs.existsSync(path.join(directory, "three.json")), false);
+  const failed = readStatus(context.root, context.candidate);
+  assert.equal(failed.state, "failed");
+  assert.deepEqual(failed.stages.map((stage) => stage.state), ["passed", "failed", "blocked"]);
+  assert.equal(failed.failure.code, "RELEASE_COMMAND");
   stages[1].commands[0][2] = "void 0";
   assert.equal((await run({ ...context, stages }))[0].reused, true);
+  const passed = readStatus(context.root, context.candidate);
+  assert.equal(passed.state, "passed");
+  assert.equal(passed.stages[0].reused, true);
+  assert.notEqual(passed.runId, failed.runId);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(directory, "runs", `${failed.runId}.json`))).state, "failed");
+  assert.equal(JSON.parse(fs.readFileSync(path.join(directory, "runs", failed.runId, "two.json"))).status, "failed");
 });
 test("dirty, wrong-source and absent-artifact qualifications fail closed", async (t) => {
   const context = fixture(t);
@@ -55,6 +66,9 @@ test("dirty, wrong-source and absent-artifact qualifications fail closed", async
   fs.unlinkSync(path.join(context.root, "untracked"));
   fs.unlinkSync(path.join(context.root, "build/input"));
   await assert.rejects(run({ ...context, stages: [task("missing", "void 0")] }), /ENOENT/);
+  const status = readStatus(context.root, context.candidate);
+  assert.equal(status.stages[0].state, "failed");
+  assert.equal(status.failure.code, "ENOENT");
 });
 test("running checkpoints and corrupt state never authorize skipping", async (t) => {
   const context = fixture(t);
@@ -81,6 +95,62 @@ test("timeout is a failed gate, not a passing checkpoint", async (t) => {
   const context = fixture(t);
   await assert.rejects(run({ ...context, stages: [task("timeout",
     "setInterval(()=>{},1000)", { timeoutSeconds: 0.05 })] }), /failed or interrupted/);
+  assert.equal(readStatus(context.root, context.candidate).failure.code, "RELEASE_TIMEOUT");
+});
+test("space failure blocks child launch and retry reuses only completed stages", async (t) => {
+  const context = fixture(t);
+  const stages = [task("one", "void 0"), task("two", "require('fs').writeFileSync('build/launched','yes')")];
+  let checks = 0;
+  const preflight = () => {
+    if (++checks === 2) throw Object.assign(new Error("disk exhausted"), {
+      code: "RELEASE_PREFLIGHT", report: { passed: false, failures: ["disk exhausted"] },
+    });
+    return { passed: true };
+  };
+  await assert.rejects(run({ ...context, stages, preflight }), /disk exhausted/);
+  assert.equal(fs.existsSync(path.join(context.root, "build/launched")), false);
+  const status = readStatus(context.root, context.candidate);
+  assert.equal(status.failure.code, "RELEASE_PREFLIGHT");
+  assert.equal(status.stages[1].preflight.passed, false);
+  const result = await run({ ...context, stages });
+  assert.equal(result[0].reused, true);
+  assert.equal(result[1].reused, undefined);
+});
+test("child sees durable running status; preflight uses the child's scratch environment", async (t) => {
+  const context = fixture(t);
+  const statusPath = `build/release-runner/${context.candidate}/status.json`;
+  const stages = [task("observe", `const s=JSON.parse(require('fs').readFileSync(${JSON.stringify(statusPath)}));
+    require('assert').equal(s.state,'running'); require('assert').equal(s.stages[0].state,'running');
+    require('assert').ok(s.stages[0].log);`, { env: { TMPDIR: "stage-scratch" } })];
+  await run({ ...context, stages, preflight({ environment }) {
+    assert.equal(environment.TMPDIR, "stage-scratch"); return { passed: true };
+  } });
+});
+test("ENOSPC writing a child log cancels work and preserves a failed attempt", async (t) => {
+  const context = fixture(t);
+  const write = fs.writeSync;
+  fs.writeSync = (descriptor, data, ...args) => {
+    if (Buffer.isBuffer(data) && data.toString().includes("simulate-log-full")) {
+      throw Object.assign(new Error("log disk full"), { code: "ENOSPC" });
+    }
+    return write(descriptor, data, ...args);
+  };
+  try {
+    await assert.rejects(run({ ...context, stages: [task("full",
+      "console.log('simulate-log-full'); setInterval(()=>{},1000)"), task("later", "void 0")] }), { code: "ENOSPC" });
+  } finally { fs.writeSync = write; }
+  const status = readStatus(context.root, context.candidate);
+  assert.equal(status.failure.code, "ENOSPC");
+  assert.deepEqual(status.stages.map((stage) => stage.state), ["failed", "blocked"]);
+});
+test("status works without a build and rejects unsafe paths or corrupt journal identities", (t) => {
+  const context = fixture(t);
+  assert.equal(readStatus(context.root, context.candidate).state, "unrecorded");
+  assert.throws(() => readStatus(context.root, "../../other"), /full candidate/);
+  const directory = path.join(context.root, "build/release-runner", context.candidate);
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(path.join(directory, "status.json"), JSON.stringify({ schema: "other" }));
+  assert.throws(() => readStatus(context.root, context.candidate), /identity\/schema/);
 });
 test("gate partition is exhaustive and disjoint; default still runs everything", () => {
   const files = ["test/example.cjs", ...performance];

@@ -92,6 +92,25 @@ Use `--list` to inspect commands and gate classes without running them, or
 GitHub's native build, integration, native tests, and SEA steps use this same
 runner; CI still independently collects and authenticates publication evidence.
 
+Use `pnpm release:run --candidate FULL_SHA --preflight` for a quick read-only
+source/Node/disk check before starting a campaign. The runner also checks free
+space immediately before each stage that actually executes: both the checkout
+and the child's temporary directory need at least 2 GiB available and 8,192 free
+inodes where inode counts are supported. These are initial safety floors, not
+peak-space estimates or reservations; other processes can still consume space.
+This check does not yet provision or validate every compiler, browser or oracle.
+
+`pnpm release:run --candidate FULL_SHA --status` reads structured scheduling
+status without requiring a build or changing a lock. `status.json` records the
+latest attempt, including pre-command failures, pending/blocked stages, reused
+checkpoints, log paths and failure codes. `runs/` retains prior attempt journals
+and stage receipts. A live owner PID is only a liveness observation, not proof
+that its children are healthy; a missing PID requires child-process inspection
+before recovery. Remote or inaccessible owner probes are explicitly unknown.
+Neither this status nor a partial stage selection authorizes publication. If
+the filesystem becomes completely full even failure-journal writes may fail;
+the runner reports that and retains the original causal error.
+
 Checkpoints and separate attempt logs live in
 `build/release-runner/FULL_SHA/`. A successful checkpoint is reusable only for
 the same clean source, runner, command, host, Node version, relevant environment,
