@@ -40,6 +40,71 @@ This is a planning document. Proposed budget changes, evidence reuse and gate
 reclassification require their stated validation before adoption. Existing
 uncommitted prototypes are not proof that these milestones are complete.
 
+## Implementation brief: what to do next
+
+Read this brief first; section 9 is historical evidence, not a prerequisite
+checklist to repeat. This planning refresh inspected committed release tooling
+at `0e04e16c2` and the current experimental checkout on 2026-09-07. The shadow
+inventory reports **85 stage instances, 43 workflow jobs and 114 potential
+dependency edges**, with **seven unreviewed control steps and five incomplete
+audit scopes**. These are not timings or proof of complete gate coverage.
+`release:inventory --check` passing means its declared inventory is consistent,
+not that all publication dependencies have been reviewed.
+
+### First milestone: one recoverable promotion, not another release framework
+
+Keep the existing runner, package graph, platform producers and numerical
+verifiers. Deliver these bounded changes in order:
+
+| Order | Deliverable | Completion demonstration |
+| --- | --- | --- |
+| 1 | Close the seven control-step reviews and trace publisher, recovery and both website/app consumers back to required product checks | Every promotion path has an explicit required closure; reporting timeout cannot block it and missing correctness evidence cannot pass |
+| 2 | Finish exact artifact-set consumption using the existing raw numerical verifier, package checks and signing checks | All nine transport roles authenticate; inner SEA/npm/browser identities and signature state match the selected candidate; altered or mixed bytes fail |
+| 3 | Journal publication and pointer promotion independently of builds | Interrupt after some immutable uploads, resume with integrity checks and zero compiler invocations; old public installer remains usable |
+| 4 | Exercise the complete non-publishing candidate path, then adopt it in production | Four native targets and real browsers qualify the exact delivered bytes; owner-approved signing policy and required human review remain intact |
+
+Do not grow this milestone to include independently versioned math packages,
+general remote execution, broad cross-commit mathematical evidence reuse, or a
+complete compiler refactor. None is necessary to prove safe publication retries.
+Conversely, a downloader and a green fixture suite do not complete it: the real
+publisher/deployer/recovery consumers must actually use the new boundary.
+
+### Gate policy to implement, without blanket waivers
+
+- **Always required product checks:** complete platform/format matrix, fresh
+  installation, correct answers on representative packaged paths, safe native
+  dispatch/fallback, startup, eager and total payload limits, bounded memory and
+  recovery, artifact provenance and required signing.
+- **Required component qualification:** full affected-domain semantics,
+  sanitizers and oracle campaigns bound to their actual source/toolchain/ABI,
+  target and test closure. Initially keep existing exact-candidate numerical
+  evidence; introduce narrower reuse only through the phase D pilot.
+- **Non-blocking reporting:** minor comparative speed ratios and repeated
+  performance campaigns, after extracting any embedded correctness or safety
+  assertions. A discovered mathematical defect still blocks the affected
+  product; a 10 ms versus 15 ms observation by itself does not.
+
+The current normalized startup gate is not the requested raw, usable-startup
+contract: it includes ARM64 allowances above 400 ms and a 1,500 ms hard ceiling.
+Measure the proposed ready-to-use protocol in section 2.4 before adopting new
+thresholds. Do not claim the desired contract is already enforced.
+
+### Scope and stop conditions
+
+Uncommitted extraction/publication-preparation code in the experimental checkout
+is **not an adopted release path**. Preserve it for its own review; this plan
+does not qualify or commit it. No new tag, publication, deployment, signing
+environment modification or installer-pointer change is part of this planning
+delivery. A missing signing authorization or source-current component eligibility
+should be reported by preflight before launching a long candidate campaign.
+
+After the first milestone, pursue file-level test recovery, validated dependency
+prefix reuse and one component-closure pilot. Measure critical-path time,
+recompiled inputs, peak disk/RSS and repeated work saved for each change. Expand
+physical module splitting only when those measurements justify it. The release
+manager should be able to explain a failure from one status record and retry the
+failed node—not start another day-long campaign.
+
 ## 1. Objective and priorities
 
 Make releases bounded promotion operations over validated artifacts, rather
