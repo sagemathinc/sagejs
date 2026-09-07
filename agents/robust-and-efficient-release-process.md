@@ -566,8 +566,21 @@ in the active frozen 0.8.0 candidate. Initial implementation:
   Native Windows tests used a small sparse worktree which was removed afterward;
   existing release artifacts were untouched. Input-mutation and storage-failure
   handling fail closed. This is not yet broad mathematical-suite reuse.
+- `4723a4e44`: lease-aware transactional SciPy preparation now replaces the
+  runner's non-resumable provisioning command. Full catalog/provenance/prefix
+  verification and actual Python/NumPy/SciPy probing remain mandatory on reuse.
+  Eleven transaction/lease tests pass on Linux and native Windows; ten existing
+  oracle/provisioner tests pass on Linux. A real Linux prefix was provisioned
+  from authenticated cached archives in this isolated worktree and then reused
+  with unchanged binding/provenance IDs. Repeat full verification took 1.65 s;
+  the actual runner stage passed in 2.24 s and subsequently reused its verified
+  stage checkpoint. These are single observations, not timing gates. Previous
+  directories and partial attempts are retained; retention policy, other native
+  oracle-platform integration runs and transactional lazy-cache preparation
+  remain to be completed.
 
 Phases A–F are **not complete**. Next: finish dependency inventory, separate
 required assertions from reporting, audit more files for the resume contract,
-add transactional oracle preparation, then artifact-set publication. Current stage checkpoints
+extend transactional preparation and its platform coverage, then artifact-set
+publication. Current stage checkpoints
 remain exact-candidate scheduling hints; they are not transferable evidence.
