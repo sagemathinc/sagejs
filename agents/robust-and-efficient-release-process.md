@@ -726,3 +726,22 @@ browser-release-gates and whole-workflow publication guards remain, and
 native-timing extraction, publisher/deployer migration and exact-candidate
 collector validation remain outstanding. The focused runner, inventory,
 acceptance, prerequisite, workload and artifact-gate set passes 73 Linux tests.
+
+Exact-candidate preparation trial at `75b3e3581541640ea8b536036a765335e919d19a`:
+the resumable canonical run stopped in 5.73 s at `numerical-product`, before
+runtime/browser compilation. The cached toolchain and numerical reactor builds
+succeeded, but `verify-release.cjs --require-qualified` correctly rejected the
+checked-in pending NLopt qualification state. The failed attempt and logs remain
+under `build/release-runner/75b3e3581541640ea8b536036a765335e919d19a/`; this is
+not a passing canonical checkpoint or a collector CLI qualification.
+
+The scope mismatch is concrete: `ci.yml` applies this eligibility check only to
+tagged products, whereas the local canonical preparation stage always requires
+it. The existing development verifier explicitly permits source-current pending
+artifacts for development builds. Before using this runner to prepare a new
+candidate for qualification, separate non-publishing preparation from release
+eligibility. Do not remove the tagged-product check, relabel pending evidence as
+qualified, or rerun a full four-platform campaign merely to test collector
+plumbing. This finding adds a preparation/admission edge to phase A/B's audit;
+it does not establish that the underlying mathematical qualification is cyclic
+or unnecessary.
