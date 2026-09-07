@@ -22,6 +22,11 @@ rewrite or a new build-system framework is not a prerequisite.
 
 Read sections 2 and 7 for the audit and implementation sequence; section 9
 distinguishes existing experimental tooling from adopted release behavior.
+For a short implementation brief, start with **First bounded implementation
+cut** in section 8. Section 2 records the audited baseline; later inventory
+counts in section 9 describe subsequent experimental changes, not changes to
+that baseline. Historical passing trials qualify only their named source and
+artifact scope. This plan does not declare the release-process goal complete.
 The first delivery should demonstrate three things:
 
 1. A failed optional timing campaign cannot block an otherwise qualified
@@ -806,3 +811,30 @@ timing ratios and memory sampling were not collected. Full mathematical parity,
 dedicated resource/safety qualification and the complete publication-boundary
 migration remain outstanding; these three acceptance receipts do not authorize
 a release or deployment.
+
+### Uncommitted native workload/reporting follow-up
+
+The following describes a prototype in the `release-preflight-status` worktree
+on `feat/release-native-acceptance`, not adopted production behavior. Its code
+changes remain separate from this planning handoff. Finish review and validation
+before committing or integrating that implementation.
+
+Native workload/reporting separation: the proposed required Node oracle retains full
+release parity and all 21 additional benchmark sources cold/warm once, with
+failed evaluation/interruption and the finite absolute interrupt ceiling still
+blocking. Minor timing ratios, seven-pass repetition and memory sampling are
+not acceptance prerequisites. The existing v2 receipt labels this purpose
+explicitly; browser/native ratios against its single observation are diagnostic,
+not a newly qualified statistical baseline. The workflow reuses its existing
+native build and does not add another artifact transfer or build job.
+
+The local `browser` profile now contains product checks only, including the new
+native acceptance stage. The separate `reporting` profile retains all four
+original timing commands and consumes the same prepared inputs without build
+commands. Current inventory has 85 instances across those profiles; counts are
+not a sequential critical path. Wrong-answer/interruption fault injection and
+full corpus equivalence are tested; successful product checkpoints remain
+reusable after a separate reporting failure, but a changed failing correctness
+command still fails. Actual native CLI qualification and the native/browser
+aggregate, publisher and deploy migration remain required before production
+adoption. No raw numerical, startup, size, signing or source guard is removed.
