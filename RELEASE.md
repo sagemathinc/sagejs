@@ -214,6 +214,9 @@ No current publisher/deployer consumes this inventory yet; existing guards remai
 
 ### Resumable artifact download staging
 
+For a trusted retained handoff, prefer the authenticated entry point in the
+next section over manually transferring a manifest digest.
+
 Given an independently authenticated manifest handoff, stage its exact ZIPs in
 an existing dedicated, canonical cache directory:
 
@@ -244,6 +247,57 @@ does not report a completed set, including during the final installation. This
 is only a verified download cache: it never extracts or executes archives,
 builds, signs, publishes, or authorizes promotion. Inner-product, signature and
 raw-evidence verification remain mandatory in the consuming release process.
+
+### Retain and authenticate a qualification handoff
+
+The manual `release-artifact-handoff.yml` workflow captures a complete accepted
+native/browser artifact set without building or publishing. Dispatch it only
+after both product aggregates pass, using a reviewed control branch and the
+explicit product source/ref/event/purpose and native/browser run IDs. Its one
+read-only-permission job uploads `artifact-set.json` under the immutable name
+`sagejs-artifact-set-attempt-ATTEMPT`; overwrite is forbidden. Retention is
+90 days, not permanent archival. Record its run ID, attempt, artifact ID and
+full **control** commit independently of the product commit.
+
+The control commit may differ from the product commit: correcting transport
+tooling does not itself require recompiling previously qualified mathematics.
+Consumers must explicitly trust that control commit; an arbitrary fork or
+same-named workflow does not qualify. Native/browser qualification still binds
+the original product source and attempts. The capture workflow does not change
+their policy or turn qualification-purpose evidence into a published release.
+
+The consumer runs from the control checkout with its normal pinned dependencies
+installed (including the existing `fflate` ZIP reader); the capture workflow
+itself uses only Node built-ins and `gh`, without installing or building Sage.js.
+
+After obtaining the pinned handoff ZIP, verify it and stage its product ZIPs:
+
+```sh
+node scripts/release/artifact-handoff.cjs stage \
+  --run-id HANDOFF_RUN_ID --attempt HANDOFF_ATTEMPT \
+  --artifact-id HANDOFF_ARTIFACT_ID --control-sha REVIEWED_CONTROL_SHA \
+  --sha PRODUCT_SHA --ref PRODUCT_REF --event workflow_dispatch \
+  --purpose qualification --archive handoff.zip \
+  --directory /absolute/path/to/existing-artifact-cache
+```
+
+Use `verify` without `--directory` to authenticate only the local handoff ZIP.
+For tagged producer runs, use their exact tag, `--event push` and `--purpose
+release`; these must match the captured manifest. This verifier uses the
+authenticated GitHub API's exact historical run-attempt/job records and immutable
+artifact ID/digest. It requires successful capture/retention, rejects foreign
+or expired handoffs, and verifies the bounded one-file ZIP before decoding JSON
+in memory. It never extracts handoff members to disk. Repeating staging then
+reuses valid product archives without reinterpreting later workflow attempts.
+
+The machine result contains the authenticated manifest, control/transport
+identity, and staged archive inventory. This closes the manual self-hash trust
+gap for staging, **not** the remaining inner-product/signature/raw-evidence
+acceptance requirements. It is not yet wired into existing publishers or
+deployers. A locally saved result is not a new attestation, and expired or
+deleted handoff authentication must not silently fall back to that result.
+Permanent authenticated archival and publication consumer migration remain
+explicit follow-up work; do not claim indefinite offline promotion.
 
 ### Full pre-tag qualification without publication
 

@@ -1,0 +1,73 @@
+name: Freeze the qualified Sage.js artifact handoff
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Full qualified product source commit (may differ from this control workflow commit)
+        required: true
+        type: string
+      source_ref:
+        description: Exact tag or branch used by both product workflows
+        required: true
+        type: string
+      source_event:
+        description: Trigger of both qualified product workflows
+        required: true
+        type: choice
+        options: [workflow_dispatch, push]
+      purpose:
+        description: Qualification is not publication authority
+        required: true
+        type: choice
+        options: [qualification, release]
+      native_run_id:
+        description: Run with the successful native product aggregate
+        required: true
+        type: string
+      browser_run_id:
+        description: Run with the successful browser product aggregate
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  capture:
+    name: Freeze qualified release artifact set v1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      artifact-id: ${{ steps.retain.outputs.artifact-id }}
+      artifact-digest: ${{ steps.retain.outputs.artifact-digest }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+      - name: Capture exact qualified artifact set
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ inputs.candidate_sha }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+          SOURCE_EVENT: ${{ inputs.source_event }}
+          PURPOSE: ${{ inputs.purpose }}
+          NATIVE_RUN_ID: ${{ inputs.native_run_id }}
+          BROWSER_RUN_ID: ${{ inputs.browser_run_id }}
+        run: |
+          node scripts/release/artifact-set.cjs capture \
+            --sha "$SOURCE_SHA" --ref "$SOURCE_REF" --event "$SOURCE_EVENT" \
+            --purpose "$PURPOSE" --native-run "$NATIVE_RUN_ID" \
+            --browser-run "$BROWSER_RUN_ID" > artifact-set.json
+      - name: Retain frozen artifact set
+        id: retain
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-artifact-set-attempt-${{ github.run_attempt }}
+          path: artifact-set.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
+          overwrite: false

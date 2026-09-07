@@ -151,4 +151,4 @@ if (require.main === module) {
     process.exitCode = 1;
   }
 }
-module.exports = { boundaries, requiredStep, argumentsFor, inspectProductAcceptance, verifyProductAcceptance, jobsFromPages, readJobPages };
+module.exports = { boundaries, requiredStep, argumentsFor, inspectProductAcceptance, verifyProductAcceptance, jobsFromPages, readJobPages, githubApi };

@@ -935,3 +935,31 @@ matched its API ZIP digest; this is transport evidence, not qualification of
 a new candidate. Authenticated manifest retention, inner-product validation and
 publisher/deployer/recovery adoption are still required before this cache can
 participate in release promotion.
+
+Authenticated handoff retention is now implemented as a separate manual,
+non-publishing `release-artifact-handoff.yml` workflow. It captures the accepted
+product transport manifest in one bounded job and retains a non-overwritable
+attempt-specific artifact. The consumer pins the reviewed control-code commit
+separately from product source, queries the exact historical capture attempt,
+requires its capture/upload steps to succeed, verifies repository and immutable
+artifact identity plus ZIP hash/size, and decodes exactly one bounded JSON
+member without filesystem extraction. Its `stage` entry point passes that
+authenticated manifest directly into resumable ZIP staging, rather than asking
+the operator to trust a self-hash copied from arbitrary JSON.
+
+Validation: 71 focused Linux tests and merge checks pass; all eight handoff
+tests pass on native Windows Node 26.5.1 in 0.85 s, using a verified small source
+bundle removed afterward. An actual historical GitHub run-attempt API response
+confirms the identity fields used, but no new capture workflow was dispatched.
+Fixture tests cover wrong control/product identities, incomplete/skipped capture,
+foreign/replaced/expired artifacts, malformed/duplicate/path ZIP members, and
+authenticated staging followed by reuse. The shadow inventory now includes 43
+jobs and flags the new cross-workflow helper for explicit dependency review.
+
+This closes the staging handoff's manual trust gap, not end-to-end release
+adoption. GitHub retention is 90 days; deleted/expired handoff authentication
+still fails closed. Saved local verification JSON is not an attestation or
+permission for indefinite offline promotion. Permanent authenticated archival,
+inner-product/signature/raw-evidence validation and coordinated publisher,
+deployer and recovery migration remain required. Existing publication guards
+and signing environment policy are unchanged.

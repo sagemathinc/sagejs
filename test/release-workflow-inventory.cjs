@@ -38,6 +38,8 @@ test("real publisher and deployment retain indirect reporting ancestors in the s
   assert.deepEqual(perf.strategy.matrix.shard, [1, 2, 3, 4]);
   assert.ok(perf.steps.some((s) => typeof s.run === "string"));
   assert.ok(graph.unreviewedControlSteps.length > 0, "unreviewed API calls must not disappear");
+  assert.ok(graph.unreviewedControlSteps.some((step) => step.key === "release-artifact-handoff.yml#capture"),
+    "new helper-based cross-workflow capture must remain visible until its edges are explicitly reviewed");
 });
 
 test("YAML 1.2 triggers, block scalars, conditions, tolerance and matrix expressions survive inspection", (t) => {
