@@ -139,12 +139,20 @@ function verifyPinnedArtifacts(value, expectedDigest, request = api) {
   if (!digestPattern.test(expectedDigest ?? "")) throw new Error("supply the independently authenticated manifest digest");
   const manifest = validateArtifactSet(value, expectedDigest);
   for (const record of manifest.artifacts) {
-    const current = artifactRecord(request(`repos/${repository}/actions/artifacts/${record.id}`), record.kind, record.name,
-      { ...manifest, runId: manifest.qualification[record.kind].runId });
-    if (identity(current) !== identity(record)) throw new Error(`pinned artifact changed: ${record.key}`);
+    verifyPinnedArtifact(manifest, expectedDigest, record.key, request);
   }
   return { manifestDigest: manifest.manifestDigest, status: "transport-verified", artifactCount: manifest.artifacts.length,
     authority: "artifact identity only; authenticate the manifest producer, product contents, raw evidence and signatures separately" };
+}
+function verifyPinnedArtifact(value, expectedDigest, key, request = api) {
+  if (!digestPattern.test(expectedDigest ?? "")) throw new Error("supply the independently authenticated manifest digest");
+  const manifest = validateArtifactSet(value, expectedDigest);
+  const record = manifest.artifacts.find((item) => item.key === key);
+  if (!record) throw new Error("unknown artifact key");
+  const current = artifactRecord(request(`repos/${repository}/actions/artifacts/${record.id}`), record.kind, record.name,
+    { ...manifest, runId: manifest.qualification[record.kind].runId });
+  if (identity(current) !== identity(record)) throw new Error(`pinned artifact changed: ${record.key}`);
+  return { key, status: "transport-verified" };
 }
 async function verifyDownloadedArchive(value, expectedDigest, key, filename) {
   const manifest = validateArtifactSet(value, expectedDigest);
@@ -183,5 +191,5 @@ async function main() {
   console.log(JSON.stringify(result, null, 2));
 }
 if (require.main === module) main().catch(() => { console.error("Artifact-set operation failed; no acceptance granted. Check source, producer gates, artifact availability and pinned digests."); process.exitCode = 1; });
-module.exports = { captureArtifactSet, validateArtifactSet, verifyPinnedArtifacts, verifyDownloadedArchive, readArtifacts,
+module.exports = { captureArtifactSet, validateArtifactSet, verifyPinnedArtifacts, verifyPinnedArtifact, verifyDownloadedArchive, readArtifacts,
   artifactRecord, argumentsFor, identity, roles };

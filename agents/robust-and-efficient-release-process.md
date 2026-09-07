@@ -914,3 +914,24 @@ was changed. Keep review, source-current component eligibility and all existing
 raw numerical checks. In particular the pending NLopt state remains an explicit
 qualification failure, not a reason to relax admission or launch a doomed long
 campaign. This configuration issue was found before any expensive CI dispatch.
+
+Resumable download staging now uses the existing directory transactions and
+leases for each pinned GitHub ZIP. It revalidates cached bytes, recovers complete
+pending downloads, replaces only corrupt/missing entries, and retains earlier
+copies and failed preparation. A trusted manifest digest is mandatory; cached
+verified bytes can survive remote expiry without selecting a newer artifact.
+Streaming enforces the pinned byte count and a ten-minute deadline, with a
+download-specific disk/inode preflight and explicit cancellation. No archive
+extraction, compilation, signing or publication occurs in this stage.
+
+Validation: 79 focused Linux tests and merge checks pass; all 21 staging and
+directory-transaction tests pass on native Windows Node 26.5.1 in 1.91 s.
+The Windows source bundle was expanded after two attempts revealed omitted
+test dependencies; the complete bundle passes without a Sage.js rebuild.
+Faults cover interrupted downloads/installation, changed bytes, missing remote
+pins, disk preflight, concurrent writers, deadlines and cancellation even during
+the final installation. A real historical 9,130-byte GitHub download also
+matched its API ZIP digest; this is transport evidence, not qualification of
+a new candidate. Authenticated manifest retention, inner-product validation and
+publisher/deployer/recovery adoption are still required before this cache can
+participate in release promotion.

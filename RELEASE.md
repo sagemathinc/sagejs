@@ -212,6 +212,39 @@ raw numerical evidence and check signatures. Publication attempts must reference
 the frozen qualification identity without relabeling it as their own attempt.
 No current publisher/deployer consumes this inventory yet; existing guards remain.
 
+### Resumable artifact download staging
+
+Given an independently authenticated manifest handoff, stage its exact ZIPs in
+an existing dedicated, canonical cache directory:
+
+```sh
+node scripts/release/stage-artifacts.cjs \
+  --manifest artifact-set.json --expected-digest sha256:AUTHENTICATED_DIGEST \
+  --directory /absolute/path/to/existing-artifact-cache
+```
+
+Repeat the same command after a failure. Each archive has its own recoverable
+directory transaction beneath the manifest digest. Every reuse rechecks bytes
+and SHA-256; a complete pending download may be freshly verified and installed
+without downloading again. Missing or corrupt entries require current remote
+pin verification. Valid cached bytes remain usable offline or after remote
+expiry because the authenticated frozen manifest, not a newer same-name
+artifact, supplies their identity.
+
+Downloads are sequential, streamed, limited to the pinned byte count and a
+ten-minute deadline. Preflight requires the archive size plus 64 MiB free space
+and, where reported, 64 free inodes. Existing partial/previous copies already
+consume that free space and are retained for inspection; this command does not
+garbage-collect them. Leases reject concurrent writers. If a controller dies
+without releasing its lease, inspect its actual process/children before stale
+lock recovery; do not start a second downloader merely because status is old.
+
+Progress goes to stderr and the verified file inventory to stdout. Cancellation
+does not report a completed set, including during the final installation. This
+is only a verified download cache: it never extracts or executes archives,
+builds, signs, publishes, or authorizes promotion. Inner-product, signature and
+raw-evidence verification remain mandatory in the consuming release process.
+
 ### Full pre-tag qualification without publication
 
 After local/persistent-host iteration, dispatch both workflows on a frozen
