@@ -166,6 +166,10 @@ async function preparePublication(options, dependencies = {}) {
     const { authenticateBrowserArchive } = require("./browser-archive.cjs");
     selectedBrowser.archive = await authenticateBrowserArchive(root, selectedBrowser, { signal: options.signal });
     selectedBrowser.authority = "qualified distribution and inner archive comparison only; not deployment authorization";
+    const productIdentity = { sourceRevision: candidate, ref: accepted.manifest.ref, event: accepted.manifest.event,
+      purpose: accepted.manifest.purpose, manifestDigest: digest };
+    const { createMacosInstallerRequest } = require("./macos-installer.cjs");
+    const nativeInspectionRequests = { macos: createMacosInstallerRequest(root, productIdentity, packagedExecutables, inputs) };
     for (const file of inputs) {
       options.signal?.throwIfAborted();
       const target = path.join(root, file.target);
@@ -173,8 +177,7 @@ async function preparePublication(options, dependencies = {}) {
     }
     identity(root, candidate);
     return { authentication: accepted.authentication, candidateRoot: root, results,
-      productIdentity: { sourceRevision: candidate, ref: accepted.manifest.ref, event: accepted.manifest.event,
-        purpose: accepted.manifest.purpose, manifestDigest: digest },
+      productIdentity, nativeInspectionRequests,
       files: inputs.map(({ target, size, sha256 }) => ({ path: target, size, sha256 })), platformPackages, packagedExecutables, downloadableArchives, selectedBrowser,
       status: "numerical-publication-inputs-authenticated",
       authority: "not publication authorization; macOS installer, signatures and deployment adoption remain required" };

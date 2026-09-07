@@ -238,6 +238,10 @@ test("publication input preparation retains a failed gate, resumes raw verificat
       const name = `sagejs-${nativePlatform}.${nativePlatform.startsWith("linux") ? "tar.xz" : "zip"}`, bytes = downloadArchives.get(nativePlatform);
       files[name] = bytes; files[`${name}.sha256`] = Buffer.from(`${checksum(bytes).slice(7)}  ${name}\n`);
     }
+    if (nativePlatform === "macos-arm64") {
+      const name = "sagejs-macos-arm64.pkg";
+      files[`${name}.sha256`] = Buffer.from(`${checksum(files[name]).slice(7)}  ${name}\n`);
+    }
     if (record.key === "native/sagejs-public-npm-root") for (const [name, bytes] of browser.files) files[`packages/flint-wasm/dist/${name}`] = bytes;
     if (record.key === "browser/wasm-clean-build-a") for (const [name, bytes] of browser.clean) files[name] = bytes;
     if (record.key === "browser/sagejs-wasm-reproducible") for (const [name, bytes] of browser.reproduced) files[name] = bytes;
@@ -259,6 +263,11 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   assert.equal(passed.platformPackages.length, 4);
   assert.equal(passed.packagedExecutables.length, 4);
   assert.equal(passed.downloadableArchives.length, 4);
+  assert.equal(passed.nativeInspectionRequests.macos.status, "pending-native-inspection");
+  assert.equal(passed.nativeInspectionRequests.macos.version, "0.8.0");
+  assert.deepEqual(passed.nativeInspectionRequests.macos.productIdentity, passed.productIdentity);
+  assert.deepEqual(passed.nativeInspectionRequests.macos.executables,
+    passed.packagedExecutables.find((item) => item.platform === "macos-arm64").executables);
   assert.ok(passed.downloadableArchives.every((item) => item.files.length === 6));
   assert.equal(passed.packagedExecutables[0].executables[0].evidence, "linux-x64-npm and linux-x64-sea");
   assert.equal(passed.selectedBrowser.artifactIdentity, browser.report.artifact_identity);

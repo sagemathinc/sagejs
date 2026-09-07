@@ -377,8 +377,35 @@ options cannot override those flags; cancellation kills and awaits the decoder.
 A valid tar followed by an XZ integrity failure is rejected. All readers bound
 expansion and check executable modes, without extracting or executing binaries.
 Matching checksum sidecars alone cannot authorize different executables.
-macOS installer content comparison and authenticating signature/notarization
-state remain necessary before adopting the final publisher.
+Preparation also emits `nativeInspectionRequests.macos`: the pending installer
+hash/size, candidate version, selected executable identities and product manifest
+identity. This is a request, not signature approval. On a native Mac, reviewed
+control code can inspect that selected package without rebuilding or installing:
+
+```sh
+node scripts/release/macos-installer.cjs \
+  --request macos-request.json \
+  --installer /absolute/path/to/sagejs-macos-arm64.pkg \
+  --team-id BVF94G2MB4
+```
+
+The Team ID must come from reviewed release policy, independently of the
+request/package. The verifier requires native installer trust/timestamp,
+Gatekeeper installation acceptance, stapled notarization and Developer ID
+executable signatures. It checks package metadata, exact payload paths,
+BOM sizes/modes and both executable hashes. It rejects install scripts, links,
+extra members and changed inputs. Extraction occurs only after native signature
+and notarization checks, into invocation-owned scratch; there is no installation,
+binary execution, signing or notarization submission. Each native command has
+a two-minute deadline and bounded output, with a ten-minute overall deadline
+and disk preflight; scratch is removed after success/failure. This is a verifier
+for the trusted signed component-package format, not a general hostile-package
+extraction sandbox.
+
+Its result remains a **local observation**, not publication authorization.
+Production adoption must authenticate the verifier job/attempt and exact selected
+artifact set; never accept a user-supplied JSON solely because it says `passed`.
+That transport binding and publisher/deployer adoption remain unfinished.
 
 Browser preparation selects the clean-build distribution explicitly. Its bytes
 must match the numerical gate and the canonical artifact report recorded by the

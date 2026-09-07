@@ -72,8 +72,10 @@ build. The shadow inventory check was rerun for this planning handoff and passed
 with the counts above; no candidate was qualified by that check.
 
 Existing experimental preparation can check the contents of all four platform
-archives against selected executable identities. It still does not establish
-macOS installer/signature acceptance or production publisher/deployer adoption.
+archives against selected executable identities and emit a pending native macOS
+installer request. A native verifier now checks that request against the signed
+package; its local observation still requires authenticated job/attempt transport
+before promotion. Production publisher/deployer adoption is not complete.
 Use those helpers where appropriate, but do not equate accumulated helper tests
 with an end-to-end release. The first success criterion remains one interrupted
 promotion resumed with the same tested bytes and no rebuild.
