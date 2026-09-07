@@ -349,8 +349,24 @@ and build-receipt metadata, and derived totals against the candidate's total and
 topology budgets. It reuses compression measurements from the authenticated
 report instead of running gzip/Brotli again. This requires trusted transport:
 `verifyRecordedArtifact` by itself cannot authenticate a self-authored report.
-The result identifies `selectedBrowser.directory`; it does not certify inner
-`sagejs-wasm.tar.gz` contents or authorize deployment of an arbitrary directory.
+The result identifies `selectedBrowser.directory`. Preparation also streams the
+retained inner `sagejs-wasm.tar.gz` and compares every file's size and SHA-256,
+plus the reconstructed directory layout, with that exact qualified tree. This
+includes metadata, supporting sources and other files outside the payload
+report's asset list. It checks the archive's checksum sidecar and rechecks both
+the selected tree and archive after comparison. `selectedBrowser.archive`
+records this binding; it does not authorize deployment of an arbitrary path.
+
+The inner reader neither extracts nor executes content. It accepts ordinary
+USTAR and the producer's current short-name GNU tar format beneath `dist/`;
+links, devices, PAX/long-name/sparse extensions, path collisions, ambiguous size
+fields and special permission bits fail closed. npm's separate `package/`,
+USTAR-only contract remains intact. Browser verification has a two-minute
+deadline, propagates cancellation, caps compressed and expanded archives at
+2 GiB, and caps entries at 100,000. Per-file and full-tree hashes stream through
+bounded buffers; no gzip/Brotli measurement is repeated. Changing the producer
+archive format requires explicit compatibility tests rather than relaxing the
+parser during publication.
 
 Reruns revalidate cached files and reuse valid verification checkpoints. A failed
 gate directory is retained outside the canonical raw-evidence tree before a
@@ -360,8 +376,8 @@ runner and its child processes. Inspect retained attempts before manual cleanup;
 the consumer does not silently delete earlier evidence.
 
 The success status is `numerical-publication-inputs-authenticated`, **not release
-authorization**. Platform inner-package/signature checks, reproducible browser
-product binding and actual publisher/deployer/recovery adoption remain required.
+authorization**. Platform inner-package/signature checks and actual
+publisher/deployer/recovery adoption remain required.
 This command cannot upload, sign, tag, publish or move public pointers. Its local
 state is a resumability record, not an offline replacement for authenticated
 handoff provenance.

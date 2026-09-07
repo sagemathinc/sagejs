@@ -208,6 +208,12 @@ test("publication input preparation retains a failed gate, resumes raw verificat
     if(!fs.readFileSync(file('--gate')).equals(fs.readFileSync(file('--rebuilt-gate'))))throw Error('gate bytes differ');
     for(const flag of ['--public-npm-root','--browser-distribution'])if(!fs.existsSync(file(flag)))throw Error('missing product');
     if(fs.existsSync('build/release-publication/mutate-input'))fs.writeFileSync('release/install.sh','changed by verifier');
+    if(fs.existsSync('build/release-publication/mutate-browser-archive')){
+      const name='build/release-publication/browser-reproducible/sagejs-wasm.tar.gz';
+      const bytes=require('node:zlib').gzipSync(Buffer.alloc(1024));
+      fs.writeFileSync(name,bytes);
+      fs.writeFileSync(name+'.sha256',require('node:crypto').createHash('sha256').update(bytes).digest('hex')+'  build/sagejs-wasm.tar.gz'+String.fromCharCode(10));
+    }
   `);
   const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
   git("init"); git("add", "."); git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "Fixture source");
@@ -236,13 +242,26 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   assert.equal(passed.status, "numerical-publication-inputs-authenticated");
   assert.equal(passed.platformPackages.length, 4);
   assert.equal(passed.selectedBrowser.artifactIdentity, browser.report.artifact_identity);
+  assert.equal(passed.selectedBrowser.archive.files, browser.files.size);
+  assert.equal(passed.selectedBrowser.archive.sha256, checksum(browser.reproduced.get("sagejs-wasm.tar.gz")).slice(7));
   assert.equal(passed.results.length, 2); assert.ok(passed.results.every((result) => !result.reused));
   const retained = path.join(root, "build/release-publication/retained-gates");
   assert.ok(fs.readdirSync(retained).some((id) => fs.existsSync(path.join(retained, id, "partial.json"))));
   const reused = await preparePublication(options, dependencies);
   assert.ok(reused.results.every((result) => result.reused));
+  assert.deepEqual(reused.selectedBrowser.archive, passed.selectedBrowser.archive);
   assert.equal(downloads, 9);
   assert.equal(git("status", "--porcelain"), "");
+  // A successful reconstructed gate and matching archive checksum are not
+  // enough: the inner tree must match, even when runner checkpoints are reused.
+  const mutateArchive = path.join(root, "build/release-publication/mutate-browser-archive");
+  fs.writeFileSync(mutateArchive, "1");
+  fs.unlinkSync(path.join(root, "build/release-runner", candidate, "publication-numerical-authentication.json"));
+  await assert.rejects(preparePublication(options, dependencies), /archive omits qualified/);
+  fs.unlinkSync(mutateArchive);
+  const archiveRepaired = await preparePublication(options, dependencies);
+  assert.ok(archiveRepaired.results.every((result) => result.reused));
+  assert.deepEqual(archiveRepaired.selectedBrowser.archive, passed.selectedBrowser.archive);
   // A changed rebuilt gate cannot inherit its earlier authentication pass.
   fs.writeFileSync(path.join(root, "build/numerical-qualification/gate/release-gate.json"), "changed");
   const repaired = await preparePublication(options, dependencies);

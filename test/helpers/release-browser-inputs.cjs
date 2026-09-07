@@ -5,6 +5,7 @@ const fs = require("node:fs"), path = require("node:path");
 const { canonicalJson, contentDigestPath, sha256 } = require("../../scripts/numerical-computing/common.cjs");
 const { inspectProductionArtifact } = require("../../packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs");
 const { distribution } = require("../../scripts/release/browser-inputs.cjs");
+const { tarGzip } = require("./release-tar.cjs");
 const budget = { schema: "sagejs.browser-wasm-budget/v1", thresholds: { compressed_growth_fraction: 0 },
   artifact_baseline: { totals: { gzip_bytes: 100000, brotli_bytes: 100000 } } };
 
@@ -31,6 +32,9 @@ function createBrowserInputs(root, candidate) {
   const clean = new Map([...files].map(([name, value]) => [`packages/flint-wasm/dist/${name}`, value]));
   clean.set("build/wasm-artifact-a.json", reportBytes);
   const reproduced = new Map(["reproducible-artifact.json", "reproducible-linux-arm64.json", "reproducible-darwin-arm64.json"].map((name) => [name, reportBytes]));
+  const archive = tarGzip([{ name: "dist/", type: "5" }, ...[...files].map(([name, data]) => ({ name: `dist/${name}`, data }))]);
+  reproduced.set("sagejs-wasm.tar.gz", archive);
+  reproduced.set("sagejs-wasm.tar.gz.sha256", Buffer.from(`${sha256(archive)}  build/sagejs-wasm.tar.gz\n`));
   for (const [prefix, entries] of [["browser-clean", clean], ["browser-reproducible", reproduced]]) {
     for (const [name, content] of entries) {
       const filename = path.join(root, "build/release-publication", prefix, name);

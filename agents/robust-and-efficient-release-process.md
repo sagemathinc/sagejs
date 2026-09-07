@@ -1085,3 +1085,37 @@ disabled. This single measurement verifies historical bytes and the checker,
 not a new candidate or trusted archival handoff. No artifact was rebuilt or
 recompressed. SEA/signature and inner archive binding, real promotion/recovery
 adoption and permanent authenticated retention remain required.
+
+The consumer now compares the retained inner browser archive with its selected
+clean distribution on every preparation, including checkpoint reuse. Download
+SHA-256 alone is insufficient: every regular file, supporting file, metadata
+file and reconstructed directory must match. The streaming reader retains the
+npm validator's USTAR-only policy through a separate browser entry point that
+also accepts the producer's ordinary short-name GNU dialect. It rejects links,
+metadata/sparse extensions, ambiguous numeric fields, traversal/collisions and
+special permission bits, bounds expansion and propagates cancellation. No
+extraction, compilation or compression measurement is part of this check.
+
+A read-only historical trial inspected the actual retained
+`release-080-r6/build/ci-release12-reproducible/sagejs-wasm.tar.gz`: 246 files,
+245,657,600 expanded tar bytes, approximately 0.87 seconds and 80,348 KiB peak
+RSS for streamed inspection. Comparing all files and directories with retained
+`ci-release12-clean-a/packages/flint-wasm/dist`, including an independent check
+against the legacy raw tree-digest algorithm, passed in approximately 2.29
+seconds. That comparison's peak RSS was 250,792 KiB because the independent
+legacy checker reads entire files; the new snapshot hashes through a 1 MiB
+buffer. These are single historical local observations, not a new authenticated
+candidate qualification or a performance guarantee. Frozen inputs were not
+modified or recompressed. SEA/signature binding, coordinated production
+promotion/recovery adoption and permanent authenticated retention remain open.
+
+Validation of this inner-archive change: 181 focused Linux tests pass across the
+release runner/transport/recovery, browser binding, npm archive and numerical
+verifier contracts. Native Windows passes 28 browser/platform/handoff tests;
+its temporary source bundle, fixture and helper were removed. Merge invariants
+and the shadow inventory pass; the latter still reports seven unreviewed
+control steps and five incomplete scopes. A fault-injection test replaces the
+inner archive and updates its checksum after numerical verification succeeds:
+preparation rejects the missing qualified files, then repairs from authenticated
+transport and reuses the numerical checkpoints on retry. No runtime artifacts,
+budgets, tags, signing policy or public pointers changed.

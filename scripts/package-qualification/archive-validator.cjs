@@ -2,6 +2,7 @@
 "use strict";
 
 const { createReadStream } = require("node:fs");
+const { createHash } = require("node:crypto");
 const { basename } = require("node:path");
 const { TextDecoder } = require("node:util");
 const { createGunzip } = require("node:zlib");
@@ -27,11 +28,12 @@ function parseOctal(header, start, length, label) {
   if ((field[0] & 0x80) !== 0) {
     throw new Error(`${label} uses unsupported base-256 encoding`);
   }
-  const value = field.toString("ascii").replaceAll("\0", "").trim();
-  if (value === "") return 0;
-  if (!/^[0-7]+$/.test(value)) {
+  const match = /^[ ]*([0-7]*)[\0 ]*$/.exec(field.toString("latin1"));
+  if (!match) {
     throw new Error(`${label} is not an octal integer`);
   }
+  const value = match[1];
+  if (value === "") return 0;
   const parsed = Number.parseInt(value, 8);
   if (!Number.isSafeInteger(parsed) || parsed < 0) {
     throw new Error(`${label} is outside the supported integer range`);
@@ -50,7 +52,7 @@ function verifyChecksum(header) {
   }
 }
 
-function normalizedMemberPath(rawPath, type) {
+function normalizedMemberPath(rawPath, type, root) {
   if (/[^\x20-\x7e]/.test(rawPath)) {
     // JavaScript lowercasing is not a faithful model of either APFS/HFS+
     // filesystem folding or NTFS case folding (for example Σ/ς and ß/SS).
@@ -77,8 +79,8 @@ function normalizedMemberPath(rawPath, type) {
   ) {
     throw new Error(`tar member has a non-canonical path: ${rawPath}`);
   }
-  if (components[0] !== "package") {
-    throw new Error(`tar member is outside package/: ${rawPath}`);
+  if (components[0] !== root) {
+    throw new Error(`tar member is outside ${root}/: ${rawPath}`);
   }
   if (components.length === 1 && type !== "directory") {
     throw new Error(`tar member package root is not a directory: ${rawPath}`);
@@ -100,14 +102,21 @@ function normalizedMemberPath(rawPath, type) {
   return components.join("/").normalize("NFC");
 }
 
-function memberName(header) {
+function memberName(header, gnu) {
   const name = decodeField(header, 0, 100, "tar member name");
+  // GNU stores timestamps/sparse metadata where POSIX stores a path prefix.
+  // Never interpret those bytes as a USTAR prefix.
+  if (gnu) return name;
   const prefix = decodeField(header, 345, 155, "tar member prefix");
   return prefix ? `${prefix}/${name}` : name;
 }
 
-async function validateArchive(filename) {
-  const stream = createReadStream(filename).pipe(createGunzip());
+async function inspectArchive(filename, { browser = false, signal } = {}) {
+  signal?.throwIfAborted();
+  const source = createReadStream(filename, { signal });
+  const stream = createGunzip();
+  source.once("error", (error) => stream.destroy(error));
+  source.pipe(stream);
   const members = [];
   const collisionKeys = new Set();
   const memberTypes = new Map();
@@ -117,6 +126,8 @@ async function validateArchive(filename) {
   let uncompressedBytes = 0;
   let zeroBlocks = 0;
   let ended = false;
+  let payloadRemaining = 0;
+  let payloadHash;
 
   function processHeader(header) {
     const zero = header.every((byte) => byte === 0);
@@ -132,14 +143,19 @@ async function validateArchive(filename) {
     zeroBlocks = 0;
     verifyChecksum(header);
 
-    if (
-      !header.subarray(257, 263).equals(Buffer.from("ustar\0", "ascii")) ||
-      !header.subarray(263, 265).equals(Buffer.from("00", "ascii"))
-    ) {
+    const ustar = header.subarray(257, 265).equals(Buffer.from("ustar\0" + "00", "ascii"));
+    const gnu = browser && header.subarray(257, 265).equals(Buffer.from("ustar  \0", "ascii"));
+    if (!ustar && !gnu) {
       // In particular, a V7 header does not define the ustar prefix field.
       // Interpreting it here while the downstream extractor ignores it would
       // let validation and extraction disagree about a member's path.
       throw new Error("tar member does not use the supported ustar/00 dialect");
+    }
+    // The release producer currently writes ordinary GNU tar entries. Long
+    // names, PAX headers and sparse layouts are deliberately unsupported, not
+    // silently normalized. npm retains its original USTAR-only contract.
+    if (gnu && header.subarray(369).some((byte) => byte !== 0)) {
+      throw new Error("GNU tar member has unsupported extended metadata");
     }
 
     const typeFlag = header[156];
@@ -153,6 +169,7 @@ async function validateArchive(filename) {
       throw new Error(`tar member has forbidden type ${JSON.stringify(shown)}`);
     }
     const size = parseOctal(header, 124, 12, "tar member size");
+    if (size > MAX_UNCOMPRESSED_BYTES) throw new Error("tar member size exceeds expansion limit");
     if (type === "directory" && size !== 0) {
       throw new Error("tar directory member has nonzero content");
     }
@@ -161,7 +178,10 @@ async function validateArchive(filename) {
       throw new Error("tar regular member has an unexpected link target");
     }
 
-    const path = normalizedMemberPath(memberName(header), type);
+    if (browser && (parseOctal(header, 100, 8, "tar member mode") & 0o7000)) {
+      throw new Error("browser tar member has forbidden special permission bits");
+    }
+    const path = normalizedMemberPath(memberName(header, gnu), type, browser ? "dist" : "package");
     const collisionKey = path.toLowerCase();
     if (collisionKeys.has(collisionKey)) {
       throw new Error(`tar archive has a duplicate normalized path: ${path}`);
@@ -185,58 +205,76 @@ async function validateArchive(filename) {
       throw new Error(`tar archive exceeds ${MAX_ENTRIES} members`);
     }
     skip = Math.ceil(size / BLOCK_SIZE) * BLOCK_SIZE;
+    payloadRemaining = size;
+    if (browser && type === "file") {
+      payloadHash = createHash("sha256");
+      if (size === 0) { members.at(-1).sha256 = payloadHash.digest("hex"); payloadHash = undefined; }
+    }
   }
 
-  for await (const chunk of stream) {
-    uncompressedBytes += chunk.length;
-    if (uncompressedBytes > MAX_UNCOMPRESSED_BYTES) {
-      throw new Error(
-        `tar archive exceeds ${MAX_UNCOMPRESSED_BYTES} uncompressed bytes`,
-      );
-    }
-    let offset = 0;
-    while (offset < chunk.length) {
-      if (skip > 0) {
-        const consumed = Math.min(skip, chunk.length - offset);
-        skip -= consumed;
-        offset += consumed;
-        continue;
+  try {
+    for await (const chunk of stream) {
+      signal?.throwIfAborted();
+      uncompressedBytes += chunk.length;
+      if (uncompressedBytes > MAX_UNCOMPRESSED_BYTES) {
+        throw new Error(
+          `tar archive exceeds ${MAX_UNCOMPRESSED_BYTES} uncompressed bytes`,
+        );
       }
-      if (buffered.length > 0) {
-        const needed = BLOCK_SIZE - buffered.length;
-        const consumed = Math.min(needed, chunk.length - offset);
-        buffered = Buffer.concat([
-          buffered,
-          chunk.subarray(offset, offset + consumed),
-        ]);
-        offset += consumed;
-        if (buffered.length === BLOCK_SIZE) {
-          processHeader(buffered);
-          buffered = Buffer.alloc(0);
+      let offset = 0;
+      while (offset < chunk.length) {
+        if (skip > 0) {
+          const consumed = Math.min(skip, chunk.length - offset);
+          const dataBytes = Math.min(payloadRemaining, consumed);
+          payloadHash?.update(chunk.subarray(offset, offset + dataBytes));
+          payloadRemaining -= dataBytes;
+          if (payloadHash && payloadRemaining === 0) {
+            members.at(-1).sha256 = payloadHash.digest("hex"); payloadHash = undefined;
+          }
+          skip -= consumed;
+          offset += consumed;
+          continue;
         }
-        continue;
-      }
-      if (chunk.length - offset >= BLOCK_SIZE) {
-        processHeader(chunk.subarray(offset, offset + BLOCK_SIZE));
-        offset += BLOCK_SIZE;
-      } else {
-        buffered = Buffer.from(chunk.subarray(offset));
-        offset = chunk.length;
+        if (buffered.length > 0) {
+          const needed = BLOCK_SIZE - buffered.length;
+          const consumed = Math.min(needed, chunk.length - offset);
+          buffered = Buffer.concat([
+            buffered,
+            chunk.subarray(offset, offset + consumed),
+          ]);
+          offset += consumed;
+          if (buffered.length === BLOCK_SIZE) {
+            processHeader(buffered);
+            buffered = Buffer.alloc(0);
+          }
+          continue;
+        }
+        if (chunk.length - offset >= BLOCK_SIZE) {
+          processHeader(chunk.subarray(offset, offset + BLOCK_SIZE));
+          offset += BLOCK_SIZE;
+        } else {
+          buffered = Buffer.from(chunk.subarray(offset));
+          offset = chunk.length;
+        }
       }
     }
-  }
 
-  if (skip !== 0 || buffered.length !== 0) {
-    throw new Error("tar archive is truncated");
-  }
-  if (!ended) throw new Error("tar archive lacks two zero end blocks");
-  return {
-    archive: basename(filename),
-    members,
-    schema: "sagejs.package-archive-validation/v1",
-    uncompressed_bytes: uncompressedBytes,
-  };
+    if (skip !== 0 || buffered.length !== 0) {
+      throw new Error("tar archive is truncated");
+    }
+    if (!ended) throw new Error("tar archive lacks two zero end blocks");
+    return {
+      archive: basename(filename),
+      members,
+      schema: browser ? "sagejs.browser-archive-validation/v1" : "sagejs.package-archive-validation/v1",
+      uncompressed_bytes: uncompressedBytes,
+    };
+  } finally { source.destroy(); stream.destroy(); }
 }
+
+// Separate entry points make the accepted root/dialect/hash policy explicit.
+function validateArchive(filename) { return inspectArchive(filename); }
+function validateBrowserArchive(filename, { signal } = {}) { return inspectArchive(filename, { browser: true, signal }); }
 
 async function main() {
   if (process.argv.length !== 3) {
@@ -254,4 +292,4 @@ async function main() {
 
 if (require.main === module) void main();
 
-module.exports = { validateArchive };
+module.exports = { validateArchive, validateBrowserArchive };

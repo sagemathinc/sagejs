@@ -155,6 +155,9 @@ async function preparePublication(options, dependencies = {}) {
     const platformPackages = authenticatePlatformNpmPackages(gate, "release/npm", root);
     const { authenticateBrowserInputs } = require("./browser-inputs.cjs");
     const selectedBrowser = authenticateBrowserInputs(root, candidate, gate);
+    const { authenticateBrowserArchive } = require("./browser-archive.cjs");
+    selectedBrowser.archive = await authenticateBrowserArchive(root, selectedBrowser, { signal: options.signal });
+    selectedBrowser.authority = "qualified distribution and inner archive comparison only; not deployment authorization";
     for (const file of inputs) {
       options.signal?.throwIfAborted();
       const target = path.join(root, file.target);
