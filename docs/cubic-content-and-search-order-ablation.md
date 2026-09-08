@@ -288,3 +288,11 @@ integration appear green.
 The reserved unseen neighbors remain unexecuted. No new `opt` public timing,
 holdout result, cross-platform release qualification, or PARI-win claim follows
 from this integration. PR190 remains draft.
+
+The [integrated evidence archive](https://github.com/sagemathinc/sagejs/releases/download/cubic-content-integration-20260908/cubic-content-integration-20260908.tar.gz)
+binds source commit `87fd1a83cf46feff1e69932de71157183cb92857` to the
+original run identities. It includes all 1,000 public receipts and replay
+results, both controlled timing cohorts, portable native artifacts, generated
+cores, resource comparisons, and retained unsuccessful attempts. Archive
+SHA-256: `ea72f24b11acaa2506c4cc432bdd85e4c984153f49113ae7041cde7b5382734c`.
+This is immutable research evidence, not a product release.
