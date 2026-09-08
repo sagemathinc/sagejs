@@ -3,6 +3,60 @@
 # The test loader prepends the actual production helpers and their imports.
 
 
+@native
+def bf_reject_invalid_value_index(
+    coefficients: IntegerBuffer,
+    bad_index: int,
+) -> bool:
+    """Reject an invalid or norm-mismatched index before endpoint access."""
+    scale: int = 18_446_744_073_709_551_616
+    with NativeExactArena(1_048_576, 3_145_728) as arena:
+        field = arena.integer_vector(_CUBIC_WORKSPACE_LENGTH, 0)
+        workspace = arena.integer_vector(_CUBIC_ANALYTIC_WORKSPACE_LENGTH, 0)
+        ready, term_count, value_count = _cubic_prepare_bf_plan(
+            field,
+            workspace,
+            coefficients,
+            1,
+            -1,
+            -1,
+            0,
+            23,
+            257,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            _CUBIC_ANALYTIC_THRESHOLD,
+        )
+        if not ready:
+            return False
+        values = arena.foreign_resource(fmpz_matrix, value_count, 1)
+        endpoints = arena.foreign_resource(fmpz_matrix, 4 * value_count, 1)
+        ready, lower, upper, tail = _cubic_evaluate_bf_plan(
+            workspace,
+            values,
+            endpoints,
+            term_count,
+            value_count,
+            scale,
+        )
+        if not ready:
+            return False
+        workspace[_CUBIC_ANALYTIC_TERM_OFFSET + 4] = bad_index
+        lower, upper = _cubic_bf_finite_bounds(
+            workspace,
+            values,
+            endpoints,
+            term_count,
+            value_count,
+            scale,
+        )
+        return lower > upper
+
+
 def _record_bf_prefix(
     workspace: NativeIntegerVector,
     values: FmpzMatrix,

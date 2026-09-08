@@ -13,7 +13,7 @@ const { createNativeImportResolver } = require("../tools/native-kernel/native-im
 
 const root = resolve(__dirname, "..");
 const fixture = join(__dirname, "fixtures/cubic-bf-prefix.py");
-const names = ["bf_exact_snapshot", "bf_prefix_schedule"];
+const names = ["bf_exact_snapshot", "bf_prefix_schedule", "bf_reject_invalid_value_index"];
 
 function expandedFixture() {
   const production = readFileSync(join(root,
@@ -26,11 +26,27 @@ function expandedFixture() {
     "def _original_exact_bf_evaluation(").replace(
       "integer_log_sqrt_balls_prefix_resource(\n        analytic_endpoints,\n        analytic_values,\n        analytic_value_count,",
       "integer_log_sqrt_balls_resource(\n        analytic_endpoints,\n        analytic_values,",
-    );
+    ).replace("_cubic_bf_finite_bounds(", "_original_linear_bf_finite_bounds(");
   assert.doesNotMatch(original, /integer_log_sqrt_balls_prefix_resource/);
+  const finiteStart = production.indexOf("\ndef _cubic_bf_finite_bounds(") + 1;
+  const finiteEnd = production.indexOf("\ndef ", finiteStart + 1);
+  assert.ok(finiteStart > 0 && finiteEnd > finiteStart);
+  const finite = production.slice(finiteStart, finiteEnd);
+  const indexedStart = finite.indexOf("        # The planner already deduplicated");
+  const indexedEnd = finite.indexOf("        endpoint_offset:", indexedStart);
+  assert.ok(indexedStart > 0 && indexedEnd > indexedStart);
+  // Preserve the previous linear-search evaluator as a differential oracle;
+  // unlike the candidate it deliberately ignores the stored index column.
+  const linear = (finite.slice(0, indexedStart) +
+    "        value_index: uint64 = 0\n" +
+    "        while value_index < value_count and values[value_index, 0] != norm:\n" +
+    "            value_index += 1\n" +
+    "        if value_index == value_count:\n" +
+    "            return (1, 0)\n" + finite.slice(indexedEnd))
+    .replace("def _cubic_bf_finite_bounds(", "def _original_linear_bf_finite_bounds(");
   // The oracle is the previous exact-shape operation, not a separately
   // reimplemented BF formula. Every mathematical helper is actual source.
-  return production + "\n" + original + "\n" + readFileSync(fixture, "utf8");
+  return production + "\n" + linear + "\n" + original + "\n" + readFileSync(fixture, "utf8");
 }
 
 test("BF prefix evaluation stays in one closed fmpz allocation scope", async () => {
@@ -66,6 +82,10 @@ const parameters = [[997, 1n], [1494, 2n], [997, 3n], [997, 1n]];
 let reference;
 for (const backend of ["javascript", "gmp", "fmpz"]) {
   const polynomial = exact.packIntegerBuffer([-1n, -1n, 0n, 1n], 8);
+  for (const invalidIndex of [-1n, 0n, 256n, 1n << 130n]) {
+    assert.equal(module.bf_reject_invalid_value_index[backend](polynomial, invalidIndex),
+      true, backend + " must reject invalid or mismatched index " + invalidIndex);
+  }
   const full = reused.createIntegerBuffer(4 * 4096, 8);
   assert.equal(reused[backend](polynomial, full), true);
   const observations = full.toArray();

@@ -5455,10 +5455,14 @@ def _cubic_bf_finite_bounds(
         scale_index = analytic_workspace[term_base + 1]
         norm = analytic_workspace[term_base + 2]
         exponent = analytic_workspace[term_base + 3]
-        value_index: uint64 = 0
-        while value_index < value_count and values[value_index, 0] != norm:
-            value_index += 1
-        if value_index == value_count:
+        # The planner already deduplicated this norm. Authenticate its stored
+        # index before reading the live value prefix instead of searching it
+        # again for every prime-power term.
+        stored_value_index = analytic_workspace[term_base + 4]
+        if stored_value_index < 0 or stored_value_index >= value_count:
+            return (1, 0)
+        value_index: uint64 = checked_uint64(stored_value_index)
+        if values[value_index, 0] != norm:
             return (1, 0)
         endpoint_offset: uint64 = 4 * value_index
         logarithm_lower = endpoints[endpoint_offset, 0]

@@ -90,3 +90,40 @@ Do not promote these incremental improvements into a PARI-win claim. Finish
 current-source public replay, controlled public timing and the frozen neighbor
 evaluation, report regressions, and keep PR190 draft until its actual gates
 are satisfied.
+
+## Diagnostic map, 2026-09-08
+
+Read these before repeating a proposed optimization:
+
+- [PARI-sized cutoff](../docs/cubic-pari-cutoff-experiment.md): 997 to 768
+  improves the target's native median by 5.32%, but sends 276 of the frozen
+  1,012 fixed-effort fields through extra refinement. Exact acceptance is
+  unchanged; there is no need for a speculative mathematical assumption.
+  Production defaults are unchanged.
+- [Native cost ledger](../docs/cubic-cutoff768-cost-ledger.md): analytic
+  planning/evaluation is about 20% of the instrumented root, not the whole
+  gap. The apparent 284 versus 13 candidate mismatch was a counter-boundary
+  mistake: only 11 Sage.js candidates pass the corresponding primitive
+  nonscalar ellipsoid filter. Do not infer a twentyfold search-space failure.
+- [Current public boundaries](../docs/cubic-public-target-boundaries.md):
+  the pinned `ca2e588b5` target takes 3.24 ms prepared versus PARI's 0.77 ms;
+  coefficient-vector polynomial plus field construction raises Sage.js to
+  8.26 ms versus PARI's fresh 1.21 ms. Expression-based construction adds
+  substantially more. These are separately defined diagnostics, not a new
+  frozen-corpus performance gate.
+- [Checked analytic indices](../docs/cubic-bf-index-reuse.md): this revisits
+  the earlier approximately 1% experiment, not a new mechanism. Current
+  tests compare the previous search against indexed evaluation on all three
+  exact backends, reject malformed indices, and match all 64 output slots on
+  all 1,012 fixed-effort fields. Current target gain is 0.84%; thirteen of
+  fourteen familiar-field medians improve, with the small loss also reported.
+- `_cubic_ceil_sqrt` already uses Newton iteration. Native `int.bit_length()`
+  is a confirmed compiler obstruction; native shift IR lowering is supported.
+  Bit-length and seed loops are candidates for a general compiler improvement,
+  but the measured entire square-root phase is only about 0.080 ms here.
+
+Continue to distinguish a small native improvement from a public PARI win.
+The constructor's irreducibility path currently builds and decodes a full
+factorization; profile it rather than assuming its native factoring call
+alone explains the public setup cost. The twenty preregistered neighbors
+remain outside these development experiments.
