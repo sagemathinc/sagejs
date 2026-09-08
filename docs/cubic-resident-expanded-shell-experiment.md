@@ -182,3 +182,17 @@ not defaults.
 `diagnose-cubic-unit-prefix.cjs` checks all principal equalities with PARI
 and tests the image of each prefix's integer relation kernel exactly. This
 forensic oracle is separate from independent Sage.js certificate replay.
+
+## Retained evidence
+
+The [immutable research archive](https://github.com/sagemathinc/sagejs/releases/download/cubic-resident-shell-experiment-20260908/cubic-resident-shell-experiment-20260908.tar.gz)
+contains all three frozen surveys, both controlled timing runs, portable
+source/addon identities, generated cores, raw captures, exact prefix programs
+and outputs, and validation logs. It binds diagnostic source commit
+`a487e4151868c9d03e9bcf57ef8622485bbf3f80`. Archive SHA-256:
+`60dd46d04ca2d91d7b177017fd6fdb71d5673d99ddd1d95835e47246e5390f5f`.
+
+Focused tests, Python formatting and architecture checks pass. The inherited
+parallel gate still finds 395 live tasks. No new full unit, public replay,
+unseen-neighbor, or cross-platform qualification was run for these source
+copies. PR190 remains draft and the production mathematical source is unchanged.
