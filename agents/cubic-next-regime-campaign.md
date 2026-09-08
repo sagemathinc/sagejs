@@ -126,7 +126,11 @@ Read these before repeating a proposed optimization:
   iteration was already present; this is not a new square-root algorithm.
 
 Continue to distinguish a small native improvement from a public PARI win.
-The constructor's irreducibility path currently builds and decodes a full
-factorization; profile it rather than assuming its native factoring call
-alone explains the public setup cost. The twenty preregistered neighbors
-remain outside these development experiments.
+The [constructor profile](../docs/cubic-constructor-costs.md) now measures
+factorization at 0.765 ms, irreducibility at 2.995 ms and field construction
+at 3.711 ms on opt. Local sampling attributes 84% of constructor samples to
+irreducibility, with substantial reconstruction and resource-cache costs.
+Implement a direct rational irreducibility predicate from existing exact
+factor metadata next; investigate identity-indexed resource-cache LRU
+separately. The twenty preregistered neighbors remain outside these
+development experiments.
