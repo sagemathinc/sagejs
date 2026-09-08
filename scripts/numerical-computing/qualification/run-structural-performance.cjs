@@ -53,6 +53,9 @@ const GATES = Object.freeze([
     id: "numerical-trace-presentation-payload",
     arguments: [
       "--test",
+      // Both files launch browsers; do not make their bounded render checks
+      // compete for the same qualification runner's CPU and memory.
+      "--test-concurrency=1",
       "test/numerics/gallery/root-gallery.test.cjs",
       "test/numerics/gallery/cross-domain-gallery.test.cjs",
     ],
