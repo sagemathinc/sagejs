@@ -2856,6 +2856,8 @@ class PolynomialElement(sage.Element):
         raise TypeError("polynomial xgcd is implemented over ZZ, QQ, and GF(p)")
 
     def is_irreducible(self) -> bool:
+        if self._parent.base_ring() is sage.QQ:
+            return _polynomial_structural_public_module().rational_is_irreducible(self)
         if self._parent.base_ring()._kind == "GF_EXTENSION":
             if self.degree() <= 0:
                 return False

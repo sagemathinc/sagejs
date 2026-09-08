@@ -83,6 +83,34 @@ def _trim_uint64_buffer(source: Any) -> Any:
     return runtime.uint64_buffer_prefix(source, length)
 
 
+def rational_is_irreducible(self: Any) -> bool:
+    """Decide over `QQ` from complete factors, without public reconstruction.
+
+    For a nonconstant rational polynomial, irreducibility is equivalent to
+    one irreducible factor with exponent one; rational content is a unit.
+    This trusts the same exact factorization contract as `factor()`. The
+    temporary owner closes even if a metadata accessor raises. The input
+    polynomial is borrowed and remains usable.
+    """
+    if self.degree() <= 0:
+        return False
+    if self._has_fmpq_polynomial_resource():
+        ffi = _flint_ffi_module()
+        with ffi.fmpq_polynomial_factor_resource(
+            self._exact_polynomial_resource()
+        ) as factors:
+            return (
+                ffi.exact_polynomial_factorization_count(factors) == 1
+                and ffi.exact_polynomial_factorization_exponent(factors, 0) == 1
+            )
+    factors = self.factor()
+    return (
+        len(factors) == 1
+        and factors[0][1] == 1
+        and factors[0][0] * factors.unit() == self
+    )
+
+
 def compose(
     self: Any,
     inner: Any,

@@ -8,7 +8,7 @@ const [root,directory,gp]=process.argv.slice(2);
 const hash=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const source=path.join(root,'src/lib/sagejs/number_fields/cubic_class_number_native.py');
 const index=JSON.parse(fs.readFileSync(path.join(root,'dist/native-kernels/index.json')));
-const native=index.sources[source];assert.ok(native);assert.equal(native.sourceHash,hash(source));
+const native=index.logicalSources?.['sagejs/number_fields/cubic_class_number_native.py'] || index.sources[source];assert.ok(native);assert.equal(native.sourceHash,hash(source));
 const sourceHash=hash(source), packPath=path.join(root,'dist/native-kernels/pack/sagejs_native_kernel_pack.node'), packHash=hash(packPath);
 const before=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
 const envdir=fs.mkdtempSync('/tmp/cubic-target-cache-');
