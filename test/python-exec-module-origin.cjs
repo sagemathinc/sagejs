@@ -3,7 +3,7 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { mkdtempSync, writeFileSync, rmSync } = require("node:fs");
+const { mkdtempSync, realpathSync, writeFileSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
@@ -38,7 +38,7 @@ else:
 
 const checkSource = `import builtins
 import exec_origin_fixture
-assert exec_origin_fixture.__file__ == EXPECTED_ORIGIN
+assert exec_origin_fixture.__file__ == EXPECTED_ORIGIN, (exec_origin_fixture.__file__, EXPECTED_ORIGIN)
 assert exec_origin_fixture.generated(8) == 9
 sentinel = object()
 namespace = {'__name__': 'owner', '__file__': 'owner.py', '__spec__': sentinel, '__builtins__': builtins.__dict__}
@@ -72,7 +72,8 @@ print('exec-origin-ok')
 `;
 
 test("exec and eval preserve caller module origins and other import metadata", (context) => {
-  const directory = mkdtempSync(join(tmpdir(), "sagejs-exec-origin-"));
+  // macOS /tmp aliases /private/tmp; use one spelling for the input and CWD.
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), "sagejs-exec-origin-")));
   context.after(() => rmSync(directory, { recursive: true, force: true }));
   const origin = join(directory, "exec_origin_fixture.py");
   const filename = join(directory, "check.py");
