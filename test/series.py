@@ -1,6 +1,13 @@
 from __future__ import annotations
 
 
+# The standalone polynomial closure must include lazy irreducibility dispatch.
+irreducibility_ring = PolynomialRing(QQ, "irreducibility_generator")
+irreducibility_generator = irreducibility_ring.gen()
+assert (irreducibility_generator**2 + 1).is_irreducible()
+assert not (irreducibility_generator**2 - 1).is_irreducible()
+
+
 R = LaurentSeriesRing(QQ, "x")
 x = R.gen()
 assert str(R) == "Laurent Series Ring in x over Rational Field"

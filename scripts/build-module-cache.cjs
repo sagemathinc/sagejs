@@ -11,7 +11,6 @@ const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const {
   BASELIB_STANDALONE_CACHE_MODULES,
-  BASELIB_STANDALONE_MODULES,
 } = require("../tools/standalone-library.cjs");
 
 const root = join(__dirname, "..");
@@ -56,10 +55,10 @@ const modules = [
     sourceFilename: sourceFilenameForModule(name),
   })),
 ];
-const requestedModules = [
-  ...standardModules,
-  ...BASELIB_STANDALONE_MODULES,
-];
+// Compile every promised cache entry, including literal dynamic imports found
+// by the dependency closure but not traversed by static import compilation.
+// This cache-building program is never executed; production imports stay lazy.
+const requestedModules = [...new Set(modules.map(({ name }) => name))];
 
 rmSync(outputDirectory, { recursive: true, force: true });
 rmSync(temporaryDirectory, { recursive: true, force: true });
@@ -79,7 +78,10 @@ const result = spawnSync(
   {
     cwd: root,
     encoding: "utf8",
-    input: `${requestedModules.map((name) => `import ${name}`).join("\n")}\n`,
+    // The complete closure includes intrinsic parents such as sagejs, whose
+    // import contract requires an explicit alias. None of these local names
+    // becomes part of a cached module's own namespace.
+    input: `${requestedModules.map((name, index) => `import ${name} as _sagejs_cache_module_${index}`).join("\n")}\n`,
     stdio: ["pipe", "ignore", "inherit"],
   },
 );
